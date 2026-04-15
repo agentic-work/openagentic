@@ -648,18 +648,23 @@ server.addHook('onRequest', async (request, reply) => {
 
 // Register plugins
 // Configure CORS to only allow frontend
+const UI_HOST_PORT = process.env.UI_HOST_PORT || '8080';
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
   : [
-      process.env.FRONTEND_URL || 'http://openagentic-ui:3000',
-      `http://openagentic-ui:${process.env.UI_PORT || '3000'}`,
+      process.env.FRONTEND_URL || `http://localhost:${UI_HOST_PORT}`,
+      `http://openagentic-ui:${process.env.UI_PORT || '80'}`,
       `http://${process.env.API_HOST || 'openagentic-api'}:${process.env.API_PORT || '8000'}`,
+      `http://localhost:${UI_HOST_PORT}`,  // The configured host UI port (default 8080)
+      `http://127.0.0.1:${UI_HOST_PORT}`,
       'http://localhost',       // Local through Caddy (port 80)
       'http://localhost:3000',  // Local development
       'http://localhost:3001',  // Alternative local port
-      'http://127.0.0.1',       // IP-based through Caddy (port 80)
-      'http://127.0.0.1:3000',  // IP-based local access
-      'http://127.0.0.1:3001'   // Alternative IP-based local port
+      'http://localhost:8080',  // Default compose UI port
+      'http://127.0.0.1',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
+      'http://127.0.0.1:8080',
     ].filter((origin): origin is string => Boolean(origin));
 
 // Register cookie parser for cookie-based auth
