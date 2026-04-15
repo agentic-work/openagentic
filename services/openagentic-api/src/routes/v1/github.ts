@@ -461,7 +461,7 @@ export const githubRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
 
       // Inject GitHub token into running code mode pod (if active)
       try {
-        const codeManagerUrl = process.env.CODE_MANAGER_URL || process.env.OPENAGENTIC_MANAGER_URL || 'http://openagentic-code-manager:3050';
+        const codeManagerUrl = process.env.EXEC_URL || process.env.OPENAGENTIC_MANAGER_URL || 'http://openagentic-code-manager:3060';
         const { default: axios } = await import('axios');
         // Tell code-manager to refresh the user's session with the new GitHub token
         await axios.post(`${codeManagerUrl}/sessions/refresh-github`, {

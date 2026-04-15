@@ -80,9 +80,9 @@ if [ -f "$CONFIG_FILE" ]; then
     # Auth provider configuration - controls which login buttons are shown
     # VITE_AUTH_PROVIDER: 'google' = Google only, 'azure-ad' = Microsoft only, 'all' = show all enabled
     # Individual toggles: 'true' = show button, 'false' = hide button
-    sed -i "s|VITE_AUTH_PROVIDER_PLACEHOLDER|${VITE_AUTH_PROVIDER:-${AUTH_PROVIDER:-all}}|g" "$CONFIG_FILE"
-    sed -i "s|VITE_MICROSOFT_LOGIN_ENABLED_PLACEHOLDER|${VITE_MICROSOFT_LOGIN_ENABLED:-${MICROSOFT_LOGIN_ENABLED:-true}}|g" "$CONFIG_FILE"
-    sed -i "s|VITE_GOOGLE_LOGIN_ENABLED_PLACEHOLDER|${VITE_GOOGLE_LOGIN_ENABLED:-${GOOGLE_LOGIN_ENABLED:-true}}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_AUTH_PROVIDER_PLACEHOLDER|${VITE_AUTH_PROVIDER:-${AUTH_PROVIDER:-local}}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_MICROSOFT_LOGIN_ENABLED_PLACEHOLDER|${VITE_MICROSOFT_LOGIN_ENABLED:-${MICROSOFT_LOGIN_ENABLED:-false}}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_GOOGLE_LOGIN_ENABLED_PLACEHOLDER|${VITE_GOOGLE_LOGIN_ENABLED:-${GOOGLE_LOGIN_ENABLED:-false}}|g" "$CONFIG_FILE"
     sed -i "s|VITE_LOCAL_LOGIN_ENABLED_PLACEHOLDER|${VITE_LOCAL_LOGIN_ENABLED:-${LOCAL_LOGIN_ENABLED:-true}}|g" "$CONFIG_FILE"
 
     echo "Runtime configuration updated"
@@ -90,9 +90,9 @@ if [ -f "$CONFIG_FILE" ]; then
     echo "  AAD_CLIENT_ID: ${AAD_CLIENT_ID}"
     echo "  AAD_AUTHORITY: ${AAD_AUTHORITY}"
     echo "  DEV_LOGIN_PAGE: ${VITE_DEV_LOGIN_PAGE:-${DEV_LOGIN_PAGE:-false}}"
-    echo "  AUTH_PROVIDER: ${VITE_AUTH_PROVIDER:-${AUTH_PROVIDER:-all}}"
-    echo "  MICROSOFT_LOGIN_ENABLED: ${VITE_MICROSOFT_LOGIN_ENABLED:-${MICROSOFT_LOGIN_ENABLED:-true}}"
-    echo "  GOOGLE_LOGIN_ENABLED: ${VITE_GOOGLE_LOGIN_ENABLED:-${GOOGLE_LOGIN_ENABLED:-true}}"
+    echo "  AUTH_PROVIDER: ${VITE_AUTH_PROVIDER:-${AUTH_PROVIDER:-local}}"
+    echo "  MICROSOFT_LOGIN_ENABLED: ${VITE_MICROSOFT_LOGIN_ENABLED:-${MICROSOFT_LOGIN_ENABLED:-false}}"
+    echo "  GOOGLE_LOGIN_ENABLED: ${VITE_GOOGLE_LOGIN_ENABLED:-${GOOGLE_LOGIN_ENABLED:-false}}"
     echo "  LOCAL_LOGIN_ENABLED: ${VITE_LOCAL_LOGIN_ENABLED:-${LOCAL_LOGIN_ENABLED:-true}}"
 fi
 
@@ -117,8 +117,8 @@ export MCP_PORT=${MCP_PORT:-3001}
 echo "MCP Proxy: http://${MCP_HOST}:${MCP_PORT}"
 
 # AWCode Manager configuration - routes to awcode-manager service for PTY terminal
-export AWCODE_MANAGER_HOST=${AWCODE_MANAGER_HOST:-awcode-manager}
-export AWCODE_MANAGER_PORT=${AWCODE_MANAGER_PORT:-3050}
+export EXEC_HOST=${EXEC_HOST:-awcode-manager}
+export EXEC_PORT=${EXEC_PORT:-3050}
 
 # Code-Server configuration - VS Code Web IDE
 export CODE_SERVER_HOST=${CODE_SERVER_HOST:-code-server}
@@ -137,8 +137,8 @@ if [ -f /var/run/secrets/kubernetes.io/serviceaccount/namespace ]; then
 
     # Convert short hostnames to FQDN for nginx resolver
     # Only if they don't already contain dots (not already FQDN)
-    if ! echo "$AWCODE_MANAGER_HOST" | grep -q '\.'; then
-        export AWCODE_MANAGER_HOST="${AWCODE_MANAGER_HOST}.${K8S_NAMESPACE}.svc.cluster.local"
+    if ! echo "$EXEC_HOST" | grep -q '\.'; then
+        export EXEC_HOST="${EXEC_HOST}.${K8S_NAMESPACE}.svc.cluster.local"
     fi
     if ! echo "$CODE_SERVER_HOST" | grep -q '\.'; then
         export CODE_SERVER_HOST="${CODE_SERVER_HOST}.${K8S_NAMESPACE}.svc.cluster.local"
@@ -160,14 +160,14 @@ if [ -f /var/run/secrets/kubernetes.io/serviceaccount/namespace ]; then
     fi
 fi
 
-echo "AWCode Manager: http://${AWCODE_MANAGER_HOST}:${AWCODE_MANAGER_PORT}"
+echo "AWCode Manager: http://${EXEC_HOST}:${EXEC_PORT}"
 echo "Code-Server: http://${CODE_SERVER_HOST}:${CODE_SERVER_PORT}"
 
 # Substitute environment variables in nginx config
 if [ -f /etc/nginx/conf.d/default.conf.template ]; then
     echo "Configuring nginx with environment variables..."
-    echo "  AWCODE_MANAGER_HOST: ${AWCODE_MANAGER_HOST}"
-    echo "  AWCODE_MANAGER_PORT: ${AWCODE_MANAGER_PORT}"
+    echo "  EXEC_HOST: ${EXEC_HOST}"
+    echo "  EXEC_PORT: ${EXEC_PORT}"
     echo "  CODE_SERVER_HOST: ${CODE_SERVER_HOST}"
     echo "  CODE_SERVER_PORT: ${CODE_SERVER_PORT}"
 
@@ -180,7 +180,7 @@ if [ -f /etc/nginx/conf.d/default.conf.template ]; then
     export DNS_RESOLVER
     echo "  DNS_RESOLVER: ${DNS_RESOLVER}"
 
-    envsubst '${API_HOST} ${API_PORT} ${MCP_HOST} ${MCP_PORT} ${DOCS_HOST} ${DOCS_PORT} ${FRONTEND_SECRET} ${REDIS_COMMANDER_HOST} ${REDIS_COMMANDER_PORT} ${ATTU_HOST} ${ATTU_PORT} ${AWCODE_MANAGER_HOST} ${AWCODE_MANAGER_PORT} ${CODE_SERVER_HOST} ${CODE_SERVER_PORT} ${OPENAGENTIC_PROXY_HOST} ${OPENAGENTIC_PROXY_PORT} ${DNS_RESOLVER}' \
+    envsubst '${API_HOST} ${API_PORT} ${MCP_HOST} ${MCP_PORT} ${DOCS_HOST} ${DOCS_PORT} ${FRONTEND_SECRET} ${REDIS_COMMANDER_HOST} ${REDIS_COMMANDER_PORT} ${ATTU_HOST} ${ATTU_PORT} ${EXEC_HOST} ${EXEC_PORT} ${CODE_SERVER_HOST} ${CODE_SERVER_PORT} ${OPENAGENTIC_PROXY_HOST} ${OPENAGENTIC_PROXY_PORT} ${DNS_RESOLVER}' \
         < /etc/nginx/conf.d/default.conf.template \
         > /etc/nginx/conf.d/default.conf
     echo "nginx configuration complete"

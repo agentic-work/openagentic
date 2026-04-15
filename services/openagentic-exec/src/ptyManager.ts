@@ -381,7 +381,6 @@ export class PtyManager extends EventEmitter {
         OPENAGENTIC_API_KEY: apiKey || '',
         ANTHROPIC_API_KEY: apiKey || '',
         ANTHROPIC_BASE_URL: apiKey ? `${effectiveApiEndpoint}/api/openagentic` : '',
-        OPENAGENTIC_API_KEY: apiKey || '',
         OPENAGENTIC_API_ENDPOINT: effectiveApiEndpoint,
         OPENAGENTIC_MANAGED: '1',
         OPENAGENTIC_SESSION_ID: sessionId,

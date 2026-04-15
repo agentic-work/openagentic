@@ -125,8 +125,8 @@ export class AgenticCodeService {
     this.providerManager = providerManager;
     // Use runtimeUrl if provided, fall back to managerUrl for backwards compatibility
     this.runtimeUrl = config?.runtimeUrl || config?.managerUrl ||
-      process.env.CODE_RUNTIME_URL || process.env.CODE_MANAGER_URL ||
-      'http://openagentic-manager:3050';  // BUG-002 fix: correct hostname
+      process.env.CODE_RUNTIME_URL || process.env.EXEC_URL ||
+      'http://openagentic-exec:3060';  // BUG-002 fix: correct hostname
     // Note: defaultModel is now fetched from database in getAWCodeSettings()
     // This is just a fallback if database is unavailable - uses env vars only, no hardcoding
     this.defaultModel = config?.defaultModel || process.env.DEFAULT_CODE_MODEL || process.env.DEFAULT_MODEL || '';

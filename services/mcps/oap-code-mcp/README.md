@@ -103,7 +103,7 @@ Add to MCP proxy configuration:
       "command": "python",
       "args": ["/path/to/oap-openagentic-mcp/server.py"],
       "env": {
-        "OPENAGENTIC_MANAGER_URL": "http://openagentic-openagentic-manager:3050"
+        "OPENAGENTIC_MANAGER_URL": "http://openagentic-openagentic-manager:3060"
       }
     }
   }

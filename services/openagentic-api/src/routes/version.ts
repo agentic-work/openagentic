@@ -244,7 +244,7 @@ export async function versionRoutes(fastify: FastifyInstance) {
     };
 
     const mcpProxyUrl = process.env.MCP_PROXY_URL || process.env.MCP_ORCHESTRATOR_URL || 'http://openagentic-mcp-proxy:8080';
-    const codeManagerUrl = process.env.CODE_MANAGER_URL || 'http://openagentic-code-manager:3000';
+    const codeManagerUrl = process.env.EXEC_URL || 'http://openagentic-code-manager:3000';
     const openagenticProxyUrl = process.env.OPENAGENTIC_PROXY_URL || 'http://openagentic-openagentic-proxy:3300';
     const now = new Date().toISOString();
 

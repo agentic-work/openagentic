@@ -92,7 +92,7 @@ interface ExecutionsQuery {
 }
 
 // FIXED: Use correct service name - openagentic-manager (not the old openagenticcode-runtime)
-const CODE_RUNTIME_URL = process.env.CODE_RUNTIME_URL || process.env.CODE_MANAGER_URL || 'http://openagentic-manager:3050';
+const CODE_RUNTIME_URL = process.env.CODE_RUNTIME_URL || process.env.EXEC_URL || 'http://openagentic-exec:3060';
 
 /**
  * Register admin code routes

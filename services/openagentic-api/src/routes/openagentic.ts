@@ -1719,7 +1719,7 @@ export const openagenticRoutes: FastifyPluginAsync<OpenagenticRoutesOptions> = a
     preHandler: authMiddleware,
   }, async (request, reply) => {
     try {
-      const codeManagerUrl = process.env.CODE_MANAGER_URL || 'http://openagentic-manager:3050';
+      const codeManagerUrl = process.env.EXEC_URL || 'http://openagentic-exec:3060';
       
       // Check code manager health
       let managerStatus = 'unknown';
@@ -2429,7 +2429,7 @@ export const openagenticRoutes: FastifyPluginAsync<OpenagenticRoutesOptions> = a
   // Proxies to openagentic-manager for per-session VS Code instances
   // ==========================================================================
 
-  const OPENAGENTIC_MANAGER_URL = process.env.OPENAGENTIC_MANAGER_URL || 'http://openagentic-manager:3050';
+  const OPENAGENTIC_MANAGER_URL = process.env.OPENAGENTIC_MANAGER_URL || 'http://openagentic-exec:3060';
   // Use CODE_MANAGER_INTERNAL_KEY from docker-compose, fallback to INTERNAL_API_KEY for compatibility
   const INTERNAL_API_KEY = process.env.CODE_MANAGER_INTERNAL_KEY || process.env.INTERNAL_API_KEY || '';
 

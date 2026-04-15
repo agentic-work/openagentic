@@ -235,26 +235,9 @@ RUN pip install --no-cache-dir --break-system-packages \
   && python3 -m ipykernel install --name python3 --display-name "Python 3" \
   && echo "Python dev tools installed"
 
-# OAT (On-demand Agent Tooling) - install the synth package for tool synthesis
-# Dual-mode: vendored (default) installs from ./oat in build context;
-# git mode `pip install`s from agentic-work/oat@$OAT_REF via PAT secret mount.
-# In git mode build.sh creates an empty placeholder ./oat dir so the COPY
-# instruction still succeeds.
-ARG INSTALL_MODE
-ARG OAT_REF
-COPY oat /tmp/oat-install
-# NOTE: vendored mode (default in CI) copies oat from ./oat at COPY above.
-# Git mode is developer-only (requires GH_PAT secret + BuildKit --mount).
-# az acr build does NOT support BuildKit, so we must not use --mount here.
-RUN set -e; \
-    if [ "$INSTALL_MODE" = "git" ]; then \
-      echo "ERROR: git install mode requires BuildKit (not supported by az acr build)" && exit 1; \
-    else \
-      pip install --no-cache-dir --break-system-packages /tmp/oat-install; \
-    fi && \
-    rm -rf /tmp/oat-install && \
-    oat --help > /dev/null 2>&1 && \
-    echo "OAT installed ($INSTALL_MODE mode @ ${OAT_REF}, $(oat --version 2>/dev/null || echo 'v?'))"
+# OAT (On-demand Agent Tooling) is provided as a separate service
+# (openagentic-synth). The exec sandbox does NOT need it baked in — it calls
+# the synth service over HTTP at runtime when tool synthesis is needed.
 
 # Rust (rustup, shared install so all sandbox users can use it)
 ENV RUSTUP_HOME=/usr/local/rustup
@@ -348,42 +331,13 @@ RUN ARCH=$(dpkg --print-architecture) && \
 ENV PATH="/opt/bun/bin:$PATH"
 
 # -----------------------------------------------------------------------------
-# OpenAgentic CLI — dual-mode (vendored | git)
+# Coding CLI — bring your own
 # -----------------------------------------------------------------------------
-# vendored mode: build.sh rsyncs ../openagentic (with @agentic-work/llm-sdk
-#   already in node_modules from rsync-override) into ./openagentic-cli/.
-#   We COPY the dist/, package.json, and node_modules tree into
-#   /usr/local/lib/openagentic and wrap with a bun launcher.
-#
-# git mode: clone agentic-work/openagentic@$OPENAGENTIC_REF, run npm install
-#   inside the clone (which respects the `overrides` block in openagentic's
-#   package.json that pulls @agentic-work/llm-sdk from openagentic-sdk@git
-#   via the same PAT). dist/ is shipped in the openagentic repo so no
-#   `npm run build` needed here.
-ARG INSTALL_MODE
-ARG OPENAGENTIC_REF
-ARG SDK_REF=v0.6.2
-COPY openagentic-cli /tmp/openagentic-vendored
-# NOTE: vendored mode (default in CI) uses pre-built openagentic-cli from
-# the COPY above. Git mode is developer-only and requires BuildKit --mount
-# which az acr build does NOT support. Fail fast if someone accidentally
-# sets INSTALL_MODE=git in CI.
-RUN set -e && \
-    mkdir -p /usr/local/lib/openagentic && \
-    if [ "$INSTALL_MODE" = "git" ]; then \
-      echo "ERROR: git install mode requires BuildKit (not supported by az acr build)" && exit 1; \
-    else \
-      cp -r /tmp/openagentic-vendored/dist /usr/local/lib/openagentic/dist && \
-      cp /tmp/openagentic-vendored/package.json /usr/local/lib/openagentic/package.json && \
-      cp -r /tmp/openagentic-vendored/node_modules /usr/local/lib/openagentic/node_modules; \
-    fi && \
-    rm -rf /tmp/openagentic-vendored /tmp/openagentic-git && \
-    printf '#!/bin/sh\nexec /opt/bun/bin/bun /usr/local/lib/openagentic/dist/entrypoints/cli.js "$@"\n' > /usr/local/bin/openagentic && \
-    chmod +x /usr/local/bin/openagentic && \
-    test -f /usr/local/lib/openagentic/dist/entrypoints/cli.js && \
-    test -f /usr/local/lib/openagentic/package.json && \
-    echo "openagentic installed ($INSTALL_MODE mode @ ${OPENAGENTIC_REF:-vendored})" && \
-    (/usr/local/bin/openagentic --version 2>&1 | head -3 || echo "openagentic wrapper installed (version probe optional)")
+# OSS exec doesn't bake in a coding CLI. The user picks one and installs it
+# into the sandbox at runtime via env (CODING_CLI=claude-code | aider | ...)
+# or by `npm i -g <cli>` / `pip install <cli>` from the terminal. The exec
+# daemon exposes an "open coding CLI" command that shells out to whatever's
+# on PATH for the configured adapter.
 
 # -----------------------------------------------------------------------------
 # Copy Tutorial Notebooks

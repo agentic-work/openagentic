@@ -196,7 +196,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     // Get service URLs from environment
     this.mcpProxyUrl = process.env.MCP_PROXY_URL || 'http://openagentic-mcp-proxy:8080';
     this.apiUrl = process.env.API_URL || 'http://localhost:8000';
-    this.openagenticManagerUrl = process.env.OPENAGENTIC_MANAGER_URL || 'http://openagentic-code-manager:3050';
+    this.openagenticManagerUrl = process.env.OPENAGENTIC_MANAGER_URL || 'http://openagentic-code-manager:3060';
 
     // Initialize retry state tracking
     this.nodeRetryState = new Map();

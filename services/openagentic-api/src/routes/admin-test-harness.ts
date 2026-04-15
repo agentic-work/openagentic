@@ -514,7 +514,7 @@ const adminTestHarnessRoutes: FastifyPluginAsync = async (fastify) => {
         emitProgress('Testing Code Mode...');
         try {
           const axios = (await import('axios')).default;
-          const codeManagerUrl = process.env.CODE_MANAGER_URL || 'http://openagentic-code-manager:3050';
+          const codeManagerUrl = process.env.EXEC_URL || 'http://openagentic-code-manager:3060';
 
           // Test code-manager health
           const cmStart = Date.now();

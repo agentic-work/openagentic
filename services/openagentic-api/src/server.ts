@@ -1732,12 +1732,12 @@ async function registerAllRoutes() {
   // Register OpenAgenticCode routes (for sandboxed development environment)
   try {
     const codeRoutes = (await import('./routes/code.js')).default;
-    const CODE_MANAGER_URL = process.env.CODE_MANAGER_URL || 'http://openagentic-manager:3050';
+    const EXEC_URL = process.env.EXEC_URL || 'http://openagentic-exec:3060';
 
     // Health endpoint - NO auth required (for UI connectivity check)
     server.get('/api/code/health', async (request, reply) => {
       try {
-        const response = await fetch(`${CODE_MANAGER_URL}/health`);
+        const response = await fetch(`${EXEC_URL}/health`);
         if (response.ok) {
           const health = await response.json();
           return reply.send(health);
@@ -1856,7 +1856,7 @@ async function registerAllRoutes() {
 
   // Legacy WebSocket proxy (kept for backward compat — will be removed)
   try {
-    const CODE_MANAGER_WS_URL = process.env.CODE_MANAGER_URL || 'http://openagentic-manager:3050';
+    const CODE_MANAGER_WS_URL = process.env.EXEC_URL || 'http://openagentic-exec:3060';
     const CODE_MANAGER_INTERNAL_KEY = process.env.CODE_MANAGER_INTERNAL_KEY || '';
     const WebSocketModule = await import('ws');
     const WebSocket = WebSocketModule.default;
@@ -2152,9 +2152,9 @@ async function registerAllRoutes() {
   }
 
   // WebSocket proxy for code manager events (for new Code Mode UI with real-time activity visualization)
-  // Proxies /api/code/ws/events to CODE_MANAGER_URL/ws/events
+  // Proxies /api/code/ws/events to EXEC_URL/ws/events
   try {
-    const CODE_MANAGER_WS_URL = process.env.CODE_MANAGER_URL || 'http://openagentic-manager:3050';
+    const CODE_MANAGER_WS_URL = process.env.EXEC_URL || 'http://openagentic-exec:3060';
     const CODE_MANAGER_INTERNAL_KEY = process.env.CODE_MANAGER_INTERNAL_KEY || '';
 
     const WebSocketModule = await import('ws');

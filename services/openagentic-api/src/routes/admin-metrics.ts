@@ -367,7 +367,7 @@ const adminMetricsRoutes: FastifyPluginAsync = async (fastify) => {
       const serviceProbes: Array<{ name: string; url: string }> = [
         { name: 'openagentic-ui', url: `${process.env.UI_URL || 'http://openagentic-ui:80'}/healthz` },
         { name: 'openagentic-mcp-proxy', url: `${process.env.MCP_PROXY_URL || 'http://openagentic-mcp-proxy:3100'}/health` },
-        { name: 'openagentic-manager', url: `${process.env.CODE_MANAGER_URL || 'http://openagentic-manager:3050'}/health` },
+        { name: 'openagentic-manager', url: `${process.env.EXEC_URL || 'http://openagentic-exec:3060'}/health` },
       ];
 
       // Build API service entry with real process metrics

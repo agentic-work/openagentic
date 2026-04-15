@@ -45,7 +45,7 @@ function getConfig(): ExtensionConfig {
     // Priority: config > env > default
     managerUrl: config.get('managerUrl')
       || process.env.OPENAGENTIC_MANAGER_URL
-      || 'http://localhost:3050',
+      || 'http://localhost:3060',
     token: config.get('token')
       || process.env.OPENAGENTIC_TOKEN
       || '',

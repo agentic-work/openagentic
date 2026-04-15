@@ -38,7 +38,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # =============================================================================
 # Stage 2: Production image - Distroless-like minimal image
 # =============================================================================
-FROM gcr.io/distroless/python3-debian12:nonroot
+FROM python:3.11-slim
 
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
@@ -64,7 +64,7 @@ WORKDIR /app
 COPY --chown=nonroot:nonroot src/ /app/
 
 # Run as non-root user (65532 is the nonroot user in distroless)
-USER 65532:65532
+# USER 65532:65532 (only valid in distroless)
 
 # Health check endpoint
 EXPOSE 8090

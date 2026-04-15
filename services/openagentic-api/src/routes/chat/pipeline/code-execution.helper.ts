@@ -31,7 +31,7 @@ import type { ToolCall, ToolResult } from './tool-execution.helper.js';
 import { getFeedbackIntegrationService } from '../../../services/FeedbackIntegrationService.js';
 
 // AgenticCode Manager service URL
-const OPENAGENTIC_MANAGER_URL = process.env.OPENAGENTIC_MANAGER_URL || 'http://openagentic-manager:3050';  // BUG-002 fix
+const OPENAGENTIC_MANAGER_URL = process.env.OPENAGENTIC_MANAGER_URL || 'http://openagentic-exec:3060';  // BUG-002 fix
 
 /**
  * Code tool patterns - these indicate the LLM wants to perform code operations

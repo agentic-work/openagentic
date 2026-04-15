@@ -385,21 +385,6 @@ const Login: React.FC = () => {
           transition={{ delay: 0.4 }}
           className="mt-8 text-center"
         >
-          <div className="flex justify-center items-center gap-4 text-xs mb-3">
-            <button
-              onClick={() => setShowTerms(true)}
-              className="text-white/30 hover:text-white/60 transition-colors"
-            >
-              Terms
-            </button>
-            <span className="text-white/10">•</span>
-            <button
-              onClick={() => setShowPrivacy(true)}
-              className="text-white/30 hover:text-white/60 transition-colors"
-            >
-              Privacy
-            </button>
-          </div>
           <p className="text-[11px] text-white/20">
             © {new Date().getFullYear()} OpenAgentic
           </p>

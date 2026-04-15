@@ -26,7 +26,6 @@ WORKDIR /repo
 
 # Copy the full codebase context the generators need
 COPY services ./services
-COPY helm ./helm
 COPY version.json ./version.json
 
 # Install UI deps (generators import from node_modules via tsx)

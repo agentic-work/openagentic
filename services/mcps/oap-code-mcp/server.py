@@ -72,9 +72,9 @@ except ImportError:
 # =============================================================================
 
 # OpenAgentic Manager endpoint
-# Docker Compose: http://openagentic-manager:3050
+# Docker Compose: http://openagentic-exec:3060
 # Kubernetes: http://openagentic-openagentic-manager:3050
-MANAGER_URL = os.environ.get("OPENAGENTIC_MANAGER_URL", "http://openagentic-manager:3050")
+MANAGER_URL = os.environ.get("OPENAGENTIC_MANAGER_URL", "http://openagentic-exec:3060")
 
 # OpenAgentic API for RBAC checks
 # Docker Compose: http://openagentic-api:8000

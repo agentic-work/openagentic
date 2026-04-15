@@ -262,16 +262,12 @@ server {
     #   2. Checks AWCode permission
     #   3. Translates session ID to slice ID
     #   4. Injects internal API key for code-manager auth
-    # DIRECT terminal WebSocket — browser connects straight to exec pod via nginx.
-    # No API middleman. URL format: /ws/pod/{podService}/terminal/{sessionId}?internalKey=xxx
-    # The podService and internalKey come from /api/code/ws/resolve (auth happens there).
+    # Direct terminal WebSocket — browser → exec service.
+    # In single-user docker compose, exec is reachable as just "exec:3060".
     location ~ ^/ws/pod/([^/]+)/terminal/(.+)$ {
-        set $pod_svc $1;
         set $sess_id $2;
-        set $k8s_ns "${K8S_NAMESPACE}";
-        # Default to agentic-dev if K8S_NAMESPACE not set
-        set $pod_upstream "http://${pod_svc}.agentic-dev.svc.cluster.local:3060";
-        proxy_pass $pod_upstream/ws/terminal/$sess_id$is_args$args;
+        set $exec_ws_upstream "http://${EXEC_HOST}:${EXEC_PORT}";
+        proxy_pass $exec_ws_upstream/ws/terminal/$sess_id$is_args$args;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -306,7 +302,7 @@ server {
     location /api/code/ws/events {
         # CRITICAL: $is_args$args forwards query params (userId, token, sessionId)
         # Without this, user auth tokens are stripped and CLI falls back to Ollama mode
-        set $awcode_events_upstream "http://${AWCODE_MANAGER_HOST}:${AWCODE_MANAGER_PORT}";
+        set $awcode_events_upstream "http://${EXEC_HOST}:${EXEC_PORT}";
         proxy_pass $awcode_events_upstream/ws/events$is_args$args;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -326,7 +322,7 @@ server {
     # ^~ prefix with longer match takes priority over ^~ /api/ (nginx longest prefix wins)
     # rewrite strips /api/code/ before proxying to code manager
     location ^~ /api/code/sessions {
-        set $awcode_sessions_upstream "http://${AWCODE_MANAGER_HOST}:${AWCODE_MANAGER_PORT}";
+        set $awcode_sessions_upstream "http://${EXEC_HOST}:${EXEC_PORT}";
         rewrite ^/api/code/(.*)$ /$1 break;
         proxy_pass $awcode_sessions_upstream;
         proxy_http_version 1.1;
@@ -350,7 +346,7 @@ server {
     # K8s mode: Session-based routing (must come before port-based)
     location ~ ^/code-server/session/([^/]+)/(.*)$ {
         # $1 = session ID, $2 = remaining path
-        set $awcode_session_upstream "http://${AWCODE_MANAGER_HOST}:${AWCODE_MANAGER_PORT}";
+        set $awcode_session_upstream "http://${EXEC_HOST}:${EXEC_PORT}";
         proxy_pass $awcode_session_upstream/code-server/session/$1/$2$is_args$args;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -373,7 +369,7 @@ server {
 
     # K8s mode: Session-based routing without trailing content
     location ~ ^/code-server/session/([^/]+)/?$ {
-        set $awcode_session_upstream "http://${AWCODE_MANAGER_HOST}:${AWCODE_MANAGER_PORT}";
+        set $awcode_session_upstream "http://${EXEC_HOST}:${EXEC_PORT}";
         proxy_pass $awcode_session_upstream/code-server/session/$1/$is_args$args;
         proxy_http_version 1.1;
         proxy_set_header Host $host;

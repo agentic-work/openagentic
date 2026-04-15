@@ -85,7 +85,7 @@ export default async function codeRoutes(fastify: FastifyInstance, options: Code
     fastify.log.warn('ProviderManager not available, AgenticCodeService will have limited functionality');
   }
 
-  const managerUrl = process.env.CODE_MANAGER_URL || 'http://openagentic-manager:3050';
+  const managerUrl = process.env.EXEC_URL || 'http://openagentic-exec:3060';
 
   // Middleware to check AWCode permission
   // Admins always have access, non-admins need explicit canUseAwcode permission
