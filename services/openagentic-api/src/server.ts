@@ -31,6 +31,7 @@ import { prisma } from './utils/prisma.js';
 import { getSecrets, logSecrets } from './config/secrets.config.js';
 
 import Fastify from 'fastify';
+import { randomBytes as cryptoRandomBytes } from 'node:crypto';
 import fastifyCookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import swagger from '@fastify/swagger';
@@ -663,7 +664,11 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 // Register cookie parser for cookie-based auth
 await server.register(fastifyCookie, {
-  secret: process.env.JWT_SECRET || process.env.SIGNING_SECRET || (() => { const s = require('crypto').randomBytes(64).toString('hex'); console.error('[CRITICAL] Neither JWT_SECRET nor SIGNING_SECRET is set — using ephemeral cookie secret'); return s; })(),
+  secret: process.env.JWT_SECRET || process.env.SIGNING_SECRET || (() => {
+    const s = cryptoRandomBytes(64).toString('hex');
+    console.error('[CRITICAL] Neither JWT_SECRET nor SIGNING_SECRET is set — using ephemeral cookie secret');
+    return s;
+  })(),
   parseOptions: {}
 });
 

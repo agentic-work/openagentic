@@ -149,7 +149,11 @@ services:
       MILVUS_HOST: milvus
       MILVUS_PORT: "19530"
       OLLAMA_HOST: http://ollama:11434
+      OLLAMA_BASE_URL: http://ollama:11434
       OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      EMBEDDING_PROVIDER: ollama
+      EMBEDDING_OLLAMA_BASE_URL: http://ollama:11434
+      EMBEDDING_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       API_HOST: api
       API_PORT: "8000"
       EXEC_HOST: exec
