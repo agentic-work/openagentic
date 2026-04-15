@@ -1,0 +1,115 @@
+# OpenAgentic Azure MCP Server - Full Azure SDK for az cli Parity
+# Runs as the user authenticated via Azure AD - NO SERVICE PRINCIPAL
+
+# =============================================================================
+# CORE - Authentication & HTTP Pipeline
+# =============================================================================
+azure-core>=1.32.0
+azure-identity>=1.19.0              # For TokenCredential protocol (NOT DefaultAzureCredential)
+
+# =============================================================================
+# MANAGEMENT PLANE - Control Plane Operations (azure-mgmt-*)
+# =============================================================================
+
+# Resource & Subscription Management
+azure-mgmt-resource>=23.2.0         # Resource groups, deployments, providers, tags
+azure-mgmt-subscription>=3.1.0      # Subscriptions, tenants
+azure-mgmt-managementgroups>=1.0.0  # Management group hierarchy
+
+# Compute
+azure-mgmt-compute>=37.0.0          # VMs, VMSS, disks, images, galleries
+azure-mgmt-containerservice>=40.0.0 # AKS clusters, node pools, upgrades
+azure-mgmt-containerregistry>=14.0.0 # ACR registries, repos, tasks
+azure-mgmt-appcontainers>=4.0.0     # Container Apps, environments
+
+# Networking (includes App Gateway, Load Balancer, etc)
+azure-mgmt-network>=30.0.0          # VNets, subnets, NSGs, App Gateway, LB,
+                                    # Front Door, ExpressRoute, VPN, Firewall
+azure-mgmt-dns>=9.0.0               # Public DNS zones
+azure-mgmt-privatedns>=1.2.0        # Private DNS zones
+
+# Storage
+azure-mgmt-storage>=21.2.0          # Storage accounts, containers (mgmt)
+
+# Databases
+azure-mgmt-rdbms>=10.1.1            # PostgreSQL Flexible Server
+azure-mgmt-cosmosdb>=9.9.0          # Cosmos DB accounts
+azure-mgmt-sql>=3.0.0               # Azure SQL databases, servers
+
+# Security & Identity
+azure-mgmt-keyvault>=13.0.0         # Key Vault management (create/delete vaults)
+azure-mgmt-authorization>=4.0.0     # RBAC role definitions, assignments
+azure-mgmt-msi>=7.1.0               # Managed identities
+
+# Cost Management & Billing
+azure-mgmt-costmanagement>=4.0.1    # Cost queries, budgets, exports, forecasts
+azure-mgmt-consumption>=10.0.0      # Usage details, reservations, price sheets
+
+# Monitoring & Observability
+azure-mgmt-monitor>=7.0.0           # Metrics, alerts, action groups, autoscale
+azure-mgmt-loganalytics>=13.1.1     # Log Analytics workspace management (create/list/get)
+azure-mgmt-applicationinsights>=4.1.0 # Application Insights component management
+
+# Data plane query client — used by Log Analytics query + App Insights query tools.
+# One SDK covers both because LAW and App Insights share the same Kusto-backed
+# query engine under the hood (v0.6.1 P0).
+azure-monitor-query>=1.3.0          # LogsQueryClient + MetricsQueryClient
+
+# Security (Defender for Cloud) — replaces raw REST fallback for security
+# assessments, secure score, and alerts. v0.6.1 P0 for UC-028 security response.
+azure-mgmt-security>=6.0.0          # Defender for Cloud assessments, alerts, secure score
+
+# Policy Insights — compliance state queries, replaces raw REST fallback.
+# v0.6.1 P0 for UC-028 compliance audits.
+azure-mgmt-policyinsights>=1.0.0    # Policy compliance states, events, remediation
+
+# AI & Cognitive Services
+azure-mgmt-cognitiveservices>=14.1.0 # Cognitive Services accounts
+
+# Web & App Services
+azure-mgmt-web>=7.3.0               # App Service, Function Apps
+azure-mgmt-cdn>=13.0.0              # CDN profiles, AFD (Front Door Standard/Premium)
+
+# Resource Graph (KQL-based cross-subscription resource queries)
+azure-mgmt-resourcegraph>=8.0.0     # Resource Graph for enterprise-scale queries
+                                    # — single source for cross-sub/cross-RG/cross-tenant
+
+# Azure Advisor (cost/security/performance/operational recommendations).
+# Note: azure-mgmt-advisor still depends on the legacy `six` module that
+# isn't pulled in by anything else, so we list it explicitly here.
+azure-mgmt-advisor>=9.0.0
+six>=1.16.0
+
+# Service Health: the dedicated mgmt SDK is beta-only and incomplete.
+# We use ARM REST directly via requests for service health events instead.
+# Add `azure-mgmt-resourcehealth==1.0.0b6` if you need typed bindings later.
+
+# =============================================================================
+# DATA PLANE - Direct Resource Access
+# =============================================================================
+
+# Key Vault Data Plane (read/write secrets, keys, certs)
+azure-keyvault-secrets>=4.9.0
+azure-keyvault-keys>=4.9.0
+azure-keyvault-certificates>=4.9.0
+
+# Storage Data Plane (blob operations)
+azure-storage-blob>=12.24.0
+azure-storage-file-share>=12.19.0
+
+# Microsoft Graph (Azure AD / Entra ID)
+msgraph-sdk>=1.16.0                 # Users, groups, apps, service principals
+
+# AI Foundry (optional - for AI workloads)
+# azure-ai-projects>=1.0.0          # Uncomment when needed
+
+# =============================================================================
+# MCP FRAMEWORK
+# =============================================================================
+fastmcp>=2.0.0
+
+# =============================================================================
+# UTILITIES
+# =============================================================================
+python-dotenv>=1.0.0
+structlog>=24.1.0

@@ -1,0 +1,5307 @@
+// UNIFIED SCHEMA - Used by BOTH API and MCP-Orchestrator services
+// ALL FIELDS ARE snake_case - NO @map DIRECTIVES
+
+generator client {
+  provider        = "prisma-client-js"
+  binaryTargets   = ["native", "linux-musl", "debian-openssl-3.0.x"]
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["public", "admin"]
+}
+
+// ============================================================================
+// OPENAGENTICCODE - Code Sessions (public schema)
+// ============================================================================
+
+model CodeSession {
+  id             String  @id @default(uuid())
+  user_id        String
+  container_id   String? // Container ID (for container-per-user mode)
+  slice_id       String? // Landlock slice ID (for shared compute mode)
+  model          String
+  workspace_path String
+  status         String  @default("active") // 'active', 'idle', 'suspended', 'deleted'
+
+  // Resource allocation
+  cpu_limit        Float? @default(1.0) // CPU cores
+  memory_limit_mb  Int?   @default(2048) // Memory in MB
+  storage_limit_mb Int?   @default(5120) // Storage in MB
+
+  // Security context
+  security_level  String  @default("permissive") // 'strict', 'permissive', 'minimal'
+  network_enabled Boolean @default(false) // Network access within sandbox
+
+  // Session metadata
+  shell              String @default("/bin/bash")
+  env_vars           Json?  @default("{}") // Custom environment variables
+  installed_packages Json?  @default("[]") // Track user-installed packages
+
+  // Metrics
+  total_executions Int     @default(0)
+  total_tokens     Int     @default(0)
+  total_cost       Decimal @default(0) @db.Decimal(10, 6)
+
+  created_at    DateTime @default(now())
+  last_activity DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  // Relations
+  executions CodeExecution[]
+  snapshots  WorkspaceSnapshot[]
+
+  @@index([user_id])
+  @@index([status])
+  @@index([slice_id])
+  @@map("code_sessions")
+  @@schema("public")
+}
+
+model CodeExecution {
+  id         String  @id @default(uuid())
+  session_id String
+  prompt     String  @db.Text
+  result     String? @db.Text
+  status     String  @default("running") // 'running', 'completed', 'error', 'cancelled'
+
+  // Execution type and details
+  exec_type String  @default("chat") // 'chat', 'shell', 'file_edit', 'file_read'
+  command   String? @db.Text // Shell command if exec_type='shell'
+  exit_code Int? // Exit code for shell executions
+  stdout    String? @db.Text
+  stderr    String? @db.Text
+
+  // Tool calls and results
+  tool_calls     Json?
+  tool_results   Json?
+  files_modified String[] @default([]) // List of modified files
+
+  // Token usage
+  tokens_input  Int?     @default(0)
+  tokens_output Int?     @default(0)
+  tokens_used   Int?
+  cost          Decimal? @default(0) @db.Decimal(10, 6)
+
+  // Performance metrics
+  execution_time Int? // milliseconds
+  model_used     String?
+  provider_used  String?
+
+  created_at   DateTime  @default(now())
+  completed_at DateTime?
+
+  // Relations
+  session CodeSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@index([session_id])
+  @@index([status])
+  @@index([exec_type])
+  @@map("code_executions")
+  @@schema("public")
+}
+
+model WorkspaceSnapshot {
+  id         String @id @default(uuid())
+  session_id String
+
+  // Storage backend configuration
+  storage_backend String  @default("minio") // 'minio', 's3', 'azure-blob', 'gcs'
+  storage_bucket  String? // Bucket/container name
+  storage_path    String // Path within bucket (e.g., "snapshots/{user_id}/{session_id}/{timestamp}.tar.gz")
+  storage_region  String? // Cloud region (for S3, Azure, GCS)
+
+  // Snapshot metadata
+  snapshot_type      String  @default("full") // 'full', 'incremental', 'diff'
+  parent_snapshot_id String? // For incremental snapshots
+  size_bytes         BigInt?
+  compressed_size    BigInt? // Compressed size if compression enabled
+  file_count         Int?
+  checksum           String? // SHA256 checksum for integrity verification
+
+  // Compression and encryption
+  compression       String? @default("gzip") // 'none', 'gzip', 'zstd', 'lz4'
+  encrypted         Boolean @default(false)
+  encryption_key_id String? // Reference to key in key management service
+
+  // Status tracking
+  status        String  @default("pending") // 'pending', 'uploading', 'completed', 'failed', 'deleted'
+  error_message String? @db.Text
+
+  // Retention
+  expires_at DateTime? // Auto-delete after this time
+  is_pinned  Boolean   @default(false) // Don't auto-delete if pinned
+
+  created_at  DateTime  @default(now())
+  uploaded_at DateTime?
+
+  // Relations
+  session CodeSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@index([session_id])
+  @@index([storage_backend])
+  @@index([status])
+  @@index([expires_at])
+  @@map("workspace_snapshots")
+  @@schema("public")
+}
+
+// ============================================================================
+// OPENAGENTICCODE - Storage Backend Configuration (admin schema)
+// ============================================================================
+
+model CodeStorageBackend {
+  id           String  @id @default(uuid())
+  name         String  @unique // e.g., "minio-local", "azure-prod", "s3-dev"
+  display_name String
+  backend_type String // 'minio', 's3', 'azure-blob', 'gcs'
+  is_default   Boolean @default(false)
+  is_enabled   Boolean @default(true)
+
+  // Connection configuration (encrypted JSON)
+  // MinIO: { endpoint, accessKey, secretKey, bucket, useSSL }
+  // S3: { region, accessKeyId, secretAccessKey, bucket, roleArn? }
+  // Azure: { accountName, accountKey, containerName, connectionString? }
+  // GCS: { projectId, bucket, credentials (base64 service account JSON) }
+  connection_config Json
+
+  // Default bucket/container for this backend
+  default_bucket String?
+  default_region String?
+
+  // Quotas and limits
+  max_snapshot_size_mb    Int? @default(10240) // 10GB default
+  max_storage_per_user_mb Int? @default(51200) // 50GB default
+  retention_days          Int? @default(30)
+
+  // Health tracking
+  last_health_check DateTime?
+  health_status     String?   @default("unknown") // 'healthy', 'degraded', 'unhealthy', 'unknown'
+  health_message    String?   @db.Text
+
+  created_by String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([backend_type])
+  @@index([is_default])
+  @@index([is_enabled])
+  @@map("code_storage_backends")
+  @@schema("admin")
+}
+
+// ============================================================================
+// USERS & AUTH (public schema)
+// ============================================================================
+
+model User {
+  id                     String    @id @default(uuid())
+  email                  String    @unique
+  name                   String?
+  password_hash          String?
+  is_admin               Boolean   @default(false)
+  groups                 String[]
+  azure_oid              String?
+  azure_tenant_id        String?
+  // OAuth provider info (google, azure-ad, local)
+  oauth_provider         String? // 'google', 'azure-ad', 'local'
+  oauth_id               String? // OAuth provider user ID
+  avatar_url             String? // Profile picture URL
+  is_active              Boolean   @default(true)
+  last_login             DateTime? // Last successful login
+  force_password_change  Boolean   @default(false)
+  last_login_at          DateTime?
+  disclaimer_accepted_at DateTime?
+  workflows_enabled      Boolean   @default(false) @map("n8n_enabled") // Workflow automation feature flag
+  n8n_user_id            String?   @unique // Legacy n8n user ID for SSO linkage
+  code_enabled           Boolean   @default(false) // OpenAgenticCode feature flag
+  // User preferences - no more localStorage!
+  theme                  String    @default("dark")
+  settings               Json      @default("{}")
+  accessibility_settings Json      @default("{}")
+  ui_preferences         Json      @default("{}")
+  // Account lockout for scope violations (non-admin users asking off-topic questions)
+  scope_warning_count    Int       @default(0) // Warnings for off-topic questions
+  is_locked              Boolean   @default(false) // Account locked after 3 warnings
+  locked_at              DateTime? // When the account was locked
+  locked_reason          String? // Reason for lockout
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  // Relations
+  sessions               ChatSession[]
+  messages               ChatMessage[]
+  auth_tokens            UserAuthToken[]
+  user_sessions          UserSession[]
+  memories               UserMemory[]
+  user_settings          UserSetting[]
+  api_keys               ApiKey[]
+  prompt_assignments     UserPromptAssignment[]
+  token_usage            TokenUsage[]
+  usage_analytics        UsageAnalytics[]
+  audit_logs             AdminAuditLog[]
+  query_audit            UserQueryAudit[]       @relation("UserQueryAuditRelation")
+  memory_contexts        MemoryContext[]
+  mcp_instances          MCPInstance[]
+  mcp_usage              MCPUsage[]
+  mcp_servers            MCPServers[]
+  file_attachments       FileAttachment[]
+  linked_azure_account   LinkedAzureAccount?
+  azure_account          AzureAccount?          @relation("AzureAccountRelation")
+  UserSettings           UserSettings?          @relation("UserSettingsRelation")
+  AzureValidationLogs    AzureValidationLog[]
+  created_llm_providers  LLMProvider[]          @relation("LLMProviderCreator")
+  updated_llm_providers  LLMProvider[]          @relation("LLMProviderUpdater")
+  user_roles             UserRole[]
+  llm_requests           LLMRequestLog[]
+  awcode_sessions        AWCodeSession[]
+  model_role_assignments ModelRoleAssignment[]
+  multi_model_metrics    MultiModelMetrics[]
+  code_mode_provisioning CodeModeProvisioning?
+  response_feedback      ResponseFeedback[]    // User's feedback on responses
+  github_credential      UserGitHubCredential? // GitHub OAuth credentials for GitHub MCP
+  memory_entries         UserMemoryEntry[]     @relation("UserMemoryEntries")
+  user_profile           UserProfile?          @relation("UserProfileRelation")
+  documents              Document[]
+
+  // Synth (Tool Synthesis) relations
+  synth_syntheses          SynthSynthesis[]
+  synth_approvals_requested SynthApproval[] @relation("SynthApprovalRequester")
+  synth_approvals_approved  SynthApproval[] @relation("SynthApprovalApprover")
+  synth_daily_usage        SynthDailyUsage[]
+  synth_capability_audit   SynthCapabilityAudit[]
+
+  // Workflow relations (NEW)
+  workflows              Workflow[]
+  workflow_versions      WorkflowVersion[]
+  workflow_executions    WorkflowExecution[]
+  workflow_approvals     WorkflowApproval[]
+  workflow_tests         WorkflowTest[]
+  workflow_secrets       WorkflowSecret[]
+  workflow_shares        WorkflowShare[]
+
+  // User Group relations (NEW)
+  user_group_memberships UserGroupMembership[]
+  membership_added       UserGroupMembership[] @relation("MembershipAdder")
+
+  // Chargeback relations (NEW)
+  cost_budgets           CostBudget[]
+  budget_created         CostBudget[]          @relation("BudgetCreator")
+  chargeback_reports     ChargebackReport[]
+
+  // Rate limiting (NEW)
+  rate_limits            RateLimit[]
+
+  // Integration relations (NEW)
+  created_integrations   Integration[] @relation("IntegrationCreator")
+  updated_integrations   Integration[] @relation("IntegrationUpdater")
+
+  @@map("users")
+  @@schema("public")
+}
+
+// Access requests from unauthorized users (Google OAuth)
+model AccessRequest {
+  id             String    @id @default(uuid())
+  email          String
+  name           String?
+  google_user_id String?
+  hosted_domain  String? // Google Workspace domain if applicable
+  ip_address     String
+  user_agent     String?   @db.Text
+  status         String    @default("pending") // 'pending', 'approved', 'denied'
+  request_data   Json? // Full request details for admin review
+  reviewed_by    String? // Admin user ID who reviewed the request
+  reviewed_at    DateTime?
+  review_notes   String?   @db.Text
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  @@index([email])
+  @@index([status])
+  @@index([created_at])
+  @@map("access_requests")
+  @@schema("public")
+}
+
+// ============================================================================
+// AUTH ACCESS CONTROL - Dynamic user/admin management via Admin Portal
+// ============================================================================
+
+// Allowed users for OAuth login (Google, Azure AD, etc.)
+model AuthAllowedUser {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  is_admin     Boolean  @default(false)
+  display_name String?
+  notes        String?  @db.Text
+  added_by     String? // Admin user ID who added this user
+  is_active    Boolean  @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([email])
+  @@index([is_admin])
+  @@index([is_active])
+  @@map("auth_allowed_users")
+  @@schema("admin")
+}
+
+// Allowed domains for OAuth login (all users from these domains can log in)
+model AuthAllowedDomain {
+  id              String   @id @default(uuid())
+  domain          String   @unique // e.g., "openagentics.io", "company.com"
+  is_admin_domain Boolean  @default(false) // All users from this domain are admins
+  notes           String?  @db.Text
+  added_by        String? // Admin user ID who added this domain
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@index([domain])
+  @@index([is_active])
+  @@map("auth_allowed_domains")
+  @@schema("admin")
+}
+
+model UserAuthToken {
+  user_id       String   @id
+  access_token  String   @db.Text
+  refresh_token String?  @db.Text
+  id_token      String?  @db.Text
+  expires_at    DateTime
+  scope         String?
+  azure_oid     String?
+  tenant_id     String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_azure_tokens")
+  @@schema("public")
+}
+
+// ============================================================================
+// GITHUB CREDENTIALS - Per-user GitHub OAuth tokens for GitHub MCP
+// ============================================================================
+
+model UserGitHubCredential {
+  id              String    @id @default(uuid())
+  user_id         String    @unique
+
+  // GitHub OAuth tokens (encrypted at rest)
+  access_token    String    @db.Text // Encrypted OAuth access token
+  refresh_token   String?   @db.Text // Encrypted OAuth refresh token (if available)
+  token_type      String    @default("bearer")
+  scope           String?   // OAuth scopes granted (e.g., "repo,read:org")
+
+  // GitHub user info (fetched after OAuth)
+  github_id       Int?      // GitHub user ID
+  github_username String?   // GitHub login/username
+  github_email    String?   // GitHub primary email
+  github_name     String?   // GitHub display name
+  avatar_url      String?   // GitHub avatar URL
+
+  // Enterprise support
+  github_host     String    @default("github.com") // For GitHub Enterprise Server
+
+  // Token metadata
+  expires_at      DateTime? // Token expiration (if provided)
+  last_used_at    DateTime? // Last time token was used for MCP call
+  last_validated  DateTime? // Last successful token validation
+  is_valid        Boolean   @default(true) // Set to false on auth errors
+
+  // Audit
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_github_credentials")
+  @@schema("public")
+}
+
+/// Code Mode environment provisioning status per user
+/// Tracks the setup state of a user's sandboxed dev environment
+model CodeModeProvisioning {
+  id      String @id @default(uuid())
+  user_id String @unique
+
+  // Provisioning status
+  status         String  @default("pending") // pending, provisioning, ready, failed, suspended
+  status_message String? // Human-readable status message
+
+  // Provisioning steps tracking
+  storage_provisioned Boolean @default(false)
+  storage_bucket      String? // MinIO/S3 bucket name or path
+  storage_quota_mb    Int     @default(1024) // 1GB default quota
+  storage_used_mb     Int     @default(0)
+
+  sandbox_provisioned Boolean @default(false)
+  sandbox_user_id     String? // OS-level sandbox user ID
+  sandbox_username    String? // OS-level sandbox username
+
+  vscode_provisioned Boolean @default(false)
+  vscode_settings    Json    @default("{}") // User's VSCode settings
+
+  openagentic_provisioned Boolean @default(false)
+  openagentic_model       String? // Default model for this user
+
+  // Environment details
+  environment_type String  @default("docker") // docker, kubernetes
+  node_name        String? // K8s node or Docker host
+  pod_name         String? // K8s pod name if applicable
+
+  // Lifecycle
+  provisioned_at   DateTime?
+  last_accessed_at DateTime?
+  suspended_at     DateTime?
+  suspended_reason String?
+
+  // Error tracking
+  last_error  String?
+  error_count Int     @default(0)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([user_id])
+  @@map("code_mode_provisioning")
+  @@schema("public")
+}
+
+model UserSession {
+  id               String   @id @default(uuid())
+  user_id          String
+  token            String   @unique
+  ip_address       String?
+  user_agent       String?  @db.Text
+  is_active        Boolean  @default(true)
+  last_accessed_at DateTime @default(now())
+  expires_at       DateTime
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([user_id])
+  @@map("user_sessions")
+  @@schema("public")
+}
+
+model LocalUser {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  password_hash String?
+  is_admin      Boolean   @default(false)
+  groups        String[]
+  last_login_at DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  @@map("local_users")
+  @@schema("public")
+}
+
+model AzureAccount {
+  user_id       String   @id
+  azure_oid     String   @unique
+  azure_email   String?
+  access_token  String   @db.Text
+  refresh_token String?  @db.Text
+  id_token      String?  @db.Text
+  expires_at    DateTime
+  scope         String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  user User @relation("AzureAccountRelation", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("azure_accounts")
+  @@schema("public")
+}
+
+model LinkedAzureAccount {
+  user_id            String   @id
+  azure_oid          String   @unique
+  azure_email        String?
+  azure_access_token String   @db.Text
+  token_expires_at   DateTime
+  linked_at          DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("linked_azure_accounts")
+  @@schema("public")
+}
+
+model UserSettings {
+  user_id               String    @id
+  azure_validated       Boolean   @default(false)
+  azure_validation_date DateTime?
+  azure_subscription    String?
+  azure_subscription_id String?
+  settings              Json      @default("{}")
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  user User @relation("UserSettingsRelation", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_settings_admin")
+  @@schema("public")
+}
+
+// ============================================================================
+// USER PERMISSIONS (admin schema)
+// Stores per-user permissions for LLMs, MCPs, and token limits
+// ============================================================================
+
+model UserPermissions {
+  id      String @id @default(uuid())
+  user_id String @unique
+
+  // LLM Access Control - array of allowed LLM provider IDs (null = all allowed)
+  allowed_llm_providers String[] @default([]) // Empty = inherit from defaults
+  denied_llm_providers  String[] @default([])
+
+  // MCP Access Control - array of allowed MCP server IDs (null = all allowed)
+  allowed_mcp_servers String[] @default([]) // Empty = inherit from defaults
+  denied_mcp_servers  String[] @default([])
+
+  // Workflow Access
+  workflows_enabled Boolean  @default(false) @map("n8n_enabled")
+  workflows         String[] @default([]) @map("n8n_workflows") // Allowed workflow IDs (empty = all)
+
+  // Token/Usage Limits
+  daily_token_limit     Int? // null = unlimited
+  monthly_token_limit   Int? // null = unlimited
+  daily_request_limit   Int? // null = unlimited
+  monthly_request_limit Int? // null = unlimited
+
+  // Feature Flags
+  can_use_image_generation Boolean @default(true)
+  can_use_code_execution   Boolean @default(true)
+  can_use_web_search       Boolean @default(true)
+  can_use_file_upload      Boolean @default(true)
+  can_use_memory           Boolean @default(true)
+  can_use_rag              Boolean @default(true)
+  can_use_awcode           Boolean @default(false) // OpenAgenticCode feature access
+
+  // Code Mode CLI Preference
+  // null = use global default, 'openagentic' = OpenAgentic AI, 'claude-code' = Claude Code CLI
+  // All CLI tools connect exclusively through openagentic-api via SDK - no direct provider keys
+  code_mode_cli            String?
+
+  // Intelligence Slider (0-100, null = use global default)
+  // Controls cost/quality tradeoff for model routing
+  intelligence_slider Int?
+  slider_set_by       String? // Admin user ID who set the slider
+  slider_set_at       DateTime? // When slider was last modified
+
+  // Budget System
+  // User spending limit per month (in cents to avoid floating point issues)
+  monthly_budget_cents      Int? // null = unlimited
+  budget_auto_adjust_slider Boolean   @default(true) // Auto-lower slider when approaching budget
+  budget_warning_threshold  Int       @default(80) // Percentage to start warning (0-100)
+  budget_hard_limit         Boolean   @default(false) // Block completely when budget hit
+  budget_period_start       DateTime  @default(now()) // Start of current budget period
+  budget_last_notified_at   DateTime? // Last budget warning notification sent
+  budget_auto_adjusted_at   DateTime? // Last time slider was auto-adjusted
+  budget_original_slider    Int? // Original slider before auto-adjustment
+
+  // Admin notes
+  admin_notes String? @db.Text
+
+  // Audit
+  created_by String?
+  updated_by String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([user_id])
+  @@map("user_permissions")
+  @@schema("admin")
+}
+
+// Default permission templates that can be assigned to groups
+model PermissionTemplate {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String? @db.Text
+
+  // LLM Access Control
+  allowed_llm_providers String[] @default([])
+  denied_llm_providers  String[] @default([])
+
+  // MCP Access Control
+  allowed_mcp_servers String[] @default([])
+  denied_mcp_servers  String[] @default([])
+
+  // Workflow Access
+  workflows_enabled Boolean  @default(false) @map("n8n_enabled")
+  workflows         String[] @default([]) @map("n8n_workflows")
+
+  // Token/Usage Limits
+  daily_token_limit     Int?
+  monthly_token_limit   Int?
+  daily_request_limit   Int?
+  monthly_request_limit Int?
+
+  // Feature Flags
+  can_use_image_generation Boolean @default(true)
+  can_use_code_execution   Boolean @default(true)
+  can_use_web_search       Boolean @default(true)
+  can_use_file_upload      Boolean @default(true)
+  can_use_memory           Boolean @default(true)
+  can_use_rag              Boolean @default(true)
+  can_use_awcode           Boolean @default(false) // OpenAgenticCode feature access
+
+  is_default Boolean  @default(false)
+  created_by String?
+  updated_by String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("permission_templates")
+  @@schema("admin")
+}
+
+// Group-level permission assignments
+model GroupPermissions {
+  id               String  @id @default(uuid())
+  azure_group_id   String  @unique // Azure AD group ID
+  azure_group_name String // Human readable name
+  template_id      String? // Optional permission template
+
+  // Direct overrides (if not using template)
+  allowed_llm_providers    String[] @default([])
+  denied_llm_providers     String[] @default([])
+  allowed_mcp_servers      String[] @default([])
+  denied_mcp_servers       String[] @default([])
+  workflows_enabled        Boolean  @default(false) @map("n8n_enabled")
+  workflows                String[] @default([]) @map("n8n_workflows")
+  daily_token_limit        Int?
+  monthly_token_limit      Int?
+  daily_request_limit      Int?
+  monthly_request_limit    Int?
+  can_use_image_generation Boolean  @default(true)
+  can_use_code_execution   Boolean  @default(true)
+  can_use_web_search       Boolean  @default(true)
+  can_use_file_upload      Boolean  @default(true)
+  can_use_memory           Boolean  @default(true)
+  can_use_rag              Boolean  @default(true)
+  can_use_awcode           Boolean  @default(false) // OpenAgenticCode feature access
+
+  priority    Int      @default(1000) // Lower = higher priority
+  admin_notes String?  @db.Text
+  created_by  String?
+  updated_by  String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([azure_group_id])
+  @@map("group_permissions")
+  @@schema("admin")
+}
+
+model AzureValidationLog {
+  id                String   @id @default(uuid())
+  user_id           String
+  validation_type   String
+  success           Boolean
+  error_message     String?  @db.Text
+  subscription_name String?
+  created_at        DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([validation_type])
+  @@map("azure_validation_logs")
+  @@schema("public")
+}
+
+// ============================================================================
+// CHAT (public schema)
+// ============================================================================
+
+model ChatSession {
+  id            String    @id
+  user_id       String
+  title         String?
+  model         String?
+  summary       String?   @db.Text
+  structured_summary Json?   @db.JsonB
+  metadata      Json?     @default("{}")
+  message_count Int       @default(0)
+  total_tokens  Int       @default(0)
+  total_cost    Decimal   @default(0) @db.Decimal(10, 6)
+  is_active     Boolean   @default(true)
+  deleted_at    DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  // Context Window Metrics
+  context_tokens_input    Int?     @default(0)
+  context_tokens_output   Int?     @default(0)
+  context_tokens_total    Int?     @default(0)
+  context_window_size     Int? // Model's max context window (e.g., 128k, 200k)
+  context_utilization_pct Decimal? @db.Decimal(5, 2) // Percentage of context window used
+
+  user                User                 @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  messages            ChatMessage[]
+  branches            ConversationBranch[]
+  metrics             ChatMetrics[]
+  attachments         FileAttachment[]
+  token_usage         TokenUsage[]
+  query_audit         UserQueryAudit[]     @relation("QueryAuditSessionRelation")
+  llm_requests        LLMRequestLog[]
+  multi_model_metrics MultiModelMetrics[]
+  response_feedback   ResponseFeedback[]   // Feedback on responses in this session
+
+  // Performance indexes
+  @@index([user_id])
+  @@index([user_id, created_at]) // User sessions ordered by date
+  @@index([user_id, updated_at]) // Recent sessions query
+  @@index([updated_at]) // Global recent sessions
+  @@map("chat_sessions")
+  @@schema("public")
+}
+
+model ChatMessage {
+  id              String    @id @default(uuid())
+  session_id      String
+  role            String
+  content         String?   @db.Text
+  model           String?
+  tokens          Int?      @default(0)
+  tokens_input    Int?      @default(0)
+  tokens_output   Int?      @default(0)
+  cost            Decimal?  @default(0) @db.Decimal(10, 6)
+  metadata        Json?     @default("{}")
+  token_usage     Json?
+  mcp_calls       Json?
+  tool_calls      Json?
+  tool_results    Json?
+  tool_call_id    String? // For tool response messages
+  visualizations  Json?
+  prometheus_data Json?
+  user_id         String?
+  parent_id       String?
+  branch_id       String?
+  deleted_at      DateTime?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  session     ChatSession         @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  user        User?               @relation(fields: [user_id], references: [id])
+  branch      ConversationBranch? @relation(fields: [branch_id], references: [id])
+  attachments FileAttachment[]
+  query_audit UserQueryAudit[]    @relation("QueryAuditMessageRelation")
+  feedback    ResponseFeedback[]  // User feedback on this message
+
+  // Performance indexes
+  @@index([session_id])
+  @@index([user_id])
+  @@index([session_id, deleted_at]) // Fast filtering of non-deleted messages
+  @@index([session_id, created_at]) // Cursor pagination
+  @@index([tool_call_id]) // Tool result correlation
+  @@map("chat_messages")
+  @@schema("public")
+}
+
+// Response Feedback - User reactions to LLM responses
+model ResponseFeedback {
+  id            String   @id @default(uuid())
+  message_id    String   // Reference to ChatMessage
+  user_id       String   // User who gave the feedback
+  session_id    String   // Session context
+
+  // Feedback data
+  feedback_type String   // 'thumbs_up', 'thumbs_down', 'copy', 'regenerate', 'share', 'report'
+  rating        Int?     // Optional 1-5 rating
+  comment       String?  @db.Text // Optional text feedback
+  tags          String[] @default([]) // Optional tags like 'accurate', 'helpful', 'incorrect', 'harmful'
+
+  // Context about the response
+  model         String?  // Model that generated the response
+  provider      String?  // Provider (anthropic, openai, google, etc.)
+  response_time Int?     // Response time in ms
+  token_count   Int?     // Tokens used
+
+  // Metadata
+  metadata      Json?    @default("{}")
+
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  // Relations
+  message       ChatMessage @relation(fields: [message_id], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [user_id], references: [id])
+  session       ChatSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@unique([message_id, user_id, feedback_type]) // One feedback type per user per message
+  @@index([user_id])
+  @@index([model])
+  @@index([feedback_type])
+  @@index([created_at])
+  @@map("response_feedback")
+  @@schema("public")
+}
+
+model ConversationBranch {
+  id                String   @id @default(uuid())
+  session_id        String
+  parent_message_id String?
+  branch_name       String?
+  is_active         Boolean  @default(false)
+  metadata          Json?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  session  ChatSession   @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([session_id])
+  @@map("conversation_branches")
+  @@schema("public")
+}
+
+// Conversation Compaction - Summaries of old conversations for efficient retrieval
+model ConversationSummary {
+  id                  String   @id @default(uuid())
+  user_id             String
+  session_id          String
+  summary             String   @db.Text
+  message_count       Int
+  key_entities        String[] @default([])
+  topics              String[] @default([])
+  important_decisions String[] @default([])
+  time_range_start    DateTime
+  time_range_end      DateTime
+  created_at          DateTime @default(now())
+
+  @@index([user_id])
+  @@index([session_id])
+  @@index([created_at])
+  @@map("conversation_summaries")
+  @@schema("public")
+}
+
+// ============================================================================
+// BACKGROUND JOBS (public schema)
+// ============================================================================
+
+model BackgroundJob {
+  id           String    @id
+  type         String // 'analysis' | 'processing' | 'computation' | 'research'
+  prompt       String    @db.Text
+  model        String
+  priority     Int       @default(0)
+  status       String // 'queued' | 'running' | 'completed' | 'failed'
+  created_at   DateTime  @default(now())
+  started_at   DateTime?
+  completed_at DateTime?
+  result       String?   @db.Text
+  error        String?   @db.Text
+  progress     String?
+  todos        Json?     @default("[]")
+  logs         Json?     @default("[]")
+  metadata     Json      @default("{}")
+  user_id      String?
+  session_id   String?
+
+  @@index([user_id])
+  @@index([status])
+  @@index([created_at])
+  @@index([session_id])
+  @@map("background_jobs")
+  @@schema("public")
+}
+
+// ============================================================================
+// ADAPTIVE MEMORY SYSTEM (public schema)
+// ============================================================================
+
+model UserMemoryEntry {
+  id          String    @id @default(uuid())
+  user_id     String
+  source      String    // 'chat','code','flow','tool','summary','profile','feedback'
+  source_id   String?   // session_id, execution_id, tool_call_id
+  content     String    @db.Text
+  importance  Float     @default(0.5) // 0.0-1.0
+  topics      String[]  @default([])
+  is_summary  Boolean   @default(false)
+  summary_of  String[]  @default([])
+  token_count Int?
+  expires_at  DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  user User @relation("UserMemoryEntries", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([user_id, source])
+  @@index([user_id, created_at(sort: Desc)])
+  @@index([user_id, importance(sort: Desc)])
+  @@map("user_memory_entries")
+  @@schema("public")
+}
+
+model UserProfile {
+  id                  String   @id @default(uuid())
+  user_id             String   @unique
+  verbosity           String   @default("balanced") // concise|balanced|verbose
+  formality           String   @default("balanced") // casual|balanced|formal
+  technical_depth     String   @default("balanced") // beginner|balanced|expert
+  preferred_format    String   @default("mixed")    // code_first|explanation_first|bullets|mixed
+  preferred_languages String[] @default([])          // Go, Python, etc.
+  domain_expertise    String[] @default([])          // cloud, security, dev, data
+  tool_affinities     Json     @default("{}")        // { toolName: { count, lastUsed, avgScore } }
+  model_preferences   Json     @default("{}")        // { modelId: { satisfaction, sampleSize } }
+  style_dna           String?  @db.Text              // LLM-generated personality summary
+  avg_session_length  Int?     @default(0)
+  active_hours        Int[]    @default([])
+  session_type        String   @default("mixed")     // qa|research|coding|ops
+  total_interactions  Int      @default(0)
+  total_feedback      Int      @default(0)
+  positive_rate       Float    @default(0.0)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  user User @relation("UserProfileRelation", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+  @@schema("public")
+}
+
+// ============================================================================
+// USER DATA (public schema)
+// ============================================================================
+
+model UserMemory {
+  id               String    @id @default(uuid())
+  user_id          String
+  memory_key       String
+  content          String    @db.Text
+  category         String?
+  importance       Float?    @default(0.5)
+  context_id       String?
+  metadata         Json?
+  tags             String[]  @default([])
+  last_accessed_at DateTime?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  user    User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  context MemoryContext? @relation("ContextMemories", fields: [context_id], references: [id])
+
+  @@unique([user_id, memory_key])
+  @@index([user_id])
+  @@map("user_memories")
+  @@schema("public")
+}
+
+model UserSetting {
+  id            String   @id @default(uuid())
+  user_id       String
+  setting_key   String
+  setting_value Json
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, setting_key])
+  @@map("user_settings")
+  @@schema("public")
+}
+
+model ApiKey {
+  id           String    @id @default(uuid())
+  user_id      String
+  name         String
+  key_hash     String    @unique
+  last_used_at DateTime?
+  expires_at   DateTime?
+  is_active    Boolean   @default(true)
+  created_at   DateTime  @default(now())
+
+  // Rate limit configuration (null means use global defaults)
+  rate_limit_tier       String? @default("free") // free, pro, enterprise, custom
+  rate_limit_per_minute Int? // Custom limit per minute (overrides tier)
+  rate_limit_per_hour   Int? // Custom limit per hour (overrides tier)
+  rate_limit_burst      Int? // Custom burst limit (overrides tier)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([key_hash])
+  @@map("api_keys")
+  @@schema("public")
+}
+
+model MemoryContext {
+  id           String   @id @default(uuid())
+  user_id      String
+  name         String?
+  description  String?
+  category     String?
+  context_key  String
+  context_data Json
+  embedding    Float[]
+  metadata     Json?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  user     User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  memories UserMemory[] @relation("ContextMemories")
+
+  @@unique([user_id, context_key])
+  @@index([user_id])
+  @@map("memory_contexts")
+  @@schema("public")
+}
+
+// ============================================================================
+// METRICS (public schema)
+// ============================================================================
+
+model ChatMetrics {
+  id            String   @id @default(uuid())
+  session_id    String
+  response_time Int
+  token_count   Int
+  model_used    String
+  created_at    DateTime @default(now())
+
+  session ChatSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@map("chat_metrics")
+  @@schema("public")
+}
+
+model FileAttachment {
+  id             String    @id
+  filename       String
+  original_name  String
+  mime_type      String
+  size           Int
+  upload_path    String    @unique
+  thumbnail_path String?
+  user_id        String
+  session_id     String?
+  message_id     String?
+  is_public      Boolean   @default(false)
+  file_size      Int? // Alternative field name used in code
+  file_path      String? // Alternative field name used in code
+  upload_status  String? // Upload status tracking
+  metadata       Json      @default("{}")
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+  deleted_at     DateTime?
+
+  user    User         @relation(fields: [user_id], references: [id])
+  session ChatSession? @relation(fields: [session_id], references: [id])
+  message ChatMessage? @relation(fields: [message_id], references: [id])
+
+  @@index([user_id])
+  @@index([session_id])
+  @@index([message_id])
+  @@index([mime_type])
+  @@index([created_at])
+  @@index([deleted_at])
+  @@map("file_attachments")
+  @@schema("public")
+}
+
+model CacheEntry {
+  key        String   @id
+  value      Json
+  expires_at DateTime
+  created_at DateTime @default(now())
+
+  @@index([expires_at])
+  @@map("cache_entries")
+  @@schema("public")
+}
+
+// ============================================================================
+// MCP (public schema - unified)
+// ============================================================================
+
+model MCPServerConfig {
+  id            String   @id
+  name          String
+  description   String?  @db.Text
+  enabled       Boolean  @default(true)
+  command       String
+  args          String[]
+  env           Json     @default("{}")
+  require_obo   Boolean  @default(false)
+  user_isolated Boolean  @default(false)
+  capabilities  String[]
+  metadata      Json?    @default("{}")
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  status          MCPServerStatus?
+  instances       MCPInstance[]
+  access_policies MCPAccessPolicy[]
+
+  @@map("mcp_server_configs")
+  @@schema("public")
+}
+
+model MCPServerStatus {
+  server_id     String    @id
+  status        String?
+  last_check_at DateTime?
+  last_error    String?   @db.Text
+  updated_at    DateTime  @updatedAt
+
+  server MCPServerConfig @relation(fields: [server_id], references: [id], onDelete: Cascade)
+
+  @@map("mcp_server_status")
+  @@schema("public")
+}
+
+model MCPInstance {
+  id                 String    @id @default(uuid())
+  instance_id        String    @unique
+  user_id            String
+  server_id          String
+  process_id         String?
+  status             String
+  started_at         DateTime  @default(now())
+  stopped_at         DateTime?
+  last_accessed      DateTime  @default(now())
+  error_message      String?   @db.Text
+  resource_usage     Json?
+  config             Json?
+  restart_count      Int       @default(0)
+  health_check_fails Int       @default(0)
+
+  user   User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  server MCPServerConfig @relation(fields: [server_id], references: [id])
+  usage  MCPUsage[]
+
+  @@index([user_id])
+  @@index([server_id])
+  @@map("mcp_instances")
+  @@schema("public")
+}
+
+model MCPUsage {
+  id                String   @id @default(uuid())
+  user_id           String
+  user_name         String? // User's display name at time of call
+  user_email        String? // User's email at time of call
+  instance_id       String?
+  server_name       String? // MCP server that handled the request
+  tool_name         String
+  method            String? // MCP method (tools/call, etc.)
+  execution_time_ms Int?
+  memory_usage_mb   Decimal? @db.Decimal(10, 2)
+  token_count       Int?
+  request_size      Int?
+  response_size     Int?
+  success           Boolean
+  error_message     String?  @db.Text
+  request_metadata  Json? // Full request params/arguments
+  response_data     Json? // Full response data from MCP tool
+  timestamp         DateTime @default(now())
+
+  user     User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  instance MCPInstance? @relation(fields: [instance_id], references: [id])
+
+  @@index([user_id])
+  @@index([instance_id])
+  @@index([server_name])
+  @@index([tool_name])
+  @@index([timestamp])
+  @@map("mcp_usage")
+  @@schema("public")
+}
+
+model MCPTool {
+  id              String    @id @default(uuid())
+  name            String
+  server_id       String
+  description     String?   @db.Text
+  schema          Json?
+  category        String?
+  is_enabled      Boolean   @default(true)
+  metadata        Json?
+  last_executed   DateTime?
+  execution_count Int       @default(0)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  // pgvector embeddings for semantic tool search (managed via raw SQL)
+  description_embedding Unsupported("halfvec")?
+  search_embedding      Unsupported("halfvec")?
+
+  executions MCPToolExecution[]
+
+  @@unique([server_id, name])
+  @@index([server_id])
+  @@index([name])
+  @@index([category])
+  @@map("mcp_tools")
+  @@schema("public")
+}
+
+model MCPToolExecution {
+  id             String   @id @default(uuid())
+  tool_id        String
+  session_id     String?
+  user_id        String?
+  input          Json
+  output         Json?
+  status         String // 'success' | 'error' | 'timeout'
+  execution_time Int // in milliseconds
+  error          String?  @db.Text
+  metadata       Json?
+  created_at     DateTime @default(now())
+
+  tool MCPTool @relation(fields: [tool_id], references: [id], onDelete: Cascade)
+
+  @@index([tool_id])
+  @@index([session_id])
+  @@index([user_id])
+  @@index([status])
+  @@index([created_at])
+  @@map("mcp_tool_executions")
+  @@schema("public")
+}
+
+model MCPToolCapabilities {
+  id            String    @id @default(uuid())
+  server_id     String
+  tool_name     String
+  description   String?   @db.Text
+  input_schema  Json?
+  output_schema Json?
+  capabilities  String[]
+  is_enabled    Boolean   @default(true)
+  last_used_at  DateTime?
+  usage_count   Int       @default(0)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  // pgvector embedding for semantic capability search (managed via raw SQL)
+  description_embedding Unsupported("halfvec")?
+
+  @@unique([server_id, tool_name])
+  @@index([server_id])
+  @@index([tool_name])
+  @@map("mcp_tool_capabilities")
+  @@schema("public")
+}
+
+// ============================================================================
+// MCP ACCESS CONTROL (public schema)
+// ============================================================================
+
+model MCPAccessPolicy {
+  id               String   @id @default(uuid())
+  azure_group_id   String // Azure AD group object ID
+  azure_group_name String // Human readable group name
+  server_id        String // MCP server ID this policy applies to
+  access_type      String // 'allow' | 'deny'
+  is_enabled       Boolean  @default(true)
+  priority         Int      @default(1000) // Lower number = higher priority
+  reason           String?  @db.Text // Admin note for why this policy exists
+  created_by       String? // User ID of admin who created this policy
+  updated_by       String? // User ID of admin who last updated this policy
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  server MCPServerConfig @relation(fields: [server_id], references: [id], onDelete: Cascade)
+
+  @@unique([azure_group_id, server_id])
+  @@index([azure_group_id])
+  @@index([server_id])
+  @@index([access_type])
+  @@index([priority])
+  @@map("mcp_access_policies")
+  @@schema("public")
+}
+
+model MCPDefaultPolicy {
+  id             String   @id @default(uuid())
+  policy_type    String   @unique // 'user_default' | 'admin_default'
+  default_access String // 'allow' | 'deny'
+  description    String?  @db.Text
+  created_by     String?
+  updated_by     String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@map("mcp_default_policies")
+  @@schema("public")
+}
+
+model UserVectorCollections {
+  id               String   @id @default(uuid())
+  user_id          String
+  collection_name  String
+  vector_dimension Int
+  index_type       String?
+  metadata         Json?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  artifacts ArtifactMetadata[]
+
+  @@unique([user_id, collection_name])
+  @@index([user_id])
+  @@map("user_vector_collections")
+  @@schema("public")
+}
+
+model ArtifactMetadata {
+  id               String   @id @default(uuid())
+  collection_id    String
+  artifact_type    String
+  artifact_name    String
+  content_hash     String?
+  vector_embedding Json?
+  metadata         Json?
+  file_path        String?
+  created_by       String
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  collection  UserVectorCollections @relation(fields: [collection_id], references: [id], onDelete: Cascade)
+  shares      ArtifactShares[]
+  search_logs VectorSearchLogs[]
+
+  @@index([collection_id])
+  @@index([artifact_type])
+  @@index([created_by])
+  @@map("artifact_metadata")
+  @@schema("public")
+}
+
+model ArtifactShares {
+  id               String    @id @default(uuid())
+  artifact_id      String
+  shared_by        String
+  shared_with      String
+  permission_level String    @default("read")
+  expires_at       DateTime?
+  created_at       DateTime  @default(now())
+
+  artifact ArtifactMetadata @relation(fields: [artifact_id], references: [id], onDelete: Cascade)
+
+  @@unique([artifact_id, shared_with])
+  @@index([shared_with])
+  @@map("artifact_shares")
+  @@schema("public")
+}
+
+model VectorSearchLogs {
+  id               String   @id @default(uuid())
+  user_id          String
+  artifact_id      String?
+  query_text       String?  @db.Text
+  query_vector     Json?
+  similarity_score Decimal? @db.Decimal(10, 6)
+  results_count    Int?
+  response_time_ms Int?
+  metadata         Json?
+  timestamp        DateTime @default(now())
+
+  artifact ArtifactMetadata? @relation(fields: [artifact_id], references: [id])
+
+  @@index([user_id])
+  @@index([artifact_id])
+  @@index([timestamp])
+  @@map("vector_search_logs")
+  @@schema("public")
+}
+
+// ============================================================================
+// ADMIN (admin schema)
+
+// Missing models added by migration script
+
+model ArtifactFile {
+  id             String    @id @default(uuid())
+  user_id        String
+  filename       String
+  mime_type      String?
+  file_size      Int?
+  storage_path   String?
+  content_hash   String?
+  title          String?
+  description    String?
+  tags           String[]
+  is_public      Boolean   @default(false)
+  extracted_text String?
+  thumbnail_url  String?
+  uploaded_at    DateTime  @default(now())
+  last_accessed  DateTime?
+  access_count   Int       @default(0)
+
+  @@map("artifact_files")
+  @@schema("public")
+}
+
+model RagDocument {
+  id              String   @id @default(uuid())
+  user_id         String
+  type            String
+  title           String
+  mime_type       String?
+  chunk_ids       String[]
+  embedding_model String?
+  created_at      DateTime @default(now())
+
+  @@map("rag_documents")
+  @@schema("public")
+}
+
+model ModelCapability {
+  id         String   @id @default(uuid())
+  model_id   String
+  capability String
+  config     Json?
+  enabled    Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("model_capabilities")
+  @@schema("public")
+}
+
+model ModelRoutingDecision {
+  id         String   @id @default(uuid())
+  session_id String
+  model_from String
+  model_to   String
+  reason     String
+  context    Json?
+  created_at DateTime @default(now())
+
+  @@map("model_routing_decisions")
+  @@schema("public")
+}
+
+model AdminMcpServerStatus {
+  id         String   @id @default(uuid())
+  server_id  String
+  name       String
+  status     String
+  error      String?
+  last_check DateTime @default(now())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("mcp_server_status")
+  @@schema("admin")
+}
+
+model AdminAuditLog {
+  id            String   @id @default(uuid())
+  admin_user_id String?
+  admin_email   String?
+  action        String
+  resource_type String
+  resource_id   String
+  details       Json?
+  ip_address    String?
+  created_at    DateTime @default(now())
+  // Crypto chaining fields — tamper-evident audit trail
+  previous_hash String?  // Hash of the previous event in chain
+  chain_hash    String?  // SHA-256(previousHash + eventType + userId + action + timestamp + details)
+
+  user User? @relation(fields: [admin_user_id], references: [id])
+
+  @@index([chain_hash])
+  @@map("admin_audit_log")
+  @@schema("admin")
+}
+
+// ============================================================================
+// DLP (DATA LOSS PREVENTION) FINDINGS
+// ============================================================================
+
+model DLPFinding {
+  id            String   @id @default(uuid())
+  timestamp     DateTime @default(now())
+  user_id       String
+  session_id    String?
+  execution_id  String?  // Agent execution or workflow execution ID
+  scan_point    String   // 'tool_input' | 'tool_result' | 'llm_output' | 'user_input' | 'workflow_data'
+  rule_id       String
+  category      String   // 'credential' | 'pii' | 'infrastructure' | 'compliance' | 'injection'
+  severity      String   // 'low' | 'medium' | 'high' | 'critical'
+  action_taken  String   // 'allow' | 'redact' | 'block'
+  context       Json     // tool name, redacted snippet, etc.
+
+  @@index([user_id])
+  @@index([timestamp])
+  @@index([severity])
+  @@index([category])
+  @@map("dlp_findings")
+  @@schema("admin")
+}
+
+// ============================================================================
+// COMPREHENSIVE USER AUDIT LOGGING
+// ============================================================================
+
+model UserQueryAudit {
+  id         String  @id @default(uuid())
+  user_id    String
+  session_id String?
+  message_id String?
+
+  // Query details
+  raw_query  String  @db.Text
+  query_type String // 'chat', 'mcp_tool', 'admin_action', etc.
+  intent     String? // parsed intent/classification
+
+  // Context
+  ip_address String?
+  user_agent String? @db.Text
+  referrer   String?
+
+  // MCP/Tool execution details
+  mcp_server   String? // which MCP server was used
+  tools_called Json? // array of tools called
+  tool_results Json? // results from tool calls
+
+  // Request/Response
+  request_payload  Json? // full request JSON
+  response_payload Json? // full response JSON
+  response_time_ms Int? // execution time
+
+  // Success/Error tracking
+  success       Boolean @default(true)
+  error_code    String?
+  error_message String? @db.Text
+
+  // Metadata
+  model_used      String?
+  tokens_consumed Int?
+  cost_estimate   Decimal? @db.Decimal(10, 4)
+
+  // ML Training Data - structured for model fine-tuning
+  ml_training_data Json? // Optimized JSON for ML training
+
+  created_at DateTime @default(now())
+
+  // Relations
+  user    User         @relation("UserQueryAuditRelation", fields: [user_id], references: [id], onDelete: Cascade)
+  session ChatSession? @relation("QueryAuditSessionRelation", fields: [session_id], references: [id])
+  message ChatMessage? @relation("QueryAuditMessageRelation", fields: [message_id], references: [id])
+
+  @@index([user_id])
+  @@index([session_id])
+  @@index([message_id])
+  @@index([created_at])
+  @@index([query_type])
+  @@index([mcp_server])
+  @@index([success])
+  @@map("user_query_audit")
+  @@schema("admin")
+}
+
+// ============================================================================
+// SYSTEM INITIALIZATION TRACKING
+// ============================================================================
+
+model SystemConfiguration {
+  key         String   @id
+  value       Json?
+  description String?  @db.Text
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@map("system_configuration")
+  @@schema("admin")
+}
+
+// ============================================================================
+
+model PromptTemplate {
+  id                Int      @id @default(autoincrement())
+  name              String   @unique
+  category          String?
+  content           String   @db.Text
+  description       String?  @db.Text
+  tags              String[] @default([])
+  intelligence      Json?    @default("{}")
+  model_preferences Json?    @default("{}")
+  is_default        Boolean  @default(false)
+  is_active         Boolean  @default(true)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  // pgvector embeddings for semantic search (managed via raw SQL)
+  embedding         Unsupported("halfvec")?
+  search_embedding  Unsupported("halfvec")?
+
+  assignments UserPromptAssignment[]
+
+  @@map("prompt_templates")
+  @@schema("admin")
+}
+
+model UserPromptAssignment {
+  id                 String   @id @default(uuid())
+  user_id            String
+  group_id           String?
+  prompt_template_id Int
+  assigned_by        String
+  assigned_at        DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  user     User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  template PromptTemplate @relation(fields: [prompt_template_id], references: [id])
+
+  @@unique([user_id, prompt_template_id])
+  @@map("user_prompt_assignments")
+  @@schema("admin")
+}
+
+// ============================================================================
+// PROMPT USAGE TRACKING - Per-request prompt metrics
+// Track which prompts were actually used in each chat request/response
+// ============================================================================
+
+model PromptUsage {
+  id         String  @id @default(uuid())
+  user_id    String
+  session_id String
+  message_id String? // Links to ChatMessage (assistant response)
+
+  // Prompt Template Information
+  base_template_id     Int? // Base formatting template (system_base category)
+  base_template_name   String?
+  domain_template_id   Int? // Domain-specific template (user's assigned template)
+  domain_template_name String?
+
+  // Composed System Prompt
+  system_prompt        String? @db.Text // Full composed system prompt sent to LLM
+  system_prompt_length Int? // Character count of system prompt
+
+  // Prompt Engineering Techniques Applied
+  techniques_applied String[] @default([]) // List of technique names applied
+  tokens_added       Int?     @default(0) // Additional tokens from prompt engineering
+
+  // Context Injections
+  has_formatting     Boolean @default(false) // Formatting guidance injected
+  has_mcp_context    Boolean @default(false) // MCP tool context injected
+  has_rag_context    Boolean @default(false) // RAG knowledge injected
+  has_memory_context Boolean @default(false) // Memory context injected
+  has_azure_sdk_docs Boolean @default(false) // Azure SDK docs injected
+
+  // Context Counts
+  rag_docs_count  Int? @default(0) // Number of RAG docs retrieved
+  rag_chats_count Int? @default(0) // Number of chat history items retrieved
+  memory_count    Int? @default(0) // Number of memories included
+  mcp_tools_count Int? @default(0) // Number of MCP tools available
+
+  // Metadata
+  metadata Json? @default("{}") // Additional metadata (composition info, etc.)
+
+  created_at DateTime @default(now())
+
+  @@index([user_id])
+  @@index([session_id])
+  @@index([message_id])
+  @@index([base_template_id])
+  @@index([domain_template_id])
+  @@index([created_at])
+  @@map("prompt_usage")
+  @@schema("admin")
+}
+
+model SystemPrompt {
+  id         String   @id
+  name       String
+  content    String   @db.Text
+  is_active  Boolean  @default(true)
+  is_default Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("system_prompts")
+  @@schema("admin")
+}
+
+model TokenUsage {
+  id                String   @id @default(uuid())
+  user_id           String
+  session_id        String
+  model             String
+  prompt_tokens     Int
+  completion_tokens Int
+  total_tokens      Int
+  total_cost        Decimal  @db.Decimal(10, 6)
+  timestamp         DateTime @default(now())
+
+  // Extended cost tracking (NEW)
+  provider           String? // anthropic, openai, google, azure, ollama, aws-bedrock
+  cached_tokens      Int     @default(0)
+  thinking_tokens    Int     @default(0)
+  input_cost         Decimal @default(0) @db.Decimal(10, 6)
+  output_cost        Decimal @default(0) @db.Decimal(10, 6)
+  cached_cost        Decimal @default(0) @db.Decimal(10, 6)
+  thinking_cost      Decimal @default(0) @db.Decimal(10, 6)
+
+  // Workflow execution tracking (NEW)
+  workflow_execution_id String?
+  group_id              String?
+
+  // Relations
+  user               User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  session            ChatSession        @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  workflow_execution WorkflowExecution? @relation(fields: [workflow_execution_id], references: [id])
+  group              UserGroup?         @relation("GroupTokenUsage", fields: [group_id], references: [id])
+
+  @@index([user_id])
+  @@index([session_id])
+  @@index([workflow_execution_id])
+  @@index([group_id])
+  @@index([provider, model])
+  @@index([timestamp])
+  @@map("token_usage")
+  @@schema("admin")
+}
+
+model UsageAnalytics {
+  id         String   @id @default(uuid())
+  user_id    String
+  session_id String?
+  event_type String
+  event_data Json
+  timestamp  DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([event_type])
+  @@map("usage_analytics")
+  @@schema("admin")
+}
+
+model SystemMetrics {
+  id           String   @id @default(uuid())
+  metric_name  String
+  metric_value Decimal  @db.Decimal(20, 6)
+  metadata     Json?
+  timestamp    DateTime @default(now())
+
+  @@index([metric_name])
+  @@index([timestamp])
+  @@map("system_metrics")
+  @@schema("admin")
+}
+
+model SystemHealth {
+  id               String   @id @default(uuid())
+  service_name     String
+  status           String
+  response_time_ms Int?
+  uptime_percent   Decimal? @db.Decimal(5, 2)
+  error_rate       Decimal? @db.Decimal(5, 2)
+  last_check_at    DateTime @default(now())
+  metadata         Json?
+  timestamp        DateTime @default(now())
+
+  @@index([service_name])
+  @@index([timestamp])
+  @@map("system_health")
+  @@schema("admin")
+}
+
+model UserActivity {
+  id            String   @id @default(uuid())
+  user_id       String
+  activity_type String
+  activity_data Json?
+  session_id    String?
+  ip_address    String?
+  user_agent    String?  @db.Text
+  timestamp     DateTime @default(now())
+
+  @@index([user_id])
+  @@index([activity_type])
+  @@index([timestamp])
+  @@map("user_activity")
+  @@schema("admin")
+}
+
+model CostAnalytics {
+  id             String   @id @default(uuid())
+  user_id        String?
+  service_type   String
+  cost_amount    Decimal  @db.Decimal(10, 6)
+  currency       String   @default("USD")
+  usage_units    Int?
+  unit_cost      Decimal? @db.Decimal(10, 6)
+  billing_period String?
+  metadata       Json?
+  timestamp      DateTime @default(now())
+
+  @@index([user_id])
+  @@index([service_type])
+  @@index([timestamp])
+  @@map("cost_analytics")
+  @@schema("admin")
+}
+
+model PerformanceMetrics {
+  id               String   @id @default(uuid())
+  metric_name      String
+  metric_value     Decimal  @db.Decimal(20, 6)
+  metric_type      String
+  service_name     String?
+  measurement_unit String?
+  metadata         Json?
+  timestamp        DateTime @default(now())
+
+  @@index([metric_name])
+  @@index([service_name])
+  @@index([timestamp])
+  @@map("performance_metrics")
+  @@schema("admin")
+}
+
+model PromptingTechniques {
+  id                  String   @id @default(uuid())
+  technique_name      String   @unique
+  description         String?  @db.Text
+  prompt_template     String   @db.Text
+  effectiveness_score Decimal? @db.Decimal(3, 2)
+  usage_count         Int      @default(0)
+  is_active           Boolean  @default(true)
+  created_by          String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  @@index([technique_name])
+  @@map("prompting_techniques")
+  @@schema("admin")
+}
+
+model PromptingSettings {
+  id            String   @id @default(uuid())
+  user_id       String?
+  setting_key   String
+  setting_value Json
+  is_global     Boolean  @default(false)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@unique([user_id, setting_key])
+  @@index([setting_key])
+  @@map("prompting_settings")
+  @@schema("admin")
+}
+
+// ============================================================================
+// ADMIN PORTAL MODELS - PROMPT VERSION MANAGEMENT
+// ============================================================================
+
+model PromptVersion {
+  id                  String   @id @default(uuid())
+  template_id         String
+  version_number      Int
+  content             String   @db.Text
+  variables           Json     @default("{}")
+  effectiveness_score Decimal? @db.Decimal(3, 2)
+  usage_count         Int      @default(0)
+  test_results        Json?
+  is_active           Boolean  @default(false)
+  created_by          String
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  @@unique([template_id, version_number])
+  @@index([template_id])
+  @@index([created_by])
+  @@map("prompt_versions")
+  @@schema("admin")
+}
+
+// ============================================================================
+// ADMIN PORTAL MODELS - PIPELINE MANAGEMENT
+// ============================================================================
+
+model Pipeline {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  @db.Text
+  type        String // 'data', 'prompt', 'workflow'
+  config      Json
+  is_active   Boolean  @default(true)
+  created_by  String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  nodes      PipelineNode[]
+  edges      PipelineEdge[]
+  executions PipelineExecution[]
+
+  @@index([type])
+  @@index([created_by])
+  @@map("pipelines")
+  @@schema("admin")
+}
+
+model PipelineNode {
+  id          String   @id @default(uuid())
+  pipeline_id String
+  node_type   String // 'input', 'process', 'output', 'decision'
+  position_x  Float
+  position_y  Float
+  config      Json
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  pipeline   Pipeline       @relation(fields: [pipeline_id], references: [id], onDelete: Cascade)
+  from_edges PipelineEdge[] @relation("FromNode")
+  to_edges   PipelineEdge[] @relation("ToNode")
+
+  @@index([pipeline_id])
+  @@map("pipeline_nodes")
+  @@schema("admin")
+}
+
+model PipelineEdge {
+  id           String   @id @default(uuid())
+  pipeline_id  String
+  from_node_id String
+  to_node_id   String
+  condition    Json?
+  created_at   DateTime @default(now())
+
+  pipeline  Pipeline     @relation(fields: [pipeline_id], references: [id], onDelete: Cascade)
+  from_node PipelineNode @relation("FromNode", fields: [from_node_id], references: [id])
+  to_node   PipelineNode @relation("ToNode", fields: [to_node_id], references: [id])
+
+  @@index([pipeline_id])
+  @@map("pipeline_edges")
+  @@schema("admin")
+}
+
+model PipelineExecution {
+  id            String    @id @default(uuid())
+  pipeline_id   String
+  status        String // 'pending', 'running', 'completed', 'failed'
+  input_data    Json
+  output_data   Json?
+  execution_log Json?
+  error_message String?   @db.Text
+  started_at    DateTime  @default(now())
+  completed_at  DateTime?
+  duration_ms   Int?
+
+  pipeline Pipeline @relation(fields: [pipeline_id], references: [id])
+
+  @@index([pipeline_id])
+  @@index([status])
+  @@index([started_at])
+  @@map("pipeline_executions")
+  @@schema("admin")
+}
+
+// ============================================================================
+// BUDGET TRACKING REMOVED - Per requirements, no budget tracking functionality
+// ============================================================================
+
+// ============================================================================
+// VECTOR BACKUP MODELS - BACKUP & RECOVERY SYSTEM
+// ============================================================================
+
+model VectorBackup {
+  id                  String                  @id @default(uuid())
+  name                String
+  collections         String[]
+  destination         VectorBackupDestination
+  status              VectorBackupStatus      @default(PENDING)
+  progress            Int                     @default(0)
+  started_at          DateTime                @default(now())
+  completed_at        DateTime?
+  error_message       String?                 @db.Text
+  stats               Json? // JSON with collectionsBackedUp, vectorsBackedUp, sizeBytes, duration
+  compression_enabled Boolean                 @default(true)
+  encryption_enabled  Boolean                 @default(false)
+  incremental         Boolean                 @default(false)
+  retention_days      Int                     @default(30)
+  schedule_cron       String?
+  created_by          String?
+  created_at          DateTime                @default(now())
+  updated_at          DateTime                @updatedAt
+
+  collections_backup VectorBackupCollection[]
+  restore_operations VectorRestore[]
+
+  @@index([status])
+  @@index([started_at])
+  @@index([destination])
+  @@map("vector_backups")
+  @@schema("admin")
+}
+
+model VectorBackupCollection {
+  id              String             @id @default(uuid())
+  backup_id       String
+  collection_name String
+  vector_count    BigInt             @default(0)
+  size_bytes      BigInt             @default(0)
+  checksum        String?
+  backup_path     String?            @db.Text
+  status          VectorBackupStatus @default(PENDING)
+  started_at      DateTime           @default(now())
+  completed_at    DateTime?
+  error_message   String?            @db.Text
+
+  backup VectorBackup @relation(fields: [backup_id], references: [id], onDelete: Cascade)
+
+  @@index([backup_id])
+  @@index([collection_name])
+  @@index([status])
+  @@map("vector_backup_collections")
+  @@schema("admin")
+}
+
+model VectorRestore {
+  id                 String             @id @default(uuid())
+  backup_id          String
+  status             VectorBackupStatus @default(PENDING)
+  target_collections Json? // JSON mapping of source -> target collection names
+  point_in_time      DateTime?
+  validate_integrity Boolean            @default(true)
+  overwrite_existing Boolean            @default(false)
+  progress           Int                @default(0)
+  started_at         DateTime           @default(now())
+  completed_at       DateTime?
+  error_message      String?            @db.Text
+  stats              Json? // JSON with collectionsRestored, vectorsRestored, duration
+  created_by         String?
+  created_at         DateTime           @default(now())
+  updated_at         DateTime           @updatedAt
+
+  backup VectorBackup @relation(fields: [backup_id], references: [id])
+
+  @@index([backup_id])
+  @@index([status])
+  @@index([started_at])
+  @@map("vector_restores")
+  @@schema("admin")
+}
+
+model VectorBackupConfig {
+  id                  String                  @id @default(uuid())
+  name                String                  @unique
+  collections         String[]
+  destination         VectorBackupDestination
+  schedule_cron       String?
+  retention_days      Int                     @default(30)
+  compression_enabled Boolean                 @default(true)
+  encryption_enabled  Boolean                 @default(false)
+  incremental         Boolean                 @default(false)
+  is_active           Boolean                 @default(true)
+  last_backup_at      DateTime?
+  next_backup_at      DateTime?
+  created_by          String?
+  created_at          DateTime                @default(now())
+  updated_at          DateTime                @updatedAt
+
+  @@index([schedule_cron])
+  @@index([is_active])
+  @@index([next_backup_at])
+  @@map("vector_backup_configs")
+  @@schema("admin")
+}
+
+enum VectorBackupStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+
+  @@schema("admin")
+}
+
+enum VectorBackupDestination {
+  S3
+  LOCAL
+  GCS
+  AZURE_BLOB
+
+  @@schema("admin")
+}
+
+// ============================================================================
+// PROMPT TECHNIQUE MANAGEMENT (admin schema)
+// ============================================================================
+
+model PromptTechniqueConfig {
+  id           String   @id @default(uuid())
+  technique_id String   @unique
+  name         String
+  description  String?  @db.Text
+  category     String   @default("advanced")
+  enabled      Boolean  @default(true)
+  settings     Json     @default("{}")
+  metadata     Json     @default("{}")
+  is_active    Boolean  @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([technique_id])
+  @@index([category])
+  @@index([enabled])
+  @@map("prompt_technique_configs")
+  @@schema("admin")
+}
+
+model UserTechniquePreference {
+  id                 String   @id @default(uuid())
+  user_id            String   @unique
+  enabled_techniques String[]
+  technique_settings Json     @default("{}")
+  auto_select_best   Boolean  @default(true)
+  // max_token_budget removed - no budget tracking
+  priority_order     String[]
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  @@index([user_id])
+  @@map("user_technique_preferences")
+  @@schema("admin")
+}
+
+model TechniqueUsageLog {
+  id                String   @id @default(uuid())
+  user_id           String
+  technique_id      String
+  tokens_added      Int
+  execution_time_ms Int
+  confidence_score  Decimal? @db.Decimal(3, 2)
+  success           Boolean
+  session_id        String?
+  prompt_hash       String?
+  created_at        DateTime @default(now())
+
+  @@index([user_id])
+  @@index([technique_id])
+  @@index([created_at])
+  @@index([session_id])
+  @@map("technique_usage_logs")
+  @@schema("admin")
+}
+
+// ============================================================================
+// NOTE: LiteLLM tables are now in a separate 'litellm' database
+// LiteLLM manages its own schema through its Docker container
+// Our DatabaseService creates the 'litellm' database on initialization
+// ============================================================================
+
+// ============================================================================
+// SECURE STORAGE (public schema)
+// ============================================================================
+
+model SecureStorage {
+  id         String    @id @default(uuid())
+  key        String    @unique
+  value      String    @db.Text
+  encrypted  Boolean   @default(true)
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  expires_at DateTime?
+  metadata   Json      @default("{}")
+
+  @@index([key])
+  @@index([expires_at])
+  @@map("secure_storage")
+  @@schema("public")
+}
+
+// ============================================================================
+// COMPATIBILITY VIEWS - For legacy table names
+// ============================================================================
+
+// Legacy table names that code references - create as views or aliases
+model Sessions {
+  id            String    @id
+  user_id       String
+  title         String?
+  model         String?
+  summary       String?   @db.Text
+  metadata      Json?     @default("{}")
+  message_count Int       @default(0)
+  total_tokens  Int       @default(0)
+  total_cost    Decimal   @default(0) @db.Decimal(10, 6)
+  is_active     Boolean   @default(true)
+  deleted_at    DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  @@map("sessions")
+  @@schema("public")
+}
+
+model Messages {
+  id              String    @id @default(uuid())
+  session_id      String
+  role            String
+  content         String?   @db.Text
+  model           String?
+  tokens          Int?      @default(0)
+  metadata        Json?     @default("{}")
+  token_usage     Json?
+  mcp_calls       Json?
+  tool_calls      Json?
+  tool_results    Json?
+  tool_call_id    String?
+  visualizations  Json?
+  prometheus_data Json?
+  user_id         String?
+  parent_id       String?
+  branch_id       String?
+  deleted_at      DateTime?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  @@map("messages")
+  @@schema("public")
+}
+
+model MCPServers {
+  id            String   @id
+  name          String
+  description   String?  @db.Text
+  enabled       Boolean  @default(true)
+  is_active     Boolean  @default(true)
+  user_id       String?
+  command       String
+  args          String[]
+  env           Json     @default("{}")
+  require_obo   Boolean  @default(false)
+  user_isolated Boolean  @default(false)
+  capabilities  String[]
+  metadata      Json?    @default("{}")
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  // Relations
+  user User? @relation(fields: [user_id], references: [id])
+
+  @@map("mcp_servers")
+  @@schema("public")
+}
+
+// ============================================================================
+// LLM PROVIDER CONFIGURATION (admin schema)
+// ============================================================================
+
+model LLMProvider {
+  id            String  @id @default(uuid())
+  name          String  @unique // e.g., "azure-openai-prod", "vertex-ai-main"
+  display_name  String // User-friendly name
+  provider_type String // "azure-openai" | "vertex-ai" | "aws-bedrock"
+  enabled       Boolean @default(true)
+  priority      Int     @default(1) // Lower = higher priority
+
+  // Authentication configuration (stored as JSON for flexibility)
+  // For Azure: { type: "api-key", key: "..." } OR { type: "entra-id", tenantId: "...", clientId: "...", clientSecret: "..." }
+  // For Vertex: { type: "api-key", key: "..." } OR { type: "service-account", credentials: "base64..." }
+  // For Bedrock: { type: "iam-keys", accessKeyId: "...", secretAccessKey: "...", region: "..." }
+  auth_config Json
+
+  // Provider-specific configuration
+  // For Azure: { endpoint: "...", deployment: "...", apiVersion: "..." }
+  // For Vertex: { projectId: "...", location: "..." }
+  // For Bedrock: { region: "...", modelId: "..." }
+  provider_config Json
+
+  // Model configuration
+  // { maxTokens: 16000, temperature: 1.0, topP: 1.0, frequencyPenalty: 0, presencePenalty: 0 }
+  model_config Json @default("{}")
+
+  // Capabilities
+  // { chat: true, embeddings: true, vision: false, tools: true, streaming: true }
+  capabilities Json @default("{}")
+
+  // Provider status and capability flags
+  status                 String    @default("active")    // 'active' | 'disabled' | 'paused' | 'error'
+  paused_until           DateTime?
+  disabled_models        String[]  @default([])           // Individual model IDs disabled
+  is_chat_provider       Boolean   @default(false)
+  is_embedding_provider  Boolean   @default(false)
+  is_vision_provider     Boolean   @default(false)
+  is_image_provider      Boolean   @default(false)
+  is_compaction_provider Boolean   @default(false)
+
+  // Metadata
+  description            String?
+  tags                   String[] @default([])
+  created_by             String?
+  updated_by             String?
+  credentials_expires_at DateTime? // When auth_config credentials expire (for key rotation tracking)
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  // Soft delete
+  deleted_at DateTime?
+
+  // Relations
+  creator User? @relation("LLMProviderCreator", fields: [created_by], references: [id])
+  updater User? @relation("LLMProviderUpdater", fields: [updated_by], references: [id])
+
+  @@index([provider_type])
+  @@index([enabled])
+  @@index([priority])
+  @@map("llm_providers")
+  @@schema("admin")
+}
+
+
+// ============================================================================
+// AGENTIC LOOPS - Platform-level agent definitions (graph-based)
+// Visible in Admin Portal: OpenAgenticflows > Agents section
+// Editable live without code changes
+// ============================================================================
+
+// Agent loop definition - the core building block
+model Agent {
+  id           String  @id @default(uuid())
+  name         String  @unique // e.g., "data_query", "reasoning", "tool_orchestration"
+  display_name String
+  description  String? @db.Text
+
+  // Agent type categorization
+  agent_type   String // data_query, data_extraction, tool_orchestration, reasoning, etc.
+  category     String @default("platform") // platform, custom, experimental
+
+  // Graph-style agent definition (editable in UI)
+  // { nodes: [...], edges: [...], state_schema: {...} }
+  graph_definition Json @default("{}")
+
+  // Model configuration (which models to use)
+  model_config Json // { primaryModel, fallbackModel, maxTokens, temperature, etc. }
+
+  // System prompt template (injected into all calls)
+  system_prompt String? @db.Text
+
+  // State schema definition (what data flows through the graph)
+  state_schema Json @default("{}")
+
+  // Input/Output schemas for validation — output_schema passed as LLM response_format
+  input_schema  Json @default("{}")
+  output_schema Json @default("{}")
+
+  // Rate limiting and cost control
+  rate_limits Json @default("{}") // { maxPerMinute, maxPerHour, maxConcurrent }
+  cost_limits Json @default("{}") // { maxCostPerCall, maxDailyCost }
+
+  // Alert thresholds
+  alert_config Json @default("{}") // { errorRateThreshold, latencyThreshold, costThreshold }
+
+  // Logging configuration
+  logging_config Json @default("{}") // { verboseLogging, logInputs, logOutputs, sampleRate }
+
+  // Status
+  enabled    Boolean @default(true)
+  is_default Boolean @default(false) // Default agent for this type
+
+  // Metadata
+  version    String   @default("1.0.0")
+  tags       String[] @default([])
+  icon       String?
+  color      String?
+
+  // Composable prompt configuration
+  prompt_modules  String[] @default([])           // Module names: ["identity-default", "tool-calling", "agent-delegation"]
+  prompt_strategy String   @default("composite")  // "composite" = use prompt modules, "custom" = raw system_prompt
+  prompt_mode     String   @default("full")       // "full" = all modules, "minimal" = stripped for sub-agents
+
+  // Openagentic-proxy orchestration fields
+  skills          String[] @default([])          // Skill IDs to inject into system prompt
+  delegation      Json     @default("{}")         // { allowed, maxDepth, maxSubAgents, allowedRoles }
+  background      Json?                           // null = not background, { trigger, interval }
+  tools_whitelist String[] @default([])           // MCP tool names this agent can use
+  tools_deny_list String[] @default([])           // MCP tool names to block from this agent
+
+  // Spawn safety limits (OpenClaw-inspired)
+  max_spawn_depth Int @default(1)                 // Max sub-agent nesting depth (1=no children, 5=deep hierarchies)
+  max_children    Int @default(5)                 // Max concurrent sub-agents per execution
+
+  // Reliability
+  retry_strategy  Json @default("{}")             // { maxRetries: 2, fallbackToMinimal: true, partialResultsOk: true }
+  handoff_schema  Json @default("{}")             // Output contract for agent chaining
+
+  // Agent execution configuration
+  triggers        String[] @default([])           // Keyword triggers for auto-selection
+  isolation       String?  @default("none")       // "sandboxed" | "network_restricted" | "none"
+  memory_scope    String?  @default("session")    // "session" | "project" | "user" | "shared"
+
+  // Ownership
+  created_by String?
+  updated_by String?
+
+  // Timestamps
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  versions   AgentVersion[]
+  executions AgentRunLog[]
+  metrics    AgentMetrics[]
+
+  @@index([agent_type])
+  @@index([category])
+  @@index([enabled])
+  @@index([is_default, agent_type])
+  @@map("agentic_loops")
+  @@schema("admin")
+}
+
+// Version history for agents (for rollback and audit)
+model AgentVersion {
+  id          String  @id @default(uuid())
+  loop_id     String  // FK column name kept for backwards compat
+  version     Int
+
+  // Snapshot of configuration at this version
+  graph_definition Json
+  model_config     Json
+  system_prompt    String? @db.Text
+  state_schema     Json
+
+  // Change info
+  changelog   String? @db.Text
+  is_active   Boolean @default(false)
+
+  // Metadata
+  created_by  String?
+  created_at  DateTime @default(now())
+
+  agent Agent @relation(fields: [loop_id], references: [id], onDelete: Cascade)
+
+  @@unique([loop_id, version])
+  @@index([loop_id])
+  @@index([loop_id, is_active])
+  @@map("agentic_loop_versions")
+  @@schema("admin")
+}
+
+// Per-agent-definition execution tracking for observability
+model AgentRunLog {
+  id          String @id @default(uuid())
+  loop_id     String  // FK column name kept for backwards compat
+
+  // Context
+  session_id  String?
+  user_id     String?
+
+  // Execution state
+  status      String @default("pending") // pending, running, completed, failed
+
+  // Model info
+  model_used          String?
+  fallback_used       Boolean @default(false)
+
+  // Tokens
+  input_tokens    Int @default(0)
+  output_tokens   Int @default(0)
+  thinking_tokens Int @default(0)
+  total_tokens    Int @default(0)
+
+  // Cost (in cents)
+  estimated_cost Decimal @default(0) @db.Decimal(10, 6)
+
+  // Performance
+  duration_ms    Int?
+  queue_time_ms  Int?
+
+  // Results
+  error       String? @db.Text
+  error_code  String?
+  result_size Int?
+
+  // Related data
+  tool_calls_involved  String[] @default([])
+  dataset_ids_accessed String[] @default([])
+
+  // Tracing
+  trace_id        String?
+  span_id         String?
+  parent_span_id  String?
+
+  // Input/Output (for debugging)
+  input_data  Json?
+  output_data Json?
+
+  // Timestamps
+  started_at   DateTime  @default(now())
+  completed_at DateTime?
+
+  agent Agent @relation(fields: [loop_id], references: [id])
+
+  @@index([loop_id])
+  @@index([session_id])
+  @@index([user_id])
+  @@index([status])
+  @@index([started_at])
+  @@index([trace_id])
+  @@map("agentic_loop_executions")
+  @@schema("admin")
+}
+
+// Aggregated metrics for dashboard
+model AgentMetrics {
+  id        String @id @default(uuid())
+  loop_id   String  // FK column name kept for backwards compat
+
+  // Time period
+  period      String // hour, day, week, month
+  period_start DateTime
+  period_end   DateTime
+
+  // Execution counts
+  total_executions      Int @default(0)
+  successful_executions Int @default(0)
+  failed_executions     Int @default(0)
+
+  // Performance percentiles
+  avg_duration_ms Int?
+  p50_duration_ms Int?
+  p95_duration_ms Int?
+  p99_duration_ms Int?
+
+  // Token totals
+  total_input_tokens    BigInt @default(0)
+  total_output_tokens   BigInt @default(0)
+  total_thinking_tokens BigInt @default(0)
+
+  // Cost (in cents)
+  total_cost Decimal @default(0) @db.Decimal(12, 6)
+
+  // Error breakdown (JSON: { "error_code": count })
+  error_breakdown Json @default("{}")
+
+  // Model usage breakdown (JSON: { "model_id": count })
+  model_usage Json @default("{}")
+
+  // Timestamps
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  agent Agent @relation(fields: [loop_id], references: [id], onDelete: Cascade)
+
+  @@unique([loop_id, period, period_start])
+  @@index([loop_id])
+  @@index([period_start])
+  @@map("agentic_loop_metrics")
+  @@schema("admin")
+}
+
+// ─── Agent Skills Registry ──────────────────────────────────────────────────
+model AgentSkill {
+  id              String   @id @default(uuid())
+  name            String   @unique
+  display_name    String
+  description     String?  @db.Text
+  type            String   // prompt_injection, tool_bundle, workflow, code_template
+  definition      Json     // Actual skill content
+  source          String   @default("custom") // custom, openclaw, marketplace
+  source_url      String?
+  parameters      Json     @default("{}")
+  required_tools  String[] @default([])
+  visibility      String   @default("private") // private, team, public
+  created_by      String
+  tags            String[] @default([])
+  usage_count     Int      @default(0)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@map("agent_skills")
+  @@schema("admin")
+}
+
+// ─── Agent Audit Log (FedRAMP compliance) ───────────────────────────────────
+model AgentAuditLog {
+  id             String   @id @default(uuid())
+  execution_id   String
+  agent_id       String
+  user_id        String
+  action_type    String   // tool_call, llm_completion, delegation, approval, data_access
+  action_detail  Json     // Full sanitized details
+  risk_level     String?  // LOW, MEDIUM, HIGH
+  cost_cents     Decimal? @db.Decimal(10, 4)
+  tokens_used    Int?
+  timestamp      DateTime @default(now())
+
+  @@index([execution_id])
+  @@index([user_id])
+  @@index([timestamp])
+  @@map("agent_audit_log")
+  @@schema("admin")
+}
+
+// ─── Background Agent Results ───────────────────────────────────────────────
+model BackgroundAgentResult {
+  id                 String   @id @default(uuid())
+  session_id         String
+  user_id            String
+  agent_type         String   // artifact, diagram, fact_check, grounding
+  trigger_message_id String?
+  result_type        String   // code_artifact, mermaid_diagram, confidence_map, context
+  result_data        Json
+  confidence         Float?
+  status             String   @default("pending")
+  consumed           Boolean  @default(false)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  @@index([session_id, status])
+  @@index([session_id, agent_type])
+  @@map("background_agent_results")
+  @@schema("public")
+}
+
+// ─── Agent Execution Tracking ───────────────────────────────────────────────
+model AgentExecution {
+  id                String   @id @default(uuid())
+  session_id        String?
+  user_id           String
+  orchestration     String   // parallel, sequential, supervisor, hierarchical
+  aggregation       String   @default("merge") // merge, synthesize, first, vote
+  status            String   @default("pending") // pending, running, completed, failed, cancelled
+  agent_specs       Json     // Array of agent specs that were executed
+  results           Json?    // Aggregated results
+  total_cost_cents  Decimal  @default(0) @db.Decimal(10, 4)
+  total_tokens      Int      @default(0)
+  total_duration_ms Int?
+  error             String?  @db.Text
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@index([user_id])
+  @@index([session_id])
+  @@index([status])
+  @@index([created_at])
+  @@map("agent_executions")
+  @@schema("admin")
+}
+
+// Data layer stored datasets (for query_data tool)
+model DataLayerDataset {
+  id         String @id @default(uuid())
+
+  // Context
+  session_id String
+  user_id    String
+
+  // Source
+  tool_name  String
+  tool_args  Json @default("{}")
+  user_query String @db.Text
+
+  // Data storage (compressed)
+  data_type       String // array, object, primitive
+  item_count      Int
+  total_size_bytes Int
+
+  // Schema for intelligent querying
+  schema_definition Json @default("{}")
+
+  // Status
+  status     String @default("active") // active, expired, deleted
+
+  // Access tracking
+  access_count     Int @default(0)
+  last_accessed_at DateTime?
+
+  // Timestamps
+  created_at DateTime @default(now())
+  expires_at DateTime
+
+  @@index([session_id])
+  @@index([user_id])
+  @@index([status])
+  @@index([expires_at])
+  @@map("data_layer_datasets")
+  @@schema("admin")
+}
+
+// ============================================================================
+// KNOWLEDGE GRAPH (public schema)
+// ============================================================================
+
+model KnowledgeEntity {
+  id         String   @id
+  type       String
+  name       String
+  aliases    String[]
+  attributes Json?
+  confidence Float
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  source_relationships KnowledgeRelationship[] @relation("SourceEntity")
+  target_relationships KnowledgeRelationship[] @relation("TargetEntity")
+
+  @@index([type])
+  @@index([name])
+  @@map("knowledge_entities")
+  @@schema("public")
+}
+
+model KnowledgeRelationship {
+  id               String   @id
+  source_entity_id String
+  target_entity_id String
+  type             String
+  attributes       Json?
+  confidence       Float
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  source_entity KnowledgeEntity @relation("SourceEntity", fields: [source_entity_id], references: [id])
+  target_entity KnowledgeEntity @relation("TargetEntity", fields: [target_entity_id], references: [id])
+
+  @@index([source_entity_id])
+  @@index([target_entity_id])
+  @@index([type])
+  @@map("knowledge_relationships")
+  @@schema("public")
+}
+
+// ============================================================================
+// WORKFLOWS - Removed, now handled by dedicated workflows service
+// ============================================================================
+
+// ============================================================================
+// RBAC - Role-Based Access Control (consolidated from migrations)
+// ============================================================================
+
+model Permission {
+  id          String   @id // e.g., "workflow.create", "admin.users.read"
+  name        String
+  description String?  @db.Text
+  resource    String // e.g., 'workflows', 'admin', 'chat', 'mcp'
+  action      String // e.g., 'create', 'read', 'update', 'delete', 'execute'
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  role_permissions RolePermission[]
+
+  @@index([resource])
+  @@index([action])
+  @@map("permissions")
+  @@schema("admin")
+}
+
+model Role {
+  id             String   @id // e.g., "admin", "user", "workflow_creator"
+  name           String   @unique
+  description    String?  @db.Text
+  is_system_role Boolean  @default(false) // Cannot be deleted if true
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  role_permissions RolePermission[]
+  user_roles       UserRole[]
+
+  @@map("roles")
+  @@schema("admin")
+}
+
+model RolePermission {
+  id            String   @id @default(uuid())
+  role_id       String
+  permission_id String
+  created_at    DateTime @default(now())
+
+  role       Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@unique([role_id, permission_id])
+  @@index([role_id])
+  @@index([permission_id])
+  @@map("role_permissions")
+  @@schema("admin")
+}
+
+model UserRole {
+  id          String   @id @default(uuid())
+  user_id     String
+  role_id     String
+  assigned_by String?
+  assigned_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, role_id])
+  @@index([user_id])
+  @@index([role_id])
+  @@map("user_roles")
+  @@schema("public")
+}
+
+// ============================================================================
+// WORKFLOW TEMPLATES & SHARING (consolidated from migrations)
+// ============================================================================
+
+model WorkflowTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  @db.Text
+  category    String? // e.g., 'data-processing', 'automation', 'analysis'
+  nodes       Json     @default("[]")
+  edges       Json     @default("[]")
+  thumbnail   String?  @db.Text // URL or base64 image
+  tags        String[] @default([])
+  is_public   Boolean  @default(false)
+  is_featured Boolean  @default(false)
+  created_by  String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // pgvector embedding for semantic marketplace search (managed via raw SQL)
+  search_embedding Unsupported("halfvec")?
+
+  @@index([category])
+  @@index([is_public])
+  @@index([is_featured])
+  @@map("workflow_templates")
+  @@schema("public")
+}
+
+model GlobalWorkflowSetting {
+  id            String   @id @default(uuid())
+  setting_key   String   @unique
+  setting_value Json?
+  description   String?  @db.Text
+  updated_by    String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@map("global_workflow_settings")
+  @@schema("admin")
+}
+
+// ============================================================================
+// LLM REQUEST LOGGING - Detailed per-request metrics (NEW)
+// ============================================================================
+
+model LLMRequestLog {
+  id         String  @id @default(uuid())
+  user_id    String?
+  session_id String?
+  message_id String? // Links to ChatMessage
+
+  // Provider & Model Info
+  provider_type String // "azure-openai", "vertex-ai", "aws-bedrock", "ollama"
+  provider_name String? // Provider instance name
+  model         String // e.g., "gpt-4o", "claude-3-sonnet", "gemini-pro"
+  deployment    String? // For Azure: deployment name
+
+  // Request Details
+  request_type String  @default("chat") // "chat", "completion", "embedding"
+  source       String  @default("chat") // "chat", "code", "api" - differentiates request origin
+  streaming    Boolean @default(false)
+  temperature  Float?
+  max_tokens   Int?
+
+  // Token Usage (from provider response)
+  prompt_tokens     Int?
+  completion_tokens Int?
+  total_tokens      Int?
+  cached_tokens     Int? // For providers that support prompt caching
+  reasoning_tokens  Int? // For models with thinking/reasoning tokens
+
+  // Cost Calculation
+  prompt_cost     Decimal? @db.Decimal(12, 8) // Precise cost per request
+  completion_cost Decimal? @db.Decimal(12, 8)
+  total_cost      Decimal? @db.Decimal(12, 8)
+  cost_currency   String   @default("USD")
+
+  // Performance Metrics
+  latency_ms             Int? // Time to first token (streaming) or total time
+  total_duration_ms      Int? // Total request duration
+  tokens_per_second      Float? // Output token generation rate
+  time_to_first_token_ms Int? // TTFT - Time from request start to first token
+  queue_wait_ms          Int? // Time spent waiting in queue
+  model_latency_ms       Int? // Model-specific processing latency
+  concurrent_requests    Int? // Number of concurrent requests at time of this request
+
+  // Request/Response Size
+  request_size_bytes  Int?
+  response_size_bytes Int?
+
+  // Cache & Performance Tracking
+  cache_hit      Boolean @default(false)
+  retry_count    Int     @default(0)
+  rate_limit_hit Boolean @default(false)
+
+  // Tool/Function Calls
+  tool_calls_count Int?     @default(0)
+  tool_names       String[] @default([])
+
+  // Status
+  status        String  @default("success") // "success", "error", "timeout", "rate_limited"
+  error_code    String?
+  error_message String? @db.Text
+
+  // Pricing source tracking
+  pricing_source String? @default("unknown") // 'aws-api', 'registry', 'fallback', 'free'
+
+  // Provider-specific metadata
+  provider_metadata Json? // Provider-specific response headers, etc.
+
+  // Timestamps
+  request_started_at   DateTime  @default(now())
+  request_completed_at DateTime?
+  created_at           DateTime  @default(now())
+
+  // API Key tracking (for openagentic-cli and external API usage)
+  api_key_id String? @map("api_key_id")
+
+  // Relations
+  user    User?        @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  session ChatSession? @relation(fields: [session_id], references: [id], onDelete: SetNull)
+  // Note: ApiKey is in public schema, so no FK relation - just store the ID
+
+  @@index([user_id])
+  @@index([api_key_id])
+  @@index([session_id])
+  @@index([provider_type])
+  @@index([model])
+  @@index([status])
+  @@index([created_at])
+  @@index([request_started_at])
+  @@map("llm_request_logs")
+  @@schema("admin")
+}
+
+// ============================================================================
+// LLM COST RATES - Provider pricing configuration (NEW)
+// ============================================================================
+
+model LLMCostRate {
+  id            String  @id @default(uuid())
+  provider_type String // "azure-openai", "vertex-ai", "aws-bedrock"
+  model         String // Model name or pattern
+  model_variant String? // e.g., "standard", "batch", "cached"
+
+  // Pricing per 1M tokens (in USD)
+  input_cost_per_1m        Decimal  @db.Decimal(10, 6)
+  output_cost_per_1m       Decimal  @db.Decimal(10, 6)
+  cached_input_cost_per_1m Decimal? @db.Decimal(10, 6) // For prompt caching
+
+  // Effective dates
+  effective_from DateTime  @default(now())
+  effective_to   DateTime? // null = currently active
+
+  // Metadata
+  source     String? // "official", "estimated", "custom"
+  notes      String?  @db.Text
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([provider_type, model, model_variant, effective_from])
+  @@index([provider_type])
+  @@index([model])
+  @@index([effective_from])
+  @@map("llm_cost_rates")
+  @@schema("admin")
+}
+
+// ============================================================================
+// LLM USAGE AGGREGATES - Pre-computed daily/hourly aggregates (NEW)
+// ============================================================================
+
+model LLMUsageAggregate {
+  id String @id @default(uuid())
+
+  // Aggregation dimensions
+  period_type   String // "hourly", "daily", "weekly", "monthly"
+  period_start  DateTime
+  user_id       String? // null = system-wide aggregate
+  provider_type String? // null = all providers
+  model         String? // null = all models
+
+  // Aggregated metrics
+  request_count Int @default(0)
+  success_count Int @default(0)
+  error_count   Int @default(0)
+
+  total_prompt_tokens     BigInt @default(0)
+  total_completion_tokens BigInt @default(0)
+  total_tokens            BigInt @default(0)
+
+  total_cost Decimal @default(0) @db.Decimal(14, 6)
+
+  avg_latency_ms Float?
+  p50_latency_ms Float?
+  p95_latency_ms Float?
+  p99_latency_ms Float?
+
+  total_tool_calls Int @default(0)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([period_type, period_start, user_id, provider_type, model])
+  @@index([period_type, period_start])
+  @@index([user_id])
+  @@index([provider_type])
+  @@map("llm_usage_aggregates")
+  @@schema("admin")
+}
+
+// ============================================================================
+// MULTI-MODEL COLLABORATION (admin schema)
+// Configuration and metrics for multi-model orchestration
+// ============================================================================
+
+/// Model role assignments for multi-model collaboration
+/// Configures which models handle each role (reasoning, tool_execution, synthesis, fallback)
+model ModelRoleAssignment {
+  id                  String   @id @default(uuid())
+  role                String // 'reasoning', 'tool_execution', 'synthesis', 'fallback'
+  model               String // Model identifier (e.g., 'claude-opus-4', 'claude-sonnet-4')
+  provider            String // Provider name (e.g., 'anthropic', 'vertex-ai', 'azure-openai')
+  priority            Int      @default(0) // Lower = higher priority
+  enabled             Boolean  @default(true)
+  slider_min_position Int      @default(0) // Minimum slider position to use this model
+  slider_max_position Int      @default(100) // Maximum slider position to use this model
+  cost_per_request    Decimal? @db.Decimal(10, 6) // Estimated cost per request
+  temperature         Float?   @default(0.5)
+  max_tokens          Int?
+  thinking_budget     Int? // Token budget for extended thinking (reasoning role)
+  options             Json?    @default("{}") // Role-specific options
+  description         String?
+  created_by          String
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  creator User @relation(fields: [created_by], references: [id])
+
+  @@unique([role, model, provider])
+  @@index([role, enabled])
+  @@index([slider_min_position, slider_max_position])
+  @@index([priority])
+  @@map("model_role_assignments")
+  @@schema("admin")
+}
+
+/// Multi-model orchestration metrics
+/// Tracks performance and cost of multi-model requests
+model MultiModelMetrics {
+  id               String  @id @default(uuid())
+  orchestration_id String  @unique // Unique ID for the multi-model request
+  session_id       String?
+  user_id          String
+
+  // Execution details
+  roles_executed String[] // Array of roles that ran (e.g., ['reasoning', 'tool_execution', 'synthesis'])
+  total_handoffs Int      @default(0)
+  success        Boolean  @default(true)
+  error_message  String?
+
+  // Per-role metrics (JSON with breakdown per role)
+  role_metrics Json? @default("{}") // { reasoning: {...}, tool_execution: {...}, ... }
+
+  // Aggregates
+  total_input_tokens    Int     @default(0)
+  total_output_tokens   Int     @default(0)
+  total_thinking_tokens Int?
+  total_cost            Decimal @default(0) @db.Decimal(10, 6)
+  total_duration_ms     Int     @default(0)
+
+  // Request context
+  complexity      String? // 'simple', 'moderate', 'complex', 'expert'
+  slider_position Int?
+  routing_reason  String? // Why multi-model was used
+
+  created_at DateTime @default(now())
+
+  user    User         @relation(fields: [user_id], references: [id])
+  session ChatSession? @relation(fields: [session_id], references: [id])
+
+  @@index([user_id, created_at])
+  @@index([orchestration_id])
+  @@index([complexity])
+  @@index([success])
+  @@index([created_at])
+  @@map("multi_model_metrics")
+  @@schema("admin")
+}
+
+// ============================================================================
+// AWCODE SESSIONS & MESSAGES (public schema)
+// For storing agentic-cli coding session logs
+// ============================================================================
+
+model AWCodeSession {
+  id               String    @id
+  user_id          String
+  workspace_path   String?
+  model            String?
+  pid              Int?
+  status           String    @default("running") // 'running' | 'stopped' | 'error'
+  title            String?
+  summary          String?   @db.Text
+  metadata         Json?     @default("{}")
+  message_count    Int       @default(0)
+  total_tokens     Int       @default(0)
+  total_cost       Decimal   @default(0) @db.Decimal(10, 6)
+  tool_calls_count Int       @default(0)
+  files_modified   String[]
+  started_at       DateTime  @default(now())
+  stopped_at       DateTime?
+  last_activity    DateTime  @default(now())
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  user     User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  messages AWCodeMessage[]
+
+  @@index([user_id])
+  @@index([status])
+  @@index([started_at])
+  @@map("awcode_sessions")
+  @@schema("public")
+}
+
+model AWCodeMessage {
+  id            String   @id @default(uuid())
+  session_id    String
+  role          String // 'user' | 'assistant' | 'system' | 'tool'
+  content       String?  @db.Text
+  raw_output    String?  @db.Text // Raw PTY output with ANSI codes
+  model         String?
+  tokens        Int?     @default(0)
+  tokens_input  Int?     @default(0)
+  tokens_output Int?     @default(0)
+  cost          Decimal? @default(0) @db.Decimal(10, 6)
+  metadata      Json?    @default("{}")
+  tool_calls    Json? // Tool calls initiated by this message
+  tool_results  Json? // Results from tool execution
+  tool_name     String? // For tool role messages
+  files_read    String[]
+  files_written String[]
+  thinking      String?  @db.Text // Chain of thought reasoning
+  duration_ms   Int? // Time to generate response
+  created_at    DateTime @default(now())
+
+  session AWCodeSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@index([session_id])
+  @@index([role])
+  @@index([created_at])
+  @@map("awcode_messages")
+  @@schema("public")
+}
+
+// ============================================================================
+// GOOGLE VERTEX CONTEXT CACHE (admin schema)
+// Tracks cached content on Google's servers for 90% cost savings
+// See: https://ai.google.dev/gemini-api/docs/caching
+// ============================================================================
+
+model VertexContentCache {
+  id           String  @id @default(uuid())
+  cache_name   String  @unique // Google's cache name (e.g., "cachedContents/abc123")
+  content_hash String // SHA256 hash of cached content for dedup
+  model        String // Model the cache was created for (e.g., "gemini-2.5-pro")
+
+  // Ownership
+  user_id    String? // User who created the cache
+  session_id String? // Session context
+
+  // Cache metadata
+  token_count   Int? // Number of tokens in cached content
+  display_name  String?
+  usage_count   Int      @default(0) // Times this cache has been used
+  last_used_at  DateTime @default(now())
+
+  // TTL tracking
+  expires_at DateTime // When the cache expires on Google's servers
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([content_hash, model])
+  @@index([user_id])
+  @@index([session_id])
+  @@index([model])
+  @@index([expires_at])
+  @@index([content_hash])
+  @@map("vertex_content_caches")
+  @@schema("admin")
+}
+
+// ============================================================================
+// PGVECTOR SEMANTIC QUERY CACHE (public schema)
+// Stores query embeddings for semantic deduplication and similarity search
+// Used with pgvector for ACID-compliant transactional data (<100K vectors)
+// See: DATA_LAYER_EVOLUTION_PLAN.md for architecture decisions
+// ============================================================================
+
+model QueryEmbeddingCache {
+  id           String   @id @default(uuid())
+  query_hash   String   @unique // SHA256 of normalized query for exact match
+  query_text   String   @db.Text // Original query text
+  normalized   String   @db.Text // Normalized/cleaned query for matching
+
+  // Context for the query
+  context_type String   @default("chat") // 'chat', 'tool', 'prompt', 'search'
+  user_id      String?  // Optional user scope
+  session_id   String?  // Optional session scope
+
+  // Cached response/result
+  cached_response Json?  // Cached LLM/tool response (null if just for dedup)
+  response_model  String? // Model that generated the response
+
+  // Usage tracking
+  hit_count    Int      @default(0)
+  last_hit_at  DateTime @default(now())
+  miss_cost    Decimal? @db.Decimal(10, 6) // Cost if cache missed
+
+  // Quality/validation
+  is_validated Boolean  @default(false) // Response verified by user
+  feedback     String?  // User feedback on cached response
+
+  // TTL
+  expires_at   DateTime? // Cache expiration
+
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  // pgvector embedding for semantic similarity search (managed via raw SQL)
+  // Use PrismaVectorClient.findSimilar() for similarity queries
+  embedding Unsupported("halfvec")?
+
+  @@index([query_hash])
+  @@index([context_type])
+  @@index([user_id])
+  @@index([session_id])
+  @@index([hit_count])
+  @@index([expires_at])
+  @@map("query_embedding_cache")
+  @@schema("public")
+}
+
+// ============================================================================
+// VERIFIED TOOL RESULTS (public schema)
+// Stores tool execution results with embeddings for learning
+// Uses pgvector for transactional ACID guarantees
+// ============================================================================
+
+model VerifiedToolResult {
+  id           String   @id @default(uuid())
+  tool_name    String   // MCP tool name
+  server_id    String   // MCP server ID
+
+  // Input/output
+  input_hash   String   // Hash of tool input for dedup
+  input_params Json     // Tool input parameters
+  result       Json     // Tool result
+  result_summary String? @db.Text // Human-readable summary
+
+  // Verification
+  is_verified   Boolean  @default(false) // Verified by user/admin
+  verified_by   String?  // User ID who verified
+  verified_at   DateTime?
+  verification_type String? // 'user', 'admin', 'auto'
+
+  // Quality metrics
+  quality_score Float?   // 0-1 quality score
+  use_count     Int      @default(0)
+  last_used_at  DateTime @default(now())
+
+  // Context
+  user_id       String?  // User who created
+  session_id    String?  // Session context
+
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  // pgvector embedding for semantic result search
+  embedding Unsupported("halfvec")?
+
+  // Relations
+  verifications ToolResultVerification[]
+
+  @@unique([tool_name, server_id, input_hash])
+  @@index([tool_name])
+  @@index([server_id])
+  @@index([is_verified])
+  @@index([quality_score])
+  @@index([use_count])
+  @@index([user_id])  // User isolation index for FedRAMP/HIPAA compliance
+  @@map("verified_tool_results")
+  @@schema("public")
+}
+
+// ============================================================================
+// TOOL RESULT VERIFICATION (public schema)
+// Tracks individual verifications for tool results
+// ============================================================================
+
+model ToolResultVerification {
+  id           String   @id @default(uuid())
+  result_id    String   // FK to VerifiedToolResult
+
+  // Verification details
+  verification_type String  // 'user', 'system', 'llm', 'provider'
+  verifier_id       String? // user_id or model name
+  confidence        Float   @default(1.0) // 0-1 confidence
+  notes             String? @db.Text
+
+  // Result
+  is_positive  Boolean  @default(true) // true = confirms, false = disputes
+
+  created_at   DateTime @default(now())
+
+  // Relations
+  result       VerifiedToolResult @relation(fields: [result_id], references: [id], onDelete: Cascade)
+
+  @@index([result_id])
+  @@index([verification_type])
+  @@index([is_positive])
+  @@map("tool_result_verifications")
+  @@schema("public")
+}
+
+// ============================================================================
+// KNOWLEDGE FACTS (public schema)
+// Triple-verified facts with embeddings for grounding/hallucination prevention
+// Uses pgvector for ACID guarantees on verified knowledge
+// ============================================================================
+
+model KnowledgeFact {
+  id           String   @id @default(uuid())
+
+  // Fact content
+  subject      String   // Entity the fact is about
+  predicate    String   // Relationship/property
+  object       String   @db.Text // Value/related entity
+  confidence   Float    @default(0.5) // 0-1 confidence score
+
+  // Source attribution
+  source_type  String   // 'document', 'user', 'tool', 'llm', 'admin'
+  source_id    String?  // Reference to source (doc ID, user ID, etc.)
+  source_url   String?  // URL if external source
+
+  // Verification (triple verification)
+  verification_count Int      @default(0) // Number of verifications
+  last_verified_at   DateTime?
+  verified_by_types  String[] @default([]) // ['user', 'llm', 'admin']
+
+  // Scope
+  is_global    Boolean  @default(false) // Global or user-specific
+  user_id      String?  // Owner if not global
+  domain       String?  // Knowledge domain (e.g., 'kubernetes', 'azure')
+
+  // Usage
+  use_count    Int      @default(0)
+  last_used_at DateTime @default(now())
+
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  // pgvector embedding for semantic fact search
+  embedding Unsupported("halfvec")?
+
+  // Relations
+  verifications       KnowledgeVerification[]
+  contradictions      KnowledgeContradiction[] @relation("ContradictedFact")
+  contradicts_facts   KnowledgeContradiction[] @relation("ContradictingFact")
+
+  @@index([subject])
+  @@index([predicate])
+  @@index([domain])
+  @@index([is_global])
+  @@index([user_id])
+  @@index([confidence])
+  @@index([verification_count])
+  @@map("knowledge_facts")
+  @@schema("public")
+}
+
+// ============================================================================
+// KNOWLEDGE VERIFICATION (public schema)
+// Tracks individual verifications for knowledge facts
+// ============================================================================
+
+model KnowledgeVerification {
+  id           String   @id @default(uuid())
+  fact_id      String   // FK to KnowledgeFact
+
+  // Verification details
+  verification_type   String   // 'user', 'system', 'llm', 'provider'
+  verification_method String?  // 'explicit', 'implicit_usage', 'cross_reference', 'automated_reasoning'
+  verifier_id         String?  // user_id or model name
+  confidence          Float    @default(1.0) // 0-1 confidence
+  notes               String?  @db.Text
+
+  // Result
+  is_positive  Boolean  @default(true) // true = confirms, false = disputes
+
+  created_at   DateTime @default(now())
+
+  // Relations
+  fact         KnowledgeFact @relation(fields: [fact_id], references: [id], onDelete: Cascade)
+
+  @@index([fact_id])
+  @@index([verification_type])
+  @@index([is_positive])
+  @@map("knowledge_verifications")
+  @@schema("public")
+}
+
+// ============================================================================
+// KNOWLEDGE CONTRADICTION (public schema)
+// Tracks contradictions between knowledge facts
+// ============================================================================
+
+model KnowledgeContradiction {
+  id                    String   @id @default(uuid())
+  fact_id               String   // The fact being contradicted
+  contradicting_fact_id String   // The fact that contradicts
+
+  // Detection details
+  detected_by        String   // 'system', 'llm', 'user'
+  detection_method   String?  // 'semantic_similarity', 'logical_inference', 'manual'
+  contradiction_type String?  // 'direct', 'temporal', 'conditional'
+
+  // Resolution
+  resolution_status  String   @default("pending") // 'pending', 'resolved', 'both_valid', 'ignored'
+  resolution_notes   String?  @db.Text
+  resolved_by        String?  // user_id who resolved
+
+  detected_at        DateTime @default(now())
+  resolved_at        DateTime?
+
+  // Relations
+  contradicted_fact  KnowledgeFact @relation("ContradictedFact", fields: [fact_id], references: [id], onDelete: Cascade)
+  contradicting_fact KnowledgeFact @relation("ContradictingFact", fields: [contradicting_fact_id], references: [id], onDelete: Cascade)
+
+  @@index([fact_id])
+  @@index([contradicting_fact_id])
+  @@index([resolution_status])
+  @@map("knowledge_contradictions")
+  @@schema("public")
+}
+
+// ============================================================================
+// TOOL SUCCESS RECORDS (public schema)
+// Tracks successful tool executions in pgvector for per-user learning
+// Working set (<10K recent records) — Milvus holds the cross-user archive
+// ============================================================================
+
+model ToolSuccessRecord {
+  id                String   @id @default(uuid())
+  user_id           String
+  session_id        String?
+  query             String   @db.Text
+  tool_name         String
+  server_name       String?
+  intent_tags       String[] @default([])
+  context_tags      String[] @default([])
+  success_score     Float    @default(1.0)
+  execution_time_ms Int?
+  result_summary    String?  @db.VarChar(512)
+  metadata          Json?
+  created_at        DateTime @default(now())
+
+  // pgvector embedding for semantic search (managed via raw SQL)
+  query_embedding   Unsupported("halfvec")?
+
+  @@index([user_id])
+  @@index([tool_name])
+  @@index([created_at])
+  @@map("tool_success_records")
+  @@schema("public")
+}
+
+// ============================================================================
+// TOOL RESULT CACHE (public schema)
+// pgvector L2 tier — between Redis L1 (exact-match) and Milvus L3 (cross-user archive)
+// TTL-bounded, ACID-compliant semantic cache for recent tool results
+// ============================================================================
+
+model ToolResultCache {
+  id               String    @id @default(uuid())
+  tenant_id        String?
+  tool_name        String
+  args_hash        String
+  query_text       String    @db.Text
+  result           Json
+  resource_scope   String?   // "azure:sub-123:rg-prod" for cross-user matching
+  is_shared        Boolean   @default(false)
+  original_user_id String
+  hit_count        Int       @default(0)
+  created_at       DateTime  @default(now())
+  expires_at       DateTime
+
+  // pgvector embedding for semantic search (managed via raw SQL)
+  embedding        Unsupported("halfvec")?
+
+  @@index([tool_name, args_hash])
+  @@index([resource_scope])
+  @@index([expires_at])
+  @@index([tenant_id, original_user_id])  // User isolation index for FedRAMP/HIPAA compliance
+  @@map("tool_result_cache")
+  @@schema("public")
+}
+
+// ============================================================================
+// SCHEMA VERSION (admin schema)
+// Tracks schema migrations for zero-downtime upgrades
+// ============================================================================
+
+model SchemaVersion {
+  id           Int      @id @default(autoincrement())
+  version      String   // Semantic version (e.g., "1.2.0")
+  description  String?  @db.Text
+  checksum     String   // Hash of schema at this version
+  applied_at   DateTime @default(now())
+  applied_by   String?  // User/system that applied
+  rollback_sql String?  @db.Text // SQL to rollback this migration
+  is_current   Boolean  @default(true)
+
+  @@index([version])
+  @@index([is_current])
+  @@map("schema_versions")
+  @@schema("admin")
+}
+
+// ============================================================================
+// DOCUMENT RAG (public schema)
+// Document storage and chunking for RAG pipelines
+// ============================================================================
+
+model Document {
+  id              String   @id @default(uuid())
+  user_id         String
+  session_id      String?                       // Optional: tied to chat session
+
+  // Document metadata
+  filename        String
+  mime_type        String                        // application/pdf, text/plain, etc.
+  file_size        Int                           // bytes
+  storage_path    String?                       // path in object storage
+
+  // Processing
+  status          String   @default("pending")  // pending, processing, ready, failed
+  chunk_count     Int      @default(0)
+  total_tokens    Int      @default(0)          // estimated token count
+  error           String?  @db.Text
+
+  // Content extraction
+  extracted_text  String?  @db.Text             // full extracted text (for small docs)
+  language        String?                       // detected language
+
+  // Search
+  title           String?
+  summary         String?  @db.Text             // LLM-generated summary
+  embedding       Unsupported("halfvec")?        // summary embedding for search
+
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  // Relations
+  user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  chunks          DocumentChunk[]
+
+  @@index([user_id])
+  @@index([status])
+  @@index([session_id])
+  @@index([created_at])
+  @@map("documents")
+  @@schema("public")
+}
+
+model DocumentChunk {
+  id              String   @id @default(uuid())
+  document_id     String
+
+  // Chunk content
+  content         String   @db.Text
+  chunk_index     Int                           // order within document
+  start_offset    Int?                          // character offset in original
+  end_offset      Int?
+
+  // Metadata
+  section_title   String?                       // detected section heading
+  page_number     Int?                          // for PDFs
+  token_count     Int      @default(0)
+
+  // Embedding
+  embedding       Unsupported("halfvec")?
+
+  created_at      DateTime @default(now())
+
+  // Relations
+  document        Document @relation(fields: [document_id], references: [id], onDelete: Cascade)
+
+  @@index([document_id])
+  @@index([chunk_index])
+  @@map("document_chunks")
+  @@schema("public")
+}
+
+// ============================================================================
+// DYNAMIC TOOLS (public schema)
+// One-shot MCP tool generation and execution
+// ============================================================================
+
+model DynamicTool {
+  id           String   @id @default(uuid())
+
+  // Tool definition
+  name         String
+  description  String   @db.Text
+  schema       Json     // JSON Schema for parameters
+  implementation String @db.Text // Generated code
+
+  // Lifecycle
+  scope        String   @default("session") // 'session', 'user', 'global'
+  session_id   String?
+  user_id      String?
+
+  // Security
+  required_permissions String[] @default([])
+  is_sandboxed Boolean  @default(true)
+  approved_by  String?  // user_id who approved
+  approved_at  DateTime?
+
+  // Promotion tracking
+  execution_count Int    @default(0)
+  success_rate    Float  @default(0.0)
+  is_promoted     Boolean @default(false) // promoted to persistent MCP
+  promoted_to     String? // MCP tool id if promoted
+
+  // Metadata
+  created_at   DateTime  @default(now())
+  expires_at   DateTime?
+
+  // Relations
+  executions   DynamicToolExecution[]
+
+  @@index([session_id])
+  @@index([user_id])
+  @@index([scope])
+  @@index([is_promoted])
+  @@map("dynamic_tools")
+  @@schema("public")
+}
+
+model DynamicToolExecution {
+  id           String   @id @default(uuid())
+  tool_id      String
+
+  // Execution details
+  parameters   Json
+  result       Json?
+  error        String?  @db.Text
+
+  // Status
+  status       String   @default("pending") // 'pending', 'running', 'completed', 'failed'
+  duration_ms  Int?
+
+  // Metadata
+  executed_by  String   // user_id
+  executed_at  DateTime @default(now())
+
+  // Relations
+  tool         DynamicTool @relation(fields: [tool_id], references: [id], onDelete: Cascade)
+
+  @@index([tool_id])
+  @@index([status])
+  @@index([executed_at])
+  @@map("dynamic_tool_executions")
+  @@schema("public")
+}
+
+// ============================================================================
+// HALLUCINATION PREVENTION (public schema)
+// Tool call attempts and hallucination logging
+// ============================================================================
+
+model ToolCallAttempt {
+  id           String   @id @default(uuid())
+
+  // Context
+  session_id   String
+  message_id   String?
+  user_id      String
+
+  // Tool info
+  tool_name    String
+  server_id    String
+  parameters   Json
+
+  // Result
+  success      Boolean
+  result       Json?
+  error_type   String?  // 'timeout', 'auth', 'invalid_params', 'server_error', 'not_found'
+  error_message String? @db.Text
+
+  // Grounding applied
+  grounding_used   Boolean @default(false)
+  grounding_sources Json?  // What sources were used for grounding
+
+  // Performance
+  duration_ms  Int?
+
+  attempted_at DateTime @default(now())
+
+  @@index([session_id])
+  @@index([user_id])
+  @@index([tool_name, server_id])
+  @@index([success])
+  @@index([error_type])
+  @@map("tool_call_attempts")
+  @@schema("public")
+}
+
+model HallucinationLog {
+  id           String   @id @default(uuid())
+
+  // Context
+  session_id   String
+  message_id   String?
+  user_id      String
+
+  // Detection
+  detection_method  String  // 'automated_reasoning', 'contradiction', 'user_flag', 'cross_verify', 'claim_validation'
+  confidence        Float   // 0-1 detection confidence
+
+  // Details
+  hallucinated_text String  @db.Text
+  correct_info      String? @db.Text
+  contradiction_source String? // Where the contradiction was found
+
+  // Resolution
+  was_corrected Boolean  @default(false)
+  correction    String?  @db.Text
+
+  // Metadata
+  detected_at   DateTime @default(now())
+  model_used    String?
+  provider      String?
+
+  @@index([session_id])
+  @@index([user_id])
+  @@index([detection_method])
+  @@index([detected_at])
+  @@map("hallucination_logs")
+  @@schema("public")
+}
+
+// ============================================================================
+// LARGE RESPONSE HANDLING (public schema)
+// Store full results when summarized/compressed for LLM context
+// ============================================================================
+
+model LargeResponseStorage {
+  id           String   @id @default(uuid())
+
+  // Context
+  session_id   String
+  message_id   String?
+  tool_call_id String
+
+  // Tool info
+  tool_name    String
+  server_id    String
+
+  // Response data
+  full_result       String   @db.Text // Complete uncompressed result
+  result_hash       String           // For exact match lookups
+  original_size     Int              // Bytes
+  token_estimate    Int              // Estimated token count
+
+  // Compression info
+  compressed_summary   String   @db.Text // What was sent to LLM
+  compressed_size      Int
+  compression_strategy String   // 'passthrough', 'filter', 'summarize', 'paginate', 'hierarchical'
+  information_loss     String   // 'none', 'minimal', 'moderate', 'significant'
+
+  // Query-aware filtering
+  user_query       String   @db.Text // Original user question
+  extracted_filter Json?             // Filter criteria derived from query
+
+  // Pagination state
+  total_items   Int?
+  items_shown   Int?
+  current_page  Int      @default(1)
+  has_more      Boolean  @default(false)
+
+  // TTL
+  created_at    DateTime @default(now())
+  expires_at    DateTime // Auto-cleanup after N hours
+
+  @@index([session_id])
+  @@index([tool_call_id])
+  @@index([result_hash])
+  @@index([expires_at])
+  @@map("large_response_storage")
+  @@schema("public")
+}
+
+// ============================================================================
+// TOOL RESULT INTERPRETATION VALIDATION (public schema)
+// Validate LLM claims against actual tool results
+// ============================================================================
+
+model ToolResultInterpretation {
+  id           String   @id @default(uuid())
+
+  // Context
+  session_id   String
+  message_id   String
+  tool_call_id String
+
+  // Raw data
+  raw_result   String   @db.Text // Original tool result
+  result_hash  String            // For matching against stored results
+
+  // LLM interpretation
+  llm_summary  String   @db.Text // What LLM said about the result
+  llm_model    String            // Model that generated interpretation
+
+  // Validation results
+  validation_status String        // 'valid', 'suspicious', 'invalid'
+  confidence_score  Float         // 0-1 overall confidence
+  warnings          String[] @default([])
+
+  // Outcome
+  regenerated  Boolean  @default(false) // Was response regenerated?
+
+  validated_at DateTime @default(now())
+
+  // Relations
+  claims       InterpretationClaim[]
+
+  @@index([session_id])
+  @@index([tool_call_id])
+  @@index([validation_status])
+  @@map("tool_result_interpretations")
+  @@schema("public")
+}
+
+model InterpretationClaim {
+  id                String   @id @default(uuid())
+  interpretation_id String
+
+  // Claim details
+  claim_text   String   @db.Text
+  claim_type   String   // 'count', 'name', 'status', 'existence', 'comparison'
+  importance   String   // 'critical', 'normal', 'minor'
+
+  // Validation result
+  status       String   // 'verified', 'unverifiable', 'contradicted'
+  evidence     String?  @db.Text // Where in result this was found/contradicted
+  match_type   String?  // 'exact', 'semantic', 'structural'
+
+  // Relations
+  interpretation ToolResultInterpretation @relation(fields: [interpretation_id], references: [id], onDelete: Cascade)
+
+  @@index([interpretation_id])
+  @@index([status])
+  @@index([claim_type])
+  @@map("interpretation_claims")
+  @@schema("public")
+}
+
+// ============================================================================
+// AUTOMATIC TOOL SUCCESS SCORING (public schema)
+// Derive quality scores for tool executions automatically
+// ============================================================================
+
+model ToolExecutionScore {
+  id           String   @id @default(uuid())
+
+  // Context
+  session_id   String
+  message_id   String?
+  tool_call_id String   @unique
+
+  // Tool info
+  tool_name    String
+  server_id    String
+
+  // Execution signals (immediate - 30% weight)
+  exec_http_success      Boolean
+  exec_response_time_ms  Int
+  exec_result_size       Int
+  exec_no_error_flag     Boolean
+  exec_score             Float   // 0-1
+
+  // Structural signals (post-parse - 25% weight)
+  struct_valid_format    Boolean
+  struct_expected_fields Float   // % of expected fields present
+  struct_correct_types   Float   // % of fields with correct type
+  struct_no_error_fields Boolean
+  struct_score           Float   // 0-1
+
+  // Semantic signals (LLM-judged - 25% weight, async)
+  semantic_answers_query Float?  // 0-1
+  semantic_specificity   Float?  // 0-1
+  semantic_consistency   Float?  // 0-1
+  semantic_score         Float?  // 0-1
+
+  // Behavioral signals (updated over time - 20% weight)
+  behavior_user_continued   Boolean @default(false)
+  behavior_followup_asked   Boolean @default(false)
+  behavior_retried          Boolean @default(false)
+  behavior_explicit_feedback String? // 'positive', 'negative', null
+  behavior_score            Float   @default(0.5) // 0-1
+
+  // Combined scores
+  final_score  Float    // Weighted combination
+  confidence   Float    // How confident in this score
+
+  scored_at    DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([session_id])
+  @@index([tool_name, server_id])
+  @@index([final_score])
+  @@map("tool_execution_scores")
+  @@schema("public")
+}
+
+model ToolReliabilityAggregate {
+  id           String   @id @default(uuid())
+
+  // Tool identity
+  tool_name    String
+  server_id    String
+
+  // Aggregate statistics
+  total_executions Int     @default(0)
+  average_score    Float   @default(0.0)
+  score_std_dev    Float   @default(0.0)
+  min_score        Float?
+  max_score        Float?
+
+  // Recent history (for trend analysis)
+  recent_scores    Float[] @default([]) // Last 10 executions
+  score_trend      String  @default("stable") // 'improving', 'stable', 'degrading'
+
+  // Reliability tier
+  tier             String  @default("untrusted") // 'gold', 'silver', 'bronze', 'untrusted'
+  // gold: >0.9 avg, >100 executions
+  // silver: >0.7 avg, >50 executions
+  // bronze: >0.5 avg, >10 executions
+  // untrusted: <0.5 or <10 executions
+
+  first_seen_at    DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@unique([tool_name, server_id])
+  @@index([tier])
+  @@index([average_score])
+  @@map("tool_reliability_aggregates")
+  @@schema("public")
+}
+
+// ============================================================================
+// WORKFLOW PLATFORM - Core workflow definitions (NEW)
+// ============================================================================
+
+model Workflow {
+  id          String  @id @default(uuid())
+  name        String
+  description String? @db.Text
+
+  // ReactFlow definition
+  definition Json // { nodes: [], edges: [] }
+  triggers   Json @default("[]") // Webhook, schedule, event configs
+  settings   Json @default("{}") // Global workflow settings
+  variables  Json @default("{}") // Workflow-level variables
+
+  // Ownership
+  created_by String
+  group_id   String?
+
+  // Status
+  is_active   Boolean @default(true)
+  is_template Boolean @default(false)
+  is_public   Boolean @default(false)
+
+  // Metadata
+  tags     String[] @default([])
+  category String?
+  icon     String?
+  color    String?
+
+  // Statistics
+  total_executions      Int     @default(0)
+  successful_executions Int     @default(0)
+  failed_executions     Int     @default(0)
+  avg_execution_time_ms Int?
+  total_cost            Decimal @default(0) @db.Decimal(10, 6)
+
+  // Rate limiting
+  max_concurrent_executions Int     @default(5)
+  max_executions_per_hour   Int     @default(100)
+  max_cost_per_execution    Decimal @default(10) @db.Decimal(10, 2)
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime? // Soft delete
+
+  // pgvector embedding for semantic search (managed via raw SQL)
+  embedding  Unsupported("halfvec")?
+
+  // Relations
+  creator    User               @relation(fields: [created_by], references: [id])
+  group      UserGroup?         @relation(fields: [group_id], references: [id])
+  versions   WorkflowVersion[]
+  executions WorkflowExecution[]
+  webhooks   WorkflowWebhook[]
+  schedules  WorkflowSchedule[]
+  secrets    WorkflowSecret[]
+  tests      WorkflowTest[]
+  shares     WorkflowShare[]
+
+  @@index([created_by])
+  @@index([group_id])
+  @@index([is_active])
+  @@index([category])
+  @@index([is_template, is_public])
+  @@map("workflows")
+  @@schema("public")
+}
+
+model WorkflowShare {
+  id          String   @id @default(uuid())
+  workflow_id String
+  share_type  String   // 'user' | 'group'
+  target_id   String   // user_id or group_id
+  role        String   // 'viewer' | 'editor' | 'executor' | 'admin'
+  shared_by   String
+  created_at  DateTime @default(now())
+
+  workflow Workflow @relation(fields: [workflow_id], references: [id], onDelete: Cascade)
+  sharer   User     @relation(fields: [shared_by], references: [id])
+
+  @@unique([workflow_id, share_type, target_id])
+  @@index([workflow_id])
+  @@index([target_id])
+  @@map("workflow_shares")
+  @@schema("public")
+}
+
+model WorkflowVersion {
+  id          String  @id @default(uuid())
+  workflow_id String
+  version     Int
+  definition  Json
+  triggers    Json    @default("[]")
+  settings    Json    @default("{}")
+  changelog   String? @db.Text
+  is_active   Boolean @default(false)
+  created_by  String
+  created_at  DateTime @default(now())
+
+  workflow Workflow            @relation(fields: [workflow_id], references: [id], onDelete: Cascade)
+  creator  User                @relation(fields: [created_by], references: [id])
+  executions WorkflowExecution[]
+
+  @@unique([workflow_id, version])
+  @@index([workflow_id])
+  @@index([workflow_id, is_active])
+  @@map("workflow_versions")
+  @@schema("public")
+}
+
+model WorkflowExecution {
+  id          String  @id @default(uuid())
+  workflow_id String
+  version_id  String?
+
+  // Trigger info
+  trigger_type String // webhook, schedule, manual, event, api
+  trigger_data Json?
+  webhook_id   String?
+
+  // Execution state (persistent for resume)
+  status          String @default("pending") // pending, running, paused, completed, failed, cancelled
+  current_node_id String?
+  state           Json   @default("{}")
+  node_outputs    Json   @default("{}")
+  checkpoints     Json   @default("[]")
+
+  // Input/Output
+  input         Json
+  output        Json?
+  error         String? @db.Text
+  error_node_id String?
+
+  // Metrics
+  total_nodes     Int     @default(0)
+  completed_nodes Int     @default(0)
+  execution_time_ms Int?
+  cost            Decimal @default(0) @db.Decimal(10, 6)
+
+  // Ownership
+  started_by String?
+  group_id   String?
+
+  // Timing
+  started_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  completed_at DateTime?
+  paused_at    DateTime?
+  resume_at    DateTime? // Scheduled resume time
+
+  // Relations
+  workflow  Workflow             @relation(fields: [workflow_id], references: [id])
+  version   WorkflowVersion?     @relation(fields: [version_id], references: [id])
+  starter   User?                @relation(fields: [started_by], references: [id])
+  group     UserGroup?           @relation(fields: [group_id], references: [id])
+  approvals WorkflowApproval[]
+  logs      WorkflowExecutionLog[]
+  tokenUsage TokenUsage[]
+
+  @@index([workflow_id])
+  @@index([status])
+  @@index([started_by])
+  @@index([started_at])
+  @@index([webhook_id])
+  @@map("workflow_executions")
+  @@schema("public")
+}
+
+model WorkflowApproval {
+  id           String @id @default(uuid())
+  execution_id String
+  node_id      String
+
+  // Approval configuration
+  required_approvers String[] // User IDs or group names
+  required_count     Int      @default(1)
+  timeout_seconds    Int      @default(86400) // 24 hours
+  timeout_action     String   @default("reject") // approve, reject, escalate
+
+  // Approval status
+  status       String   @default("pending") // pending, approved, rejected, timeout, escalated
+  approved_by  String[] @default([])
+  rejected_by  String?
+  escalated_to String[] @default([])
+
+  // Context
+  message      String? @db.Text
+  context_data Json?
+  response     String? @db.Text
+
+  // Notifications
+  notification_channels String[] @default([])
+  notifications_sent    Json     @default("[]")
+
+  // Timing
+  created_at DateTime  @default(now())
+  timeout_at DateTime
+  decided_at DateTime?
+
+  // Relations
+  execution WorkflowExecution @relation(fields: [execution_id], references: [id], onDelete: Cascade)
+  rejector  User?             @relation(fields: [rejected_by], references: [id])
+
+  @@index([execution_id])
+  @@index([status])
+  @@map("workflow_approvals")
+  @@schema("public")
+}
+
+model WorkflowExecutionLog {
+  id           String   @id @default(uuid())
+  execution_id String
+  node_id      String?
+  level        String // debug, info, warn, error
+  message      String   @db.Text
+  data         Json?
+  trace_id     String?
+  span_id      String?
+  timestamp    DateTime @default(now())
+
+  execution WorkflowExecution @relation(fields: [execution_id], references: [id], onDelete: Cascade)
+
+  @@index([execution_id])
+  @@index([timestamp])
+  @@index([level])
+  @@index([trace_id])
+  @@map("workflow_execution_logs")
+  @@schema("public")
+}
+
+model WorkflowWebhook {
+  id          String  @id @default(uuid())
+  workflow_id String
+  webhook_key String  @unique
+  name        String
+  description String? @db.Text
+
+  // Security
+  secret       String?
+  allowed_ips  String[] @default([])
+  require_auth Boolean  @default(false)
+
+  // Configuration
+  method        String @default("POST")
+  response_mode String @default("async") // async, sync
+  timeout_ms    Int    @default(30000)
+
+  // Rate limiting
+  rate_limit_per_minute Int @default(60)
+
+  // Statistics
+  total_calls    Int       @default(0)
+  last_called_at DateTime?
+
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workflow Workflow @relation(fields: [workflow_id], references: [id], onDelete: Cascade)
+
+  @@index([workflow_id])
+  @@map("workflow_webhooks")
+  @@schema("public")
+}
+
+model WebhookAuditLog {
+  id          String   @id @default(uuid())
+  webhook_id  String?
+  webhook_key String
+  workflow_id String?
+
+  // Request details
+  source_ip     String
+  user_agent    String?  @db.Text
+  content_type  String?
+  payload_size  Int      @default(0)
+  payload_hash  String?  // SHA-256 of payload for dedup/forensics
+
+  // Security outcome
+  status        String   // accepted, rejected_ip, rejected_signature, rejected_rate_limit,
+                         // rejected_disabled, rejected_payload, rejected_injection, rejected_kill_switch
+  status_code   Int      @default(200)
+  rejection_reason String? @db.Text
+
+  // DLP/injection scan
+  dlp_findings    Json?   // Array of DLP findings if any
+  injection_score Float?  // 0-1 prompt injection confidence
+
+  // Execution link
+  execution_id    String?
+  response_time_ms Int?
+
+  // Platform detection
+  platform        String? // slack, teams, pagerduty, servicenow, jira, github, custom
+
+  created_at DateTime @default(now())
+
+  @@index([webhook_key])
+  @@index([webhook_id])
+  @@index([source_ip])
+  @@index([status])
+  @@index([created_at])
+  @@index([platform])
+  @@map("webhook_audit_logs")
+  @@schema("admin")
+}
+
+model WorkflowSchedule {
+  id          String  @id @default(uuid())
+  workflow_id String
+  name        String
+  description String? @db.Text
+
+  // Schedule configuration
+  cron_expression String
+  timezone        String @default("UTC")
+  input_template  Json   @default("{}")
+
+  // Status
+  is_active       Boolean   @default(true)
+  next_run_at     DateTime?
+  last_run_at     DateTime?
+  last_run_status String?
+
+  // Statistics
+  total_runs      Int @default(0)
+  successful_runs Int @default(0)
+  failed_runs     Int @default(0)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workflow Workflow @relation(fields: [workflow_id], references: [id], onDelete: Cascade)
+
+  @@index([workflow_id])
+  @@index([next_run_at])
+  @@map("workflow_schedules")
+  @@schema("public")
+}
+
+model WorkflowTest {
+  id          String  @id @default(uuid())
+  workflow_id String
+  name        String
+  description String? @db.Text
+
+  // Test configuration
+  input              Json
+  mocks              Json   @default("{}")
+  assertions         Json   @default("[]")
+  expected_output    Json?
+  expected_nodes     String[] @default([])
+  expected_max_ms    Int?
+
+  // Last run
+  last_run_at        DateTime?
+  last_run_passed    Boolean?
+  last_run_error     String?   @db.Text
+  last_run_duration  Int?
+
+  is_active  Boolean  @default(true)
+  created_by String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workflow Workflow @relation(fields: [workflow_id], references: [id], onDelete: Cascade)
+  creator  User?    @relation(fields: [created_by], references: [id])
+
+  @@index([workflow_id])
+  @@map("workflow_tests")
+  @@schema("public")
+}
+
+// ============================================================================
+// USER GROUPS & CHARGEBACK (NEW)
+// ============================================================================
+
+model UserGroup {
+  id                    String  @id @default(uuid())
+  name                  String  @unique
+  display_name          String
+  description           String? @db.Text
+  parent_group_id       String?
+  cost_center           String?
+  billing_contact_email String?
+  metadata              Json    @default("{}")
+  is_active             Boolean @default(true)
+  created_by            String?
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  // Relations
+  parent_group    UserGroup?              @relation("GroupHierarchy", fields: [parent_group_id], references: [id])
+  child_groups    UserGroup[]             @relation("GroupHierarchy")
+  memberships     UserGroupMembership[]
+  cost_budgets    CostBudget[]
+  chargeback_reports ChargebackReport[]
+  workflows       Workflow[]
+  workflow_executions WorkflowExecution[]
+  workflow_secrets WorkflowSecret[]       @relation("GroupSecrets")
+  rate_limits     RateLimit[]
+  token_usage     TokenUsage[]            @relation("GroupTokenUsage")
+
+  @@index([name])
+  @@index([parent_group_id])
+  @@index([cost_center])
+  @@map("user_groups")
+  @@schema("admin")
+}
+
+model UserGroupMembership {
+  id         String   @id @default(uuid())
+  user_id    String
+  group_id   String
+  role       String   @default("member") // member, admin, billing
+  is_primary Boolean  @default(false)
+  joined_at  DateTime @default(now())
+  added_by   String?
+
+  user  User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  group UserGroup @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  adder User?     @relation("MembershipAdder", fields: [added_by], references: [id])
+
+  @@unique([user_id, group_id])
+  @@index([user_id])
+  @@index([group_id])
+  @@map("user_group_memberships")
+  @@schema("admin")
+}
+
+model CostBudget {
+  id          String  @id @default(uuid())
+  name        String
+  budget_type String // user, group, global
+  user_id     String?
+  group_id    String?
+
+  // Budget amounts (USD)
+  daily_limit   Decimal? @db.Decimal(10, 2)
+  weekly_limit  Decimal? @db.Decimal(10, 2)
+  monthly_limit Decimal  @db.Decimal(10, 2)
+  annual_limit  Decimal? @db.Decimal(10, 2)
+
+  // Alert thresholds
+  alert_threshold_50  Boolean @default(true)
+  alert_threshold_75  Boolean @default(true)
+  alert_threshold_90  Boolean @default(true)
+  alert_threshold_100 Boolean @default(true)
+
+  // Action on limit
+  action_on_limit   String  @default("warn") // warn, throttle, block
+  throttle_to_model String?
+
+  // Notifications
+  notify_emails        String[] @default([])
+  notify_slack_channel String?
+
+  // Period tracking
+  current_period_start DateTime @default(now())
+  current_spend        Decimal  @default(0) @db.Decimal(10, 6)
+
+  is_active  Boolean  @default(true)
+  created_by String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user    User?      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  group   UserGroup? @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  creator User?      @relation("BudgetCreator", fields: [created_by], references: [id])
+
+  @@index([user_id])
+  @@index([group_id])
+  @@index([budget_type])
+  @@map("cost_budgets")
+  @@schema("admin")
+}
+
+model ChargebackReport {
+  id            String  @id @default(uuid())
+  report_period String // YYYY-MM format
+  group_id      String?
+  user_id       String?
+  cost_center   String?
+
+  // Token metrics
+  total_input_tokens    BigInt  @default(0)
+  total_output_tokens   BigInt  @default(0)
+  total_cached_tokens   BigInt  @default(0)
+  total_thinking_tokens BigInt  @default(0)
+
+  // Cost breakdowns
+  cost_by_provider Json @default("{}")
+  cost_by_model    Json @default("{}")
+
+  // Total costs
+  total_llm_cost     Decimal @default(0) @db.Decimal(10, 6)
+  total_mcp_cost     Decimal @default(0) @db.Decimal(10, 6)
+  total_compute_cost Decimal @default(0) @db.Decimal(10, 6)
+  total_storage_cost Decimal @default(0) @db.Decimal(10, 6)
+  total_cost         Decimal @default(0) @db.Decimal(10, 6)
+
+  // Usage metrics
+  total_requests            Int @default(0)
+  total_sessions            Int @default(0)
+  total_workflow_executions Int @default(0)
+  total_code_executions     Int @default(0)
+
+  // Status
+  status        String    @default("draft") // draft, finalized, exported, paid
+  finalized_at  DateTime?
+  exported_at   DateTime?
+  export_format String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  group UserGroup? @relation(fields: [group_id], references: [id])
+  user  User?      @relation(fields: [user_id], references: [id])
+
+  @@unique([report_period, group_id, user_id])
+  @@index([report_period])
+  @@index([group_id])
+  @@index([user_id])
+  @@map("chargeback_reports")
+  @@schema("admin")
+}
+
+// ============================================================================
+// MODEL PRICING - Accurate per-model cost calculation (NEW)
+// ============================================================================
+
+model ModelPricing {
+  id                      String    @id @default(uuid())
+  provider                String // anthropic, openai, google, azure, ollama, aws-bedrock
+  model                   String
+  model_family            String?
+  input_cost_per_1k       Decimal   @db.Decimal(10, 6)
+  output_cost_per_1k      Decimal   @db.Decimal(10, 6)
+  cached_input_cost_per_1k Decimal? @db.Decimal(10, 6)
+  thinking_cost_per_1k    Decimal?  @db.Decimal(10, 6)
+  image_input_cost        Decimal?  @db.Decimal(10, 6)
+  effective_date          DateTime  @default(now())
+  end_date                DateTime?
+  notes                   String?   @db.Text
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+
+  @@unique([provider, model, effective_date])
+  @@index([provider, model])
+  @@index([effective_date])
+  @@map("model_pricing")
+  @@schema("admin")
+}
+
+// ============================================================================
+// SECRETS MANAGEMENT WITH ESO (NEW)
+// ============================================================================
+
+model WorkflowSecret {
+  id          String  @id @default(uuid())
+  name        String
+  description String? @db.Text
+  scope       String // global, group, workflow
+  group_id    String?
+  workflow_id String?
+
+  // ESO Configuration
+  eso_enabled          Boolean @default(true)
+  eso_secret_store     String  @default("openagentic-secrets")
+  eso_secret_store_kind String @default("ClusterSecretStore")
+  eso_remote_ref       Json
+
+  // K8s reference
+  k8s_secret_name      String?
+  k8s_secret_namespace String  @default("openagentic")
+  k8s_secret_key       String  @default("value")
+
+  // Fallback (dev only)
+  encrypted_value   String?
+  encryption_key_id String?
+
+  // Metadata
+  version           Int       @default(1)
+  last_rotated_at   DateTime?
+  expires_at        DateTime?
+  rotation_schedule String?
+
+  // Access control
+  allowed_node_types String[] @default([])
+  allowed_users      String[] @default([])
+  allowed_groups     String[] @default([])
+
+  // Audit
+  last_accessed_at DateTime?
+  access_count     Int       @default(0)
+
+  created_by String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  group    UserGroup? @relation("GroupSecrets", fields: [group_id], references: [id], onDelete: Cascade)
+  workflow Workflow?  @relation(fields: [workflow_id], references: [id], onDelete: Cascade)
+  creator  User?      @relation(fields: [created_by], references: [id])
+  data_sources    DataSource[]
+
+  @@unique([name, scope, group_id, workflow_id])
+  @@index([scope])
+  @@index([group_id])
+  @@index([workflow_id])
+  @@index([k8s_secret_name, k8s_secret_namespace])
+  @@map("workflow_secrets")
+  @@schema("admin")
+}
+
+// ─── Data Sources (Reusable connections for flows) ─────────────────────────
+model DataSource {
+  id              String   @id @default(uuid())
+  name            String
+  description     String?  @db.Text
+  type            String   // postgres, mysql, rest_api, s3, milvus, redis, graphql
+  connection_config Json   // { host, port, database, path, headers, etc. }
+  secret_id       String?  // FK to WorkflowSecret for credentials
+  schema_cache    Json?    // Cached schema: { tables: [{ name, columns: [{ name, type }] }] }
+  schema_probed_at DateTime?
+  status          String   @default("untested") // untested, connected, failed
+  status_message  String?
+  created_by      String
+  is_shared       Boolean  @default(false)
+  tags            String[] @default([])
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  secret          WorkflowSecret? @relation(fields: [secret_id], references: [id])
+
+  @@unique([name, created_by])
+  @@index([type])
+  @@index([created_by])
+  @@map("data_sources")
+  @@schema("public")
+}
+
+model ESOSecretStore {
+  id        String @id @default(uuid())
+  name      String @unique
+  kind      String @default("ClusterSecretStore")
+  provider  String // aws, azure, gcp, vault, kubernetes
+
+  provider_config Json
+
+  // Health
+  last_health_check DateTime?
+  health_status     String    @default("unknown")
+  health_message    String?   @db.Text
+
+  // Usage
+  secrets_count Int       @default(0)
+  last_sync_at  DateTime?
+
+  is_default Boolean  @default(false)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([provider])
+  @@index([is_default])
+  @@map("eso_secret_stores")
+  @@schema("admin")
+}
+
+// ============================================================================
+// RATE LIMITING (NEW)
+// ============================================================================
+
+model RateLimit {
+  id          String  @id @default(uuid())
+  name        String
+  description String? @db.Text
+  scope       String // global, group, user
+  group_id    String?
+  user_id     String?
+
+  // Request limits
+  requests_per_minute Int @default(60)
+  requests_per_hour   Int @default(1000)
+  requests_per_day    Int @default(10000)
+
+  // Token limits
+  tokens_per_minute Int @default(100000)
+  tokens_per_hour   Int @default(1000000)
+  tokens_per_day    Int @default(10000000)
+
+  // Workflow limits
+  workflow_executions_per_hour Int @default(100)
+  concurrent_workflows         Int @default(10)
+
+  // Code execution limits
+  code_executions_per_hour     Int @default(50)
+  code_execution_timeout_sec   Int @default(300)
+
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  group UserGroup? @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  user  User?      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([scope])
+  @@index([group_id])
+  @@index([user_id])
+  @@map("rate_limits")
+  @@schema("admin")
+}
+
+// ============================================================================
+// Synth (Tool Synthesis) - Dynamic Tool Synthesis
+// ============================================================================
+
+// Track all Synth tool syntheses
+model SynthSynthesis {
+  id       String @id @default(uuid())
+  user_id  String
+
+  // Request details
+  intent           String  @db.Text              // Natural language intent
+  session_id       String?                       // Optional chat/code session ID
+  capabilities     String[] @default([])         // Requested capabilities
+
+  // Synthesized tool
+  code             String   @db.Text             // Generated Python code
+  explanation      String?  @db.Text             // LLM explanation of the code
+  risk_level       String   @default("low")      // 'low', 'medium', 'high', 'critical'
+  risk_reasoning   String?  @db.Text             // Why this risk level was assigned
+  capabilities_used String[] @default([])        // Actual capabilities used
+
+  // Execution
+  status           String   @default("pending")  // 'pending', 'approved', 'executing', 'completed', 'failed', 'cancelled', 'rejected'
+  result           Json?                         // Execution result
+  error            String?  @db.Text             // Error message if failed
+  dry_run          Boolean  @default(false)      // Was this just synthesis without execution
+
+  // Approval tracking
+  approval_required Boolean @default(false)
+  approval_id       String? @unique              // Link to SynthApproval if needed
+
+  // Credentials used (SSO provider, NOT stored credentials)
+  sso_provider     String?                       // 'azure_ad', 'google', 'aws_sso', 'github', 'local'
+
+  // Metrics
+  synthesis_time_ms   Int?                       // Time to synthesize
+  execution_time_ms   Int?                       // Time to execute
+  input_tokens        Int?
+  output_tokens       Int?
+  cost_usd            Decimal? @db.Decimal(10, 6)
+  ttft_ms             Int?                       // Time to first token
+
+  created_at DateTime @default(now())
+  completed_at DateTime?
+
+  // Relations
+  user     User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  approval SynthApproval? @relation("SynthSynthesisApproval")
+
+  @@index([user_id])
+  @@index([status])
+  @@index([risk_level])
+  @@index([sso_provider])
+  @@index([created_at])
+  @@map("synth_syntheses")
+  @@schema("public")
+}
+
+// Track approval requests for high-risk Synth tools
+model SynthApproval {
+  id            String @id @default(uuid())
+  synthesis_id  String @unique                   // Link to SynthSynthesis
+
+  // Request details
+  requester_id  String                           // User who requested the tool
+  intent        String @db.Text                  // Copy of intent for easy access
+  risk_level    String                           // 'medium', 'high', 'critical'
+  code          String @db.Text                  // Code to be approved
+
+  // Approval status
+  status        String  @default("pending")      // 'pending', 'approved', 'rejected', 'expired'
+  approver_id   String?                          // Admin who approved/rejected
+  reason        String? @db.Text                 // Approval/rejection reason
+
+  // Timeout handling
+  expires_at    DateTime                         // When this approval request expires
+  timeout_action String @default("reject")       // 'reject', 'escalate'
+
+  created_at    DateTime @default(now())
+  resolved_at   DateTime?
+
+  // Relations
+  requester User            @relation("SynthApprovalRequester", fields: [requester_id], references: [id], onDelete: Cascade)
+  approver  User?           @relation("SynthApprovalApprover", fields: [approver_id], references: [id])
+  synthesis SynthSynthesis  @relation("SynthSynthesisApproval", fields: [synthesis_id], references: [id], onDelete: Cascade)
+
+  @@index([requester_id])
+  @@index([approver_id])
+  @@index([status])
+  @@index([expires_at])
+  @@map("synth_approvals")
+  @@schema("public")
+}
+
+// Track daily usage per user for rate limiting
+model SynthDailyUsage {
+  id       String @id @default(uuid())
+  user_id  String
+  date     DateTime @db.Date                     // Date (no time component)
+
+  // Counters
+  synthesis_count  Int @default(0)               // Number of syntheses today
+  success_count    Int @default(0)
+  failure_count    Int @default(0)
+
+  // Cost tracking
+  total_cost_usd   Decimal @default(0) @db.Decimal(10, 6)
+  total_tokens     Int     @default(0)
+
+  // Capability usage breakdown (JSON for flexibility)
+  capability_usage Json @default("{}")           // { "http": 10, "github": 5, ... }
+  risk_breakdown   Json @default("{}")           // { "low": 8, "medium": 2, ... }
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, date])
+  @@index([user_id])
+  @@index([date])
+  @@map("synth_daily_usage")
+  @@schema("public")
+}
+
+// Audit log for capability access (security tracking)
+model SynthCapabilityAudit {
+  id       String @id @default(uuid())
+  user_id  String
+
+  // What was accessed
+  synthesis_id String                            // Link to synthesis
+  capability   String                            // e.g., 'aws:s3:read', 'github:repo:read'
+
+  // SSO context
+  sso_provider String                            // Provider that granted access
+
+  // Result
+  allowed      Boolean                           // Was access allowed
+  deny_reason  String? @db.Text                  // If denied, why
+
+  // Request context
+  ip_address   String?
+  user_agent   String? @db.Text
+
+  created_at DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([capability])
+  @@index([allowed])
+  @@index([created_at])
+  @@map("synth_capability_audit")
+  @@schema("public")
+}
+
+// Synth Global Configuration (admin-controlled)
+model SynthConfiguration {
+  id String @id @default("default")
+
+  // Feature flags
+  enabled                  Boolean @default(true)
+  auto_approve_low_risk    Boolean @default(true)
+
+  // LLM settings
+  provider                 String  @default("bedrock")
+  model                    String  @default("us.anthropic.claude-opus-4-6-v1")
+  base_url                 String?
+
+  // Limits
+  max_timeout_seconds      Int @default(60)
+  max_concurrent_executions Int @default(10)
+  max_daily_syntheses_global Int @default(10000)
+  max_daily_syntheses_per_user Int @default(100)
+
+  // Approval settings
+  approval_timeout_seconds Int    @default(3600)
+  approval_timeout_action  String @default("reject")
+
+  // Capability controls
+  allowed_capabilities     String[] @default([])   // Empty = all allowed
+  blocked_capabilities     String[] @default([])
+  admin_only_capabilities  String[] @default(["shell", "filesystem"])
+
+  // Cost controls
+  default_user_daily_budget_usd  Decimal @default(10.00) @db.Decimal(10, 2)
+  default_group_daily_budget_usd Decimal @default(100.00) @db.Decimal(10, 2)
+
+  // Security settings
+  auth_mode              String @default("user_only")      // CRITICAL: Never use service accounts
+  credential_source      String @default("sso_only")       // 'sso_only', 'linked_accounts'
+  session_based_oauth    Boolean @default(true)            // Fresh OAuth each session
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("synth_configuration")
+  @@schema("admin")
+}
+
+// ============================================================================
+// CREDENTIAL AUDIT LOG - Tracks admin CRUD on LLM providers, MCP servers, API keys
+// ============================================================================
+
+model CredentialAuditLog {
+  id          String   @id @default(uuid())
+  user_id     String
+  user_email  String?
+  action      String   // "create", "update", "delete", "view", "enable", "disable"
+  entity_type String   // "llm_provider", "mcp_server", "api_key"
+  entity_id   String
+  entity_name String?
+  changes     Json?    // { field: { old: x, new: y } } for updates
+  ip_address  String?
+  user_agent  String?  @db.Text
+  created_at  DateTime @default(now())
+
+  @@index([user_id])
+  @@index([entity_type])
+  @@index([entity_id])
+  @@index([action])
+  @@index([created_at])
+  @@map("credential_audit_log")
+  @@schema("admin")
+}
+
+// ============================================================================
+// AGENT MEMORY - Persistent memory for agents across sessions
+// ============================================================================
+
+model AgentMemory {
+  id         String   @id @default(uuid())
+  user_id    String
+  category   String   // e.g. "preference", "fact", "workflow", "cloud"
+  key        String
+  value      String   @db.Text
+  confidence Float    @default(1.0)
+  ttl_hours  Int?     // optional expiry
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([user_id, category])
+  @@index([user_id, key])
+  @@map("agent_memories")
+  @@schema("public")
+}
+
+// ============================================================================
+// Rate Limit Violations — persisted enforcement data
+// ============================================================================
+
+model RateLimitViolation {
+  id             String   @id @default(uuid())
+  user_id        String?
+  user_email     String?
+  violation_type String   // requests_per_minute, requests_per_hour, requests_per_day, tokens_per_day
+  limit_value    Int
+  actual_value   Int
+  tier_name      String?  // which tier was in effect
+  endpoint       String?  // which endpoint triggered the violation
+  ip_address     String?
+  metadata       Json?    @db.JsonB
+  created_at     DateTime @default(now())
+
+  @@index([user_id])
+  @@index([violation_type])
+  @@index([created_at])
+  @@index([tier_name])
+  @@map("rate_limit_violations")
+  @@schema("admin")
+}
+
+// ============================================================================
+// MCP Tool-Level Access Policies — per-tool granularity
+// ============================================================================
+
+model MCPToolAccessPolicy {
+  id               String   @id @default(uuid())
+  server_id        String   // MCP server ID
+  tool_name        String   // specific tool name (or '*' for all tools)
+  azure_group_id   String?  // Azure AD group (null = applies to all)
+  user_id          String?  // specific user override (null = group-level)
+  access_type      String   // 'allow' | 'deny'
+  is_enabled       Boolean  @default(true)
+  priority         Int      @default(1000) // Lower = higher priority
+  reason           String?  @db.Text
+  require_approval Boolean  @default(false) // require human approval before execution
+  created_by       String?
+  updated_by       String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@index([server_id])
+  @@index([tool_name])
+  @@index([azure_group_id])
+  @@index([user_id])
+  @@index([server_id, tool_name])
+  @@index([priority])
+  @@map("mcp_tool_access_policies")
+  @@schema("public")
+}
+
+// ============================================================================
+// INTEGRATIONS - Slack/Teams integration for Phase C
+// ============================================================================
+
+model Integration {
+  id                  String    @id @default(uuid())
+  name                String
+  platform            String    // 'slack' | 'teams'
+  status              String    @default("inactive") // 'active' | 'inactive' | 'error'
+  config              Json      // Encrypted: bot token, webhook URL, signing secret
+  webhook_id          String?   @unique
+  allowed_channels    String[]  @default([])
+  allowed_workflows   String[]  @default([])
+  created_by          String?
+  updated_by          String?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  deleted_at          DateTime?
+
+  creator             User?     @relation("IntegrationCreator", fields: [created_by], references: [id])
+  updater             User?     @relation("IntegrationUpdater", fields: [updated_by], references: [id])
+  logs                IntegrationLog[]
+
+  @@index([platform])
+  @@index([status])
+  @@index([webhook_id])
+  @@map("integrations")
+  @@schema("admin")
+}
+
+model IntegrationLog {
+  id                  String    @id @default(uuid())
+  integration_id      String
+  direction           String    // 'inbound' | 'outbound'
+  platform            String    // 'slack' | 'teams'
+  channel_id          String?
+  user_id             String?
+  message_text        String?
+  workflow_id         String?
+  execution_id        String?
+  status              String    @default("pending") // 'pending' | 'success' | 'error'
+  error               String?
+  response_data       Json?
+  created_at          DateTime  @default(now())
+
+  integration         Integration @relation(fields: [integration_id], references: [id])
+
+  @@index([integration_id])
+  @@index([platform])
+  @@index([created_at])
+  @@map("integration_logs")
+  @@schema("admin")
+}
+
+model AgentAuditEvent {
+  id             String   @id @default(uuid())
+  executionId    String
+  sessionId      String
+  userId         String
+  agentId        String
+  agentRole      String
+  eventType      String
+  eventPayload   Json
+  parentAgentId  String?
+  modelId        String?
+  source         String   @default("chat")
+  riskLevel      String?
+  durationMs     Int?
+  inputTokens    Int?
+  outputTokens   Int?
+  costCents      Int?
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([executionId])
+  @@index([sessionId])
+  @@index([agentRole, createdAt])
+  @@index([source, createdAt])
+  @@map("agent_audit_events")
+  @@schema("public")
+}
+
+model ArtifactFunction {
+  id              String   @id @default(uuid())
+  executionId     String
+  sessionId       String
+  userId          String
+  name            String
+  description     String
+  pythonCode      String   @db.Text
+  capabilities    String[]
+  riskLevel       String   @default("low")
+  riskReasons     String[]
+  approvalStatus  String   @default("pending")
+  approvedBy      String?
+  approvedAt      DateTime?
+  callCount       Int      @default(0)
+  lastCalledAt    DateTime?
+  maxMemoryMb     Int      @default(256)
+  maxTimeoutS     Int      @default(30)
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([executionId])
+  @@index([approvalStatus])
+  @@map("artifact_functions")
+  @@schema("public")
+}
+
+model CompactionLog {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  session_id       String   @db.Uuid
+  model            String   @db.VarChar(200)
+  mode             String   @db.VarChar(20)
+  level            String   @db.VarChar(20)
+  messages_dropped Int
+  tokens_freed     Int
+  summary_type     String   @db.VarChar(20)
+  summary_tokens   Int
+  budget_total     Int
+  budget_used      Int
+  model_switched   Boolean  @default(false)
+  previous_model   String?  @db.VarChar(200)
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([session_id])
+  @@index([created_at])
+  @@map("compaction_log")
+  @@schema("public")
+}
+
+// ============================================================================
+// COMPOSABLE PROMPT SYSTEM
+// ============================================================================
+
+model PromptModule {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  category    String   @db.VarChar(20)
+  content     String   @db.Text
+  description String   @db.Text
+  priority    Int      @default(50)
+  token_cost  Int      @default(0)
+  enabled     Boolean  @default(true)
+  injection   Json     @db.JsonB
+  variants    Json?    @db.JsonB
+  version     Int      @default(1)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([category])
+  @@index([enabled])
+  @@map("prompt_modules")
+  @@schema("public")
+}
+
+model PromptModuleHistory {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  module_id  String   @db.Uuid
+  content    String   @db.Text
+  variants   Json?    @db.JsonB
+  version    Int
+  edited_by  String   @db.VarChar(200)
+  created_at DateTime @default(now())
+
+  @@index([module_id])
+  @@map("prompt_module_history")
+  @@schema("public")
+}
+
+model PromptEffectiveness {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  session_id   String   @db.Uuid
+  modules      String[]
+  model        String   @db.VarChar(200)
+  model_family String   @db.VarChar(20)
+  mode         String   @db.VarChar(20)
+  outcome      String   @db.VarChar(20)
+  feedback_id  String?  @db.Uuid
+  created_at   DateTime @default(now())
+
+  @@index([created_at])
+  @@index([model_family])
+  @@map("prompt_effectiveness")
+  @@schema("public")
+}
+
+
+// ===========================================================================
+// Shared Knowledge Base
+// ===========================================================================
+// Cluster-wide RAG knowledge base available to every user and every platform
+// agent. Each source defines a place to pull content from (webpage, uploaded
+// document, RSS feed, HTTP endpoint, SQL DataSource query, agent research
+// task); its ingested content lives as (content, metadata, embedding) tuples
+// in pgvector + Milvus and is queryable by the chat RAG stage.
+//
+// Prisma stores metadata only (source config, doc manifest, per-doc hashes
+// and chunk counts). The actual chunk embeddings go to a runtime-created
+// halfvec table so they can use the same dim-dynamic pipeline the rest of
+// the platform uses — see DatabaseService.ensureEmbeddingDimensions().
+// ===========================================================================
+
+model SharedKBSource {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String   @db.VarChar(200)
+  description  String?
+  // Source type: webpage | document | rss | http | database | agent
+  type         String   @db.VarChar(32)
+  // Type-specific config. Shape varies per type:
+  //   webpage:  { url, crawlDepth?, cssSelector?, followLinks? }
+  //   document: { filename, mimeType, sizeBytes, storageKey }
+  //   rss:      { url, pollIntervalSec }
+  //   http:     { url, method, headers?, authRef?, jsonPath }
+  //   database: { dataSourceId, sql, chunkColumn, metadataColumns }
+  //   agent:    { agentRole, task, maxIterations }
+  config       Json
+  enabled      Boolean  @default(true)
+  // Optional cron expression for scheduled ingestion (null = manual only)
+  schedule     String?  @db.VarChar(100)
+  last_ingest_at     DateTime?
+  last_ingest_status String? @db.VarChar(32)  // success | error | running | null
+  last_ingest_error  String?
+  doc_count    Int      @default(0)
+  chunk_count  Int      @default(0)
+  created_by   String?  @db.VarChar(200)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  documents    SharedKBDocument[]
+
+  @@index([type])
+  @@index([enabled])
+  @@index([last_ingest_at])
+  @@map("shared_kb_sources")
+  @@schema("public")
+}
+
+model SharedKBDocument {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source_id     String   @db.Uuid
+  source        SharedKBSource @relation(fields: [source_id], references: [id], onDelete: Cascade)
+  // Origin identifier — URL for web/http, filename for documents,
+  // feed item guid for RSS, row PK for database, task id for agent.
+  origin        String   @db.VarChar(500)
+  title         String?  @db.VarChar(500)
+  // SHA-256 of normalized content; dedupes re-ingestions
+  content_hash  String   @db.VarChar(64)
+  chunk_count   Int      @default(0)
+  tokens_est    Int?
+  metadata      Json?
+  ingested_at   DateTime @default(now())
+
+  @@unique([source_id, content_hash])
+  @@index([source_id])
+  @@index([ingested_at])
+  @@map("shared_kb_documents")
+  @@schema("public")
+}

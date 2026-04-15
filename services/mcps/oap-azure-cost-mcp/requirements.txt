@@ -1,0 +1,6 @@
+# OpenAgentic Azure Cost MCP Dependencies
+mcp>=1.0.0
+azure-identity>=1.15.0
+httpx>=0.25.0
+pydantic>=2.0.0
+structlog>=24.1.0

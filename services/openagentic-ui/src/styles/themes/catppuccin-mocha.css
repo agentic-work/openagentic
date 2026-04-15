@@ -1,0 +1,35 @@
+/**
+ * Copyright 2026 Gnomus.ai
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* Catppuccin Mocha — code mode only
+   Source: https://catppuccin.com/palette (Mocha flavor) */
+.code-mode[data-cm-theme="catppuccin-mocha"] {
+  --cm-bg: #1e1e2e;            /* Base */
+  --cm-bg-secondary: #181825;   /* Mantle */
+  --cm-bg-tertiary: #11111b;    /* Crust */
+  --cm-surface: #313244;        /* Surface 0 */
+  --cm-text: #cdd6f4;           /* Text */
+  --cm-text-secondary: #a6adc8; /* Subtext 0 */
+  --cm-text-muted: #6c7086;     /* Overlay 0 */
+  --cm-accent: #89b4fa;         /* Blue */
+  --cm-success: #a6e3a1;        /* Green */
+  --cm-warning: #f9e2af;        /* Yellow */
+  --cm-error: #f38ba8;          /* Red */
+  --cm-info: #89dceb;           /* Sky */
+  --cm-muted: #6c7086;          /* Overlay 0 */
+  --cm-border: #45475a;         /* Surface 1 */
+  --cm-prompt: #cba6f7;         /* Mauve */
+}

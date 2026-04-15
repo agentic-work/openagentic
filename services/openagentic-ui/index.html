@@ -1,0 +1,75 @@
+<!doctype html>
+<!--
+ Copyright 2026 Gnomus.ai
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/think.svg">
+    <link rel="shortcut icon" type="image/svg+xml" href="/think.svg">
+    <link rel="apple-touch-icon" href="/think.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Openagentic Platform - AI Assistant Platform" />
+    <meta name="theme-color" content="#020617" />
+    <title>Openagentic Platform</title>
+    
+    <!-- FOUC Prevention Script - MUST be inline to work -->
+    <script>
+      (function() {
+        const savedTheme = localStorage.getItem('ac-theme') || 'dark';
+        let theme = savedTheme;
+        if (savedTheme === 'system') {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.classList.remove('light', 'dark');
+        document.documentElement.classList.add(theme);
+      })();
+    </script>
+
+    <!-- Maintenance Mode Control -->
+    <script>
+      // Maintenance mode controlled by environment variable from config
+      // This runs after config.js is loaded below
+      window.addEventListener('DOMContentLoaded', () => {
+        const MAINTENANCE_MODE = window.__CONFIG__?.VITE_MAINTENANCE_MODE === 'true';
+        if (MAINTENANCE_MODE) {
+          localStorage.setItem('maintenance_mode', 'true');
+        } else {
+          localStorage.removeItem('maintenance_mode');
+        }
+      });
+    </script>
+    
+    <!-- Preload fonts for better performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- IBM Plex Sans - Enterprise professional typography -->
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- JetBrains Mono for code - with ligatures support -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+    <!-- Nerd Fonts for terminal/code mode (provides powerline glyphs and icons) -->
+    <link href="https://www.nerdfonts.com/assets/css/webfont.css" rel="stylesheet">
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Runtime configuration - loaded before main app -->
+    <script src="/config.js"></script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

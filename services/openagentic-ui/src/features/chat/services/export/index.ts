@@ -1,0 +1,277 @@
+/**
+ * Copyright 2026 Gnomus.ai
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { ClientExportService } from './client';
+import { 
+  IExportService, 
+  ExportData, 
+  ExportResult, 
+  ExportOptions,
+  ChatSession,
+  PDFGenerationOptions
+} from './types';
+
+/**
+ * Adaptive export service that chooses between client and server implementations
+ * following LobeChat's pattern for environment-aware services
+ */
+export class ExportService implements IExportService {
+  private clientService: ClientExportService;
+  
+  constructor() {
+    this.clientService = new ClientExportService();
+  }
+
+  /**
+   * Exports conversation to PDF format
+   * Uses client-side generation
+   */
+  async exportToPDF(data: ExportData): Promise<ExportResult> {
+    return this.clientService.exportToPDF(data);
+  }
+
+  /**
+   * Exports conversation to HTML format
+   */
+  async exportToHTML(data: ExportData): Promise<ExportResult> {
+    return this.clientService.exportToHTML(data);
+  }
+
+  /**
+   * Exports conversation to Markdown format
+   */
+  async exportToMarkdown(data: ExportData): Promise<ExportResult> {
+    return this.clientService.exportToMarkdown(data);
+  }
+
+  /**
+   * Exports conversation to JSON format
+   */
+  async exportToJSON(data: ExportData): Promise<ExportResult> {
+    return this.clientService.exportToJSON(data);
+  }
+
+  /**
+   * Creates export data from session and options
+   */
+  createExportData(
+    session: ChatSession,
+    options: Partial<ExportOptions> = {},
+    userInfo?: { name?: string; email?: string }
+  ): ExportData {
+    const defaultOptions: ExportOptions = {
+      format: 'pdf',
+      includeMetadata: true,
+      includeTimestamps: true,
+      includeTokenUsage: true,
+      theme: 'auto',
+      pageSize: 'A4',
+      orientation: 'portrait',
+      quality: 'medium'
+    };
+
+    const mergedOptions = { ...defaultOptions, ...options };
+
+    // Auto-detect theme if set to 'auto'
+    if (mergedOptions.theme === 'auto') {
+      mergedOptions.theme = this.detectSystemTheme();
+    }
+
+    return {
+      session,
+      exportOptions: mergedOptions,
+      exportedAt: new Date().toISOString(),
+      userInfo
+    };
+  }
+
+  /**
+   * Convenience method to export with default settings
+   */
+  async quickExport(
+    session: ChatSession,
+    format: 'pdf' | 'html' | 'markdown' | 'json' = 'pdf',
+    options: Partial<ExportOptions> = {}
+  ): Promise<ExportResult> {
+    const exportData = this.createExportData(session, { ...options, format });
+    
+    switch (format) {
+      case 'pdf':
+        return this.exportToPDF(exportData);
+      case 'html':
+        return this.exportToHTML(exportData);
+      case 'markdown':
+        return this.exportToMarkdown(exportData);
+      case 'json':
+        return this.exportToJSON(exportData);
+      default:
+        throw new Error(`Unsupported export format: ${format}`);
+    }
+  }
+
+  /**
+   * Downloads the export result as a file
+   */
+  async downloadExport(result: ExportResult): Promise<void> {
+    if (!result.success || !result.data || !result.filename) {
+      throw new Error(result.error || 'Export failed');
+    }
+
+    // Create download link
+    const url = URL.createObjectURL(result.data as Blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = result.filename;
+    
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    
+    // Cleanup
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Exports and downloads in one operation
+   */
+  async exportAndDownload(
+    session: ChatSession,
+    format: 'pdf' | 'html' | 'markdown' | 'json' = 'pdf',
+    options: Partial<ExportOptions> = {}
+  ): Promise<void> {
+    const result = await this.quickExport(session, format, options);
+    await this.downloadExport(result);
+  }
+
+  /**
+   * Creates a beautiful PDF report with enhanced formatting
+   */
+  async createPDFReport(
+    session: ChatSession,
+    options: Partial<PDFGenerationOptions> = {}
+  ): Promise<ExportResult> {
+    const reportOptions: PDFGenerationOptions = {
+      format: 'pdf',
+      includeMetadata: true,
+      includeTimestamps: true,
+      includeTokenUsage: true,
+      theme: options.theme || 'auto',
+      pageSize: options.pageSize || 'A4',
+      orientation: options.orientation || 'portrait',
+      quality: options.quality || 'high',
+      summary: {
+        includeStats: true,
+        includeKeyInsights: false,
+        ...options.summary
+      },
+      header: {
+        title: session.title,
+        subtitle: 'OpenAgentic Chat Export',
+        ...options.header
+      },
+      footer: {
+        includePageNumbers: true,
+        includeDate: true,
+        customText: 'Generated by OpenAgentic Chat',
+        ...options.footer
+      },
+      ...options
+    };
+
+    const exportData = this.createExportData(session, reportOptions);
+    return this.exportToPDF(exportData);
+  }
+
+
+  /**
+   * Detects system theme preference
+   */
+  private detectSystemTheme(): 'light' | 'dark' {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return 'light'; // Default for server environments
+  }
+
+  /**
+   * Gets available export formats
+   */
+  getAvailableFormats(): Array<{ format: string; name: string; description: string }> {
+    return [
+      {
+        format: 'pdf',
+        name: 'PDF Report',
+        description: 'Professional PDF document with formatting and statistics'
+      },
+      {
+        format: 'html',
+        name: 'HTML Document',
+        description: 'Web page format with styling and interactivity'
+      },
+      {
+        format: 'markdown',
+        name: 'Markdown File',
+        description: 'Plain text format with markdown formatting'
+      },
+      {
+        format: 'json',
+        name: 'JSON Data',
+        description: 'Structured data format with full conversation details'
+      }
+    ];
+  }
+
+  /**
+   * Validates export options
+   */
+  validateOptions(options: Partial<ExportOptions>): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (options.format && !['pdf', 'html', 'markdown', 'json'].includes(options.format)) {
+      errors.push('Invalid format specified');
+    }
+
+    if (options.theme && !['light', 'dark', 'auto'].includes(options.theme)) {
+      errors.push('Invalid theme specified');
+    }
+
+    if (options.pageSize && !['A4', 'Letter', 'Legal'].includes(options.pageSize)) {
+      errors.push('Invalid page size specified');
+    }
+
+    if (options.orientation && !['portrait', 'landscape'].includes(options.orientation)) {
+      errors.push('Invalid orientation specified');
+    }
+
+    if (options.quality && !['low', 'medium', 'high'].includes(options.quality)) {
+      errors.push('Invalid quality specified');
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  }
+}
+
+// Export singleton instance
+export const exportService = new ExportService();
+
+// Export types and services for direct use
+export * from './types';
+export { ClientExportService } from './client';
+export { formatMarkdown, generateHTML, formatJSON } from './utils';

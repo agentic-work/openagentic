@@ -1,0 +1,40 @@
+/**
+ * Copyright 2026 Gnomus.ai
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Runtime configuration - this file will be replaced at runtime by the entrypoint script
+window.__CONFIG__ = {
+  VITE_API_URL: "VITE_API_URL_PLACEHOLDER",
+  VITE_AAD_CLIENT_ID: "VITE_AAD_CLIENT_ID_PLACEHOLDER",
+  VITE_AAD_AUTHORITY: "VITE_AAD_AUTHORITY_PLACEHOLDER",
+  VITE_AAD_REDIRECT_URI: "VITE_AAD_REDIRECT_URI_PLACEHOLDER",
+  VITE_AZURE_CLIENT_ID: "VITE_AZURE_CLIENT_ID_PLACEHOLDER",
+  VITE_AZURE_TENANT_ID: "VITE_AZURE_TENANT_ID_PLACEHOLDER",
+  VITE_AZURE_AD_ADMIN_GROUP: "VITE_AZURE_AD_ADMIN_GROUP_PLACEHOLDER",
+  VITE_AZURE_AD_API_SCOPE: "VITE_AZURE_AD_API_SCOPE_PLACEHOLDER",
+  VITE_AZURE_AD_AUTHORIZED_GROUPS: "VITE_AZURE_AD_AUTHORIZED_GROUPS_PLACEHOLDER",
+  VITE_API_KEY: "VITE_API_KEY_PLACEHOLDER",
+  VITE_FRONTEND_SECRET: "VITE_FRONTEND_SECRET_PLACEHOLDER",
+  VITE_SIGNING_SECRET: "VITE_SIGNING_SECRET_PLACEHOLDER",
+  VITE_AUTH_MODE: "VITE_AUTH_MODE_PLACEHOLDER",
+  VITE_MAINTENANCE_MODE: "VITE_MAINTENANCE_MODE_PLACEHOLDER",
+  VITE_DEV_LOGIN_PAGE: "VITE_DEV_LOGIN_PAGE_PLACEHOLDER",
+  VITE_FLOWISE_URL: "VITE_FLOWISE_URL_PLACEHOLDER",
+  // Auth provider configuration - controls which login buttons are shown
+  VITE_AUTH_PROVIDER: "VITE_AUTH_PROVIDER_PLACEHOLDER",
+  VITE_MICROSOFT_LOGIN_ENABLED: "VITE_MICROSOFT_LOGIN_ENABLED_PLACEHOLDER",
+  VITE_GOOGLE_LOGIN_ENABLED: "VITE_GOOGLE_LOGIN_ENABLED_PLACEHOLDER",
+  VITE_LOCAL_LOGIN_ENABLED: "VITE_LOCAL_LOGIN_ENABLED_PLACEHOLDER"
+};

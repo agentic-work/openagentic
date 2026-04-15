@@ -1,0 +1,102 @@
+# OpenAgentic Synth Dependencies
+# Minimal set for secure code execution with full observability
+
+# setuptools<81 — setuptools 81 removed the `pkg_resources` legacy module
+# that opentelemetry-instrumentation-* still imports. Without this pin
+# the OpenAgentic Synth won't start on a fresh Python environment.
+setuptools<81
+
+# Web framework - minimal async
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+
+# OpenTelemetry - Full observability stack
+opentelemetry-api==1.22.0
+opentelemetry-sdk==1.22.0
+opentelemetry-exporter-otlp==1.22.0
+opentelemetry-instrumentation-fastapi==0.43b0
+opentelemetry-instrumentation-logging==0.43b0
+
+# Structured logging
+structlog==24.1.0
+python-json-logger==2.0.7
+
+# HTTP client for callbacks
+httpx==0.26.0
+
+# Resource limiting
+resource-backed-dask-array==0.1.0
+
+# Security - input validation
+bleach==6.1.0
+
+# Async support
+anyio==4.2.0
+
+# Prometheus metrics
+prometheus_client==0.21.0
+
+# File processing libraries (for OAT file_processing capability)
+python-docx==1.1.2
+pypdf==5.6.0
+reportlab==4.4.0
+Pillow==11.2.1
+openpyxl==3.1.5
+beautifulsoup4==4.13.4
+lxml==5.4.0
+pandas==2.2.3
+numpy==1.26.4
+scipy==1.14.1
+tabulate==0.9.0
+chardet==5.2.0
+
+# Data science / visualization (for OAT visualization capability)
+matplotlib==3.9.3
+seaborn==0.13.2
+plotly==5.24.1
+
+# Cloud SDKs — required so synth can fill gaps where MCP tools are missing
+# functionality. Each capability declared in CAPABILITY_MODULES must have
+# a corresponding install here, otherwise validator passes the import but
+# Python ImportErrors at runtime.
+
+# AWS — for filling gaps in openagentic_aws MCP coverage
+boto3==1.35.92
+botocore==1.35.92
+
+# Azure — for filling gaps in openagentic_azure MCP coverage
+azure-identity==1.19.0
+azure-mgmt-resource==23.2.0
+azure-mgmt-compute==33.0.0
+azure-mgmt-storage==21.2.1
+azure-mgmt-network==27.0.0
+azure-mgmt-keyvault==10.3.1
+azure-mgmt-monitor==6.0.2
+azure-mgmt-containerservice==34.0.0
+azure-mgmt-subscription==3.1.1
+azure-mgmt-authorization==4.0.0
+azure-mgmt-costmanagement==4.0.1
+azure-core==1.32.0
+
+# GCP — for filling gaps in openagentic_gcp MCP coverage
+google-cloud-resource-manager==1.13.1
+google-cloud-storage==2.19.0
+google-cloud-compute==1.23.0
+google-cloud-monitoring==2.27.1
+google-auth==2.38.0
+google-api-python-client==2.157.0
+
+# GitHub — for filling gaps in openagentic_github MCP coverage
+PyGithub==2.5.0
+
+# Kubernetes — for filling gaps in openagentic_kubernetes MCP coverage
+kubernetes==32.0.1
+
+# Common utilities synth-generated tools need
+PyJWT==2.10.1
+cryptography==44.0.0
+PyYAML==6.0.2
+jinja2==3.1.5
+python-dateutil==2.9.0.post0
+requests==2.32.3

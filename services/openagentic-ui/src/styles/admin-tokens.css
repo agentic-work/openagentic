@@ -1,0 +1,49 @@
+/**
+ * Copyright 2026 Gnomus.ai
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* ==========================================================================
+   ADMIN CONSOLE DESIGN TOKENS
+   Centralizes all hardcoded colors from admin components into CSS variables.
+   ========================================================================== */
+
+:root {
+  /* ── Provider brand colors ────────────────────────────────────────────── */
+  --provider-azure: #0078D4;
+  --provider-google: #4285F4;
+  --provider-aws: #FF9900;
+  --provider-ollama: #22C55E;
+  --provider-anthropic: #D4A574;
+  --provider-openai: #10A37F;
+
+  /* ── Capability badge colors ──────────────────────────────────────────── */
+  --cap-chat: #3b82f6;
+  --cap-tools: #f59e0b;
+  --cap-vision: #10b981;
+  --cap-thinking: #ec4899;
+  --cap-embeddings: #8b5cf6;
+  --cap-streaming: #6366f1;
+  --cap-image-gen: #06b6d4;
+
+  /* ── Tier colors ──────────────────────────────────────────────────────── */
+  --tier-economy: #10b981;
+  --tier-balanced: #3b82f6;
+  --tier-premium: #8b5cf6;
+
+  /* ── Toast / notification semantic colors ──────────────────────────────── */
+  --toast-success: #00D26A;
+  --toast-error: #FF453A;
+  --toast-info: #0A84FF;
+}

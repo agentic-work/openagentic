@@ -1,0 +1,70 @@
+/**
+ * Copyright 2026 Gnomus.ai
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * CodeMode z-index hierarchy
+ *
+ * One file. One source of truth. Use these custom-property values
+ * (or their direct numeric equivalents in Tailwind: z-0, z-20, z-40,
+ * z-50) instead of inventing new z-index values inside components.
+ *
+ * Why this exists:
+ *   Before this file, the CodeMode panel had z-index values scattered
+ *   across components ranging from z-30 (theme dropdown) to z-[10000]
+ *   (input toolbar folder picker). The z-[10000] value put inline
+ *   dropdowns above modals — a stacking-order regression that broke
+ *   modal accessibility (modals should always shadow background UI).
+ *
+ *   Tailwind's default scale (z-0, z-10, z-20, z-30, z-40, z-50, z-auto)
+ *   is more than enough for any panel UI. Anything higher than z-50
+ *   indicates a layering bug elsewhere; fix the bug instead of bumping
+ *   the value.
+ *
+ * The layers, lowest to highest:
+ *
+ *   z-0   — terminal/canvas content (xterm.js, editors, viewports)
+ *   z-10  — inline overlays anchored to canvas (cursors, selection lassos)
+ *   z-20  — floating widgets that sit ON TOP of the canvas but BELOW the
+ *           input toolbar (active task chips, in-flight tool indicators,
+ *           thinking spinners, status overlays). Animate in/out.
+ *   z-30  — fixed panel chrome (header bars, sidebars, status bar). Anchored
+ *           to layout, never floats. Should rarely appear over content
+ *           because it's flex-laid-out, but a few badge popups need it.
+ *   z-40  — dropdowns and popovers anchored to chrome (theme selector,
+ *           folder picker, model picker). These appear above the
+ *           terminal AND above floating widgets, but BELOW modals so
+ *           that any modal opened mid-interaction supersedes them.
+ *   z-50  — modals, dialogs, and full-viewport overlays. The HIGHEST
+ *           layer in CodeMode. If you find yourself wanting to layer
+ *           anything above this, you're likely opening a modal from
+ *           inside another modal — use a single modal that conditionally
+ *           swaps content instead.
+ *
+ * No values above z-50 are permitted in CodeMode.
+ *
+ * Tooltips (which globally need to be above modals) live OUTSIDE the
+ * CodeMode panel and use a portal anchored to <body>; they're not part
+ * of this hierarchy. Use the global tooltip layer in `src/index.css`.
+ */
+
+:root {
+  --cm-z-canvas: 0;
+  --cm-z-canvas-overlay: 10;
+  --cm-z-floating: 20;
+  --cm-z-chrome: 30;
+  --cm-z-dropdown: 40;
+  --cm-z-modal: 50;
+}

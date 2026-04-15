@@ -1,0 +1,268 @@
+/**
+ * Copyright 2026 Gnomus.ai
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import React, { useEffect, useRef, useCallback } from 'react';
+import { CloseIcon as X } from './AdminIcons';
+
+export interface SlideInPanelProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  subtitle?: string;
+  width?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  /** Show backdrop overlay */
+  showBackdrop?: boolean;
+  /** Close on backdrop click */
+  closeOnBackdropClick?: boolean;
+  /** Close on Escape key */
+  closeOnEscape?: boolean;
+}
+
+const widthClasses = {
+  sm: 'w-[400px]',
+  md: 'w-[600px]',
+  lg: 'w-[800px]',
+  xl: 'w-[1000px]',
+  full: 'w-full max-w-[1200px]',
+};
+
+/**
+ * GCP-style slide-in panel from right edge
+ * Uses CSS variables for theming - no hardcoded colors
+ */
+export const SlideInPanel: React.FC<SlideInPanelProps> = ({
+  isOpen,
+  onClose,
+  title,
+  subtitle,
+  width = 'md',
+  children,
+  footer,
+  showBackdrop = true,
+  closeOnBackdropClick = true,
+  closeOnEscape = true,
+}) => {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const firstFocusableRef = useRef<HTMLButtonElement>(null);
+
+  // Handle Escape key
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (closeOnEscape && e.key === 'Escape') {
+        onClose();
+      }
+    },
+    [closeOnEscape, onClose]
+  );
+
+  // Focus trap and keyboard handling
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      // Focus the close button when panel opens
+      setTimeout(() => firstFocusableRef.current?.focus(), 100);
+      // Prevent body scroll
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, handleKeyDown]);
+
+  // Handle backdrop click
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (closeOnBackdropClick && e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex justify-end"
+      style={{ backgroundColor: showBackdrop ? 'rgba(0, 0, 0, 0.5)' : 'transparent' }}
+      onClick={handleBackdropClick}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="slide-panel-title"
+    >
+      {/* Panel */}
+      <div
+        ref={panelRef}
+        className={`
+          h-full flex flex-col
+          ${widthClasses[width]}
+          transform transition-transform duration-300 ease-out
+          ${isOpen ? 'translate-x-0' : 'translate-x-full'}
+        `}
+        style={{
+          backgroundColor: 'var(--color-surface)',
+          borderLeft: '1px solid var(--color-border)',
+          boxShadow: 'var(--color-shadow-lg)',
+        }}
+      >
+        {/* Header */}
+        <div
+          className="flex-shrink-0 flex items-center justify-between px-6 py-4"
+          style={{
+            borderBottom: '1px solid var(--color-border)',
+            backgroundColor: 'var(--color-surfaceSecondary)',
+          }}
+        >
+          <div className="flex-1 min-w-0">
+            <h2
+              id="slide-panel-title"
+              className="text-lg font-semibold truncate"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              {title}
+            </h2>
+            {subtitle && (
+              <p
+                className="text-sm mt-0.5 truncate"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                {subtitle}
+              </p>
+            )}
+          </div>
+          <button
+            ref={firstFocusableRef}
+            onClick={onClose}
+            className="ml-4 p-2 rounded-lg transition-colors"
+            style={{
+              color: 'var(--text-secondary)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)';
+              e.currentTarget.style.color = 'var(--text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }}
+            aria-label="Close panel"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div
+          className="flex-1 overflow-y-auto px-6 py-4"
+          style={{ backgroundColor: 'var(--color-surface)' }}
+        >
+          {children}
+        </div>
+
+        {/* Footer */}
+        {footer && (
+          <div
+            className="flex-shrink-0 px-6 py-4 flex items-center justify-end gap-3"
+            style={{
+              borderTop: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-surfaceSecondary)',
+            }}
+          >
+            {footer}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Styled button for use in SlideInPanel footer
+ */
+export const PanelButton: React.FC<{
+  variant?: 'primary' | 'secondary' | 'danger';
+  onClick?: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+  type?: 'button' | 'submit';
+}> = ({ variant = 'secondary', onClick, disabled, children, type = 'button' }) => {
+  const getStyles = () => {
+    const base = {
+      padding: '8px 16px',
+      borderRadius: '6px',
+      fontSize: 'var(--text-sm)',
+      fontWeight: '500',
+      transition: 'all 150ms',
+      cursor: disabled ? 'not-allowed' : 'pointer',
+      opacity: disabled ? 0.5 : 1,
+    };
+
+    switch (variant) {
+      case 'primary':
+        return {
+          ...base,
+          backgroundColor: 'var(--color-primary)',
+          color: '#FFFFFF',
+          border: 'none',
+        };
+      case 'danger':
+        return {
+          ...base,
+          backgroundColor: 'var(--color-error)',
+          color: '#FFFFFF',
+          border: 'none',
+        };
+      default:
+        return {
+          ...base,
+          backgroundColor: 'transparent',
+          color: 'var(--text-primary)',
+          border: '1px solid var(--color-border)',
+        };
+    }
+  };
+
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      style={getStyles()}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          if (variant === 'primary') {
+            e.currentTarget.style.filter = 'brightness(1.1)';
+          } else if (variant === 'danger') {
+            e.currentTarget.style.filter = 'brightness(1.1)';
+          } else {
+            e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)';
+          }
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.filter = 'none';
+        if (variant === 'secondary') {
+          e.currentTarget.style.backgroundColor = 'transparent';
+        }
+      }}
+    >
+      {children}
+    </button>
+  );
+};
+
+export default SlideInPanel;

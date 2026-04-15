@@ -1,0 +1,242 @@
+{
+  "version": "0.6.3",
+  "codename": "Light It Up",
+  "releaseDate": "2026-04-10",
+  "components": {
+    "platform": "0.6.3",
+    "api": "0.6.3",
+    "ui": "0.6.3",
+    "flowise": "2.2.0",
+    "mcpProxy": "0.6.3",
+    "codeManager": "0.6.3",
+    "openagenticProxy": "0.6.3"
+  },
+  "changelog": [
+    {
+      "version": "0.6.3",
+      "date": "2026-04-10",
+      "codename": "Light It Up",
+      "highlights": [
+        "Admin Test Harness (Bolt 7) — SSE-streaming system test suite for K8s, MCP, agents, chat, code mode",
+        "Artifact / diagram agent upgrade — production-quality HTML+CSS+JS, Mermaid removed",
+        "Agent synthesis enforcement — raw JSON blocked from reaching users; Ollama format extraction",
+        "Azure MCP creation tools — VNet, subnet, NSG, Application Gateway, Front Door verified end-to-end",
+        "Smart router sentinel fixes across chat + code mode pipelines",
+        "Model Registry rebuilt from live SDK discovery; staleness banner removed",
+        "TTFT optimization — Ollama warm-up + parallel MCP/Memory initialization",
+        "Bob UC1–UC5 all pass against live Azure; Bolt 4 full 24/24 workflow regression with 0 failures",
+        "Security: hardcoded JWT secret removed from test harness; token-cost warning in UI"
+      ],
+      "breaking": [],
+      "notes": "See docs/releases/v0.6.3.md for the full changelog."
+    },
+    {
+      "version": "0.6.2",
+      "date": "2026-04-08",
+      "codename": "Lockstep",
+      "highlights": [
+        "Lockstep platform tagging — agentic, openagentic, oat, openagentic-sdk all at v0.6.2",
+        "Dual-mode build pipeline — vendored or git-clone-via-PAT companion sources",
+        "AIF Claude as a first-class provider with Anthropic-native SSE streaming",
+        "Live-SDK Model Registry — Admin LLM Registry rebuilt from provider SDK discovery on every load",
+        "Smart router sentinel fix in both chat and code mode validation stages",
+        "Self-correction pipeline + ReAct loop with final-synthesis fallback",
+        "Cloud_operations agent type with Azure OBO token propagation",
+        "Prisma singleton sweep — fewer pg connections under load",
+        "Memory prompt-injection sanitization (SEV0) + provider-disable-cascades-to-models (SEV0)"
+      ],
+      "breaking": [
+        "Openagentic-manager image no longer pulls from GAR at runtime — bundled at build time",
+        "Model Registry no longer persisted as a curated list; discovered from each provider SDK on load"
+      ],
+      "notes": "See docs/releases/v0.6.2.md for the full changelog."
+    },
+    {
+      "version": "0.6.0",
+      "date": "2026-03-10",
+      "codename": "Overhaul",
+      "highlights": [
+        "Flows Enterprise Overhaul — Per-node/workflow/admin config hierarchy with 3-level governance",
+        "Unified Cross-Mode Memory — Chat, code, and flows share a single per-user context layer",
+        "Error Handling Framework — Error edges, handler nodes, and error routing in workflow engine",
+        "Workflow Versioning — Auto-snapshot on save, visual diff, version restore",
+        "Agent Platform — Persona system, tool policy, visual cron scheduling",
+        "Admin Dashboard Overhaul — Recharts charts + AdminMetricCard/AdminFilterBar across all 10 admin views",
+        "LLM Provider Setup Wizard — 4-step first-time configuration wizard for fresh deployments",
+        "Slack & Teams Integration — Inbound webhook → workflow execution → Block Kit/Adaptive Card responses"
+      ],
+      "breaking": [],
+      "features": [
+        "SetupWizard component for zero-config first-time deployment",
+        "DeploymentStateService with cached state detection and setup completion",
+        "9 new admin API endpoints (deployment-state, pause/resume, model disable/enable, capability-matrix, credential rotation)",
+        "SlackIntegrationService with signature verification and Block Kit formatting",
+        "TeamsIntegrationService with Bot Framework token verification and Adaptive Cards",
+        "IntegrationMessageFormatter for workflow output to platform-specific rich messages",
+        "Integration CRUD routes with webhook receivers and connection testing",
+        "IntegrationsView admin UI with cards, logs, add/edit dialog",
+        "LLMProviderManagement rewrite with provider cards, detail panels, capability matrix view",
+        "Recharts AreaChart/BarChart/PieChart added to PerformanceMetrics, EmbeddingMetrics, MonitoringView, CodeModeMetricsDashboard, ContextWindowMetrics, UserActivityDashboard, OATUsageStatsView, PromptMetrics, DashboardOverview",
+        "AdminMetricCard with sparklines and trends across all admin views",
+        "AdminFilterBar replacing manual select/filter UI in all views",
+        "Legacy auth migration (useAuth/getAuthHeaders → apiRequest) in PerformanceMetrics, MonitoringView",
+        "Prisma schema: LLMProvider status/paused_until/disabled_models/capability flags, Integration + IntegrationLog models",
+        "Per-node advanced config: disabled, timeout, retry, error routing, pinned output, notes",
+        "Per-workflow settings: model defaults, cost budgets, env vars, tags, visibility",
+        "Admin workflow governance: 5-tab panel with execution limits, cost caps, model restrictions, node type controls, memory settings",
+        "Enhanced agent node config: persona, tool policy, budgets, approval, memory scope",
+        "Error handler node type with log/retry/notify/transform actions",
+        "User context node type for cross-mode memory access in workflows",
+        "Error edge type with red dashed styling and error output handles",
+        "Workflow versioning: auto-snapshot on save, version history sidebar, visual diff, restore",
+        "UserContextService: unified cross-mode memory assembly from chat, code, workflows, memories",
+        "7 new API endpoints for user context CRUD, admin stats, workflow governance",
+        "Auto-indexing: chat messages and workflow results indexed into unified context",
+        "Per-user memory settings: source toggles, retention, context-in-chat/code toggles",
+        "Admin memory dashboard: user context stats, search, purge, retention config",
+        "Agent persona system: role, tone, boundaries, bootstrap instructions",
+        "Agent tool policy: allow/deny modes with high-risk auto-detection",
+        "Agent scheduling: visual cron builder, target workflow, input templates",
+        "3-level config hierarchy: admin caps > workflow defaults > node overrides"
+      ],
+      "fixes": [
+        "Fixed #22c55e (apple puke green) replaced with #00D26A terminal green across 25+ files",
+        "Fixed --color-success CSS variable from #30D158 to #00D26A",
+        "Fixed legacy auth patterns in PerformanceMetrics and MonitoringView using deprecated useAuth hook",
+        "Fixed broken memory.stage.ts — prisma.memory model doesn't exist, replaced with UserMemoryService",
+        "Fixed memory stage async fire-and-forget — now synchronous (awaited) before completion stage",
+        "Fixed SSE event streaming — nodes show RUNNING state in real-time (socket.setNoDelay + flush)",
+        "Fixed MCP error detection — properly unwrap proxy response layers (proxy → JSONRPC → MCP result)",
+        "Fixed openagentic-proxy CrashLoopBackOff — duplicate /metrics route registration",
+        "Fixed chat-dev.openagentics.io 404 — TLS proxy routing to wrong backend",
+        "Fixed Prisma schema — missing Integration, IntegrationLog models and LLMProvider extended fields",
+        "Added UserMemoryService — unified memory read (Redis→Milvus→PG→merge), write (PG+Milvus+Redis)",
+        "Added UserProfileService — user personality learning with style_dna via LLM",
+        "Added FeedbackLearningService — feedback→preferences→system prompt injection",
+        "Added LLM-powered memory compaction (topic clustering, summarization, profile recompute)",
+        "Added per-user model preferences in SmartModelRouter",
+        "Added /api/user-memory/* API routes (entries, context, profile, ingest, purge)",
+        "Added auto-ingestion hooks (chat, tool, workflow, code, feedback)",
+        "Added ExecutionResultsPanel resize handle (280-800px) and close button",
+        "Added MCP tool node retry with graceful degradation",
+        "Added pre-upgrade backup and post-upgrade verification scripts",
+        "Added openagentic Claude Code feature parity (agent system, memory client, OAT CreateTool, /agents command)"
+      ]
+    },
+    {
+      "version": "0.5.0",
+      "date": "2026-02-22",
+      "codename": "Hardened",
+      "highlights": [
+        "DLP Scanner — 50+ detection rules for credentials, PII, infrastructure secrets",
+        "Immutable Audit Trail — Cryptographic hash chaining, tamper-evident logs",
+        "Mandatory HITL Enforcement — Server-side tool approval gate for high-risk operations",
+        "Per-Tool Credential Scoping — Tools only receive credentials they need",
+        "Structured Error Classification — Typed failover reasons for LLM providers",
+        "Pipeline Hook System — 16 extensible hook points for security and observability",
+        "Agent Proxy — Multi-agent orchestration with parallel, sequential, and supervisor patterns",
+        "Apple-inspired color palette — Real greens, blues, purples across the UI"
+      ],
+      "breaking": [],
+      "features": [
+        "DLPScannerService with scan/redact/block actions",
+        "ToolApprovalGate for server-side human-in-the-loop enforcement",
+        "CredentialScopeService for per-tool credential isolation",
+        "FailoverError typed error classification for LLM providers",
+        "Shared retry framework with configurable backoff policies",
+        "Request deduplication cache",
+        "SSE event sequencing with gap detection",
+        "Service lifecycle management with ordered startup/shutdown",
+        "Pipeline hooks system with modifying, void, and sync hooks",
+        "Agent Proxy service for multi-agent orchestration",
+        "Session loading bug fix — all message fields preserved on reload",
+        "Version bump across all services to 0.5.0"
+      ],
+      "fixes": [
+        "Fixed session loading dropping toolCalls, toolResults, thinkingSteps",
+        "Fixed Anthropic content block arrays rendering as raw JSON",
+        "Fixed neon colors (#00FF00, #FF0000) replaced with Apple palette",
+        "Fixed version endpoint showing stale version info"
+      ]
+    },
+    {
+      "version": "0.4.0",
+      "date": "2026-02-13",
+      "codename": "Titan",
+      "highlights": [
+        "Platform Hardening & Security - 75 CVE patches, auth bypass removal",
+        "Unique colorful Admin Console icons with gradient animations",
+        "Tool result grounding workflow with LangGraph integration",
+        "Improved streaming code block handling",
+        "K8s service discovery audit and port fixes"
+      ],
+      "breaking": [],
+      "features": [
+        "11 new unique colorful SVG icons for Admin Console sidebar",
+        "Incomplete code fence handling during streaming",
+        "Tool result grounding service with async processing",
+        "Comprehensive K8s service discovery validation"
+      ],
+      "fixes": [
+        "Fixed Admin Console sidebar showing folder icons for all sections",
+        "Fixed code blocks breaking live streaming rendering",
+        "Fixed LangGraph URL port mismatch (8002 -> 3100)"
+      ]
+    },
+    {
+      "version": "0.3.0",
+      "date": "2026-01-18",
+      "codename": "Atlas",
+      "highlights": [
+        "Live artifact streaming - artifacts render as they stream, not after completion",
+        "K8s warm container pool - instant Code Mode startup",
+        "Flowise Google auth fix - workspace lookup via WorkspaceUser entity",
+        "Unified version system across all components"
+      ],
+      "breaking": [],
+      "features": [
+        "StreamingArtifactRenderer component for live artifact preview",
+        "Warm pool management in K8sSessionManager",
+        "Detailed JWT logging in Flowise middleware"
+      ],
+      "fixes": [
+        "Fixed TypeORM EntityPropertyNotFoundError for Flowise workspace lookup",
+        "Fixed Admin Console Flowise opening user account instead of system@internal"
+      ]
+    },
+    {
+      "version": "0.2.0",
+      "date": "2026-01-10",
+      "codename": "Pioneer",
+      "highlights": [
+        "Code Mode V2 with VSCode integration",
+        "Intelligence Slider for model selection",
+        "MCP Tools integration"
+      ],
+      "breaking": [],
+      "features": [
+        "Full VSCode code-server integration",
+        "Real-time workspace sync with MinIO/S3",
+        "Multi-provider LLM support (Anthropic, OpenAI, Google, Azure, Ollama)"
+      ],
+      "fixes": []
+    },
+    {
+      "version": "0.1.0",
+      "date": "2025-12-01",
+      "codename": "Genesis",
+      "highlights": [
+        "Initial release",
+        "Chat mode with streaming",
+        "Basic MCP proxy"
+      ],
+      "breaking": [],
+      "features": [
+        "SSE streaming chat",
+        "Azure AD and Google OAuth",
+        "Flowise workflow integration"
+      ],
+      "fixes": []
+    }
+  ]
+}

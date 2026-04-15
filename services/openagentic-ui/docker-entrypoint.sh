@@ -1,0 +1,241 @@
+#!/bin/sh
+# Copyright 2026 Gnomus.ai
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+# Copyright (c) 2025 Gnomus.ai
+# For all inquiries, please contact:
+# Gnomus.ai
+# hello@openagentics.io
+
+# In Kubernetes, wait for container network stack to fully initialize
+# This helps prevent DNS resolution failures that occur immediately after container start
+if [ -f /var/run/secrets/kubernetes.io/serviceaccount/namespace ]; then
+    echo "Kubernetes detected, waiting 10s for network stack initialization..."
+    sleep 10
+fi
+
+# Set default values if not provided
+export API_HOST="${API_HOST:-localhost}"
+export API_PORT="${API_PORT:-8000}"
+export MCP_HOST="${MCP_HOST:-localhost}"
+export MCP_PORT="${MCP_PORT:-3001}"
+export DOCS_HOST="${DOCS_HOST:-localhost}"
+export DOCS_PORT="${DOCS_PORT:-80}"
+
+echo "========================================="
+echo "OpenAgentic UI Container Starting"
+echo "========================================="
+echo "API Backend: http://${API_HOST}:${API_PORT}"
+echo "MCP Backend: http://${MCP_HOST}:${MCP_PORT}"
+echo "Docs Backend: http://${DOCS_HOST}:${DOCS_PORT}"
+echo "========================================="
+
+# Replace runtime config values in config.js
+CONFIG_FILE="/usr/share/nginx/html/config.js"
+if [ -f "$CONFIG_FILE" ]; then
+    echo "Updating runtime configuration..."
+
+    # Map environment variables to config values
+    # Use VITE_API_URL if set, otherwise use relative /api path (nginx will proxy to backend)
+    API_URL_VALUE="${VITE_API_URL:-/api}"
+
+    # Azure AD configuration - use AZURE_CLIENT_ID, fallback to VITE_AZURE_CLIENT_ID
+    AAD_CLIENT_ID="${VITE_AAD_CLIENT_ID:-${AZURE_CLIENT_ID:-${VITE_AZURE_CLIENT_ID:-}}}"
+    AZURE_TENANT="${VITE_AZURE_TENANT_ID:-${AZURE_TENANT_ID:-}}"
+
+    # Construct AAD authority URL if tenant is provided
+    if [ -n "$AZURE_TENANT" ] && [ "$AZURE_TENANT" != "disabled-not-using-azure-ad" ]; then
+        AAD_AUTHORITY="https://login.microsoftonline.com/${AZURE_TENANT}"
+    else
+        AAD_AUTHORITY="${VITE_AAD_AUTHORITY:-}"
+    fi
+
+    sed -i "s|VITE_API_URL_PLACEHOLDER|${API_URL_VALUE}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_AAD_CLIENT_ID_PLACEHOLDER|${AAD_CLIENT_ID}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_AAD_AUTHORITY_PLACEHOLDER|${AAD_AUTHORITY}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_AAD_REDIRECT_URI_PLACEHOLDER|${VITE_AAD_REDIRECT_URI:-${AZURE_REDIRECT_URI:-/auth/callback}}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_AZURE_CLIENT_ID_PLACEHOLDER|${AAD_CLIENT_ID}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_AZURE_TENANT_ID_PLACEHOLDER|${AZURE_TENANT}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_AZURE_AD_ADMIN_GROUP_PLACEHOLDER|${VITE_AZURE_AD_ADMIN_GROUP:-${AZURE_AD_ADMIN_GROUP:-}}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_AZURE_AD_API_SCOPE_PLACEHOLDER|${VITE_AZURE_AD_API_SCOPE:-${AZURE_AD_API_SCOPE:-}}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_AZURE_AD_AUTHORIZED_GROUPS_PLACEHOLDER|${VITE_AZURE_AD_AUTHORIZED_GROUPS:-${AZURE_AD_AUTHORIZED_GROUPS:-}}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_API_KEY_PLACEHOLDER|${VITE_API_KEY:-${API_KEY:-}}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_FRONTEND_SECRET_PLACEHOLDER|${VITE_FRONTEND_SECRET:-${FRONTEND_SECRET:-}}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_SIGNING_SECRET_PLACEHOLDER|${VITE_SIGNING_SECRET:-${SIGNING_SECRET:-}}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_AUTH_MODE_PLACEHOLDER|${VITE_AUTH_MODE:-${AUTH_MODE:-production}}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_MAINTENANCE_MODE_PLACEHOLDER|${VITE_MAINTENANCE_MODE:-${MAINTENANCE_MODE:-false}}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_DEV_LOGIN_PAGE_PLACEHOLDER|${VITE_DEV_LOGIN_PAGE:-${DEV_LOGIN_PAGE:-false}}|g" "$CONFIG_FILE"
+    # Auth provider configuration - controls which login buttons are shown
+    # VITE_AUTH_PROVIDER: 'google' = Google only, 'azure-ad' = Microsoft only, 'all' = show all enabled
+    # Individual toggles: 'true' = show button, 'false' = hide button
+    sed -i "s|VITE_AUTH_PROVIDER_PLACEHOLDER|${VITE_AUTH_PROVIDER:-${AUTH_PROVIDER:-all}}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_MICROSOFT_LOGIN_ENABLED_PLACEHOLDER|${VITE_MICROSOFT_LOGIN_ENABLED:-${MICROSOFT_LOGIN_ENABLED:-true}}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_GOOGLE_LOGIN_ENABLED_PLACEHOLDER|${VITE_GOOGLE_LOGIN_ENABLED:-${GOOGLE_LOGIN_ENABLED:-true}}|g" "$CONFIG_FILE"
+    sed -i "s|VITE_LOCAL_LOGIN_ENABLED_PLACEHOLDER|${VITE_LOCAL_LOGIN_ENABLED:-${LOCAL_LOGIN_ENABLED:-true}}|g" "$CONFIG_FILE"
+
+    echo "Runtime configuration updated"
+    echo "  API_URL: ${API_URL_VALUE}"
+    echo "  AAD_CLIENT_ID: ${AAD_CLIENT_ID}"
+    echo "  AAD_AUTHORITY: ${AAD_AUTHORITY}"
+    echo "  DEV_LOGIN_PAGE: ${VITE_DEV_LOGIN_PAGE:-${DEV_LOGIN_PAGE:-false}}"
+    echo "  AUTH_PROVIDER: ${VITE_AUTH_PROVIDER:-${AUTH_PROVIDER:-all}}"
+    echo "  MICROSOFT_LOGIN_ENABLED: ${VITE_MICROSOFT_LOGIN_ENABLED:-${MICROSOFT_LOGIN_ENABLED:-true}}"
+    echo "  GOOGLE_LOGIN_ENABLED: ${VITE_GOOGLE_LOGIN_ENABLED:-${GOOGLE_LOGIN_ENABLED:-true}}"
+    echo "  LOCAL_LOGIN_ENABLED: ${VITE_LOCAL_LOGIN_ENABLED:-${LOCAL_LOGIN_ENABLED:-true}}"
+fi
+
+# Set default values if not provided
+export API_HOST=${API_HOST:-openagentic-api}
+export API_PORT=${API_PORT:-8000}
+export DOCS_HOST=${DOCS_HOST:-openagentic-docs}
+export DOCS_PORT=${DOCS_PORT:-80}
+# Redis Commander configuration
+export REDIS_COMMANDER_HOST=${REDIS_COMMANDER_HOST:-redis-commander}
+export REDIS_COMMANDER_PORT=${REDIS_COMMANDER_PORT:-8081}
+echo "Redis Commander: http://${REDIS_COMMANDER_HOST}:${REDIS_COMMANDER_PORT}"
+
+# Attu (Milvus Admin) configuration
+export ATTU_HOST=${ATTU_HOST:-attu}
+export ATTU_PORT=${ATTU_PORT:-3000}
+echo "Attu (Milvus Admin): http://${ATTU_HOST}:${ATTU_PORT}"
+
+# MCP Proxy configuration - routes to mcp-proxy service
+export MCP_HOST=${MCP_HOST:-mcp-proxy}
+export MCP_PORT=${MCP_PORT:-3001}
+echo "MCP Proxy: http://${MCP_HOST}:${MCP_PORT}"
+
+# AWCode Manager configuration - routes to awcode-manager service for PTY terminal
+export AWCODE_MANAGER_HOST=${AWCODE_MANAGER_HOST:-awcode-manager}
+export AWCODE_MANAGER_PORT=${AWCODE_MANAGER_PORT:-3050}
+
+# Code-Server configuration - VS Code Web IDE
+export CODE_SERVER_HOST=${CODE_SERVER_HOST:-code-server}
+export CODE_SERVER_PORT=${CODE_SERVER_PORT:-8080}
+
+# Agent Proxy configuration - agent orchestration service
+export OPENAGENTIC_PROXY_HOST=${OPENAGENTIC_PROXY_HOST:-openagentic-proxy}
+export OPENAGENTIC_PROXY_PORT=${OPENAGENTIC_PROXY_PORT:-3300}
+
+# Detect Kubernetes environment and use FQDN for nginx resolver compatibility
+# nginx resolver doesn't use /etc/resolv.conf search domains, so we need FQDN
+K8S_NAMESPACE=""
+if [ -f /var/run/secrets/kubernetes.io/serviceaccount/namespace ]; then
+    K8S_NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+    echo "Detected Kubernetes namespace: ${K8S_NAMESPACE}"
+
+    # Convert short hostnames to FQDN for nginx resolver
+    # Only if they don't already contain dots (not already FQDN)
+    if ! echo "$AWCODE_MANAGER_HOST" | grep -q '\.'; then
+        export AWCODE_MANAGER_HOST="${AWCODE_MANAGER_HOST}.${K8S_NAMESPACE}.svc.cluster.local"
+    fi
+    if ! echo "$CODE_SERVER_HOST" | grep -q '\.'; then
+        export CODE_SERVER_HOST="${CODE_SERVER_HOST}.${K8S_NAMESPACE}.svc.cluster.local"
+    fi
+    if ! echo "$API_HOST" | grep -q '\.'; then
+        export API_HOST="${API_HOST}.${K8S_NAMESPACE}.svc.cluster.local"
+    fi
+    if ! echo "$MCP_HOST" | grep -q '\.'; then
+        export MCP_HOST="${MCP_HOST}.${K8S_NAMESPACE}.svc.cluster.local"
+    fi
+    if ! echo "$REDIS_COMMANDER_HOST" | grep -q '\.'; then
+        export REDIS_COMMANDER_HOST="${REDIS_COMMANDER_HOST}.${K8S_NAMESPACE}.svc.cluster.local"
+    fi
+    if ! echo "$ATTU_HOST" | grep -q '\.'; then
+        export ATTU_HOST="${ATTU_HOST}.${K8S_NAMESPACE}.svc.cluster.local"
+    fi
+    if ! echo "$OPENAGENTIC_PROXY_HOST" | grep -q '\.'; then
+        export OPENAGENTIC_PROXY_HOST="${OPENAGENTIC_PROXY_HOST}.${K8S_NAMESPACE}.svc.cluster.local"
+    fi
+fi
+
+echo "AWCode Manager: http://${AWCODE_MANAGER_HOST}:${AWCODE_MANAGER_PORT}"
+echo "Code-Server: http://${CODE_SERVER_HOST}:${CODE_SERVER_PORT}"
+
+# Substitute environment variables in nginx config
+if [ -f /etc/nginx/conf.d/default.conf.template ]; then
+    echo "Configuring nginx with environment variables..."
+    echo "  AWCODE_MANAGER_HOST: ${AWCODE_MANAGER_HOST}"
+    echo "  AWCODE_MANAGER_PORT: ${AWCODE_MANAGER_PORT}"
+    echo "  CODE_SERVER_HOST: ${CODE_SERVER_HOST}"
+    echo "  CODE_SERVER_PORT: ${CODE_SERVER_PORT}"
+
+    # Detect DNS resolver from /etc/resolv.conf
+    # In Docker: 127.0.0.11, in K8s: typically 10.43.0.10 or similar
+    DNS_RESOLVER=$(grep '^nameserver' /etc/resolv.conf | head -1 | awk '{print $2}')
+    if [ -z "$DNS_RESOLVER" ]; then
+        DNS_RESOLVER="127.0.0.11"  # Docker default
+    fi
+    export DNS_RESOLVER
+    echo "  DNS_RESOLVER: ${DNS_RESOLVER}"
+
+    envsubst '${API_HOST} ${API_PORT} ${MCP_HOST} ${MCP_PORT} ${DOCS_HOST} ${DOCS_PORT} ${FRONTEND_SECRET} ${REDIS_COMMANDER_HOST} ${REDIS_COMMANDER_PORT} ${ATTU_HOST} ${ATTU_PORT} ${AWCODE_MANAGER_HOST} ${AWCODE_MANAGER_PORT} ${CODE_SERVER_HOST} ${CODE_SERVER_PORT} ${OPENAGENTIC_PROXY_HOST} ${OPENAGENTIC_PROXY_PORT} ${DNS_RESOLVER}' \
+        < /etc/nginx/conf.d/default.conf.template \
+        > /etc/nginx/conf.d/default.conf
+    echo "nginx configuration complete"
+else
+    echo "Warning: No nginx template found, using default configuration"
+fi
+
+# Wait for DNS to be ready in Kubernetes before starting nginx
+# nginx validates all upstreams at startup, so DNS must be available
+if [ -n "$K8S_NAMESPACE" ]; then
+    echo "Waiting for DNS to be ready..."
+    MAX_RETRIES=30
+    RETRY_COUNT=0
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        if nslookup ${API_HOST} >/dev/null 2>&1; then
+            echo "DNS is ready"
+            break
+        fi
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        echo "  Waiting for DNS... attempt $RETRY_COUNT/$MAX_RETRIES"
+        sleep 1
+    done
+    if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+        echo "WARNING: DNS not ready after $MAX_RETRIES seconds, proceeding anyway"
+    fi
+
+    # Additional delay to ensure DNS cache is warm
+    # nginx may fail if DNS isn't fully propagated even though nslookup succeeds
+    echo "Waiting additional 5s for DNS propagation..."
+    sleep 5
+fi
+
+# Start nginx with retry logic for k8s DNS timing issues
+echo "Starting nginx..."
+if [ -n "$K8S_NAMESPACE" ]; then
+    MAX_NGINX_RETRIES=5
+    NGINX_RETRY=0
+    while [ $NGINX_RETRY -lt $MAX_NGINX_RETRIES ]; do
+        # Test nginx config first
+        echo "Testing nginx config..."
+        if nginx -t 2>&1; then
+            echo "nginx config test passed, starting..."
+            exec nginx -g 'daemon off;'
+        else
+            NGINX_RETRY=$((NGINX_RETRY + 1))
+            echo "nginx config test failed (attempt $NGINX_RETRY/$MAX_NGINX_RETRIES)"
+            nginx -t 2>&1 || true  # Show the actual error
+            echo "Retrying in 3s..."
+            sleep 3
+        fi
+    done
+    echo "ERROR: nginx failed to start after $MAX_NGINX_RETRIES attempts"
+    echo "Final nginx -t output:"
+    nginx -t 2>&1 || true
+    exit 1
+else
+    exec nginx -g 'daemon off;'
+fi

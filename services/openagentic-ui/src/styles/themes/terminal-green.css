@@ -1,0 +1,35 @@
+/**
+ * Copyright 2026 Gnomus.ai
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* Terminal Green — code mode only
+   Retro CRT / Matrix aesthetic */
+.code-mode[data-cm-theme="terminal-green"] {
+  --cm-bg: #0a0a0a;
+  --cm-bg-secondary: #111111;
+  --cm-bg-tertiary: #050505;
+  --cm-surface: #1a1a1a;
+  --cm-text: #00ff41;
+  --cm-text-secondary: #00cc33;
+  --cm-text-muted: #007722;
+  --cm-accent: #00ff41;
+  --cm-success: #00ff41;
+  --cm-warning: #ffaa00;
+  --cm-error: #ff3333;
+  --cm-info: #00aaff;
+  --cm-muted: #007722;
+  --cm-border: #003311;
+  --cm-prompt: #00ff41;
+}

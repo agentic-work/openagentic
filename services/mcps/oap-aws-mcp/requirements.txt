@@ -1,0 +1,10 @@
+mcp>=1.0.0
+fastmcp>=2.0.0
+boto3>=1.34.0
+botocore>=1.34.0
+redis>=5.0.0
+python-dotenv>=1.0.0
+httpx>=0.25.0
+uvicorn>=0.30.0
+fastapi>=0.100.0
+structlog>=24.1.0

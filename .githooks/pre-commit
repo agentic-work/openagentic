@@ -1,0 +1,95 @@
+#!/bin/bash
+# Pre-commit hook: block real secrets from being committed
+# Install: git config core.hooksPath .githooks
+set -euo pipefail
+
+RED='\033[0;31m'
+NC='\033[0m'
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR)
+if [ -z "$STAGED_FILES" ]; then
+  exit 0
+fi
+
+BLOCKED=0
+
+# Block specific filenames that should never be committed
+for FILE in $STAGED_FILES; do
+  case "$(basename "$FILE")" in
+    SECRETS-BACKUP.md|manifests.yaml)
+      echo -e "${RED}BLOCKED${NC}: $FILE should never be committed"
+      BLOCKED=1
+      ;;
+  esac
+done
+
+# Build a map: new-path -> old-path for renamed files. We need this so the
+# per-file diff below can pass BOTH paths to `git diff`, which is the only
+# way to keep git's rename detection on inside a pathspec-scoped diff.
+# Without this, a rename emits the entire file content as `+` lines and any
+# pre-existing secret in the file is re-flagged on the move commit.
+declare -A RENAME_OLD
+while IFS=$'\t' read -r STATUS OLD NEW; do
+  case "$STATUS" in
+    R*) RENAME_OLD["$NEW"]="$OLD" ;;
+  esac
+done < <(git diff --cached --name-status -M --diff-filter=R)
+
+for FILE in $STAGED_FILES; do
+  # Skip binary/lock files, the hook itself, templates, and test fixtures
+  case "$FILE" in
+    *.png|*.jpg|*.gif|*.ico|*.woff*|*.ttf|*.lock|package-lock.json|*.wasm) continue ;;
+    .githooks/*) continue ;;
+    *.template) continue ;;
+    */tests/*|*/test/*|*test*.sh|*test*.spec.*|*/e2e/*|*/docs/*) continue ;;
+  esac
+  [ -f "$FILE" ] || continue
+
+  # Use git diff --cached to get text content. For renames, pass both
+  # old+new paths so rename detection produces a real delta diff instead
+  # of a full-file new-add diff.
+  if [ -n "${RENAME_OLD[$FILE]:-}" ]; then
+    CONTENT=$(git diff --cached --no-color -U0 -M -- "${RENAME_OLD[$FILE]}" "$FILE" 2>/dev/null | grep '^+' | grep -v '^+++' || true)
+  else
+    CONTENT=$(git diff --cached --no-color -U0 -- "$FILE" 2>/dev/null | grep '^+' | grep -v '^+++' || true)
+  fi
+  [ -z "$CONTENT" ] && continue
+
+  # AWS Access Key IDs
+  if echo "$CONTENT" | grep -qP 'AKIA[A-Z0-9]{16}'; then
+    echo -e "${RED}BLOCKED${NC}: $FILE contains AWS Access Key ID"
+    BLOCKED=1
+  fi
+
+  # Google OAuth tokens
+  if echo "$CONTENT" | grep -qP 'ya29\.[a-zA-Z0-9_-]{20,}'; then
+    echo -e "${RED}BLOCKED${NC}: $FILE contains Google OAuth Token"
+    BLOCKED=1
+  fi
+
+  # OpenAgentic API keys
+  if echo "$CONTENT" | grep -qP "awc_[a-f0-9]{20,}"; then
+    echo -e "${RED}BLOCKED${NC}: $FILE contains OpenAgentic API Key"
+    BLOCKED=1
+  fi
+
+  # Private keys
+  if echo "$CONTENT" | grep -qP 'BEGIN (RSA |EC )?PRIVATE KEY'; then
+    echo -e "${RED}BLOCKED${NC}: $FILE contains a private key"
+    BLOCKED=1
+  fi
+
+  # Azure AD client secrets (real ones: tildes + dots pattern)
+  if echo "$CONTENT" | grep -qP 'azureClientSecret:\s*"[A-Za-z0-9~.]{10,}"'; then
+    echo -e "${RED}BLOCKED${NC}: $FILE contains Azure AD client secret"
+    BLOCKED=1
+  fi
+done
+
+if [ "$BLOCKED" -eq 1 ]; then
+  echo ""
+  echo "Commit blocked: secrets detected in staged files."
+  echo "Remove secrets and use Azure Key Vault / env vars instead."
+  echo "To bypass (DANGEROUS): git commit --no-verify"
+  exit 1
+fi
