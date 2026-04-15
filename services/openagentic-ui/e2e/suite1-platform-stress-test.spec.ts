@@ -15,7 +15,7 @@
  */
 
 /**
- * Suite 1: Platform Stress Test — CDC Government Release Certification
+ * Suite 1: Platform Stress Test — Release Smoke Suite
  * Tests 1.1–1.12: Session CRUD, Slash Commands, Slider, OpenAI-compat,
  * Workflow CRUD/Execution/Versioning, Test Mode, Canvas, Marketplace,
  * AI Builder, Admin Portal, Health/Metrics, Rate Limiting
@@ -199,7 +199,7 @@ test.describe('1.1 Session CRUD Lifecycle', () => {
     // Create 3 sessions
     for (let i = 1; i <= 3; i++) {
       const res = await apiCall(page, 'POST', '/api/chat/sessions', {
-        title: `CDC-Test-Session-${i}-${Date.now()}`
+        title: `Test-Session-${i}-${Date.now()}`
       });
       console.log(`Created session ${i}: status=${res.status}`);
       expect(res.status).toBeLessThan(300);
@@ -221,7 +221,7 @@ test.describe('1.1 Session CRUD Lifecycle', () => {
     // Note: PUT /api/chat/sessions/:id stores title via updateSessionMetadata
     // The API returns the updated session — verify the PUT was accepted
     const renameRes = await apiCall(page, 'PUT', `/api/chat/sessions/${sessionIds[0]}`, {
-      title: 'CDC-Renamed-Session'
+      title: 'Renamed-Session'
     });
     console.log(`Renamed session: status=${renameRes.status}`);
     expect(renameRes.status).toBeLessThan(300);
@@ -452,10 +452,10 @@ test.describe('1.5 Workflow CRUD + Execution', () => {
 
     // Create a 3-node workflow
     const workflowDef = {
-      name: `CDC-Test-Workflow-${Date.now()}`,
-      description: 'CDC certification test workflow',
+      name: `Test-Workflow-${Date.now()}`,
+      description: 'Release certification test workflow',
       category: 'test',
-      tags: ['cdc', 'certification'],
+      tags: ['release', 'certification'],
       definition: {
         nodes: [
           { id: 'trigger-1', type: 'trigger', data: { label: 'Manual Trigger', triggerType: 'manual' }, position: { x: 100, y: 100 } },
@@ -479,7 +479,7 @@ test.describe('1.5 Workflow CRUD + Execution', () => {
     // Execute workflow via SSE
     console.log('Executing workflow via SSE...');
     const execResult = await streamSSE(page, `/api/workflows/${workflowId}/execute`, {
-      input: { text: 'Test input for CDC certification' },
+      input: { text: 'Test input for Release certification' },
       trigger_type: 'manual'
     }, 60000);
     console.log(`  Execution events: ${execResult.events.length}`);
@@ -491,7 +491,7 @@ test.describe('1.5 Workflow CRUD + Execution', () => {
 
     // Create version snapshot
     const versionRes = await apiCall(page, 'POST', `/api/workflows/${workflowId}/versions`, {
-      description: 'v1 - Initial CDC test version'
+      description: 'v1 - Initial smoke version'
     });
     console.log(`Create version: status=${versionRes.status}`);
 
@@ -532,7 +532,7 @@ test.describe('1.6 Workflow Test Mode', () => {
           { id: 'e1', source: 'trigger-1', target: 'transform-1' },
         ],
       },
-      input: { text: 'CDC test mode input' },
+      input: { text: 'Smoke test mode input' },
     };
 
     const testResult = await streamSSE(page, '/api/workflows/test', testDef, 30000);
@@ -622,7 +622,7 @@ test.describe('1.8 Marketplace Templates', () => {
         description: `Instance of ${tpl.name}`,
         definition: tpl.definition,
         category: tpl.category,
-        tags: ['template-instance', 'cdc-test'],
+        tags: ['template-instance', 'smoke-test'],
       });
       if (instRes.status < 300) {
         const instId = instRes.data?.id || instRes.data?.workflow?.id;

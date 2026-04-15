@@ -235,7 +235,7 @@ export async function seedLLMProviders(): Promise<void> {
       const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || '';
       const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2024-08-01-preview';
 
-      // Multi-deployment support (v3). When CDC-style foundries have
+      // Multi-deployment support (v3). When Azure AI Foundry deployments have
       // per-model deployments (gpt-5.4-dev, claude-opus-4-6-dev,
       // o3-tier2-dev), the chart sets AZURE_OPENAI_DEPLOYMENTS as a
       // comma-separated list. Each entry becomes a model in the
@@ -275,7 +275,7 @@ export async function seedLLMProviders(): Promise<void> {
       // for text embeddings (e.g. `text-embedding-3-large-dev`). When set,
       // this provider is embedding-capable and UniversalEmbeddingService /
       // server.ts's setDbEmbeddingConfig pick it up as the active
-      // embedding provider. Without this, CDC dev's seeder used to write
+      // embedding provider. Without this, the seeder used to write
       // azure-openai with no `capabilities.embeddings` and no
       // `modelConfig.embeddingModel` — forcing the embedding picker to
       // fall through to ollama and breaking every RAG / tool-search /
@@ -302,7 +302,7 @@ export async function seedLLMProviders(): Promise<void> {
           modelId: deployment,
           // Multi-deployment models list — overwrites any stale entries
           // from a previous seeder run (e.g. leftover model-router from
-          // before the CDC env vars were corrected).
+          // before the the env vars were corrected).
           models: modelsArray,
         },
         modelConfig: {
@@ -548,7 +548,7 @@ export async function seedLLMProviders(): Promise<void> {
 
           // Sync capabilities on every run for non-admin-owned providers.
           // Previously this was never touched after initial create, so
-          // CDC dev kept stale capability blocks even after the seeder
+          // Some deployments kept stale capability blocks even after the seeder
           // learned new things — notably azure-openai missing
           // `embeddings: true` when AZURE_OPENAI_EMBEDDING_DEPLOYMENT was
           // set, which broke the embedding provider picker in server.ts.

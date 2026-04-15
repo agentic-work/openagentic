@@ -707,7 +707,7 @@ export class SmartModelRouter {
       // CRITICAL: For COMPLEX tool requests, prefer Sonnet over Opus unless
       // the user explicitly chose premium (slider > 70). Opus is 5-6x more
       // expensive for a 0.02 FC accuracy delta (0.96 vs 0.94) that almost
-      // never matters in practice. Budget cap on Opus (25 capacity in CDC
+      // never matters in practice. Budget cap on Opus (25 capacity in the Azure capacity plan
       // dev/stg foundry) makes this even more important.
       if (isComplexToolRequest && sliderPos <= 70) {
         const withoutOpus = candidates.filter(m => !m.modelId.toLowerCase().includes('opus'));

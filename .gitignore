@@ -144,7 +144,7 @@ venv/
 ENV/
 .venv
 
-# Certificates and keys (except CDC CA bundle in helm)
+# Certificates and keys
 *.pem
 *.key
 *.csr
@@ -310,8 +310,8 @@ helm/*/values-*.yaml
 !helm/values/values-aks-dev.yaml
 !helm/values/values-aks-stg.yaml
 
-# CDC SOT values (secrets, NOT pushed)
-helm/openagentic/CDC/
+# Env-specific values (not tracked in OSS)
+helm/openagentic/envs/
 helm/openagentic/SECRETS-BACKUP.md
 helm/manifests.yaml
 helm/todo.md
@@ -344,7 +344,6 @@ playwright-report/
 # Vendor companion source — staged transiently into companions/<name> by
 # CI before the openagentic-ui image builds its docs manifests. The
 # companion source MUST NEVER be committed to this downstream repo —
-# CDC systems cannot carry vendor source code, only compiled artifacts
 # and the JSON docs manifests derived from them.
 #
 # The empty companions/ directory is kept with a .gitkeep placeholder

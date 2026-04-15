@@ -254,11 +254,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                       <div className="flex flex-col gap-1">
                         <span className="text-sm font-medium">Support</span>
                         <span className="text-[11px] leading-snug" style={{ color: 'var(--color-textMuted)' }}>
-                          {isCdc ? (
-                            <>Please email the <a href={`mailto:${supportEmail}?subject=OpenAgentic%20Support%20Request`} className="underline" style={{ color: 'var(--ap-accent)' }} onClick={() => setIsOpen(false)}>AIOps/Agentic Team</a> for support, create a SNOW ticket, or use the <a href="#" className="underline" style={{ color: 'var(--ap-accent)' }} onClick={(e) => { e.preventDefault(); openUI('showDocsViewer'); setIsOpen(false); }}>documentation system and its AI Agent</a>.</>
-                          ) : (
-                            <>Email <a href={`mailto:${supportEmail}?subject=OpenAgentic%20Support%20Request`} className="underline" style={{ color: 'var(--ap-accent)' }} onClick={() => setIsOpen(false)}>support@openagentics.io</a> or use the <a href="#" className="underline" style={{ color: 'var(--ap-accent)' }} onClick={(e) => { e.preventDefault(); openUI('showDocsViewer'); setIsOpen(false); }}>documentation system and its AI Agent</a>.</>
-                          )}
+                          Email <a href={`mailto:${supportEmail}?subject=OpenAgentic%20Support%20Request`} className="underline" style={{ color: 'var(--ap-accent)' }} onClick={() => setIsOpen(false)}>{supportEmail}</a> or use the <a href="#" className="underline" style={{ color: 'var(--ap-accent)' }} onClick={(e) => { e.preventDefault(); openUI('showDocsViewer'); setIsOpen(false); }}>documentation system and its AI Agent</a>.
                         </span>
                       </div>
                     </div>

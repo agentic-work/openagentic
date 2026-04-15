@@ -2553,7 +2553,7 @@ const start = async () => {
   // Workflow templates — seed built-in templates if DB is empty
   // ========================================================================
   // Previously SEED_WORKFLOW_TEMPLATES was only invoked via the manual
-  // POST /api/workflows/seed-templates endpoint. Fresh envs (CDC dev, stg)
+  // POST /api/workflows/seed-templates endpoint. Fresh envs (downstream envs, stg)
   // never got the call so their flows workspace showed zero templates
   // while the local test env had 66+ (because a dev ran the endpoint at
   // some point). Auto-seed on startup fixes that gap. Idempotent: the

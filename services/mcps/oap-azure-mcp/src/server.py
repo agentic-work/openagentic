@@ -4808,11 +4808,11 @@ async def azure_list_subscriptions_in_management_group(
 ) -> Dict[str, Any]:
     """
     List all subscriptions under a specific management group. Use this to answer
-    questions like "list the subscriptions in management group CDC-Centers-MG".
+    questions like "list the subscriptions in management group example-management-group".
 
     The management_group_id can be either:
-      - The short name (e.g. "CDC-Centers-MG")
-      - The full ARM ID (e.g. "/providers/Microsoft.Management/managementGroups/CDC-Centers-MG")
+      - The short name (e.g. "example-management-group")
+      - The full ARM ID (e.g. "/providers/Microsoft.Management/managementGroups/example-management-group")
 
     Args:
         management_group_id: The management group identifier (name or full ARM path).

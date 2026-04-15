@@ -15,7 +15,7 @@
  */
 
 /**
- * Suite 2: Flows & Agents Integration — CDC Government Release Certification
+ * Suite 2: Flows & Agents Integration — Release Smoke Suite
  * Tests 2.1–2.13: Interactive LLM API tests
  *
  * These tests send real prompts to the streaming chat API, parse SSE responses,
@@ -291,7 +291,7 @@ test.describe('2.1 Multi-Cloud Landing Zone', () => {
     test.setTimeout(300000);
     await login(page);
 
-    const sessionId = await createSession(page, 'CDC-2.1-MultiCloud');
+    const sessionId = await createSession(page, 'Suite-2.1-MultiCloud');
 
     const prompt = `Design production infrastructure for BlitzBaud (agentic AI company):
 - Azure: AppGW with routing rules, 3-tier compute (AKS), FedRAMP controls (AC-2, AU-2, SC-7, SC-8, SC-12)
@@ -324,7 +324,7 @@ test.describe('2.2 MCP Kubernetes Tools', () => {
     test.setTimeout(180000);
     await login(page);
 
-    const sessionId = await createSession(page, 'CDC-2.2-K8s-Tools');
+    const sessionId = await createSession(page, 'Suite-2.2-K8s-Tools');
 
     console.log('  Sending K8s namespace query...');
     const result = await chatStream(page, sessionId,
@@ -365,7 +365,7 @@ test.describe('2.3 MCP Web Search', () => {
     test.setTimeout(180000);
     await login(page);
 
-    const sessionId = await createSession(page, 'CDC-2.3-WebSearch');
+    const sessionId = await createSession(page, 'Suite-2.3-WebSearch');
 
     console.log('  Sending web search query...');
     const result = await chatStream(page, sessionId,
@@ -395,7 +395,7 @@ test.describe('2.4 MCP Admin Tools', () => {
     test.setTimeout(180000);
     await login(page);
 
-    const sessionId = await createSession(page, 'CDC-2.4-AdminTools');
+    const sessionId = await createSession(page, 'Suite-2.4-AdminTools');
 
     console.log('  Sending admin tools query...');
     const result = await chatStream(page, sessionId,
@@ -437,9 +437,9 @@ test.describe('2.5 PagerDuty Self-Healing', () => {
     console.log('  Creating PagerDuty self-healing workflow...');
     const workflowRes = await apiCall(page, 'POST', '/api/workflows', {
       name: `PD-SelfHeal-${Date.now()}`,
-      description: 'PagerDuty self-healing workflow for CDC certification',
+      description: 'PagerDuty self-healing workflow for Release certification',
       category: 'incident-response',
-      tags: ['pagerduty', 'self-healing', 'cdc-test'],
+      tags: ['pagerduty', 'self-healing', 'smoke-test'],
       definition: {
         nodes: [
           { id: 'trigger-1', type: 'trigger', data: { label: 'PagerDuty Webhook', triggerType: 'webhook' }, position: { x: 100, y: 100 } },
@@ -481,7 +481,7 @@ test.describe('2.5 PagerDuty Self-Healing', () => {
         routing_key: PD_INTEGRATION_KEY,
         event_action: 'trigger',
         payload: {
-          summary: 'BlitzBaud API pod CrashLoopBackOff - CDC Test',
+          summary: 'BlitzBaud API pod CrashLoopBackOff - Smoke Test',
           severity: 'critical',
           source: 'openagentic-api',
           component: 'api-tier',
@@ -510,7 +510,7 @@ test.describe('2.6 Thinking + Complex Reasoning', () => {
     test.setTimeout(300000);
     await login(page);
 
-    const sessionId = await createSession(page, 'CDC-2.6-BFT');
+    const sessionId = await createSession(page, 'Suite-2.6-BFT');
 
     console.log('  Sending BFT algorithm prompt...');
     const result = await chatStream(page, sessionId,
@@ -543,7 +543,7 @@ test.describe('2.7 Multi-Turn Conversation', () => {
     test.setTimeout(600000);
     await login(page);
 
-    const sessionId = await createSession(page, 'CDC-2.7-MultiTurn');
+    const sessionId = await createSession(page, 'Suite-2.7-MultiTurn');
 
     const turns = [
       { prompt: 'Use k8s_list_namespaces to show what Kubernetes namespaces exist in this cluster.', check: ['namespace', 'agentic', 'kube'] },
@@ -592,7 +592,7 @@ test.describe('2.8 Memory Persistence', () => {
     const code = `BLITZ-${timestamp}`;
 
     // Session A: Store memory
-    const sessionA = await createSession(page, 'CDC-2.8-MemoryStore');
+    const sessionA = await createSession(page, 'Suite-2.8-MemoryStore');
     console.log(`  Storing deployment code: ${code}`);
     const storeResult = await chatStream(page, sessionA,
       `Remember this important fact: The BlitzBaud deployment code is ${code}. Store it in memory using the memory_store tool.`,
@@ -608,7 +608,7 @@ test.describe('2.8 Memory Persistence', () => {
     await page.waitForTimeout(3000);
 
     // Session B: Recall memory
-    const sessionB = await createSession(page, 'CDC-2.8-MemoryRecall');
+    const sessionB = await createSession(page, 'Suite-2.8-MemoryRecall');
     console.log('  Recalling deployment code...');
     const recallResult = await chatStream(page, sessionB,
       'What is the BlitzBaud deployment code? Use memory_recall to find it.',
@@ -634,7 +634,7 @@ test.describe('2.9 Image Generation', () => {
     test.setTimeout(180000);
     await login(page);
 
-    const sessionId = await createSession(page, 'CDC-2.9-ImageGen');
+    const sessionId = await createSession(page, 'Suite-2.9-ImageGen');
 
     console.log('  Sending image generation prompt...');
     const result = await chatStream(page, sessionId,
@@ -663,7 +663,7 @@ test.describe('2.10 FedRAMP Compliance Audit', () => {
     test.setTimeout(300000);
     await login(page);
 
-    const sessionId = await createSession(page, 'CDC-2.10-FedRAMP');
+    const sessionId = await createSession(page, 'Suite-2.10-FedRAMP');
 
     console.log('  Sending FedRAMP audit prompt...');
     const result = await chatStream(page, sessionId,
@@ -748,7 +748,7 @@ test.describe('2.12 Agentic Loops', () => {
     }
 
     console.log('  Testing agent delegation via chat...');
-    const sessionId = await createSession(page, 'CDC-2.12-Agents');
+    const sessionId = await createSession(page, 'Suite-2.12-Agents');
     const result = await chatStream(page, sessionId,
       'What agent frameworks are available on this platform? Can you check the health of the agent services?',
       60000);
@@ -770,7 +770,7 @@ test.describe('2.13 PagerDuty via Chat', () => {
     test.setTimeout(180000);
     await login(page);
 
-    const sessionId = await createSession(page, 'CDC-2.13-PagerDuty');
+    const sessionId = await createSession(page, 'Suite-2.13-PagerDuty');
 
     console.log('  Asking LLM to interact with PagerDuty...');
     const result = await chatStream(page, sessionId,
