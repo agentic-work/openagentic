@@ -120,8 +120,6 @@ const MonitoringView = React.lazy(() => import('../Monitoring/MonitoringView').t
 const UserPermissionsView = React.lazy(() => import('../System/UserPermissionsView'));
 const DashboardOverview = React.lazy(() => import('../Overview/DashboardOverview').then(m => ({ default: m.DashboardOverview })));
 const PromptTemplateManager = React.lazy(() => import('../Content/PromptTemplateManager').then(m => ({ default: m.PromptTemplateManager })));
-const AWCodeSessionsView = React.lazy(() => import('../Code/AWCodeSessionsView').then(m => ({ default: m.AWCodeSessionsView })));
-const AWCodeSettingsView = React.lazy(() => import('../Code/AWCodeSettingsView').then(m => ({ default: m.AWCodeSettingsView })));
 // New CodeMode admin views (replacing old Openagentic section)
 const CodeModeSettingsView = React.lazy(() => import('../CodeMode/CodeModeSettingsView'));
 const CodeModeMcpView = React.lazy(() => import('../CodeMode/CodeModeMcpView'));

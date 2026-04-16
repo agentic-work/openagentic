@@ -715,23 +715,6 @@ export function useCodeModeWebSocket({
           break;
         }
 
-        case 'command_start': {
-          const cmdEvent = event as any;
-          const cmdId = cmdEvent.commandId || `cmd-${Date.now()}`;
-          const step: Omit<ToolStep, 'isCollapsed' | 'isStreaming'> = {
-            id: cmdId,
-            name: 'execute_command',
-            displayName: 'Bash',
-            status: 'executing',
-            startTime: Date.now(),
-            command: cmdEvent.command,
-            inputPreview: cmdEvent.description || cmdEvent.command?.substring(0, 50) || '',
-          };
-          store.addToolStep(step);
-          pendingToolsRef.current.set(cmdId, step as ToolStep);
-          store.setActivityState('tool_executing');
-          break;
-        }
 
         case 'command_complete': {
           const cmdEvent = event as any;
