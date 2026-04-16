@@ -197,6 +197,8 @@ services:
       ADMIN_USER_EMAIL: ${ADMIN_USER_EMAIL:-admin@openagentic.local}
       ADMIN_SEED_PASSWORD: ${ADMIN_SEED_PASSWORD:-changeme-on-first-login}
       LOCAL_ADMIN_USERNAME: ${LOCAL_ADMIN_USERNAME:-Admin}
+      # Code Mode default coding CLI (seeded to SystemConfiguration on first boot)
+      CODING_ADAPTER: ${CODING_ADAPTER:-claude-code}
       # The user already picked their password via ADMIN_SEED_PASSWORD in .env
       # before first boot, so don't force another change on first login.
       ADMIN_REQUIRE_PASSWORD_RESET: ${ADMIN_REQUIRE_PASSWORD_RESET:-false}

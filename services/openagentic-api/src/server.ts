@@ -241,6 +241,15 @@ async function initializeServices() {
 
     // Create InitializationService to handle first-time deployment
     const initService = new InitializationService(prisma, loggers.services);
+
+    // Seed the Code Mode coding-adapter default from the wizard's CODING_ADAPTER
+    // env var (first boot only; admin UI changes aren't overwritten).
+    try {
+      const { seedCodingAdapterFromEnv } = await import('./routes/admin/coding-adapters.js');
+      await seedCodingAdapterFromEnv();
+    } catch (err) {
+      loggers.services.warn({ err }, 'Coding adapter seed skipped');
+    }
     
     // Vault already initialized at startup - just verify it's available
     const vaultService = (global as any).vaultService;

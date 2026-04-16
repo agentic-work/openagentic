@@ -14,7 +14,7 @@ export const OllamaStep: React.FC<Props> = ({ initial, onDone }) => {
 
   return (
     <Box flexDirection="column">
-      <StepHeader step={3} total={5} title="Where is your Ollama?" />
+      <StepHeader step={3} total={6} title="Where is your Ollama?" />
       <Box marginLeft={2} flexDirection="column">
         <Box>
           <Text color={COLORS.accent}>❯ </Text>

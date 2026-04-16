@@ -5,12 +5,13 @@ import { DeployTargetStep } from './steps/DeployTarget.tsx';
 import { AdminUserStep } from './steps/AdminUser.tsx';
 import { OllamaStep } from './steps/Ollama.tsx';
 import { ProvidersStep } from './steps/Providers.tsx';
+import { CodingCliStep } from './steps/CodingCli.tsx';
 import { ReviewStep } from './steps/Review.tsx';
 import { LaunchStep } from './steps/Launch.tsx';
-import { DEFAULT_CONFIG, type WizardConfig, type DeployTarget } from './lib/types.ts';
+import { DEFAULT_CONFIG, type WizardConfig, type DeployTarget, type CodingAdapterId } from './lib/types.ts';
 import { readCurrent } from './lib/env.ts';
 
-type Screen = 'target' | 'admin' | 'ollama' | 'providers' | 'review' | 'launch' | 'done';
+type Screen = 'target' | 'admin' | 'ollama' | 'providers' | 'coding' | 'review' | 'launch' | 'done';
 
 const App: React.FC = () => {
   // Seed from any existing .env so re-running the wizard is non-destructive.
@@ -34,6 +35,7 @@ const App: React.FC = () => {
       azureOpenAIEndpoint: existing.AZURE_OPENAI_ENDPOINT || undefined,
       azureOpenAIKey: existing.AZURE_OPENAI_API_KEY || undefined,
     },
+    codingAdapter: ((existing.CODING_ADAPTER as CodingAdapterId | undefined) || DEFAULT_CONFIG.codingAdapter),
     uiPort: existing.UI_HOST_PORT ? Number(existing.UI_HOST_PORT) : DEFAULT_CONFIG.uiPort,
   }));
   const [screen, setScreen] = useState<Screen>('target');
@@ -76,6 +78,17 @@ const App: React.FC = () => {
         initial={config.providers}
         onDone={(providers) => {
           setConfig({ ...config, providers });
+          setScreen('coding');
+        }}
+      />
+    );
+  }
+  if (screen === 'coding') {
+    return (
+      <CodingCliStep
+        initial={config.codingAdapter}
+        onPick={(id) => {
+          setConfig({ ...config, codingAdapter: id });
           setScreen('review');
         }}
       />

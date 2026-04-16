@@ -24,13 +24,14 @@ export const ReviewStep: React.FC<Props> = ({ config, onLaunch, onCancel }) => {
 
   return (
     <Box flexDirection="column">
-      <StepHeader step={5} total={5} title="Review & launch" />
+      <StepHeader step={6} total={6} title="Review & launch" />
       <Box marginLeft={2} flexDirection="column">
         {row('deploy target', config.target)}
         {row('admin email', config.admin.email)}
         {row('ollama host', config.ollama.host)}
         {row('embedding model', config.ollama.embedModel)}
         {row('LLM providers', providerCount > 0 ? `${providerCount} configured` : 'Ollama only')}
+        {row('coding CLI', config.codingAdapter)}
         {row('UI port', String(config.uiPort))}
       </Box>
       <Box marginTop={1} marginLeft={2}>

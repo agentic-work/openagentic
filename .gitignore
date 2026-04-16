@@ -357,3 +357,7 @@ companions/*
 
 # Setup wizard deps (installed on first run by install.sh)
 tools/setup/node_modules/
+
+# Sync workspace (local cache for tools/sync-upstream.py — never tracked)
+tools/.sync-cache/
+!tools/.sync-cache/.gitkeep

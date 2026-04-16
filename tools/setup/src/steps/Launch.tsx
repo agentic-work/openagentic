@@ -63,7 +63,7 @@ export const LaunchStep: React.FC<Props> = ({ config, onDone }) => {
 
   return (
     <Box flexDirection="column">
-      <StepHeader step={5} total={5} title="Bringing up openagentic" />
+      <StepHeader step={6} total={6} title="Bringing up openagentic" />
       <Box marginLeft={2} flexDirection="column">
         {tasks.map((t, i) => (
           <Box key={i}>
@@ -99,6 +99,7 @@ function toEnv(c: WizardConfig): Record<string, string> {
     LOCAL_ADMIN_USERNAME: c.admin.name,
     OLLAMA_HOST: c.ollama.host,
     OLLAMA_EMBED_MODEL: c.ollama.embedModel,
+    CODING_ADAPTER: c.codingAdapter,
     UI_HOST_PORT: String(c.uiPort),
   };
   if (c.providers.anthropic)            env.ANTHROPIC_API_KEY = c.providers.anthropic;
