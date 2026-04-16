@@ -126,7 +126,7 @@ SKIP_PATH_HINTS = (
 
 # ─── Preserve: our local fixes (never overwrite) ─────────────────────────────
 PRESERVE = {
-    'services/openagentic-api/src/server.ts',
+    'services/openagentic-api/src/server.ts',  # boot made non-fatal on empty MCP index
     'services/openagentic-api/src/utils/redis-client.ts',
     'services/openagentic-api/src/routes/chat/pipeline/validation.stage.ts',
     'services/openagentic-api/src/services/llm-providers/OllamaProvider.ts',
@@ -136,6 +136,7 @@ PRESERVE = {
     'services/openagentic-exec/src/ptyManager.ts',
     'services/openagentic-exec/Dockerfile',
     'services/openagentic-ui/docker-entrypoint.sh',
+    'services/openagentic-api/docker-entrypoint.sh',  # we added prisma migrate deploy here
     'services/openagentic-ui/nginx.conf.template',
     'services/openagentic-ui/Dockerfile',
     'services/openagentic-ui/src/features/chat/components/SettingsMenu.tsx',

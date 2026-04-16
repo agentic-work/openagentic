@@ -16,6 +16,7 @@ import { ClientSecretCredential, DefaultAzureCredential, getBearerTokenProvider 
 import type { Logger } from 'pino';
 import { pino } from 'pino';
 import { LLMMetricsService } from './LLMMetricsService.js';
+import { ollamaAgent } from '../utils/ollama-agent.js';
 
 export type EmbeddingProvider = 'azure-openai' | 'aws-bedrock' | 'vertex-ai' | 'openai-compatible' | 'ollama';
 
@@ -1124,6 +1125,10 @@ export class UniversalEmbeddingService {
       textLength: text.length
     }, 'Generating Ollama embedding');
 
+    // Route through the shared ollama agent so connect/keep-alive are
+    // sized for many concurrent chat+embedding calls (see utils/ollama-agent.ts).
+    // `dispatcher` is a Node-specific fetch option the DOM type doesn't
+    // declare, so we bypass the type via an any-cast on the options bag.
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -1132,8 +1137,10 @@ export class UniversalEmbeddingService {
       body: JSON.stringify({
         model: model,
         prompt: text
-      })
-    });
+      }),
+      dispatcher: ollamaAgent,
+      signal: AbortSignal.timeout(30_000),
+    } as any);
 
     if (!response.ok) {
       const errorText = await response.text();

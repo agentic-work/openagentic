@@ -240,7 +240,7 @@ def script_all_mcps_inline(child: pexpect.spawn) -> None:
 def assert_all_mcps_inline(env: dict[str, str]) -> list[str]:
     fails = []
     mcps = env.get("MCPS_ENABLED", "").split(",")
-    expected = {"web", "knowledge", "admin", "sequential-thinking",
+    expected = {"web", "knowledge", "admin",
                 "aws", "azure", "gcp", "kubernetes", "github",
                 "prometheus", "loki", "alertmanager"}
     missing = expected - set(mcps)

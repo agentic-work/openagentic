@@ -365,3 +365,6 @@ tools/setup/node_modules/
 # Sync workspace (local cache for tools/sync-upstream.py — never tracked)
 tools/.sync-cache/
 !tools/.sync-cache/.gitkeep
+
+# Local tsc scratch install — shouldn't be in tree
+services/*/.pnpm-store/

@@ -126,6 +126,23 @@ case "$EMBEDDING_PROVIDER" in
 esac
 
 echo "========================================="
+echo "Syncing database schema"
+echo "========================================="
+# `prisma db push` is idempotent: creates missing tables on first boot,
+# no-ops when the schema is already in sync. The in-process
+# AutoMigrationService also calls this, but it only runs AFTER secrets
+# + vault init, and InitializationService.verifyDatabase counts tables
+# that may not exist yet on a brand-new DB — so pushing up front here
+# guarantees the tables are there before any code tries to read them.
+# `--accept-data-loss` is the standard signal to Prisma that we're OK
+# with column-type coercion on first boot; it's harmless on an empty DB.
+if ! ./node_modules/.bin/prisma db push --accept-data-loss --skip-generate; then
+  echo "🚨 prisma db push failed. Aborting start."
+  exit 1
+fi
+echo "✅ Schema in sync"
+
+echo "========================================="
 echo "✅ ALL dependencies ready - starting API server"
 echo "========================================="
 

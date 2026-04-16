@@ -2585,32 +2585,33 @@ const start = async () => {
     process.exit(1);
   }
 
-  // Index ALL MCP tools into Milvus (BLOCKING — must complete before serving requests)
-  loggers.services.info('🔄 Indexing ALL MCP tools into Milvus (BLOCKING)...');
+  // Index ALL MCP tools into Milvus. Best-effort on boot: the MCP proxy may
+  // not have spawned every subprocess yet on a fresh install, and single-user
+  // OSS deploys don't have a second replica to pick up the slack. Don't kill
+  // the API if we end up with 0 tools — background re-index fires on the first
+  // chat and the UI works fine with a shrinking tool set in the meantime.
+  loggers.services.info('🔄 Indexing ALL MCP tools into Milvus…');
   try {
     await toolSemanticCache.autoIndexToolsWhenReady();
-    loggers.services.info('✅ MCP tools indexed in Milvus — semantic search operational');
+    loggers.services.info('✅ MCP tools indexed in Milvus');
   } catch (error: any) {
-    loggers.services.fatal({ error: error.message }, '🚨 FATAL: MCP tool indexing failed — shutting down');
-    process.exit(1);
+    loggers.services.warn({ error: error.message }, '⚠️ MCP tool indexing failed (non-fatal) — first request will re-trigger indexing');
   }
 
-  // Verify indexing: do a test search to confirm tools are actually findable
   try {
     const testResults = await toolSemanticCache.searchToolsAsOpenAIFunctions('kubernetes pods logs', 5);
     if (!testResults || testResults.length === 0) {
-      loggers.services.fatal('🚨 FATAL: Post-indexing verification failed — semantic search returns 0 results');
-      process.exit(1);
+      loggers.services.warn('⚠️ Post-indexing verification: 0 tools found — will reindex on first chat request');
+    } else {
+      const stats = await toolSemanticCache.getCacheStats?.() || {} as any;
+      loggers.services.info({
+        verificationResults: testResults.length,
+        sampleTools: testResults.slice(0, 3).map((t: any) => t.function?.name || t.name),
+        totalIndexed: (stats as any).totalTools || 'unknown'
+      }, '✅ POST-INDEX VERIFICATION: Semantic search returning results');
     }
-    const stats = await toolSemanticCache.getCacheStats?.() || {} as any;
-    loggers.services.info({
-      verificationResults: testResults.length,
-      sampleTools: testResults.slice(0, 3).map((t: any) => t.function?.name || t.name),
-      totalIndexed: (stats as any).totalTools || 'unknown'
-    }, '✅ POST-INDEX VERIFICATION: Semantic search returning results');
   } catch (verifyError: any) {
-    loggers.services.fatal({ error: verifyError.message }, '🚨 FATAL: Post-indexing verification failed');
-    process.exit(1);
+    loggers.services.warn({ error: verifyError.message }, '⚠️ Post-indexing verification failed (non-fatal)');
   }
 
   // Also index to PostgreSQL with pgvector for hybrid search

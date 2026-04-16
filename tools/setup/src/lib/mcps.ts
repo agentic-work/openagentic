@@ -71,15 +71,6 @@ export const MCPS: McpDefinition[] = [
     defaultOn: true,
   },
   {
-    id: 'sequential-thinking',
-    label: 'Sequential Thinking',
-    blurb: 'Multi-step reasoning helper (no auth).',
-    disabledEnv: 'SEQUENTIAL_THINKING_MCP_DISABLED',
-    needsAuth: false,
-    authType: 'none',
-    defaultOn: true,
-  },
-  {
     id: 'aws',
     label: 'AWS',
     blurb: 'EC2 / S3 / IAM / Cost Explorer — AWS read-only.',
