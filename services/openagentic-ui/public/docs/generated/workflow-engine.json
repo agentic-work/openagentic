@@ -1,0 +1,1178 @@
+{
+  "domain": "workflow-engine",
+  "title": "Workflow Engine",
+  "description": "Workflow execution engine with 45 node types across 9 categories, supporting retry, fallback, circuit breakers, and human approval gates.",
+  "icon": "flow",
+  "category": "workflows",
+  "generatedAt": "2026-04-06T02:45:19.362Z",
+  "sourceFiles": [
+    "services/openagentic-workflows/src/services/WorkflowExecutionEngine.ts",
+    "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+  ],
+  "sections": [
+    {
+      "id": "nodes-trigger",
+      "title": "Trigger Nodes",
+      "description": "Entry points that start workflow execution. (1 nodes)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "node-trigger",
+          "name": "Trigger",
+          "description": "Start workflow execution on an event",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "trigger",
+            "category": "trigger"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        }
+      ]
+    },
+    {
+      "id": "nodes-ai",
+      "title": "AI / LLM Nodes",
+      "description": "Nodes that invoke language models for completion, reasoning, and multi-agent orchestration. (8 nodes)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "node-llm_completion",
+          "name": "LLM Completion",
+          "description": "Generate text using a language model",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "llm_completion",
+            "category": "ai"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-a2a",
+          "name": "Agent-to-Agent",
+          "description": "Delegate work to another AI agent via A2A protocol",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "a2a",
+            "category": "ai"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-agent_spawn",
+          "name": "Spawn Agent",
+          "description": "Spawn a child agent to handle a subtask autonomously",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "agent_spawn",
+            "category": "ai"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-openagentic_llm",
+          "name": "OpenAgentic LLM",
+          "description": "Use any LLM via OpenAgentic provider routing — auto-selects model based on slider or explicit override",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "openagentic_llm",
+            "category": "ai"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-multi_agent",
+          "name": "Multi-Agent Orchestrator",
+          "description": "Spawn and manage multiple concurrent agents with shared context and result aggregation",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "multi_agent",
+            "category": "ai"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-reasoning",
+          "name": "Reasoning",
+          "description": "Extended thinking and chain-of-thought reasoning with configurable budget",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "reasoning",
+            "category": "ai"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-structured_output",
+          "name": "Structured Output",
+          "description": "Enforce JSON schema on LLM output with validation and retry",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "structured_output",
+            "category": "ai"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-guardrails",
+          "name": "Guardrails",
+          "description": "Validate inputs or outputs against safety rules, PII detection, and custom checks",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "guardrails",
+            "category": "ai"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        }
+      ]
+    },
+    {
+      "id": "nodes-action",
+      "title": "Action Nodes",
+      "description": "Nodes that execute external actions: MCP tools, code, HTTP requests. (4 nodes)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "node-mcp_tool",
+          "name": "MCP Tool",
+          "description": "Execute an MCP tool from connected servers",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "mcp_tool",
+            "category": "action"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-code",
+          "name": "Code",
+          "description": "Run custom JavaScript/Python code inline",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "code",
+            "category": "action"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-http_request",
+          "name": "HTTP Request",
+          "description": "Make HTTP API calls to external services",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "http_request",
+            "category": "action"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-webhook_response",
+          "name": "Webhook Response",
+          "description": "Return data to the original webhook caller with custom status and body",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "webhook_response",
+            "category": "action"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        }
+      ]
+    },
+    {
+      "id": "nodes-logic",
+      "title": "Logic Nodes",
+      "description": "Control flow: conditions, loops, switches, waits, parallel branches. (7 nodes)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "node-condition",
+          "name": "Condition",
+          "description": "Branch workflow based on a condition",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "condition",
+            "category": "logic"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-loop",
+          "name": "Loop",
+          "description": "Iterate over a collection of items",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "loop",
+            "category": "logic"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-wait",
+          "name": "Wait",
+          "description": "Pause execution for a specified duration",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "wait",
+            "category": "logic"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-switch",
+          "name": "Switch",
+          "description": "Multi-way branching based on an expression value (beyond true/false)",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "switch",
+            "category": "logic"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-sub_workflow",
+          "name": "Sub-Flow",
+          "description": "Execute another saved workflow as a step -- enables composition and reuse",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "sub_workflow",
+            "category": "logic"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-parallel",
+          "name": "Parallel",
+          "description": "Explicit fan-out / fan-in for parallel execution branches",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "parallel",
+            "category": "logic"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-error_handler",
+          "name": "Error Handler",
+          "description": "Handle errors from upstream nodes — log, retry, notify, or transform errors",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "error_handler",
+            "category": "logic"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        }
+      ]
+    },
+    {
+      "id": "nodes-data",
+      "title": "Data Nodes",
+      "description": "Data manipulation: transforms, merges, RAG queries, embeddings, vector store operations. (10 nodes)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "node-transform",
+          "name": "Transform",
+          "description": "Transform data with map, filter, or reduce operations",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "transform",
+            "category": "data"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-merge",
+          "name": "Merge",
+          "description": "Combine multiple input streams into one",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "merge",
+            "category": "data"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-rag_query",
+          "name": "RAG Query",
+          "description": "Query Milvus vector database for semantic search over knowledge bases",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "rag_query",
+            "category": "data"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-data_source_query",
+          "name": "Data Source Query",
+          "description": "Query a connected data source (SQL, REST, or natural language)",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "data_source_query",
+            "category": "data"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-file_upload",
+          "name": "File Upload",
+          "description": "Upload and ingest files into a knowledge base with chunking and embedding",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "file_upload",
+            "category": "data"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-user_context",
+          "name": "User Context",
+          "description": "Load cross-mode user context from chat, code, workflows, and memories",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "user_context",
+            "category": "data"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-text_splitter",
+          "name": "Text Splitter",
+          "description": "Split documents into chunks using recursive, token, or semantic strategies",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "text_splitter",
+            "category": "data"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-embedding",
+          "name": "Embedding",
+          "description": "Generate vector embeddings for text using configurable models",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "embedding",
+            "category": "data"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-vector_store",
+          "name": "Vector Store",
+          "description": "Write, upsert, or delete vectors in Milvus collections",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "vector_store",
+            "category": "data"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-document_loader",
+          "name": "Document Loader",
+          "description": "Load content from URLs, CSV, JSON, PDF, or plain text sources",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "document_loader",
+            "category": "data"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        }
+      ]
+    },
+    {
+      "id": "nodes-approval",
+      "title": "Approval Nodes",
+      "description": "Human-in-the-loop gates that pause execution pending approval. (2 nodes)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "node-approval",
+          "name": "Approval Gate",
+          "description": "Pause workflow and require approval to continue",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "approval",
+            "category": "approval"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-human_approval",
+          "name": "Human Approval",
+          "description": "Require explicit human review and sign-off before proceeding",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "human_approval",
+            "category": "approval"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        }
+      ]
+    },
+    {
+      "id": "nodes-agents",
+      "title": "Agent Framework Nodes",
+      "description": "Framework integration nodes for CrewAI, LangGraph, agent pools, and supervisors. (4 nodes)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "node-synth",
+          "name": "Synth",
+          "description": "Synthesize outputs from multiple agents into a unified result",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "synth",
+            "category": "agents"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-agent_single",
+          "name": "Agent",
+          "description": "Run a single agent from the registry with its own model and tools",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "agent_single",
+            "category": "agents"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-agent_pool",
+          "name": "Agent Pool",
+          "description": "Fan-out to multiple agents in parallel, fan-in results with aggregation",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "agent_pool",
+            "category": "agents"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-agent_supervisor",
+          "name": "Supervisor",
+          "description": "A supervisor agent dynamically picks which worker agents to call",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "agent_supervisor",
+            "category": "agents"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        }
+      ]
+    },
+    {
+      "id": "nodes-integration",
+      "title": "Integration Nodes",
+      "description": "Third-party integrations: Slack, Teams, Email, PagerDuty, ServiceNow, Jira, Discord. (8 nodes)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "node-slack_message",
+          "name": "Slack",
+          "description": "Send messages, alerts, or workflow results to a Slack channel",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "slack_message",
+            "category": "integration"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-teams_message",
+          "name": "MS Teams",
+          "description": "Post messages or adaptive cards to a Microsoft Teams channel",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "teams_message",
+            "category": "integration"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-outlook_email",
+          "name": "Outlook / Email",
+          "description": "Send email via Outlook or SMTP with rich HTML templates",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "outlook_email",
+            "category": "integration"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-send_email",
+          "name": "SMTP Email",
+          "description": "Send email via any SMTP server (Gmail, SendGrid, custom)",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "send_email",
+            "category": "integration"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-pagerduty_incident",
+          "name": "PagerDuty",
+          "description": "Create, trigger, or resolve PagerDuty incidents and alerts",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "pagerduty_incident",
+            "category": "integration"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-servicenow_ticket",
+          "name": "ServiceNow",
+          "description": "Create or update ServiceNow incidents, change requests, or tasks",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "servicenow_ticket",
+            "category": "integration"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-jira_issue",
+          "name": "Jira",
+          "description": "Create or update Jira issues, transition workflows, add comments",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "jira_issue",
+            "category": "integration"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        },
+        {
+          "id": "node-discord_message",
+          "name": "Discord",
+          "description": "Send messages or embeds to a Discord channel via webhook",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "discord_message",
+            "category": "integration"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        }
+      ]
+    },
+    {
+      "id": "nodes-annotation",
+      "title": "Annotation Nodes",
+      "description": "1 node(s) in the annotation category.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "node-text",
+          "name": "Text Note",
+          "description": "Add a text annotation to the canvas to document your flow",
+          "type": "workflow-node",
+          "properties": {
+            "nodeType": "text",
+            "category": "annotation"
+          },
+          "sourceFile": "services/openagentic-ui/src/features/workflows/utils/nodeConfigs.ts"
+        }
+      ]
+    },
+    {
+      "id": "interface-workflownode",
+      "title": "WorkflowNode",
+      "description": "Engine interface: WorkflowNode",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "workflownode-id",
+          "name": "id",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "id": "workflownode-type",
+          "name": "type",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "id": "workflownode-data",
+          "name": "data",
+          "description": "Record<string, any>",
+          "type": "interface-field",
+          "properties": {
+            "type": "Record<string, any>",
+            "optional": false
+          }
+        },
+        {
+          "id": "workflownode-position",
+          "name": "position",
+          "description": "{ x: number",
+          "type": "interface-field",
+          "properties": {
+            "type": "{ x: number",
+            "optional": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "interface-workflowedge",
+      "title": "WorkflowEdge",
+      "description": "Engine interface: WorkflowEdge",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "workflowedge-id",
+          "name": "id",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "id": "workflowedge-source",
+          "name": "source",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "id": "workflowedge-target",
+          "name": "target",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "id": "workflowedge-sourceHandle",
+          "name": "sourceHandle",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "workflowedge-targetHandle",
+          "name": "targetHandle",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "workflowedge-label",
+          "name": "label",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "interface-workflowdefinition",
+      "title": "WorkflowDefinition",
+      "description": "Engine interface: WorkflowDefinition",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "workflowdefinition-nodes",
+          "name": "nodes",
+          "description": "WorkflowNode[]",
+          "type": "interface-field",
+          "properties": {
+            "type": "WorkflowNode[]",
+            "optional": false
+          }
+        },
+        {
+          "id": "workflowdefinition-edges",
+          "name": "edges",
+          "description": "WorkflowEdge[]",
+          "type": "interface-field",
+          "properties": {
+            "type": "WorkflowEdge[]",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "interface-executioncontext",
+      "title": "ExecutionContext",
+      "description": "Engine interface: ExecutionContext",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "executioncontext-executionId",
+          "name": "executionId",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "id": "executioncontext-workflowId",
+          "name": "workflowId",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "id": "executioncontext-userId",
+          "name": "userId",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "id": "executioncontext-authToken",
+          "name": "authToken",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "executioncontext-idToken",
+          "name": "idToken",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "executioncontext-userEmail",
+          "name": "userEmail",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "executioncontext-input",
+          "name": "input",
+          "description": "Record<string, any>",
+          "type": "interface-field",
+          "properties": {
+            "type": "Record<string, any>",
+            "optional": false
+          }
+        },
+        {
+          "id": "executioncontext-variables",
+          "name": "variables",
+          "description": "Map<string, any>",
+          "type": "interface-field",
+          "properties": {
+            "type": "Map<string, any>",
+            "optional": false
+          }
+        },
+        {
+          "id": "executioncontext-nodeResults",
+          "name": "nodeResults",
+          "description": "Map<string, any>",
+          "type": "interface-field",
+          "properties": {
+            "type": "Map<string, any>",
+            "optional": false
+          }
+        },
+        {
+          "id": "executioncontext-startTime",
+          "name": "startTime",
+          "description": "number",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": false
+          }
+        },
+        {
+          "id": "executioncontext-agenticExecutionId",
+          "name": "agenticExecutionId",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "executioncontext-sharedContext",
+          "name": "sharedContext",
+          "description": "Map<string, any>",
+          "type": "interface-field",
+          "properties": {
+            "type": "Map<string, any>",
+            "optional": false
+          }
+        },
+        {
+          "id": "executioncontext-webhookResponse",
+          "name": "webhookResponse",
+          "description": "{ statusCode: number",
+          "type": "interface-field",
+          "properties": {
+            "type": "{ statusCode: number",
+            "optional": true
+          }
+        },
+        {
+          "id": "executioncontext-headers",
+          "name": "headers",
+          "description": "Record<string, string>",
+          "type": "interface-field",
+          "properties": {
+            "type": "Record<string, string>",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "interface-nodeexecutionresult",
+      "title": "NodeExecutionResult",
+      "description": "Engine interface: NodeExecutionResult",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "nodeexecutionresult-nodeId",
+          "name": "nodeId",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "id": "nodeexecutionresult-nodeType",
+          "name": "nodeType",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "id": "nodeexecutionresult-status",
+          "name": "status",
+          "description": "'success' | 'error' | 'skipped'",
+          "type": "interface-field",
+          "properties": {
+            "type": "'success' | 'error' | 'skipped'",
+            "optional": false
+          }
+        },
+        {
+          "id": "nodeexecutionresult-output",
+          "name": "output",
+          "description": "any",
+          "type": "interface-field",
+          "properties": {
+            "type": "any",
+            "optional": false
+          }
+        },
+        {
+          "id": "nodeexecutionresult-error",
+          "name": "error",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "nodeexecutionresult-executionTimeMs",
+          "name": "executionTimeMs",
+          "description": "number",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "interface-executionevent",
+      "title": "ExecutionEvent",
+      "description": "Engine interface: ExecutionEvent",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "executionevent-type",
+          "name": "type",
+          "description": "'execution_start' | 'node_start' | 'node_complete' | 'node_error' | 'node_stream' | 'node_retry' | 'node_fallback' | 'execution_complete' | 'execution_error' | 'approval_required' | 'approval_received' | 'execution_paused' | 'execution_resumed'",
+          "type": "interface-field",
+          "properties": {
+            "type": "'execution_start' | 'node_start' | 'node_complete' | 'node_error' | 'node_stream' | 'node_retry' | 'node_fallback' | 'execution_complete' | 'execution_error' | 'approval_required' | 'approval_received' | 'execution_paused' | 'execution_resumed'",
+            "optional": false
+          }
+        },
+        {
+          "id": "executionevent-executionId",
+          "name": "executionId",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "id": "executionevent-nodeId",
+          "name": "nodeId",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "executionevent-nodeType",
+          "name": "nodeType",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "executionevent-data",
+          "name": "data",
+          "description": "any",
+          "type": "interface-field",
+          "properties": {
+            "type": "any",
+            "optional": true
+          }
+        },
+        {
+          "id": "executionevent-timestamp",
+          "name": "timestamp",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "error-recovery",
+      "title": "Error Recovery Configuration",
+      "description": "Retry, fallback, and circuit breaker settings for workflow node execution.",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "retry-maxRetries",
+          "name": "maxRetries",
+          "description": "Maximum retry attempts (default: 3)",
+          "type": "config-field",
+          "properties": {
+            "type": "number"
+          }
+        },
+        {
+          "id": "retry-initialDelay",
+          "name": "initialDelay",
+          "description": "Initial delay in ms (default: 1000)",
+          "type": "config-field",
+          "properties": {
+            "type": "number"
+          }
+        },
+        {
+          "id": "retry-maxDelay",
+          "name": "maxDelay",
+          "description": "Maximum delay in ms (default: 30000)",
+          "type": "config-field",
+          "properties": {
+            "type": "number"
+          }
+        },
+        {
+          "id": "retry-backoffMultiplier",
+          "name": "backoffMultiplier",
+          "description": "Exponential backoff multiplier (default: 2)",
+          "type": "config-field",
+          "properties": {
+            "type": "number"
+          }
+        },
+        {
+          "id": "retry-retryOn",
+          "name": "retryOn",
+          "description": "Error patterns to retry on (default: all errors)",
+          "type": "config-field",
+          "properties": {
+            "type": "string[]"
+          }
+        },
+        {
+          "id": "retry-skipOn",
+          "name": "skipOn",
+          "description": "Error patterns to NOT retry on",
+          "type": "config-field",
+          "properties": {
+            "type": "string[]"
+          }
+        },
+        {
+          "id": "fallback-fallbackNodeId",
+          "name": "fallbackNodeId",
+          "description": "Node to execute on failure",
+          "type": "config-field",
+          "properties": {
+            "type": "string"
+          }
+        },
+        {
+          "id": "fallback-fallbackValue",
+          "name": "fallbackValue",
+          "description": "Static value to return on failure",
+          "type": "config-field",
+          "properties": {
+            "type": "any"
+          }
+        },
+        {
+          "id": "fallback-continueOnFailure",
+          "name": "continueOnFailure",
+          "description": "Continue workflow even if node fails",
+          "type": "config-field",
+          "properties": {
+            "type": "boolean"
+          }
+        },
+        {
+          "id": "fallback-propagateError",
+          "name": "propagateError",
+          "description": "Include error info in output",
+          "type": "config-field",
+          "properties": {
+            "type": "boolean"
+          }
+        }
+      ]
+    },
+    {
+      "id": "approval-config",
+      "title": "Approval Configuration",
+      "description": "Human-in-the-loop approval settings for workflow execution gates.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "approval-approvers",
+          "name": "approvers",
+          "description": "User IDs or group names",
+          "type": "config-field",
+          "properties": {
+            "type": "string[]"
+          }
+        },
+        {
+          "id": "approval-requiredCount",
+          "name": "requiredCount",
+          "description": "Number of approvals needed (default: 1)",
+          "type": "config-field",
+          "properties": {
+            "type": "number"
+          }
+        },
+        {
+          "id": "approval-timeout",
+          "name": "timeout",
+          "description": "Timeout in seconds (default: 86400 = 24 hours)",
+          "type": "config-field",
+          "properties": {
+            "type": "number"
+          }
+        },
+        {
+          "id": "approval-timeoutAction",
+          "name": "timeoutAction",
+          "description": "'approve' | 'reject' | 'escalate'",
+          "type": "config-field",
+          "properties": {
+            "type": "'approve' | 'reject' | 'escalate'"
+          }
+        },
+        {
+          "id": "approval-escalateTo",
+          "name": "escalateTo",
+          "description": "User IDs to escalate to on timeout",
+          "type": "config-field",
+          "properties": {
+            "type": "string[]"
+          }
+        },
+        {
+          "id": "approval-message",
+          "name": "message",
+          "description": "Message to show approvers",
+          "type": "config-field",
+          "properties": {
+            "type": "string"
+          }
+        },
+        {
+          "id": "approval-notificationChannels",
+          "name": "notificationChannels",
+          "description": "('email' | 'slack' | 'teams' | 'in_app')[]",
+          "type": "config-field",
+          "properties": {
+            "type": "('email' | 'slack' | 'teams' | 'in_app')[]"
+          }
+        }
+      ]
+    }
+  ]
+}

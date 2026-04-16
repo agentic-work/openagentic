@@ -1,0 +1,291 @@
+{
+  "domain": "workflow-scheduling",
+  "title": "Workflow Scheduling",
+  "description": "Cron-based workflow scheduling with setInterval polling, 5-field cron expression parsing, and configurable throughput limits.",
+  "icon": "flow",
+  "category": "workflows",
+  "generatedAt": "2026-04-06T02:45:19.339Z",
+  "sourceFiles": [
+    "services/openagentic-workflows/src/services/WorkflowScheduler.ts"
+  ],
+  "sections": [
+    {
+      "id": "scheduler-config",
+      "title": "Scheduler Configuration",
+      "description": "Polling and throughput settings for the workflow scheduler.",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "config-poll-interval",
+          "name": "POLL_INTERVAL_MS",
+          "description": "How often to poll for due schedules (default: 30s)",
+          "type": "config-constant",
+          "properties": {
+            "envVar": "WORKFLOW_SCHEDULER_POLL_MS",
+            "defaultValue": 30000,
+            "unit": "ms"
+          }
+        },
+        {
+          "id": "config-max-per-cycle",
+          "name": "MAX_PER_CYCLE",
+          "description": "Maximum schedules to process per poll cycle to prevent thundering herd (default: 10)",
+          "type": "config-constant",
+          "properties": {
+            "envVar": "WORKFLOW_SCHEDULER_MAX_PER_CYCLE",
+            "defaultValue": 10
+          }
+        }
+      ]
+    },
+    {
+      "id": "cron-support",
+      "title": "Cron Expression Support",
+      "description": "Standard 5-field cron expressions: minute hour day-of-month month day-of-week (0=Sunday).",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "cron-minutes",
+          "name": "minutes",
+          "description": "Cron field: Set<number>",
+          "type": "cron-field",
+          "properties": {
+            "type": "Set<number>"
+          }
+        },
+        {
+          "id": "cron-hours",
+          "name": "hours",
+          "description": "Cron field: Set<number>",
+          "type": "cron-field",
+          "properties": {
+            "type": "Set<number>"
+          }
+        },
+        {
+          "id": "cron-daysOfMonth",
+          "name": "daysOfMonth",
+          "description": "Cron field: Set<number>",
+          "type": "cron-field",
+          "properties": {
+            "type": "Set<number>"
+          }
+        },
+        {
+          "id": "cron-months",
+          "name": "months",
+          "description": "Cron field: Set<number>",
+          "type": "cron-field",
+          "properties": {
+            "type": "Set<number>"
+          }
+        },
+        {
+          "id": "cron-daysOfWeek",
+          "name": "daysOfWeek",
+          "description": "Cron field: Set<number>",
+          "type": "cron-field",
+          "properties": {
+            "type": "Set<number>"
+          }
+        },
+        {
+          "id": "syntax-star",
+          "name": "*",
+          "description": "Match all values in the field range",
+          "type": "cron-syntax"
+        },
+        {
+          "id": "syntax-value",
+          "name": "N",
+          "description": "Match a specific value (e.g., 5)",
+          "type": "cron-syntax"
+        },
+        {
+          "id": "syntax-range",
+          "name": "N-M",
+          "description": "Match a range of values (e.g., 1-5)",
+          "type": "cron-syntax"
+        },
+        {
+          "id": "syntax-step",
+          "name": "N/S",
+          "description": "Match every S-th value starting from N (e.g., 0/15)",
+          "type": "cron-syntax"
+        },
+        {
+          "id": "syntax-star-step",
+          "name": "*/S",
+          "description": "Match every S-th value across full range (e.g., */5)",
+          "type": "cron-syntax"
+        },
+        {
+          "id": "syntax-range-step",
+          "name": "N-M/S",
+          "description": "Match every S-th value within a range (e.g., 1-30/5)",
+          "type": "cron-syntax"
+        },
+        {
+          "id": "syntax-list",
+          "name": "N,M,...",
+          "description": "Comma-separated list of values or ranges",
+          "type": "cron-syntax"
+        }
+      ]
+    },
+    {
+      "id": "cron-field-ranges",
+      "title": "Cron Field Ranges",
+      "description": "Valid value ranges for each cron expression field.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "range-minutes",
+          "name": "minutes",
+          "description": "Range: 0-59",
+          "type": "cron-range",
+          "properties": {
+            "min": 0,
+            "max": 59
+          }
+        },
+        {
+          "id": "range-hours",
+          "name": "hours",
+          "description": "Range: 0-23",
+          "type": "cron-range",
+          "properties": {
+            "min": 0,
+            "max": 23
+          }
+        },
+        {
+          "id": "range-daysOfMonth",
+          "name": "daysOfMonth",
+          "description": "Range: 1-31",
+          "type": "cron-range",
+          "properties": {
+            "min": 1,
+            "max": 31
+          }
+        },
+        {
+          "id": "range-months",
+          "name": "months",
+          "description": "Range: 1-12",
+          "type": "cron-range",
+          "properties": {
+            "min": 1,
+            "max": 12
+          }
+        },
+        {
+          "id": "range-daysOfWeek",
+          "name": "daysOfWeek",
+          "description": "Range: 0-6",
+          "type": "cron-range",
+          "properties": {
+            "min": 0,
+            "max": 6
+          }
+        }
+      ]
+    },
+    {
+      "id": "scheduler-methods",
+      "title": "Scheduler Methods",
+      "description": "WorkflowScheduler lifecycle and polling methods.",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "method-getInstance",
+          "name": "getInstance",
+          "description": "Scheduler method",
+          "type": "method",
+          "sourceLine": 8,
+          "sourceFile": "services/openagentic-workflows/src/services/WorkflowScheduler.ts"
+        },
+        {
+          "id": "method-if",
+          "name": "if",
+          "description": "Scheduler method",
+          "type": "method",
+          "sourceLine": 9,
+          "sourceFile": "services/openagentic-workflows/src/services/WorkflowScheduler.ts"
+        },
+        {
+          "id": "method-start",
+          "name": "start",
+          "description": "Start the scheduler. Call once during server startup.",
+          "type": "method",
+          "sourceLine": 11,
+          "sourceFile": "services/openagentic-workflows/src/services/WorkflowScheduler.ts"
+        },
+        {
+          "id": "method-stop",
+          "name": "stop",
+          "description": "Stop the scheduler gracefully.",
+          "type": "method",
+          "sourceLine": 31,
+          "sourceFile": "services/openagentic-workflows/src/services/WorkflowScheduler.ts"
+        },
+        {
+          "id": "method-initializeSchedules",
+          "name": "initializeSchedules",
+          "description": "Initialize next_run_at for any active schedules missing it",
+          "type": "method",
+          "sourceLine": 38,
+          "sourceFile": "services/openagentic-workflows/src/services/WorkflowScheduler.ts"
+        },
+        {
+          "id": "method-for",
+          "name": "for",
+          "description": "Scheduler method",
+          "type": "method",
+          "sourceLine": 50,
+          "sourceFile": "services/openagentic-workflows/src/services/WorkflowScheduler.ts"
+        },
+        {
+          "id": "method-catch",
+          "name": "catch",
+          "description": "Scheduler method",
+          "type": "method",
+          "sourceLine": 68,
+          "sourceFile": "services/openagentic-workflows/src/services/WorkflowScheduler.ts"
+        },
+        {
+          "id": "method-pollAndExecute",
+          "name": "pollAndExecute",
+          "description": "Main poll cycle: find due schedules and trigger their workflows",
+          "type": "method",
+          "sourceLine": 93,
+          "sourceFile": "services/openagentic-workflows/src/services/WorkflowScheduler.ts"
+        },
+        {
+          "id": "method-executeSchedule",
+          "name": "executeSchedule",
+          "description": "Execute a single scheduled workflow",
+          "type": "method",
+          "sourceLine": 141,
+          "sourceFile": "services/openagentic-workflows/src/services/WorkflowScheduler.ts"
+        },
+        {
+          "id": "method-startWorkflowScheduler",
+          "name": "startWorkflowScheduler",
+          "description": "Scheduler method",
+          "type": "method",
+          "sourceLine": 326,
+          "sourceFile": "services/openagentic-workflows/src/services/WorkflowScheduler.ts"
+        },
+        {
+          "id": "method-stopWorkflowScheduler",
+          "name": "stopWorkflowScheduler",
+          "description": "Scheduler method",
+          "type": "method",
+          "sourceLine": 336,
+          "sourceFile": "services/openagentic-workflows/src/services/WorkflowScheduler.ts"
+        }
+      ]
+    }
+  ]
+}

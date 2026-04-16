@@ -1,0 +1,20 @@
+{
+  "domain": "admin-portal",
+  "title": "Admin Portal",
+  "description": "Admin portal with 0 navigation sections and 0 views.",
+  "icon": "code",
+  "category": "ui",
+  "generatedAt": "2026-04-06T02:45:19.355Z",
+  "sourceFiles": [
+    "services/openagentic-ui/src/features/admin/components/Shell/AdminPortal.tsx"
+  ],
+  "sections": [
+    {
+      "id": "nav-overview",
+      "title": "Admin Portal Navigation",
+      "description": "0 top-level sections with 0 total navigation items.",
+      "adminOnly": true,
+      "items": []
+    }
+  ]
+}

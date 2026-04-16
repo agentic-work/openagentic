@@ -1,0 +1,1730 @@
+{
+  "domain": "observability",
+  "title": "Observability Dashboards",
+  "description": "12 Grafana dashboards with 138 panels covering service health, LLM performance, logs, and platform metrics.",
+  "icon": "infra",
+  "category": "infrastructure",
+  "generatedAt": "2026-04-06T02:45:19.438Z",
+  "sourceFiles": [
+    "helm/openagentic/dashboards/openagentic-agents.json",
+    "helm/openagentic/dashboards/openagentic-code-mode.json",
+    "helm/openagentic/dashboards/openagentic-llm-chat.json",
+    "helm/openagentic/dashboards/openagentic-logs.json",
+    "helm/openagentic/dashboards/openagentic-overview.json",
+    "helm/openagentic/dashboards/openagentic-platform.json",
+    "helm/openagentic/dashboards/openagenticchat-logs.json",
+    "helm/openagentic/dashboards/openagenticchat-services.json",
+    "helm/openagentic/dashboards/gpu.json",
+    "helm/openagentic/dashboards/llm-performance.json",
+    "helm/openagentic/dashboards/logs.json",
+    "helm/openagentic/dashboards/node-exporter.json"
+  ],
+  "sections": [
+    {
+      "id": "observability-overview",
+      "title": "Observability Overview",
+      "description": "12 Grafana dashboards with 138 total panels for monitoring the OpenAgentic platform.",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "overview-openagentic-agents",
+          "name": "Openagentic Agents",
+          "description": "Dashboard: openagentic-agents.json",
+          "type": "grafana-dashboard",
+          "sourceFile": "helm/openagentic/dashboards/openagentic-agents.json"
+        },
+        {
+          "id": "overview-openagentic-code-mode",
+          "name": "Openagentic Code Mode",
+          "description": "Dashboard: openagentic-code-mode.json",
+          "type": "grafana-dashboard",
+          "sourceFile": "helm/openagentic/dashboards/openagentic-code-mode.json"
+        },
+        {
+          "id": "overview-openagentic-llm-chat",
+          "name": "Openagentic Llm Chat",
+          "description": "Dashboard: openagentic-llm-chat.json",
+          "type": "grafana-dashboard",
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "overview-openagentic-logs",
+          "name": "Openagentic Logs",
+          "description": "Dashboard: openagentic-logs.json",
+          "type": "grafana-dashboard",
+          "sourceFile": "helm/openagentic/dashboards/openagentic-logs.json"
+        },
+        {
+          "id": "overview-openagentic-overview",
+          "name": "Openagentic Overview",
+          "description": "Dashboard: openagentic-overview.json",
+          "type": "grafana-dashboard",
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        },
+        {
+          "id": "overview-openagentic-platform",
+          "name": "Openagentic Platform",
+          "description": "Dashboard: openagentic-platform.json",
+          "type": "grafana-dashboard",
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "overview-openagenticchat-logs",
+          "name": "Openagenticchat Logs",
+          "description": "Dashboard: openagenticchat-logs.json",
+          "type": "grafana-dashboard",
+          "sourceFile": "helm/openagentic/dashboards/openagenticchat-logs.json"
+        },
+        {
+          "id": "overview-openagenticchat-services",
+          "name": "Openagenticchat Services",
+          "description": "Dashboard: openagenticchat-services.json",
+          "type": "grafana-dashboard",
+          "sourceFile": "helm/openagentic/dashboards/openagenticchat-services.json"
+        },
+        {
+          "id": "overview-gpu",
+          "name": "Gpu",
+          "description": "Dashboard: gpu.json",
+          "type": "grafana-dashboard",
+          "sourceFile": "helm/openagentic/dashboards/gpu.json"
+        },
+        {
+          "id": "overview-llm-performance",
+          "name": "Llm Performance",
+          "description": "Dashboard: llm-performance.json",
+          "type": "grafana-dashboard",
+          "sourceFile": "helm/openagentic/dashboards/llm-performance.json"
+        },
+        {
+          "id": "overview-logs",
+          "name": "Logs",
+          "description": "Dashboard: logs.json",
+          "type": "grafana-dashboard",
+          "sourceFile": "helm/openagentic/dashboards/logs.json"
+        },
+        {
+          "id": "overview-node-exporter",
+          "name": "Node Exporter",
+          "description": "Dashboard: node-exporter.json",
+          "type": "grafana-dashboard",
+          "sourceFile": "helm/openagentic/dashboards/node-exporter.json"
+        }
+      ]
+    },
+    {
+      "id": "dash-openagentic-agents",
+      "title": "Execution Overview",
+      "description": "14 panels (3 row, 1 gauge, 3 stat, 6 timeseries, 1 bargauge)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "openagentic-agents-execution-overview",
+          "name": "Execution Overview",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-agents"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-agents.json"
+        },
+        {
+          "id": "openagentic-agents-active-executions",
+          "name": "Active Executions",
+          "description": "Panel type: gauge",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "gauge",
+            "dashboard": "openagentic-agents"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-agents.json"
+        },
+        {
+          "id": "openagentic-agents-total-executions-24h-",
+          "name": "Total Executions (24h)",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-agents"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-agents.json"
+        },
+        {
+          "id": "openagentic-agents-error-rate",
+          "name": "Error Rate",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-agents"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-agents.json"
+        },
+        {
+          "id": "openagentic-agents-avg-tool-calls-per-execution",
+          "name": "Avg Tool Calls per Execution",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-agents"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-agents.json"
+        },
+        {
+          "id": "openagentic-agents-executions-by-pattern",
+          "name": "Executions by Pattern",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-agents"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-agents.json"
+        },
+        {
+          "id": "openagentic-agents-execution-rate-by-pattern",
+          "name": "Execution Rate by Pattern",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-agents"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-agents.json"
+        },
+        {
+          "id": "openagentic-agents-execution-duration-by-pattern-p95-",
+          "name": "Execution Duration by Pattern (p95)",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-agents"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-agents.json"
+        },
+        {
+          "id": "openagentic-agents-error-rate-by-pattern",
+          "name": "Error Rate by Pattern",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-agents"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-agents.json"
+        },
+        {
+          "id": "openagentic-agents-executions-by-pattern-24h-",
+          "name": "Executions by Pattern (24h)",
+          "description": "Panel type: bargauge",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "bargauge",
+            "dashboard": "openagentic-agents"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-agents.json"
+        },
+        {
+          "id": "openagentic-agents-tool-calls-cost",
+          "name": "Tool Calls & Cost",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-agents"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-agents.json"
+        },
+        {
+          "id": "openagentic-agents-tool-call-rate",
+          "name": "Tool Call Rate",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-agents"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-agents.json"
+        },
+        {
+          "id": "openagentic-agents-execution-duration-p95",
+          "name": "Execution Duration p95",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-agents"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-agents.json"
+        },
+        {
+          "id": "openagentic-agents-cost-by-model-hr-",
+          "name": "Cost by Model ($/hr)",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-agents"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-agents.json"
+        }
+      ]
+    },
+    {
+      "id": "dash-openagentic-code-mode",
+      "title": "Session Overview",
+      "description": "15 panels (4 row, 3 stat, 8 timeseries)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "openagentic-code-mode-session-overview",
+          "name": "Session Overview",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-code-mode"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-code-mode.json"
+        },
+        {
+          "id": "openagentic-code-mode-active-sessions",
+          "name": "Active Sessions",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-code-mode"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-code-mode.json"
+        },
+        {
+          "id": "openagentic-code-mode-total-pods-24h-",
+          "name": "Total Pods (24h)",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-code-mode"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-code-mode.json"
+        },
+        {
+          "id": "openagentic-code-mode-running-vs-pending",
+          "name": "Running vs Pending",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-code-mode"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-code-mode.json"
+        },
+        {
+          "id": "openagentic-code-mode-pod-restarts",
+          "name": "Pod Restarts",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-code-mode"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-code-mode.json"
+        },
+        {
+          "id": "openagentic-code-mode-pod-lifecycle",
+          "name": "Pod Lifecycle",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-code-mode"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-code-mode.json"
+        },
+        {
+          "id": "openagentic-code-mode-pod-startup-latency",
+          "name": "Pod Startup Latency",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-code-mode"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-code-mode.json"
+        },
+        {
+          "id": "openagentic-code-mode-exec-pod-count-by-state",
+          "name": "Exec Pod Count by State",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-code-mode"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-code-mode.json"
+        },
+        {
+          "id": "openagentic-code-mode-code-manager-process-metrics",
+          "name": "Code Manager Process Metrics",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-code-mode"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-code-mode.json"
+        },
+        {
+          "id": "openagentic-code-mode-heap-used-code-manager-",
+          "name": "Heap Used (Code Manager)",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-code-mode"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-code-mode.json"
+        },
+        {
+          "id": "openagentic-code-mode-heap-total-vs-used",
+          "name": "Heap Total vs Used",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-code-mode"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-code-mode.json"
+        },
+        {
+          "id": "openagentic-code-mode-event-loop-lag",
+          "name": "Event Loop Lag",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-code-mode"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-code-mode.json"
+        },
+        {
+          "id": "openagentic-code-mode-exec-pod-resources",
+          "name": "Exec Pod Resources",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-code-mode"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-code-mode.json"
+        },
+        {
+          "id": "openagentic-code-mode-exec-pod-cpu-usage",
+          "name": "Exec Pod CPU Usage",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-code-mode"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-code-mode.json"
+        },
+        {
+          "id": "openagentic-code-mode-exec-pod-memory-usage",
+          "name": "Exec Pod Memory Usage",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-code-mode"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-code-mode.json"
+        }
+      ]
+    },
+    {
+      "id": "dash-openagentic-llm-chat",
+      "title": "Chat Activity",
+      "description": "19 panels (3 row, 10 stat, 6 timeseries)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "openagentic-llm-chat-chat-activity",
+          "name": "Chat Activity",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "openagentic-llm-chat-messages-1h-",
+          "name": "Messages (1h)",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "openagentic-llm-chat-sessions-1h-",
+          "name": "Sessions (1h)",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "openagentic-llm-chat-avg-response-time",
+          "name": "Avg Response Time",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "openagentic-llm-chat-active-users",
+          "name": "Active Users",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "openagentic-llm-chat-messages-by-model",
+          "name": "Messages by Model",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "openagentic-llm-chat-response-time-by-model",
+          "name": "Response Time by Model",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "openagentic-llm-chat-token-usage",
+          "name": "Token Usage",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "openagentic-llm-chat-input-tokens-1h-",
+          "name": "Input Tokens (1h)",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "openagentic-llm-chat-output-tokens-1h-",
+          "name": "Output Tokens (1h)",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "openagentic-llm-chat-token-cost-1h-",
+          "name": "Token Cost (1h)",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "openagentic-llm-chat-token-usage-by-model",
+          "name": "Token Usage by Model",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "openagentic-llm-chat-token-cost-by-model",
+          "name": "Token Cost by Model",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "oap-llm-chat-mcp-tool-calls",
+          "name": "MCP Tool Calls",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "oap-llm-chat-mcp-tool-calls-1h-",
+          "name": "MCP Tool Calls (1h)",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "oap-llm-chat-mcp-error-rate-1h-",
+          "name": "MCP Error Rate (1h)",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "oap-llm-chat-avg-mcp-response-time",
+          "name": "Avg MCP Response Time",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "openagentic-llm-chat-tool-calls-by-tool",
+          "name": "Tool Calls by Tool",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        },
+        {
+          "id": "oap-llm-chat-mcp-response-time-by-tool-p95-",
+          "name": "MCP Response Time by Tool (p95)",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-llm-chat"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-llm-chat.json"
+        }
+      ]
+    },
+    {
+      "id": "dash-openagentic-logs",
+      "title": "Log Volume",
+      "description": "7 panels (3 row, 2 timeseries, 2 logs)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "openagentic-logs-log-volume",
+          "name": "Log Volume",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-logs"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-logs.json"
+        },
+        {
+          "id": "openagentic-logs-log-volume-by-service",
+          "name": "Log Volume by Service",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-logs"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-logs.json"
+        },
+        {
+          "id": "openagentic-logs-error-logs-by-service",
+          "name": "Error Logs by Service",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-logs"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-logs.json"
+        },
+        {
+          "id": "openagentic-logs-live-logs",
+          "name": "Live Logs",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-logs"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-logs.json"
+        },
+        {
+          "id": "openagentic-logs-openagentic-logs",
+          "name": "OpenAgentic Logs",
+          "description": "Panel type: logs",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "logs",
+            "dashboard": "openagentic-logs"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-logs.json"
+        },
+        {
+          "id": "openagentic-logs-error-logs-only",
+          "name": "Error Logs Only",
+          "description": "Panel type: logs",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "logs",
+            "dashboard": "openagentic-logs"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-logs.json"
+        },
+        {
+          "id": "openagentic-logs-error-logs",
+          "name": "Error Logs",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-logs"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-logs.json"
+        }
+      ]
+    },
+    {
+      "id": "dash-openagentic-overview",
+      "title": "Service Health",
+      "description": "16 panels (3 row, 9 stat, 4 timeseries)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "openagentic-overview-service-health",
+          "name": "Service Health",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-overview"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        },
+        {
+          "id": "openagentic-overview-api",
+          "name": "API",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-overview"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        },
+        {
+          "id": "openagentic-overview-ui",
+          "name": "UI",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-overview"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        },
+        {
+          "id": "oap-overview-mcp-proxy",
+          "name": "MCP Proxy",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-overview"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        },
+        {
+          "id": "openagentic-overview-code-manager",
+          "name": "Code Manager",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-overview"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        },
+        {
+          "id": "openagentic-overview-workflows",
+          "name": "Workflows",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-overview"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        },
+        {
+          "id": "openagentic-overview-ollama",
+          "name": "Ollama",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-overview"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        },
+        {
+          "id": "openagentic-overview-request-metrics",
+          "name": "Request Metrics",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-overview"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        },
+        {
+          "id": "openagentic-overview-request-rate",
+          "name": "Request Rate",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-overview"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        },
+        {
+          "id": "openagentic-overview-error-rate-5xx-",
+          "name": "Error Rate (5xx)",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-overview"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        },
+        {
+          "id": "openagentic-overview-p95-latency",
+          "name": "p95 Latency",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-overview"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        },
+        {
+          "id": "openagentic-overview-request-rate-by-route",
+          "name": "Request Rate by Route",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-overview"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        },
+        {
+          "id": "openagentic-overview-request-latency-percentiles",
+          "name": "Request Latency Percentiles",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-overview"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        },
+        {
+          "id": "openagentic-overview-resource-usage",
+          "name": "Resource Usage",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-overview"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        },
+        {
+          "id": "openagentic-overview-memory-usage-by-pod",
+          "name": "Memory Usage by Pod",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-overview"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        },
+        {
+          "id": "openagentic-overview-cpu-usage-by-pod",
+          "name": "CPU Usage by Pod",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-overview"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-overview.json"
+        }
+      ]
+    },
+    {
+      "id": "dash-openagentic-platform",
+      "title": "Service Health",
+      "description": "26 panels (5 row, 8 stat, 11 timeseries, 1 gauge, 1 table)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "openagentic-platform-service-health",
+          "name": "Service Health",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-api",
+          "name": "API",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-openagentic-proxy",
+          "name": "Agent Proxy",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-code-manager",
+          "name": "Code Manager",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "oap-platform-mcp-proxy",
+          "name": "MCP Proxy",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-workflows",
+          "name": "Workflows",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-ollama",
+          "name": "Ollama",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-http-traffic",
+          "name": "HTTP Traffic",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-total-requests-sec",
+          "name": "Total Requests/sec",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-request-duration-percentiles",
+          "name": "Request Duration Percentiles",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-error-rate-4xx-5xx-",
+          "name": "Error Rate (4xx + 5xx)",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-requests-by-service",
+          "name": "Requests by Service",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-llm-chat",
+          "name": "LLM & Chat",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-chat-sessions-1h-",
+          "name": "Chat Sessions (1h)",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-token-usage-rate",
+          "name": "Token Usage Rate",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-token-cost-rate-hr-",
+          "name": "Token Cost Rate ($/hr)",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-chat-response-time-p95",
+          "name": "Chat Response Time p95",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "oap-platform-mcp-tools",
+          "name": "MCP Tools",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "oap-platform-mcp-calls-sec",
+          "name": "MCP Calls/sec",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "oap-platform-mcp-response-time-p95",
+          "name": "MCP Response Time p95",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-tool-calls-by-status",
+          "name": "Tool Calls by Status",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-active-agent-executions",
+          "name": "Active Agent Executions",
+          "description": "Panel type: gauge",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "gauge",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-infrastructure",
+          "name": "Infrastructure",
+          "description": "Panel type: row",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "row",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-cpu-usage-by-pod",
+          "name": "CPU Usage by Pod",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-memory-usage-by-pod",
+          "name": "Memory Usage by Pod",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        },
+        {
+          "id": "openagentic-platform-pod-restart-count",
+          "name": "Pod Restart Count",
+          "description": "Panel type: table",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "table",
+            "dashboard": "openagentic-platform"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagentic-platform.json"
+        }
+      ]
+    },
+    {
+      "id": "dash-openagenticchat-logs",
+      "title": "Application Logs",
+      "description": "5 panels (3 logs, 2 timeseries)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "openagenticchat-logs-application-logs",
+          "name": "Application Logs",
+          "description": "Panel type: logs",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "logs",
+            "dashboard": "openagenticchat-logs"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagenticchat-logs.json"
+        },
+        {
+          "id": "openagenticchat-logs-chat-session-logs",
+          "name": "Chat Session Logs",
+          "description": "Panel type: logs",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "logs",
+            "dashboard": "openagenticchat-logs"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagenticchat-logs.json"
+        },
+        {
+          "id": "openagenticchat-logs-error-logs",
+          "name": "Error Logs",
+          "description": "Panel type: logs",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "logs",
+            "dashboard": "openagenticchat-logs"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagenticchat-logs.json"
+        },
+        {
+          "id": "openagenticchat-logs-log-volume-by-service",
+          "name": "Log Volume by Service",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagenticchat-logs"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagenticchat-logs.json"
+        },
+        {
+          "id": "openagenticchat-logs-log-levels-distribution",
+          "name": "Log Levels Distribution",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagenticchat-logs"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagenticchat-logs.json"
+        }
+      ]
+    },
+    {
+      "id": "dash-openagenticchat-services",
+      "title": "Service Health Status",
+      "description": "5 panels (1 stat, 4 timeseries)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "openagenticchat-services-service-health-status",
+          "name": "Service Health Status",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "openagenticchat-services"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagenticchat-services.json"
+        },
+        {
+          "id": "openagenticchat-services-cpu-usage-by-service",
+          "name": "CPU Usage by Service",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagenticchat-services"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagenticchat-services.json"
+        },
+        {
+          "id": "openagenticchat-services-memory-usage-by-service",
+          "name": "Memory Usage by Service",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagenticchat-services"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagenticchat-services.json"
+        },
+        {
+          "id": "openagenticchat-services-network-i-o",
+          "name": "Network I/O",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagenticchat-services"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagenticchat-services.json"
+        },
+        {
+          "id": "openagenticchat-services-pod-restart-count",
+          "name": "Pod Restart Count",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "openagenticchat-services"
+          },
+          "sourceFile": "helm/openagentic/dashboards/openagenticchat-services.json"
+        }
+      ]
+    },
+    {
+      "id": "dash-gpu",
+      "title": "GPU Utilization",
+      "description": "10 panels (4 gauge, 6 timeseries)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "gpu-gpu-utilization",
+          "name": "GPU Utilization",
+          "description": "Panel type: gauge",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "gauge",
+            "dashboard": "gpu"
+          },
+          "sourceFile": "helm/openagentic/dashboards/gpu.json"
+        },
+        {
+          "id": "gpu-memory-utilization",
+          "name": "Memory Utilization",
+          "description": "Panel type: gauge",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "gauge",
+            "dashboard": "gpu"
+          },
+          "sourceFile": "helm/openagentic/dashboards/gpu.json"
+        },
+        {
+          "id": "gpu-gpu-temperature",
+          "name": "GPU Temperature",
+          "description": "Panel type: gauge",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "gauge",
+            "dashboard": "gpu"
+          },
+          "sourceFile": "helm/openagentic/dashboards/gpu.json"
+        },
+        {
+          "id": "gpu-power-usage",
+          "name": "Power Usage",
+          "description": "Panel type: gauge",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "gauge",
+            "dashboard": "gpu"
+          },
+          "sourceFile": "helm/openagentic/dashboards/gpu.json"
+        },
+        {
+          "id": "gpu-gpu-utilization-over-time",
+          "name": "GPU Utilization Over Time",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "gpu"
+          },
+          "sourceFile": "helm/openagentic/dashboards/gpu.json"
+        },
+        {
+          "id": "gpu-gpu-memory-usage",
+          "name": "GPU Memory Usage",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "gpu"
+          },
+          "sourceFile": "helm/openagentic/dashboards/gpu.json"
+        },
+        {
+          "id": "gpu-temperature-monitoring",
+          "name": "Temperature Monitoring",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "gpu"
+          },
+          "sourceFile": "helm/openagentic/dashboards/gpu.json"
+        },
+        {
+          "id": "gpu-power-consumption",
+          "name": "Power Consumption",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "gpu"
+          },
+          "sourceFile": "helm/openagentic/dashboards/gpu.json"
+        },
+        {
+          "id": "gpu-gpu-compute-activity",
+          "name": "GPU Compute Activity",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "gpu"
+          },
+          "sourceFile": "helm/openagentic/dashboards/gpu.json"
+        },
+        {
+          "id": "gpu-clock-speeds",
+          "name": "Clock Speeds",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "gpu"
+          },
+          "sourceFile": "helm/openagentic/dashboards/gpu.json"
+        }
+      ]
+    },
+    {
+      "id": "dash-llm-performance",
+      "title": "Time to First Token (TTFT) - P50",
+      "description": "10 panels (4 stat, 6 timeseries)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "llm-performance-time-to-first-token-ttft-p50",
+          "name": "Time to First Token (TTFT) - P50",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "llm-performance"
+          },
+          "sourceFile": "helm/openagentic/dashboards/llm-performance.json"
+        },
+        {
+          "id": "llm-performance-time-to-first-token-ttft-p95",
+          "name": "Time to First Token (TTFT) - P95",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "llm-performance"
+          },
+          "sourceFile": "helm/openagentic/dashboards/llm-performance.json"
+        },
+        {
+          "id": "llm-performance-token-rate-tokens-s-",
+          "name": "Token Rate (tokens/s)",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "llm-performance"
+          },
+          "sourceFile": "helm/openagentic/dashboards/llm-performance.json"
+        },
+        {
+          "id": "llm-performance-request-rate",
+          "name": "Request Rate",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "llm-performance"
+          },
+          "sourceFile": "helm/openagentic/dashboards/llm-performance.json"
+        },
+        {
+          "id": "llm-performance-request-latency-percentiles",
+          "name": "Request Latency Percentiles",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "llm-performance"
+          },
+          "sourceFile": "helm/openagentic/dashboards/llm-performance.json"
+        },
+        {
+          "id": "llm-performance-token-generation-throughput-by-model",
+          "name": "Token Generation Throughput by Model",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "llm-performance"
+          },
+          "sourceFile": "helm/openagentic/dashboards/llm-performance.json"
+        },
+        {
+          "id": "llm-performance-request-status-distribution",
+          "name": "Request Status Distribution",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "llm-performance"
+          },
+          "sourceFile": "helm/openagentic/dashboards/llm-performance.json"
+        },
+        {
+          "id": "llm-performance-active-users",
+          "name": "Active Users",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "llm-performance"
+          },
+          "sourceFile": "helm/openagentic/dashboards/llm-performance.json"
+        },
+        {
+          "id": "llm-performance-model-serving-resource-utilization",
+          "name": "Model Serving Resource Utilization",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "llm-performance"
+          },
+          "sourceFile": "helm/openagentic/dashboards/llm-performance.json"
+        },
+        {
+          "id": "llm-performance-chat-session-metrics",
+          "name": "Chat Session Metrics",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "llm-performance"
+          },
+          "sourceFile": "helm/openagentic/dashboards/llm-performance.json"
+        }
+      ]
+    },
+    {
+      "id": "dash-logs",
+      "title": "Live Logs Stream",
+      "description": "4 panels (2 logs, 1 timeseries, 1 bargauge)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "logs-live-logs-stream",
+          "name": "Live Logs Stream",
+          "description": "Panel type: logs",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "logs",
+            "dashboard": "logs"
+          },
+          "sourceFile": "helm/openagentic/dashboards/logs.json"
+        },
+        {
+          "id": "logs-log-volume-by-pod",
+          "name": "Log Volume by Pod",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "logs"
+          },
+          "sourceFile": "helm/openagentic/dashboards/logs.json"
+        },
+        {
+          "id": "logs-top-pods-by-log-volume",
+          "name": "Top Pods by Log Volume",
+          "description": "Panel type: bargauge",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "bargauge",
+            "dashboard": "logs"
+          },
+          "sourceFile": "helm/openagentic/dashboards/logs.json"
+        },
+        {
+          "id": "logs-error-logs",
+          "name": "Error Logs",
+          "description": "Panel type: logs",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "logs",
+            "dashboard": "logs"
+          },
+          "sourceFile": "helm/openagentic/dashboards/logs.json"
+        }
+      ]
+    },
+    {
+      "id": "dash-node-exporter",
+      "title": "CPU Usage",
+      "description": "7 panels (3 gauge, 1 stat, 3 timeseries)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "node-exporter-cpu-usage",
+          "name": "CPU Usage",
+          "description": "Panel type: gauge",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "gauge",
+            "dashboard": "node-exporter"
+          },
+          "sourceFile": "helm/openagentic/dashboards/node-exporter.json"
+        },
+        {
+          "id": "node-exporter-memory-usage",
+          "name": "Memory Usage",
+          "description": "Panel type: gauge",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "gauge",
+            "dashboard": "node-exporter"
+          },
+          "sourceFile": "helm/openagentic/dashboards/node-exporter.json"
+        },
+        {
+          "id": "node-exporter-root-filesystem-usage",
+          "name": "Root Filesystem Usage",
+          "description": "Panel type: gauge",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "gauge",
+            "dashboard": "node-exporter"
+          },
+          "sourceFile": "helm/openagentic/dashboards/node-exporter.json"
+        },
+        {
+          "id": "node-exporter-system-uptime",
+          "name": "System Uptime",
+          "description": "Panel type: stat",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "stat",
+            "dashboard": "node-exporter"
+          },
+          "sourceFile": "helm/openagentic/dashboards/node-exporter.json"
+        },
+        {
+          "id": "node-exporter-cpu-usage-per-core",
+          "name": "CPU Usage per Core",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "node-exporter"
+          },
+          "sourceFile": "helm/openagentic/dashboards/node-exporter.json"
+        },
+        {
+          "id": "node-exporter-network-traffic",
+          "name": "Network Traffic",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "node-exporter"
+          },
+          "sourceFile": "helm/openagentic/dashboards/node-exporter.json"
+        },
+        {
+          "id": "node-exporter-disk-i-o",
+          "name": "Disk I/O",
+          "description": "Panel type: timeseries",
+          "type": "grafana-panel",
+          "properties": {
+            "panelType": "timeseries",
+            "dashboard": "node-exporter"
+          },
+          "sourceFile": "helm/openagentic/dashboards/node-exporter.json"
+        }
+      ]
+    }
+  ]
+}

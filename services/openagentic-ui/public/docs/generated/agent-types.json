@@ -1,0 +1,871 @@
+{
+  "domain": "agent-types",
+  "title": "Agent System",
+  "description": "Agent types, model configurations, execution metrics, and admin settings for the OpenAgentic multi-agent platform.",
+  "icon": "agent",
+  "category": "agents",
+  "generatedAt": "2026-04-06T02:45:19.331Z",
+  "sourceFiles": [
+    "services/openagentic-api/src/services/AgentRegistry.ts"
+  ],
+  "sections": [
+    {
+      "id": "agent-types",
+      "title": "Agent Types",
+      "description": "OpenAgentic supports 13 agent types, each optimized for specific task patterns.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "data_query",
+          "name": "data_query",
+          "description": "Queries stored datasets (fast, simple)",
+          "type": "agent-type",
+          "sourceLine": 37,
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 2048,
+            "temperature": 0,
+            "thinkingEnabled": false,
+            "costBudgetPerCall": 5,
+            "timeoutMs": 10000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "data_extraction",
+          "name": "data_extraction",
+          "description": "Extracts/filters data from large responses",
+          "type": "agent-type",
+          "sourceLine": 38,
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 4096,
+            "temperature": 0,
+            "thinkingEnabled": false,
+            "costBudgetPerCall": 20,
+            "timeoutMs": 30000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "tool_orchestration",
+          "name": "tool_orchestration",
+          "description": "Decides which tools to call",
+          "type": "agent-type",
+          "sourceLine": 39,
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 4096,
+            "temperature": 0.1,
+            "thinkingEnabled": true,
+            "thinkingBudget": 4096,
+            "costBudgetPerCall": 50,
+            "timeoutMs": 60000,
+            "retryAttempts": 3
+          }
+        },
+        {
+          "id": "reasoning",
+          "name": "reasoning",
+          "description": "Complex multi-step reasoning",
+          "type": "agent-type",
+          "sourceLine": 40,
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 8192,
+            "temperature": 0.3,
+            "thinkingEnabled": true,
+            "thinkingBudget": 16384,
+            "costBudgetPerCall": 100,
+            "timeoutMs": 120000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "summarization",
+          "name": "summarization",
+          "description": "Summarizes large content",
+          "type": "agent-type",
+          "sourceLine": 41,
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 4096,
+            "temperature": 0,
+            "thinkingEnabled": false,
+            "costBudgetPerCall": 10,
+            "timeoutMs": 30000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "code_execution",
+          "name": "code_execution",
+          "description": "Code generation/execution",
+          "type": "agent-type",
+          "sourceLine": 42,
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 8192,
+            "temperature": 0,
+            "thinkingEnabled": true,
+            "thinkingBudget": 8192,
+            "costBudgetPerCall": 75,
+            "timeoutMs": 180000,
+            "retryAttempts": 1
+          }
+        },
+        {
+          "id": "planning",
+          "name": "planning",
+          "description": "Plans multi-step tasks",
+          "type": "agent-type",
+          "sourceLine": 43,
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 8192,
+            "temperature": 0.2,
+            "thinkingEnabled": true,
+            "thinkingBudget": 16384,
+            "costBudgetPerCall": 100,
+            "timeoutMs": 120000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "validation",
+          "name": "validation",
+          "description": "Validates tool outputs",
+          "type": "agent-type",
+          "sourceLine": 44,
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 2048,
+            "temperature": 0,
+            "thinkingEnabled": false,
+            "costBudgetPerCall": 5,
+            "timeoutMs": 15000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "synthesis",
+          "name": "synthesis",
+          "description": "Synthesizes final response",
+          "type": "agent-type",
+          "sourceLine": 45,
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 8192,
+            "temperature": 0.3,
+            "thinkingEnabled": true,
+            "thinkingBudget": 8192,
+            "costBudgetPerCall": 50,
+            "timeoutMs": 60000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "artifact_creation",
+          "name": "artifact_creation",
+          "description": "Visual artifact generation (dashboards, reports, diagrams)",
+          "type": "agent-type",
+          "sourceLine": 46,
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 16384,
+            "temperature": 0.7,
+            "thinkingEnabled": false,
+            "costBudgetPerCall": 75,
+            "timeoutMs": 120000,
+            "retryAttempts": 1
+          }
+        },
+        {
+          "id": "docs_assistant",
+          "name": "docs_assistant",
+          "description": "Documentation RAG chat assistant",
+          "type": "agent-type",
+          "sourceLine": 47,
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 4096,
+            "temperature": 0.7,
+            "thinkingEnabled": true,
+            "thinkingBudget": 4096,
+            "costBudgetPerCall": 25,
+            "timeoutMs": 30000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "flows_agent",
+          "name": "flows_agent",
+          "description": "Workflow/flows execution agent",
+          "type": "agent-type",
+          "sourceLine": 48,
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 8192,
+            "temperature": 0.2,
+            "thinkingEnabled": true,
+            "thinkingBudget": 8192,
+            "costBudgetPerCall": 75,
+            "timeoutMs": 120000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "oat_function_builder",
+          "name": "oat_function_builder",
+          "description": "OAT function builder agent",
+          "type": "agent-type",
+          "sourceLine": 49,
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 8192,
+            "temperature": 0.1,
+            "thinkingEnabled": true,
+            "thinkingBudget": 8192,
+            "costBudgetPerCall": 50,
+            "timeoutMs": 60000,
+            "retryAttempts": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "default-model-configs",
+      "title": "Default Model Configurations",
+      "description": "Each agent type has a default model configuration controlling temperature, token limits, thinking behavior, cost budgets, and timeouts.",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "config-data_query",
+          "name": "data_query",
+          "description": "Default model configuration for data_query agents",
+          "type": "model-config",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 2048,
+            "temperature": 0,
+            "thinkingEnabled": false,
+            "costBudgetPerCall": 5,
+            "timeoutMs": 10000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "config-data_extraction",
+          "name": "data_extraction",
+          "description": "Default model configuration for data_extraction agents",
+          "type": "model-config",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 4096,
+            "temperature": 0,
+            "thinkingEnabled": false,
+            "costBudgetPerCall": 20,
+            "timeoutMs": 30000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "config-tool_orchestration",
+          "name": "tool_orchestration",
+          "description": "Default model configuration for tool_orchestration agents",
+          "type": "model-config",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 4096,
+            "temperature": 0.1,
+            "thinkingEnabled": true,
+            "thinkingBudget": 4096,
+            "costBudgetPerCall": 50,
+            "timeoutMs": 60000,
+            "retryAttempts": 3
+          }
+        },
+        {
+          "id": "config-reasoning",
+          "name": "reasoning",
+          "description": "Default model configuration for reasoning agents",
+          "type": "model-config",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 8192,
+            "temperature": 0.3,
+            "thinkingEnabled": true,
+            "thinkingBudget": 16384,
+            "costBudgetPerCall": 100,
+            "timeoutMs": 120000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "config-summarization",
+          "name": "summarization",
+          "description": "Default model configuration for summarization agents",
+          "type": "model-config",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 4096,
+            "temperature": 0,
+            "thinkingEnabled": false,
+            "costBudgetPerCall": 10,
+            "timeoutMs": 30000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "config-code_execution",
+          "name": "code_execution",
+          "description": "Default model configuration for code_execution agents",
+          "type": "model-config",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 8192,
+            "temperature": 0,
+            "thinkingEnabled": true,
+            "thinkingBudget": 8192,
+            "costBudgetPerCall": 75,
+            "timeoutMs": 180000,
+            "retryAttempts": 1
+          }
+        },
+        {
+          "id": "config-planning",
+          "name": "planning",
+          "description": "Default model configuration for planning agents",
+          "type": "model-config",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 8192,
+            "temperature": 0.2,
+            "thinkingEnabled": true,
+            "thinkingBudget": 16384,
+            "costBudgetPerCall": 100,
+            "timeoutMs": 120000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "config-validation",
+          "name": "validation",
+          "description": "Default model configuration for validation agents",
+          "type": "model-config",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 2048,
+            "temperature": 0,
+            "thinkingEnabled": false,
+            "costBudgetPerCall": 5,
+            "timeoutMs": 15000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "config-synthesis",
+          "name": "synthesis",
+          "description": "Default model configuration for synthesis agents",
+          "type": "model-config",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 8192,
+            "temperature": 0.3,
+            "thinkingEnabled": true,
+            "thinkingBudget": 8192,
+            "costBudgetPerCall": 50,
+            "timeoutMs": 60000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "config-artifact_creation",
+          "name": "artifact_creation",
+          "description": "Default model configuration for artifact_creation agents",
+          "type": "model-config",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 16384,
+            "temperature": 0.7,
+            "thinkingEnabled": false,
+            "costBudgetPerCall": 75,
+            "timeoutMs": 120000,
+            "retryAttempts": 1
+          }
+        },
+        {
+          "id": "config-docs_assistant",
+          "name": "docs_assistant",
+          "description": "Default model configuration for docs_assistant agents",
+          "type": "model-config",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 4096,
+            "temperature": 0.7,
+            "thinkingEnabled": true,
+            "thinkingBudget": 4096,
+            "costBudgetPerCall": 25,
+            "timeoutMs": 30000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "config-flows_agent",
+          "name": "flows_agent",
+          "description": "Default model configuration for flows_agent agents",
+          "type": "model-config",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 8192,
+            "temperature": 0.2,
+            "thinkingEnabled": true,
+            "thinkingBudget": 8192,
+            "costBudgetPerCall": 75,
+            "timeoutMs": 120000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "config-oat_function_builder",
+          "name": "oat_function_builder",
+          "description": "Default model configuration for oat_function_builder agents",
+          "type": "model-config",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 8192,
+            "temperature": 0.1,
+            "thinkingEnabled": true,
+            "thinkingBudget": 8192,
+            "costBudgetPerCall": 50,
+            "timeoutMs": 60000,
+            "retryAttempts": 2
+          }
+        },
+        {
+          "id": "config-custom",
+          "name": "custom",
+          "description": "Default model configuration for custom agents",
+          "type": "model-config",
+          "properties": {
+            "primaryModel": "auto",
+            "fallbackModel": "auto",
+            "maxTokens": 4096,
+            "temperature": 0.2,
+            "thinkingEnabled": false,
+            "costBudgetPerCall": 50,
+            "timeoutMs": 60000,
+            "retryAttempts": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "model-config-schema",
+      "title": "Model Configuration Schema",
+      "description": "The AgentModelConfig interface defines all configurable parameters for agent model routing.",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "field-agentType",
+          "name": "agentType",
+          "description": "AgentType field",
+          "type": "interface-field",
+          "properties": {
+            "type": "AgentType",
+            "optional": false
+          }
+        },
+        {
+          "id": "field-primaryModel",
+          "name": "primaryModel",
+          "description": "e.g., 'claude-3-5-sonnet-20241022'",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "id": "field-fallbackModel",
+          "name": "fallbackModel",
+          "description": "e.g., 'gpt-4o'",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "field-maxTokens",
+          "name": "maxTokens",
+          "description": "number field",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": false
+          }
+        },
+        {
+          "id": "field-temperature",
+          "name": "temperature",
+          "description": "number field",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": false
+          }
+        },
+        {
+          "id": "field-thinkingEnabled",
+          "name": "thinkingEnabled",
+          "description": "boolean field",
+          "type": "interface-field",
+          "properties": {
+            "type": "boolean",
+            "optional": false
+          }
+        },
+        {
+          "id": "field-thinkingBudget",
+          "name": "thinkingBudget",
+          "description": "Max thinking tokens",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": true
+          }
+        },
+        {
+          "id": "field-costBudgetPerCall",
+          "name": "costBudgetPerCall",
+          "description": "Max cost in cents per call",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": false
+          }
+        },
+        {
+          "id": "field-timeoutMs",
+          "name": "timeoutMs",
+          "description": "number field",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": false
+          }
+        },
+        {
+          "id": "field-retryAttempts",
+          "name": "retryAttempts",
+          "description": "number field",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "execution-metrics",
+      "title": "Execution Metrics",
+      "description": "Every agent execution records detailed metrics for observability and cost tracking.",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "metric-agentType",
+          "name": "agentType",
+          "description": "AgentType",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-executionId",
+          "name": "executionId",
+          "description": "string",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-sessionId",
+          "name": "sessionId",
+          "description": "string",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-userId",
+          "name": "userId",
+          "description": "string",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-startTime",
+          "name": "startTime",
+          "description": "Date",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-endTime",
+          "name": "endTime",
+          "description": "Date",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-durationMs",
+          "name": "durationMs",
+          "description": "number",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-queueTimeMs",
+          "name": "queueTimeMs",
+          "description": "number",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-modelUsed",
+          "name": "modelUsed",
+          "description": "string",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-modelFallbackUsed",
+          "name": "modelFallbackUsed",
+          "description": "boolean",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-inputTokens",
+          "name": "inputTokens",
+          "description": "number",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-outputTokens",
+          "name": "outputTokens",
+          "description": "number",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-thinkingTokens",
+          "name": "thinkingTokens",
+          "description": "number",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-totalTokens",
+          "name": "totalTokens",
+          "description": "number",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-estimatedCostCents",
+          "name": "estimatedCostCents",
+          "description": "number",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-success",
+          "name": "success",
+          "description": "boolean",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-error",
+          "name": "error",
+          "description": "string",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-errorCode",
+          "name": "errorCode",
+          "description": "string",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-resultSize",
+          "name": "resultSize",
+          "description": "number",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-toolCallsInvolved",
+          "name": "toolCallsInvolved",
+          "description": "string[]",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-datasetIdsAccessed",
+          "name": "datasetIdsAccessed",
+          "description": "string[]",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-traceId",
+          "name": "traceId",
+          "description": "string",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-spanId",
+          "name": "spanId",
+          "description": "string",
+          "type": "metric-field"
+        },
+        {
+          "id": "metric-parentSpanId",
+          "name": "parentSpanId",
+          "description": "string",
+          "type": "metric-field"
+        }
+      ]
+    },
+    {
+      "id": "admin-configuration",
+      "title": "Admin Configuration",
+      "description": "Per-agent-type admin settings: rate limits, alerts, and logging.",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "admin-rateLimit-maxPerMinute",
+          "name": "rateLimit.maxPerMinute",
+          "description": "number setting",
+          "type": "admin-config",
+          "properties": {
+            "section": "rateLimit",
+            "type": "number"
+          }
+        },
+        {
+          "id": "admin-rateLimit-maxPerHour",
+          "name": "rateLimit.maxPerHour",
+          "description": "number setting",
+          "type": "admin-config",
+          "properties": {
+            "section": "rateLimit",
+            "type": "number"
+          }
+        },
+        {
+          "id": "admin-rateLimit-maxConcurrent",
+          "name": "rateLimit.maxConcurrent",
+          "description": "number setting",
+          "type": "admin-config",
+          "properties": {
+            "section": "rateLimit",
+            "type": "number"
+          }
+        },
+        {
+          "id": "admin-alerts-errorRateThreshold",
+          "name": "alerts.errorRateThreshold",
+          "description": "Alert if error rate > X%",
+          "type": "admin-config",
+          "properties": {
+            "section": "alerts",
+            "type": "number"
+          }
+        },
+        {
+          "id": "admin-alerts-latencyThreshold",
+          "name": "alerts.latencyThreshold",
+          "description": "Alert if p95 latency > X ms",
+          "type": "admin-config",
+          "properties": {
+            "section": "alerts",
+            "type": "number"
+          }
+        },
+        {
+          "id": "admin-alerts-costThreshold",
+          "name": "alerts.costThreshold",
+          "description": "Alert if daily cost > X cents",
+          "type": "admin-config",
+          "properties": {
+            "section": "alerts",
+            "type": "number"
+          }
+        },
+        {
+          "id": "admin-logging-verboseLogging",
+          "name": "logging.verboseLogging",
+          "description": "boolean setting",
+          "type": "admin-config",
+          "properties": {
+            "section": "logging",
+            "type": "boolean"
+          }
+        },
+        {
+          "id": "admin-logging-logInputs",
+          "name": "logging.logInputs",
+          "description": "boolean setting",
+          "type": "admin-config",
+          "properties": {
+            "section": "logging",
+            "type": "boolean"
+          }
+        },
+        {
+          "id": "admin-logging-logOutputs",
+          "name": "logging.logOutputs",
+          "description": "boolean setting",
+          "type": "admin-config",
+          "properties": {
+            "section": "logging",
+            "type": "boolean"
+          }
+        },
+        {
+          "id": "admin-logging-sampleRate",
+          "name": "logging.sampleRate",
+          "description": "0.0 to 1.0 for sampling",
+          "type": "admin-config",
+          "properties": {
+            "section": "logging",
+            "type": "number"
+          }
+        }
+      ]
+    }
+  ]
+}

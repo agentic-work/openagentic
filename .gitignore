@@ -17,10 +17,12 @@
 
 # NOTE: helm/, oat/, sdk/, openagentic/ ARE tracked (synced from upstream for deployment)
 
-# Docs — internal working notes; track only curated OSS docs
-docs/
-!docs/enterprise-setup/
-!docs/enterprise-setup/**
+# Docs — internal working notes; track only curated OSS docs.
+# Git won't descend into an ignored directory, so we use the /docs/*
+# pattern (ignore direct children) + a !/docs/enterprise-setup/ negation
+# to re-include the enterprise-setup subtree.
+/docs/*
+!/docs/enterprise-setup/
 
 # Screenshots (test artifacts)
 screenshots/

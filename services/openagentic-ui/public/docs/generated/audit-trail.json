@@ -1,0 +1,467 @@
+{
+  "domain": "audit-trail",
+  "title": "Audit Trail",
+  "description": "Immutable audit logging with 33 entry fields, query types, and hash-chain tamper detection.",
+  "icon": "shield",
+  "category": "security",
+  "generatedAt": "2026-04-06T02:45:19.339Z",
+  "sourceFiles": [
+    "services/openagentic-api/src/services/AuditLogger.ts"
+  ],
+  "sections": [
+    {
+      "id": "audit-log-entry",
+      "title": "Audit Log Entry Schema",
+      "description": "Each audit event is recorded as an AuditLogEntry with 33 fields.",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "entry-userId",
+          "name": "userId",
+          "description": "string field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          },
+          "sourceLine": 15,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-sessionId",
+          "name": "sessionId",
+          "description": "string field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          },
+          "sourceLine": 15,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-messageId",
+          "name": "messageId",
+          "description": "Query details",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          },
+          "sourceLine": 16,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-rawQuery",
+          "name": "rawQuery",
+          "description": "string field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          },
+          "sourceLine": 18,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-queryType",
+          "name": "queryType",
+          "description": "'chat' | 'mcp_tool' | 'admin_action' | 'api_call' field",
+          "type": "interface-field",
+          "properties": {
+            "type": "'chat' | 'mcp_tool' | 'admin_action' | 'api_call'",
+            "optional": false
+          },
+          "sourceLine": 20,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-intent",
+          "name": "intent",
+          "description": "Context",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          },
+          "sourceLine": 22,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-ipAddress",
+          "name": "ipAddress",
+          "description": "string field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          },
+          "sourceLine": 23,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-userAgent",
+          "name": "userAgent",
+          "description": "string field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          },
+          "sourceLine": 25,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-referrer",
+          "name": "referrer",
+          "description": "MCP/Tool execution",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          },
+          "sourceLine": 26,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-mcpServer",
+          "name": "mcpServer",
+          "description": "string field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          },
+          "sourceLine": 28,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-toolsCalled",
+          "name": "toolsCalled",
+          "description": "any[] field",
+          "type": "interface-field",
+          "properties": {
+            "type": "any[]",
+            "optional": true
+          },
+          "sourceLine": 30,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-toolResults",
+          "name": "toolResults",
+          "description": "Request/Response payloads",
+          "type": "interface-field",
+          "properties": {
+            "type": "any[]",
+            "optional": true
+          },
+          "sourceLine": 31,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-requestPayload",
+          "name": "requestPayload",
+          "description": "any field",
+          "type": "interface-field",
+          "properties": {
+            "type": "any",
+            "optional": true
+          },
+          "sourceLine": 35,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-responsePayload",
+          "name": "responsePayload",
+          "description": "any field",
+          "type": "interface-field",
+          "properties": {
+            "type": "any",
+            "optional": true
+          },
+          "sourceLine": 35,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-responseTimeMs",
+          "name": "responseTimeMs",
+          "description": "Success/Error tracking",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": true
+          },
+          "sourceLine": 36,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-success",
+          "name": "success",
+          "description": "boolean field",
+          "type": "interface-field",
+          "properties": {
+            "type": "boolean",
+            "optional": true
+          },
+          "sourceLine": 39,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-errorCode",
+          "name": "errorCode",
+          "description": "string field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          },
+          "sourceLine": 40,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-errorMessage",
+          "name": "errorMessage",
+          "description": "Metadata",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          },
+          "sourceLine": 41,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-modelUsed",
+          "name": "modelUsed",
+          "description": "string field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          },
+          "sourceLine": 43,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-tokensConsumed",
+          "name": "tokensConsumed",
+          "description": "number field",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": true
+          },
+          "sourceLine": 45,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-costEstimate",
+          "name": "costEstimate",
+          "description": "ML Training Structure - optimized for model fine-tuning",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": true
+          },
+          "sourceLine": 46,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-userQuery",
+          "name": "userQuery",
+          "description": "string field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          },
+          "sourceLine": 51,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-context",
+          "name": "context",
+          "description": "any field",
+          "type": "interface-field",
+          "properties": {
+            "type": "any",
+            "optional": false
+          },
+          "sourceLine": 52,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-intent",
+          "name": "intent",
+          "description": "string field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          },
+          "sourceLine": 53,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-userBehaviorPattern",
+          "name": "userBehaviorPattern",
+          "description": "string[] field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string[]",
+            "optional": false
+          },
+          "sourceLine": 54,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-response",
+          "name": "response",
+          "description": "string field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          },
+          "sourceLine": 56,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-toolsUsed",
+          "name": "toolsUsed",
+          "description": "string[] field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string[]",
+            "optional": false
+          },
+          "sourceLine": 58,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-reasoningSteps",
+          "name": "reasoningSteps",
+          "description": "string[] field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string[]",
+            "optional": false
+          },
+          "sourceLine": 60,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-confidenceScore",
+          "name": "confidenceScore",
+          "description": "number field",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": false
+          },
+          "sourceLine": 61,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-sessionFlow",
+          "name": "sessionFlow",
+          "description": "string[] field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string[]",
+            "optional": false
+          },
+          "sourceLine": 62,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-userExpertiseLevel",
+          "name": "userExpertiseLevel",
+          "description": "string field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          },
+          "sourceLine": 65,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-taskComplexity",
+          "name": "taskComplexity",
+          "description": "string field",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          },
+          "sourceLine": 66,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "entry-satisfactionIndicators",
+          "name": "satisfactionIndicators",
+          "description": "any field",
+          "type": "interface-field",
+          "properties": {
+            "type": "any",
+            "optional": false
+          },
+          "sourceLine": 67,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        }
+      ]
+    },
+    {
+      "id": "query-types",
+      "title": "Audit Query Types",
+      "description": "Types used for querying and filtering audit log entries.",
+      "adminOnly": true,
+      "items": []
+    },
+    {
+      "id": "hash-chaining",
+      "title": "Hash Chain Integrity",
+      "description": "Audit logs use cryptographic hash chaining to detect tampering. Each entry includes a hash of the previous entry.",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "hash-computeChainHash",
+          "name": "computeChainHash",
+          "description": "/",
+          "type": "hash-method",
+          "sourceLine": 90,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "hash-createHash",
+          "name": "createHash",
+          "description": "Hash chain method: createHash",
+          "type": "hash-method",
+          "sourceLine": 106,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "hash-getLatestAdminAuditHash",
+          "name": "getLatestAdminAuditHash",
+          "description": "/",
+          "type": "hash-method",
+          "sourceLine": 112,
+          "sourceFile": "services/openagentic-api/src/services/AuditLogger.ts"
+        },
+        {
+          "id": "hash-algorithms",
+          "name": "Hash Algorithms",
+          "description": "Uses: sha256",
+          "type": "crypto-info",
+          "properties": {
+            "algorithms": [
+              "sha256"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

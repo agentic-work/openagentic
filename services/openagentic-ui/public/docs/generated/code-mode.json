@@ -1,0 +1,1269 @@
+{
+  "domain": "code-mode",
+  "title": "Code Mode (OpenAgentic)",
+  "description": "OpenAgentic manager with 14 classes, 78 interfaces, and 14 WebSocket handlers.",
+  "icon": "code",
+  "category": "ui",
+  "generatedAt": "2026-04-06T02:45:19.524Z",
+  "sourceFiles": [
+    "services/openagentic-manager/src/cloudStorageProvider.ts",
+    "services/openagentic-manager/src/codeServerService.ts",
+    "services/openagentic-manager/src/config.ts",
+    "services/openagentic-manager/src/eventEmitter.ts",
+    "services/openagentic-manager/src/execContainerClient.ts",
+    "services/openagentic-manager/src/index.ts",
+    "services/openagentic-manager/src/k8sSessionManager.ts",
+    "services/openagentic-manager/src/logger.ts",
+    "services/openagentic-manager/src/metricsService.ts",
+    "services/openagentic-manager/src/persistenceClient.ts",
+    "services/openagentic-manager/src/securityPolicy.ts",
+    "services/openagentic-manager/src/sessionManager.ts",
+    "services/openagentic-manager/src/sessionStore.ts",
+    "services/openagentic-manager/src/storageClient.ts",
+    "services/openagentic-manager/src/types.ts",
+    "services/openagentic-manager/src/userSandbox.ts",
+    "services/openagentic-manager/src/workspaceStorageService.ts",
+    "services/openagentic-manager/src/workspaceSyncService.ts"
+  ],
+  "sections": [
+    {
+      "id": "classes",
+      "title": "Code Mode Classes",
+      "description": "14 exported classes in the openagentic-manager service.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "class-S3StorageProvider",
+          "name": "S3StorageProvider",
+          "description": "Class from cloudStorageProvider.ts",
+          "type": "class",
+          "sourceLine": 140,
+          "sourceFile": "services/openagentic-manager/src/cloudStorageProvider.ts"
+        },
+        {
+          "id": "class-AzureBlobStorageProvider",
+          "name": "AzureBlobStorageProvider",
+          "description": "Class from cloudStorageProvider.ts",
+          "type": "class",
+          "sourceLine": 359,
+          "sourceFile": "services/openagentic-manager/src/cloudStorageProvider.ts"
+        },
+        {
+          "id": "class-GCSStorageProvider",
+          "name": "GCSStorageProvider",
+          "description": "Class from cloudStorageProvider.ts",
+          "type": "class",
+          "sourceLine": 568,
+          "sourceFile": "services/openagentic-manager/src/cloudStorageProvider.ts"
+        },
+        {
+          "id": "class-CodeServerService",
+          "name": "CodeServerService",
+          "description": "Class from codeServerService.ts",
+          "type": "class",
+          "sourceLine": 303,
+          "sourceFile": "services/openagentic-manager/src/codeServerService.ts"
+        },
+        {
+          "id": "class-OpenagenticEventEmitter",
+          "name": "OpenagenticEventEmitter",
+          "description": "NDJSON Event Emitter",
+          "type": "class",
+          "sourceLine": 345,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "class-ExecContainerClient",
+          "name": "ExecContainerClient",
+          "description": "Class from execContainerClient.ts",
+          "type": "class",
+          "sourceLine": 81,
+          "sourceFile": "services/openagentic-manager/src/execContainerClient.ts"
+        },
+        {
+          "id": "class-K8sSessionManager",
+          "name": "K8sSessionManager",
+          "description": "Class from k8sSessionManager.ts",
+          "type": "class",
+          "sourceLine": 93,
+          "sourceFile": "services/openagentic-manager/src/k8sSessionManager.ts"
+        },
+        {
+          "id": "class-MetricsService",
+          "name": "MetricsService",
+          "description": "MetricsService - Enhanced metrics tracking for OpenAgentic sessions",
+          "type": "class",
+          "sourceLine": 81,
+          "sourceFile": "services/openagentic-manager/src/metricsService.ts"
+        },
+        {
+          "id": "class-OutputMessageParser",
+          "name": "OutputMessageParser",
+          "description": "Persistence Client",
+          "type": "class",
+          "sourceLine": 164,
+          "sourceFile": "services/openagentic-manager/src/persistenceClient.ts"
+        },
+        {
+          "id": "class-SessionManager",
+          "name": "SessionManager",
+          "description": "Class from sessionManager.ts",
+          "type": "class",
+          "sourceLine": 135,
+          "sourceFile": "services/openagentic-manager/src/sessionManager.ts"
+        },
+        {
+          "id": "class-InMemorySessionStore",
+          "name": "InMemorySessionStore",
+          "description": "Session Store - Abstraction for storing K8sSession data",
+          "type": "class",
+          "sourceLine": 22,
+          "sourceFile": "services/openagentic-manager/src/sessionStore.ts"
+        },
+        {
+          "id": "class-RedisSessionStore",
+          "name": "RedisSessionStore",
+          "description": "Session Store - Abstraction for storing K8sSession data",
+          "type": "class",
+          "sourceLine": 59,
+          "sourceFile": "services/openagentic-manager/src/sessionStore.ts"
+        },
+        {
+          "id": "class-WorkspaceStorageService",
+          "name": "WorkspaceStorageService",
+          "description": "Class from workspaceStorageService.ts",
+          "type": "class",
+          "sourceLine": 135,
+          "sourceFile": "services/openagentic-manager/src/workspaceStorageService.ts"
+        },
+        {
+          "id": "class-WorkspaceSyncService",
+          "name": "WorkspaceSyncService",
+          "description": "WorkspaceSyncService - Real-time MinIO workspace synchronization",
+          "type": "class",
+          "sourceLine": 66,
+          "sourceFile": "services/openagentic-manager/src/workspaceSyncService.ts"
+        }
+      ]
+    },
+    {
+      "id": "interfaces",
+      "title": "Key Interfaces",
+      "description": "78 exported interfaces defining the code mode data model.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "iface-CloudStorageConfig",
+          "name": "CloudStorageConfig",
+          "description": "12 fields (cloudStorageProvider.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 12,
+            "file": "cloudStorageProvider"
+          },
+          "sourceLine": 36,
+          "sourceFile": "services/openagentic-manager/src/cloudStorageProvider.ts"
+        },
+        {
+          "id": "iface-StorageObject",
+          "name": "StorageObject",
+          "description": "4 fields (cloudStorageProvider.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 4,
+            "file": "cloudStorageProvider"
+          },
+          "sourceLine": 57,
+          "sourceFile": "services/openagentic-manager/src/cloudStorageProvider.ts"
+        },
+        {
+          "id": "iface-ListResult",
+          "name": "ListResult",
+          "description": "4 fields (cloudStorageProvider.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 4,
+            "file": "cloudStorageProvider"
+          },
+          "sourceLine": 64,
+          "sourceFile": "services/openagentic-manager/src/cloudStorageProvider.ts"
+        },
+        {
+          "id": "iface-ICloudStorageProvider",
+          "name": "ICloudStorageProvider",
+          "description": "0 fields (cloudStorageProvider.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 0,
+            "file": "cloudStorageProvider"
+          },
+          "sourceLine": 74,
+          "sourceFile": "services/openagentic-manager/src/cloudStorageProvider.ts"
+        },
+        {
+          "id": "iface-CodeServerInstance",
+          "name": "CodeServerInstance",
+          "description": "11 fields (codeServerService.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 11,
+            "file": "codeServerService"
+          },
+          "sourceLine": 27,
+          "sourceFile": "services/openagentic-manager/src/codeServerService.ts"
+        },
+        {
+          "id": "iface-CodeServerConfig",
+          "name": "CodeServerConfig",
+          "description": "11 fields (codeServerService.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 11,
+            "file": "codeServerService"
+          },
+          "sourceLine": 41,
+          "sourceFile": "services/openagentic-manager/src/codeServerService.ts"
+        },
+        {
+          "id": "iface-StorageConfig",
+          "name": "StorageConfig",
+          "description": "11 fields (config.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 11,
+            "file": "config"
+          },
+          "sourceLine": 14,
+          "sourceFile": "services/openagentic-manager/src/config.ts"
+        },
+        {
+          "id": "iface-ExecContainerConfig",
+          "name": "ExecContainerConfig",
+          "description": "2 fields (config.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 2,
+            "file": "config"
+          },
+          "sourceLine": 32,
+          "sourceFile": "services/openagentic-manager/src/config.ts"
+        },
+        {
+          "id": "iface-WarmPoolConfig",
+          "name": "WarmPoolConfig",
+          "description": "4 fields (config.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 4,
+            "file": "config"
+          },
+          "sourceLine": 37,
+          "sourceFile": "services/openagentic-manager/src/config.ts"
+        },
+        {
+          "id": "iface-K8sConfig",
+          "name": "K8sConfig",
+          "description": "15 fields (config.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 15,
+            "file": "config"
+          },
+          "sourceLine": 44,
+          "sourceFile": "services/openagentic-manager/src/config.ts"
+        },
+        {
+          "id": "iface-RedisConfig",
+          "name": "RedisConfig",
+          "description": "3 fields (config.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 3,
+            "file": "config"
+          },
+          "sourceLine": 64,
+          "sourceFile": "services/openagentic-manager/src/config.ts"
+        },
+        {
+          "id": "iface-Config",
+          "name": "Config",
+          "description": "18 fields (config.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 18,
+            "file": "config"
+          },
+          "sourceLine": 70,
+          "sourceFile": "services/openagentic-manager/src/config.ts"
+        },
+        {
+          "id": "iface-ContentBlock",
+          "name": "ContentBlock",
+          "description": "7 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 7,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 20,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-StreamMessage",
+          "name": "StreamMessage",
+          "description": "30 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 30,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 30,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-OpenagenticEvent",
+          "name": "OpenagenticEvent",
+          "description": "3 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 3,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 72,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-SessionStartedEvent",
+          "name": "SessionStartedEvent",
+          "description": "4 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 4,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 79,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-CLIReadyEvent",
+          "name": "CLIReadyEvent",
+          "description": "4 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 4,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 87,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-SessionEndedEvent",
+          "name": "SessionEndedEvent",
+          "description": "2 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 2,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 94,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-ThinkingStartEvent",
+          "name": "ThinkingStartEvent",
+          "description": "2 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 2,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 100,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-ThinkingUpdateEvent",
+          "name": "ThinkingUpdateEvent",
+          "description": "3 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 3,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 105,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-ThinkingEndEvent",
+          "name": "ThinkingEndEvent",
+          "description": "1 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 1,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 111,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-FileWriteStartEvent",
+          "name": "FileWriteStartEvent",
+          "description": "4 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 4,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 116,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-FileWriteChunkEvent",
+          "name": "FileWriteChunkEvent",
+          "description": "5 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 5,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 123,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-FileWriteEndEvent",
+          "name": "FileWriteEndEvent",
+          "description": "4 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 4,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 131,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-FileEditStartEvent",
+          "name": "FileEditStartEvent",
+          "description": "3 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 3,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 139,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-DiffHunk",
+          "name": "DiffHunk",
+          "description": "6 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 6,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 145,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-FileEditDiffEvent",
+          "name": "FileEditDiffEvent",
+          "description": "3 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 3,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 154,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-FileEditEndEvent",
+          "name": "FileEditEndEvent",
+          "description": "4 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 4,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 160,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-CommandStartEvent",
+          "name": "CommandStartEvent",
+          "description": "3 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 3,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 168,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-CommandOutputEvent",
+          "name": "CommandOutputEvent",
+          "description": "3 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 3,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 174,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-CommandEndEvent",
+          "name": "CommandEndEvent",
+          "description": "3 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 3,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 180,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-ArtifactDetectedEvent",
+          "name": "ArtifactDetectedEvent",
+          "description": "4 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 4,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 199,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-ArtifactReadyEvent",
+          "name": "ArtifactReadyEvent",
+          "description": "7 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 7,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 206,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-ToolStartEvent",
+          "name": "ToolStartEvent",
+          "description": "4 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 4,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 217,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-ToolEndEvent",
+          "name": "ToolEndEvent",
+          "description": "7 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 7,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 224,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-UsageEvent",
+          "name": "UsageEvent",
+          "description": "4 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 4,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 235,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-MessageEvent",
+          "name": "MessageEvent",
+          "description": "3 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 3,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 243,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-ErrorEvent",
+          "name": "ErrorEvent",
+          "description": "4 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 4,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 250,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-RawOutputEvent",
+          "name": "RawOutputEvent",
+          "description": "2 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 2,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 258,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-SessionInitEvent",
+          "name": "SessionInitEvent",
+          "description": "5 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 5,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 264,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-TodoItem",
+          "name": "TodoItem",
+          "description": "4 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 4,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 272,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-TodoUpdateEvent",
+          "name": "TodoUpdateEvent",
+          "description": "2 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 2,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 279,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-SessionCompleteEvent",
+          "name": "SessionCompleteEvent",
+          "description": "5 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 5,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 284,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-ResultEvent",
+          "name": "ResultEvent",
+          "description": "6 fields (eventEmitter.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 6,
+            "file": "eventEmitter"
+          },
+          "sourceLine": 293,
+          "sourceFile": "services/openagentic-manager/src/eventEmitter.ts"
+        },
+        {
+          "id": "iface-ExecSession",
+          "name": "ExecSession",
+          "description": "7 fields (execContainerClient.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 7,
+            "file": "execContainerClient"
+          },
+          "sourceLine": 16,
+          "sourceFile": "services/openagentic-manager/src/execContainerClient.ts"
+        },
+        {
+          "id": "iface-CodeServerInfo",
+          "name": "CodeServerInfo",
+          "description": "5 fields (execContainerClient.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 5,
+            "file": "execContainerClient"
+          },
+          "sourceLine": 26,
+          "sourceFile": "services/openagentic-manager/src/execContainerClient.ts"
+        },
+        {
+          "id": "iface-CodeServerReadinessResult",
+          "name": "CodeServerReadinessResult",
+          "description": "7 fields (execContainerClient.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 7,
+            "file": "execContainerClient"
+          },
+          "sourceLine": 35,
+          "sourceFile": "services/openagentic-manager/src/execContainerClient.ts"
+        },
+        {
+          "id": "iface-ReadinessResult",
+          "name": "ReadinessResult",
+          "description": "12 fields (execContainerClient.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 12,
+            "file": "execContainerClient"
+          },
+          "sourceLine": 46,
+          "sourceFile": "services/openagentic-manager/src/execContainerClient.ts"
+        },
+        {
+          "id": "iface-StartupEvent",
+          "name": "StartupEvent",
+          "description": "5 fields (execContainerClient.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 5,
+            "file": "execContainerClient"
+          },
+          "sourceLine": 63,
+          "sourceFile": "services/openagentic-manager/src/execContainerClient.ts"
+        },
+        {
+          "id": "iface-CreateSessionOptions",
+          "name": "CreateSessionOptions",
+          "description": "7 fields (execContainerClient.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 7,
+            "file": "execContainerClient"
+          },
+          "sourceLine": 71,
+          "sourceFile": "services/openagentic-manager/src/execContainerClient.ts"
+        },
+        {
+          "id": "iface-K8sSession",
+          "name": "K8sSession",
+          "description": "14 fields (k8sSessionManager.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 14,
+            "file": "k8sSessionManager"
+          },
+          "sourceLine": 53,
+          "sourceFile": "services/openagentic-manager/src/k8sSessionManager.ts"
+        },
+        {
+          "id": "iface-CreateK8sSessionOptions",
+          "name": "CreateK8sSessionOptions",
+          "description": "9 fields (k8sSessionManager.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 9,
+            "file": "k8sSessionManager"
+          },
+          "sourceLine": 73,
+          "sourceFile": "services/openagentic-manager/src/k8sSessionManager.ts"
+        },
+        {
+          "id": "iface-CodeServerInfo",
+          "name": "CodeServerInfo",
+          "description": "5 fields (k8sSessionManager.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 5,
+            "file": "k8sSessionManager"
+          },
+          "sourceLine": 85,
+          "sourceFile": "services/openagentic-manager/src/k8sSessionManager.ts"
+        },
+        {
+          "id": "iface-EnhancedProcessMetrics",
+          "name": "EnhancedProcessMetrics",
+          "description": "10 fields (metricsService.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 10,
+            "file": "metricsService"
+          },
+          "sourceLine": 21,
+          "sourceFile": "services/openagentic-manager/src/metricsService.ts"
+        },
+        {
+          "id": "iface-TokenUsage",
+          "name": "TokenUsage",
+          "description": "4 fields (metricsService.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 4,
+            "file": "metricsService"
+          },
+          "sourceLine": 39,
+          "sourceFile": "services/openagentic-manager/src/metricsService.ts"
+        },
+        {
+          "id": "iface-StorageUsage",
+          "name": "StorageUsage",
+          "description": "3 fields (metricsService.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 3,
+            "file": "metricsService"
+          },
+          "sourceLine": 47,
+          "sourceFile": "services/openagentic-manager/src/metricsService.ts"
+        },
+        {
+          "id": "iface-SessionMetrics",
+          "name": "SessionMetrics",
+          "description": "6 fields (metricsService.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 6,
+            "file": "metricsService"
+          },
+          "sourceLine": 54,
+          "sourceFile": "services/openagentic-manager/src/metricsService.ts"
+        },
+        {
+          "id": "iface-SystemMetrics",
+          "name": "SystemMetrics",
+          "description": "10 fields (metricsService.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 10,
+            "file": "metricsService"
+          },
+          "sourceLine": 64,
+          "sourceFile": "services/openagentic-manager/src/metricsService.ts"
+        },
+        {
+          "id": "iface-MessageData",
+          "name": "MessageData",
+          "description": "16 fields (persistenceClient.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 16,
+            "file": "persistenceClient"
+          },
+          "sourceLine": 12,
+          "sourceFile": "services/openagentic-manager/src/persistenceClient.ts"
+        },
+        {
+          "id": "iface-SecurityConfig",
+          "name": "SecurityConfig",
+          "description": "6 fields (securityPolicy.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 6,
+            "file": "securityPolicy"
+          },
+          "sourceLine": 369,
+          "sourceFile": "services/openagentic-manager/src/securityPolicy.ts"
+        },
+        {
+          "id": "iface-ProcessMetrics",
+          "name": "ProcessMetrics",
+          "description": "4 fields (sessionManager.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 4,
+            "file": "sessionManager"
+          },
+          "sourceLine": 49,
+          "sourceFile": "services/openagentic-manager/src/sessionManager.ts"
+        },
+        {
+          "id": "iface-EnhancedSessionMetrics",
+          "name": "EnhancedSessionMetrics",
+          "description": "6 fields (sessionManager.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 6,
+            "file": "sessionManager"
+          },
+          "sourceLine": 57,
+          "sourceFile": "services/openagentic-manager/src/sessionManager.ts"
+        },
+        {
+          "id": "iface-SessionStore",
+          "name": "SessionStore",
+          "description": "0 fields (sessionStore.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 0,
+            "file": "sessionStore"
+          },
+          "sourceLine": 9,
+          "sourceFile": "services/openagentic-manager/src/sessionStore.ts"
+        },
+        {
+          "id": "iface-StorageConfig",
+          "name": "StorageConfig",
+          "description": "8 fields (storageClient.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 8,
+            "file": "storageClient"
+          },
+          "sourceLine": 27,
+          "sourceFile": "services/openagentic-manager/src/storageClient.ts"
+        },
+        {
+          "id": "iface-SessionMetadata",
+          "name": "SessionMetadata",
+          "description": "8 fields (storageClient.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 8,
+            "file": "storageClient"
+          },
+          "sourceLine": 147,
+          "sourceFile": "services/openagentic-manager/src/storageClient.ts"
+        },
+        {
+          "id": "iface-MessageRecord",
+          "name": "MessageRecord",
+          "description": "11 fields (storageClient.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 11,
+            "file": "storageClient"
+          },
+          "sourceLine": 161,
+          "sourceFile": "services/openagentic-manager/src/storageClient.ts"
+        },
+        {
+          "id": "iface-UserSession",
+          "name": "UserSession",
+          "description": "8 fields (types.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 8,
+            "file": "types"
+          },
+          "sourceLine": 5,
+          "sourceFile": "services/openagentic-manager/src/types.ts"
+        },
+        {
+          "id": "iface-SessionStatus",
+          "name": "SessionStatus",
+          "description": "9 fields (types.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 9,
+            "file": "types"
+          },
+          "sourceLine": 16,
+          "sourceFile": "services/openagentic-manager/src/types.ts"
+        },
+        {
+          "id": "iface-ExecResult",
+          "name": "ExecResult",
+          "description": "3 fields (types.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 3,
+            "file": "types"
+          },
+          "sourceLine": 29,
+          "sourceFile": "services/openagentic-manager/src/types.ts"
+        },
+        {
+          "id": "iface-ChatMessage",
+          "name": "ChatMessage",
+          "description": "3 fields (types.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 3,
+            "file": "types"
+          },
+          "sourceLine": 35,
+          "sourceFile": "services/openagentic-manager/src/types.ts"
+        },
+        {
+          "id": "iface-CreateSessionRequest",
+          "name": "CreateSessionRequest",
+          "description": "6 fields (types.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 6,
+            "file": "types"
+          },
+          "sourceLine": 41,
+          "sourceFile": "services/openagentic-manager/src/types.ts"
+        },
+        {
+          "id": "iface-SendMessageRequest",
+          "name": "SendMessageRequest",
+          "description": "1 fields (types.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 1,
+            "file": "types"
+          },
+          "sourceLine": 50,
+          "sourceFile": "services/openagentic-manager/src/types.ts"
+        },
+        {
+          "id": "iface-SandboxUser",
+          "name": "SandboxUser",
+          "description": "6 fields (userSandbox.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 6,
+            "file": "userSandbox"
+          },
+          "sourceLine": 29,
+          "sourceFile": "services/openagentic-manager/src/userSandbox.ts"
+        },
+        {
+          "id": "iface-FileChangeEvent",
+          "name": "FileChangeEvent",
+          "description": "8 fields (workspaceStorageService.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 8,
+            "file": "workspaceStorageService"
+          },
+          "sourceLine": 59,
+          "sourceFile": "services/openagentic-manager/src/workspaceStorageService.ts"
+        },
+        {
+          "id": "iface-WorkspaceMetadata",
+          "name": "WorkspaceMetadata",
+          "description": "8 fields (workspaceStorageService.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 8,
+            "file": "workspaceStorageService"
+          },
+          "sourceLine": 70,
+          "sourceFile": "services/openagentic-manager/src/workspaceStorageService.ts"
+        },
+        {
+          "id": "iface-SyncConfig",
+          "name": "SyncConfig",
+          "description": "6 fields (workspaceStorageService.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 6,
+            "file": "workspaceStorageService"
+          },
+          "sourceLine": 81,
+          "sourceFile": "services/openagentic-manager/src/workspaceStorageService.ts"
+        },
+        {
+          "id": "iface-FileChangeEvent",
+          "name": "FileChangeEvent",
+          "description": "7 fields (workspaceSyncService.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 7,
+            "file": "workspaceSyncService"
+          },
+          "sourceLine": 20,
+          "sourceFile": "services/openagentic-manager/src/workspaceSyncService.ts"
+        },
+        {
+          "id": "iface-SyncConfig",
+          "name": "SyncConfig",
+          "description": "4 fields (workspaceSyncService.ts)",
+          "type": "interface",
+          "properties": {
+            "fieldCount": 4,
+            "file": "workspaceSyncService"
+          },
+          "sourceLine": 31,
+          "sourceFile": "services/openagentic-manager/src/workspaceSyncService.ts"
+        }
+      ]
+    },
+    {
+      "id": "websocket-handlers",
+      "title": "WebSocket Handlers",
+      "description": "14 WebSocket event handlers for real-time terminal I/O and session management.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "ws-execContainerClient-open",
+          "name": "open",
+          "description": "WebSocket \"open\" handler in execContainerClient.ts",
+          "type": "ws-handler",
+          "properties": {
+            "event": "open",
+            "file": "execContainerClient"
+          },
+          "sourceLine": 291,
+          "sourceFile": "services/openagentic-manager/src/execContainerClient.ts"
+        },
+        {
+          "id": "ws-execContainerClient-message",
+          "name": "message",
+          "description": "WebSocket \"message\" handler in execContainerClient.ts",
+          "type": "ws-handler",
+          "properties": {
+            "event": "message",
+            "file": "execContainerClient"
+          },
+          "sourceLine": 296,
+          "sourceFile": "services/openagentic-manager/src/execContainerClient.ts"
+        },
+        {
+          "id": "ws-execContainerClient-close",
+          "name": "close",
+          "description": "WebSocket \"close\" handler in execContainerClient.ts",
+          "type": "ws-handler",
+          "properties": {
+            "event": "close",
+            "file": "execContainerClient"
+          },
+          "sourceLine": 301,
+          "sourceFile": "services/openagentic-manager/src/execContainerClient.ts"
+        },
+        {
+          "id": "ws-execContainerClient-error",
+          "name": "error",
+          "description": "WebSocket \"error\" handler in execContainerClient.ts",
+          "type": "ws-handler",
+          "properties": {
+            "event": "error",
+            "file": "execContainerClient"
+          },
+          "sourceLine": 307,
+          "sourceFile": "services/openagentic-manager/src/execContainerClient.ts"
+        },
+        {
+          "id": "ws-index-close",
+          "name": "close",
+          "description": "WebSocket \"close\" handler in index.ts",
+          "type": "ws-handler",
+          "properties": {
+            "event": "close",
+            "file": "index"
+          },
+          "sourceLine": 146,
+          "sourceFile": "services/openagentic-manager/src/index.ts"
+        },
+        {
+          "id": "ws-index-error",
+          "name": "error",
+          "description": "WebSocket \"error\" handler in index.ts",
+          "type": "ws-handler",
+          "properties": {
+            "event": "error",
+            "file": "index"
+          },
+          "sourceLine": 279,
+          "sourceFile": "services/openagentic-manager/src/index.ts"
+        },
+        {
+          "id": "ws-index-connection",
+          "name": "connection",
+          "description": "WebSocket \"connection\" handler in index.ts",
+          "type": "ws-handler",
+          "properties": {
+            "event": "connection",
+            "file": "index"
+          },
+          "sourceLine": 1782,
+          "sourceFile": "services/openagentic-manager/src/index.ts"
+        },
+        {
+          "id": "ws-index-message",
+          "name": "message",
+          "description": "WebSocket \"message\" handler in index.ts",
+          "type": "ws-handler",
+          "properties": {
+            "event": "message",
+            "file": "index"
+          },
+          "sourceLine": 1874,
+          "sourceFile": "services/openagentic-manager/src/index.ts"
+        },
+        {
+          "id": "ws-index-pong",
+          "name": "pong",
+          "description": "WebSocket \"pong\" handler in index.ts",
+          "type": "ws-handler",
+          "properties": {
+            "event": "pong",
+            "file": "index"
+          },
+          "sourceLine": 1896,
+          "sourceFile": "services/openagentic-manager/src/index.ts"
+        },
+        {
+          "id": "wss-index",
+          "name": "WebSocketServer",
+          "description": "Server instance in index.ts",
+          "type": "ws-server",
+          "properties": {
+            "file": "index"
+          },
+          "sourceLine": 117,
+          "sourceFile": "services/openagentic-manager/src/index.ts"
+        },
+        {
+          "id": "ws-k8sSessionManager-open",
+          "name": "open",
+          "description": "WebSocket \"open\" handler in k8sSessionManager.ts",
+          "type": "ws-handler",
+          "properties": {
+            "event": "open",
+            "file": "k8sSessionManager"
+          },
+          "sourceLine": 1363,
+          "sourceFile": "services/openagentic-manager/src/k8sSessionManager.ts"
+        },
+        {
+          "id": "ws-k8sSessionManager-message",
+          "name": "message",
+          "description": "WebSocket \"message\" handler in k8sSessionManager.ts",
+          "type": "ws-handler",
+          "properties": {
+            "event": "message",
+            "file": "k8sSessionManager"
+          },
+          "sourceLine": 1371,
+          "sourceFile": "services/openagentic-manager/src/k8sSessionManager.ts"
+        },
+        {
+          "id": "ws-k8sSessionManager-close",
+          "name": "close",
+          "description": "WebSocket \"close\" handler in k8sSessionManager.ts",
+          "type": "ws-handler",
+          "properties": {
+            "event": "close",
+            "file": "k8sSessionManager"
+          },
+          "sourceLine": 1375,
+          "sourceFile": "services/openagentic-manager/src/k8sSessionManager.ts"
+        },
+        {
+          "id": "ws-k8sSessionManager-error",
+          "name": "error",
+          "description": "WebSocket \"error\" handler in k8sSessionManager.ts",
+          "type": "ws-handler",
+          "properties": {
+            "event": "error",
+            "file": "k8sSessionManager"
+          },
+          "sourceLine": 1382,
+          "sourceFile": "services/openagentic-manager/src/k8sSessionManager.ts"
+        }
+      ]
+    }
+  ]
+}

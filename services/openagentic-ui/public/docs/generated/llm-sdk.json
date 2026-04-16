@@ -1,0 +1,4081 @@
+{
+  "domain": "llm-sdk",
+  "title": "OpenAgentic LLM SDK",
+  "description": "TypeScript SDK for interacting with the OpenAgentic LLM API, including provider-specific adapters for Bedrock and Vertex.",
+  "icon": "tool",
+  "category": "tools",
+  "generatedAt": "2026-04-06T02:45:19.660Z",
+  "sourceFiles": [
+    "dist/client.d.ts",
+    "dist/resources/beta.d.ts",
+    "dist/resources/completions.d.ts",
+    "dist/resources/index.d.ts",
+    "dist/resources/messages.d.ts",
+    "dist/resources/models.d.ts",
+    "dist/resources/shared.d.ts",
+    "dist/resources/top-level.d.ts",
+    "dist/resources/messages/batches.d.ts",
+    "dist/resources/messages/index.d.ts",
+    "dist/resources/messages/messages.d.ts",
+    "dist/resources/beta/beta.d.ts",
+    "dist/resources/beta/files.d.ts",
+    "dist/resources/beta/index.d.ts",
+    "dist/resources/beta/messages.d.ts",
+    "dist/resources/beta/models.d.ts",
+    "dist/resources/beta/skills.d.ts",
+    "dist/resources/beta/skills/index.d.ts",
+    "dist/resources/beta/skills/skills.d.ts",
+    "dist/resources/beta/skills/versions.d.ts",
+    "dist/resources/beta/messages/batches.d.ts",
+    "dist/resources/beta/messages/index.d.ts",
+    "dist/resources/beta/messages/messages.d.ts",
+    "dist/bedrock.d.ts",
+    "dist/vertex.d.ts"
+  ],
+  "sections": [
+    {
+      "id": "client-api",
+      "title": "Client API",
+      "description": "Public API surface of the main SDK client class.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "client-class-BaseAnthropic",
+          "name": "BaseAnthropic",
+          "description": "SDK client class: BaseAnthropic",
+          "type": "client-class",
+          "sourceFile": "dist/client.d.ts",
+          "sourceLine": 108
+        },
+        {
+          "id": "client-class-Anthropic",
+          "name": "Anthropic",
+          "description": "SDK client class: Anthropic",
+          "type": "client-class",
+          "sourceFile": "dist/client.d.ts",
+          "sourceLine": 215
+        },
+        {
+          "id": "client-method-withOptions",
+          "name": "withOptions",
+          "description": "Client method returning this",
+          "type": "method",
+          "properties": {
+            "params": "options: Partial<ClientOptions>",
+            "returnType": "this"
+          },
+          "sourceFile": "dist/client.d.ts",
+          "sourceLine": 139
+        },
+        {
+          "id": "client-method-buildURL",
+          "name": "buildURL",
+          "description": "Client method returning string",
+          "type": "method",
+          "properties": {
+            "params": "path: string, query: Record<string, unknown> | null | undefined, defaultBaseURL?: string | undefined",
+            "returnType": "string"
+          },
+          "sourceFile": "dist/client.d.ts",
+          "sourceLine": 152
+        },
+        {
+          "id": "client-method-fetchWithTimeout",
+          "name": "fetchWithTimeout",
+          "description": "Client method returning Promise<Response>",
+          "type": "method",
+          "properties": {
+            "params": "url: RequestInfo, init: RequestInit | undefined, ms: number, controller: AbortController",
+            "returnType": "Promise<Response>"
+          },
+          "sourceFile": "dist/client.d.ts",
+          "sourceLine": 178
+        },
+        {
+          "id": "client-method-calculateNonstreamingTimeout",
+          "name": "calculateNonstreamingTimeout",
+          "description": "Client method returning number",
+          "type": "method",
+          "properties": {
+            "params": "maxTokens: number, maxNonstreamingTokens?: number",
+            "returnType": "number"
+          },
+          "sourceFile": "dist/client.d.ts",
+          "sourceLine": 182
+        },
+        {
+          "id": "client-method-buildRequest",
+          "name": "buildRequest",
+          "description": "Client method returning Promise<",
+          "type": "method",
+          "properties": {
+            "params": "inputOptions: FinalRequestOptions, { retryCount }?: {\n        retryCount?: number;\n    }",
+            "returnType": "Promise<"
+          },
+          "sourceFile": "dist/client.d.ts",
+          "sourceLine": 183
+        }
+      ]
+    },
+    {
+      "id": "resources",
+      "title": "Resources",
+      "description": "API resource namespaces (messages, completions, models, etc.).",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "resource-Completions",
+          "name": "Completions",
+          "description": "API resource: Completions",
+          "type": "resource-class",
+          "sourceFile": "dist/resources/completions.d.ts",
+          "sourceLine": 8
+        },
+        {
+          "id": "resource-Models",
+          "name": "Models",
+          "description": "API resource: Models",
+          "type": "resource-class",
+          "sourceFile": "dist/resources/models.d.ts",
+          "sourceLine": 6
+        },
+        {
+          "id": "resource-Batches",
+          "name": "Batches",
+          "description": "API resource: Batches",
+          "type": "resource-class",
+          "sourceFile": "dist/resources/messages/batches.d.ts",
+          "sourceLine": 8
+        },
+        {
+          "id": "resource-Messages",
+          "name": "Messages",
+          "description": "API resource: Messages",
+          "type": "resource-class",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 10
+        },
+        {
+          "id": "resource-Beta",
+          "name": "Beta",
+          "description": "API resource: Beta",
+          "type": "resource-class",
+          "sourceFile": "dist/resources/beta/beta.d.ts",
+          "sourceLine": 10
+        },
+        {
+          "id": "resource-Files",
+          "name": "Files",
+          "description": "API resource: Files",
+          "type": "resource-class",
+          "sourceFile": "dist/resources/beta/files.d.ts",
+          "sourceLine": 7
+        },
+        {
+          "id": "resource-Models",
+          "name": "Models",
+          "description": "API resource: Models",
+          "type": "resource-class",
+          "sourceFile": "dist/resources/beta/models.d.ts",
+          "sourceLine": 6
+        },
+        {
+          "id": "resource-Skills",
+          "name": "Skills",
+          "description": "API resource: Skills",
+          "type": "resource-class",
+          "sourceFile": "dist/resources/beta/skills/skills.d.ts",
+          "sourceLine": 9
+        },
+        {
+          "id": "resource-Versions",
+          "name": "Versions",
+          "description": "API resource: Versions",
+          "type": "resource-class",
+          "sourceFile": "dist/resources/beta/skills/versions.d.ts",
+          "sourceLine": 7
+        },
+        {
+          "id": "resource-Batches",
+          "name": "Batches",
+          "description": "API resource: Batches",
+          "type": "resource-class",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 9
+        },
+        {
+          "id": "resource-Messages",
+          "name": "Messages",
+          "description": "API resource: Messages",
+          "type": "resource-class",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 14
+        }
+      ]
+    },
+    {
+      "id": "types",
+      "title": "Types",
+      "description": "Exported interfaces and type aliases from SDK resource definitions.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "type-iface-Completion",
+          "name": "Completion",
+          "description": "Interface: Completion",
+          "type": "interface",
+          "sourceFile": "dist/resources/completions.d.ts",
+          "sourceLine": 32
+        },
+        {
+          "id": "type-iface-CompletionCreateParamsBase",
+          "name": "CompletionCreateParamsBase",
+          "description": "Interface: CompletionCreateParamsBase",
+          "type": "interface",
+          "sourceFile": "dist/resources/completions.d.ts",
+          "sourceLine": 67
+        },
+        {
+          "id": "type-iface-CompletionCreateParamsNonStreaming",
+          "name": "CompletionCreateParamsNonStreaming",
+          "description": "Interface: CompletionCreateParamsNonStreaming",
+          "type": "interface",
+          "sourceFile": "dist/resources/completions.d.ts",
+          "sourceLine": 161
+        },
+        {
+          "id": "type-iface-CompletionCreateParamsStreaming",
+          "name": "CompletionCreateParamsStreaming",
+          "description": "Interface: CompletionCreateParamsStreaming",
+          "type": "interface",
+          "sourceFile": "dist/resources/completions.d.ts",
+          "sourceLine": 170
+        },
+        {
+          "id": "type-alias-CompletionCreateParams",
+          "name": "CompletionCreateParams",
+          "description": "Type alias: CompletionCreateParams",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/completions.d.ts",
+          "sourceLine": 66
+        },
+        {
+          "id": "type-iface-CapabilitySupport",
+          "name": "CapabilitySupport",
+          "description": "Interface: CapabilitySupport",
+          "type": "interface",
+          "sourceFile": "dist/resources/models.d.ts",
+          "sourceLine": 26
+        },
+        {
+          "id": "type-iface-ContextManagementCapability",
+          "name": "ContextManagementCapability",
+          "description": "Interface: ContextManagementCapability",
+          "type": "interface",
+          "sourceFile": "dist/resources/models.d.ts",
+          "sourceLine": 35
+        },
+        {
+          "id": "type-iface-EffortCapability",
+          "name": "EffortCapability",
+          "description": "Interface: EffortCapability",
+          "type": "interface",
+          "sourceFile": "dist/resources/models.d.ts",
+          "sourceLine": 56
+        },
+        {
+          "id": "type-iface-ModelCapabilities",
+          "name": "ModelCapabilities",
+          "description": "Interface: ModelCapabilities",
+          "type": "interface",
+          "sourceFile": "dist/resources/models.d.ts",
+          "sourceLine": 81
+        },
+        {
+          "id": "type-iface-ModelInfo",
+          "name": "ModelInfo",
+          "description": "Interface: ModelInfo",
+          "type": "interface",
+          "sourceFile": "dist/resources/models.d.ts",
+          "sourceLine": 119
+        },
+        {
+          "id": "type-iface-ThinkingCapability",
+          "name": "ThinkingCapability",
+          "description": "Interface: ThinkingCapability",
+          "type": "interface",
+          "sourceFile": "dist/resources/models.d.ts",
+          "sourceLine": 155
+        },
+        {
+          "id": "type-iface-ThinkingTypes",
+          "name": "ThinkingTypes",
+          "description": "Interface: ThinkingTypes",
+          "type": "interface",
+          "sourceFile": "dist/resources/models.d.ts",
+          "sourceLine": 168
+        },
+        {
+          "id": "type-iface-ModelRetrieveParams",
+          "name": "ModelRetrieveParams",
+          "description": "Interface: ModelRetrieveParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/models.d.ts",
+          "sourceLine": 178
+        },
+        {
+          "id": "type-iface-ModelListParams",
+          "name": "ModelListParams",
+          "description": "Interface: ModelListParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/models.d.ts",
+          "sourceLine": 184
+        },
+        {
+          "id": "type-alias-ModelInfosPage",
+          "name": "ModelInfosPage",
+          "description": "Type alias: ModelInfosPage",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/models.d.ts",
+          "sourceLine": 22
+        },
+        {
+          "id": "type-iface-APIErrorObject",
+          "name": "APIErrorObject",
+          "description": "Interface: APIErrorObject",
+          "type": "interface",
+          "sourceFile": "dist/resources/shared.d.ts",
+          "sourceLine": 1
+        },
+        {
+          "id": "type-iface-AuthenticationError",
+          "name": "AuthenticationError",
+          "description": "Interface: AuthenticationError",
+          "type": "interface",
+          "sourceFile": "dist/resources/shared.d.ts",
+          "sourceLine": 5
+        },
+        {
+          "id": "type-iface-BillingError",
+          "name": "BillingError",
+          "description": "Interface: BillingError",
+          "type": "interface",
+          "sourceFile": "dist/resources/shared.d.ts",
+          "sourceLine": 9
+        },
+        {
+          "id": "type-iface-ErrorResponse",
+          "name": "ErrorResponse",
+          "description": "Interface: ErrorResponse",
+          "type": "interface",
+          "sourceFile": "dist/resources/shared.d.ts",
+          "sourceLine": 14
+        },
+        {
+          "id": "type-iface-GatewayTimeoutError",
+          "name": "GatewayTimeoutError",
+          "description": "Interface: GatewayTimeoutError",
+          "type": "interface",
+          "sourceFile": "dist/resources/shared.d.ts",
+          "sourceLine": 20
+        },
+        {
+          "id": "type-iface-InvalidRequestError",
+          "name": "InvalidRequestError",
+          "description": "Interface: InvalidRequestError",
+          "type": "interface",
+          "sourceFile": "dist/resources/shared.d.ts",
+          "sourceLine": 24
+        },
+        {
+          "id": "type-iface-NotFoundError",
+          "name": "NotFoundError",
+          "description": "Interface: NotFoundError",
+          "type": "interface",
+          "sourceFile": "dist/resources/shared.d.ts",
+          "sourceLine": 28
+        },
+        {
+          "id": "type-iface-OverloadedError",
+          "name": "OverloadedError",
+          "description": "Interface: OverloadedError",
+          "type": "interface",
+          "sourceFile": "dist/resources/shared.d.ts",
+          "sourceLine": 32
+        },
+        {
+          "id": "type-iface-PermissionError",
+          "name": "PermissionError",
+          "description": "Interface: PermissionError",
+          "type": "interface",
+          "sourceFile": "dist/resources/shared.d.ts",
+          "sourceLine": 36
+        },
+        {
+          "id": "type-iface-RateLimitError",
+          "name": "RateLimitError",
+          "description": "Interface: RateLimitError",
+          "type": "interface",
+          "sourceFile": "dist/resources/shared.d.ts",
+          "sourceLine": 40
+        },
+        {
+          "id": "type-alias-ErrorObject",
+          "name": "ErrorObject",
+          "description": "Type alias: ErrorObject",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/shared.d.ts",
+          "sourceLine": 13
+        },
+        {
+          "id": "type-alias-ErrorType",
+          "name": "ErrorType",
+          "description": "Type alias: ErrorType",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/shared.d.ts",
+          "sourceLine": 19
+        },
+        {
+          "id": "type-iface-DeletedMessageBatch",
+          "name": "DeletedMessageBatch",
+          "description": "Interface: DeletedMessageBatch",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/batches.d.ts",
+          "sourceLine": 127
+        },
+        {
+          "id": "type-iface-MessageBatch",
+          "name": "MessageBatch",
+          "description": "Interface: MessageBatch",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/batches.d.ts",
+          "sourceLine": 139
+        },
+        {
+          "id": "type-iface-MessageBatchCanceledResult",
+          "name": "MessageBatchCanceledResult",
+          "description": "Interface: MessageBatchCanceledResult",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/batches.d.ts",
+          "sourceLine": 201
+        },
+        {
+          "id": "type-iface-MessageBatchErroredResult",
+          "name": "MessageBatchErroredResult",
+          "description": "Interface: MessageBatchErroredResult",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/batches.d.ts",
+          "sourceLine": 204
+        },
+        {
+          "id": "type-iface-MessageBatchExpiredResult",
+          "name": "MessageBatchExpiredResult",
+          "description": "Interface: MessageBatchExpiredResult",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/batches.d.ts",
+          "sourceLine": 208
+        },
+        {
+          "id": "type-iface-MessageBatchIndividualResponse",
+          "name": "MessageBatchIndividualResponse",
+          "description": "Interface: MessageBatchIndividualResponse",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/batches.d.ts",
+          "sourceLine": 215
+        },
+        {
+          "id": "type-iface-MessageBatchRequestCounts",
+          "name": "MessageBatchRequestCounts",
+          "description": "Interface: MessageBatchRequestCounts",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/batches.d.ts",
+          "sourceLine": 232
+        },
+        {
+          "id": "type-iface-MessageBatchSucceededResult",
+          "name": "MessageBatchSucceededResult",
+          "description": "Interface: MessageBatchSucceededResult",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/batches.d.ts",
+          "sourceLine": 270
+        },
+        {
+          "id": "type-iface-BatchCreateParams",
+          "name": "BatchCreateParams",
+          "description": "Interface: BatchCreateParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/batches.d.ts",
+          "sourceLine": 274
+        },
+        {
+          "id": "type-iface-BatchListParams",
+          "name": "BatchListParams",
+          "description": "Interface: BatchListParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/batches.d.ts",
+          "sourceLine": 299
+        },
+        {
+          "id": "type-alias-MessageBatchesPage",
+          "name": "MessageBatchesPage",
+          "description": "Type alias: MessageBatchesPage",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/batches.d.ts",
+          "sourceLine": 126
+        },
+        {
+          "id": "type-alias-MessageBatchResult",
+          "name": "MessageBatchResult",
+          "description": "Type alias: MessageBatchResult",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/batches.d.ts",
+          "sourceLine": 269
+        },
+        {
+          "id": "type-iface-Base64ImageSource",
+          "name": "Base64ImageSource",
+          "description": "Interface: Base64ImageSource",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 95
+        },
+        {
+          "id": "type-iface-Base64PDFSource",
+          "name": "Base64PDFSource",
+          "description": "Interface: Base64PDFSource",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 100
+        },
+        {
+          "id": "type-iface-BashCodeExecutionOutputBlock",
+          "name": "BashCodeExecutionOutputBlock",
+          "description": "Interface: BashCodeExecutionOutputBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 105
+        },
+        {
+          "id": "type-iface-BashCodeExecutionOutputBlockParam",
+          "name": "BashCodeExecutionOutputBlockParam",
+          "description": "Interface: BashCodeExecutionOutputBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 109
+        },
+        {
+          "id": "type-iface-BashCodeExecutionResultBlock",
+          "name": "BashCodeExecutionResultBlock",
+          "description": "Interface: BashCodeExecutionResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 113
+        },
+        {
+          "id": "type-iface-BashCodeExecutionResultBlockParam",
+          "name": "BashCodeExecutionResultBlockParam",
+          "description": "Interface: BashCodeExecutionResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 120
+        },
+        {
+          "id": "type-iface-BashCodeExecutionToolResultBlock",
+          "name": "BashCodeExecutionToolResultBlock",
+          "description": "Interface: BashCodeExecutionToolResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 127
+        },
+        {
+          "id": "type-iface-BashCodeExecutionToolResultBlockParam",
+          "name": "BashCodeExecutionToolResultBlockParam",
+          "description": "Interface: BashCodeExecutionToolResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 132
+        },
+        {
+          "id": "type-iface-BashCodeExecutionToolResultError",
+          "name": "BashCodeExecutionToolResultError",
+          "description": "Interface: BashCodeExecutionToolResultError",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 141
+        },
+        {
+          "id": "type-iface-BashCodeExecutionToolResultErrorParam",
+          "name": "BashCodeExecutionToolResultErrorParam",
+          "description": "Interface: BashCodeExecutionToolResultErrorParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 146
+        },
+        {
+          "id": "type-iface-CacheControlEphemeral",
+          "name": "CacheControlEphemeral",
+          "description": "Interface: CacheControlEphemeral",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 150
+        },
+        {
+          "id": "type-iface-CacheCreation",
+          "name": "CacheCreation",
+          "description": "Interface: CacheCreation",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 164
+        },
+        {
+          "id": "type-iface-CitationCharLocation",
+          "name": "CitationCharLocation",
+          "description": "Interface: CitationCharLocation",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 174
+        },
+        {
+          "id": "type-iface-CitationCharLocationParam",
+          "name": "CitationCharLocationParam",
+          "description": "Interface: CitationCharLocationParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 183
+        },
+        {
+          "id": "type-iface-CitationContentBlockLocation",
+          "name": "CitationContentBlockLocation",
+          "description": "Interface: CitationContentBlockLocation",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 191
+        },
+        {
+          "id": "type-iface-CitationContentBlockLocationParam",
+          "name": "CitationContentBlockLocationParam",
+          "description": "Interface: CitationContentBlockLocationParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 200
+        },
+        {
+          "id": "type-iface-CitationPageLocation",
+          "name": "CitationPageLocation",
+          "description": "Interface: CitationPageLocation",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 208
+        },
+        {
+          "id": "type-iface-CitationPageLocationParam",
+          "name": "CitationPageLocationParam",
+          "description": "Interface: CitationPageLocationParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 217
+        },
+        {
+          "id": "type-iface-CitationSearchResultLocationParam",
+          "name": "CitationSearchResultLocationParam",
+          "description": "Interface: CitationSearchResultLocationParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 225
+        },
+        {
+          "id": "type-iface-CitationWebSearchResultLocationParam",
+          "name": "CitationWebSearchResultLocationParam",
+          "description": "Interface: CitationWebSearchResultLocationParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 234
+        },
+        {
+          "id": "type-iface-CitationsConfig",
+          "name": "CitationsConfig",
+          "description": "Interface: CitationsConfig",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 241
+        },
+        {
+          "id": "type-iface-CitationsConfigParam",
+          "name": "CitationsConfigParam",
+          "description": "Interface: CitationsConfigParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 244
+        },
+        {
+          "id": "type-iface-CitationsDelta",
+          "name": "CitationsDelta",
+          "description": "Interface: CitationsDelta",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 247
+        },
+        {
+          "id": "type-iface-CitationsSearchResultLocation",
+          "name": "CitationsSearchResultLocation",
+          "description": "Interface: CitationsSearchResultLocation",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 251
+        },
+        {
+          "id": "type-iface-CitationsWebSearchResultLocation",
+          "name": "CitationsWebSearchResultLocation",
+          "description": "Interface: CitationsWebSearchResultLocation",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 260
+        },
+        {
+          "id": "type-iface-CodeExecutionOutputBlock",
+          "name": "CodeExecutionOutputBlock",
+          "description": "Interface: CodeExecutionOutputBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 267
+        },
+        {
+          "id": "type-iface-CodeExecutionOutputBlockParam",
+          "name": "CodeExecutionOutputBlockParam",
+          "description": "Interface: CodeExecutionOutputBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 271
+        },
+        {
+          "id": "type-iface-CodeExecutionResultBlock",
+          "name": "CodeExecutionResultBlock",
+          "description": "Interface: CodeExecutionResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 275
+        },
+        {
+          "id": "type-iface-CodeExecutionResultBlockParam",
+          "name": "CodeExecutionResultBlockParam",
+          "description": "Interface: CodeExecutionResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 282
+        },
+        {
+          "id": "type-iface-CodeExecutionTool20250522",
+          "name": "CodeExecutionTool20250522",
+          "description": "Interface: CodeExecutionTool20250522",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 289
+        },
+        {
+          "id": "type-iface-CodeExecutionTool20250825",
+          "name": "CodeExecutionTool20250825",
+          "description": "Interface: CodeExecutionTool20250825",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 312
+        },
+        {
+          "id": "type-iface-CodeExecutionTool20260120",
+          "name": "CodeExecutionTool20260120",
+          "description": "Interface: CodeExecutionTool20260120",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 339
+        },
+        {
+          "id": "type-iface-CodeExecutionToolResultBlock",
+          "name": "CodeExecutionToolResultBlock",
+          "description": "Interface: CodeExecutionToolResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 362
+        },
+        {
+          "id": "type-iface-CodeExecutionToolResultBlockParam",
+          "name": "CodeExecutionToolResultBlockParam",
+          "description": "Interface: CodeExecutionToolResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 374
+        },
+        {
+          "id": "type-iface-CodeExecutionToolResultError",
+          "name": "CodeExecutionToolResultError",
+          "description": "Interface: CodeExecutionToolResultError",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 390
+        },
+        {
+          "id": "type-iface-CodeExecutionToolResultErrorParam",
+          "name": "CodeExecutionToolResultErrorParam",
+          "description": "Interface: CodeExecutionToolResultErrorParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 395
+        },
+        {
+          "id": "type-iface-Container",
+          "name": "Container",
+          "description": "Interface: Container",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 403
+        },
+        {
+          "id": "type-iface-ContainerUploadBlock",
+          "name": "ContainerUploadBlock",
+          "description": "Interface: ContainerUploadBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 416
+        },
+        {
+          "id": "type-iface-ContainerUploadBlockParam",
+          "name": "ContainerUploadBlockParam",
+          "description": "Interface: ContainerUploadBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 424
+        },
+        {
+          "id": "type-iface-ContentBlockSource",
+          "name": "ContentBlockSource",
+          "description": "Interface: ContentBlockSource",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 440
+        },
+        {
+          "id": "type-iface-DirectCaller",
+          "name": "DirectCaller",
+          "description": "Interface: DirectCaller",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 448
+        },
+        {
+          "id": "type-iface-DocumentBlock",
+          "name": "DocumentBlock",
+          "description": "Interface: DocumentBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 451
+        },
+        {
+          "id": "type-iface-DocumentBlockParam",
+          "name": "DocumentBlockParam",
+          "description": "Interface: DocumentBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 463
+        },
+        {
+          "id": "type-iface-EncryptedCodeExecutionResultBlock",
+          "name": "EncryptedCodeExecutionResultBlock",
+          "description": "Interface: EncryptedCodeExecutionResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 477
+        },
+        {
+          "id": "type-iface-EncryptedCodeExecutionResultBlockParam",
+          "name": "EncryptedCodeExecutionResultBlockParam",
+          "description": "Interface: EncryptedCodeExecutionResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 487
+        },
+        {
+          "id": "type-iface-ImageBlockParam",
+          "name": "ImageBlockParam",
+          "description": "Interface: ImageBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 494
+        },
+        {
+          "id": "type-iface-InputJSONDelta",
+          "name": "InputJSONDelta",
+          "description": "Interface: InputJSONDelta",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 502
+        },
+        {
+          "id": "type-iface-JSONOutputFormat",
+          "name": "JSONOutputFormat",
+          "description": "Interface: JSONOutputFormat",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 506
+        },
+        {
+          "id": "type-iface-MemoryTool20250818",
+          "name": "MemoryTool20250818",
+          "description": "Interface: MemoryTool20250818",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 515
+        },
+        {
+          "id": "type-iface-Message",
+          "name": "Message",
+          "description": "Interface: Message",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 541
+        },
+        {
+          "id": "type-iface-MessageDeltaUsage",
+          "name": "MessageDeltaUsage",
+          "description": "Interface: MessageDeltaUsage",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 659
+        },
+        {
+          "id": "type-iface-MessageParam",
+          "name": "MessageParam",
+          "description": "Interface: MessageParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 681
+        },
+        {
+          "id": "type-iface-MessageTokensCount",
+          "name": "MessageTokensCount",
+          "description": "Interface: MessageTokensCount",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 685
+        },
+        {
+          "id": "type-iface-Metadata",
+          "name": "Metadata",
+          "description": "Interface: Metadata",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 692
+        },
+        {
+          "id": "type-iface-OutputConfig",
+          "name": "OutputConfig",
+          "description": "Interface: OutputConfig",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 708
+        },
+        {
+          "id": "type-iface-PlainTextSource",
+          "name": "PlainTextSource",
+          "description": "Interface: PlainTextSource",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 719
+        },
+        {
+          "id": "type-iface-RawContentBlockDeltaEvent",
+          "name": "RawContentBlockDeltaEvent",
+          "description": "Interface: RawContentBlockDeltaEvent",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 725
+        },
+        {
+          "id": "type-iface-RawContentBlockStartEvent",
+          "name": "RawContentBlockStartEvent",
+          "description": "Interface: RawContentBlockStartEvent",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 730
+        },
+        {
+          "id": "type-iface-RawContentBlockStopEvent",
+          "name": "RawContentBlockStopEvent",
+          "description": "Interface: RawContentBlockStopEvent",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 738
+        },
+        {
+          "id": "type-iface-RawMessageDeltaEvent",
+          "name": "RawMessageDeltaEvent",
+          "description": "Interface: RawMessageDeltaEvent",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 742
+        },
+        {
+          "id": "type-iface-RawMessageStartEvent",
+          "name": "RawMessageStartEvent",
+          "description": "Interface: RawMessageStartEvent",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 779
+        },
+        {
+          "id": "type-iface-RawMessageStopEvent",
+          "name": "RawMessageStopEvent",
+          "description": "Interface: RawMessageStopEvent",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 783
+        },
+        {
+          "id": "type-iface-RedactedThinkingBlock",
+          "name": "RedactedThinkingBlock",
+          "description": "Interface: RedactedThinkingBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 787
+        },
+        {
+          "id": "type-iface-RedactedThinkingBlockParam",
+          "name": "RedactedThinkingBlockParam",
+          "description": "Interface: RedactedThinkingBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 791
+        },
+        {
+          "id": "type-iface-RefusalStopDetails",
+          "name": "RefusalStopDetails",
+          "description": "Interface: RefusalStopDetails",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 798
+        },
+        {
+          "id": "type-iface-SearchResultBlockParam",
+          "name": "SearchResultBlockParam",
+          "description": "Interface: SearchResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 814
+        },
+        {
+          "id": "type-iface-ServerToolCaller",
+          "name": "ServerToolCaller",
+          "description": "Interface: ServerToolCaller",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 828
+        },
+        {
+          "id": "type-iface-ServerToolCaller20260120",
+          "name": "ServerToolCaller20260120",
+          "description": "Interface: ServerToolCaller20260120",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 832
+        },
+        {
+          "id": "type-iface-ServerToolUsage",
+          "name": "ServerToolUsage",
+          "description": "Interface: ServerToolUsage",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 836
+        },
+        {
+          "id": "type-iface-ServerToolUseBlock",
+          "name": "ServerToolUseBlock",
+          "description": "Interface: ServerToolUseBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 846
+        },
+        {
+          "id": "type-iface-ServerToolUseBlockParam",
+          "name": "ServerToolUseBlockParam",
+          "description": "Interface: ServerToolUseBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 856
+        },
+        {
+          "id": "type-iface-SignatureDelta",
+          "name": "SignatureDelta",
+          "description": "Interface: SignatureDelta",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 870
+        },
+        {
+          "id": "type-iface-TextBlock",
+          "name": "TextBlock",
+          "description": "Interface: TextBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 875
+        },
+        {
+          "id": "type-iface-TextBlockParam",
+          "name": "TextBlockParam",
+          "description": "Interface: TextBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 887
+        },
+        {
+          "id": "type-iface-TextDelta",
+          "name": "TextDelta",
+          "description": "Interface: TextDelta",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 898
+        },
+        {
+          "id": "type-iface-TextEditorCodeExecutionCreateResultBlock",
+          "name": "TextEditorCodeExecutionCreateResultBlock",
+          "description": "Interface: TextEditorCodeExecutionCreateResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 902
+        },
+        {
+          "id": "type-iface-TextEditorCodeExecutionCreateResultBlockParam",
+          "name": "TextEditorCodeExecutionCreateResultBlockParam",
+          "description": "Interface: TextEditorCodeExecutionCreateResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 906
+        },
+        {
+          "id": "type-iface-TextEditorCodeExecutionStrReplaceResultBlock",
+          "name": "TextEditorCodeExecutionStrReplaceResultBlock",
+          "description": "Interface: TextEditorCodeExecutionStrReplaceResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 910
+        },
+        {
+          "id": "type-iface-TextEditorCodeExecutionStrReplaceResultBlockParam",
+          "name": "TextEditorCodeExecutionStrReplaceResultBlockParam",
+          "description": "Interface: TextEditorCodeExecutionStrReplaceResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 918
+        },
+        {
+          "id": "type-iface-TextEditorCodeExecutionToolResultBlock",
+          "name": "TextEditorCodeExecutionToolResultBlock",
+          "description": "Interface: TextEditorCodeExecutionToolResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 926
+        },
+        {
+          "id": "type-iface-TextEditorCodeExecutionToolResultBlockParam",
+          "name": "TextEditorCodeExecutionToolResultBlockParam",
+          "description": "Interface: TextEditorCodeExecutionToolResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 931
+        },
+        {
+          "id": "type-iface-TextEditorCodeExecutionToolResultError",
+          "name": "TextEditorCodeExecutionToolResultError",
+          "description": "Interface: TextEditorCodeExecutionToolResultError",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 940
+        },
+        {
+          "id": "type-iface-TextEditorCodeExecutionToolResultErrorParam",
+          "name": "TextEditorCodeExecutionToolResultErrorParam",
+          "description": "Interface: TextEditorCodeExecutionToolResultErrorParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 946
+        },
+        {
+          "id": "type-iface-TextEditorCodeExecutionViewResultBlock",
+          "name": "TextEditorCodeExecutionViewResultBlock",
+          "description": "Interface: TextEditorCodeExecutionViewResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 951
+        },
+        {
+          "id": "type-iface-TextEditorCodeExecutionViewResultBlockParam",
+          "name": "TextEditorCodeExecutionViewResultBlockParam",
+          "description": "Interface: TextEditorCodeExecutionViewResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 959
+        },
+        {
+          "id": "type-iface-ThinkingBlock",
+          "name": "ThinkingBlock",
+          "description": "Interface: ThinkingBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 967
+        },
+        {
+          "id": "type-iface-ThinkingBlockParam",
+          "name": "ThinkingBlockParam",
+          "description": "Interface: ThinkingBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 972
+        },
+        {
+          "id": "type-iface-ThinkingConfigAdaptive",
+          "name": "ThinkingConfigAdaptive",
+          "description": "Interface: ThinkingConfigAdaptive",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 977
+        },
+        {
+          "id": "type-iface-ThinkingConfigDisabled",
+          "name": "ThinkingConfigDisabled",
+          "description": "Interface: ThinkingConfigDisabled",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 987
+        },
+        {
+          "id": "type-iface-ThinkingConfigEnabled",
+          "name": "ThinkingConfigEnabled",
+          "description": "Interface: ThinkingConfigEnabled",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 990
+        },
+        {
+          "id": "type-iface-ThinkingDelta",
+          "name": "ThinkingDelta",
+          "description": "Interface: ThinkingDelta",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1024
+        },
+        {
+          "id": "type-iface-Tool",
+          "name": "Tool",
+          "description": "Interface: Tool",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1028
+        },
+        {
+          "id": "type-iface-ToolBash20250124",
+          "name": "ToolBash20250124",
+          "description": "Interface: ToolBash20250124",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1092
+        },
+        {
+          "id": "type-iface-ToolChoiceAny",
+          "name": "ToolChoiceAny",
+          "description": "Interface: ToolChoiceAny",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1126
+        },
+        {
+          "id": "type-iface-ToolChoiceAuto",
+          "name": "ToolChoiceAuto",
+          "description": "Interface: ToolChoiceAuto",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1139
+        },
+        {
+          "id": "type-iface-ToolChoiceNone",
+          "name": "ToolChoiceNone",
+          "description": "Interface: ToolChoiceNone",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1152
+        },
+        {
+          "id": "type-iface-ToolChoiceTool",
+          "name": "ToolChoiceTool",
+          "description": "Interface: ToolChoiceTool",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1158
+        },
+        {
+          "id": "type-iface-ToolReferenceBlock",
+          "name": "ToolReferenceBlock",
+          "description": "Interface: ToolReferenceBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1172
+        },
+        {
+          "id": "type-iface-ToolReferenceBlockParam",
+          "name": "ToolReferenceBlockParam",
+          "description": "Interface: ToolReferenceBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1179
+        },
+        {
+          "id": "type-iface-ToolResultBlockParam",
+          "name": "ToolResultBlockParam",
+          "description": "Interface: ToolResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1187
+        },
+        {
+          "id": "type-iface-ToolSearchToolBm25_20251119",
+          "name": "ToolSearchToolBm25_20251119",
+          "description": "Interface: ToolSearchToolBm25_20251119",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1197
+        },
+        {
+          "id": "type-iface-ToolSearchToolRegex20251119",
+          "name": "ToolSearchToolRegex20251119",
+          "description": "Interface: ToolSearchToolRegex20251119",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1220
+        },
+        {
+          "id": "type-iface-ToolSearchToolResultBlock",
+          "name": "ToolSearchToolResultBlock",
+          "description": "Interface: ToolSearchToolResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1243
+        },
+        {
+          "id": "type-iface-ToolSearchToolResultBlockParam",
+          "name": "ToolSearchToolResultBlockParam",
+          "description": "Interface: ToolSearchToolResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1248
+        },
+        {
+          "id": "type-iface-ToolSearchToolResultError",
+          "name": "ToolSearchToolResultError",
+          "description": "Interface: ToolSearchToolResultError",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1257
+        },
+        {
+          "id": "type-iface-ToolSearchToolResultErrorParam",
+          "name": "ToolSearchToolResultErrorParam",
+          "description": "Interface: ToolSearchToolResultErrorParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1263
+        },
+        {
+          "id": "type-iface-ToolSearchToolSearchResultBlock",
+          "name": "ToolSearchToolSearchResultBlock",
+          "description": "Interface: ToolSearchToolSearchResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1267
+        },
+        {
+          "id": "type-iface-ToolSearchToolSearchResultBlockParam",
+          "name": "ToolSearchToolSearchResultBlockParam",
+          "description": "Interface: ToolSearchToolSearchResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1271
+        },
+        {
+          "id": "type-iface-ToolTextEditor20250124",
+          "name": "ToolTextEditor20250124",
+          "description": "Interface: ToolTextEditor20250124",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1275
+        },
+        {
+          "id": "type-iface-ToolTextEditor20250429",
+          "name": "ToolTextEditor20250429",
+          "description": "Interface: ToolTextEditor20250429",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1301
+        },
+        {
+          "id": "type-iface-ToolTextEditor20250728",
+          "name": "ToolTextEditor20250728",
+          "description": "Interface: ToolTextEditor20250728",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1327
+        },
+        {
+          "id": "type-iface-ToolUseBlock",
+          "name": "ToolUseBlock",
+          "description": "Interface: ToolUseBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1363
+        },
+        {
+          "id": "type-iface-ToolUseBlockParam",
+          "name": "ToolUseBlockParam",
+          "description": "Interface: ToolUseBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1373
+        },
+        {
+          "id": "type-iface-URLImageSource",
+          "name": "URLImageSource",
+          "description": "Interface: URLImageSource",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1387
+        },
+        {
+          "id": "type-iface-URLPDFSource",
+          "name": "URLPDFSource",
+          "description": "Interface: URLPDFSource",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1391
+        },
+        {
+          "id": "type-iface-Usage",
+          "name": "Usage",
+          "description": "Interface: Usage",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1395
+        },
+        {
+          "id": "type-iface-UserLocation",
+          "name": "UserLocation",
+          "description": "Interface: UserLocation",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1429
+        },
+        {
+          "id": "type-iface-WebFetchBlock",
+          "name": "WebFetchBlock",
+          "description": "Interface: WebFetchBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1450
+        },
+        {
+          "id": "type-iface-WebFetchBlockParam",
+          "name": "WebFetchBlockParam",
+          "description": "Interface: WebFetchBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1462
+        },
+        {
+          "id": "type-iface-WebFetchTool20250910",
+          "name": "WebFetchTool20250910",
+          "description": "Interface: WebFetchTool20250910",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1474
+        },
+        {
+          "id": "type-iface-WebFetchTool20260209",
+          "name": "WebFetchTool20260209",
+          "description": "Interface: WebFetchTool20260209",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1519
+        },
+        {
+          "id": "type-iface-WebFetchTool20260309",
+          "name": "WebFetchTool20260309",
+          "description": "Interface: WebFetchTool20260309",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1567
+        },
+        {
+          "id": "type-iface-WebFetchToolResultBlock",
+          "name": "WebFetchToolResultBlock",
+          "description": "Interface: WebFetchToolResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1618
+        },
+        {
+          "id": "type-iface-WebFetchToolResultBlockParam",
+          "name": "WebFetchToolResultBlockParam",
+          "description": "Interface: WebFetchToolResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1627
+        },
+        {
+          "id": "type-iface-WebFetchToolResultErrorBlock",
+          "name": "WebFetchToolResultErrorBlock",
+          "description": "Interface: WebFetchToolResultErrorBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1640
+        },
+        {
+          "id": "type-iface-WebFetchToolResultErrorBlockParam",
+          "name": "WebFetchToolResultErrorBlockParam",
+          "description": "Interface: WebFetchToolResultErrorBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1644
+        },
+        {
+          "id": "type-iface-WebSearchResultBlock",
+          "name": "WebSearchResultBlock",
+          "description": "Interface: WebSearchResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1649
+        },
+        {
+          "id": "type-iface-WebSearchResultBlockParam",
+          "name": "WebSearchResultBlockParam",
+          "description": "Interface: WebSearchResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1656
+        },
+        {
+          "id": "type-iface-WebSearchTool20250305",
+          "name": "WebSearchTool20250305",
+          "description": "Interface: WebSearchTool20250305",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1663
+        },
+        {
+          "id": "type-iface-WebSearchTool20260209",
+          "name": "WebSearchTool20260209",
+          "description": "Interface: WebSearchTool20260209",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1712
+        },
+        {
+          "id": "type-iface-WebSearchToolRequestError",
+          "name": "WebSearchToolRequestError",
+          "description": "Interface: WebSearchToolRequestError",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1761
+        },
+        {
+          "id": "type-iface-WebSearchToolResultBlock",
+          "name": "WebSearchToolResultBlock",
+          "description": "Interface: WebSearchToolResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1765
+        },
+        {
+          "id": "type-iface-WebSearchToolResultBlockParam",
+          "name": "WebSearchToolResultBlockParam",
+          "description": "Interface: WebSearchToolResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1775
+        },
+        {
+          "id": "type-iface-WebSearchToolResultError",
+          "name": "WebSearchToolResultError",
+          "description": "Interface: WebSearchToolResultError",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1789
+        },
+        {
+          "id": "type-iface-MessageCreateParamsBase",
+          "name": "MessageCreateParamsBase",
+          "description": "Interface: MessageCreateParamsBase",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1802
+        },
+        {
+          "id": "type-iface-MessageCreateParamsNonStreaming",
+          "name": "MessageCreateParamsNonStreaming",
+          "description": "Interface: MessageCreateParamsNonStreaming",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 2076
+        },
+        {
+          "id": "type-iface-MessageCreateParamsStreaming",
+          "name": "MessageCreateParamsStreaming",
+          "description": "Interface: MessageCreateParamsStreaming",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 2084
+        },
+        {
+          "id": "type-iface-MessageCountTokensParams",
+          "name": "MessageCountTokensParams",
+          "description": "Interface: MessageCountTokensParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 2093
+        },
+        {
+          "id": "type-alias-BashCodeExecutionToolResultErrorCode",
+          "name": "BashCodeExecutionToolResultErrorCode",
+          "description": "Type alias: BashCodeExecutionToolResultErrorCode",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 145
+        },
+        {
+          "id": "type-alias-CodeExecutionToolResultBlockContent",
+          "name": "CodeExecutionToolResultBlockContent",
+          "description": "Type alias: CodeExecutionToolResultBlockContent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 373
+        },
+        {
+          "id": "type-alias-CodeExecutionToolResultBlockParamContent",
+          "name": "CodeExecutionToolResultBlockParamContent",
+          "description": "Type alias: CodeExecutionToolResultBlockParamContent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 389
+        },
+        {
+          "id": "type-alias-CodeExecutionToolResultErrorCode",
+          "name": "CodeExecutionToolResultErrorCode",
+          "description": "Type alias: CodeExecutionToolResultErrorCode",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 394
+        },
+        {
+          "id": "type-alias-ContentBlock",
+          "name": "ContentBlock",
+          "description": "Type alias: ContentBlock",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 435
+        },
+        {
+          "id": "type-alias-ContentBlockParam",
+          "name": "ContentBlockParam",
+          "description": "Type alias: ContentBlockParam",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 439
+        },
+        {
+          "id": "type-alias-ContentBlockSourceContent",
+          "name": "ContentBlockSourceContent",
+          "description": "Type alias: ContentBlockSourceContent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 444
+        },
+        {
+          "id": "type-alias-MessageCountTokensTool",
+          "name": "MessageCountTokensTool",
+          "description": "Type alias: MessageCountTokensTool",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 658
+        },
+        {
+          "id": "type-alias-Model",
+          "name": "Model",
+          "description": "Type alias: Model",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 707
+        },
+        {
+          "id": "type-alias-RawContentBlockDelta",
+          "name": "RawContentBlockDelta",
+          "description": "Type alias: RawContentBlockDelta",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 724
+        },
+        {
+          "id": "type-alias-RawMessageStreamEvent",
+          "name": "RawMessageStreamEvent",
+          "description": "Type alias: RawMessageStreamEvent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 786
+        },
+        {
+          "id": "type-alias-StopReason",
+          "name": "StopReason",
+          "description": "Type alias: StopReason",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 874
+        },
+        {
+          "id": "type-alias-TextCitation",
+          "name": "TextCitation",
+          "description": "Type alias: TextCitation",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 896
+        },
+        {
+          "id": "type-alias-TextCitationParam",
+          "name": "TextCitationParam",
+          "description": "Type alias: TextCitationParam",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 897
+        },
+        {
+          "id": "type-alias-TextEditorCodeExecutionToolResultErrorCode",
+          "name": "TextEditorCodeExecutionToolResultErrorCode",
+          "description": "Type alias: TextEditorCodeExecutionToolResultErrorCode",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 945
+        },
+        {
+          "id": "type-alias-ThinkingConfigParam",
+          "name": "ThinkingConfigParam",
+          "description": "Type alias: ThinkingConfigParam",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1023
+        },
+        {
+          "id": "type-alias-ToolChoice",
+          "name": "ToolChoice",
+          "description": "Type alias: ToolChoice",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1122
+        },
+        {
+          "id": "type-alias-ToolSearchToolResultErrorCode",
+          "name": "ToolSearchToolResultErrorCode",
+          "description": "Type alias: ToolSearchToolResultErrorCode",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1262
+        },
+        {
+          "id": "type-alias-ToolUnion",
+          "name": "ToolUnion",
+          "description": "Type alias: ToolUnion",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1362
+        },
+        {
+          "id": "type-alias-WebFetchToolResultErrorCode",
+          "name": "WebFetchToolResultErrorCode",
+          "description": "Type alias: WebFetchToolResultErrorCode",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1648
+        },
+        {
+          "id": "type-alias-WebSearchToolResultBlockContent",
+          "name": "WebSearchToolResultBlockContent",
+          "description": "Type alias: WebSearchToolResultBlockContent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1774
+        },
+        {
+          "id": "type-alias-WebSearchToolResultBlockParamContent",
+          "name": "WebSearchToolResultBlockParamContent",
+          "description": "Type alias: WebSearchToolResultBlockParamContent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1788
+        },
+        {
+          "id": "type-alias-WebSearchToolResultErrorCode",
+          "name": "WebSearchToolResultErrorCode",
+          "description": "Type alias: WebSearchToolResultErrorCode",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1793
+        },
+        {
+          "id": "type-alias-MessageStreamEvent",
+          "name": "MessageStreamEvent",
+          "description": "Type alias: MessageStreamEvent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1794
+        },
+        {
+          "id": "type-alias-MessageStartEvent",
+          "name": "MessageStartEvent",
+          "description": "Type alias: MessageStartEvent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1795
+        },
+        {
+          "id": "type-alias-MessageDeltaEvent",
+          "name": "MessageDeltaEvent",
+          "description": "Type alias: MessageDeltaEvent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1796
+        },
+        {
+          "id": "type-alias-MessageStopEvent",
+          "name": "MessageStopEvent",
+          "description": "Type alias: MessageStopEvent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1797
+        },
+        {
+          "id": "type-alias-ContentBlockStartEvent",
+          "name": "ContentBlockStartEvent",
+          "description": "Type alias: ContentBlockStartEvent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1798
+        },
+        {
+          "id": "type-alias-ContentBlockDeltaEvent",
+          "name": "ContentBlockDeltaEvent",
+          "description": "Type alias: ContentBlockDeltaEvent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1799
+        },
+        {
+          "id": "type-alias-ContentBlockStopEvent",
+          "name": "ContentBlockStopEvent",
+          "description": "Type alias: ContentBlockStopEvent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1800
+        },
+        {
+          "id": "type-alias-MessageCreateParams",
+          "name": "MessageCreateParams",
+          "description": "Type alias: MessageCreateParams",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 1801
+        },
+        {
+          "id": "type-alias-MessageStreamParams",
+          "name": "MessageStreamParams",
+          "description": "Type alias: MessageStreamParams",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/messages/messages.d.ts",
+          "sourceLine": 2092
+        },
+        {
+          "id": "type-iface-BetaAPIError",
+          "name": "BetaAPIError",
+          "description": "Interface: BetaAPIError",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/beta.d.ts",
+          "sourceLine": 17
+        },
+        {
+          "id": "type-iface-BetaAuthenticationError",
+          "name": "BetaAuthenticationError",
+          "description": "Interface: BetaAuthenticationError",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/beta.d.ts",
+          "sourceLine": 21
+        },
+        {
+          "id": "type-iface-BetaBillingError",
+          "name": "BetaBillingError",
+          "description": "Interface: BetaBillingError",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/beta.d.ts",
+          "sourceLine": 25
+        },
+        {
+          "id": "type-iface-BetaErrorResponse",
+          "name": "BetaErrorResponse",
+          "description": "Interface: BetaErrorResponse",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/beta.d.ts",
+          "sourceLine": 30
+        },
+        {
+          "id": "type-iface-BetaGatewayTimeoutError",
+          "name": "BetaGatewayTimeoutError",
+          "description": "Interface: BetaGatewayTimeoutError",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/beta.d.ts",
+          "sourceLine": 35
+        },
+        {
+          "id": "type-iface-BetaInvalidRequestError",
+          "name": "BetaInvalidRequestError",
+          "description": "Interface: BetaInvalidRequestError",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/beta.d.ts",
+          "sourceLine": 39
+        },
+        {
+          "id": "type-iface-BetaNotFoundError",
+          "name": "BetaNotFoundError",
+          "description": "Interface: BetaNotFoundError",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/beta.d.ts",
+          "sourceLine": 43
+        },
+        {
+          "id": "type-iface-BetaOverloadedError",
+          "name": "BetaOverloadedError",
+          "description": "Interface: BetaOverloadedError",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/beta.d.ts",
+          "sourceLine": 47
+        },
+        {
+          "id": "type-iface-BetaPermissionError",
+          "name": "BetaPermissionError",
+          "description": "Interface: BetaPermissionError",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/beta.d.ts",
+          "sourceLine": 51
+        },
+        {
+          "id": "type-iface-BetaRateLimitError",
+          "name": "BetaRateLimitError",
+          "description": "Interface: BetaRateLimitError",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/beta.d.ts",
+          "sourceLine": 55
+        },
+        {
+          "id": "type-alias-AnthropicBeta",
+          "name": "AnthropicBeta",
+          "description": "Type alias: AnthropicBeta",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/beta.d.ts",
+          "sourceLine": 16
+        },
+        {
+          "id": "type-alias-BetaError",
+          "name": "BetaError",
+          "description": "Type alias: BetaError",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/beta.d.ts",
+          "sourceLine": 29
+        },
+        {
+          "id": "type-iface-DeletedFile",
+          "name": "DeletedFile",
+          "description": "Interface: DeletedFile",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/files.d.ts",
+          "sourceLine": 68
+        },
+        {
+          "id": "type-iface-FileMetadata",
+          "name": "FileMetadata",
+          "description": "Interface: FileMetadata",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/files.d.ts",
+          "sourceLine": 80
+        },
+        {
+          "id": "type-iface-FileListParams",
+          "name": "FileListParams",
+          "description": "Interface: FileListParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/files.d.ts",
+          "sourceLine": 114
+        },
+        {
+          "id": "type-iface-FileDeleteParams",
+          "name": "FileDeleteParams",
+          "description": "Interface: FileDeleteParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/files.d.ts",
+          "sourceLine": 120
+        },
+        {
+          "id": "type-iface-FileDownloadParams",
+          "name": "FileDownloadParams",
+          "description": "Interface: FileDownloadParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/files.d.ts",
+          "sourceLine": 126
+        },
+        {
+          "id": "type-iface-FileRetrieveMetadataParams",
+          "name": "FileRetrieveMetadataParams",
+          "description": "Interface: FileRetrieveMetadataParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/files.d.ts",
+          "sourceLine": 132
+        },
+        {
+          "id": "type-iface-FileUploadParams",
+          "name": "FileUploadParams",
+          "description": "Interface: FileUploadParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/files.d.ts",
+          "sourceLine": 138
+        },
+        {
+          "id": "type-alias-FileMetadataPage",
+          "name": "FileMetadataPage",
+          "description": "Type alias: FileMetadataPage",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/files.d.ts",
+          "sourceLine": 67
+        },
+        {
+          "id": "type-iface-BetaCapabilitySupport",
+          "name": "BetaCapabilitySupport",
+          "description": "Interface: BetaCapabilitySupport",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/models.d.ts",
+          "sourceLine": 41
+        },
+        {
+          "id": "type-iface-BetaContextManagementCapability",
+          "name": "BetaContextManagementCapability",
+          "description": "Interface: BetaContextManagementCapability",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/models.d.ts",
+          "sourceLine": 50
+        },
+        {
+          "id": "type-iface-BetaEffortCapability",
+          "name": "BetaEffortCapability",
+          "description": "Interface: BetaEffortCapability",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/models.d.ts",
+          "sourceLine": 71
+        },
+        {
+          "id": "type-iface-BetaModelCapabilities",
+          "name": "BetaModelCapabilities",
+          "description": "Interface: BetaModelCapabilities",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/models.d.ts",
+          "sourceLine": 96
+        },
+        {
+          "id": "type-iface-BetaModelInfo",
+          "name": "BetaModelInfo",
+          "description": "Interface: BetaModelInfo",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/models.d.ts",
+          "sourceLine": 134
+        },
+        {
+          "id": "type-iface-BetaThinkingCapability",
+          "name": "BetaThinkingCapability",
+          "description": "Interface: BetaThinkingCapability",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/models.d.ts",
+          "sourceLine": 170
+        },
+        {
+          "id": "type-iface-BetaThinkingTypes",
+          "name": "BetaThinkingTypes",
+          "description": "Interface: BetaThinkingTypes",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/models.d.ts",
+          "sourceLine": 183
+        },
+        {
+          "id": "type-iface-ModelRetrieveParams",
+          "name": "ModelRetrieveParams",
+          "description": "Interface: ModelRetrieveParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/models.d.ts",
+          "sourceLine": 193
+        },
+        {
+          "id": "type-iface-ModelListParams",
+          "name": "ModelListParams",
+          "description": "Interface: ModelListParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/models.d.ts",
+          "sourceLine": 199
+        },
+        {
+          "id": "type-alias-BetaModelInfosPage",
+          "name": "BetaModelInfosPage",
+          "description": "Type alias: BetaModelInfosPage",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/models.d.ts",
+          "sourceLine": 37
+        },
+        {
+          "id": "type-iface-SkillCreateResponse",
+          "name": "SkillCreateResponse",
+          "description": "Interface: SkillCreateResponse",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/skills/skills.d.ts",
+          "sourceLine": 52
+        },
+        {
+          "id": "type-iface-SkillRetrieveResponse",
+          "name": "SkillRetrieveResponse",
+          "description": "Interface: SkillRetrieveResponse",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/skills/skills.d.ts",
+          "sourceLine": 96
+        },
+        {
+          "id": "type-iface-SkillListResponse",
+          "name": "SkillListResponse",
+          "description": "Interface: SkillListResponse",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/skills/skills.d.ts",
+          "sourceLine": 140
+        },
+        {
+          "id": "type-iface-SkillDeleteResponse",
+          "name": "SkillDeleteResponse",
+          "description": "Interface: SkillDeleteResponse",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/skills/skills.d.ts",
+          "sourceLine": 184
+        },
+        {
+          "id": "type-iface-SkillCreateParams",
+          "name": "SkillCreateParams",
+          "description": "Interface: SkillCreateParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/skills/skills.d.ts",
+          "sourceLine": 198
+        },
+        {
+          "id": "type-iface-SkillRetrieveParams",
+          "name": "SkillRetrieveParams",
+          "description": "Interface: SkillRetrieveParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/skills/skills.d.ts",
+          "sourceLine": 218
+        },
+        {
+          "id": "type-iface-SkillListParams",
+          "name": "SkillListParams",
+          "description": "Interface: SkillListParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/skills/skills.d.ts",
+          "sourceLine": 224
+        },
+        {
+          "id": "type-iface-SkillDeleteParams",
+          "name": "SkillDeleteParams",
+          "description": "Interface: SkillDeleteParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/skills/skills.d.ts",
+          "sourceLine": 239
+        },
+        {
+          "id": "type-alias-SkillListResponsesPageCursor",
+          "name": "SkillListResponsesPageCursor",
+          "description": "Type alias: SkillListResponsesPageCursor",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/skills/skills.d.ts",
+          "sourceLine": 51
+        },
+        {
+          "id": "type-iface-VersionCreateResponse",
+          "name": "VersionCreateResponse",
+          "description": "Interface: VersionCreateResponse",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/skills/versions.d.ts",
+          "sourceLine": 59
+        },
+        {
+          "id": "type-iface-VersionRetrieveResponse",
+          "name": "VersionRetrieveResponse",
+          "description": "Interface: VersionRetrieveResponse",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/skills/versions.d.ts",
+          "sourceLine": 105
+        },
+        {
+          "id": "type-iface-VersionListResponse",
+          "name": "VersionListResponse",
+          "description": "Interface: VersionListResponse",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/skills/versions.d.ts",
+          "sourceLine": 151
+        },
+        {
+          "id": "type-iface-VersionDeleteResponse",
+          "name": "VersionDeleteResponse",
+          "description": "Interface: VersionDeleteResponse",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/skills/versions.d.ts",
+          "sourceLine": 197
+        },
+        {
+          "id": "type-iface-VersionCreateParams",
+          "name": "VersionCreateParams",
+          "description": "Interface: VersionCreateParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/skills/versions.d.ts",
+          "sourceLine": 211
+        },
+        {
+          "id": "type-iface-VersionRetrieveParams",
+          "name": "VersionRetrieveParams",
+          "description": "Interface: VersionRetrieveParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/skills/versions.d.ts",
+          "sourceLine": 224
+        },
+        {
+          "id": "type-iface-VersionListParams",
+          "name": "VersionListParams",
+          "description": "Interface: VersionListParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/skills/versions.d.ts",
+          "sourceLine": 236
+        },
+        {
+          "id": "type-iface-VersionDeleteParams",
+          "name": "VersionDeleteParams",
+          "description": "Interface: VersionDeleteParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/skills/versions.d.ts",
+          "sourceLine": 242
+        },
+        {
+          "id": "type-alias-VersionListResponsesPageCursor",
+          "name": "VersionListResponsesPageCursor",
+          "description": "Type alias: VersionListResponsesPageCursor",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/skills/versions.d.ts",
+          "sourceLine": 58
+        },
+        {
+          "id": "type-iface-BetaDeletedMessageBatch",
+          "name": "BetaDeletedMessageBatch",
+          "description": "Interface: BetaDeletedMessageBatch",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 135
+        },
+        {
+          "id": "type-iface-BetaMessageBatch",
+          "name": "BetaMessageBatch",
+          "description": "Interface: BetaMessageBatch",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 147
+        },
+        {
+          "id": "type-iface-BetaMessageBatchCanceledResult",
+          "name": "BetaMessageBatchCanceledResult",
+          "description": "Interface: BetaMessageBatchCanceledResult",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 209
+        },
+        {
+          "id": "type-iface-BetaMessageBatchErroredResult",
+          "name": "BetaMessageBatchErroredResult",
+          "description": "Interface: BetaMessageBatchErroredResult",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 212
+        },
+        {
+          "id": "type-iface-BetaMessageBatchExpiredResult",
+          "name": "BetaMessageBatchExpiredResult",
+          "description": "Interface: BetaMessageBatchExpiredResult",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 216
+        },
+        {
+          "id": "type-iface-BetaMessageBatchIndividualResponse",
+          "name": "BetaMessageBatchIndividualResponse",
+          "description": "Interface: BetaMessageBatchIndividualResponse",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 223
+        },
+        {
+          "id": "type-iface-BetaMessageBatchRequestCounts",
+          "name": "BetaMessageBatchRequestCounts",
+          "description": "Interface: BetaMessageBatchRequestCounts",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 240
+        },
+        {
+          "id": "type-iface-BetaMessageBatchSucceededResult",
+          "name": "BetaMessageBatchSucceededResult",
+          "description": "Interface: BetaMessageBatchSucceededResult",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 278
+        },
+        {
+          "id": "type-iface-BatchCreateParams",
+          "name": "BatchCreateParams",
+          "description": "Interface: BatchCreateParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 282
+        },
+        {
+          "id": "type-iface-BatchRetrieveParams",
+          "name": "BatchRetrieveParams",
+          "description": "Interface: BatchRetrieveParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 613
+        },
+        {
+          "id": "type-iface-BatchListParams",
+          "name": "BatchListParams",
+          "description": "Interface: BatchListParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 619
+        },
+        {
+          "id": "type-iface-BatchDeleteParams",
+          "name": "BatchDeleteParams",
+          "description": "Interface: BatchDeleteParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 625
+        },
+        {
+          "id": "type-iface-BatchCancelParams",
+          "name": "BatchCancelParams",
+          "description": "Interface: BatchCancelParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 631
+        },
+        {
+          "id": "type-iface-BatchResultsParams",
+          "name": "BatchResultsParams",
+          "description": "Interface: BatchResultsParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 637
+        },
+        {
+          "id": "type-alias-BetaMessageBatchesPage",
+          "name": "BetaMessageBatchesPage",
+          "description": "Type alias: BetaMessageBatchesPage",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 134
+        },
+        {
+          "id": "type-alias-BetaMessageBatchResult",
+          "name": "BetaMessageBatchResult",
+          "description": "Type alias: BetaMessageBatchResult",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/batches.d.ts",
+          "sourceLine": 277
+        },
+        {
+          "id": "type-iface-BetaAllThinkingTurns",
+          "name": "BetaAllThinkingTurns",
+          "description": "Interface: BetaAllThinkingTurns",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 86
+        },
+        {
+          "id": "type-iface-BetaBase64ImageSource",
+          "name": "BetaBase64ImageSource",
+          "description": "Interface: BetaBase64ImageSource",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 90
+        },
+        {
+          "id": "type-iface-BetaBase64PDFSource",
+          "name": "BetaBase64PDFSource",
+          "description": "Interface: BetaBase64PDFSource",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 95
+        },
+        {
+          "id": "type-iface-BetaBashCodeExecutionOutputBlock",
+          "name": "BetaBashCodeExecutionOutputBlock",
+          "description": "Interface: BetaBashCodeExecutionOutputBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 100
+        },
+        {
+          "id": "type-iface-BetaBashCodeExecutionOutputBlockParam",
+          "name": "BetaBashCodeExecutionOutputBlockParam",
+          "description": "Interface: BetaBashCodeExecutionOutputBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 104
+        },
+        {
+          "id": "type-iface-BetaBashCodeExecutionResultBlock",
+          "name": "BetaBashCodeExecutionResultBlock",
+          "description": "Interface: BetaBashCodeExecutionResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 108
+        },
+        {
+          "id": "type-iface-BetaBashCodeExecutionResultBlockParam",
+          "name": "BetaBashCodeExecutionResultBlockParam",
+          "description": "Interface: BetaBashCodeExecutionResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 115
+        },
+        {
+          "id": "type-iface-BetaBashCodeExecutionToolResultBlock",
+          "name": "BetaBashCodeExecutionToolResultBlock",
+          "description": "Interface: BetaBashCodeExecutionToolResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 122
+        },
+        {
+          "id": "type-iface-BetaBashCodeExecutionToolResultBlockParam",
+          "name": "BetaBashCodeExecutionToolResultBlockParam",
+          "description": "Interface: BetaBashCodeExecutionToolResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 127
+        },
+        {
+          "id": "type-iface-BetaBashCodeExecutionToolResultError",
+          "name": "BetaBashCodeExecutionToolResultError",
+          "description": "Interface: BetaBashCodeExecutionToolResultError",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 136
+        },
+        {
+          "id": "type-iface-BetaBashCodeExecutionToolResultErrorParam",
+          "name": "BetaBashCodeExecutionToolResultErrorParam",
+          "description": "Interface: BetaBashCodeExecutionToolResultErrorParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 140
+        },
+        {
+          "id": "type-iface-BetaCacheControlEphemeral",
+          "name": "BetaCacheControlEphemeral",
+          "description": "Interface: BetaCacheControlEphemeral",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 144
+        },
+        {
+          "id": "type-iface-BetaCacheCreation",
+          "name": "BetaCacheCreation",
+          "description": "Interface: BetaCacheCreation",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 158
+        },
+        {
+          "id": "type-iface-BetaCitationCharLocation",
+          "name": "BetaCitationCharLocation",
+          "description": "Interface: BetaCitationCharLocation",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 168
+        },
+        {
+          "id": "type-iface-BetaCitationCharLocationParam",
+          "name": "BetaCitationCharLocationParam",
+          "description": "Interface: BetaCitationCharLocationParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 177
+        },
+        {
+          "id": "type-iface-BetaCitationConfig",
+          "name": "BetaCitationConfig",
+          "description": "Interface: BetaCitationConfig",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 185
+        },
+        {
+          "id": "type-iface-BetaCitationContentBlockLocation",
+          "name": "BetaCitationContentBlockLocation",
+          "description": "Interface: BetaCitationContentBlockLocation",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 188
+        },
+        {
+          "id": "type-iface-BetaCitationContentBlockLocationParam",
+          "name": "BetaCitationContentBlockLocationParam",
+          "description": "Interface: BetaCitationContentBlockLocationParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 197
+        },
+        {
+          "id": "type-iface-BetaCitationPageLocation",
+          "name": "BetaCitationPageLocation",
+          "description": "Interface: BetaCitationPageLocation",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 205
+        },
+        {
+          "id": "type-iface-BetaCitationPageLocationParam",
+          "name": "BetaCitationPageLocationParam",
+          "description": "Interface: BetaCitationPageLocationParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 214
+        },
+        {
+          "id": "type-iface-BetaCitationSearchResultLocation",
+          "name": "BetaCitationSearchResultLocation",
+          "description": "Interface: BetaCitationSearchResultLocation",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 222
+        },
+        {
+          "id": "type-iface-BetaCitationSearchResultLocationParam",
+          "name": "BetaCitationSearchResultLocationParam",
+          "description": "Interface: BetaCitationSearchResultLocationParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 231
+        },
+        {
+          "id": "type-iface-BetaCitationWebSearchResultLocationParam",
+          "name": "BetaCitationWebSearchResultLocationParam",
+          "description": "Interface: BetaCitationWebSearchResultLocationParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 240
+        },
+        {
+          "id": "type-iface-BetaCitationsConfigParam",
+          "name": "BetaCitationsConfigParam",
+          "description": "Interface: BetaCitationsConfigParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 247
+        },
+        {
+          "id": "type-iface-BetaCitationsDelta",
+          "name": "BetaCitationsDelta",
+          "description": "Interface: BetaCitationsDelta",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 250
+        },
+        {
+          "id": "type-iface-BetaCitationsWebSearchResultLocation",
+          "name": "BetaCitationsWebSearchResultLocation",
+          "description": "Interface: BetaCitationsWebSearchResultLocation",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 254
+        },
+        {
+          "id": "type-iface-BetaClearThinking20251015Edit",
+          "name": "BetaClearThinking20251015Edit",
+          "description": "Interface: BetaClearThinking20251015Edit",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 261
+        },
+        {
+          "id": "type-iface-BetaClearThinking20251015EditResponse",
+          "name": "BetaClearThinking20251015EditResponse",
+          "description": "Interface: BetaClearThinking20251015EditResponse",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 269
+        },
+        {
+          "id": "type-iface-BetaClearToolUses20250919Edit",
+          "name": "BetaClearToolUses20250919Edit",
+          "description": "Interface: BetaClearToolUses20250919Edit",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 283
+        },
+        {
+          "id": "type-iface-BetaClearToolUses20250919EditResponse",
+          "name": "BetaClearToolUses20250919EditResponse",
+          "description": "Interface: BetaClearToolUses20250919EditResponse",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 307
+        },
+        {
+          "id": "type-iface-BetaCodeExecutionOutputBlock",
+          "name": "BetaCodeExecutionOutputBlock",
+          "description": "Interface: BetaCodeExecutionOutputBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 321
+        },
+        {
+          "id": "type-iface-BetaCodeExecutionOutputBlockParam",
+          "name": "BetaCodeExecutionOutputBlockParam",
+          "description": "Interface: BetaCodeExecutionOutputBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 325
+        },
+        {
+          "id": "type-iface-BetaCodeExecutionResultBlock",
+          "name": "BetaCodeExecutionResultBlock",
+          "description": "Interface: BetaCodeExecutionResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 329
+        },
+        {
+          "id": "type-iface-BetaCodeExecutionResultBlockParam",
+          "name": "BetaCodeExecutionResultBlockParam",
+          "description": "Interface: BetaCodeExecutionResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 336
+        },
+        {
+          "id": "type-iface-BetaCodeExecutionTool20250522",
+          "name": "BetaCodeExecutionTool20250522",
+          "description": "Interface: BetaCodeExecutionTool20250522",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 343
+        },
+        {
+          "id": "type-iface-BetaCodeExecutionTool20250825",
+          "name": "BetaCodeExecutionTool20250825",
+          "description": "Interface: BetaCodeExecutionTool20250825",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 366
+        },
+        {
+          "id": "type-iface-BetaCodeExecutionTool20260120",
+          "name": "BetaCodeExecutionTool20260120",
+          "description": "Interface: BetaCodeExecutionTool20260120",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 393
+        },
+        {
+          "id": "type-iface-BetaCodeExecutionToolResultBlock",
+          "name": "BetaCodeExecutionToolResultBlock",
+          "description": "Interface: BetaCodeExecutionToolResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 416
+        },
+        {
+          "id": "type-iface-BetaCodeExecutionToolResultBlockParam",
+          "name": "BetaCodeExecutionToolResultBlockParam",
+          "description": "Interface: BetaCodeExecutionToolResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 428
+        },
+        {
+          "id": "type-iface-BetaCodeExecutionToolResultError",
+          "name": "BetaCodeExecutionToolResultError",
+          "description": "Interface: BetaCodeExecutionToolResultError",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 444
+        },
+        {
+          "id": "type-iface-BetaCodeExecutionToolResultErrorParam",
+          "name": "BetaCodeExecutionToolResultErrorParam",
+          "description": "Interface: BetaCodeExecutionToolResultErrorParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 449
+        },
+        {
+          "id": "type-iface-BetaCompact20260112Edit",
+          "name": "BetaCompact20260112Edit",
+          "description": "Interface: BetaCompact20260112Edit",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 457
+        },
+        {
+          "id": "type-iface-BetaCompactionBlock",
+          "name": "BetaCompactionBlock",
+          "description": "Interface: BetaCompactionBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 479
+        },
+        {
+          "id": "type-iface-BetaCompactionBlockParam",
+          "name": "BetaCompactionBlockParam",
+          "description": "Interface: BetaCompactionBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 495
+        },
+        {
+          "id": "type-iface-BetaCompactionContentBlockDelta",
+          "name": "BetaCompactionContentBlockDelta",
+          "description": "Interface: BetaCompactionContentBlockDelta",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 506
+        },
+        {
+          "id": "type-iface-BetaCompactionIterationUsage",
+          "name": "BetaCompactionIterationUsage",
+          "description": "Interface: BetaCompactionIterationUsage",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 513
+        },
+        {
+          "id": "type-iface-BetaContainer",
+          "name": "BetaContainer",
+          "description": "Interface: BetaContainer",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 543
+        },
+        {
+          "id": "type-iface-BetaContainerParams",
+          "name": "BetaContainerParams",
+          "description": "Interface: BetaContainerParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 560
+        },
+        {
+          "id": "type-iface-BetaContainerUploadBlock",
+          "name": "BetaContainerUploadBlock",
+          "description": "Interface: BetaContainerUploadBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 573
+        },
+        {
+          "id": "type-iface-BetaContainerUploadBlockParam",
+          "name": "BetaContainerUploadBlockParam",
+          "description": "Interface: BetaContainerUploadBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 581
+        },
+        {
+          "id": "type-iface-BetaContentBlockSource",
+          "name": "BetaContentBlockSource",
+          "description": "Interface: BetaContentBlockSource",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 597
+        },
+        {
+          "id": "type-iface-BetaContextManagementConfig",
+          "name": "BetaContextManagementConfig",
+          "description": "Interface: BetaContextManagementConfig",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 602
+        },
+        {
+          "id": "type-iface-BetaContextManagementResponse",
+          "name": "BetaContextManagementResponse",
+          "description": "Interface: BetaContextManagementResponse",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 608
+        },
+        {
+          "id": "type-iface-BetaCountTokensContextManagementResponse",
+          "name": "BetaCountTokensContextManagementResponse",
+          "description": "Interface: BetaCountTokensContextManagementResponse",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 614
+        },
+        {
+          "id": "type-iface-BetaDirectCaller",
+          "name": "BetaDirectCaller",
+          "description": "Interface: BetaDirectCaller",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 623
+        },
+        {
+          "id": "type-iface-BetaDocumentBlock",
+          "name": "BetaDocumentBlock",
+          "description": "Interface: BetaDocumentBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 626
+        },
+        {
+          "id": "type-iface-BetaEncryptedCodeExecutionResultBlock",
+          "name": "BetaEncryptedCodeExecutionResultBlock",
+          "description": "Interface: BetaEncryptedCodeExecutionResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 641
+        },
+        {
+          "id": "type-iface-BetaEncryptedCodeExecutionResultBlockParam",
+          "name": "BetaEncryptedCodeExecutionResultBlockParam",
+          "description": "Interface: BetaEncryptedCodeExecutionResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 651
+        },
+        {
+          "id": "type-iface-BetaFileDocumentSource",
+          "name": "BetaFileDocumentSource",
+          "description": "Interface: BetaFileDocumentSource",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 658
+        },
+        {
+          "id": "type-iface-BetaFileImageSource",
+          "name": "BetaFileImageSource",
+          "description": "Interface: BetaFileImageSource",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 662
+        },
+        {
+          "id": "type-iface-BetaImageBlockParam",
+          "name": "BetaImageBlockParam",
+          "description": "Interface: BetaImageBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 666
+        },
+        {
+          "id": "type-iface-BetaInputJSONDelta",
+          "name": "BetaInputJSONDelta",
+          "description": "Interface: BetaInputJSONDelta",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 674
+        },
+        {
+          "id": "type-iface-BetaInputTokensClearAtLeast",
+          "name": "BetaInputTokensClearAtLeast",
+          "description": "Interface: BetaInputTokensClearAtLeast",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 678
+        },
+        {
+          "id": "type-iface-BetaInputTokensTrigger",
+          "name": "BetaInputTokensTrigger",
+          "description": "Interface: BetaInputTokensTrigger",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 682
+        },
+        {
+          "id": "type-iface-BetaJSONOutputFormat",
+          "name": "BetaJSONOutputFormat",
+          "description": "Interface: BetaJSONOutputFormat",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 697
+        },
+        {
+          "id": "type-iface-BetaMCPToolConfig",
+          "name": "BetaMCPToolConfig",
+          "description": "Interface: BetaMCPToolConfig",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 709
+        },
+        {
+          "id": "type-iface-BetaMCPToolDefaultConfig",
+          "name": "BetaMCPToolDefaultConfig",
+          "description": "Interface: BetaMCPToolDefaultConfig",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 716
+        },
+        {
+          "id": "type-iface-BetaMCPToolResultBlock",
+          "name": "BetaMCPToolResultBlock",
+          "description": "Interface: BetaMCPToolResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 720
+        },
+        {
+          "id": "type-iface-BetaMCPToolUseBlock",
+          "name": "BetaMCPToolUseBlock",
+          "description": "Interface: BetaMCPToolUseBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 726
+        },
+        {
+          "id": "type-iface-BetaMCPToolUseBlockParam",
+          "name": "BetaMCPToolUseBlockParam",
+          "description": "Interface: BetaMCPToolUseBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 739
+        },
+        {
+          "id": "type-iface-BetaMCPToolset",
+          "name": "BetaMCPToolset",
+          "description": "Interface: BetaMCPToolset",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 759
+        },
+        {
+          "id": "type-iface-BetaMemoryTool20250818",
+          "name": "BetaMemoryTool20250818",
+          "description": "Interface: BetaMemoryTool20250818",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 780
+        },
+        {
+          "id": "type-iface-BetaMemoryTool20250818CreateCommand",
+          "name": "BetaMemoryTool20250818CreateCommand",
+          "description": "Interface: BetaMemoryTool20250818CreateCommand",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 807
+        },
+        {
+          "id": "type-iface-BetaMemoryTool20250818DeleteCommand",
+          "name": "BetaMemoryTool20250818DeleteCommand",
+          "description": "Interface: BetaMemoryTool20250818DeleteCommand",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 821
+        },
+        {
+          "id": "type-iface-BetaMemoryTool20250818InsertCommand",
+          "name": "BetaMemoryTool20250818InsertCommand",
+          "description": "Interface: BetaMemoryTool20250818InsertCommand",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 831
+        },
+        {
+          "id": "type-iface-BetaMemoryTool20250818RenameCommand",
+          "name": "BetaMemoryTool20250818RenameCommand",
+          "description": "Interface: BetaMemoryTool20250818RenameCommand",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 849
+        },
+        {
+          "id": "type-iface-BetaMemoryTool20250818StrReplaceCommand",
+          "name": "BetaMemoryTool20250818StrReplaceCommand",
+          "description": "Interface: BetaMemoryTool20250818StrReplaceCommand",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 863
+        },
+        {
+          "id": "type-iface-BetaMemoryTool20250818ViewCommand",
+          "name": "BetaMemoryTool20250818ViewCommand",
+          "description": "Interface: BetaMemoryTool20250818ViewCommand",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 881
+        },
+        {
+          "id": "type-iface-BetaMessage",
+          "name": "BetaMessage",
+          "description": "Interface: BetaMessage",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 895
+        },
+        {
+          "id": "type-iface-BetaMessageDeltaUsage",
+          "name": "BetaMessageDeltaUsage",
+          "description": "Interface: BetaMessageDeltaUsage",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1014
+        },
+        {
+          "id": "type-iface-BetaMessageIterationUsage",
+          "name": "BetaMessageIterationUsage",
+          "description": "Interface: BetaMessageIterationUsage",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1050
+        },
+        {
+          "id": "type-iface-BetaMessageParam",
+          "name": "BetaMessageParam",
+          "description": "Interface: BetaMessageParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1076
+        },
+        {
+          "id": "type-iface-BetaMessageTokensCount",
+          "name": "BetaMessageTokensCount",
+          "description": "Interface: BetaMessageTokensCount",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1080
+        },
+        {
+          "id": "type-iface-BetaMetadata",
+          "name": "BetaMetadata",
+          "description": "Interface: BetaMetadata",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1091
+        },
+        {
+          "id": "type-iface-BetaOutputConfig",
+          "name": "BetaOutputConfig",
+          "description": "Interface: BetaOutputConfig",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1101
+        },
+        {
+          "id": "type-iface-BetaPlainTextSource",
+          "name": "BetaPlainTextSource",
+          "description": "Interface: BetaPlainTextSource",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1112
+        },
+        {
+          "id": "type-iface-BetaRawContentBlockDeltaEvent",
+          "name": "BetaRawContentBlockDeltaEvent",
+          "description": "Interface: BetaRawContentBlockDeltaEvent",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1118
+        },
+        {
+          "id": "type-iface-BetaRawContentBlockStartEvent",
+          "name": "BetaRawContentBlockStartEvent",
+          "description": "Interface: BetaRawContentBlockStartEvent",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1123
+        },
+        {
+          "id": "type-iface-BetaRawContentBlockStopEvent",
+          "name": "BetaRawContentBlockStopEvent",
+          "description": "Interface: BetaRawContentBlockStopEvent",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1131
+        },
+        {
+          "id": "type-iface-BetaRawMessageDeltaEvent",
+          "name": "BetaRawMessageDeltaEvent",
+          "description": "Interface: BetaRawMessageDeltaEvent",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1135
+        },
+        {
+          "id": "type-iface-BetaRawMessageStartEvent",
+          "name": "BetaRawMessageStartEvent",
+          "description": "Interface: BetaRawMessageStartEvent",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1176
+        },
+        {
+          "id": "type-iface-BetaRawMessageStopEvent",
+          "name": "BetaRawMessageStopEvent",
+          "description": "Interface: BetaRawMessageStopEvent",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1180
+        },
+        {
+          "id": "type-iface-BetaRedactedThinkingBlock",
+          "name": "BetaRedactedThinkingBlock",
+          "description": "Interface: BetaRedactedThinkingBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1184
+        },
+        {
+          "id": "type-iface-BetaRedactedThinkingBlockParam",
+          "name": "BetaRedactedThinkingBlockParam",
+          "description": "Interface: BetaRedactedThinkingBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1188
+        },
+        {
+          "id": "type-iface-BetaRefusalStopDetails",
+          "name": "BetaRefusalStopDetails",
+          "description": "Interface: BetaRefusalStopDetails",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1195
+        },
+        {
+          "id": "type-iface-BetaRequestDocumentBlock",
+          "name": "BetaRequestDocumentBlock",
+          "description": "Interface: BetaRequestDocumentBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1211
+        },
+        {
+          "id": "type-iface-BetaRequestMCPServerToolConfiguration",
+          "name": "BetaRequestMCPServerToolConfiguration",
+          "description": "Interface: BetaRequestMCPServerToolConfiguration",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1222
+        },
+        {
+          "id": "type-iface-BetaRequestMCPServerURLDefinition",
+          "name": "BetaRequestMCPServerURLDefinition",
+          "description": "Interface: BetaRequestMCPServerURLDefinition",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1226
+        },
+        {
+          "id": "type-iface-BetaRequestMCPToolResultBlockParam",
+          "name": "BetaRequestMCPToolResultBlockParam",
+          "description": "Interface: BetaRequestMCPToolResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1233
+        },
+        {
+          "id": "type-iface-BetaSearchResultBlockParam",
+          "name": "BetaSearchResultBlockParam",
+          "description": "Interface: BetaSearchResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1243
+        },
+        {
+          "id": "type-iface-BetaServerToolCaller",
+          "name": "BetaServerToolCaller",
+          "description": "Interface: BetaServerToolCaller",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1257
+        },
+        {
+          "id": "type-iface-BetaServerToolCaller20260120",
+          "name": "BetaServerToolCaller20260120",
+          "description": "Interface: BetaServerToolCaller20260120",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1261
+        },
+        {
+          "id": "type-iface-BetaServerToolUsage",
+          "name": "BetaServerToolUsage",
+          "description": "Interface: BetaServerToolUsage",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1265
+        },
+        {
+          "id": "type-iface-BetaServerToolUseBlock",
+          "name": "BetaServerToolUseBlock",
+          "description": "Interface: BetaServerToolUseBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1275
+        },
+        {
+          "id": "type-iface-BetaServerToolUseBlockParam",
+          "name": "BetaServerToolUseBlockParam",
+          "description": "Interface: BetaServerToolUseBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1287
+        },
+        {
+          "id": "type-iface-BetaSignatureDelta",
+          "name": "BetaSignatureDelta",
+          "description": "Interface: BetaSignatureDelta",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1301
+        },
+        {
+          "id": "type-iface-BetaSkill",
+          "name": "BetaSkill",
+          "description": "Interface: BetaSkill",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1308
+        },
+        {
+          "id": "type-iface-BetaSkillParams",
+          "name": "BetaSkillParams",
+          "description": "Interface: BetaSkillParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1325
+        },
+        {
+          "id": "type-iface-BetaTextBlock",
+          "name": "BetaTextBlock",
+          "description": "Interface: BetaTextBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1340
+        },
+        {
+          "id": "type-iface-BetaTextBlockParam",
+          "name": "BetaTextBlockParam",
+          "description": "Interface: BetaTextBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1352
+        },
+        {
+          "id": "type-iface-BetaTextDelta",
+          "name": "BetaTextDelta",
+          "description": "Interface: BetaTextDelta",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1363
+        },
+        {
+          "id": "type-iface-BetaTextEditorCodeExecutionCreateResultBlock",
+          "name": "BetaTextEditorCodeExecutionCreateResultBlock",
+          "description": "Interface: BetaTextEditorCodeExecutionCreateResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1367
+        },
+        {
+          "id": "type-iface-BetaTextEditorCodeExecutionCreateResultBlockParam",
+          "name": "BetaTextEditorCodeExecutionCreateResultBlockParam",
+          "description": "Interface: BetaTextEditorCodeExecutionCreateResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1371
+        },
+        {
+          "id": "type-iface-BetaTextEditorCodeExecutionStrReplaceResultBlock",
+          "name": "BetaTextEditorCodeExecutionStrReplaceResultBlock",
+          "description": "Interface: BetaTextEditorCodeExecutionStrReplaceResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1375
+        },
+        {
+          "id": "type-iface-BetaTextEditorCodeExecutionStrReplaceResultBlockParam",
+          "name": "BetaTextEditorCodeExecutionStrReplaceResultBlockParam",
+          "description": "Interface: BetaTextEditorCodeExecutionStrReplaceResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1383
+        },
+        {
+          "id": "type-iface-BetaTextEditorCodeExecutionToolResultBlock",
+          "name": "BetaTextEditorCodeExecutionToolResultBlock",
+          "description": "Interface: BetaTextEditorCodeExecutionToolResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1391
+        },
+        {
+          "id": "type-iface-BetaTextEditorCodeExecutionToolResultBlockParam",
+          "name": "BetaTextEditorCodeExecutionToolResultBlockParam",
+          "description": "Interface: BetaTextEditorCodeExecutionToolResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1396
+        },
+        {
+          "id": "type-iface-BetaTextEditorCodeExecutionToolResultError",
+          "name": "BetaTextEditorCodeExecutionToolResultError",
+          "description": "Interface: BetaTextEditorCodeExecutionToolResultError",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1405
+        },
+        {
+          "id": "type-iface-BetaTextEditorCodeExecutionToolResultErrorParam",
+          "name": "BetaTextEditorCodeExecutionToolResultErrorParam",
+          "description": "Interface: BetaTextEditorCodeExecutionToolResultErrorParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1410
+        },
+        {
+          "id": "type-iface-BetaTextEditorCodeExecutionViewResultBlock",
+          "name": "BetaTextEditorCodeExecutionViewResultBlock",
+          "description": "Interface: BetaTextEditorCodeExecutionViewResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1415
+        },
+        {
+          "id": "type-iface-BetaTextEditorCodeExecutionViewResultBlockParam",
+          "name": "BetaTextEditorCodeExecutionViewResultBlockParam",
+          "description": "Interface: BetaTextEditorCodeExecutionViewResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1423
+        },
+        {
+          "id": "type-iface-BetaThinkingBlock",
+          "name": "BetaThinkingBlock",
+          "description": "Interface: BetaThinkingBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1431
+        },
+        {
+          "id": "type-iface-BetaThinkingBlockParam",
+          "name": "BetaThinkingBlockParam",
+          "description": "Interface: BetaThinkingBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1436
+        },
+        {
+          "id": "type-iface-BetaThinkingConfigAdaptive",
+          "name": "BetaThinkingConfigAdaptive",
+          "description": "Interface: BetaThinkingConfigAdaptive",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1441
+        },
+        {
+          "id": "type-iface-BetaThinkingConfigDisabled",
+          "name": "BetaThinkingConfigDisabled",
+          "description": "Interface: BetaThinkingConfigDisabled",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1451
+        },
+        {
+          "id": "type-iface-BetaThinkingConfigEnabled",
+          "name": "BetaThinkingConfigEnabled",
+          "description": "Interface: BetaThinkingConfigEnabled",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1454
+        },
+        {
+          "id": "type-iface-BetaThinkingDelta",
+          "name": "BetaThinkingDelta",
+          "description": "Interface: BetaThinkingDelta",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1488
+        },
+        {
+          "id": "type-iface-BetaThinkingTurns",
+          "name": "BetaThinkingTurns",
+          "description": "Interface: BetaThinkingTurns",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1492
+        },
+        {
+          "id": "type-iface-BetaTool",
+          "name": "BetaTool",
+          "description": "Interface: BetaTool",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1496
+        },
+        {
+          "id": "type-iface-BetaToolBash20241022",
+          "name": "BetaToolBash20241022",
+          "description": "Interface: BetaToolBash20241022",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1560
+        },
+        {
+          "id": "type-iface-BetaToolBash20250124",
+          "name": "BetaToolBash20250124",
+          "description": "Interface: BetaToolBash20250124",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1586
+        },
+        {
+          "id": "type-iface-BetaToolChoiceAny",
+          "name": "BetaToolChoiceAny",
+          "description": "Interface: BetaToolChoiceAny",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1620
+        },
+        {
+          "id": "type-iface-BetaToolChoiceAuto",
+          "name": "BetaToolChoiceAuto",
+          "description": "Interface: BetaToolChoiceAuto",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1633
+        },
+        {
+          "id": "type-iface-BetaToolChoiceNone",
+          "name": "BetaToolChoiceNone",
+          "description": "Interface: BetaToolChoiceNone",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1646
+        },
+        {
+          "id": "type-iface-BetaToolChoiceTool",
+          "name": "BetaToolChoiceTool",
+          "description": "Interface: BetaToolChoiceTool",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1652
+        },
+        {
+          "id": "type-iface-BetaToolComputerUse20241022",
+          "name": "BetaToolComputerUse20241022",
+          "description": "Interface: BetaToolComputerUse20241022",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1666
+        },
+        {
+          "id": "type-iface-BetaToolComputerUse20250124",
+          "name": "BetaToolComputerUse20250124",
+          "description": "Interface: BetaToolComputerUse20250124",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1704
+        },
+        {
+          "id": "type-iface-BetaToolComputerUse20251124",
+          "name": "BetaToolComputerUse20251124",
+          "description": "Interface: BetaToolComputerUse20251124",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1742
+        },
+        {
+          "id": "type-iface-BetaToolReferenceBlock",
+          "name": "BetaToolReferenceBlock",
+          "description": "Interface: BetaToolReferenceBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1784
+        },
+        {
+          "id": "type-iface-BetaToolReferenceBlockParam",
+          "name": "BetaToolReferenceBlockParam",
+          "description": "Interface: BetaToolReferenceBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1791
+        },
+        {
+          "id": "type-iface-BetaToolResultBlockParam",
+          "name": "BetaToolResultBlockParam",
+          "description": "Interface: BetaToolResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1799
+        },
+        {
+          "id": "type-iface-BetaToolSearchToolBm25_20251119",
+          "name": "BetaToolSearchToolBm25_20251119",
+          "description": "Interface: BetaToolSearchToolBm25_20251119",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1809
+        },
+        {
+          "id": "type-iface-BetaToolSearchToolRegex20251119",
+          "name": "BetaToolSearchToolRegex20251119",
+          "description": "Interface: BetaToolSearchToolRegex20251119",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1832
+        },
+        {
+          "id": "type-iface-BetaToolSearchToolResultBlock",
+          "name": "BetaToolSearchToolResultBlock",
+          "description": "Interface: BetaToolSearchToolResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1855
+        },
+        {
+          "id": "type-iface-BetaToolSearchToolResultBlockParam",
+          "name": "BetaToolSearchToolResultBlockParam",
+          "description": "Interface: BetaToolSearchToolResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1860
+        },
+        {
+          "id": "type-iface-BetaToolSearchToolResultError",
+          "name": "BetaToolSearchToolResultError",
+          "description": "Interface: BetaToolSearchToolResultError",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1869
+        },
+        {
+          "id": "type-iface-BetaToolSearchToolResultErrorParam",
+          "name": "BetaToolSearchToolResultErrorParam",
+          "description": "Interface: BetaToolSearchToolResultErrorParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1874
+        },
+        {
+          "id": "type-iface-BetaToolSearchToolSearchResultBlock",
+          "name": "BetaToolSearchToolSearchResultBlock",
+          "description": "Interface: BetaToolSearchToolSearchResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1878
+        },
+        {
+          "id": "type-iface-BetaToolSearchToolSearchResultBlockParam",
+          "name": "BetaToolSearchToolSearchResultBlockParam",
+          "description": "Interface: BetaToolSearchToolSearchResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1882
+        },
+        {
+          "id": "type-iface-BetaToolTextEditor20241022",
+          "name": "BetaToolTextEditor20241022",
+          "description": "Interface: BetaToolTextEditor20241022",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1887
+        },
+        {
+          "id": "type-iface-BetaToolTextEditor20250124",
+          "name": "BetaToolTextEditor20250124",
+          "description": "Interface: BetaToolTextEditor20250124",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1913
+        },
+        {
+          "id": "type-iface-BetaToolTextEditor20250429",
+          "name": "BetaToolTextEditor20250429",
+          "description": "Interface: BetaToolTextEditor20250429",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1939
+        },
+        {
+          "id": "type-iface-BetaToolTextEditor20250728",
+          "name": "BetaToolTextEditor20250728",
+          "description": "Interface: BetaToolTextEditor20250728",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1965
+        },
+        {
+          "id": "type-iface-BetaToolUseBlock",
+          "name": "BetaToolUseBlock",
+          "description": "Interface: BetaToolUseBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2001
+        },
+        {
+          "id": "type-iface-BetaToolUseBlockParam",
+          "name": "BetaToolUseBlockParam",
+          "description": "Interface: BetaToolUseBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2011
+        },
+        {
+          "id": "type-iface-BetaToolUsesKeep",
+          "name": "BetaToolUsesKeep",
+          "description": "Interface: BetaToolUsesKeep",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2025
+        },
+        {
+          "id": "type-iface-BetaToolUsesTrigger",
+          "name": "BetaToolUsesTrigger",
+          "description": "Interface: BetaToolUsesTrigger",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2029
+        },
+        {
+          "id": "type-iface-BetaURLImageSource",
+          "name": "BetaURLImageSource",
+          "description": "Interface: BetaURLImageSource",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2033
+        },
+        {
+          "id": "type-iface-BetaURLPDFSource",
+          "name": "BetaURLPDFSource",
+          "description": "Interface: BetaURLPDFSource",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2037
+        },
+        {
+          "id": "type-iface-BetaUsage",
+          "name": "BetaUsage",
+          "description": "Interface: BetaUsage",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2041
+        },
+        {
+          "id": "type-iface-BetaUserLocation",
+          "name": "BetaUserLocation",
+          "description": "Interface: BetaUserLocation",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2090
+        },
+        {
+          "id": "type-iface-BetaWebFetchBlock",
+          "name": "BetaWebFetchBlock",
+          "description": "Interface: BetaWebFetchBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2111
+        },
+        {
+          "id": "type-iface-BetaWebFetchBlockParam",
+          "name": "BetaWebFetchBlockParam",
+          "description": "Interface: BetaWebFetchBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2123
+        },
+        {
+          "id": "type-iface-BetaWebFetchTool20250910",
+          "name": "BetaWebFetchTool20250910",
+          "description": "Interface: BetaWebFetchTool20250910",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2135
+        },
+        {
+          "id": "type-iface-BetaWebFetchTool20260209",
+          "name": "BetaWebFetchTool20260209",
+          "description": "Interface: BetaWebFetchTool20260209",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2180
+        },
+        {
+          "id": "type-iface-BetaWebFetchTool20260309",
+          "name": "BetaWebFetchTool20260309",
+          "description": "Interface: BetaWebFetchTool20260309",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2228
+        },
+        {
+          "id": "type-iface-BetaWebFetchToolResultBlock",
+          "name": "BetaWebFetchToolResultBlock",
+          "description": "Interface: BetaWebFetchToolResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2279
+        },
+        {
+          "id": "type-iface-BetaWebFetchToolResultBlockParam",
+          "name": "BetaWebFetchToolResultBlockParam",
+          "description": "Interface: BetaWebFetchToolResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2288
+        },
+        {
+          "id": "type-iface-BetaWebFetchToolResultErrorBlock",
+          "name": "BetaWebFetchToolResultErrorBlock",
+          "description": "Interface: BetaWebFetchToolResultErrorBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2301
+        },
+        {
+          "id": "type-iface-BetaWebFetchToolResultErrorBlockParam",
+          "name": "BetaWebFetchToolResultErrorBlockParam",
+          "description": "Interface: BetaWebFetchToolResultErrorBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2305
+        },
+        {
+          "id": "type-iface-BetaWebSearchResultBlock",
+          "name": "BetaWebSearchResultBlock",
+          "description": "Interface: BetaWebSearchResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2310
+        },
+        {
+          "id": "type-iface-BetaWebSearchResultBlockParam",
+          "name": "BetaWebSearchResultBlockParam",
+          "description": "Interface: BetaWebSearchResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2317
+        },
+        {
+          "id": "type-iface-BetaWebSearchTool20250305",
+          "name": "BetaWebSearchTool20250305",
+          "description": "Interface: BetaWebSearchTool20250305",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2324
+        },
+        {
+          "id": "type-iface-BetaWebSearchTool20260209",
+          "name": "BetaWebSearchTool20260209",
+          "description": "Interface: BetaWebSearchTool20260209",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2366
+        },
+        {
+          "id": "type-iface-BetaWebSearchToolRequestError",
+          "name": "BetaWebSearchToolRequestError",
+          "description": "Interface: BetaWebSearchToolRequestError",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2408
+        },
+        {
+          "id": "type-iface-BetaWebSearchToolResultBlock",
+          "name": "BetaWebSearchToolResultBlock",
+          "description": "Interface: BetaWebSearchToolResultBlock",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2412
+        },
+        {
+          "id": "type-iface-BetaWebSearchToolResultBlockParam",
+          "name": "BetaWebSearchToolResultBlockParam",
+          "description": "Interface: BetaWebSearchToolResultBlockParam",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2422
+        },
+        {
+          "id": "type-iface-BetaWebSearchToolResultError",
+          "name": "BetaWebSearchToolResultError",
+          "description": "Interface: BetaWebSearchToolResultError",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2436
+        },
+        {
+          "id": "type-iface-MessageCreateParamsBase",
+          "name": "MessageCreateParamsBase",
+          "description": "Interface: MessageCreateParamsBase",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2446
+        },
+        {
+          "id": "type-iface-MessageCreateParamsNonStreaming",
+          "name": "MessageCreateParamsNonStreaming",
+          "description": "Interface: MessageCreateParamsNonStreaming",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2750
+        },
+        {
+          "id": "type-iface-MessageCreateParamsStreaming",
+          "name": "MessageCreateParamsStreaming",
+          "description": "Interface: MessageCreateParamsStreaming",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2759
+        },
+        {
+          "id": "type-iface-MessageCountTokensParams",
+          "name": "MessageCountTokensParams",
+          "description": "Interface: MessageCountTokensParams",
+          "type": "interface",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2768
+        },
+        {
+          "id": "type-alias-BetaMessageStreamParams",
+          "name": "BetaMessageStreamParams",
+          "description": "Type alias: BetaMessageStreamParams",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 89
+        },
+        {
+          "id": "type-alias-BetaCodeExecutionToolResultBlockContent",
+          "name": "BetaCodeExecutionToolResultBlockContent",
+          "description": "Type alias: BetaCodeExecutionToolResultBlockContent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 427
+        },
+        {
+          "id": "type-alias-BetaCodeExecutionToolResultBlockParamContent",
+          "name": "BetaCodeExecutionToolResultBlockParamContent",
+          "description": "Type alias: BetaCodeExecutionToolResultBlockParamContent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 443
+        },
+        {
+          "id": "type-alias-BetaCodeExecutionToolResultErrorCode",
+          "name": "BetaCodeExecutionToolResultErrorCode",
+          "description": "Type alias: BetaCodeExecutionToolResultErrorCode",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 448
+        },
+        {
+          "id": "type-alias-BetaContentBlock",
+          "name": "BetaContentBlock",
+          "description": "Type alias: BetaContentBlock",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 592
+        },
+        {
+          "id": "type-alias-BetaContentBlockParam",
+          "name": "BetaContentBlockParam",
+          "description": "Type alias: BetaContentBlockParam",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 596
+        },
+        {
+          "id": "type-alias-BetaContentBlockSourceContent",
+          "name": "BetaContentBlockSourceContent",
+          "description": "Type alias: BetaContentBlockSourceContent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 601
+        },
+        {
+          "id": "type-alias-BetaIterationsUsage",
+          "name": "BetaIterationsUsage",
+          "description": "Type alias: BetaIterationsUsage",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 696
+        },
+        {
+          "id": "type-alias-BetaMemoryTool20250818Command",
+          "name": "BetaMemoryTool20250818Command",
+          "description": "Type alias: BetaMemoryTool20250818Command",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 806
+        },
+        {
+          "id": "type-alias-BetaRawContentBlockDelta",
+          "name": "BetaRawContentBlockDelta",
+          "description": "Type alias: BetaRawContentBlockDelta",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1117
+        },
+        {
+          "id": "type-alias-BetaRawMessageStreamEvent",
+          "name": "BetaRawMessageStreamEvent",
+          "description": "Type alias: BetaRawMessageStreamEvent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1183
+        },
+        {
+          "id": "type-alias-BetaStopReason",
+          "name": "BetaStopReason",
+          "description": "Type alias: BetaStopReason",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1339
+        },
+        {
+          "id": "type-alias-BetaTextCitation",
+          "name": "BetaTextCitation",
+          "description": "Type alias: BetaTextCitation",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1361
+        },
+        {
+          "id": "type-alias-BetaTextCitationParam",
+          "name": "BetaTextCitationParam",
+          "description": "Type alias: BetaTextCitationParam",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1362
+        },
+        {
+          "id": "type-alias-BetaThinkingConfigParam",
+          "name": "BetaThinkingConfigParam",
+          "description": "Type alias: BetaThinkingConfigParam",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1487
+        },
+        {
+          "id": "type-alias-BetaToolChoice",
+          "name": "BetaToolChoice",
+          "description": "Type alias: BetaToolChoice",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1616
+        },
+        {
+          "id": "type-alias-BetaToolResultContentBlockParam",
+          "name": "BetaToolResultContentBlockParam",
+          "description": "Type alias: BetaToolResultContentBlockParam",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 1886
+        },
+        {
+          "id": "type-alias-BetaToolUnion",
+          "name": "BetaToolUnion",
+          "description": "Type alias: BetaToolUnion",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2000
+        },
+        {
+          "id": "type-alias-BetaWebFetchToolResultErrorCode",
+          "name": "BetaWebFetchToolResultErrorCode",
+          "description": "Type alias: BetaWebFetchToolResultErrorCode",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2309
+        },
+        {
+          "id": "type-alias-BetaWebSearchToolResultBlockContent",
+          "name": "BetaWebSearchToolResultBlockContent",
+          "description": "Type alias: BetaWebSearchToolResultBlockContent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2421
+        },
+        {
+          "id": "type-alias-BetaWebSearchToolResultBlockParamContent",
+          "name": "BetaWebSearchToolResultBlockParamContent",
+          "description": "Type alias: BetaWebSearchToolResultBlockParamContent",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2435
+        },
+        {
+          "id": "type-alias-BetaWebSearchToolResultErrorCode",
+          "name": "BetaWebSearchToolResultErrorCode",
+          "description": "Type alias: BetaWebSearchToolResultErrorCode",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2440
+        },
+        {
+          "id": "type-alias-BetaBase64PDFBlock",
+          "name": "BetaBase64PDFBlock",
+          "description": "Type alias: BetaBase64PDFBlock",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2444
+        },
+        {
+          "id": "type-alias-MessageCreateParams",
+          "name": "MessageCreateParams",
+          "description": "Type alias: MessageCreateParams",
+          "type": "type-alias",
+          "sourceFile": "dist/resources/beta/messages/messages.d.ts",
+          "sourceLine": 2445
+        }
+      ]
+    },
+    {
+      "id": "provider-adapters",
+      "title": "Provider Adapters",
+      "description": "Provider-specific adapter classes for Bedrock, Vertex, and other cloud LLM services.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "adapter-AnthropicBedrock",
+          "name": "AnthropicBedrock",
+          "description": "Provider adapter class: AnthropicBedrock",
+          "type": "provider-adapter",
+          "sourceFile": "dist/bedrock.d.ts",
+          "sourceLine": 21
+        },
+        {
+          "id": "adapter-AnthropicVertex",
+          "name": "AnthropicVertex",
+          "description": "Provider adapter class: AnthropicVertex",
+          "type": "provider-adapter",
+          "sourceFile": "dist/vertex.d.ts",
+          "sourceLine": 23
+        }
+      ]
+    }
+  ]
+}

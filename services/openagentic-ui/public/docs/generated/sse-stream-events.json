@@ -1,0 +1,68 @@
+{
+  "domain": "sse-stream-events",
+  "title": "SSE Stream Events",
+  "description": "0 normalized stream event types across 0 categories, with 5 type guards.",
+  "icon": "code",
+  "category": "core",
+  "generatedAt": "2026-04-06T02:45:19.339Z",
+  "sourceFiles": [
+    "services/openagentic-api/src/services/NormalizedStreamTypes.ts"
+  ],
+  "sections": [
+    {
+      "id": "sse-overview",
+      "title": "Stream Event Overview",
+      "description": "0 event types in the NormalizedStreamEvent union, grouped into 0 categories. All LLM providers normalize to this format before sending to the frontend.",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "type-guards",
+      "title": "Type Guard Helpers",
+      "description": "5 type guard functions for narrowing NormalizedStreamEvent.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "guard-isEnvelopeEvent",
+          "name": "isEnvelopeEvent",
+          "description": "Matches: stream_start, stream_end",
+          "type": "type-guard",
+          "sourceLine": 59,
+          "sourceFile": "services/openagentic-api/src/services/NormalizedStreamTypes.ts"
+        },
+        {
+          "id": "guard-isThinkingEvent",
+          "name": "isThinkingEvent",
+          "description": "Matches: thinking_start, thinking_delta, thinking_stop, redacted_thinking",
+          "type": "type-guard",
+          "sourceLine": 66,
+          "sourceFile": "services/openagentic-api/src/services/NormalizedStreamTypes.ts"
+        },
+        {
+          "id": "guard-isToolEvent",
+          "name": "isToolEvent",
+          "description": "Matches: tool_start, tool_delta, tool_stop",
+          "type": "type-guard",
+          "sourceLine": 81,
+          "sourceFile": "services/openagentic-api/src/services/NormalizedStreamTypes.ts"
+        },
+        {
+          "id": "guard-isTextEvent",
+          "name": "isTextEvent",
+          "description": "Matches: text_start, text_delta, text_stop",
+          "type": "type-guard",
+          "sourceLine": 92,
+          "sourceFile": "services/openagentic-api/src/services/NormalizedStreamTypes.ts"
+        },
+        {
+          "id": "guard-isAgentEvent",
+          "name": "isAgentEvent",
+          "description": "Matches: agent_start, agent_stop",
+          "type": "type-guard",
+          "sourceLine": 103,
+          "sourceFile": "services/openagentic-api/src/services/NormalizedStreamTypes.ts"
+        }
+      ]
+    }
+  ]
+}

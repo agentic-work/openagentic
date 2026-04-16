@@ -1,0 +1,620 @@
+{
+  "domain": "agent-configuration",
+  "title": "Agent Configuration",
+  "description": "Agent spawn configuration with 11 role prompts, sub-agent lifecycle, and tier-based model routing.",
+  "icon": "agent",
+  "category": "agents",
+  "generatedAt": "2026-04-06T02:45:19.335Z",
+  "sourceFiles": [
+    "services/openagentic-api/src/services/AgentSpawnManager.ts"
+  ],
+  "sections": [
+    {
+      "id": "role-system-prompts",
+      "title": "Role System Prompts",
+      "description": "Default system prompts for 11 agent roles, used when no custom prompt is configured.",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "prompt-data_query",
+          "name": "data_query",
+          "description": "You are a data query specialist. Extract, filter, and return structured data efficiently. Be precise and concise.",
+          "type": "system-prompt",
+          "properties": {
+            "fullPrompt": "You are a data query specialist. Extract, filter, and return structured data efficiently. Be precise and concise."
+          },
+          "sourceLine": 1,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        },
+        {
+          "id": "prompt-data_extraction",
+          "name": "data_extraction",
+          "description": "You are a data extraction specialist. Parse complex data structures, extract key fields, and normalize outputs.",
+          "type": "system-prompt",
+          "properties": {
+            "fullPrompt": "You are a data extraction specialist. Parse complex data structures, extract key fields, and normalize outputs."
+          },
+          "sourceLine": 5,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        },
+        {
+          "id": "prompt-tool_orchestration",
+          "name": "tool_orchestration",
+          "description": "You are a tool orchestration agent. Determine which tools to call and in what order to accomplish the task. Think step-b...",
+          "type": "system-prompt",
+          "properties": {
+            "fullPrompt": "You are a tool orchestration agent. Determine which tools to call and in what order to accomplish the task. Think step-by-step."
+          },
+          "sourceLine": 7,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        },
+        {
+          "id": "prompt-reasoning",
+          "name": "reasoning",
+          "description": "You are a deep reasoning agent. Analyze the problem thoroughly, consider multiple angles, and provide well-reasoned conc...",
+          "type": "system-prompt",
+          "properties": {
+            "fullPrompt": "You are a deep reasoning agent. Analyze the problem thoroughly, consider multiple angles, and provide well-reasoned conclusions."
+          },
+          "sourceLine": 11,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        },
+        {
+          "id": "prompt-summarization",
+          "name": "summarization",
+          "description": "You are a summarization specialist. Distill complex information into clear, concise summaries.",
+          "type": "system-prompt",
+          "properties": {
+            "fullPrompt": "You are a summarization specialist. Distill complex information into clear, concise summaries."
+          },
+          "sourceLine": 13,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        },
+        {
+          "id": "prompt-code_execution",
+          "name": "code_execution",
+          "description": "You are a code execution agent. Write, run, and debug code to solve the given task. Be precise with syntax and test your...",
+          "type": "system-prompt",
+          "properties": {
+            "fullPrompt": "You are a code execution agent. Write, run, and debug code to solve the given task. Be precise with syntax and test your code."
+          },
+          "sourceLine": 16,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        },
+        {
+          "id": "prompt-planning",
+          "name": "planning",
+          "description": "You are a planning agent. Break down complex tasks into clear steps, identify dependencies, and create actionable plans.",
+          "type": "system-prompt",
+          "properties": {
+            "fullPrompt": "You are a planning agent. Break down complex tasks into clear steps, identify dependencies, and create actionable plans."
+          },
+          "sourceLine": 20,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        },
+        {
+          "id": "prompt-validation",
+          "name": "validation",
+          "description": "You are a validation agent. Verify outputs, check for errors, and ensure results meet the specified requirements.",
+          "type": "system-prompt",
+          "properties": {
+            "fullPrompt": "You are a validation agent. Verify outputs, check for errors, and ensure results meet the specified requirements."
+          },
+          "sourceLine": 23,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        },
+        {
+          "id": "prompt-synthesis",
+          "name": "synthesis",
+          "description": "You are a synthesis agent. Combine information from multiple sources into a coherent, complete response.",
+          "type": "system-prompt",
+          "properties": {
+            "fullPrompt": "You are a synthesis agent. Combine information from multiple sources into a coherent, complete response."
+          },
+          "sourceLine": 24,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        },
+        {
+          "id": "prompt-artifact_creation",
+          "name": "artifact_creation",
+          "description": "You are a world-class artifact designer producing textbook-quality HTML. ALWAYS load Google Fonts (2-3 fonts per artifac...",
+          "type": "system-prompt",
+          "properties": {
+            "fullPrompt": "You are a world-class artifact designer producing textbook-quality HTML. ALWAYS load Google Fonts (2-3 fonts per artifact). NEVER default to dark backgrounds — use light/warm/colorful themes unless content demands dark. Use multi-column CSS Grid layouts, callout boxes, figure captions, styled tables, inline SVG diagrams. Every artifact must look like a published textbook or premium SaaS product. Output as artifact:html with a descriptive <title> tag."
+          },
+          "sourceLine": 27,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        },
+        {
+          "id": "prompt-custom",
+          "name": "custom",
+          "description": "You are a specialized agent. Complete the assigned task using available tools and information.",
+          "type": "system-prompt",
+          "properties": {
+            "fullPrompt": "You are a specialized agent. Complete the assigned task using available tools and information."
+          },
+          "sourceLine": 38,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        }
+      ]
+    },
+    {
+      "id": "sub-agent-config",
+      "title": "Sub-Agent Configuration",
+      "description": "The SubAgentConfig interface defines parameters for spawning individual sub-agents.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "config-agentId",
+          "name": "agentId",
+          "description": "Unique ID for this sub-agent (auto-generated if not provided)",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "config-role",
+          "name": "role",
+          "description": "Agent role — maps to AgentRegistry agent types",
+          "type": "interface-field",
+          "properties": {
+            "type": "AgentType",
+            "optional": false
+          }
+        },
+        {
+          "id": "config-task",
+          "name": "task",
+          "description": "Natural language task description for this sub-agent",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "id": "config-systemPrompt",
+          "name": "systemPrompt",
+          "description": "Optional system prompt override (defaults to role-based prompt)",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "config-model",
+          "name": "model",
+          "description": "Model to use (defaults to AGENT_MODELS[role].primary)",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "config-fallbackModel",
+          "name": "fallbackModel",
+          "description": "Fallback model (defaults to AGENT_MODELS[role].fallback)",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "config-tools",
+          "name": "tools",
+          "description": "Tool names this agent can use (subset of available MCP tools)",
+          "type": "interface-field",
+          "properties": {
+            "type": "string[]",
+            "optional": true
+          }
+        },
+        {
+          "id": "config-maxTurns",
+          "name": "maxTurns",
+          "description": "Max tool call rounds before forcing synthesis (default 3)",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": true
+          }
+        },
+        {
+          "id": "config-timeout",
+          "name": "timeout",
+          "description": "Timeout in ms (default from AgentRegistry config)",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": true
+          }
+        },
+        {
+          "id": "config-costBudget",
+          "name": "costBudget",
+          "description": "Max cost in cents for this agent (default from registry)",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "sub-agent-result",
+      "title": "Sub-Agent Result",
+      "description": "The SubAgentResult interface returned after each sub-agent completes.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "result-agentId",
+          "name": "agentId",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "id": "result-role",
+          "name": "role",
+          "description": "AgentType",
+          "type": "interface-field",
+          "properties": {
+            "type": "AgentType",
+            "optional": false
+          }
+        },
+        {
+          "id": "result-status",
+          "name": "status",
+          "description": "'success' | 'error' | 'timeout'",
+          "type": "interface-field",
+          "properties": {
+            "type": "'success' | 'error' | 'timeout'",
+            "optional": false
+          }
+        },
+        {
+          "id": "result-output",
+          "name": "output",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "id": "result-toolCallsExecuted",
+          "name": "toolCallsExecuted",
+          "description": "Array<{ name: string",
+          "type": "interface-field",
+          "properties": {
+            "type": "Array<{ name: string",
+            "optional": false
+          }
+        },
+        {
+          "id": "result-success",
+          "name": "success",
+          "description": "boolean",
+          "type": "interface-field",
+          "properties": {
+            "type": "boolean",
+            "optional": false
+          }
+        },
+        {
+          "id": "result-durationMs",
+          "name": "durationMs",
+          "description": "number }>",
+          "type": "interface-field",
+          "properties": {
+            "type": "number }>",
+            "optional": false
+          }
+        },
+        {
+          "id": "result-metrics",
+          "name": "metrics",
+          "description": "{\n    inputTokens: number",
+          "type": "interface-field",
+          "properties": {
+            "type": "{\n    inputTokens: number",
+            "optional": false
+          }
+        },
+        {
+          "id": "result-outputTokens",
+          "name": "outputTokens",
+          "description": "number",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": false
+          }
+        },
+        {
+          "id": "result-thinkingTokens",
+          "name": "thinkingTokens",
+          "description": "number",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": false
+          }
+        },
+        {
+          "id": "result-durationMs",
+          "name": "durationMs",
+          "description": "number",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": false
+          }
+        },
+        {
+          "id": "result-costCents",
+          "name": "costCents",
+          "description": "number",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": false
+          }
+        },
+        {
+          "id": "result-modelUsed",
+          "name": "modelUsed",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": false
+          }
+        },
+        {
+          "id": "result-fallbackUsed",
+          "name": "fallbackUsed",
+          "description": "boolean",
+          "type": "interface-field",
+          "properties": {
+            "type": "boolean",
+            "optional": false
+          }
+        },
+        {
+          "id": "result-toolCallRounds",
+          "name": "toolCallRounds",
+          "description": "number",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": false
+          }
+        },
+        {
+          "id": "result-error",
+          "name": "error",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "spawn-options",
+      "title": "Spawn Options",
+      "description": "Options controlling concurrency, aggregation, and auth context when spawning sub-agents.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "spawn-maxConcurrency",
+          "name": "maxConcurrency",
+          "description": "Max concurrent sub-agents (default 5)",
+          "type": "interface-field",
+          "properties": {
+            "type": "number",
+            "optional": true
+          }
+        },
+        {
+          "id": "spawn-aggregationStrategy",
+          "name": "aggregationStrategy",
+          "description": "How to aggregate results: merge (concat), synthesize (LLM summary), first (first success)",
+          "type": "interface-field",
+          "properties": {
+            "type": "'merge' | 'synthesize' | 'first'",
+            "optional": true
+          }
+        },
+        {
+          "id": "spawn-userToken",
+          "name": "userToken",
+          "description": "User context for tool execution auth",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "spawn-idToken",
+          "name": "idToken",
+          "description": "string option",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "spawn-userId",
+          "name": "userId",
+          "description": "string option",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "spawn-sessionId",
+          "name": "sessionId",
+          "description": "string option",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "spawn-messageId",
+          "name": "messageId",
+          "description": "string option",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "spawn-userGroups",
+          "name": "userGroups",
+          "description": "string[] option",
+          "type": "interface-field",
+          "properties": {
+            "type": "string[]",
+            "optional": true
+          }
+        },
+        {
+          "id": "spawn-isAdmin",
+          "name": "isAdmin",
+          "description": "boolean option",
+          "type": "interface-field",
+          "properties": {
+            "type": "boolean",
+            "optional": true
+          }
+        },
+        {
+          "id": "spawn-userName",
+          "name": "userName",
+          "description": "string option",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "spawn-userEmail",
+          "name": "userEmail",
+          "description": "string option",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        {
+          "id": "spawn-availableTools",
+          "name": "availableTools",
+          "description": "Available MCP tools (from pipeline context)",
+          "type": "interface-field",
+          "properties": {
+            "type": "any[]",
+            "optional": true
+          }
+        },
+        {
+          "id": "spawn-authMethod",
+          "name": "authMethod",
+          "description": "Original auth method from middleware ('api-key' | 'azure-ad' | 'local')",
+          "type": "interface-field",
+          "properties": {
+            "type": "string",
+            "optional": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "tier-routing",
+      "title": "Tier Routing & Model Selection",
+      "description": "Agent model selection uses DB-configured tiers from the Admin Console, with Smart Router fallback.",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "tier-1",
+          "name": "Tier routing 1",
+          "description": "tiers from DB (no hardcoded model IDs)\n    // All agents use the same model selection as chat — DB-configured via Admin Console\n    let registryTiers:",
+          "type": "tier-routing",
+          "sourceLine": 144,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        },
+        {
+          "id": "tier-2",
+          "name": "Tier routing 2",
+          "description": "tiers = await mcs.getSliderTiers();",
+          "type": "tier-routing",
+          "sourceLine": 150,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        },
+        {
+          "id": "tier-3",
+          "name": "Tier routing 3",
+          "description": "tiers.premium || tiers.balanced,\n        reasoning: tiers.premium || tiers.balanced,\n        planning: tiers.premium || tiers.balanced,\n        tool_o",
+          "type": "tier-routing",
+          "sourceLine": 153,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        },
+        {
+          "id": "tier-4",
+          "name": "Tier routing 4",
+          "description": "registryTiers = roleToTier;",
+          "type": "tier-routing",
+          "sourceLine": 165,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        },
+        {
+          "id": "tier-5",
+          "name": "Tier routing 5",
+          "description": "tiers first, then Smart Router 'auto'\n    const resolvedConfigs = configs.map(c => ({\n      ...c,\n      agentId: c.agentId || `agent_${uuidv4().substr",
+          "type": "tier-routing",
+          "sourceLine": 172,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        },
+        {
+          "id": "model-sel-ModelConfigurationService",
+          "name": "ModelConfigurationService",
+          "description": "Model selection service used for agent tier routing",
+          "type": "model-selection",
+          "sourceLine": 149,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        },
+        {
+          "id": "model-sel-getSliderTiers",
+          "name": "getSliderTiers",
+          "description": "Model selection service used for agent tier routing",
+          "type": "model-selection",
+          "sourceLine": 150,
+          "sourceFile": "services/openagentic-api/src/services/AgentSpawnManager.ts"
+        }
+      ]
+    }
+  ]
+}

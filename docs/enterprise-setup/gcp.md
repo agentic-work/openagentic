@@ -70,10 +70,11 @@ GOOGLE_APPLICATION_CREDENTIALS=~/.openagentic/cloud-secrets/gcp-sa.json \
 
 | Key | Value |
 |---|---|
-| Project | `agenticwork-dev` |
+| Project | `agenticwork-dev` (project number `500133920558`) |
 | Service account | `openagentic-mcp-gcp@agenticwork-dev.iam.gserviceaccount.com` |
 | Roles | viewer / logging.viewer / monitoring.viewer / cloudasset.viewer |
-| Key | `~/.openagentic/cloud-secrets/gcp-sa.json` |
+| Key id | `1b14f86488bd…` (JSON key at `~/.openagentic/cloud-secrets/gcp-sa.json`) |
+| Verified | SA activated, `gcloud projects describe agenticwork-dev` returned name + project number |
 
 ## Workload Identity Federation (no keys, recommended long-term)
 

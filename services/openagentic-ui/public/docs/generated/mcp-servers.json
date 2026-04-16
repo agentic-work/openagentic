@@ -1,0 +1,4884 @@
+{
+  "domain": "mcp-servers",
+  "title": "MCP Tools",
+  "description": "23 MCP servers providing 165 tools for cloud management, observability, GitHub, knowledge, and platform administration.",
+  "icon": "tool",
+  "category": "tools",
+  "generatedAt": "2026-04-06T02:45:19.557Z",
+  "sourceFiles": [
+    "services/mcps/oap-admin-mcp/server.py",
+    "services/mcps/oap-admin-mcp/src/admin_mcp_server/server.py",
+    "services/mcps/oap-agent-architect-mcp/server.py",
+    "services/mcps/oap-openagentic-mcp/server.py",
+    "services/mcps/oap-alertmanager-mcp/server.py",
+    "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py",
+    "services/mcps/oap-aws-mcp/server.py",
+    "services/mcps/oap-azure-cost-mcp/src/server.py",
+    "services/mcps/oap-azure-mcp/src/server.py",
+    "services/mcps/oap-gcp-mcp/src/server.py",
+    "services/mcps/oap-github-mcp/server.py",
+    "services/mcps/oap-incident-mcp/server.py",
+    "services/mcps/oap-incident-mcp/src/incident_mcp_server/server.py",
+    "services/mcps/oap-knowledge-mcp/server.py",
+    "services/mcps/oap-kubernetes-mcp/server.py",
+    "services/mcps/oap-kubernetes-mcp/src/kubernetes_mcp_server/server.py",
+    "services/mcps/oap-loki-mcp/server.py",
+    "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py",
+    "services/mcps/oap-prometheus-mcp/server.py",
+    "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py",
+    "services/mcps/oap-runbook-mcp/server.py",
+    "services/mcps/oap-runbook-mcp/src/runbook_mcp_server/server.py",
+    "services/mcps/oap-web-mcp/server.py"
+  ],
+  "sections": [
+    {
+      "id": "mcp-overview",
+      "title": "MCP Server Overview",
+      "description": "OpenAgentic integrates 23 MCP (Model Context Protocol) servers providing 165 tools for cloud management, observability, code execution, and more.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "overview-oap-admin-mcp",
+          "name": "Admin",
+          "description": "oap-admin-mcp",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-admin-mcp/server.py"
+        },
+        {
+          "id": "overview-admin_mcp_server",
+          "name": "Admin_mcp_server",
+          "description": "admin_mcp_server",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-admin-mcp/src/admin_mcp_server/server.py"
+        },
+        {
+          "id": "overview-oap-agent-architect-mcp",
+          "name": "Agent Architect",
+          "description": "oap-agent-architect-mcp",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-agent-architect-mcp/server.py"
+        },
+        {
+          "id": "overview-oap-openagentic-mcp",
+          "name": "Openagentic",
+          "description": "oap-openagentic-mcp",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-openagentic-mcp/server.py"
+        },
+        {
+          "id": "overview-oap-alertmanager-mcp",
+          "name": "Alertmanager",
+          "description": "oap-alertmanager-mcp",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/server.py"
+        },
+        {
+          "id": "overview-alertmanager_mcp_server",
+          "name": "Alertmanager_mcp_server",
+          "description": "alertmanager_mcp_server",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
+        },
+        {
+          "id": "overview-oap-aws-mcp",
+          "name": "Aws",
+          "description": "oap-aws-mcp",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "overview-src",
+          "name": "Src",
+          "description": "src",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-azure-cost-mcp/src/server.py"
+        },
+        {
+          "id": "overview-src",
+          "name": "Src",
+          "description": "src",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "overview-src",
+          "name": "Src",
+          "description": "src",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "overview-oap-github-mcp",
+          "name": "Github",
+          "description": "oap-github-mcp",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "overview-oap-incident-mcp",
+          "name": "Incident",
+          "description": "oap-incident-mcp",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-incident-mcp/server.py"
+        },
+        {
+          "id": "overview-incident_mcp_server",
+          "name": "Incident_mcp_server",
+          "description": "incident_mcp_server",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-incident-mcp/src/incident_mcp_server/server.py"
+        },
+        {
+          "id": "overview-oap-knowledge-mcp",
+          "name": "Knowledge",
+          "description": "oap-knowledge-mcp",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-knowledge-mcp/server.py"
+        },
+        {
+          "id": "overview-oap-kubernetes-mcp",
+          "name": "Kubernetes",
+          "description": "oap-kubernetes-mcp",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-kubernetes-mcp/server.py"
+        },
+        {
+          "id": "overview-kubernetes_mcp_server",
+          "name": "Kubernetes_mcp_server",
+          "description": "kubernetes_mcp_server",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-kubernetes-mcp/src/kubernetes_mcp_server/server.py"
+        },
+        {
+          "id": "overview-oap-loki-mcp",
+          "name": "Loki",
+          "description": "oap-loki-mcp",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-loki-mcp/server.py"
+        },
+        {
+          "id": "overview-loki_mcp_server",
+          "name": "Loki_mcp_server",
+          "description": "loki_mcp_server",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "overview-oap-prometheus-mcp",
+          "name": "Prometheus",
+          "description": "oap-prometheus-mcp",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-prometheus-mcp/server.py"
+        },
+        {
+          "id": "overview-prometheus_mcp_server",
+          "name": "Prometheus_mcp_server",
+          "description": "prometheus_mcp_server",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        },
+        {
+          "id": "overview-oap-runbook-mcp",
+          "name": "Runbook",
+          "description": "oap-runbook-mcp",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-runbook-mcp/server.py"
+        },
+        {
+          "id": "overview-runbook_mcp_server",
+          "name": "Runbook_mcp_server",
+          "description": "runbook_mcp_server",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-runbook-mcp/src/runbook_mcp_server/server.py"
+        },
+        {
+          "id": "overview-oap-web-mcp",
+          "name": "Web",
+          "description": "oap-web-mcp",
+          "type": "mcp-server",
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-admin-mcp",
+      "title": "Admin MCP Server",
+      "description": "OpenAgentic Admin MCP Server - FastMCP Entry Point (0 tools)",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "admin_mcp_server",
+      "title": "Admin_mcp_server MCP Server",
+      "description": "Admin MCP Server - FastMCP Implementation with RBAC Auth Integration (0 tools)",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "oap-agent-architect-mcp",
+      "title": "Agent Architect MCP Server",
+      "description": "Agent Architect MCP Server - Natural language agent/workflow creation (8 tools)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oap-agent-architect-mcp-list_agent_templates",
+          "name": "list_agent_templates",
+          "description": "List available agent templates for quick starts.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-agent-architect-mcp",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 437,
+          "sourceFile": "services/mcps/oap-agent-architect-mcp/server.py"
+        },
+        {
+          "id": "oap-agent-architect-mcp-get_agent_template",
+          "name": "get_agent_template",
+          "description": "Get full details of an agent template.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-agent-architect-mcp",
+            "params": [
+              {
+                "name": "template_id",
+                "type": "str",
+                "description": "",
+                "optional": false
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 458,
+          "sourceFile": "services/mcps/oap-agent-architect-mcp/server.py"
+        },
+        {
+          "id": "oap-agent-architect-mcp-create_agent_from_template",
+          "name": "create_agent_from_template",
+          "description": "Create an agent configuration from a template.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-agent-architect-mcp",
+            "params": [
+              {
+                "name": "template_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "framework",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "additional_tools",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 4
+          },
+          "sourceLine": 474,
+          "sourceFile": "services/mcps/oap-agent-architect-mcp/server.py"
+        },
+        {
+          "id": "oap-agent-architect-mcp-design_custom_agent",
+          "name": "design_custom_agent",
+          "description": "Design a custom agent from a natural language description.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-agent-architect-mcp",
+            "params": [
+              {
+                "name": "description",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "framework",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "tools",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 534,
+          "sourceFile": "services/mcps/oap-agent-architect-mcp/server.py"
+        },
+        {
+          "id": "oap-agent-architect-mcp-generate_agent_code",
+          "name": "generate_agent_code",
+          "description": "Generate deployable code from an agent specification.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-agent-architect-mcp",
+            "params": [
+              {
+                "name": "spec_json",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "framework",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 610,
+          "sourceFile": "services/mcps/oap-agent-architect-mcp/server.py"
+        },
+        {
+          "id": "oap-agent-architect-mcp-deploy_agent",
+          "name": "deploy_agent",
+          "description": "Deploy an agent to the selected orchestration framework.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-agent-architect-mcp",
+            "params": [
+              {
+                "name": "spec_json",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "framework",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 664,
+          "sourceFile": "services/mcps/oap-agent-architect-mcp/server.py"
+        },
+        {
+          "id": "oap-agent-architect-mcp-list_available_tools",
+          "name": "list_available_tools",
+          "description": "List all available MCP tools that can be used in agent workflows.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-agent-architect-mcp",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 736,
+          "sourceFile": "services/mcps/oap-agent-architect-mcp/server.py"
+        },
+        {
+          "id": "oap-agent-architect-mcp-get_framework_status",
+          "name": "get_framework_status",
+          "description": "Check the status of all orchestration frameworks.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-agent-architect-mcp",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 777,
+          "sourceFile": "services/mcps/oap-agent-architect-mcp/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-openagentic-mcp",
+      "title": "Openagentic MCP Server",
+      "description": "OpenAgentic OpenAgentic MCP Server - Code Execution Proxy (0 tools)",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "oap-alertmanager-mcp",
+      "title": "Alertmanager MCP Server",
+      "description": "OpenAgentic Alertmanager MCP Server - FastMCP Entry Point (0 tools)",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "alertmanager_mcp_server",
+      "title": "Alertmanager_mcp_server MCP Server",
+      "description": "Alertmanager MCP Server - FastMCP Implementation (9 tools)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "alertmanager_mcp_server-alertmanager_get_alerts",
+          "name": "alertmanager_get_alerts",
+          "description": "Get current alerts from Alertmanager.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "alertmanager_mcp_server",
+            "params": [
+              {
+                "name": "active",
+                "type": "bool",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 234,
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
+        },
+        {
+          "id": "alertmanager_mcp_server-alertmanager_get_alert_groups",
+          "name": "alertmanager_get_alert_groups",
+          "description": "Get alerts grouped by their labels.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "alertmanager_mcp_server",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 295,
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
+        },
+        {
+          "id": "alertmanager_mcp_server-alertmanager_get_silences",
+          "name": "alertmanager_get_silences",
+          "description": "Get all silences from Alertmanager.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "alertmanager_mcp_server",
+            "params": [
+              {
+                "name": "filter",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 342,
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
+        },
+        {
+          "id": "alertmanager_mcp_server-alertmanager_create_silence",
+          "name": "alertmanager_create_silence",
+          "description": "Create a silence for an alert.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "alertmanager_mcp_server",
+            "params": [
+              {
+                "name": "alertname",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 394,
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
+        },
+        {
+          "id": "alertmanager_mcp_server-alertmanager_delete_silence",
+          "name": "alertmanager_delete_silence",
+          "description": "Delete/expire a silence.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "alertmanager_mcp_server",
+            "params": [
+              {
+                "name": "silence_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 479,
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
+        },
+        {
+          "id": "alertmanager_mcp_server-alertmanager_silence_by_labels",
+          "name": "alertmanager_silence_by_labels",
+          "description": "Create a silence matching multiple labels.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "alertmanager_mcp_server",
+            "params": [
+              {
+                "name": "labels",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 502,
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
+        },
+        {
+          "id": "alertmanager_mcp_server-alertmanager_get_receivers",
+          "name": "alertmanager_get_receivers",
+          "description": "Get all configured notification receivers.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "alertmanager_mcp_server",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 576,
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
+        },
+        {
+          "id": "alertmanager_mcp_server-alertmanager_status",
+          "name": "alertmanager_status",
+          "description": "Get Alertmanager cluster status.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "alertmanager_mcp_server",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 621,
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
+        },
+        {
+          "id": "alertmanager_mcp_server-alertmanager_summary",
+          "name": "alertmanager_summary",
+          "description": "Get a quick summary of current alert status.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "alertmanager_mcp_server",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 661,
+          "sourceFile": "services/mcps/oap-alertmanager-mcp/src/alertmanager_mcp_server/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-aws-mcp",
+      "title": "Aws MCP Server",
+      "description": "OpenAgentic AWS MCP Server - Forked from awslabs/mcp aws-api-mcp-server (8 tools)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oap-aws-mcp-call_aws",
+          "name": "call_aws",
+          "description": "Execute AWS CLI commands with validation and proper error handling.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-aws-mcp",
+            "params": [
+              {
+                "name": "cli_command",
+                "type": "Annotated",
+                "description": "",
+                "optional": false
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 720,
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp-suggest_aws_commands",
+          "name": "suggest_aws_commands",
+          "description": "Suggest AWS CLI commands based on a natural language query.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-aws-mcp",
+            "params": [
+              {
+                "name": "query",
+                "type": "Annotated",
+                "description": "",
+                "optional": false
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 839,
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp-aws_list_accounts",
+          "name": "aws_list_accounts",
+          "description": "List AWS accounts accessible to the current user via Identity Center.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-aws-mcp",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 873,
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp-aws_identity",
+          "name": "aws_identity",
+          "description": "Get your current AWS identity (who am I?).",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-aws-mcp",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 1067,
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp-aws_cost_summary",
+          "name": "aws_cost_summary",
+          "description": "Get a summary of your AWS costs for a specified number of days.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-aws-mcp",
+            "params": [
+              {
+                "name": "days",
+                "type": "Annotated",
+                "description": "",
+                "optional": false
+              },
+              {
+                "name": "default",
+                "type": "30",
+                "description": "",
+                "optional": false
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 1092,
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp-aws_cost_by_service",
+          "name": "aws_cost_by_service",
+          "description": "Get a breakdown of your AWS costs by service for a specified number of days.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-aws-mcp",
+            "params": [
+              {
+                "name": "days",
+                "type": "Annotated",
+                "description": "",
+                "optional": false
+              },
+              {
+                "name": "default",
+                "type": "30",
+                "description": "",
+                "optional": false
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 1157,
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp-aws_list_ec2",
+          "name": "aws_list_ec2",
+          "description": "List all EC2 instances in your AWS account.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-aws-mcp",
+            "params": [
+              {
+                "name": "region",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 1238,
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        },
+        {
+          "id": "oap-aws-mcp-aws_list_s3",
+          "name": "aws_list_s3",
+          "description": "List all S3 buckets in your AWS account.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-aws-mcp",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 1268,
+          "sourceFile": "services/mcps/oap-aws-mcp/server.py"
+        }
+      ]
+    },
+    {
+      "id": "src",
+      "title": "Src MCP Server",
+      "description": "OpenAgentic Azure Cost MCP Server - Azure Cost Management Operations (4 tools)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "src-azure_cost_query",
+          "name": "azure_cost_query",
+          "description": "Query Azure cost data with flexible time ranges and grouping.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "granularity",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "time_period",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "group_by",
+                "type": "List[str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "start_date",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "end_date",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 6
+          },
+          "sourceLine": 96,
+          "sourceFile": "services/mcps/oap-azure-cost-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_cost_breakdown",
+          "name": "azure_cost_breakdown",
+          "description": "Get a simplified cost breakdown for Azure resources.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "breakdown_by",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "days",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "top_n",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 4
+          },
+          "sourceLine": 246,
+          "sourceFile": "services/mcps/oap-azure-cost-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_cost_forecast",
+          "name": "azure_cost_forecast",
+          "description": "Get cost forecast based on historical spending patterns.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "forecast_days",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 376,
+          "sourceFile": "services/mcps/oap-azure-cost-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_cost_set_obo_token",
+          "name": "azure_cost_set_obo_token",
+          "description": "Set the OBO (On-Behalf-Of) token for subsequent cost operations.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "user_assertion",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "client_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "scope",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 482,
+          "sourceFile": "services/mcps/oap-azure-cost-mcp/src/server.py"
+        }
+      ]
+    },
+    {
+      "id": "src",
+      "title": "Src MCP Server",
+      "description": "OpenAgentic Azure MCP Server - Full Azure SDK for az cli Parity (42 tools)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "src-azure_help",
+          "name": "azure_help",
+          "description": "Get guidance on how to use the Azure MCP effectively.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "topic",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 339,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_subscriptions",
+          "name": "azure_list_subscriptions",
+          "description": "List all Azure subscriptions accessible to the current user.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 1263,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_resource_groups",
+          "name": "azure_list_resource_groups",
+          "description": "List all resource groups in a subscription.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 1298,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_create_resource_group",
+          "name": "azure_create_resource_group",
+          "description": "Create a new resource group.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "location",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "tags",
+                "type": "Dict[str, str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 4
+          },
+          "sourceLine": 1340,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_delete_resource_group",
+          "name": "azure_delete_resource_group",
+          "description": "Delete a resource group and all its resources.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 1384,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_vms",
+          "name": "azure_list_vms",
+          "description": "List virtual machines.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 1425,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_get_vm",
+          "name": "azure_get_vm",
+          "description": "Get detailed information about a specific VM.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "include_instance_view",
+                "type": "bool",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 4
+          },
+          "sourceLine": 1472,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_start_vm",
+          "name": "azure_start_vm",
+          "description": "Start a virtual machine.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 1526,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_stop_vm",
+          "name": "azure_stop_vm",
+          "description": "Stop (deallocate) a virtual machine.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 1561,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_restart_vm",
+          "name": "azure_restart_vm",
+          "description": "Restart a virtual machine.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 1598,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_aks_clusters",
+          "name": "azure_list_aks_clusters",
+          "description": "List AKS (Azure Kubernetes Service) clusters.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 1637,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_get_aks_cluster",
+          "name": "azure_get_aks_cluster",
+          "description": "Get detailed information about an AKS cluster.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 1687,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_get_aks_credentials",
+          "name": "azure_get_aks_credentials",
+          "description": "Get kubeconfig credentials for an AKS cluster.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "admin",
+                "type": "bool",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 4
+          },
+          "sourceLine": 1747,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_vnets",
+          "name": "azure_list_vnets",
+          "description": "List virtual networks.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 1799,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_nsgs",
+          "name": "azure_list_nsgs",
+          "description": "List network security groups.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 1846,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_app_gateways",
+          "name": "azure_list_app_gateways",
+          "description": "List Application Gateways.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 1893,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_get_app_gateway",
+          "name": "azure_get_app_gateway",
+          "description": "Get detailed information about an Application Gateway.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 1947,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_app_gateway_backend_health",
+          "name": "azure_app_gateway_backend_health",
+          "description": "Get backend health status for an Application Gateway.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 2076,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_app_gateway_start",
+          "name": "azure_app_gateway_start",
+          "description": "Start an Application Gateway.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 2132,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_app_gateway_stop",
+          "name": "azure_app_gateway_stop",
+          "description": "Stop an Application Gateway.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 2168,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_load_balancers",
+          "name": "azure_list_load_balancers",
+          "description": "List Load Balancers.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 2206,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_storage_accounts",
+          "name": "azure_list_storage_accounts",
+          "description": "List storage accounts.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 2259,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_containers",
+          "name": "azure_list_containers",
+          "description": "List blob containers in a storage account.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "storage_account",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 2311,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_blobs",
+          "name": "azure_list_blobs",
+          "description": "List blobs in a container.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "storage_account",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "container_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "prefix",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "max_results",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 4
+          },
+          "sourceLine": 2356,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_keyvaults",
+          "name": "azure_list_keyvaults",
+          "description": "List Key Vaults.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 2409,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_secrets",
+          "name": "azure_list_secrets",
+          "description": "List secrets in a Key Vault (names only, not values).",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "vault_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 2456,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_get_secret",
+          "name": "azure_get_secret",
+          "description": "Get a secret value from Key Vault.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "vault_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "secret_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 2497,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_set_secret",
+          "name": "azure_set_secret",
+          "description": "Set a secret value in Key Vault.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "vault_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "secret_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "secret_value",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "content_type",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 4
+          },
+          "sourceLine": 2537,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_cost_query",
+          "name": "azure_cost_query",
+          "description": "Query Azure costs with flexible parameters.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "days",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "granularity",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "group_by",
+                "type": "List[str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 4
+          },
+          "sourceLine": 2583,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_cost_by_service",
+          "name": "azure_cost_by_service",
+          "description": "Get cost breakdown by Azure service.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "days",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "top_n",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 2655,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_cost_forecast",
+          "name": "azure_cost_forecast",
+          "description": "Get cost forecast based on historical spending.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "forecast_days",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 2724,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_users",
+          "name": "azure_list_users",
+          "description": "List Azure AD / Entra ID users.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "filter_query",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "top",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 2787,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_get_user",
+          "name": "azure_get_user",
+          "description": "Get details of a specific Azure AD user.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "user_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 2837,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_groups",
+          "name": "azure_list_groups",
+          "description": "List Azure AD / Entra ID groups.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "filter_query",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "top",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 2878,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_apps",
+          "name": "azure_list_apps",
+          "description": "List Azure AD app registrations.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "top",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 2922,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_list_alerts",
+          "name": "azure_list_alerts",
+          "description": "List metric alert rules.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 2967,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_arm_execute",
+          "name": "azure_arm_execute",
+          "description": "Execute a generic Azure ARM REST API call.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "resource_path",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "method",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "body",
+                "type": "Dict[str, Any",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "api_version",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 5
+          },
+          "sourceLine": 3021,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-azure_arm_execute_and_wait",
+          "name": "azure_arm_execute_and_wait",
+          "description": "Execute ARM operation and poll until completion (for long-running operations).",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "resource_path",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "method",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "body",
+                "type": "Dict[str, Any",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "api_version",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "poll_interval",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "max_wait",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 7
+          },
+          "sourceLine": 3202,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-aif_list_deployments",
+          "name": "aif_list_deployments",
+          "description": "List all Azure AI Foundry / Azure OpenAI deployments on a resource.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "account_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 3475,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-aif_create_deployment",
+          "name": "aif_create_deployment",
+          "description": "Create a new Azure AI Foundry / Azure OpenAI model deployment.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "account_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "deployment_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "model_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "model_version",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "sku_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "sku_capacity",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 8
+          },
+          "sourceLine": 3523,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-aif_delete_deployment",
+          "name": "aif_delete_deployment",
+          "description": "Delete an Azure AI Foundry / Azure OpenAI deployment.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "account_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "deployment_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 4
+          },
+          "sourceLine": 3582,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        },
+        {
+          "id": "src-aif_get_deployment_status",
+          "name": "aif_get_deployment_status",
+          "description": "Get status and details of an Azure AI Foundry / Azure OpenAI deployment.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "resource_group",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "account_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "deployment_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "subscription_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 4
+          },
+          "sourceLine": 3622,
+          "sourceFile": "services/mcps/oap-azure-mcp/src/server.py"
+        }
+      ]
+    },
+    {
+      "id": "src",
+      "title": "Src MCP Server",
+      "description": "OpenAgentic GCP MCP Server (28 tools)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "src-gcp_api_execute",
+          "name": "gcp_api_execute",
+          "description": "Execute ANY Google Cloud Platform API operation.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "service",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "method",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "path",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "body",
+                "type": "Dict",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 5
+          },
+          "sourceLine": 272,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_list_instances",
+          "name": "gcp_list_instances",
+          "description": "List Compute Engine VM instances.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "zone",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 395,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_get_instance",
+          "name": "gcp_get_instance",
+          "description": "Get details of a specific Compute Engine VM instance.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "instance_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "zone",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 427,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_start_instance",
+          "name": "gcp_start_instance",
+          "description": "Start a stopped Compute Engine VM instance.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "instance_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "zone",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 455,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_stop_instance",
+          "name": "gcp_stop_instance",
+          "description": "Stop a running Compute Engine VM instance.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "instance_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "zone",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 483,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_list_buckets",
+          "name": "gcp_list_buckets",
+          "description": "List Cloud Storage buckets in a project.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 511,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_list_bucket_objects",
+          "name": "gcp_list_bucket_objects",
+          "description": "List objects in a Cloud Storage bucket.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "bucket_name",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "prefix",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "max_results",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 530,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_get_project",
+          "name": "gcp_get_project",
+          "description": "Get details of a GCP project.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 558,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_list_zones",
+          "name": "gcp_list_zones",
+          "description": "List available zones in a GCP project.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 581,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_list_regions",
+          "name": "gcp_list_regions",
+          "description": "List available regions in a GCP project.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 604,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_list_machine_types",
+          "name": "gcp_list_machine_types",
+          "description": "List available machine types in a zone.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "zone",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 627,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_list_disks",
+          "name": "gcp_list_disks",
+          "description": "List persistent disks in a project.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "zone",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 652,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_list_networks",
+          "name": "gcp_list_networks",
+          "description": "List VPC networks in a project.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 682,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_list_firewalls",
+          "name": "gcp_list_firewalls",
+          "description": "List firewall rules in a project.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 705,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_get_billing_info",
+          "name": "gcp_get_billing_info",
+          "description": "Get billing information for a GCP project.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 732,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_list_billing_accounts",
+          "name": "gcp_list_billing_accounts",
+          "description": "List all billing accounts accessible to the service account.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 753,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_get_billing_account",
+          "name": "gcp_get_billing_account",
+          "description": "Get details of a specific billing account.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "billing_account_id",
+                "type": "str",
+                "description": "",
+                "optional": false
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 769,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_list_billing_account_projects",
+          "name": "gcp_list_billing_account_projects",
+          "description": "List all projects associated with a billing account.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "billing_account_id",
+                "type": "str",
+                "description": "",
+                "optional": false
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 786,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_query_cost_usage",
+          "name": "gcp_query_cost_usage",
+          "description": "Query cost and usage data from BigQuery billing export.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "billing_account_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "start_date",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "end_date",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "service_filter",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 5
+          },
+          "sourceLine": 803,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-vertex_ai_list_models",
+          "name": "vertex_ai_list_models",
+          "description": "List Vertex AI models in a project.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "region",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 875,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-vertex_ai_list_endpoints",
+          "name": "vertex_ai_list_endpoints",
+          "description": "List Vertex AI endpoints in a project.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "region",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 896,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-vertex_ai_get_endpoint",
+          "name": "vertex_ai_get_endpoint",
+          "description": "Get details of a Vertex AI endpoint.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "endpoint_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "region",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 917,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-vertex_ai_list_training_pipelines",
+          "name": "vertex_ai_list_training_pipelines",
+          "description": "List Vertex AI training pipelines.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "region",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 940,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-vertex_ai_list_custom_jobs",
+          "name": "vertex_ai_list_custom_jobs",
+          "description": "List Vertex AI custom training jobs.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "region",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 961,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-vertex_ai_usage_metrics",
+          "name": "vertex_ai_usage_metrics",
+          "description": "Get Vertex AI usage metrics from Cloud Monitoring.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "region",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "hours_ago",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 982,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-vertex_ai_generative_models",
+          "name": "vertex_ai_generative_models",
+          "description": "List available generative AI models (Gemini, PaLM, etc.) in Vertex AI.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "region",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 1047,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_monitoring_query",
+          "name": "gcp_monitoring_query",
+          "description": "Query Cloud Monitoring metrics.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [
+              {
+                "name": "metric_type",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "project_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "hours_ago",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "aggregation_minutes",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 4
+          },
+          "sourceLine": 1096,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        },
+        {
+          "id": "src-gcp_api_help",
+          "name": "gcp_api_help",
+          "description": "Get help on using the GCP MCP tools.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "src",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 1136,
+          "sourceFile": "services/mcps/oap-gcp-mcp/src/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-github-mcp",
+      "title": "Github MCP Server",
+      "description": "OpenAgentic GitHub MCP Server (19 tools)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oap-github-mcp-get_user",
+          "name": "get_user",
+          "description": "Get information about the authenticated GitHub user.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 116,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-list_repos",
+          "name": "list_repos",
+          "description": "List repositories for the authenticated user.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "type",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "sort",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "direction",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "per_page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 5
+          },
+          "sourceLine": 131,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-get_repo",
+          "name": "get_repo",
+          "description": "Get details about a specific repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "owner",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "repo",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 161,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-search_repos",
+          "name": "search_repos",
+          "description": "Search for repositories on GitHub.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "query",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "sort",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "order",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "per_page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 5
+          },
+          "sourceLine": 174,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-list_branches",
+          "name": "list_branches",
+          "description": "List branches in a repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "owner",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "repo",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "protected",
+                "type": "bool",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "per_page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 5
+          },
+          "sourceLine": 205,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-get_file_contents",
+          "name": "get_file_contents",
+          "description": "Get contents of a file in a repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "owner",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "repo",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "path",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "ref",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 4
+          },
+          "sourceLine": 234,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-list_issues",
+          "name": "list_issues",
+          "description": "List issues in a repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "owner",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "repo",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "state",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "sort",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "direction",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "per_page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "labels",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "assignee",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 9
+          },
+          "sourceLine": 262,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-get_issue",
+          "name": "get_issue",
+          "description": "Get details about a specific issue.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "owner",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "repo",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "issue_number",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 304,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-create_issue",
+          "name": "create_issue",
+          "description": "Create a new issue in a repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "owner",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "repo",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "title",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "body",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "labels",
+                "type": "list",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "assignees",
+                "type": "list",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "milestone",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 7
+          },
+          "sourceLine": 323,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-update_issue",
+          "name": "update_issue",
+          "description": "Update an existing issue.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "owner",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "repo",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "issue_number",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "title",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "body",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "state",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "labels",
+                "type": "list",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "assignees",
+                "type": "list",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 8
+          },
+          "sourceLine": 359,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-list_pull_requests",
+          "name": "list_pull_requests",
+          "description": "List pull requests in a repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "owner",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "repo",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "state",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "sort",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "direction",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "per_page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "base",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "head",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 9
+          },
+          "sourceLine": 403,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-get_pull_request",
+          "name": "get_pull_request",
+          "description": "Get details about a specific pull request.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "owner",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "repo",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "pull_number",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 445,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-create_pull_request",
+          "name": "create_pull_request",
+          "description": "Create a new pull request.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "owner",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "repo",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "title",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "head",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "base",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "body",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "draft",
+                "type": "bool",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "maintainer_can_modify",
+                "type": "bool",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 8
+          },
+          "sourceLine": 464,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-search_code",
+          "name": "search_code",
+          "description": "Search for code across GitHub repositories.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "query",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "sort",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "order",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "per_page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 5
+          },
+          "sourceLine": 506,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-list_workflows",
+          "name": "list_workflows",
+          "description": "List GitHub Actions workflows in a repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "owner",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "repo",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "per_page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 4
+          },
+          "sourceLine": 547,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-get_workflow_runs",
+          "name": "get_workflow_runs",
+          "description": "Get workflow runs for a repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "owner",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "repo",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "workflow_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "status",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "branch",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "per_page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 7
+          },
+          "sourceLine": 572,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-trigger_workflow",
+          "name": "trigger_workflow",
+          "description": "Trigger a workflow dispatch event.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "owner",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "repo",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "workflow_id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "ref",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "inputs",
+                "type": "dict",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 5
+          },
+          "sourceLine": 613,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-list_commits",
+          "name": "list_commits",
+          "description": "List commits in a repository.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "owner",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "repo",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "sha",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "path",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "author",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "since",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "until",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "per_page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 9
+          },
+          "sourceLine": 650,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        },
+        {
+          "id": "oap-github-mcp-get_commit",
+          "name": "get_commit",
+          "description": "Get details about a specific commit.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-github-mcp",
+            "params": [
+              {
+                "name": "owner",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "repo",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "commit_sha",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 696,
+          "sourceFile": "services/mcps/oap-github-mcp/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-incident-mcp",
+      "title": "Incident MCP Server",
+      "description": "OpenAgentic Incident MCP Server - FastMCP Entry Point (0 tools)",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "incident_mcp_server",
+      "title": "Incident_mcp_server MCP Server",
+      "description": "Incident MCP Server - FastMCP Implementation (11 tools)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "incident_mcp_server-incident_create",
+          "name": "incident_create",
+          "description": "Create a new incident.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "incident_mcp_server",
+            "params": [
+              {
+                "name": "title",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 181,
+          "sourceFile": "services/mcps/oap-incident-mcp/src/incident_mcp_server/server.py"
+        },
+        {
+          "id": "incident_mcp_server-incident_list",
+          "name": "incident_list",
+          "description": "List incidents with optional filters.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "incident_mcp_server",
+            "params": [
+              {
+                "name": "status",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 244,
+          "sourceFile": "services/mcps/oap-incident-mcp/src/incident_mcp_server/server.py"
+        },
+        {
+          "id": "incident_mcp_server-incident_get",
+          "name": "incident_get",
+          "description": "Get detailed information about a specific incident.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "incident_mcp_server",
+            "params": [
+              {
+                "name": "id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 303,
+          "sourceFile": "services/mcps/oap-incident-mcp/src/incident_mcp_server/server.py"
+        },
+        {
+          "id": "incident_mcp_server-incident_update_status",
+          "name": "incident_update_status",
+          "description": "Update the status of an incident.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "incident_mcp_server",
+            "params": [
+              {
+                "name": "id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 330,
+          "sourceFile": "services/mcps/oap-incident-mcp/src/incident_mcp_server/server.py"
+        },
+        {
+          "id": "incident_mcp_server-incident_assign",
+          "name": "incident_assign",
+          "description": "Assign an incident to a person.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "incident_mcp_server",
+            "params": [
+              {
+                "name": "id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 371,
+          "sourceFile": "services/mcps/oap-incident-mcp/src/incident_mcp_server/server.py"
+        },
+        {
+          "id": "incident_mcp_server-incident_add_note",
+          "name": "incident_add_note",
+          "description": "Add a note or update to an incident timeline.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "incident_mcp_server",
+            "params": [
+              {
+                "name": "id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 401,
+          "sourceFile": "services/mcps/oap-incident-mcp/src/incident_mcp_server/server.py"
+        },
+        {
+          "id": "incident_mcp_server-incident_escalate",
+          "name": "incident_escalate",
+          "description": "Escalate an incident to a higher severity.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "incident_mcp_server",
+            "params": [
+              {
+                "name": "id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 429,
+          "sourceFile": "services/mcps/oap-incident-mcp/src/incident_mcp_server/server.py"
+        },
+        {
+          "id": "incident_mcp_server-incident_resolve",
+          "name": "incident_resolve",
+          "description": "Resolve an incident with resolution details.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "incident_mcp_server",
+            "params": [
+              {
+                "name": "id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 464,
+          "sourceFile": "services/mcps/oap-incident-mcp/src/incident_mcp_server/server.py"
+        },
+        {
+          "id": "incident_mcp_server-incident_close",
+          "name": "incident_close",
+          "description": "Close an incident after resolution is confirmed.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "incident_mcp_server",
+            "params": [
+              {
+                "name": "id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 507,
+          "sourceFile": "services/mcps/oap-incident-mcp/src/incident_mcp_server/server.py"
+        },
+        {
+          "id": "incident_mcp_server-incident_link_runbook",
+          "name": "incident_link_runbook",
+          "description": "Link a runbook execution to an incident.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "incident_mcp_server",
+            "params": [
+              {
+                "name": "id",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 538,
+          "sourceFile": "services/mcps/oap-incident-mcp/src/incident_mcp_server/server.py"
+        },
+        {
+          "id": "incident_mcp_server-incident_summary",
+          "name": "incident_summary",
+          "description": "Get a summary of current incident status.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "incident_mcp_server",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 564,
+          "sourceFile": "services/mcps/oap-incident-mcp/src/incident_mcp_server/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-knowledge-mcp",
+      "title": "Knowledge MCP Server",
+      "description": "OpenAgentic Knowledge MCP Server (4 tools)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oap-knowledge-mcp-search_tool_documentation",
+          "name": "search_tool_documentation",
+          "description": "Search for tool usage documentation and guidance.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-knowledge-mcp",
+            "params": [
+              {
+                "name": "query",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "top_k",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 357,
+          "sourceFile": "services/mcps/oap-knowledge-mcp/server.py"
+        },
+        {
+          "id": "oap-knowledge-mcp-get_tool_examples",
+          "name": "get_tool_examples",
+          "description": "Get detailed usage examples for a specific tool.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-knowledge-mcp",
+            "params": [
+              {
+                "name": "tool_name",
+                "type": "str",
+                "description": "",
+                "optional": false
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 427,
+          "sourceFile": "services/mcps/oap-knowledge-mcp/server.py"
+        },
+        {
+          "id": "oap-knowledge-mcp-suggest_tools_for_task",
+          "name": "suggest_tools_for_task",
+          "description": "Given a task description, suggest which tools to use and how.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-knowledge-mcp",
+            "params": [
+              {
+                "name": "task_description",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "task",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 475,
+          "sourceFile": "services/mcps/oap-knowledge-mcp/server.py"
+        },
+        {
+          "id": "oap-knowledge-mcp-list_available_mcps",
+          "name": "list_available_mcps",
+          "description": "List all available MCP servers and their capabilities.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-knowledge-mcp",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 578,
+          "sourceFile": "services/mcps/oap-knowledge-mcp/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-kubernetes-mcp",
+      "title": "Kubernetes MCP Server",
+      "description": "OpenAgentic Kubernetes MCP Server - FastMCP Entry Point (0 tools)",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "kubernetes_mcp_server",
+      "title": "Kubernetes_mcp_server MCP Server",
+      "description": "Kubernetes MCP Server - FastMCP Implementation for K8s Administration (0 tools)",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "oap-loki-mcp",
+      "title": "Loki MCP Server",
+      "description": "OpenAgentic Loki MCP Server - FastMCP Entry Point (0 tools)",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "loki_mcp_server",
+      "title": "Loki_mcp_server MCP Server",
+      "description": "Loki MCP Server - FastMCP Implementation (9 tools)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "loki_mcp_server-loki_query",
+          "name": "loki_query",
+          "description": "Query logs from Loki using LogQL.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "loki_mcp_server",
+            "params": [
+              {
+                "name": "query",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 224,
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "loki_mcp_server-loki_search_errors",
+          "name": "loki_search_errors",
+          "description": "Search for error logs across the system.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "loki_mcp_server",
+            "params": [
+              {
+                "name": "namespace",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 285,
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "loki_mcp_server-loki_tail",
+          "name": "loki_tail",
+          "description": "Get the most recent log lines (like 'tail -f').",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "loki_mcp_server",
+            "params": [
+              {
+                "name": "query",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 363,
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "loki_mcp_server-loki_labels",
+          "name": "loki_labels",
+          "description": "List all available label names in Loki.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "loki_mcp_server",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 411,
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "loki_mcp_server-loki_label_values",
+          "name": "loki_label_values",
+          "description": "Get all values for a specific label.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "loki_mcp_server",
+            "params": [
+              {
+                "name": "label",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 453,
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "loki_mcp_server-loki_count_logs",
+          "name": "loki_count_logs",
+          "description": "Count log entries over time.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "loki_mcp_server",
+            "params": [
+              {
+                "name": "query",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 486,
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "loki_mcp_server-loki_log_rate",
+          "name": "loki_log_rate",
+          "description": "Calculate log rate (lines per second) over time.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "loki_mcp_server",
+            "params": [
+              {
+                "name": "query",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 545,
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "loki_mcp_server-loki_context",
+          "name": "loki_context",
+          "description": "Get log context around a specific log entry.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "loki_mcp_server",
+            "params": [
+              {
+                "name": "query",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 604,
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        },
+        {
+          "id": "loki_mcp_server-loki_streams",
+          "name": "loki_streams",
+          "description": "List all active log streams in Loki.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "loki_mcp_server",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 699,
+          "sourceFile": "services/mcps/oap-loki-mcp/src/loki_mcp_server/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-prometheus-mcp",
+      "title": "Prometheus MCP Server",
+      "description": "OpenAgentic Prometheus MCP Server - FastMCP Entry Point (0 tools)",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "prometheus_mcp_server",
+      "title": "Prometheus_mcp_server MCP Server",
+      "description": "Prometheus MCP Server - FastMCP Implementation (8 tools)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "prometheus_mcp_server-prometheus_query",
+          "name": "prometheus_query",
+          "description": "Execute an instant PromQL query against Prometheus to check infrastructure metrics.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "prometheus_mcp_server",
+            "params": [
+              {
+                "name": "query",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 158,
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        },
+        {
+          "id": "prometheus_mcp_server-prometheus_query_range",
+          "name": "prometheus_query_range",
+          "description": "Execute a range PromQL query against Prometheus for time-series analysis.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "prometheus_mcp_server",
+            "params": [
+              {
+                "name": "query",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 213,
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        },
+        {
+          "id": "prometheus_mcp_server-prometheus_alerts",
+          "name": "prometheus_alerts",
+          "description": "Get all active alerts from Prometheus for incident detection.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "prometheus_mcp_server",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 270,
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        },
+        {
+          "id": "prometheus_mcp_server-prometheus_targets",
+          "name": "prometheus_targets",
+          "description": "Get all Prometheus scrape targets and their health status.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "prometheus_mcp_server",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 318,
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        },
+        {
+          "id": "prometheus_mcp_server-prometheus_metrics_list",
+          "name": "prometheus_metrics_list",
+          "description": "List all available Prometheus metric names for discovery.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "prometheus_mcp_server",
+            "params": [
+              {
+                "name": "filter",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 375,
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        },
+        {
+          "id": "prometheus_mcp_server-prometheus_metric_info",
+          "name": "prometheus_metric_info",
+          "description": "Get metadata and current values for a specific metric.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "prometheus_mcp_server",
+            "params": [
+              {
+                "name": "metric",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 425,
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        },
+        {
+          "id": "prometheus_mcp_server-prometheus_rules",
+          "name": "prometheus_rules",
+          "description": "Get all alerting and recording rules from Prometheus.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "prometheus_mcp_server",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 470,
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        },
+        {
+          "id": "prometheus_mcp_server-prometheus_health_summary",
+          "name": "prometheus_health_summary",
+          "description": "Get a quick health summary of the monitored services.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "prometheus_mcp_server",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 527,
+          "sourceFile": "services/mcps/oap-prometheus-mcp/src/prometheus_mcp_server/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-runbook-mcp",
+      "title": "Runbook MCP Server",
+      "description": "OpenAgentic Runbook MCP Server - FastMCP Entry Point (0 tools)",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "runbook_mcp_server",
+      "title": "Runbook_mcp_server MCP Server",
+      "description": "Runbook MCP Server - FastMCP Implementation (7 tools)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "runbook_mcp_server-runbook_list",
+          "name": "runbook_list",
+          "description": "List all available runbooks.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "runbook_mcp_server",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 440,
+          "sourceFile": "services/mcps/oap-runbook-mcp/src/runbook_mcp_server/server.py"
+        },
+        {
+          "id": "runbook_mcp_server-runbook_describe",
+          "name": "runbook_describe",
+          "description": "Get detailed information about a runbook.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "runbook_mcp_server",
+            "params": [
+              {
+                "name": "runbook",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 484,
+          "sourceFile": "services/mcps/oap-runbook-mcp/src/runbook_mcp_server/server.py"
+        },
+        {
+          "id": "runbook_mcp_server-runbook_execute",
+          "name": "runbook_execute",
+          "description": "Execute a runbook with the given parameters.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "runbook_mcp_server",
+            "params": [
+              {
+                "name": "runbook",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 537,
+          "sourceFile": "services/mcps/oap-runbook-mcp/src/runbook_mcp_server/server.py"
+        },
+        {
+          "id": "runbook_mcp_server-runbook_history",
+          "name": "runbook_history",
+          "description": "Get history of runbook executions.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "runbook_mcp_server",
+            "params": [
+              {
+                "name": "limit",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 608,
+          "sourceFile": "services/mcps/oap-runbook-mcp/src/runbook_mcp_server/server.py"
+        },
+        {
+          "id": "runbook_mcp_server-runbook_quick_restart",
+          "name": "runbook_quick_restart",
+          "description": "Quick helper to restart a service (rolling restart).",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "runbook_mcp_server",
+            "params": [
+              {
+                "name": "service",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 644,
+          "sourceFile": "services/mcps/oap-runbook-mcp/src/runbook_mcp_server/server.py"
+        },
+        {
+          "id": "runbook_mcp_server-runbook_quick_scale",
+          "name": "runbook_quick_scale",
+          "description": "Quick helper to scale a deployment.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "runbook_mcp_server",
+            "params": [
+              {
+                "name": "deployment",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 660,
+          "sourceFile": "services/mcps/oap-runbook-mcp/src/runbook_mcp_server/server.py"
+        },
+        {
+          "id": "runbook_mcp_server-runbook_quick_diagnostics",
+          "name": "runbook_quick_diagnostics",
+          "description": "Quick helper to collect diagnostics for a service.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "runbook_mcp_server",
+            "params": [
+              {
+                "name": "service",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 1
+          },
+          "sourceLine": 677,
+          "sourceFile": "services/mcps/oap-runbook-mcp/src/runbook_mcp_server/server.py"
+        }
+      ]
+    },
+    {
+      "id": "oap-web-mcp",
+      "title": "Web MCP Server",
+      "description": "OpenAgentic Web MCP Server - Intelligent Web Browsing and Research (8 tools)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oap-web-mcp-web_search",
+          "name": "web_search",
+          "description": "Search the web using multiple search engines (with automatic fallback).",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-web-mcp",
+            "params": [
+              {
+                "name": "query",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "num_results",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "region",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "time_range",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 4
+          },
+          "sourceLine": 664,
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        },
+        {
+          "id": "oap-web-mcp-web_fetch",
+          "name": "web_fetch",
+          "description": "Fetch a web page and convert it to readable markdown.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-web-mcp",
+            "params": [
+              {
+                "name": "url",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "extract_links",
+                "type": "bool",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "max_length",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "use_cache",
+                "type": "bool",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 4
+          },
+          "sourceLine": 695,
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        },
+        {
+          "id": "oap-web-mcp-web_search_and_read",
+          "name": "web_search_and_read",
+          "description": "Search the web and automatically fetch content from the top results.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-web-mcp",
+            "params": [
+              {
+                "name": "query",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "num_results",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "max_content_per_page",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 728,
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        },
+        {
+          "id": "oap-web-mcp-web_verify_fact",
+          "name": "web_verify_fact",
+          "description": "Verify a claim or fact by searching multiple sources.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-web-mcp",
+            "params": [
+              {
+                "name": "claim",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "num_sources",
+                "type": "int",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 757,
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        },
+        {
+          "id": "oap-web-mcp-web_store_knowledge",
+          "name": "web_store_knowledge",
+          "description": "Store important information in the knowledge system for future reference.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-web-mcp",
+            "params": [
+              {
+                "name": "title",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "content",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "source_url",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "tags",
+                "type": "List[str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "importance",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 5
+          },
+          "sourceLine": 811,
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        },
+        {
+          "id": "oap-web-mcp-web_extract_structured_data",
+          "name": "web_extract_structured_data",
+          "description": "Extract structured data from a web page (tables, lists, key-value pairs).",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-web-mcp",
+            "params": [
+              {
+                "name": "url",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "data_type",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 2
+          },
+          "sourceLine": 874,
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        },
+        {
+          "id": "oap-web-mcp-web_news_search",
+          "name": "web_news_search",
+          "description": "Search for recent news articles on a topic.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-web-mcp",
+            "params": [
+              {
+                "name": "query",
+                "type": "str",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "num_results",
+                "type": "int",
+                "description": "",
+                "optional": true
+              },
+              {
+                "name": "time_range",
+                "type": "str",
+                "description": "",
+                "optional": true
+              }
+            ],
+            "paramCount": 3
+          },
+          "sourceLine": 978,
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        },
+        {
+          "id": "oap-web-mcp-web_help",
+          "name": "web_help",
+          "description": "Get help on using the OpenAgentic Web MCP tools.",
+          "type": "mcp-tool",
+          "properties": {
+            "server": "oap-web-mcp",
+            "params": [],
+            "paramCount": 0
+          },
+          "sourceLine": 1035,
+          "sourceFile": "services/mcps/oap-web-mcp/server.py"
+        }
+      ]
+    }
+  ]
+}

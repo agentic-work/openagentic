@@ -1,0 +1,1329 @@
+{
+  "domain": "mcp-proxy",
+  "title": "MCP Proxy Service",
+  "description": "MCP proxy service with 30 API routes, 24 classes, and 49 management functions.",
+  "icon": "tool",
+  "category": "tools",
+  "generatedAt": "2026-04-06T02:45:19.424Z",
+  "sourceFiles": [
+    "services/openagentic-mcp-proxy/src/azure_oauth.py",
+    "services/openagentic-mcp-proxy/src/main.py",
+    "services/openagentic-mcp-proxy/src/mcp_manager.py",
+    "services/openagentic-mcp-proxy/src/tools/formatting_instructions.py",
+    "services/openagentic-mcp-proxy/src/user_session_manager.py"
+  ],
+  "sections": [
+    {
+      "id": "api-routes",
+      "title": "API Routes",
+      "description": "30 FastAPI route endpoints exposed by the MCP proxy.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "route-post-proxy_mcp_request",
+          "name": "POST /mcp",
+          "description": "Route MCP requests to appropriate server with comprehensive logging",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/mcp",
+            "handler": "proxy_mcp_request"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 963
+        },
+        {
+          "id": "route-post-call_mcp_tool",
+          "name": "POST /mcp/tool",
+          "description": "Call a specific tool on an MCP server",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/mcp/tool",
+            "handler": "call_mcp_tool"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1324
+        },
+        {
+          "id": "route-get-get_version",
+          "name": "GET /version",
+          "description": "Get service version information",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/version",
+            "handler": "get_version"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1360
+        },
+        {
+          "id": "route-get-health_check",
+          "name": "GET /health",
+          "description": "Health check endpoint with MCP server status",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/health",
+            "handler": "health_check"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1371
+        },
+        {
+          "id": "route-get-list_servers",
+          "name": "GET /servers",
+          "description": "List all MCP servers and their status",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/servers",
+            "handler": "list_servers"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1398
+        },
+        {
+          "id": "route-post-add_server",
+          "name": "POST /servers",
+          "description": "Add a new MCP server from JSON configuration.",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/servers",
+            "handler": "add_server"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1406
+        },
+        {
+          "id": "route-post-start_server",
+          "name": "POST /servers/{server_id}/start",
+          "description": "Start an MCP server",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/servers/{server_id}/start",
+            "handler": "start_server"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1431
+        },
+        {
+          "id": "route-post-stop_server",
+          "name": "POST /servers/{server_id}/stop",
+          "description": "Stop an MCP server",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/servers/{server_id}/stop",
+            "handler": "stop_server"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1445
+        },
+        {
+          "id": "route-post-restart_server",
+          "name": "POST /servers/{server_id}/restart",
+          "description": "Restart an MCP server",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/servers/{server_id}/restart",
+            "handler": "restart_server"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1459
+        },
+        {
+          "id": "route-delete-delete_server",
+          "name": "DELETE /servers/{server_id}",
+          "description": "Delete an MCP server",
+          "type": "api-route",
+          "properties": {
+            "method": "DELETE",
+            "path": "/servers/{server_id}",
+            "handler": "delete_server"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1473
+        },
+        {
+          "id": "route-patch-set_server_enabled",
+          "name": "PATCH /servers/{server_id}/enabled",
+          "description": "Enable or disable an MCP server at runtime.",
+          "type": "api-route",
+          "properties": {
+            "method": "PATCH",
+            "path": "/servers/{server_id}/enabled",
+            "handler": "set_server_enabled"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1493
+        },
+        {
+          "id": "route-get-get_server_enabled",
+          "name": "GET /servers/{server_id}/enabled",
+          "description": "Get the enabled state of a specific MCP server",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/servers/{server_id}/enabled",
+            "handler": "get_server_enabled"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1530
+        },
+        {
+          "id": "route-get-list_servers_enabled",
+          "name": "GET /servers/enabled",
+          "description": "List enabled states for all MCP servers",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/servers/enabled",
+            "handler": "list_servers_enabled"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1543
+        },
+        {
+          "id": "route-get-list_all_tools",
+          "name": "GET /tools",
+          "description": "List all tools from all running MCP servers",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/tools",
+            "handler": "list_all_tools"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1621
+        },
+        {
+          "id": "route-get-list_all_tools_v1",
+          "name": "GET /v1/mcp/tools",
+          "description": "List all tools from all running MCP servers (OpenAI-compatible endpoint)",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/v1/mcp/tools",
+            "handler": "list_all_tools_v1"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1626
+        },
+        {
+          "id": "route-get-list_server_tools",
+          "name": "GET /servers/{server_name}/tools",
+          "description": "List tools from a specific MCP server",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/servers/{server_name}/tools",
+            "handler": "list_server_tools"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1631
+        },
+        {
+          "id": "route-post-start_user_session",
+          "name": "POST /user-sessions/start",
+          "description": "Start a per-user Azure MCP session with OBO authentication",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/user-sessions/start",
+            "handler": "start_user_session"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1669
+        },
+        {
+          "id": "route-post-stop_user_session",
+          "name": "POST /user-sessions/stop",
+          "description": "Stop a per-user Azure MCP session",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/user-sessions/stop",
+            "handler": "stop_user_session"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1684
+        },
+        {
+          "id": "route-get-list_user_sessions",
+          "name": "GET /user-sessions",
+          "description": "List all active user sessions",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/user-sessions",
+            "handler": "list_user_sessions"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1695
+        },
+        {
+          "id": "route-get-get_user_session",
+          "name": "GET /user-sessions/{user_id}",
+          "description": "Get a specific user's session info including their Azure MCP tools",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/user-sessions/{user_id}",
+            "handler": "get_user_session"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1706
+        },
+        {
+          "id": "route-get-auth_login",
+          "name": "GET /auth/login",
+          "description": "Initiate Azure AD OAuth login flow",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/auth/login",
+            "handler": "auth_login"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1732
+        },
+        {
+          "id": "route-get-auth_callback",
+          "name": "GET /auth/callback",
+          "description": "Handle Azure AD OAuth callback",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/auth/callback",
+            "handler": "auth_callback"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1750
+        },
+        {
+          "id": "route-get-auth_me",
+          "name": "GET /auth/me",
+          "description": "Get current user info from session",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/auth/me",
+            "handler": "auth_me"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1804
+        },
+        {
+          "id": "route-post-auth_logout",
+          "name": "POST /auth/logout",
+          "description": "Logout and destroy session",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/auth/logout",
+            "handler": "auth_logout"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1833
+        },
+        {
+          "id": "route-post-create_manual_session",
+          "name": "POST /auth/manual-session",
+          "description": "Create a user session manually with an access token (for testing).",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/auth/manual-session",
+            "handler": "create_manual_session"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1868
+        },
+        {
+          "id": "route-post-batch_call_tools",
+          "name": "POST /batch-call",
+          "description": "Execute multiple MCP tool calls in parallel within a single HTTP request.",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/batch-call",
+            "handler": "batch_call_tools"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2102
+        },
+        {
+          "id": "route-post-call_mcp_tool",
+          "name": "POST /call",
+          "description": "Simple endpoint to call MCP tools directly.",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/call",
+            "handler": "call_mcp_tool"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2324
+        },
+        {
+          "id": "route-post-create_embeddings",
+          "name": "POST /v1/embeddings",
+          "description": "Generate embeddings by proxying to API's UniversalEmbeddingService.",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/v1/embeddings",
+            "handler": "create_embeddings"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2556
+        },
+        {
+          "id": "route-get-inspector_ui_root",
+          "name": "GET /",
+          "description": "Serve MCP Inspector UI root - proxy to localhost:6274",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/",
+            "handler": "inspector_ui_root"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2648
+        },
+        {
+          "id": "route-get-inspector_ui_proxy_all",
+          "name": "GET /{path:path}",
+          "description": "Reverse proxy all other requests to MCP Inspector",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/{path:path}",
+            "handler": "inspector_ui_proxy_all"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2653
+        }
+      ]
+    },
+    {
+      "id": "classes",
+      "title": "Service Classes",
+      "description": "24 Python classes implementing MCP proxy functionality.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "class-azureoauthservice",
+          "name": "AzureOAuthService",
+          "description": "Handles Azure AD OAuth2 authentication with PKCE",
+          "type": "python-class",
+          "properties": {
+            "methods": [
+              "__init__",
+              "generate_pkce_challenge",
+              "generate_auth_url",
+              "exchange_code_for_token",
+              "decode_token",
+              "extract_user_info",
+              "create_session",
+              "get_session",
+              "delete_session",
+              "refresh_token"
+            ],
+            "methodCount": 10
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/azure_oauth.py",
+          "sourceLine": 24
+        },
+        {
+          "id": "class-mcprequest",
+          "name": "MCPRequest",
+          "description": "Class with 0 public methods",
+          "type": "python-class",
+          "properties": {
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 429
+        },
+        {
+          "id": "class-mcpresponse",
+          "name": "MCPResponse",
+          "description": "Class with 0 public methods",
+          "type": "python-class",
+          "properties": {
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 435
+        },
+        {
+          "id": "class-mcptoolcall",
+          "name": "MCPToolCall",
+          "description": "Class with 0 public methods",
+          "type": "python-class",
+          "properties": {
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 444
+        },
+        {
+          "id": "class-tokenexchangeerror",
+          "name": "TokenExchangeError",
+          "description": "Class with 9 public methods",
+          "type": "python-class",
+          "properties": {
+            "methods": [
+              "__init__",
+              "is_user_authorized",
+              "is_admin_user",
+              "fetch_user_mcp_access_policies",
+              "check_server_access",
+              "fetch_tool_access_policies",
+              "check_tool_access",
+              "get_user_info",
+              "exchange_for_audience"
+            ],
+            "methodCount": 9
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 451
+        },
+        {
+          "id": "class-serverenabledrequest",
+          "name": "ServerEnabledRequest",
+          "description": "Class with 0 public methods",
+          "type": "python-class",
+          "properties": {
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1489
+        },
+        {
+          "id": "class-usersessionstartrequest",
+          "name": "UserSessionStartRequest",
+          "description": "Class with 0 public methods",
+          "type": "python-class",
+          "properties": {
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1661
+        },
+        {
+          "id": "class-usersessionstoprequest",
+          "name": "UserSessionStopRequest",
+          "description": "Class with 0 public methods",
+          "type": "python-class",
+          "properties": {
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1666
+        },
+        {
+          "id": "class-manualsessionrequest",
+          "name": "ManualSessionRequest",
+          "description": "Class with 0 public methods",
+          "type": "python-class",
+          "properties": {
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1862
+        },
+        {
+          "id": "class-mcpcallrequest",
+          "name": "MCPCallRequest",
+          "description": "Class with 0 public methods",
+          "type": "python-class",
+          "properties": {
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1895
+        },
+        {
+          "id": "class-mcperrorenvelope",
+          "name": "MCPErrorEnvelope",
+          "description": "Structured error response that helps LLMs understand and recover from failures",
+          "type": "python-class",
+          "properties": {
+            "methods": [
+              "get_cache_metadata"
+            ],
+            "methodCount": 1
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1904
+        },
+        {
+          "id": "class-batchtoolcall",
+          "name": "BatchToolCall",
+          "description": "A single tool call within a batch",
+          "type": "python-class",
+          "properties": {
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2071
+        },
+        {
+          "id": "class-batchcallrequest",
+          "name": "BatchCallRequest",
+          "description": "Request to execute multiple tool calls in parallel",
+          "type": "python-class",
+          "properties": {
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2078
+        },
+        {
+          "id": "class-batchtoolresult",
+          "name": "BatchToolResult",
+          "description": "Result for a single tool call within a batch",
+          "type": "python-class",
+          "properties": {
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2083
+        },
+        {
+          "id": "class-batchcallresponse",
+          "name": "BatchCallResponse",
+          "description": "Response for a batch of tool calls",
+          "type": "python-class",
+          "properties": {
+            "methods": [
+              "exchange_for_audience",
+              "execute_single_call",
+              "exchange_for_audience"
+            ],
+            "methodCount": 3
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2094
+        },
+        {
+          "id": "class-embeddingrequest",
+          "name": "EmbeddingRequest",
+          "description": "Class with 1 public methods",
+          "type": "python-class",
+          "properties": {
+            "methods": [
+              "proxy_to_inspector"
+            ],
+            "methodCount": 1
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2550
+        },
+        {
+          "id": "class-mcpserverstatus",
+          "name": "MCPServerStatus",
+          "description": "Class with 0 public methods",
+          "type": "python-class",
+          "properties": {
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/mcp_manager.py",
+          "sourceLine": 24
+        },
+        {
+          "id": "class-mcpserverconfig",
+          "name": "MCPServerConfig",
+          "description": "Class with 0 public methods",
+          "type": "python-class",
+          "properties": {
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/mcp_manager.py",
+          "sourceLine": 31
+        },
+        {
+          "id": "class-remotemcpserverconfig",
+          "name": "RemoteMCPServerConfig",
+          "description": "Configuration for remote MCP servers accessed via HTTP/SSE",
+          "type": "python-class",
+          "properties": {
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/mcp_manager.py",
+          "sourceLine": 41
+        },
+        {
+          "id": "class-remotemcpserver",
+          "name": "RemoteMCPServer",
+          "description": "MCP Server that connects to a remote service via HTTP/SSE",
+          "type": "python-class",
+          "properties": {
+            "methods": [
+              "__init__",
+              "start",
+              "stop",
+              "send_request"
+            ],
+            "methodCount": 4
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/mcp_manager.py",
+          "sourceLine": 53
+        },
+        {
+          "id": "class-mcpserver",
+          "name": "MCPServer",
+          "description": "Class with 4 public methods",
+          "type": "python-class",
+          "properties": {
+            "methods": [
+              "__init__",
+              "start",
+              "stop",
+              "send_request"
+            ],
+            "methodCount": 4
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/mcp_manager.py",
+          "sourceLine": 178
+        },
+        {
+          "id": "class-mcpmanager",
+          "name": "MCPManager",
+          "description": "Class with 16 public methods",
+          "type": "python-class",
+          "properties": {
+            "methods": [
+              "__init__",
+              "initialize_servers",
+              "start_all",
+              "stop_all",
+              "route_request",
+              "get_server_status",
+              "add_server",
+              "start_server",
+              "stop_server",
+              "remove_server",
+              "delete_server",
+              "restart_server",
+              "list_all_tools",
+              "set_server_enabled",
+              "get_server_enabled",
+              "list_server_enabled_states"
+            ],
+            "methodCount": 16
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/mcp_manager.py",
+          "sourceLine": 332
+        },
+        {
+          "id": "class-usersession",
+          "name": "UserSession",
+          "description": "Represents a per-user Azure MCP session",
+          "type": "python-class",
+          "properties": {
+            "methods": [
+              "is_stale",
+              "is_alive"
+            ],
+            "methodCount": 2
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/user_session_manager.py",
+          "sourceLine": 21
+        },
+        {
+          "id": "class-usersessionmanager",
+          "name": "UserSessionManager",
+          "description": "Manages per-user Azure MCP sessions",
+          "type": "python-class",
+          "properties": {
+            "methods": [
+              "__init__",
+              "start_user_session",
+              "stop_user_session",
+              "get_session",
+              "send_request_to_user_session",
+              "list_sessions",
+              "cleanup_stale_sessions",
+              "start_periodic_cleanup",
+              "cleanup_loop",
+              "stop_periodic_cleanup",
+              "get_user_session_manager"
+            ],
+            "methodCount": 11
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/user_session_manager.py",
+          "sourceLine": 41
+        }
+      ]
+    },
+    {
+      "id": "mcp-functions",
+      "title": "MCP Management Functions",
+      "description": "49 exported functions for MCP session and lifecycle management.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "func-refresh_readonly_from_db",
+          "name": "refresh_readonly_from_db",
+          "description": "Poll the API for the DB-persisted read-only setting (every 30s).",
+          "type": "function",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 101
+        },
+        {
+          "id": "func-is_server_affected_by_read_only",
+          "name": "is_server_affected_by_read_only",
+          "description": "Check if a server is affected by read-only mode.",
+          "type": "function",
+          "properties": {
+            "params": "server_name: str"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 156
+        },
+        {
+          "id": "func-is_tool_blocked_in_read_only",
+          "name": "is_tool_blocked_in_read_only",
+          "description": "Check if a tool call should be blocked in read-only mode.",
+          "type": "function",
+          "properties": {
+            "params": "tool_name: str, arguments: dict, server_name: str = \"\""
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 164
+        },
+        {
+          "id": "func-send_mcp_log_to_api",
+          "name": "send_mcp_log_to_api",
+          "description": "Send MCP call log to API database (fire-and-forget) with full request/response data",
+          "type": "function",
+          "properties": {
+            "params": "user_id: str,\n    user_name: Optional[str],\n    user_email: Optional[str],\n    server_name: str,\n    tool_name: str,\n    method: str,\n    params: dict,\n    result: Optional[dict],\n    error: Optional[dict],\n    execution_time_ms: float,\n    success: bool"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 209
+        },
+        {
+          "id": "func-lifespan",
+          "name": "lifespan",
+          "description": "Startup and shutdown events for MCP servers",
+          "type": "function",
+          "properties": {
+            "params": "app: FastAPI"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 260
+        },
+        {
+          "id": "func-get_authorized_groups",
+          "name": "get_authorized_groups",
+          "description": "Get authorized groups from environment - same as API",
+          "type": "function",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 458
+        },
+        {
+          "id": "func-is_user_authorized",
+          "name": "is_user_authorized",
+          "description": "Check if user is in authorized groups - same as API",
+          "type": "function",
+          "properties": {
+            "params": "user_groups, required_groups"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 468
+        },
+        {
+          "id": "func-is_admin_user",
+          "name": "is_admin_user",
+          "description": "Check if user is admin - same as API",
+          "type": "function",
+          "properties": {
+            "params": "user_groups, admin_groups"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 474
+        },
+        {
+          "id": "func-fetch_user_mcp_access_policies",
+          "name": "fetch_user_mcp_access_policies",
+          "description": "Fetch MCP access policies for user's groups from API",
+          "type": "function",
+          "properties": {
+            "params": "user_groups: List[str]"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 478
+        },
+        {
+          "id": "func-check_server_access",
+          "name": "check_server_access",
+          "description": "Check if user can access a specific MCP server",
+          "type": "function",
+          "properties": {
+            "params": "server_name: str, user_groups: List[str], access_policies: Dict[str, str], is_admin: bool"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 527
+        },
+        {
+          "id": "func-fetch_tool_access_policies",
+          "name": "fetch_tool_access_policies",
+          "description": "Fetch tool-level access policies from API, cached with TTL",
+          "type": "function",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 557
+        },
+        {
+          "id": "func-check_tool_access",
+          "name": "check_tool_access",
+          "description": "Check per-tool access. Returns (allowed: bool, reason: str, require_approval: bool).",
+          "type": "function",
+          "properties": {
+            "params": "tool_name: str,\n    server_name: str,\n    user_id: str,\n    user_groups: List[str],\n    is_admin: bool,\n    tool_policies: List[Dict[str, Any]]"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 581
+        },
+        {
+          "id": "func-get_user_info",
+          "name": "get_user_info",
+          "description": "Get user info from JWT token or return system admin for local users.",
+          "type": "function",
+          "properties": {
+            "params": "credentials: HTTPAuthorizationCredentials = Depends(security"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 638
+        },
+        {
+          "id": "func-exchange_token_for_azure",
+          "name": "exchange_token_for_azure",
+          "description": "Exchange user token for Azure resource access using OBO flow",
+          "type": "function",
+          "properties": {
+            "params": "original_token: str, scope: str = \"https://management.azure.com/.default\""
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 929
+        },
+        {
+          "id": "func-proxy_mcp_request",
+          "name": "proxy_mcp_request",
+          "description": "Route MCP requests to appropriate server with comprehensive logging",
+          "type": "function",
+          "properties": {
+            "params": "mcp_request: MCPRequest,\n    background_tasks: BackgroundTasks,\n    request: Request,\n    user_info: Optional[Dict[str, Any]] = Depends(get_user_info"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 964
+        },
+        {
+          "id": "func-call_mcp_tool",
+          "name": "call_mcp_tool",
+          "description": "Call a specific tool on an MCP server",
+          "type": "function",
+          "properties": {
+            "params": "tool_call: MCPToolCall,\n    background_tasks: BackgroundTasks,\n    request: Request,\n    user_info: Optional[Dict[str, Any]] = Depends(get_user_info"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1325
+        },
+        {
+          "id": "func-get_version",
+          "name": "get_version",
+          "description": "Get service version information",
+          "type": "function",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1361
+        },
+        {
+          "id": "func-health_check",
+          "name": "health_check",
+          "description": "Health check endpoint with MCP server status",
+          "type": "function",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1372
+        },
+        {
+          "id": "func-list_servers",
+          "name": "list_servers",
+          "description": "List all MCP servers and their status",
+          "type": "function",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1399
+        },
+        {
+          "id": "func-add_server",
+          "name": "add_server",
+          "description": "Add a new MCP server from JSON configuration.",
+          "type": "function",
+          "properties": {
+            "params": "config: Dict[str, Any]"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1407
+        },
+        {
+          "id": "func-start_server",
+          "name": "start_server",
+          "description": "Start an MCP server",
+          "type": "function",
+          "properties": {
+            "params": "server_id: str"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1432
+        },
+        {
+          "id": "func-stop_server",
+          "name": "stop_server",
+          "description": "Stop an MCP server",
+          "type": "function",
+          "properties": {
+            "params": "server_id: str"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1446
+        },
+        {
+          "id": "func-restart_server",
+          "name": "restart_server",
+          "description": "Restart an MCP server",
+          "type": "function",
+          "properties": {
+            "params": "server_id: str"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1460
+        },
+        {
+          "id": "func-delete_server",
+          "name": "delete_server",
+          "description": "Delete an MCP server",
+          "type": "function",
+          "properties": {
+            "params": "server_id: str"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1474
+        },
+        {
+          "id": "func-set_server_enabled",
+          "name": "set_server_enabled",
+          "description": "Enable or disable an MCP server at runtime.",
+          "type": "function",
+          "properties": {
+            "params": "server_id: str,\n    request: ServerEnabledRequest,\n    user_info: Optional[Dict[str, Any]] = Depends(get_user_info"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1494
+        },
+        {
+          "id": "func-get_server_enabled",
+          "name": "get_server_enabled",
+          "description": "Get the enabled state of a specific MCP server",
+          "type": "function",
+          "properties": {
+            "params": "server_id: str"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1531
+        },
+        {
+          "id": "func-list_servers_enabled",
+          "name": "list_servers_enabled",
+          "description": "List enabled states for all MCP servers",
+          "type": "function",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1544
+        },
+        {
+          "id": "func-list_all_tools",
+          "name": "list_all_tools",
+          "description": "List all tools from all running MCP servers",
+          "type": "function",
+          "properties": {
+            "params": "user_info: Optional[Dict[str, Any]] = Depends(get_user_info"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1622
+        },
+        {
+          "id": "func-list_all_tools_v1",
+          "name": "list_all_tools_v1",
+          "description": "List all tools from all running MCP servers (OpenAI-compatible endpoint)",
+          "type": "function",
+          "properties": {
+            "params": "user_info: Optional[Dict[str, Any]] = Depends(get_user_info"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1627
+        },
+        {
+          "id": "func-list_server_tools",
+          "name": "list_server_tools",
+          "description": "List tools from a specific MCP server",
+          "type": "function",
+          "properties": {
+            "params": "server_name: str, user_info: Optional[Dict[str, Any]] = Depends(get_user_info"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1632
+        },
+        {
+          "id": "func-start_user_session",
+          "name": "start_user_session",
+          "description": "Start a per-user Azure MCP session with OBO authentication",
+          "type": "function",
+          "properties": {
+            "params": "request: UserSessionStartRequest, user_info: Optional[Dict[str, Any]] = Depends(get_user_info"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1670
+        },
+        {
+          "id": "func-stop_user_session",
+          "name": "stop_user_session",
+          "description": "Stop a per-user Azure MCP session",
+          "type": "function",
+          "properties": {
+            "params": "request: UserSessionStopRequest, user_info: Optional[Dict[str, Any]] = Depends(get_user_info"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1685
+        },
+        {
+          "id": "func-list_user_sessions",
+          "name": "list_user_sessions",
+          "description": "List all active user sessions",
+          "type": "function",
+          "properties": {
+            "params": "user_info: Optional[Dict[str, Any]] = Depends(get_user_info"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1696
+        },
+        {
+          "id": "func-get_user_session",
+          "name": "get_user_session",
+          "description": "Get a specific user's session info including their Azure MCP tools",
+          "type": "function",
+          "properties": {
+            "params": "user_id: str, user_info: Optional[Dict[str, Any]] = Depends(get_user_info"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1707
+        },
+        {
+          "id": "func-auth_login",
+          "name": "auth_login",
+          "description": "Initiate Azure AD OAuth login flow",
+          "type": "function",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1733
+        },
+        {
+          "id": "func-auth_callback",
+          "name": "auth_callback",
+          "description": "Handle Azure AD OAuth callback",
+          "type": "function",
+          "properties": {
+            "params": "code: Optional[str] = None, state: Optional[str] = None, error: Optional[str] = None"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1751
+        },
+        {
+          "id": "func-auth_me",
+          "name": "auth_me",
+          "description": "Get current user info from session",
+          "type": "function",
+          "properties": {
+            "params": "mcp_session: Optional[str] = Cookie(None"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1805
+        },
+        {
+          "id": "func-auth_logout",
+          "name": "auth_logout",
+          "description": "Logout and destroy session",
+          "type": "function",
+          "properties": {
+            "params": "response: Response, mcp_session: Optional[str] = Cookie(None"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1834
+        },
+        {
+          "id": "func-create_manual_session",
+          "name": "create_manual_session",
+          "description": "Create a user session manually with an access token (for testing).",
+          "type": "function",
+          "properties": {
+            "params": "request: ManualSessionRequest"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1869
+        },
+        {
+          "id": "func-classify_error",
+          "name": "classify_error",
+          "description": "Classify an error into a structured envelope with recovery hints",
+          "type": "function",
+          "properties": {
+            "params": "error: Exception, server_name: str = \"\", tool_name: str = \"\""
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 1915
+        },
+        {
+          "id": "func-get_cache_metadata",
+          "name": "get_cache_metadata",
+          "description": "Generate cache metadata for a tool response",
+          "type": "function",
+          "properties": {
+            "params": "tool_name: str, arguments: Dict[str, Any]"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2036
+        },
+        {
+          "id": "func-batch_call_tools",
+          "name": "batch_call_tools",
+          "description": "Execute multiple MCP tool calls in parallel within a single HTTP request.",
+          "type": "function",
+          "properties": {
+            "params": "batch_request: BatchCallRequest,\n    http_request: Request,\n    background_tasks: BackgroundTasks,\n    user_info: Optional[Dict[str, Any]] = Depends(get_user_info"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2103
+        },
+        {
+          "id": "func-call_mcp_tool",
+          "name": "call_mcp_tool",
+          "description": "Simple endpoint to call MCP tools directly.",
+          "type": "function",
+          "properties": {
+            "params": "call_request: MCPCallRequest,\n    http_request: Request,\n    user_info: Optional[Dict[str, Any]] = Depends(get_user_info"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2325
+        },
+        {
+          "id": "func-create_embeddings",
+          "name": "create_embeddings",
+          "description": "Generate embeddings by proxying to API's UniversalEmbeddingService.",
+          "type": "function",
+          "properties": {
+            "params": "request: EmbeddingRequest"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2557
+        },
+        {
+          "id": "func-proxy_to_inspector",
+          "name": "proxy_to_inspector",
+          "description": "Helper function to proxy requests to MCP Inspector",
+          "type": "function",
+          "properties": {
+            "params": "path: str, request: Request"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2615
+        },
+        {
+          "id": "func-inspector_ui_root",
+          "name": "inspector_ui_root",
+          "description": "Serve MCP Inspector UI root - proxy to localhost:6274",
+          "type": "function",
+          "properties": {
+            "params": "request: Request"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2649
+        },
+        {
+          "id": "func-inspector_ui_proxy_all",
+          "name": "inspector_ui_proxy_all",
+          "description": "Reverse proxy all other requests to MCP Inspector",
+          "type": "function",
+          "properties": {
+            "params": "path: str, request: Request"
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/main.py",
+          "sourceLine": 2654
+        },
+        {
+          "id": "func-get_formatting_instructions",
+          "name": "get_formatting_instructions",
+          "description": "Returns formatting instructions that should be injected into EVERY AI response",
+          "type": "function",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/tools/formatting_instructions.py",
+          "sourceLine": 8
+        },
+        {
+          "id": "func-get_user_session_manager",
+          "name": "get_user_session_manager",
+          "description": "Get the global UserSessionManager instance",
+          "type": "function",
+          "properties": {
+            "params": ""
+          },
+          "sourceFile": "services/openagentic-mcp-proxy/src/user_session_manager.py",
+          "sourceLine": 370
+        }
+      ]
+    }
+  ]
+}

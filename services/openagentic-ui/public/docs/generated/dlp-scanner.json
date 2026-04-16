@@ -1,0 +1,910 @@
+{
+  "domain": "dlp-scanner",
+  "title": "DLP Scanner",
+  "description": "Data Loss Prevention scanner with 55 detection rules across 5 categories, scanning at 5 points in the data flow.",
+  "icon": "shield",
+  "category": "security",
+  "generatedAt": "2026-04-06T02:45:19.332Z",
+  "sourceFiles": [
+    "services/openagentic-api/src/services/DLPScannerService.ts"
+  ],
+  "sections": [
+    {
+      "id": "dlp-types",
+      "title": "DLP Types",
+      "description": "Core type definitions for the DLP scanning system.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "type-DLPSeverity",
+          "name": "DLPSeverity",
+          "description": "Union type: low, medium, high, critical",
+          "type": "type-alias",
+          "properties": {
+            "values": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          }
+        },
+        {
+          "id": "type-DLPAction",
+          "name": "DLPAction",
+          "description": "Union type: allow, redact, block",
+          "type": "type-alias",
+          "properties": {
+            "values": [
+              "allow",
+              "redact",
+              "block"
+            ]
+          }
+        },
+        {
+          "id": "type-DLPCategory",
+          "name": "DLPCategory",
+          "description": "Union type: credential, pii, infrastructure, compliance, injection",
+          "type": "type-alias",
+          "properties": {
+            "values": [
+              "credential",
+              "pii",
+              "infrastructure",
+              "compliance",
+              "injection"
+            ]
+          }
+        },
+        {
+          "id": "type-DLPScanPoint",
+          "name": "DLPScanPoint",
+          "description": "Union type: tool_input, tool_result, llm_output, user_input, workflow_data",
+          "type": "type-alias",
+          "properties": {
+            "values": [
+              "tool_input",
+              "tool_result",
+              "llm_output",
+              "user_input",
+              "workflow_data"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "severity-actions",
+      "title": "Severity-to-Action Mapping",
+      "description": "How DLP severity levels map to enforcement actions.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "action-low",
+          "name": "low",
+          "description": "Action: allow — flagged but not blocked",
+          "type": "severity-mapping"
+        },
+        {
+          "id": "action-medium",
+          "name": "medium",
+          "description": "Action: redact — sensitive data is masked before forwarding",
+          "type": "severity-mapping"
+        },
+        {
+          "id": "action-high",
+          "name": "high",
+          "description": "Action: block — request is rejected entirely",
+          "type": "severity-mapping"
+        },
+        {
+          "id": "action-critical",
+          "name": "critical",
+          "description": "Action: block — request is rejected and an alert is raised",
+          "type": "severity-mapping"
+        }
+      ]
+    },
+    {
+      "id": "rules-credential",
+      "title": "Credential Detection Rules",
+      "description": "Detects API keys, tokens, passwords, private keys, and other credentials in data flowing through tool execution. (20 rules)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "rule-aws-access-key",
+          "name": "AWS Access Key",
+          "description": "AWS access key ID",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "credential"
+          },
+          "sourceLine": 130,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-aws-secret-key",
+          "name": "AWS Secret Key",
+          "description": "AWS secret access key",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "critical",
+            "category": "credential"
+          },
+          "sourceLine": 131,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-openai-api-key",
+          "name": "OpenAI API Key",
+          "description": "OpenAI sk- prefix key",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "credential"
+          },
+          "sourceLine": 132,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-github-token",
+          "name": "GitHub Token",
+          "description": "GitHub personal access token",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "credential"
+          },
+          "sourceLine": 133,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-github-oauth",
+          "name": "GitHub OAuth",
+          "description": "GitHub OAuth access token",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "credential"
+          },
+          "sourceLine": 134,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-slack-token",
+          "name": "Slack Token",
+          "description": "Slack bot/user token",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "credential"
+          },
+          "sourceLine": 135,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-bearer-token",
+          "name": "Bearer Token",
+          "description": "Bearer authorization token (long)",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "medium",
+            "category": "credential"
+          },
+          "sourceLine": 136,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-private-key",
+          "name": "Private Key",
+          "description": "PEM private key",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "critical",
+            "category": "credential"
+          },
+          "sourceLine": 137,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-jwt-token",
+          "name": "JWT Token",
+          "description": "JSON Web Token",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "medium",
+            "category": "credential"
+          },
+          "sourceLine": 138,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-azure-client-secret",
+          "name": "Azure Client Secret",
+          "description": "Azure AD client secret",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "critical",
+            "category": "credential"
+          },
+          "sourceLine": 139,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-azure-storage-key",
+          "name": "Azure Storage Key",
+          "description": "Azure storage account key",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "critical",
+            "category": "credential"
+          },
+          "sourceLine": 140,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-gcp-service-account-key",
+          "name": "GCP Service Account Key",
+          "description": "GCP private key ID",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "critical",
+            "category": "credential"
+          },
+          "sourceLine": 141,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-gcp-private-key",
+          "name": "GCP Private Key",
+          "description": "GCP service account private key",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "critical",
+            "category": "credential"
+          },
+          "sourceLine": 142,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-anthropic-api-key",
+          "name": "Anthropic API Key",
+          "description": "Anthropic sk-ant prefix",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "credential"
+          },
+          "sourceLine": 143,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-stripe-key",
+          "name": "Stripe Key",
+          "description": "Stripe API key",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "credential"
+          },
+          "sourceLine": 144,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-sendgrid-key",
+          "name": "SendGrid Key",
+          "description": "SendGrid API key",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "credential"
+          },
+          "sourceLine": 145,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-twilio-auth-token",
+          "name": "Twilio Auth Token",
+          "description": "Twilio account credentials",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "credential"
+          },
+          "sourceLine": 146,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-database-connection-string",
+          "name": "Database Connection String",
+          "description": "Database URL with credentials",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "credential"
+          },
+          "sourceLine": 147,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-generic-api-key",
+          "name": "Generic API Key",
+          "description": "Generic api_key/apikey pattern",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "medium",
+            "category": "credential"
+          },
+          "sourceLine": 148,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-password-in-config",
+          "name": "Password in Config",
+          "description": "Password assignment",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "credential"
+          },
+          "sourceLine": 149,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        }
+      ]
+    },
+    {
+      "id": "rules-pii",
+      "title": "PII Detection Rules",
+      "description": "Detects personally identifiable information: SSNs, credit cards, email addresses, phone numbers, passport numbers, and more. (15 rules)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "rule-us-ssn",
+          "name": "US SSN",
+          "description": "US Social Security Number",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "pii"
+          },
+          "sourceLine": 152,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-credit-card-number",
+          "name": "Credit Card Number",
+          "description": "Credit/debit card number",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "pii"
+          },
+          "sourceLine": 153,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-email-bulk",
+          "name": "Email Bulk",
+          "description": "Multiple email addresses (potential exfil)",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "medium",
+            "category": "pii"
+          },
+          "sourceLine": 154,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-phone-number-us",
+          "name": "Phone Number US",
+          "description": "US phone number",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "low",
+            "category": "pii"
+          },
+          "sourceLine": 155,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-us-passport",
+          "name": "US Passport",
+          "description": "US passport number (with context)",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "pii"
+          },
+          "sourceLine": 157,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-us-drivers-license",
+          "name": "US Drivers License",
+          "description": "US driver license (with context)",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "medium",
+            "category": "pii"
+          },
+          "sourceLine": 159,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-date-of-birth",
+          "name": "Date of Birth",
+          "description": "Date of birth pattern",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "medium",
+            "category": "pii"
+          },
+          "sourceLine": 160,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-iban",
+          "name": "IBAN",
+          "description": "International Bank Account Number",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "pii"
+          },
+          "sourceLine": 161,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-ipv4-with-name",
+          "name": "IPv4 with Name",
+          "description": "IP address associated with a name",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "medium",
+            "category": "pii"
+          },
+          "sourceLine": 162,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-personal-address",
+          "name": "Personal Address",
+          "description": "Street address pattern",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "low",
+            "category": "pii"
+          },
+          "sourceLine": 163,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-tax-id-(ein)",
+          "name": "Tax ID (EIN)",
+          "description": "Employer Identification Number",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "medium",
+            "category": "pii"
+          },
+          "sourceLine": 164,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-medicare-id",
+          "name": "Medicare ID",
+          "description": "Medicare Beneficiary Identifier",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "pii"
+          },
+          "sourceLine": 165,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-vin",
+          "name": "VIN",
+          "description": "Vehicle Identification Number (with context)",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "low",
+            "category": "pii"
+          },
+          "sourceLine": 167,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-full-name-+-ssn",
+          "name": "Full Name + SSN",
+          "description": "Name paired with SSN",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "critical",
+            "category": "pii"
+          },
+          "sourceLine": 168,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-email-+-password",
+          "name": "Email + Password",
+          "description": "Email with password in same context",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "critical",
+            "category": "pii"
+          },
+          "sourceLine": 169,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        }
+      ]
+    },
+    {
+      "id": "rules-infrastructure",
+      "title": "Infrastructure Security Rules",
+      "description": "Detects internal infrastructure details: private IPs, Kubernetes secrets, SSH connections, Terraform state. (10 rules)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "rule-internal-ip-rfc1918-10.x",
+          "name": "Internal IP RFC1918 10.x",
+          "description": "RFC1918 private IP (10.0.0.0/8)",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "low",
+            "category": "infrastructure"
+          },
+          "sourceLine": 172,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-internal-ip-rfc1918-172.x",
+          "name": "Internal IP RFC1918 172.x",
+          "description": "RFC1918 private IP (172.16.0.0/12)",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "low",
+            "category": "infrastructure"
+          },
+          "sourceLine": 173,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-internal-ip-rfc1918-192.x",
+          "name": "Internal IP RFC1918 192.x",
+          "description": "RFC1918 private IP (192.168.0.0/16)",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "low",
+            "category": "infrastructure"
+          },
+          "sourceLine": 174,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-k8s-secret",
+          "name": "K8s Secret",
+          "description": "Kubernetes secret reference",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "medium",
+            "category": "infrastructure"
+          },
+          "sourceLine": 175,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-docker-registry-creds",
+          "name": "Docker Registry Creds",
+          "description": "Docker registry credentials",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "infrastructure"
+          },
+          "sourceLine": 176,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-env-file-contents",
+          "name": "Env File Contents",
+          "description": ".env file content patterns",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "medium",
+            "category": "infrastructure"
+          },
+          "sourceLine": 177,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-ssh-host",
+          "name": "SSH Host",
+          "description": "SSH connection string",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "medium",
+            "category": "infrastructure"
+          },
+          "sourceLine": 178,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-kubeconfig",
+          "name": "Kubeconfig",
+          "description": "Kubernetes config file",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "infrastructure"
+          },
+          "sourceLine": 179,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-terraform-state",
+          "name": "Terraform State",
+          "description": "Terraform state secrets",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "infrastructure"
+          },
+          "sourceLine": 180,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-internal-hostname",
+          "name": "Internal Hostname",
+          "description": "Cluster-internal service hostname",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "low",
+            "category": "infrastructure"
+          },
+          "sourceLine": 181,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        }
+      ]
+    },
+    {
+      "id": "rules-compliance",
+      "title": "Compliance Rules",
+      "description": "Detects data subject to regulatory compliance: HIPAA medical records, PCI card data, FERPA student records, CUI markings. (5 rules)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "rule-hipaa-mrn",
+          "name": "HIPAA MRN",
+          "description": "Medical Record Number",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "compliance"
+          },
+          "sourceLine": 184,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-hipaa-npi",
+          "name": "HIPAA NPI",
+          "description": "National Provider Identifier",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "compliance"
+          },
+          "sourceLine": 185,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-pci-card-data",
+          "name": "PCI Card Data",
+          "description": "Full track data or CVV",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "critical",
+            "category": "compliance"
+          },
+          "sourceLine": 186,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-ferpa-student-record",
+          "name": "FERPA Student Record",
+          "description": "Student ID/record reference",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "medium",
+            "category": "compliance"
+          },
+          "sourceLine": 187,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-cui-marking",
+          "name": "CUI Marking",
+          "description": "Controlled Unclassified Information marker",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "medium",
+            "category": "compliance"
+          },
+          "sourceLine": 188,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        }
+      ]
+    },
+    {
+      "id": "rules-injection",
+      "title": "Injection Detection Rules",
+      "description": "Detects prompt injection attempts: system prompt overrides, role confusion, hidden instructions, exfiltration attempts. (5 rules)",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "rule-system-prompt-override",
+          "name": "System Prompt Override",
+          "description": "Attempts to override system prompt",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "injection"
+          },
+          "sourceLine": 191,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-role-confusion",
+          "name": "Role Confusion",
+          "description": "Attempts to impersonate system/assistant role",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "injection"
+          },
+          "sourceLine": 192,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-instruction-injection-json",
+          "name": "Instruction Injection JSON",
+          "description": "Injection hidden in JSON values",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "high",
+            "category": "injection"
+          },
+          "sourceLine": 193,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-hidden-instruction-markers",
+          "name": "Hidden Instruction Markers",
+          "description": "Markdown/HTML hidden instruction patterns",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "medium",
+            "category": "injection"
+          },
+          "sourceLine": 194,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        },
+        {
+          "id": "rule-exfiltration-attempt",
+          "name": "Exfiltration Attempt",
+          "description": "Tool trying to send data to external URL",
+          "type": "dlp-rule",
+          "properties": {
+            "severity": "critical",
+            "category": "injection"
+          },
+          "sourceLine": 195,
+          "sourceFile": "services/openagentic-api/src/services/DLPScannerService.ts"
+        }
+      ]
+    },
+    {
+      "id": "scan-points",
+      "title": "Scan Points",
+      "description": "DLP scanning is applied at multiple points in the data flow.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "sp-tool-input",
+          "name": "tool_input",
+          "description": "Scans data sent to MCP tools before execution",
+          "type": "scan-point"
+        },
+        {
+          "id": "sp-tool-result",
+          "name": "tool_result",
+          "description": "Scans data returned from MCP tools after execution",
+          "type": "scan-point"
+        },
+        {
+          "id": "sp-llm-output",
+          "name": "llm_output",
+          "description": "Scans LLM-generated text before sending to user",
+          "type": "scan-point"
+        },
+        {
+          "id": "sp-user-input",
+          "name": "user_input",
+          "description": "Scans user messages for accidental credential exposure",
+          "type": "scan-point"
+        },
+        {
+          "id": "sp-workflow",
+          "name": "workflow_data",
+          "description": "Scans data flowing between workflow nodes",
+          "type": "scan-point"
+        }
+      ]
+    },
+    {
+      "id": "tool-exemptions",
+      "title": "Tool Exemptions",
+      "description": "Tools can be exempted from specific DLP rule categories at specific scan points.",
+      "adminOnly": true,
+      "items": [
+        {
+          "id": "exemption-id",
+          "name": "id",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string"
+          }
+        },
+        {
+          "id": "exemption-toolPattern",
+          "name": "toolPattern",
+          "description": "glob pattern like \"web_*\"",
+          "type": "interface-field",
+          "properties": {
+            "type": "string"
+          }
+        },
+        {
+          "id": "exemption-scanPoint",
+          "name": "scanPoint",
+          "description": "which scan point is exempt",
+          "type": "interface-field",
+          "properties": {
+            "type": "DLPScanPoint"
+          }
+        },
+        {
+          "id": "exemption-exemptCategories",
+          "name": "exemptCategories",
+          "description": "DLPCategory[]",
+          "type": "interface-field",
+          "properties": {
+            "type": "DLPCategory[]"
+          }
+        },
+        {
+          "id": "exemption-reason",
+          "name": "reason",
+          "description": "string",
+          "type": "interface-field",
+          "properties": {
+            "type": "string"
+          }
+        },
+        {
+          "id": "exemption-enabled",
+          "name": "enabled",
+          "description": "boolean",
+          "type": "interface-field",
+          "properties": {
+            "type": "boolean"
+          }
+        }
+      ]
+    }
+  ]
+}
