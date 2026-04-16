@@ -62,6 +62,10 @@ export class OllamaProvider extends BaseLLMProvider {
   private keepAlive: string; // Model caching - how long to keep model in GPU memory
   // Concurrency control for single-GPU Ollama: prevents OOM + long queuing
   private readonly completionSemaphore: Semaphore;
+  // Cache /api/tags response to avoid pool-starving the shared undici agent
+  // when background pollers (model refresh, capability probes) fire on loop.
+  private tagsCache?: { at: number; models: Array<{ id: string; name: string; provider: string }> };
+  private readonly tagsTTLMs = 60_000;
 
   constructor(logger: Logger, config?: { baseUrl?: string; healthCheckModel?: string; apiKey?: string; keepAlive?: string }) {
     super(logger, 'ollama');
@@ -146,13 +150,21 @@ export class OllamaProvider extends BaseLLMProvider {
   }
 
   async listModels(): Promise<Array<{ id: string; name: string; provider: string }>> {
+    // 60-second cache — /api/tags is hit from many callers and each miss burns
+    // a slot in the shared Node fetch pool. Models rarely change.
+    const now = Date.now();
+    if (this.tagsCache && (now - this.tagsCache.at) < this.tagsTTLMs) {
+      return this.tagsCache.models;
+    }
+
     // Query Ollama API for locally loaded/pulled models only — no hardcoded catalog
     const models: Array<{ id: string; name: string; provider: string; description?: string; parameterSize?: string }> = [];
     const addedModelIds = new Set<string>();
 
     try {
       const response = await fetch(`${this.baseUrl}/api/tags`, {
-        headers: this.getHeaders()
+        headers: this.getHeaders(),
+        signal: AbortSignal.timeout(5_000)
       });
       if (response.ok) {
         const data = await response.json();
@@ -169,9 +181,12 @@ export class OllamaProvider extends BaseLLMProvider {
             });
           }
         }
+        this.tagsCache = { at: now, models };
       }
     } catch (error) {
-      this.logger.error({ error }, '[OllamaProvider] Failed to query Ollama API for loaded models');
+      this.logger.warn({ error: (error as Error).message }, '[OllamaProvider] listModels probe timed out; returning cached result');
+      // Serve stale cache on failure so the rest of the app isn't starved.
+      if (this.tagsCache) return this.tagsCache.models;
     }
 
     this.logger.info({

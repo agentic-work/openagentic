@@ -2,7 +2,7 @@
   "name": "openagentic",
   "displayName": "OpenAgentic AI",
   "description": "AI-powered code assistance via the OpenAgentic Code Mode - streaming chat, tool calls, and file operations",
-  "version": "1.1.0",
+  "version": "0.1.0",
   "publisher": "openagentic",
   "license": "MIT",
   "engines": {

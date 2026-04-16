@@ -235,33 +235,6 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                 <span className="text-sm">Documentation</span>
               </button>
 
-              {/* Support */}
-              {(() => {
-                const supportEmail = 'support@openagentics.io';
-                return (
-                  <div
-                    className="w-full px-4 py-2.5 transition-colors"
-                    style={{ color: 'var(--color-text)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
-                        <line x1="12" y1="17" x2="12.01" y2="17" />
-                      </svg>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium">Support</span>
-                        <span className="text-[11px] leading-snug" style={{ color: 'var(--color-textMuted)' }}>
-                          Email <a href={`mailto:${supportEmail}?subject=OpenAgentic%20Support%20Request`} className="underline" style={{ color: 'var(--ap-accent)' }} onClick={() => setIsOpen(false)}>{supportEmail}</a> or use the <a href="#" className="underline" style={{ color: 'var(--ap-accent)' }} onClick={(e) => { e.preventDefault(); openUI('showDocsViewer'); setIsOpen(false); }}>documentation system and its AI Agent</a>.
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
               {/* Theme Selector */}
               <button
                 onClick={() => setShowThemeSubmenu(!showThemeSubmenu)}
