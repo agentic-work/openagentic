@@ -273,27 +273,22 @@ export class PtyManager extends EventEmitter {
     const tempSession = { id: sessionId, startupEvents: [] as StartupEvent[], startupPhase: 'workspace_validating' as StartupEventType };
     this.emitStartupEvent(tempSession as PtySession, 'workspace_validating', `Validating workspace: ${workspacePath}`);
 
-    // Build OpenAgentic CLI args — native interactive mode
-    // v2 runs as a full TUI. The PTY captures output and the manager forwards it.
-    // No --print/--output-format/--input-format — those only work for one-shot mode.
-    const cliArgs = [
-      config.openagenticPath,
-      '--verbose',
-      '--allow-permissive',
-      '--permissive',
-      '--continue',        // Always resume from last session — persistent context across reconnects
-    ];
-
-    // DO NOT pass --model — let the platform smart router decide (same as chat mode)
-    // The API endpoint handles model selection based on slider tiers and provider routing
-
-    // Pass auth via both CLI flags AND env vars for maximum compatibility
-    if (apiKey) {
-      cliArgs.push('--api-key', apiKey);
-      cliArgs.push('--api-endpoint', `${effectiveApiEndpoint}/api/openagentic`);
-    } else if (config.ollamaHost) {
-      cliArgs.push('--ollama-host', config.ollamaHost);
-    }
+    // Build CLI args. The adapter (CODING_ADAPTER) decides which binary to
+    // invoke — claude / gemini / bash. For OSS we don't ship a proprietary
+    // "openagentic" CLI; the adapter is picked in the install wizard and
+    // persisted in SystemConfiguration + mirrored into the CODING_ADAPTER env.
+    const adapterId = (process.env.CODING_ADAPTER || 'claude-code').toLowerCase();
+    const adapterBin: Record<string, { bin: string; args: string[] }> = {
+      'claude-code':       { bin: 'claude',     args: ['--dangerously-skip-permissions'] },
+      'gemini-cli':        { bin: 'gemini',     args: [] },
+      'aider':             { bin: 'aider',      args: ['--yes'] },
+      'opencode':          { bin: 'opencode',   args: [] },
+      'open-interpreter':  { bin: 'interpreter',args: ['--auto_run'] },
+      'cursor-cli':        { bin: 'cursor',     args: [] },
+      'none':              { bin: '/bin/bash',  args: [] },
+    };
+    const adapter = adapterBin[adapterId] || adapterBin['claude-code'];
+    const cliArgs = [adapter.bin, ...adapter.args];
 
     // Fetch codemode admin config for managed settings injection (marketplace lock)
     let codemodeConfig: any = null;
@@ -344,20 +339,11 @@ export class PtyManager extends EventEmitter {
         MCP_PROXY_URL: process.env.MCP_PROXY_URL || 'http://openagentic-mcp-proxy:8080',
       } as Record<string, string>;
     } else {
-      // No sandbox - run directly (less secure, for development)
-      shellCommand = config.openagenticPath;
-      shellArgs = [
-        '--verbose',
-        '--allow-dangerously-skip-permissions',
-        '--dangerously-skip-permissions',
-      ];
-
-      // DO NOT pass --model — smart router decides
-
-      // Auth via env vars
-      if (!apiKey && config.ollamaHost) {
-        shellArgs.push('--ollama-host', config.ollamaHost);
-      }
+      // No sandbox - run directly (less secure, for development).
+      // Same adapter selection as the sandbox branch above — CODING_ADAPTER
+      // decides which CLI we exec.
+      shellCommand = adapter.bin;
+      shellArgs = adapter.args.slice();
 
       env = {
         ...process.env,

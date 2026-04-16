@@ -200,6 +200,8 @@ services:
       ADMIN_USER_EMAIL: ${ADMIN_USER_EMAIL:-admin@openagentic.local}
       ADMIN_SEED_PASSWORD: ${ADMIN_SEED_PASSWORD:-changeme-on-first-login}
       LOCAL_ADMIN_USERNAME: ${LOCAL_ADMIN_USERNAME:-Admin}
+      # Shared key api↔exec — both sides must agree.
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-openagentic-dev-internal-key-change-me}
       # Code Mode default coding CLI (seeded to SystemConfiguration on first boot)
       CODING_ADAPTER: ${CODING_ADAPTER:-claude-code}
       # The user already picked their password via ADMIN_SEED_PASSWORD in .env
@@ -315,6 +317,15 @@ services:
     environment:
       API_URL: http://api:8000
       OPENAGENTIC_PROXY_URL: http://proxy:3300
+      # Shared key so api can talk to exec (and exec rejects anyone else).
+      # Must match api's INTERNAL_API_KEY.
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-openagentic-dev-internal-key-change-me}
+      # Which CLI ptyManager spawns for Code Mode sessions (claude/gemini/...)
+      CODING_ADAPTER: ${CODING_ADAPTER:-claude-code}
+      # Provider API keys passed through so the CLI can authenticate.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-${GOOGLE_GENERATIVE_AI_API_KEY:-}}
 
   synth:
     <<: *defaults
