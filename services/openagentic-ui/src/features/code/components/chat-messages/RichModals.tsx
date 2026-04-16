@@ -5,9 +5,6 @@
  * Each modal renders enriched data from the system init event's _detail
  * field, providing a full visual interface matching what the TUI shows
  * but with proper React interactivity.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';

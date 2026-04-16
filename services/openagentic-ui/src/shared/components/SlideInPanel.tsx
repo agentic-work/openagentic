@@ -10,9 +10,7 @@
  * - Fixed footer for actions (Save/Cancel)
  * - Keyboard: Escape to close
  * - Focus trap for accessibility
- *
- * @copyright 2025 Openagentic LLC
- */
+ * */
 
 import React, { useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';

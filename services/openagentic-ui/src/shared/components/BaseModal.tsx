@@ -8,9 +8,7 @@
  * - Smooth animations via framer-motion
  * - Size variants for different use cases
  * - Liquid glass styling matching the design system
- *
- * @copyright 2025 Openagentic LLC
- */
+ * */
 
 import React, { useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';

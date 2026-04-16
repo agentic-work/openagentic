@@ -1,8 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- */
-
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { type BundledLanguage } from 'shiki';
 import { motion, AnimatePresence } from 'framer-motion';

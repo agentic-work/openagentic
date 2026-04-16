@@ -19,9 +19,6 @@
  *   ∴ = "therefore" (thinking marker)
  *   ⎿ = BOTTOM_LEFT_CORNER (tool result indent)
  *   > = user prompt prefix
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useEffect, useRef, useState } from 'react';

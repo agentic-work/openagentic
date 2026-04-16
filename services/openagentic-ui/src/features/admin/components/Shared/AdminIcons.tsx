@@ -1,16 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- *
- * AdminIcons - Custom "Badass" Icons for OpenAgentic Admin Portal
- *
- * Design philosophy:
- * - Colorful gradients and glows
- * - Professional but eye-catching
- * - Theme-aware using CSS variables
- * - Unique identity - NOT generic lucide-react
- */
-
 import React from 'react';
 
 interface IconProps {

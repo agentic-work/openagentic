@@ -1,28 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- * 
- * This file is the exclusive property of Openagentic LLC. All rights reserved.
- * 
- * NOTICE: This source code is proprietary and confidential. It contains trade
- * secrets and proprietary information that is the exclusive property of
- * Openagentic LLC. Any unauthorized use, reproduction, distribution, or
- * disclosure of this material is strictly prohibited.
- * 
- * No part of this source code may be reproduced, stored in a retrieval system,
- * or transmitted in any form or by any means (electronic, mechanical,
- * photocopying, recording, or otherwise) without the prior written permission
- * of Openagentic LLC.
- * 
- * This software is provided "as is" without warranty of any kind, either
- * express or implied, including but not limited to the implied warranties of
- * merchantability, fitness for a particular purpose, or non-infringement.
- * 
- * For licensing inquiries, please contact:
- * Openagentic LLC
- * legal@openagentic.io
- */
-
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'

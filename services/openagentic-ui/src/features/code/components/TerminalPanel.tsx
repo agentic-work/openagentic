@@ -7,9 +7,6 @@
  *
  * Communication:
  *   Browser ←→ WebSocket (/ws/terminal) ←→ openagentic-manager ←→ PTY ←→ OpenAgentic CLI
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useEffect, useRef, useCallback } from 'react';

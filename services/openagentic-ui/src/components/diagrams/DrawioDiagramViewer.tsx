@@ -1,10 +1,3 @@
-/**
- * DrawioDiagramViewer - Renders draw.io/mxGraph XML diagrams inline in chat
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- */
-
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {

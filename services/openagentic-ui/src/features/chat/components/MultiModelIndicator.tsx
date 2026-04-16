@@ -3,9 +3,6 @@
  * 
  * Displays visual feedback when multi-model orchestration is active,
  * showing which models are handling different roles in real-time.
- * 
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useState, useEffect } from 'react';

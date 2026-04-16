@@ -1,8 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC  
- * @license PROPRIETARY
- */
-
 import { ClientExportService } from './client';
 import { 
   IExportService, 

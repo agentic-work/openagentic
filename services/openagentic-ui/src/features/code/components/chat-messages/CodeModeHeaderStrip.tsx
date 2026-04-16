@@ -2,9 +2,6 @@
  * CodeModeHeaderStrip — ultra-slim header with theme picker only.
  * All session metadata, metrics, and controls have moved to the
  * footer bar (rendered inside CodeModeChatView below the input box).
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React from 'react';

@@ -1,8 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- */
-
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import html2pdf from 'html2pdf.js';

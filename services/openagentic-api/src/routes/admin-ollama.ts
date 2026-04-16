@@ -5,9 +5,7 @@
  * Each Ollama LLMProvider record has its own baseUrl — routes accept
  * a `providerId` query param to target a specific host.
  * Without providerId, targets the first enabled Ollama provider.
- *
- * @copyright 2026 Openagentic LLC
- */
+ * */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { PrismaClient } from '@prisma/client';

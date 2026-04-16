@@ -3,9 +3,7 @@
  *
  * Manages the state machine for agentic activities including
  * thinking, tool execution, multi-model handoffs, and streaming.
- *
- * @copyright 2025 Openagentic LLC
- */
+ * */
 
 import { useState, useCallback, useMemo } from 'react';
 import type { AgentState, AgentActivity, AgentPhase } from './types';

@@ -1,9 +1,6 @@
 /**
  * AgentScheduleView - Schedule agents to run periodically
  * Visual cron builder, target workflow selection, and schedule management
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, RefreshCw, Play, Search, X, Save, ChevronDown, ChevronRight } from '@/shared/icons';

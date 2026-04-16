@@ -6,9 +6,6 @@
  * GitHub raw content and caches in SystemConfiguration for 24 hours.
  *
  * Also proxies install-count stats from the openagentic stats repo.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';

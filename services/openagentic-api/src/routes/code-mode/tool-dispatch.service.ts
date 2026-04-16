@@ -18,9 +18,6 @@
  *
  * Timeout: 60s — Bash can legitimately run that long (long tests,
  * builds). Tighter budgets caused spurious failures in chat mode.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import axios, { AxiosError } from 'axios';

@@ -7,9 +7,6 @@
  * - Live Preview in sandboxed iframe (HTML/React/SVG/Markdown)
  * - GhostPilot integration: AI can screenshot the preview via /api/canvas/screenshot
  * - Toolbar: title, save, undo/redo, download, share, maximize, close
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';

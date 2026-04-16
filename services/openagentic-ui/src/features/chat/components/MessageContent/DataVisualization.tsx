@@ -1,12 +1,3 @@
-/**
- * @copyright 2024 Openagentic LLC
- * @license PROPRIETARY
- *
- * DataVisualization component for rendering interactive charts
- * Supports: bar, line, area, pie, radial charts
- * Uses Recharts for client-side rendering
- */
-
 import React, { useState } from 'react';
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie,

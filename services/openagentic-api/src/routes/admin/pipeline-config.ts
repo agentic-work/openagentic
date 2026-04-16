@@ -3,9 +3,6 @@
  *
  * Admin routes for viewing and updating pipeline configuration.
  * Manages settings for all chat pipeline stages.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';

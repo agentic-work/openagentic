@@ -1,7 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- */
 /* eslint-disable no-restricted-syntax -- File type colors are intentional category indicators */
 
 export interface FileAttachment {

@@ -1,9 +1,4 @@
 /**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- */
-
-/**
  * Format a date to a human-readable relative time string
  */
 export function formatDate(dateString: string): string {

@@ -3,9 +3,6 @@
  *
  * Admin routes for managing multi-model orchestration configuration
  * Requires admin authentication
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import { FastifyPluginAsync } from 'fastify';

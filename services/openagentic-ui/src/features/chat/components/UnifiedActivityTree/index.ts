@@ -2,9 +2,7 @@
  * UnifiedActivityTree barrel export
  *
  * For all inquiries, please contact:
- *
- * Openagentic LLC
- * hello@openagentic.io
+ * * hello@openagentic.io
  */
 
 export { UnifiedActivityTree } from './UnifiedActivityTree';

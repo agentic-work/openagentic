@@ -8,9 +8,7 @@
  *
  * Data fetched from GET /api/v1/me/tool-usage on first expand.
  * Follows the same collapsible pattern as MemoryPanel.
- *
- * @copyright 2026 Openagentic LLC
- */
+ * */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';

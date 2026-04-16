@@ -7,9 +7,6 @@
  * - GET /api/code-mode/provisioning/status - Check provisioning status
  * - POST /api/code-mode/provisioning/start - Start provisioning (returns SSE stream)
  * - GET /api/code-mode/provisioning/progress - SSE stream for progress updates
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import { FastifyPluginAsync } from 'fastify';

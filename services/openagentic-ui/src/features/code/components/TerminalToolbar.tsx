@@ -9,9 +9,6 @@
  * - Connection status indicator
  *
  * Actions inject text directly into the PTY stdin via WebSocket.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useState, useRef, useEffect } from 'react';

@@ -11,9 +11,6 @@
  * Use this for any slash command that needs interactive input. Pass
  * children for the body, `title` for the header, `onClose` to handle
  * dismissal.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useEffect, useRef } from 'react';

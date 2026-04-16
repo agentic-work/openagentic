@@ -9,9 +9,6 @@
  * The selection callback receives the command name without the
  * leading slash. The parent decides what to do with it (open a modal,
  * dispatch a backend action, insert boilerplate, etc.).
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';

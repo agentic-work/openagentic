@@ -12,9 +12,7 @@
  * ---
  * [Instructions Claude will follow]
  *
- * @see https://github.com/anthropics/skills
- * @copyright 2025 Openagentic LLC
- */
+ * @see https://github.com/anthropics/skills */
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';

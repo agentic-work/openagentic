@@ -4,9 +4,7 @@
  * Provides types and hooks for agent activity state management.
  * The UnifiedAgentActivity component has been removed - activity is now
  * displayed inline in message bubbles via InlineSteps.
- *
- * @copyright 2025 Openagentic LLC
- */
+ * */
 
 // Sub-components used by InlineSteps
 export { ThinkingSphere } from './ThinkingSphere';

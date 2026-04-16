@@ -8,9 +8,7 @@
  * 4. Updates model_config.chatModel if the current chatModel was removed
  *
  * Supports multiple Ollama hosts — each LLMProvider with provider_type='ollama' is synced independently.
- *
- * @copyright 2026 Openagentic LLC
- */
+ * */
 
 import { loggers } from '../utils/logger.js';
 import { prisma } from '../utils/prisma.js';

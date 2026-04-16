@@ -7,9 +7,6 @@
  * the next turn by passing `model: <id>` to sendMessage.
  *
  * Like ThemePicker, keyboard-driven (↑↓/Enter/Esc) and accessible.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useEffect, useState } from 'react';

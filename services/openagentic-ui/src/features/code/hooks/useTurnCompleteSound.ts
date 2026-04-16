@@ -3,9 +3,6 @@
  * completes, so users who tab away know to come back. User-toggleable
  * via `codemode:sounds` localStorage key (default: off). Uses Web
  * Audio API with a generated tone — no external audio file needed.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import { useEffect, useRef } from 'react';

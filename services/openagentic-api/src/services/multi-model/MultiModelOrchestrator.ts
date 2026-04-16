@@ -4,9 +4,6 @@
  * Coordinates multiple LLM models within a single chat request for
  * optimal cost, speed, and quality. Manages model role assignments,
  * handoffs, and context preservation.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import pino from 'pino';

@@ -18,9 +18,7 @@
  * // Then in render:
  * <UnifiedAgentActivity state={agentState.state} />
  * ```
- *
- * @copyright 2025 Openagentic LLC
- */
+ * */
 
 import { useCallback, useMemo } from 'react';
 import { useAgentState } from './useAgentState';

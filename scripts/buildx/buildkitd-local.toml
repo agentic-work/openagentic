@@ -1,4 +1,0 @@
-# BuildKit configuration for local k3s registry (insecure HTTP)
-[registry."10.2.10.131:30500"]
-  http = true
-  insecure = true

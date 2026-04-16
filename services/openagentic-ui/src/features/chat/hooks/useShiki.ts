@@ -1,8 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- */
-
 import { useState, useEffect } from 'react';
 import { createHighlighter, type Highlighter } from 'shiki';
 

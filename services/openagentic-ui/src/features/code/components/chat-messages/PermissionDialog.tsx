@@ -14,9 +14,6 @@
  * refinement but fall back here cleanly in the meantime.
  *
  * Keyboard: A / Enter = allow, D / Escape = deny.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useEffect } from 'react';

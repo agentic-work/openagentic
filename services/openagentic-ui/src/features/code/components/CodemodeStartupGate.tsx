@@ -18,9 +18,6 @@
  * Complements the full-screen SessionBootScreen overlay — this gate
  * fills the chat pane specifically so the composer stays disabled
  * until the session is actually usable.
- *
- * @copyright 2026 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';

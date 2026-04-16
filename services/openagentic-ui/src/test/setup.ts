@@ -1,10 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- *
- * Vitest test setup file
- */
-
 import '@testing-library/jest-dom';
 
 // Mock CSS.supports for color-mix testing

@@ -3,9 +3,6 @@
  *
  * In-memory schedule store so the UI renders without errors.
  * No database table yet — schedules are lost on restart.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';

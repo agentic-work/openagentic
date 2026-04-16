@@ -7,9 +7,6 @@
  * acceptEdits → plan → bypassPermissions → default), minus the `auto`
  * and `dontAsk` internal modes which aren't exposed in the Shift+Tab
  * rotation.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 export type PermissionMode =

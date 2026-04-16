@@ -1,23 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- *
- * ArtifactRenderer - Renders interactive artifacts inline in chat
- *
- * Supports:
- * - ```artifact:html - Pure HTML with CSS/JS
- * - ```artifact:react - React components (transpiled in browser)
- * - ```artifact:svg - Interactive SVG graphics
- * - ```artifact:mermaid - Mermaid diagrams (flowcharts, sequence, etc.)
- * - ```artifact:chart - Chart.js charts (bar, line, pie, etc.)
- * - ```artifact:markdown - Rich markdown with preview
- * - ```artifact:latex - LaTeX/Math equations
- * - ```artifact:csv - Editable data tables
- * - ```artifact:canvas - Excalidraw-style drawing
- *
- * Security: Uses sandboxed iframe with blob URLs
- */
-
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Play, Maximize2, Minimize2, RefreshCw, Code, Eye, Copy, Check,

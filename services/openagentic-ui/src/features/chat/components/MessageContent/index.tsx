@@ -1,8 +1,3 @@
-/**
- * @copyright 2024 Openagentic LLC
- * @license PROPRIETARY
- */
-
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';

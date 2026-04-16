@@ -6,9 +6,6 @@
  * Esc to cancel. Persists the choice to localStorage under `cm-theme`
  * (same key as TerminalHeaderBar's ThemeSelectorPill, so both stay
  * in sync).
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useEffect, useState } from 'react';

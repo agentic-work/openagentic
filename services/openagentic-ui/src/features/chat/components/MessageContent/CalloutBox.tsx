@@ -1,8 +1,3 @@
-/**
- * @copyright 2024 Openagentic LLC
- * @license PROPRIETARY
- */
-
 import React from 'react';
 import { AlertCircle, Info, CheckCircle, XCircle, Lightbulb } from '@/shared/icons';
 import { motion } from 'framer-motion';

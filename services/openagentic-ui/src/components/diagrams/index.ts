@@ -1,10 +1,3 @@
-/**
- * Diagram Components Index
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- */
-
 // React Flow Diagrams (flowcharts, architecture, etc.)
 export {
   ReactFlowDiagram,

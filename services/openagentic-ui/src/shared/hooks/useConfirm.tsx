@@ -8,9 +8,7 @@
  *   const confirm = useConfirm();
  *   const ok = await confirm('Delete this item?', { variant: 'danger' });
  *   if (!ok) return;
- *
- * @copyright 2025 Openagentic LLC
- */
+ * */
 
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { ConfirmModal } from '@/shared/components/BaseModal';

@@ -1,8 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- */
-
 export interface ColorSwatch {
   50: string;
   100: string;

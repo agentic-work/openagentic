@@ -1,8 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- */
-
 import { useState, useCallback, useEffect, useRef } from 'react';
 
 export interface AccessibilitySettings {

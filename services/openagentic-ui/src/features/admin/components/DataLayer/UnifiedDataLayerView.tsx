@@ -11,9 +11,6 @@
  *   1. Cache Overview - Unified view of all caching layers
  *   2. Vector Collections - Attu-like management for all vector stores
  *   3. Diagnostics - Health & performance monitoring
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';

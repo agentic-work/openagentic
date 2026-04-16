@@ -1,8 +1,3 @@
-/**
- * @copyright 2024 Openagentic LLC
- * @license PROPRIETARY
- */
-
 import React, { useState } from 'react';
 import { Copy, Check, Terminal, FileCode, ChevronDown, ChevronUp } from '@/shared/icons';
 import { motion, AnimatePresence } from 'framer-motion';

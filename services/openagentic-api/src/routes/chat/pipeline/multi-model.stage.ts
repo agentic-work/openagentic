@@ -3,9 +3,6 @@
  *
  * Replaces or wraps the CompletionStage when multi-model is enabled.
  * Coordinates between reasoning, tool execution, and synthesis models.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import { PipelineStage, PipelineContext, PipelineConfig } from './pipeline.types.js';

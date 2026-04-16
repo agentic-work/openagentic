@@ -10,9 +10,6 @@
  *
  * Storage is local to the pod (no MinIO/S3).
  * Works with both Docker Compose and Kubernetes deployments.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import { PrismaClient, CodeModeProvisioning } from '@prisma/client';

@@ -1,14 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- * 
-
- * For all inquiries, please contact:
- * 
- * Openagentic LLC
- * hello@openagentic.io
- */
-
 // THIS IS THE SINGLE SOURCE OF TRUTH FOR CHAT MESSAGES
 // DO NOT CREATE ANY OTHER ChatMessage INTERFACE ANYWHERE ELSE
 export interface ChatMessage {

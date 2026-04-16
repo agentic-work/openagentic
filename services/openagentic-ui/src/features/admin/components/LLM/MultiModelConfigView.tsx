@@ -3,9 +3,6 @@
  * 
  * Configure the multi-model collaboration system where different LLM models
  * handle different roles (reasoning, tool execution, synthesis, fallback).
- * 
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useState, useEffect, useCallback } from 'react';

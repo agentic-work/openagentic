@@ -21,9 +21,7 @@
  * - Milvus image:// protocol support
  * - Excel-style professional table styling
  * - Sanitization
- *
- * @copyright 2025 Openagentic LLC
- */
+ * */
 
 import React, { memo, useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';

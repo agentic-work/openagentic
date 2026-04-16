@@ -3,9 +3,6 @@
  *
  * Comprehensive configuration for all chat pipeline stages.
  * Stored in SystemConfiguration table as JSON.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import type { BudgetConfig } from '../../../services/context/types.js';

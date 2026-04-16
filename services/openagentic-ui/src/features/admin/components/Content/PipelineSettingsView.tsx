@@ -10,9 +10,6 @@
  * - Skills system (Anthropic format) for professional capabilities
  * - Dynamic model selection from API (no hardcoded models)
  * - Custom SVG icons (no lucide-react dependency)
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';

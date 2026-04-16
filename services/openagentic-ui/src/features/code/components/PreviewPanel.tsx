@@ -4,9 +4,6 @@
  * Shows a preview iframe for dev servers detected in terminal output.
  * Automatically detects URLs from common dev servers (Vite, Next.js, etc.)
  * and displays them in a sandboxed iframe.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useState, useEffect, useRef } from 'react';

@@ -4,9 +4,7 @@
  * Prevents a single bad artifact (bad HTML, unsupported format, malformed code)
  * from breaking the entire message or chat stream. Shows a graceful fallback
  * with the raw content when available.
- *
- * @copyright 2025 Openagentic LLC
- */
+ * */
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 

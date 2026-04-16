@@ -1,8 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- */
-
 // Import the single source of truth ChatMessage
 import type { ChatMessage } from '@/types/index';
 export type { ChatMessage };

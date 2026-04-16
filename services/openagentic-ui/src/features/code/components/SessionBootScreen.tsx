@@ -16,9 +16,6 @@
  * in the background — CodeModeLayoutV2 keeps the real terminal mounted
  * underneath (so the WS keeps flowing), we just cover it with this
  * overlay until it's actually producing pixels.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';

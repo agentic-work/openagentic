@@ -1,12 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- *
- * AdminIcon - Custom icons for the Admin Portal
- * Uses Nerd Font glyphs for that Powerlevel10k/oh-my-zsh aesthetic
- * Combined with GCP-inspired professional styling
- */
-
 import React from 'react';
 
 export type AdminIconName =

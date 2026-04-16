@@ -18,9 +18,6 @@
  *   form   — multi-field input widget
  *   modal  — fullscreen overlay (Settings, Plan, etc.)
  *   custom — bespoke React tree
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 export type SlashCommandUi = 'none' | 'picker' | 'form' | 'modal' | 'custom';

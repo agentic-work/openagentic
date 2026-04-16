@@ -1,9 +1,6 @@
 /**
  * StatusModal — 3-tab Settings dialog matching openagentic TUI's
  * /status command: Status · Config · Usage tabs.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useState } from 'react';

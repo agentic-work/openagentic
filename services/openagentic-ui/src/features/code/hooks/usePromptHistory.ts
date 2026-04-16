@@ -17,9 +17,6 @@
  * Persisted to localStorage under `codemode:promptHistory:<sessionId>`
  * so a reload restores the stack. A session-less state still works in
  * memory.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';

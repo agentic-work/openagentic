@@ -3,9 +3,7 @@
  *
  * Single source of truth for all agentic activity state.
  * Consolidates thinking, tool calls, multi-model handoffs, and streaming.
- *
- * @copyright 2025 Openagentic LLC
- */
+ * */
 
 // Activity types that can appear in the unified stream
 export type ActivityType =

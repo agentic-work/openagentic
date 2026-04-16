@@ -3,9 +3,6 @@
  *
  * Defines the data structures for orchestrating multiple LLM models
  * within a single chat request for optimal cost, speed, and quality.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 /**

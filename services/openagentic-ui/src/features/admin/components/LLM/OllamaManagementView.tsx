@@ -8,9 +8,7 @@
  * - Models tab: Pull, delete, test, info per model
  * - Metrics tab: Running models, VRAM usage, sync status
  * - Proper Ollama branding
- *
- * @copyright 2026 Openagentic LLC
- */
+ * */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Download, Trash2, Play, HardDrive, Info, MessageSquare } from '@/shared/icons';

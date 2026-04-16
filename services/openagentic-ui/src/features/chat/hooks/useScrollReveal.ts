@@ -1,8 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- */
-
 import { useEffect, useRef, useState } from 'react';
 
 export interface ScrollRevealOptions {

@@ -1,8 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- */
-
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ExportService } from '../index';
 import { ClientExportService } from '../client';

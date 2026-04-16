@@ -6,9 +6,6 @@
  * Matches openagentic's permission mode system 1:1 (see ../permissionMode.ts).
  * The mode is sent to the backend on each prompt and translated to
  * `--permission-mode <mode>` / `--permissive` flags by the exec daemon.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import { useCallback, useEffect, useState } from 'react';

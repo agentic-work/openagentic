@@ -3,9 +3,7 @@
  *
  * Canvas-based animated sphere with sparkles.
  * Shows different states: thinking (animated), complete (checkmark), error (red).
- *
- * @copyright 2025 Openagentic LLC
- */
+ * */
 
 import React, { useEffect, useRef } from 'react';
 import { AgentPhase } from './types';

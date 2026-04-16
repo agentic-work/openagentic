@@ -10,9 +10,7 @@
  * Checks localStorage for `onboarding_completed` to determine first visit.
  * Uses absolute positioning with a backdrop highlight effect.
  * Auto-dismisses on "Skip" or after completing all steps.
- *
- * @copyright 2025 Openagentic LLC
- */
+ * */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';

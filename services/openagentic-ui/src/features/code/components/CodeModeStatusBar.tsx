@@ -3,9 +3,6 @@
  *
  * Shows: connection status + latency, version + git SHA, pod CPU/mem/IO,
  * session uptime, and a reconnect button.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';

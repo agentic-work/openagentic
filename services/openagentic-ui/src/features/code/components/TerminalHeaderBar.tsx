@@ -3,9 +3,6 @@
  *
  * Read-only display: theme · model · cwd · cli version · live token counts.
  * Model changes happen via /model in the CLI itself — no UI controls here.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React from 'react';

@@ -2,9 +2,6 @@
  * Pipeline Configuration Service
  *
  * Manages pipeline configuration stored in SystemConfiguration table.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import pino from 'pino';

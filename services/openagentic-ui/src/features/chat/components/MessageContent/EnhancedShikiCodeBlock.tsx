@@ -13,9 +13,7 @@
  * 
 
  * For all inquiries, please contact:
- * 
- * Openagentic LLC
- * hello@openagentic.io
+ * * hello@openagentic.io
  */
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';

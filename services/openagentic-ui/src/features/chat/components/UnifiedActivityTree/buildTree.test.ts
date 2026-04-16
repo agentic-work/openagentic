@@ -2,9 +2,7 @@
  * buildTree unit tests
  *
  * For all inquiries, please contact:
- *
- * Openagentic LLC
- * hello@openagentic.io
+ * * hello@openagentic.io
  */
 
 import { describe, test, expect } from 'vitest';

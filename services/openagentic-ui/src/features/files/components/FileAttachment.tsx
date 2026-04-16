@@ -1,8 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- */
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 

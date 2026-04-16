@@ -1,10 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- *
- * Unit tests for theme utility functions
- */
-
 import { describe, it, expect } from 'vitest';
 import { alpha, cssVar, theme, supportsColorMix } from '../theme';
 

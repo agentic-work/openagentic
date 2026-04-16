@@ -21,9 +21,6 @@
  *     the current tool name (if available)
  *   - The chips are click-through (pointer-events: none on the wrapper)
  *     so they never block the user from interacting with the terminal.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React from 'react';

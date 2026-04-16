@@ -1,8 +1,3 @@
-/**
- * @copyright 2024 Openagentic LLC
- * @license PROPRIETARY
- */
-
 import React from 'react';
 import { TrendingUp, TrendingDown, Minus, Activity, AlertCircle, CheckCircle, Clock, Cpu, HardDrive, Network } from '@/shared/icons';
 import { motion } from 'framer-motion';

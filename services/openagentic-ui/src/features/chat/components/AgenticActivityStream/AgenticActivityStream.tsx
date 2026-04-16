@@ -10,9 +10,7 @@
  * 6. Auto-collapse 300ms after all steps complete
  *
  * This is the SOURCE OF TRUTH for activity display.
- *
- * @copyright 2025 Openagentic LLC
- */
+ * */
 
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';

@@ -10,9 +10,7 @@
  *
  * This replaces both InlineThinking (chat) and CLIThinkingDisplay (code)
  * to ensure consistent behavior across the application.
- *
- * @copyright 2025 Openagentic LLC
- */
+ * */
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronRight, ChevronDown } from '@/shared/icons';

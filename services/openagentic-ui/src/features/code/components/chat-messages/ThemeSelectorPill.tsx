@@ -8,9 +8,6 @@
  * Extracted from CodeModeLayoutV2 so the CodeModeHeaderStrip can
  * render it alongside the session-identity row without a circular
  * import through the layout container.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useCallback, useEffect, useState } from 'react';

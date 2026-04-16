@@ -6,9 +6,6 @@
  * Renders a scrollable list with search, driven by the sessionMeta
  * snapshot from the system init event. Actions (enable/disable/etc.)
  * are sent as slash commands to openagentic via sendMessage.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useMemo, useState } from 'react';

@@ -7,9 +7,6 @@
  * Uses SVG for charts (better than TUI's ASCII art since we have a
  * real browser). Data from useCodeModeChat + sessionMeta + per-turn
  * accumulation from the messages array.
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import React, { useMemo, useState } from 'react';

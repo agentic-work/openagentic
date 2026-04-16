@@ -6,9 +6,6 @@
  *
  * Target repos:
  * - agentic-work/openagentic — check for plugins directory structure
- *
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
  */
 
 import { prisma } from '../utils/prisma.js';

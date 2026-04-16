@@ -13,9 +13,7 @@
  * - Timestamp display
  * - Delete individual memories
  * - Auto-fetches from GET /api/user-memory/entries
- *
- * @copyright 2025 Openagentic LLC
- */
+ * */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';

@@ -1,14 +1,3 @@
-/**
- * @copyright 2025 Openagentic LLC
- * @license PROPRIETARY
- * 
-
- * For all inquiries, please contact:
- * 
- * Openagentic LLC
- * hello@openagentic.io
- */
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronDown, Wrench, CheckCircle, XCircle, AlertCircle, Terminal, FileText, Loader2, Copy, Check } from '@/shared/icons';
