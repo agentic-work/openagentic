@@ -60,9 +60,9 @@ class UnifiedRedisClient {
       db: 0,
       keyPrefix: 'openagentic:',
       defaultTTL: parseInt(process.env.CACHE_DEFAULT_TTL || '3600'),
-      maxRetries: 3,
-      retryDelay: 1000,
-      connectTimeout: 5000
+      maxRetries: 50,
+      retryDelay: 2000,
+      connectTimeout: 10000
     };
     this.defaultTTL = this.config.defaultTTL!;
   }

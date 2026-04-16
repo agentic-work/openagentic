@@ -327,8 +327,12 @@ export class OllamaProvider extends BaseLLMProvider {
         modelName = modelName.substring(7);
       }
 
-      // Ensure model exists, pull if necessary
-      await this.ensureModelExists(modelName);
+      // Skip the model-existence check in the hot path — it makes a blocking
+      // HTTP call to Ollama (/api/tags) which competes for the same connection
+      // pool as the actual generation call, causing timeouts under concurrent
+      // background polls. Models are validated at provider-init time; if the
+      // user tries a model that doesn't exist, Ollama itself returns a clear
+      // error on the /api/chat call.
 
       // Convert OpenAI-style tools to Ollama format
       const tools = request.tools ? this.convertToolsToOllama(request.tools) : undefined;

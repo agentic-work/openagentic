@@ -1196,11 +1196,14 @@ export class ValidationStage implements PipelineStage {
         this.logger.info('│ [REDIS] 🔍 Step 1: Checking Redis SessionCache');
         this.logger.info('└─────────────────────────────────────────────────────────────');
 
-        const sessionCache = await this.memoryContextService.getCache().getSessionCache(
-          context.user.id,
-          session.id,
-          { sliding: true, ttl: 3600 } // 1 hour sliding window
-        );
+        const sessionCache = await Promise.race([
+          this.memoryContextService.getCache().getSessionCache(
+            context.user.id,
+            session.id,
+            { sliding: true, ttl: 3600 }
+          ),
+          new Promise<null>(resolve => setTimeout(() => resolve(null), 3000))
+        ]);
 
         loadTime = Date.now() - redisStartTime;
 
