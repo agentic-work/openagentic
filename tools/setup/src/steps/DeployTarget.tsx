@@ -16,7 +16,7 @@ export const DeployTargetStep: React.FC<Props> = ({ onPick }) => {
   return (
     <Box flexDirection="column">
       <Banner />
-      <StepHeader step={1} total={6} title="Where do you want to run openagentic?" />
+      <StepHeader step={1} total={7} title="Where do you want to run openagentic?" />
       <Box marginLeft={2}>
         <SelectInput items={items} onSelect={(i) => onPick(i.value)} indicatorComponent={Indicator} />
       </Box>

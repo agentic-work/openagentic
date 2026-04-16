@@ -35,7 +35,7 @@ export const ProvidersStep: React.FC<Props> = ({ initial, onDone }) => {
 
   return (
     <Box flexDirection="column">
-      <StepHeader step={4} total={6} title="LLM providers (all optional)" />
+      <StepHeader step={4} total={7} title="LLM providers (all optional)" />
       <Box marginLeft={2} flexDirection="column">
         {FIELDS.map((f, i) => (
           <Box key={f.key}>

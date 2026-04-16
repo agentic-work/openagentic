@@ -19,7 +19,7 @@ export const CodingCliStep: React.FC<Props> = ({ initial, onPick }) => {
 
   return (
     <Box flexDirection="column">
-      <StepHeader step={5} total={6} title="Which coding CLI should Code Mode use?" />
+      <StepHeader step={6} total={7} title="Which coding CLI should Code Mode use?" />
       <Box marginLeft={2}>
         <SelectInput
           items={items}

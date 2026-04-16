@@ -5,13 +5,16 @@ import { DeployTargetStep } from './steps/DeployTarget.tsx';
 import { AdminUserStep } from './steps/AdminUser.tsx';
 import { OllamaStep } from './steps/Ollama.tsx';
 import { ProvidersStep } from './steps/Providers.tsx';
+import { McpSelectionStep } from './steps/McpSelection.tsx';
+import { McpAuthStep } from './steps/McpAuth.tsx';
 import { CodingCliStep } from './steps/CodingCli.tsx';
 import { ReviewStep } from './steps/Review.tsx';
 import { LaunchStep } from './steps/Launch.tsx';
 import { DEFAULT_CONFIG, type WizardConfig, type DeployTarget, type CodingAdapterId } from './lib/types.ts';
+import { defaultEnabledMcps } from './lib/mcps.ts';
 import { readCurrent } from './lib/env.ts';
 
-type Screen = 'target' | 'admin' | 'ollama' | 'providers' | 'coding' | 'review' | 'launch' | 'done';
+type Screen = 'target' | 'admin' | 'ollama' | 'providers' | 'mcps' | 'mcp-auth' | 'coding' | 'review' | 'launch' | 'done';
 
 const App: React.FC = () => {
   // Seed from any existing .env so re-running the wizard is non-destructive.
@@ -36,6 +39,8 @@ const App: React.FC = () => {
       azureOpenAIKey: existing.AZURE_OPENAI_API_KEY || undefined,
     },
     codingAdapter: ((existing.CODING_ADAPTER as CodingAdapterId | undefined) || DEFAULT_CONFIG.codingAdapter),
+    mcps: existing.MCPS_ENABLED ? existing.MCPS_ENABLED.split(',').map((s: string) => s.trim()).filter(Boolean) : defaultEnabledMcps(),
+    mcpAuth: {},
     uiPort: existing.UI_HOST_PORT ? Number(existing.UI_HOST_PORT) : DEFAULT_CONFIG.uiPort,
   }));
   const [screen, setScreen] = useState<Screen>('target');
@@ -78,6 +83,37 @@ const App: React.FC = () => {
         initial={config.providers}
         onDone={(providers) => {
           setConfig({ ...config, providers });
+          setScreen('mcps');
+        }}
+      />
+    );
+  }
+  if (screen === 'mcps') {
+    return (
+      <McpSelectionStep
+        initial={config.mcps}
+        onDone={(mcps) => {
+          setConfig({ ...config, mcps });
+          setScreen('mcp-auth');
+        }}
+      />
+    );
+  }
+  if (screen === 'mcp-auth') {
+    return (
+      <McpAuthStep
+        enabledIds={config.mcps}
+        initialAuth={config.mcpAuth}
+        onDone={(mcpAuth) => {
+          // Drop any MCP the user said "skip" on from the enabled list
+          const skipped = Object.keys(mcpAuth).filter((k) => k.startsWith('__skip_')).map((k) => k.slice(7));
+          const cleanAuth: Record<string, string> = {};
+          for (const [k, v] of Object.entries(mcpAuth)) if (!k.startsWith('__skip_')) cleanAuth[k] = v;
+          setConfig({
+            ...config,
+            mcps: config.mcps.filter((id) => !skipped.includes(id)),
+            mcpAuth: cleanAuth,
+          });
           setScreen('coding');
         }}
       />

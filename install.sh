@@ -66,6 +66,21 @@ if [[ "$NODE_MAJOR" -lt 20 ]]; then
 fi
 ok "Node $(node --version) is available"
 
+# ─── Cloud-secret stubs ─────────────────────────────────────────────────────
+# docker-compose.yml mounts these as env_file on the mcp-proxy service, so
+# they MUST exist even for users who aren't using any cloud MCP. Empty stubs
+# are harmless — the proxy just sees no AWS/Azure/GCP envs and skips those MCPs.
+SECRETS_DIR="$HOME/.openagentic/cloud-secrets"
+mkdir -p "$SECRETS_DIR"
+for f in aws.env azure.env gcp.env; do
+  [[ -f "$SECRETS_DIR/$f" ]] || {
+    cat > "$SECRETS_DIR/$f" <<EOF
+# Fill in via the wizard or by hand. Empty = MCP stays disabled.
+EOF
+  }
+done
+ok "Cloud-secret stubs ensured under $SECRETS_DIR"
+
 # ─── Clone or update repo ───────────────────────────────────────────────────
 INSTALL_DIR="${OPENAGENTIC_HOME:-$HOME/.openagentic}"
 REPO_URL="${OPENAGENTIC_REPO:-https://github.com/agentic-work/openagentic.git}"

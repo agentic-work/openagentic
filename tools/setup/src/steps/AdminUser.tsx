@@ -16,7 +16,7 @@ export const AdminUserStep: React.FC<Props> = ({ initial, onDone }) => {
 
   return (
     <Box flexDirection="column">
-      <StepHeader step={2} total={6} title="Create your admin account" />
+      <StepHeader step={2} total={7} title="Create your admin account" />
       <Box marginLeft={2} flexDirection="column">
         <Box>
           <Text color={field === 'email' ? COLORS.accent : COLORS.muted}>

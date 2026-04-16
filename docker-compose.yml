@@ -255,9 +255,41 @@ services:
       dockerfile: services/openagentic-mcp-proxy/Dockerfile
       args:
         SRC_PATH: services/openagentic-mcp-proxy
+    # Cloud-MCP credentials live under ~/.openagentic/cloud-secrets/*.env.
+    # install.sh creates empty stubs on first run so these mounts never fail;
+    # the wizard (or the user, directly) fills them with real values. Any MCP
+    # the wizard didn't enable is shut off via the per-MCP _DISABLED vars.
+    env_file:
+      - ${HOME}/.openagentic/cloud-secrets/aws.env
+      - ${HOME}/.openagentic/cloud-secrets/azure.env
+      - ${HOME}/.openagentic/cloud-secrets/gcp.env
     environment:
       API_HOST: api
       API_PORT: "8000"
+      # Flipped true/false per MCP by the wizard.
+      MCPS_ENABLED: ${MCPS_ENABLED:-web,knowledge,admin,sequential-thinking}
+      OpenAgentic_WEB_MCP_DISABLED: ${OpenAgentic_WEB_MCP_DISABLED:-false}
+      OpenAgentic_KNOWLEDGE_MCP_DISABLED: ${OpenAgentic_KNOWLEDGE_MCP_DISABLED:-false}
+      OpenAgentic_ADMIN_MCP_DISABLED: ${OpenAgentic_ADMIN_MCP_DISABLED:-false}
+      SEQUENTIAL_THINKING_MCP_DISABLED: ${SEQUENTIAL_THINKING_MCP_DISABLED:-false}
+      OpenAgentic_AWS_MCP_DISABLED: ${OpenAgentic_AWS_MCP_DISABLED:-true}
+      OpenAgentic_AZURE_MCP_DISABLED: ${OpenAgentic_AZURE_MCP_DISABLED:-true}
+      OpenAgentic_GCP_MCP_DISABLED: ${OpenAgentic_GCP_MCP_DISABLED:-true}
+      OpenAgentic_KUBERNETES_MCP_DISABLED: ${OpenAgentic_KUBERNETES_MCP_DISABLED:-true}
+      OpenAgentic_GITHUB_MCP_DISABLED: ${OpenAgentic_GITHUB_MCP_DISABLED:-true}
+      OpenAgentic_PROMETHEUS_MCP_DISABLED: ${OpenAgentic_PROMETHEUS_MCP_DISABLED:-true}
+      OpenAgentic_LOKI_MCP_DISABLED: ${OpenAgentic_LOKI_MCP_DISABLED:-true}
+      OpenAgentic_ALERTMANAGER_MCP_DISABLED: ${OpenAgentic_ALERTMANAGER_MCP_DISABLED:-true}
+      # Inline creds (fields-type MCPs — envs go straight into .env from the wizard)
+      KUBECONFIG: ${KUBECONFIG:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      PROMETHEUS_URL: ${PROMETHEUS_URL:-}
+      PROMETHEUS_USERNAME: ${PROMETHEUS_USERNAME:-}
+      PROMETHEUS_PASSWORD: ${PROMETHEUS_PASSWORD:-}
+      LOKI_URL: ${LOKI_URL:-}
+      LOKI_USERNAME: ${LOKI_USERNAME:-}
+      LOKI_PASSWORD: ${LOKI_PASSWORD:-}
+      ALERTMANAGER_URL: ${ALERTMANAGER_URL:-}
     depends_on: [api]
 
   proxy:
