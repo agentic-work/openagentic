@@ -17,8 +17,10 @@
 
 # NOTE: helm/, oat/, sdk/, openagentic/ ARE tracked (synced from upstream for deployment)
 
-# Docs — kept locally, not pushed to OMHS repo
+# Docs — internal working notes; track only curated OSS docs
 docs/
+!docs/enterprise-setup/
+!docs/enterprise-setup/**
 
 # Screenshots (test artifacts)
 screenshots/
