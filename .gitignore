@@ -354,3 +354,6 @@ companions/*
 
 # superpowers:brainstorming session artifacts
 .superpowers/
+
+# Setup wizard deps (installed on first run by install.sh)
+tools/setup/node_modules/
