@@ -2291,10 +2291,12 @@ async function registerAllRoutes() {
   // Register CodeMode Admin routes (marketplace lock, skills, plugins, MCP)
   try {
     const codemodeAdminRoutes = (await import('./routes/admin/codemode.js')).default;
+    const codingAdaptersRoutes = (await import('./routes/admin/coding-adapters.js')).default;
     // Admin UI routes — require authentication
     await server.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(codemodeAdminRoutes);
+      await instance.register(codingAdaptersRoutes);
     }, { prefix: '/api' });
     // Internal config-bundle endpoint — no auth (called by exec daemon in-cluster)
     server.get('/api/admin/codemode/config-bundle-internal', async (req, reply) => {

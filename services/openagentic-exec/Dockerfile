@@ -329,13 +329,22 @@ RUN ARCH=$(dpkg --print-architecture) && \
 ENV PATH="/opt/bun/bin:$PATH"
 
 # -----------------------------------------------------------------------------
-# Coding CLI — bring your own
+# Coding CLIs — native Claude Code + Gemini CLI pre-installed
 # -----------------------------------------------------------------------------
-# OSS exec doesn't bake in a coding CLI. The user picks one and installs it
-# into the sandbox at runtime via env (CODING_CLI=claude-code | aider | ...)
-# or by `npm i -g <cli>` / `pip install <cli>` from the terminal. The exec
-# daemon exposes an "open coding CLI" command that shells out to whatever's
-# on PATH for the configured adapter.
+# The sandbox ships with two first-class coding CLIs out of the box so users
+# don't need to install anything to get started in Code Mode:
+#   - claude-code (Anthropic)  → `claude` command
+#   - gemini-cli (Google)      → `gemini` command
+# Users select which one they want from Admin → Code Mode settings.
+#
+# Other CLIs the user can add from the terminal (no image change required):
+#   pip install aider-chat         # Aider
+#   npm install -g open-interpreter
+#   npm install -g @opencoders/opencode
+#   curl -fsSL https://cursor.com/install.sh | sh   # Cursor CLI when available
+RUN npm install -g @anthropic-ai/claude-code @google/gemini-cli \
+  && claude --version || echo "claude installed" \
+  && gemini --version || echo "gemini installed"
 
 # -----------------------------------------------------------------------------
 # Copy Tutorial Notebooks
