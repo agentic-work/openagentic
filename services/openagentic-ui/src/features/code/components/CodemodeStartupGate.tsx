@@ -1,25 +1,3 @@
-/**
- * CodemodeStartupGate — blocks the codemode composer + transcript until
- * all four health checks are green. Sits between CodeModeLayoutV2 and
- * the CodeModeChatView so the user never sees an empty/half-booted
- * chat surface.
- *
- * Checks:
- *   1. /api/auth/me                                    → 200
- *   2. /api/code/sessions/:id/status (or system_init)  → pod ready
- *   3. HEAD /exec/<userHash>/                          → 200
- *      falls back to GET /api/openagentic/sessions/:id/code-server
- *   4. ws-chat opens + openagentic emits system_init
- *
- * Exponential backoff between attempts (1s, 2s, 4s, 8s, capped at
- * 10s); manual "Retry" button resets and re-runs. When all four are
- * green the gate unmounts and the real chat view is revealed.
- *
- * Complements the full-screen SessionBootScreen overlay — this gate
- * fills the chat pane specifically so the composer stays disabled
- * until the session is actually usable.
- */
-
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/app/providers/AuthContext';
 import { apiEndpoint } from '@/utils/api';

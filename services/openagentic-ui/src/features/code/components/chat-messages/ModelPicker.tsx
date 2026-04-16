@@ -1,14 +1,3 @@
-/**
- * ModelPicker — `/model` slash command UI.
- *
- * Fetches the available models from /api/chat/models (already an
- * existing endpoint) and lets the user pick one. Selection is stored
- * in localStorage under `codemode:model:<sessionId>` and applied to
- * the next turn by passing `model: <id>` to sendMessage.
- *
- * Like ThemePicker, keyboard-driven (↑↓/Enter/Esc) and accessible.
- */
-
 import React, { useEffect, useState } from 'react';
 import { SlashCommandModal } from './SlashCommandModal';
 

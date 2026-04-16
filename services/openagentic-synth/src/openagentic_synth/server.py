@@ -52,9 +52,7 @@ from .telemetry import (
 )
 from .executor import SecureExecutor, ExecutionResult
 
-
 logger = get_logger("openagentic-synth")
-
 
 # =============================================================================
 # Prometheus Metrics
@@ -71,7 +69,6 @@ prom_execution_duration_seconds = Histogram(
     "Duration of OAT code executions in seconds",
     buckets=(0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0),
 )
-
 
 # =============================================================================
 # Request/Response Models
@@ -114,7 +111,6 @@ class ExecutionRequest(BaseModel):
         description="URL to POST results when execution completes"
     )
 
-
 class ExecutionResponse(BaseModel):
     """Response from code execution."""
 
@@ -134,7 +130,6 @@ class ExecutionResponse(BaseModel):
     started_at: str
     completed_at: str
 
-
 class HealthResponse(BaseModel):
     """Health check response."""
 
@@ -144,7 +139,6 @@ class HealthResponse(BaseModel):
     max_concurrent: int
     uptime_seconds: float
 
-
 # =============================================================================
 # Application Setup
 # =============================================================================
@@ -152,7 +146,6 @@ class HealthResponse(BaseModel):
 # Global state
 startup_time = time.time()
 executor: Optional[SecureExecutor] = None
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -180,7 +173,6 @@ async def lifespan(app: FastAPI):
     if executor:
         await executor.shutdown()
 
-
 app = FastAPI(
     title="OpenAgentic Synth",
     description="Secure Python code execution for On-demand Agent Tooling",
@@ -190,7 +182,6 @@ app = FastAPI(
 
 # Instrument with OpenTelemetry
 FastAPIInstrumentor.instrument_app(app)
-
 
 # =============================================================================
 # Endpoints
@@ -207,7 +198,6 @@ async def health_check():
         uptime_seconds=time.time() - startup_time,
     )
 
-
 @app.get("/ready")
 async def readiness_check():
     """Readiness check - are we ready to accept executions?"""
@@ -218,7 +208,6 @@ async def readiness_check():
         raise HTTPException(status_code=503, detail="At capacity")
 
     return {"ready": True}
-
 
 @app.post("/execute", response_model=ExecutionResponse)
 async def execute_code(
@@ -424,7 +413,6 @@ async def execute_code(
         finally:
             active_executions.add(-1)
 
-
 @app.get("/metrics")
 async def get_metrics():
     """Prometheus metrics endpoint for scraping."""
@@ -432,7 +420,6 @@ async def get_metrics():
         content=generate_latest(),
         media_type=CONTENT_TYPE_LATEST,
     )
-
 
 # =============================================================================
 # Helpers

@@ -1,10 +1,3 @@
-/**
- * useTurnCompleteSound — plays a short synthesized ding when a turn
- * completes, so users who tab away know to come back. User-toggleable
- * via `codemode:sounds` localStorage key (default: off). Uses Web
- * Audio API with a generated tone — no external audio file needed.
- */
-
 import { useEffect, useRef } from 'react';
 
 const STORAGE_KEY = 'codemode:sounds';

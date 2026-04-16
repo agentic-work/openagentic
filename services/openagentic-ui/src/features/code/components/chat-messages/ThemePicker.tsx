@@ -1,13 +1,3 @@
-/**
- * ThemePicker — `/theme` slash command UI.
- *
- * Opens as a modal overlay, lists all CodeMode themes with a live
- * color-dot preview, keyboard-driven: ↑↓ to navigate, Enter to apply,
- * Esc to cancel. Persists the choice to localStorage under `cm-theme`
- * (same key as TerminalHeaderBar's ThemeSelectorPill, so both stay
- * in sync).
- */
-
 import React, { useEffect, useState } from 'react';
 import { SlashCommandModal } from './SlashCommandModal';
 

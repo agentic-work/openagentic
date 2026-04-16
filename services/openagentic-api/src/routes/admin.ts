@@ -41,7 +41,6 @@ function getMilvusClient(): MilvusClient | null {
   return milvusClient;
 }
 
-
 // JWT_SECRET removed — admin auth handled by outer adminMiddleware (unifiedAuth.ts)
 
 // Helper functions removed - orchestrator references removed
@@ -1000,7 +999,6 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
     }, 'Failed to initialize Code Mode Config routes');
     // Don't throw - allow admin routes to work even if code mode config fails
   }
-
 
   // ============================================================================
   // Context Management Routes (Silent Compaction)

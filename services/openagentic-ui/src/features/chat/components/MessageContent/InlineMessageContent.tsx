@@ -3,7 +3,9 @@
  *
  * Uses SharedMarkdownRenderer for consistent rendering with streaming/finished messages.
  *
- * For all inquiries, please contact: * hello@openagentic.io
+ * For all inquiries, please contact:
+ * Openagentic LLC
+ * hello@openagentic.io
  */
 
 import React from 'react';

@@ -1,20 +1,3 @@
-/**
- * MemoryPanel - Sidebar section showing AI memory entries
- *
- * Displays what the AI remembers about the user across conversations:
- * - Session memory (current conversation context)
- * - Semantic memory (important facts and learnings)
- * - User memory (long-term preferences and history)
- * - Working memory (temporary context for current task)
- *
- * Features:
- * - Collapsible section with memory count badge
- * - Memory type icons and content preview
- * - Timestamp display
- * - Delete individual memories
- * - Auto-fetches from GET /api/user-memory/entries
- * */
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, ChevronRight, ChevronDown, Trash2, Database, Loader2, AlertCircle } from '@/shared/icons';

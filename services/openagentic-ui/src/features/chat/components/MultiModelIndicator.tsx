@@ -1,10 +1,3 @@
-/**
- * Multi-Model Activity Indicator
- * 
- * Displays visual feedback when multi-model orchestration is active,
- * showing which models are handling different roles in real-time.
- */
-
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, Wrench, FileOutput, AlertTriangle, Zap, ArrowRight, Check, Loader2 } from '@/shared/icons';

@@ -472,7 +472,6 @@ export class AnthropicProvider extends BaseLLMProvider {
     };
   }
 
-
   /**
    * Map intelligence slider value (0-100) to Anthropic effort parameter.
    * - 0-40%: "low" (economical, faster responses)

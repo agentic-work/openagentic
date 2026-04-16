@@ -132,11 +132,9 @@ SSL_CONTEXT = _ssl.create_default_context()
 _page_cache: Dict[str, Dict[str, Any]] = {}
 CACHE_TTL_SECONDS = 300  # 5 minutes
 
-
 def get_cache_key(url: str) -> str:
     """Generate a cache key for a URL."""
     return hashlib.md5(url.encode()).hexdigest()
-
 
 def is_cache_valid(cache_entry: Dict[str, Any]) -> bool:
     """Check if a cache entry is still valid."""
@@ -145,14 +143,12 @@ def is_cache_valid(cache_entry: Dict[str, Any]) -> bool:
     age = (datetime.utcnow() - cache_entry["timestamp"]).total_seconds()
     return age < CACHE_TTL_SECONDS
 
-
 def clean_text(text: str) -> str:
     """Clean up extracted text."""
     # Remove excessive whitespace
     text = re.sub(r'\n\s*\n', '\n\n', text)
     text = re.sub(r' +', ' ', text)
     return text.strip()
-
 
 def extract_page_links(soup: BeautifulSoup, base_url: str) -> List[Dict[str, str]]:
     """Extract all links from a page."""
@@ -169,7 +165,6 @@ def extract_page_links(soup: BeautifulSoup, base_url: str) -> List[Dict[str, str
                 "url": absolute_url
             })
     return links[:50]  # Limit to 50 links
-
 
 # ============================================================================
 # SEARCH IMPLEMENTATIONS
@@ -270,7 +265,6 @@ async def _search_via_searxng(
         logger.warning(f"SearXNG search failed: {e}")
         return []
 
-
 async def _search_via_google_scrape(
     query: str,
     num_results: int = 10
@@ -321,7 +315,6 @@ async def _search_via_google_scrape(
         logger.warning(f"Google scrape failed: {e}")
         return []
 
-
 async def _search_via_bing_scrape(
     query: str,
     num_results: int = 10
@@ -366,7 +359,6 @@ async def _search_via_bing_scrape(
     except Exception as e:
         logger.warning(f"Bing scrape failed: {e}")
         return []
-
 
 async def _search_via_html_web(
     query: str,
@@ -421,7 +413,6 @@ async def _search_via_html_web(
     except Exception as e:
         logger.warning(f"DuckDuckGo HTML scrape failed: {e}")
         return []
-
 
 # ============================================================================
 # INTERNAL HELPER FUNCTIONS (not exposed as MCP tools)
@@ -511,7 +502,6 @@ async def _do_web_search(
                 "Otherwise rephrase the query and retry once after a short delay."
             ),
         }
-
 
 async def _do_web_fetch(
     url: str,
@@ -642,7 +632,6 @@ async def _do_web_fetch(
             "url": url
         }
 
-
 async def _do_web_search_and_read(
     query: str,
     num_results: int = 3,
@@ -685,7 +674,6 @@ async def _do_web_search_and_read(
         "tip": "Review the content from multiple sources and cross-reference for accuracy"
     }
 
-
 # ============================================================================
 # MCP TOOLS (these call the internal helpers)
 # ============================================================================
@@ -720,7 +708,6 @@ async def web_search(
     """
     return await _do_web_search(query, num_results, region, time_range)
 
-
 @mcp.tool()
 async def web_fetch(
     url: str,
@@ -753,7 +740,6 @@ async def web_fetch(
     """
     return await _do_web_fetch(url, extract_links, max_length, use_cache)
 
-
 @mcp.tool()
 async def web_search_and_read(
     query: str,
@@ -781,7 +767,6 @@ async def web_search_and_read(
         )
     """
     return await _do_web_search_and_read(query, num_results, max_content_per_page)
-
 
 @mcp.tool()
 async def web_verify_fact(
@@ -835,7 +820,6 @@ async def web_verify_fact(
             "Report your assessment of whether the claim appears accurate."
         )
     }
-
 
 @mcp.tool()
 async def web_store_knowledge(
@@ -898,7 +882,6 @@ async def web_store_knowledge(
             "success": False,
             "error": str(e)
         }
-
 
 @mcp.tool()
 async def web_extract_structured_data(
@@ -1003,7 +986,6 @@ async def web_extract_structured_data(
             "url": url
         }
 
-
 @mcp.tool()
 async def web_news_search(
     query: str,
@@ -1059,7 +1041,6 @@ async def web_news_search(
     # Fallback: general search with "news" appended to query
     news_query = f"{query} news"
     return await _do_web_search(news_query, num_results, time_range=time_range)
-
 
 @mcp.tool()
 async def web_help() -> Dict[str, Any]:
@@ -1123,7 +1104,6 @@ async def web_help() -> Dict[str, Any]:
             "Extract structured data when dealing with tables or lists"
         ]
     }
-
 
 # ============================================================================
 # MAIN ENTRY POINT

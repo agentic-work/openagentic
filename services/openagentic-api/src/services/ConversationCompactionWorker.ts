@@ -139,7 +139,6 @@ export class ConversationCompactionWorker {
     }, '[COMPACTION] ✅ Worker started successfully');
   }
 
-
   /**
    * Process a completed conversation event
    */

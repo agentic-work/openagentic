@@ -1,8 +1,3 @@
-/**
- * Docs Page Registry - Maps page IDs to React components
- * and defines the documentation navigation structure.
- */
-
 import React from 'react';
 
 // ============================================================================

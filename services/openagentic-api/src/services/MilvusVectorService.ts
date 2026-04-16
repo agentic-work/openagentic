@@ -687,7 +687,6 @@ export class MilvusVectorService {
     }
   }
 
-
   /**
    * Generate code embedding with special handling
    */

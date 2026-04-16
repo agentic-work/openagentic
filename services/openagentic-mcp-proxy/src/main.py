@@ -256,7 +256,6 @@ async def send_mcp_log_to_api(
         # Log but don't fail the request
         logger.warning(f"Failed to send MCP log to API: {e}")
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events for MCP servers"""
@@ -549,7 +548,6 @@ def check_server_access(server_name: str, user_groups: List[str], access_policie
     logger.debug(f"Using default policy for server '{server_name}': allow")
     return True
 
-
 # Per-tool access policy cache (TTL-based)
 _tool_access_policies_cache: Dict[str, Any] = {}
 _tool_access_policies_cache_time: float = 0
@@ -577,7 +575,6 @@ async def fetch_tool_access_policies() -> List[Dict[str, Any]]:
     except Exception as e:
         logger.debug(f"Failed to fetch tool access policies: {e}")
     return []
-
 
 def check_tool_access(
     tool_name: str,
@@ -1485,11 +1482,9 @@ async def delete_server(server_id: str):
         logger.error(f"Failed to delete MCP server {server_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 # Request model for server enable/disable
 class ServerEnabledRequest(BaseModel):
     enabled: bool
-
 
 @app.patch("/servers/{server_id}/enabled")
 async def set_server_enabled(
@@ -1527,7 +1522,6 @@ async def set_server_enabled(
         logger.error(f"Failed to set enabled state for {server_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.get("/servers/{server_id}/enabled")
 async def get_server_enabled(server_id: str):
     """Get the enabled state of a specific MCP server"""
@@ -1539,7 +1533,6 @@ async def get_server_enabled(server_id: str):
         return {"server_id": server_id, "enabled": enabled}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-
 
 @app.get("/servers/enabled")
 async def list_servers_enabled():
@@ -1747,7 +1740,6 @@ async def auth_login():
         logger.error(f"Failed to initiate login: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.get("/auth/callback")
 async def auth_callback(code: Optional[str] = None, state: Optional[str] = None, error: Optional[str] = None):
     """Handle Azure AD OAuth callback"""
@@ -1801,7 +1793,6 @@ async def auth_callback(code: Optional[str] = None, state: Optional[str] = None,
         logger.error(f"OAuth callback failed: {str(e)}")
         return RedirectResponse(url=f"/?error=auth_failed")
 
-
 @app.get("/auth/me")
 async def auth_me(mcp_session: Optional[str] = Cookie(None)):
     """Get current user info from session"""
@@ -1830,7 +1821,6 @@ async def auth_me(mcp_session: Optional[str] = Cookie(None)):
         logger.error(f"Failed to get user info: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.post("/auth/logout")
 async def auth_logout(response: Response, mcp_session: Optional[str] = Cookie(None)):
     """Logout and destroy session"""
@@ -1858,13 +1848,11 @@ async def auth_logout(response: Response, mcp_session: Optional[str] = Cookie(No
         logger.error(f"Logout failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 # Pydantic model for manual token testing
 class ManualSessionRequest(BaseModel):
     user_id: str
     email: str
     access_token: str
-
 
 @app.post("/auth/manual-session")
 async def create_manual_session(request: ManualSessionRequest):
@@ -1890,14 +1878,12 @@ async def create_manual_session(request: ManualSessionRequest):
         logger.error(f"Failed to create manual session: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 # === MCP TOOL EXECUTION ===
 
 class MCPCallRequest(BaseModel):
     server: str
     tool: str
     arguments: Dict[str, Any] = {}
-
 
 # =============================================================================
 # STRUCTURED ERROR ENVELOPE - Better error reporting for LLM consumption
@@ -2004,7 +1990,6 @@ def classify_error(error: Exception, server_name: str = "", tool_name: str = "")
         tool=tool_name
     )
 
-
 # =============================================================================
 # CACHE METADATA - Helps LLM know when data is fresh vs stale
 # =============================================================================
@@ -2065,7 +2050,6 @@ def get_cache_metadata(tool_name: str, arguments: Dict[str, Any]) -> Optional[Di
         "freshness": "real_time"  # Just fetched
     }
 
-
 # =============================================================================
 # BATCH CALL ENDPOINT - Execute multiple tool calls in parallel
 # =============================================================================
@@ -2098,7 +2082,6 @@ class BatchCallResponse(BaseModel):
     total_execution_time_ms: float
     succeeded: int
     failed: int
-
 
 @app.post("/batch-call", response_model=BatchCallResponse)
 async def batch_call_tools(
@@ -2321,7 +2304,6 @@ async def batch_call_tools(
         failed=failed
     )
 
-
 @app.post("/call")
 async def call_mcp_tool(
     call_request: MCPCallRequest,
@@ -2543,7 +2525,6 @@ async def call_mcp_tool(
             "execution_time_ms": None
         }
 
-
 # === EMBEDDINGS PROXY ===
 # Proxies to the API's /api/embeddings endpoint which uses UniversalEmbeddingService
 # This supports all configured embedding providers (Azure, AWS, Ollama, Vertex AI, etc.)
@@ -2607,7 +2588,6 @@ async def create_embeddings(request: EmbeddingRequest):
     except Exception as e:
         logger.error(f"Embeddings generation error: {type(e).__name__}: {repr(e)}")
         raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {str(e) or repr(e)}")
-
 
 # === INSPECTOR UI ===
 # Reverse proxy to MCP Inspector on localhost:6274

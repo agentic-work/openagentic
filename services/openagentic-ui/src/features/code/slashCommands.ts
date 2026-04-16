@@ -1,25 +1,3 @@
-/**
- * Slash command registry for the React CodeMode view.
- *
- * Ported 1:1 from openagentic's src/commands/ — the full inventory is
- * in slash-commands-inventory.md. This file is the runtime-typed
- * version that the slash command palette renders from and the command
- * dispatcher routes against.
- *
- * Priority:
- *   p0 — essential, must work before the port ships
- *   p1 — commonly used, should port early
- *   p2 — less common, can stub initially
- *   p3 — debug / feature-gated / internal, stub OK
- *
- * UI shape:
- *   none   — state-mutating, prints a line, no interactive UI
- *   picker — CustomSelect/dropdown of choices
- *   form   — multi-field input widget
- *   modal  — fullscreen overlay (Settings, Plan, etc.)
- *   custom — bespoke React tree
- */
-
 export type SlashCommandUi = 'none' | 'picker' | 'form' | 'modal' | 'custom';
 export type SlashCommandPriority = 'p0' | 'p1' | 'p2' | 'p3';
 

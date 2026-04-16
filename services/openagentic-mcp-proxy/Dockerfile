@@ -1,7 +1,5 @@
 FROM python:3.11-slim
 
-LABEL org.opencontainers.image.licenses="Apache-2.0"
-
 ARG SRC_PATH=services/openagentic-mcp-proxy
 
 WORKDIR /app
@@ -143,6 +141,5 @@ EXPOSE 8080
 
 # Pre-compile Python source to bytecode (keep .py files for MCP server stdio launch)
 RUN python -m compileall -b /app/src/ /app/mcp-servers/ 2>/dev/null || true
-
 
 CMD ["python", "src/main.py"]

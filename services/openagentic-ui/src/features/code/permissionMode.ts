@@ -1,14 +1,3 @@
-/**
- * Permission mode metadata — 1:1 port of openagentic's
- * src/utils/permissions/PermissionMode.ts config, so the React UI
- * renders the exact same labels, symbols, and colors as the TUI.
- *
- * Cycle order matches openagentic's getNextPermissionMode (default →
- * acceptEdits → plan → bypassPermissions → default), minus the `auto`
- * and `dontAsk` internal modes which aren't exposed in the Shift+Tab
- * rotation.
- */
-
 export type PermissionMode =
   | 'default'
   | 'acceptEdits'

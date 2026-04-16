@@ -24,7 +24,6 @@ from .logging_config import get_logger
 
 logger = get_logger("secure-executor")
 
-
 # =============================================================================
 # Blocked Operations - Security Restrictions
 # =============================================================================
@@ -93,7 +92,6 @@ SAFE_MODULES: Set[str] = {
     "io", "base64", "hashlib", "hmac",
     "copy", "pprint",
 }
-
 
 # =============================================================================
 # Code Validator
@@ -168,7 +166,6 @@ class CodeValidator:
 
         return True, None
 
-
 # =============================================================================
 # Execution Result
 # =============================================================================
@@ -186,7 +183,6 @@ class ExecutionResult:
     exit_code: Optional[int] = None
     memory_used_bytes: Optional[int] = None
     cpu_time_seconds: Optional[float] = None
-
 
 # =============================================================================
 # Sandbox Wrapper Script
@@ -284,7 +280,6 @@ finally:
 # Output result as JSON
 print("__OAT_RESULT__" + json.dumps(result))
 '''
-
 
 # =============================================================================
 # Secure Executor

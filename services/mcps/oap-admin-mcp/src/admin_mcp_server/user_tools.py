@@ -12,7 +12,6 @@ from .server import mcp, prisma_client
 
 logger = logging.getLogger("admin-mcp.user-tools")
 
-
 # ============================================================================
 # USER MANAGEMENT TOOLS
 # ============================================================================
@@ -59,7 +58,6 @@ async def admin_system_users_list_all(
         logger.error(f"Failed to list users: {e}")
         raise RuntimeError(f"Failed to list users: {str(e)}")
 
-
 @mcp.tool(description="Get detailed information about a specific OpenAgentic platform user (NOT Azure AD/Entra ID user)")
 async def admin_system_users_get_by_id(user_id: str) -> Dict[str, Any]:
     """Get user details by ID"""
@@ -90,7 +88,6 @@ async def admin_system_users_get_by_id(user_id: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to get user: {e}")
         raise RuntimeError(f"Failed to get user: {str(e)}")
-
 
     # admin_system_users_update_properties REMOVED - write operations not allowed in admin MCP
     # User management should be done through the Admin UI or API, not via MCP tools

@@ -1,10 +1,3 @@
-/**
- * AdminFlowsPage - Workflow Administration documentation.
- *
- * Documents workflow list, execution history, 3-level governance,
- * governance tabs, credentials management, and cost tracking.
- */
-
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

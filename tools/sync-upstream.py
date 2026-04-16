@@ -67,6 +67,8 @@ SKIP_PREFIXES = (
     'gitops/', 'helm/values/',
     # Companion repos (pulled at build time, not synced)
     'agenticode-cli/', 'ghostpilot/', 'sdk/', 'oat/',
+    # Test results / UAT reports live only in the internal upstream
+    'tests/MCP_', 'tests/uat',
     # Build artifacts / editor state / internal workspace
     'node_modules/', 'dist/', 'build/', '.next/', '.astro/', '__pycache__/',
     '.venv/', 'venv/', '.turbo/',
@@ -112,6 +114,14 @@ SKIP_CONTENT_HINTS = (
     'agenticode-cli', 'managedSettings.json', 'managed-mcp.json',
     # Upstream ghostpilot bits — we removed all of these
     'GhostPilot', 'ghostpilot', 'GHOSTPILOT',
+)
+
+# Stale filename patterns left behind by past renames — filter by path, not content.
+SKIP_PATH_HINTS = (
+    'doc-generators/agenticode-cli.gen.ts',
+    'doc-generators/oat-executor.gen.ts',
+    'doc-generators/oat-synth.gen.ts',
+    'doc-generators/oat-framework.gen.ts',
 )
 
 # ─── Preserve: our local fixes (never overwrite) ─────────────────────────────
@@ -185,6 +195,8 @@ def should_skip(rel):
         if rel.endswith(sfx): return True
     for p in SKIP_PREFIXES:
         if rel.startswith(p): return True
+    for h in SKIP_PATH_HINTS:
+        if h in rel: return True
     return False
 
 def rewrite(text):
@@ -253,6 +265,13 @@ def main():
     print(f"\nPreserved (your local fixes — kept untouched): {len(set(preserved_seen))} files")
     if DRY_RUN:
         print("\n(dry-run — no writes)")
+        return
+
+    # Post-pass: strip copyright/license boilerplate the upstream keeps reintroducing.
+    scrubber = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scrub-headers.py')
+    if os.path.exists(scrubber):
+        print("\nScrubbing upstream copyright/license headers…")
+        os.system(f"python3 {scrubber}")
 
 if __name__ == '__main__':
     main()

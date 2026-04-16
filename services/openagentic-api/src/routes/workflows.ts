@@ -3928,5 +3928,4 @@ const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
   },
 ];
 
-
 export default workflowRoutes;

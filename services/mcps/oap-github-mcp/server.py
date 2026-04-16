@@ -109,7 +109,6 @@ async def github_request(
 
         return response.json() if response.content else {}
 
-
 # =============================================================================
 # USER TOOLS
 # =============================================================================
@@ -123,7 +122,6 @@ async def get_user(meta: Optional[dict] = None) -> dict:
     """
     token = extract_token(meta)
     return await github_request("GET", "/user", token)
-
 
 # =============================================================================
 # REPOSITORY TOOLS
@@ -178,7 +176,6 @@ async def list_repos(
     }
     return await github_request("GET", "/user/repos", token, params=params)
 
-
 @mcp.tool()
 async def get_repo(owner: str, repo: str, meta: Optional[dict] = None) -> dict:
     """
@@ -190,7 +187,6 @@ async def get_repo(owner: str, repo: str, meta: Optional[dict] = None) -> dict:
     """
     token = extract_token(meta)
     return await github_request("GET", f"/repos/{owner}/{repo}", token)
-
 
 @mcp.tool()
 async def search_repos(
@@ -222,7 +218,6 @@ async def search_repos(
     params = {k: v for k, v in params.items() if v is not None}
     return await github_request("GET", "/search/repositories", token, params=params)
 
-
 @mcp.tool()
 async def list_branches(
     owner: str,
@@ -251,7 +246,6 @@ async def list_branches(
         params["protected"] = str(protected).lower()
     return await github_request("GET", f"/repos/{owner}/{repo}/branches", token, params=params)
 
-
 @mcp.tool()
 async def get_file_contents(
     owner: str,
@@ -274,7 +268,6 @@ async def get_file_contents(
     if ref:
         params["ref"] = ref
     return await github_request("GET", f"/repos/{owner}/{repo}/contents/{path}", token, params=params)
-
 
 # =============================================================================
 # ISSUE TOOLS
@@ -321,7 +314,6 @@ async def list_issues(
         params["assignee"] = assignee
     return await github_request("GET", f"/repos/{owner}/{repo}/issues", token, params=params)
 
-
 @mcp.tool()
 async def get_issue(
     owner: str,
@@ -339,7 +331,6 @@ async def get_issue(
     """
     token = extract_token(meta)
     return await github_request("GET", f"/repos/{owner}/{repo}/issues/{issue_number}", token)
-
 
 @mcp.tool()
 async def create_issue(
@@ -375,7 +366,6 @@ async def create_issue(
     if milestone:
         data["milestone"] = milestone
     return await github_request("POST", f"/repos/{owner}/{repo}/issues", token, json_data=data)
-
 
 @mcp.tool()
 async def update_issue(
@@ -415,7 +405,6 @@ async def update_issue(
     if assignees is not None:
         data["assignees"] = assignees
     return await github_request("PATCH", f"/repos/{owner}/{repo}/issues/{issue_number}", token, json_data=data)
-
 
 # =============================================================================
 # PULL REQUEST TOOLS
@@ -462,7 +451,6 @@ async def list_pull_requests(
         params["head"] = head
     return await github_request("GET", f"/repos/{owner}/{repo}/pulls", token, params=params)
 
-
 @mcp.tool()
 async def get_pull_request(
     owner: str,
@@ -480,7 +468,6 @@ async def get_pull_request(
     """
     token = extract_token(meta)
     return await github_request("GET", f"/repos/{owner}/{repo}/pulls/{pull_number}", token)
-
 
 @mcp.tool()
 async def create_pull_request(
@@ -518,7 +505,6 @@ async def create_pull_request(
     if body:
         data["body"] = body
     return await github_request("POST", f"/repos/{owner}/{repo}/pulls", token, json_data=data)
-
 
 # =============================================================================
 # CODE SEARCH TOOLS
@@ -560,7 +546,6 @@ async def search_code(
         params["sort"] = sort
     return await github_request("GET", "/search/code", token, params=params)
 
-
 # =============================================================================
 # GITHUB ACTIONS TOOLS
 # =============================================================================
@@ -588,7 +573,6 @@ async def list_workflows(
         "page": page
     }
     return await github_request("GET", f"/repos/{owner}/{repo}/actions/workflows", token, params=params)
-
 
 @mcp.tool()
 async def get_workflow_runs(
@@ -630,7 +614,6 @@ async def get_workflow_runs(
 
     return await github_request("GET", endpoint, token, params=params)
 
-
 @mcp.tool()
 async def trigger_workflow(
     owner: str,
@@ -662,7 +645,6 @@ async def trigger_workflow(
         json_data=data
     )
     return {"success": True, "message": f"Workflow {workflow_id} triggered on {ref}"}
-
 
 # =============================================================================
 # COMMIT/TREE TOOLS
@@ -713,7 +695,6 @@ async def list_commits(
 
     return await github_request("GET", f"/repos/{owner}/{repo}/commits", token, params=params)
 
-
 @mcp.tool()
 async def get_commit(
     owner: str,
@@ -731,7 +712,6 @@ async def get_commit(
     """
     token = extract_token(meta)
     return await github_request("GET", f"/repos/{owner}/{repo}/commits/{commit_sha}", token)
-
 
 # Run the server
 if __name__ == "__main__":

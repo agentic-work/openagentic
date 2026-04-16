@@ -447,7 +447,6 @@ export class ChatSessionService {
     }
   }
 
-
   /**
    * Get user's last active session from Redis cache
    * Returns the session ID they were last interacting with

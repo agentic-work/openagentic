@@ -1,10 +1,3 @@
-/**
- * AdminIntegrationsPage - Integrations documentation.
- *
- * Documents Slack integration, Microsoft Teams integration,
- * connection testing, and integration logs.
- */
-
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

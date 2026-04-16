@@ -1,14 +1,3 @@
-/**
- * StatsModal — rich session statistics dashboard matching openagentic's
- * TUI /stats command. Two tabs:
- *   Overview: token usage sparkline chart, session metrics, activity
- *   Models: per-model token breakdown with SVG bar chart
- *
- * Uses SVG for charts (better than TUI's ASCII art since we have a
- * real browser). Data from useCodeModeChat + sessionMeta + per-turn
- * accumulation from the messages array.
- */
-
 import React, { useMemo, useState } from 'react';
 import type { ChatMessage, AssistantChatMessage } from '../../types/streamJson';
 

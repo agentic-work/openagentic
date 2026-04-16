@@ -1,10 +1,3 @@
-/**
- * ArchitecturePage - Full system architecture reference for OpenAgentic.
- *
- * Interactive ReactFlow diagram, industry comparison, secrets management,
- * and external links. Follows the same styling patterns as WelcomePage.
- */
-
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

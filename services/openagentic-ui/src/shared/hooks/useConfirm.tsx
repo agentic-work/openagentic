@@ -1,15 +1,3 @@
-/**
- * useConfirm - Global promise-based confirmation dialog
- *
- * Provides a context-based confirm() that replaces window.confirm().
- * Wrap app with <ConfirmProvider> once, then call useConfirm() anywhere.
- *
- * Usage:
- *   const confirm = useConfirm();
- *   const ok = await confirm('Delete this item?', { variant: 'danger' });
- *   if (!ok) return;
- * */
-
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { ConfirmModal } from '@/shared/components/BaseModal';
 

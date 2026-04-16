@@ -1,21 +1,3 @@
-/**
- * PermissionDialog — modal prompt for mid-turn tool approvals.
- *
- * Renders when useCodeModeChat.pendingPermission is non-null (i.e. an
- * openagentic control_request with subtype `can_use_tool` arrived on
- * the stream). The user picks allow/deny and the response is sent
- * back via POST /api/code/sessions/:id/chat/control — see
- * useCodeModeChat.respondToPermission.
- *
- * This is a generic, tool-agnostic dialog: it shows the tool name,
- * a one-line summary (via toolRenderers), and the full input JSON in
- * an expandable code block. Variant-specific UIs (FileWrite diff,
- * Bash command preview, WebFetch URL preview, …) are a future
- * refinement but fall back here cleanly in the meantime.
- *
- * Keyboard: A / Enter = allow, D / Escape = deny.
- */
-
 import React, { useEffect } from 'react';
 import type { CanUseToolRequest } from '../../types/streamJson';
 import { renderToolInputSummary } from './toolRenderers';

@@ -89,8 +89,6 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
-LABEL org.opencontainers.image.licenses="Apache-2.0"
-
 # Re-declare ARG for the production stage
 ARG SRC_PATH=services/openagentic-ui
 

@@ -115,7 +115,6 @@ export class UserRepository extends BaseRepository<User> {
     }
   }
 
-
   /**
    * Find user by Azure OID (for Azure AD auth)
    */
@@ -160,7 +159,6 @@ export class UserRepository extends BaseRepository<User> {
       throw error;
     }
   }
-
 
   /**
    * Find admin users

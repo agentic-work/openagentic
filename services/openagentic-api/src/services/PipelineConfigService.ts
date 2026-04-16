@@ -1,9 +1,3 @@
-/**
- * Pipeline Configuration Service
- *
- * Manages pipeline configuration stored in SystemConfiguration table.
- */
-
 import pino from 'pino';
 import { PrismaClient } from '@prisma/client';
 import {

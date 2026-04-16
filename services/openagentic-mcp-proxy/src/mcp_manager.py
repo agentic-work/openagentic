@@ -37,7 +37,6 @@ class MCPServerConfig:
     enabled: bool = True
     supports_obo: bool = False  # Whether this server supports per-request OBO tokens
 
-
 @dataclass
 class RemoteMCPServerConfig:
     """Configuration for remote MCP servers accessed via HTTP/SSE"""
@@ -49,7 +48,6 @@ class RemoteMCPServerConfig:
     health_path: str = "/health"
     mcp_path: str = "/mcp"  # SSE endpoint for MCP protocol
     timeout: float = float(os.getenv("MCP_REMOTE_TIMEOUT", "60"))
-
 
 class RemoteMCPServer:
     """MCP Server that connects to a remote service via HTTP/SSE"""
@@ -174,7 +172,6 @@ class RemoteMCPServer:
         except Exception as e:
             logger.error(f"Error processing response from remote MCP server {self.config.name}: {e}")
             raise
-
 
 class MCPServer:
     def __init__(self, config: MCPServerConfig):
@@ -814,7 +811,6 @@ class MCPManager:
                     logger.debug(f"Injected user email into request for {server_name}: {user_email}")
 
         return await server.send_request(request)
-
 
     def get_server_status(self) -> Dict[str, Any]:
         """Get status of all MCP servers"""

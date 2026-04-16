@@ -1,6 +1,5 @@
 # Proprietary and confidential. Unauthorized copying prohibited.
 
-
 # Test Multi-Cloud Query Script
 # Tests Azure + AWS tool discovery and execution
 

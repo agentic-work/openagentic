@@ -183,7 +183,6 @@ class UserPassthroughCredential(TokenCredential):
         """Get user information for the executed_as audit badge."""
         return self._user_info
 
-
 def require_user_token(meta: Optional[Dict[str, Any]], token_key: str = "userAccessToken") -> tuple:
     """
     Extract and validate user token from meta. Returns (credential, user_info) or raises.
@@ -222,7 +221,6 @@ def require_user_token(meta: Optional[Dict[str, Any]], token_key: str = "userAcc
     credential = UserPassthroughCredential(token)
     return credential, credential.user_info
 
-
 def error_response(error: Exception, user_info: Optional[dict] = None) -> Dict[str, Any]:
     """Format error response with optional user context."""
     response = {
@@ -244,7 +242,6 @@ def error_response(error: Exception, user_info: Optional[dict] = None) -> Dict[s
         response["executed_as"] = user_info
 
     return response
-
 
 # =============================================================================
 # SERVER INSTRUCTIONS
@@ -1290,7 +1287,6 @@ If an operation fails:
         "guide": guides[topic]
     }
 
-
 # =============================================================================
 # SUBSCRIPTION & RESOURCE GROUP TOOLS
 # =============================================================================
@@ -1328,7 +1324,6 @@ async def azure_list_subscriptions(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_list_resource_groups(
@@ -1370,7 +1365,6 @@ async def azure_list_resource_groups(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_create_resource_group(
@@ -1415,7 +1409,6 @@ async def azure_create_resource_group(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_delete_resource_group(
     name: str,
@@ -1451,7 +1444,6 @@ async def azure_delete_resource_group(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 # =============================================================================
 # COMPUTE (VM) TOOLS
@@ -1502,7 +1494,6 @@ async def azure_list_vms(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_get_vm(
@@ -1557,7 +1548,6 @@ async def azure_get_vm(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_start_vm(
     name: str,
@@ -1591,7 +1581,6 @@ async def azure_start_vm(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_stop_vm(
@@ -1629,7 +1618,6 @@ async def azure_stop_vm(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_restart_vm(
     name: str,
@@ -1663,7 +1651,6 @@ async def azure_restart_vm(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 # =============================================================================
 # AKS (KUBERNETES) TOOLS
@@ -1717,7 +1704,6 @@ async def azure_list_aks_clusters(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_get_aks_cluster(
@@ -1778,7 +1764,6 @@ async def azure_get_aks_cluster(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_get_aks_credentials(
     name: str,
@@ -1825,7 +1810,6 @@ async def azure_get_aks_credentials(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 # =============================================================================
 # NETWORKING TOOLS
@@ -1877,7 +1861,6 @@ async def azure_list_vnets(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_list_nsgs(
     resource_group: Optional[str] = None,
@@ -1923,7 +1906,6 @@ async def azure_list_nsgs(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_list_app_gateways(
@@ -1977,7 +1959,6 @@ async def azure_list_app_gateways(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_get_app_gateway(
@@ -2107,7 +2088,6 @@ async def azure_get_app_gateway(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_app_gateway_backend_health(
     name: str,
@@ -2163,7 +2143,6 @@ async def azure_app_gateway_backend_health(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_app_gateway_start(
     name: str,
@@ -2198,7 +2177,6 @@ async def azure_app_gateway_start(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_app_gateway_stop(
@@ -2236,7 +2214,6 @@ async def azure_app_gateway_stop(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_list_load_balancers(
@@ -2285,7 +2262,6 @@ async def azure_list_load_balancers(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 # =============================================================================
 # STORAGE TOOLS
@@ -2342,7 +2318,6 @@ async def azure_list_storage_accounts(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_list_containers(
     storage_account: str,
@@ -2386,7 +2361,6 @@ async def azure_list_containers(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_list_blobs(
@@ -2435,7 +2409,6 @@ async def azure_list_blobs(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 # =============================================================================
 # KEY VAULT TOOLS
@@ -2487,7 +2460,6 @@ async def azure_list_keyvaults(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_list_secrets(
     vault_name: str,
@@ -2528,7 +2500,6 @@ async def azure_list_secrets(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_get_secret(
     vault_name: str,
@@ -2567,7 +2538,6 @@ async def azure_get_secret(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_set_secret(
@@ -2609,7 +2579,6 @@ async def azure_set_secret(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 # =============================================================================
 # COST MANAGEMENT TOOLS
@@ -2686,7 +2655,6 @@ async def azure_cost_query(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_cost_by_service(
     days: int = 30,
@@ -2755,7 +2723,6 @@ async def azure_cost_by_service(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_cost_forecast(
     forecast_days: int = 30,
@@ -2814,7 +2781,6 @@ async def azure_cost_forecast(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 # =============================================================================
 # MICROSOFT GRAPH (AZURE AD / ENTRA ID) TOOLS
 # =============================================================================
@@ -2868,7 +2834,6 @@ async def azure_list_users(
     except Exception as e:
         return {"success": False, "error": str(e), "error_type": type(e).__name__}
 
-
 @mcp.tool()
 async def azure_get_user(
     user_id: str,
@@ -2908,7 +2873,6 @@ async def azure_get_user(
         return {"success": False, "error": str(e)}
     except Exception as e:
         return {"success": False, "error": str(e), "error_type": type(e).__name__}
-
 
 @mcp.tool()
 async def azure_list_groups(
@@ -2953,7 +2917,6 @@ async def azure_list_groups(
     except Exception as e:
         return {"success": False, "error": str(e), "error_type": type(e).__name__}
 
-
 @mcp.tool()
 async def azure_list_apps(
     top: int = 100,
@@ -2993,7 +2956,6 @@ async def azure_list_apps(
         return {"success": False, "error": str(e)}
     except Exception as e:
         return {"success": False, "error": str(e), "error_type": type(e).__name__}
-
 
 # =============================================================================
 # MONITORING TOOLS
@@ -3045,7 +3007,6 @@ async def azure_list_alerts(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 # =============================================================================
 # TYPED CREATE TOOLS — added in v0.6.1 to give the LLM specific creation paths
@@ -3124,7 +3085,6 @@ async def azure_create_app_service_plan(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_create_web_app(
@@ -3205,7 +3165,6 @@ async def azure_create_web_app(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_create_function_app(
@@ -3306,7 +3265,6 @@ async def azure_create_function_app(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_create_storage_account(
     name: str,
@@ -3386,7 +3344,6 @@ async def azure_create_storage_account(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_storage_account_set_public_access(
     name: str,
@@ -3430,7 +3387,6 @@ async def azure_storage_account_set_public_access(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_create_container_app(
@@ -3542,7 +3498,6 @@ async def azure_create_container_app(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_create_key_vault(
     name: str,
@@ -3619,7 +3574,6 @@ async def azure_create_key_vault(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_create_vm(
@@ -3766,7 +3720,6 @@ async def azure_create_vm(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_list_role_assignments(
     scope: Optional[str] = None,
@@ -3821,7 +3774,6 @@ async def azure_list_role_assignments(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_security_list_assessments(
     subscription_id: Optional[str] = None,
@@ -3856,7 +3808,6 @@ async def azure_security_list_assessments(
     except Exception as e:
         return {"success": False, "error": str(e), "executed_as": user_info if 'user_info' in dir() else None}
 
-
 @mcp.tool()
 async def azure_security_secure_score(
     subscription_id: Optional[str] = None,
@@ -3889,7 +3840,6 @@ async def azure_security_secure_score(
         return {"success": True, "count": len(scores), "secure_scores": scores, "executed_as": user_info}
     except Exception as e:
         return {"success": False, "error": str(e), "executed_as": user_info if 'user_info' in dir() else None}
-
 
 @mcp.tool()
 async def azure_security_list_alerts(
@@ -3925,7 +3875,6 @@ async def azure_security_list_alerts(
     except Exception as e:
         return {"success": False, "error": str(e), "executed_as": user_info if 'user_info' in dir() else None}
 
-
 @mcp.tool()
 async def azure_log_analytics_list_workspaces(
     subscription_id: Optional[str] = None,
@@ -3960,7 +3909,6 @@ async def azure_log_analytics_list_workspaces(
         return {"success": True, "count": len(workspaces), "workspaces": workspaces, "executed_as": user_info}
     except Exception as e:
         return {"success": False, "error": str(e), "executed_as": user_info if 'user_info' in dir() else None}
-
 
 @mcp.tool()
 async def azure_log_analytics_query(
@@ -4010,7 +3958,6 @@ async def azure_log_analytics_query(
     except Exception as e:
         return {"success": False, "error": str(e), "executed_as": user_info if 'user_info' in dir() else None}
 
-
 @mcp.tool()
 async def azure_app_insights_list_components(
     subscription_id: Optional[str] = None,
@@ -4045,7 +3992,6 @@ async def azure_app_insights_list_components(
         return {"success": True, "count": len(components), "components": components, "executed_as": user_info}
     except Exception as e:
         return {"success": False, "error": str(e), "executed_as": user_info if 'user_info' in dir() else None}
-
 
 @mcp.tool()
 async def azure_app_insights_query(
@@ -4096,7 +4042,6 @@ async def azure_app_insights_query(
         }
     except Exception as e:
         return {"success": False, "error": str(e), "executed_as": user_info if 'user_info' in dir() else None}
-
 
 @mcp.tool()
 async def azure_policy_list_compliance_states(
@@ -4152,7 +4097,6 @@ async def azure_policy_list_compliance_states(
     except Exception as e:
         return {"success": False, "error": str(e), "executed_as": user_info if 'user_info' in dir() else None}
 
-
 # =============================================================================
 # DEPRECATED: Generic ARM REST passthrough — intentionally REMOVED in v0.6.1.
 # =============================================================================
@@ -4174,7 +4118,6 @@ async def azure_policy_list_compliance_states(
 #   azure_log_analytics_list_workspaces, azure_log_analytics_query,
 #   azure_app_insights_list_components, azure_app_insights_query
 # =============================================================================
-
 
 # =============================================================================
 # AZURE AI FOUNDRY DEPLOYMENT MANAGEMENT
@@ -4226,7 +4169,6 @@ async def aif_list_deployments(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def aif_create_deployment(
@@ -4286,7 +4228,6 @@ async def aif_create_deployment(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def aif_delete_deployment(
     resource_group: str,
@@ -4325,7 +4266,6 @@ async def aif_delete_deployment(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def aif_get_deployment_status(
@@ -4381,7 +4321,6 @@ async def aif_get_deployment_status(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 # =============================================================================
 # STARTUP
 # =============================================================================
@@ -4408,7 +4347,6 @@ sys.path.insert(0, '/app/shared')
 #   4. Always paginate large responses with max_results + continuation_token
 #      so a single query can return 10k+ resources without OOMing the LLM
 # =============================================================================
-
 
 # ----------------------------------------------------------------------------
 # Azure Resource Graph — single source for cross-subscription resource queries
@@ -4547,7 +4485,6 @@ async def azure_resource_graph_query(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_resource_graph_query_tenant_wide(
     query: str,
@@ -4652,7 +4589,6 @@ async def azure_resource_graph_query_tenant_wide(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_list_public_facing_resources(
     subscription_id: Optional[str] = None,
@@ -4744,7 +4680,6 @@ async def azure_list_public_facing_resources(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 # ----------------------------------------------------------------------------
 # Management Groups — tenant hierarchy + cross-sub discovery
 # ----------------------------------------------------------------------------
@@ -4786,7 +4721,6 @@ async def azure_list_management_groups(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_list_subscriptions_in_management_group(
@@ -4836,7 +4770,6 @@ async def azure_list_subscriptions_in_management_group(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 # ----------------------------------------------------------------------------
 # Web Apps & Function Apps — runtime config (Python version etc)
@@ -4950,7 +4883,6 @@ async def azure_list_web_apps(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 # ----------------------------------------------------------------------------
 # Azure Advisor — security/cost/performance recommendations
 # ----------------------------------------------------------------------------
@@ -5036,7 +4968,6 @@ async def azure_advisor_recommendations(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 # ----------------------------------------------------------------------------
 # Service Health — current and historical Azure incidents
@@ -5176,7 +5107,6 @@ async def azure_service_health_events(
     except Exception as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 # ----------------------------------------------------------------------------
 # Azure Front Door — issue #287 explicit requirement
 # ----------------------------------------------------------------------------
@@ -5229,7 +5159,6 @@ async def azure_list_front_doors(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_get_front_door(
     name: str,
@@ -5274,7 +5203,6 @@ async def azure_get_front_door(
         return {"success": False, "error": str(e)}
     except Exception as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 # ----------------------------------------------------------------------------
 # Cost forecast — extended with resource_group scope
@@ -5345,13 +5273,11 @@ async def azure_cost_forecast_for_resource_group(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 try:
     from http_transport import run_with_http_support
     HTTP_TRANSPORT_AVAILABLE = True
 except ImportError:
     HTTP_TRANSPORT_AVAILABLE = False
-
 
 @mcp.tool()
 async def azure_create_vnet(
@@ -5404,7 +5330,6 @@ async def azure_create_vnet(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_create_subnet(
     vnet_name: str,
@@ -5442,7 +5367,6 @@ async def azure_create_subnet(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_create_nsg(
@@ -5507,7 +5431,6 @@ async def azure_create_nsg(
         return {"success": False, "error": str(e)}
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
-
 
 @mcp.tool()
 async def azure_create_app_gateway(
@@ -5627,7 +5550,6 @@ async def azure_create_app_gateway(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_create_front_door(
     name: str,
@@ -5722,7 +5644,6 @@ async def azure_create_front_door(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_activity_log(
     subscription_id: Optional[str] = None,
@@ -5805,7 +5726,6 @@ async def azure_activity_log(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 @mcp.tool()
 async def azure_get_metrics(
     resource_id: str,
@@ -5884,7 +5804,6 @@ async def azure_get_metrics(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-
 def main():
     """Main entry point for the OpenAgentic Azure MCP Server."""
     logger.info("=" * 70)
@@ -5923,7 +5842,6 @@ def main():
         )
     else:
         mcp.run()
-
 
 if __name__ == "__main__":
     main()

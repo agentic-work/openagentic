@@ -1304,7 +1304,6 @@ Respond in English unless the user requests another language or writes in one.
 - **Tools for live data**: Use tools when the question requires current/external information
 - **Complete Answers**: Use tool results to give full information`;
 
-
     } catch (error) {
       this.logger.warn({
         error: error.message

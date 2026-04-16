@@ -1,28 +1,3 @@
-/**
- * SharedMarkdownRenderer - SINGLE SOURCE OF TRUTH for markdown rendering
- *
- * This component is used by ALL markdown rendering paths:
- * - AgenticActivityStream (streaming view)
- * - EnhancedMessageContent (final view)
- * - SmoothStreamingText (animated streaming)
- * - InlineMessageContent (inline messages)
- * - CodeModeLayoutV2 (code mode)
- *
- * This ensures streaming content looks IDENTICAL to final rendered content.
- * No more "4th wall breaking" where streaming looks different from completed messages.
- *
- * Features:
- * - GFM (tables, strikethrough, autolinks, task lists)
- * - Math/LaTeX (KaTeX)
- * - Syntax-highlighted code blocks
- * - Interactive artifacts (HTML, React, SVG)
- * - Charts (Recharts)
- * - Diagrams (ReactFlow, Mermaid, Draw.io, Venn)
- * - Milvus image:// protocol support
- * - Excel-style professional table styling
- * - Sanitization
- * */
-
 import React, { memo, useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';

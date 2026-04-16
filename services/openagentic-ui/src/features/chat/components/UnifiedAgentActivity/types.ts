@@ -1,10 +1,3 @@
-/**
- * Unified Agent Activity Types
- *
- * Single source of truth for all agentic activity state.
- * Consolidates thinking, tool calls, multi-model handoffs, and streaming.
- * */
-
 // Activity types that can appear in the unified stream
 export type ActivityType =
   | 'thinking'      // Model reasoning/CoT

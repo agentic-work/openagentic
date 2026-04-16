@@ -41,7 +41,6 @@ mcp = FastMCP("Loki MCP Server - Query Logs and Analyze Events")
 # Loki configuration
 LOKI_URL = os.getenv("LOKI_URL", "http://loki:3100")
 
-
 # ============================================================================
 # LOKI CLIENT
 # ============================================================================
@@ -174,10 +173,8 @@ class LokiClient:
         response.raise_for_status()
         return response.json()
 
-
 # Global client instance
 loki_client = LokiClient(LOKI_URL)
-
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -216,7 +213,6 @@ def format_log_entry(entry, stream: Dict[str, str]) -> str:
         prefix += f" [{app}]"
 
     return f"{prefix} {line}"
-
 
 # ============================================================================
 # TOOL DEFINITIONS
@@ -281,7 +277,6 @@ async def loki_query(
     except Exception as e:
         logger.error(f"Error in loki_query: {e}")
         return f"Error: {str(e)}"
-
 
 @mcp.tool()
 async def loki_search_errors(
@@ -360,7 +355,6 @@ async def loki_search_errors(
         logger.error(f"Error in loki_search_errors: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def loki_tail(
     query: str = Field(description="LogQL query for the stream to tail"),
@@ -408,7 +402,6 @@ async def loki_tail(
         logger.error(f"Error in loki_tail: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def loki_labels() -> str:
     """
@@ -450,7 +443,6 @@ async def loki_labels() -> str:
         logger.error(f"Error in loki_labels: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def loki_label_values(
     label: str = Field(description="Label name to get values for (e.g., 'namespace', 'app', 'pod')")
@@ -482,7 +474,6 @@ async def loki_label_values(
     except Exception as e:
         logger.error(f"Error in loki_label_values: {e}")
         return f"Error: {str(e)}"
-
 
 @mcp.tool()
 async def loki_count_logs(
@@ -542,7 +533,6 @@ async def loki_count_logs(
         logger.error(f"Error in loki_count_logs: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def loki_log_rate(
     query: str = Field(description="LogQL stream selector"),
@@ -600,7 +590,6 @@ async def loki_log_rate(
     except Exception as e:
         logger.error(f"Error in loki_log_rate: {e}")
         return f"Error: {str(e)}"
-
 
 @mcp.tool()
 async def loki_context(
@@ -696,7 +685,6 @@ async def loki_context(
         logger.error(f"Error in loki_context: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def loki_streams() -> str:
     """
@@ -752,7 +740,6 @@ async def loki_streams() -> str:
         logger.error(f"Error in loki_streams: {e}")
         return f"Error: {str(e)}"
 
-
 # ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
@@ -761,7 +748,6 @@ def main():
     """Run the MCP server"""
     logger.info(f"Starting Loki MCP Server (Loki URL: {LOKI_URL})")
     mcp.run()
-
 
 if __name__ == "__main__":
     main()

@@ -1,19 +1,3 @@
-/**
- * SkillSelector - Anthropic Agent Skills Integration
- *
- * Implements the Anthropic Agent Skills standard (https://github.com/anthropics/skills)
- * Skills are specialized instruction sets that Claude loads dynamically to improve
- * performance on specialized tasks.
- *
- * Format follows SKILL.md with YAML frontmatter:
- * ---
- * name: skill-name
- * description: What this skill does and when to use it
- * ---
- * [Instructions Claude will follow]
- *
- * @see https://github.com/anthropics/skills */
-
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';

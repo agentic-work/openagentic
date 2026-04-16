@@ -1,16 +1,3 @@
-/**
- * SlashCommandPalette — the `/` autocomplete dropdown.
- *
- * Rendered above the input box whenever the current input starts with
- * `/`. Arrow Up / Down navigate, Enter selects, Esc closes. Filter is
- * live as the user types. Matches openagentic's TUI slash-command
- * picker behavior (src/commands/*).
- *
- * The selection callback receives the command name without the
- * leading slash. The parent decides what to do with it (open a modal,
- * dispatch a backend action, insert boilerplate, etc.).
- */
-
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   filterSlashCommands,

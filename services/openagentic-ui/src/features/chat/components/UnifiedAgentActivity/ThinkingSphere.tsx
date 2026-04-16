@@ -1,10 +1,3 @@
-/**
- * ThinkingSphere - Animated 3D sphere for thinking state
- *
- * Canvas-based animated sphere with sparkles.
- * Shows different states: thinking (animated), complete (checkmark), error (red).
- * */
-
 import React, { useEffect, useRef } from 'react';
 import { AgentPhase } from './types';
 

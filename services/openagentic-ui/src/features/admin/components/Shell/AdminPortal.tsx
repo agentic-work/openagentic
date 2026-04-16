@@ -1,19 +1,3 @@
-/**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 // SVG icons for sidebar child items — reliable rendering at 16px
 import {
@@ -79,7 +63,6 @@ const OllamaIcon = Globe;
 const MultiModelIcon = GitMerge;
 const TieredFCIcon = SlidersHorizontal;
 const K8sIcon = Cpu;
-
 
 const FlowExecIcon = PlayCircle;
 const SynthConfigIcon = FlaskConical;
@@ -172,7 +155,6 @@ interface AdminPortalProps {
   embedded?: boolean;
   onClose?: () => void;
 }
-
 
 interface SidebarItem {
   id: string;
@@ -307,7 +289,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ theme, embedded, onClose }) =
   const [createdToken, setCreatedToken] = useState<ApiToken | null>(null);
   const [apiMetrics, setApiMetrics] = useState<any>(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
-
 
   // Fetch dashboard overview data — lazy-loaded, cached once per session.
   // Only fetches when dashboard section is active AND data hasn't been loaded yet.
@@ -917,7 +898,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ theme, embedded, onClose }) =
       ]
     }] : []),
 
-
     // Agent Management - Registry, Skills, Executions
     {
       id: 'agent-management',
@@ -1019,7 +999,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ theme, embedded, onClose }) =
     setExpandedItems(newExpanded);
   };
 
-
   // Helper to render icon - all icons are now SVG components
   const renderIcon = (icon: SidebarItem['icon'], size = 16, className = '') => {
     const IconComponent = icon;
@@ -1102,7 +1081,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ theme, embedded, onClose }) =
     switch (activeSection) {
       case 'overview':
         return <DashboardOverview theme={theme} />;
-
 
       case 'providers':
         return <LLMProviderManagement theme={theme} />;
@@ -1245,7 +1223,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ theme, embedded, onClose }) =
       case 'teams-integration':
       case 'integration-logs':
         return <IntegrationsView theme={theme} />;
-
 
       // Synth - Tool Synthesis
       case 'synth-management':

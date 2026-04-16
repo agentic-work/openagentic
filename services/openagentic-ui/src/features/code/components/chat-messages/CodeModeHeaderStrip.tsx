@@ -1,9 +1,3 @@
-/**
- * CodeModeHeaderStrip — ultra-slim header with theme picker only.
- * All session metadata, metrics, and controls have moved to the
- * footer bar (rendered inside CodeModeChatView below the input box).
- */
-
 import React from 'react';
 import { ThemeSelectorPill } from './ThemeSelectorPill';
 

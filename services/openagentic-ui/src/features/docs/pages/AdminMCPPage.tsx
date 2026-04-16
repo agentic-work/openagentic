@@ -1,10 +1,3 @@
-/**
- * AdminMCPPage - MCP Server Management documentation.
- *
- * Documents server CRUD, tool discovery, health monitoring, log streaming,
- * access control, and API endpoints.
- */
-
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

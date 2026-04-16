@@ -1,15 +1,3 @@
-/**
- * BaseModal - Consistent Modal Component
- *
- * Provides standardized modal styling across the application with:
- * - Consistent z-index layering (backdrop: 100, modal: 101)
- * - Unified backdrop blur and opacity
- * - Standard border radius and shadow
- * - Smooth animations via framer-motion
- * - Size variants for different use cases
- * - Liquid glass styling matching the design system
- * */
-
 import React, { useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';

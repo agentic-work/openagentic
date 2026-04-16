@@ -1,11 +1,3 @@
-/**
- * PreviewPanel Component
- *
- * Shows a preview iframe for dev servers detected in terminal output.
- * Automatically detects URLs from common dev servers (Vite, Next.js, etc.)
- * and displays them in a sandboxed iframe.
- */
-
 import React, { useState, useEffect, useRef } from 'react';
 import { X, ExternalLink, RefreshCw, Maximize2, Minimize2, AlertCircle } from '@/shared/icons';
 

@@ -1,12 +1,3 @@
-/**
- * RichModals — dedicated React UIs for openagentic management slash commands:
- *   /mcp, /tools, /plugins, /skills, /agents, /config, /permissions
- *
- * Each modal renders enriched data from the system init event's _detail
- * field, providing a full visual interface matching what the TUI shows
- * but with proper React interactivity.
- */
-
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   ToolDetail,

@@ -1,10 +1,3 @@
-/**
- * AdminAgentsPage - Agent Management documentation.
- *
- * Documents agent registry, skills/plugins, playground, observability,
- * persona system, tool policies, cron scheduling, and SmartRouter defaults.
- */
-
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

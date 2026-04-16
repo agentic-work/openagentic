@@ -21,7 +21,6 @@ import redis
 
 logger = logging.getLogger("azure-oauth")
 
-
 class AzureOAuthService:
     """Handles Azure AD OAuth2 authentication with PKCE"""
 

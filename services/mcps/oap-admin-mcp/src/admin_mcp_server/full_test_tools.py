@@ -33,7 +33,6 @@ MCP_PROXY_URL = os.getenv("MCP_PROXY_URL", "http://mcp-proxy:8080")
 OPENAGENTIC_API_URL = os.getenv("OPENAGENTIC_API_URL", "http://openagentic-api:8000")
 OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
 
-
 class PerformanceTimer:
     """Simple performance timer for measuring test durations"""
 
@@ -63,7 +62,6 @@ class PerformanceTimer:
         if self.start_time and self.end_time:
             return (self.end_time - self.start_time) * 1000
         return 0
-
 
 async def test_infrastructure_health(timer: PerformanceTimer) -> Dict[str, Any]:
     """Test all infrastructure components"""
@@ -160,7 +158,6 @@ async def test_infrastructure_health(timer: PerformanceTimer) -> Dict[str, Any]:
     results["status"] = "COMPLETE"
     return results
 
-
 async def test_all_mcp_servers(timer: PerformanceTimer) -> Dict[str, Any]:
     """Test all MCP servers are running and responsive"""
     results = {
@@ -234,7 +231,6 @@ async def test_all_mcp_servers(timer: PerformanceTimer) -> Dict[str, Any]:
 
     results["status"] = "COMPLETE"
     return results
-
 
 async def test_mcp_tool_execution(timer: PerformanceTimer) -> Dict[str, Any]:
     """Test actual tool execution from each MCP server"""
@@ -368,7 +364,6 @@ async def test_mcp_tool_execution(timer: PerformanceTimer) -> Dict[str, Any]:
     results["status"] = "COMPLETE"
     return results
 
-
 async def test_formatting_mcp(timer: PerformanceTimer) -> Dict[str, Any]:
     """Test formatting MCP capabilities"""
     results = {
@@ -418,7 +413,6 @@ async def test_formatting_mcp(timer: PerformanceTimer) -> Dict[str, Any]:
 
     results["status"] = "COMPLETE"
     return results
-
 
 async def test_diagram_mcp(timer: PerformanceTimer) -> Dict[str, Any]:
     """Test diagram MCP capabilities"""
@@ -530,7 +524,6 @@ async def test_diagram_mcp(timer: PerformanceTimer) -> Dict[str, Any]:
     results["status"] = "COMPLETE"
     return results
 
-
 async def test_api_endpoints(timer: PerformanceTimer) -> Dict[str, Any]:
     """Test critical API endpoints"""
     results = {
@@ -592,7 +585,6 @@ async def test_api_endpoints(timer: PerformanceTimer) -> Dict[str, Any]:
 
     results["status"] = "COMPLETE"
     return results
-
 
 async def run_performance_benchmarks(timer: PerformanceTimer) -> Dict[str, Any]:
     """Run performance benchmarks to identify bottlenecks"""
@@ -696,7 +688,6 @@ async def run_performance_benchmarks(timer: PerformanceTimer) -> Dict[str, Any]:
 
     results["status"] = "COMPLETE"
     return results
-
 
 async def admin_full_system_test(
     include_slow_tests: bool = False,

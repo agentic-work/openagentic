@@ -84,7 +84,6 @@ _credentials_expiry = None
 _obo_access_token = None
 _obo_user_email = None
 
-
 def set_obo_context(access_token: str, user_email: str = None):
     """
     Set the OBO context to use a user's access token for GCP API calls.
@@ -99,14 +98,12 @@ def set_obo_context(access_token: str, user_email: str = None):
     _obo_user_email = user_email
     logger.info(f"OBO context set for user: {user_email or 'unknown'}")
 
-
 def clear_obo_context():
     """Clear the OBO context, reverting to service account authentication."""
     global _obo_access_token, _obo_user_email
     _obo_access_token = None
     _obo_user_email = None
     logger.info("OBO context cleared")
-
 
 def get_credentials():
     """
@@ -170,7 +167,6 @@ def get_credentials():
         logger.error(f"Failed to get GCP credentials: {e}")
         raise
 
-
 def get_access_token() -> str:
     """
     Get a valid access token for GCP API calls.
@@ -193,7 +189,6 @@ def get_access_token() -> str:
         credentials.refresh(Request())
 
     return credentials.token
-
 
 async def make_gcp_request(
     method: str,
@@ -264,7 +259,6 @@ async def make_gcp_request(
             "success": False,
             "error": str(e)
         }
-
 
 # ============================================================================
 # MCP TOOLS
@@ -392,7 +386,6 @@ async def gcp_api_execute(
         # Always clear OBO context after each request
         clear_obo_context()
 
-
 @mcp.tool()
 async def gcp_list_instances(
     project_id: Optional[str] = None,
@@ -424,7 +417,6 @@ async def gcp_list_instances(
         project_id=project
     )
 
-
 @mcp.tool()
 async def gcp_get_instance(
     instance_name: str,
@@ -451,7 +443,6 @@ async def gcp_get_instance(
         path=path,
         project_id=project
     )
-
 
 @mcp.tool()
 async def gcp_start_instance(
@@ -480,7 +471,6 @@ async def gcp_start_instance(
         project_id=project
     )
 
-
 @mcp.tool()
 async def gcp_stop_instance(
     instance_name: str,
@@ -508,7 +498,6 @@ async def gcp_stop_instance(
         project_id=project
     )
 
-
 @mcp.tool()
 async def gcp_list_buckets(
     project_id: Optional[str] = None
@@ -526,7 +515,6 @@ async def gcp_list_buckets(
 
     url = f"https://storage.googleapis.com/storage/v1/b?project={project}"
     return await make_gcp_request("GET", url)
-
 
 @mcp.tool()
 async def gcp_list_bucket_objects(
@@ -555,7 +543,6 @@ async def gcp_list_bucket_objects(
 
     return await make_gcp_request("GET", url)
 
-
 @mcp.tool()
 async def gcp_get_project(
     project_id: Optional[str] = None
@@ -577,7 +564,6 @@ async def gcp_get_project(
         path=f"/projects/{project}",
         project_id=project
     )
-
 
 @mcp.tool()
 async def gcp_list_zones(
@@ -601,7 +587,6 @@ async def gcp_list_zones(
         project_id=project
     )
 
-
 @mcp.tool()
 async def gcp_list_regions(
     project_id: Optional[str] = None
@@ -623,7 +608,6 @@ async def gcp_list_regions(
         path=f"/projects/{project}/regions",
         project_id=project
     )
-
 
 @mcp.tool()
 async def gcp_list_machine_types(
@@ -648,7 +632,6 @@ async def gcp_list_machine_types(
         path=f"/projects/{project}/zones/{zone}/machineTypes",
         project_id=project
     )
-
 
 @mcp.tool()
 async def gcp_list_disks(
@@ -679,7 +662,6 @@ async def gcp_list_disks(
         project_id=project
     )
 
-
 @mcp.tool()
 async def gcp_list_networks(
     project_id: Optional[str] = None
@@ -702,7 +684,6 @@ async def gcp_list_networks(
         project_id=project
     )
 
-
 @mcp.tool()
 async def gcp_list_firewalls(
     project_id: Optional[str] = None
@@ -724,7 +705,6 @@ async def gcp_list_firewalls(
         path=f"/projects/{project}/global/firewalls",
         project_id=project
     )
-
 
 # ============================================================================
 # BILLING & COST MANAGEMENT TOOLS
@@ -750,7 +730,6 @@ async def gcp_get_billing_info(
     url = f"https://cloudbilling.googleapis.com/v1/projects/{project}/billingInfo"
     return await make_gcp_request("GET", url)
 
-
 @mcp.tool()
 async def gcp_list_billing_accounts() -> Dict[str, Any]:
     """
@@ -765,7 +744,6 @@ async def gcp_list_billing_accounts() -> Dict[str, Any]:
     """
     url = "https://cloudbilling.googleapis.com/v1/billingAccounts"
     return await make_gcp_request("GET", url)
-
 
 @mcp.tool()
 async def gcp_get_billing_account(
@@ -783,7 +761,6 @@ async def gcp_get_billing_account(
     url = f"https://cloudbilling.googleapis.com/v1/billingAccounts/{billing_account_id}"
     return await make_gcp_request("GET", url)
 
-
 @mcp.tool()
 async def gcp_list_billing_account_projects(
     billing_account_id: str
@@ -799,7 +776,6 @@ async def gcp_list_billing_account_projects(
     """
     url = f"https://cloudbilling.googleapis.com/v1/billingAccounts/{billing_account_id}/projects"
     return await make_gcp_request("GET", url)
-
 
 @mcp.tool()
 async def gcp_query_cost_usage(
@@ -881,7 +857,6 @@ async def gcp_query_cost_usage(
         }
     }
 
-
 # ============================================================================
 # VERTEX AI TOOLS
 # ============================================================================
@@ -906,7 +881,6 @@ async def vertex_ai_list_models(
     url = f"https://{location}-aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/models"
     return await make_gcp_request("GET", url)
 
-
 @mcp.tool()
 async def vertex_ai_list_endpoints(
     project_id: Optional[str] = None,
@@ -926,7 +900,6 @@ async def vertex_ai_list_endpoints(
     location = region or GCP_REGION
     url = f"https://{location}-aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/endpoints"
     return await make_gcp_request("GET", url)
-
 
 @mcp.tool()
 async def vertex_ai_get_endpoint(
@@ -950,7 +923,6 @@ async def vertex_ai_get_endpoint(
     url = f"https://{location}-aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/endpoints/{endpoint_id}"
     return await make_gcp_request("GET", url)
 
-
 @mcp.tool()
 async def vertex_ai_list_training_pipelines(
     project_id: Optional[str] = None,
@@ -971,7 +943,6 @@ async def vertex_ai_list_training_pipelines(
     url = f"https://{location}-aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/trainingPipelines"
     return await make_gcp_request("GET", url)
 
-
 @mcp.tool()
 async def vertex_ai_list_custom_jobs(
     project_id: Optional[str] = None,
@@ -991,7 +962,6 @@ async def vertex_ai_list_custom_jobs(
     location = region or GCP_REGION
     url = f"https://{location}-aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/customJobs"
     return await make_gcp_request("GET", url)
-
 
 @mcp.tool()
 async def vertex_ai_usage_metrics(
@@ -1057,7 +1027,6 @@ async def vertex_ai_usage_metrics(
         }
     }
 
-
 @mcp.tool()
 async def vertex_ai_generative_models(
     project_id: Optional[str] = None,
@@ -1106,7 +1075,6 @@ async def vertex_ai_generative_models(
         }
     }
 
-
 @mcp.tool()
 async def gcp_monitoring_query(
     metric_type: str,
@@ -1145,7 +1113,6 @@ async def gcp_monitoring_query(
     )
 
     return await make_gcp_request("GET", url)
-
 
 @mcp.tool()
 async def gcp_api_help() -> Dict[str, Any]:
@@ -1231,7 +1198,6 @@ async def gcp_api_help() -> Dict[str, Any]:
             }
         }
     }
-
 
 # ============================================================================
 # MAIN ENTRY POINT

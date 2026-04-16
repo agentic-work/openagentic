@@ -1,17 +1,3 @@
-/**
- * AgenticActivityStream - Claude Code-inspired Agentic Activity Display
- *
- * REDESIGNED with professional UX patterns:
- * 1. Collapsed state: "10 steps completed (2.4s)" with grouped category chips
- * 2. Expanded state: status dot + category badge + label + summary + duration + expand
- * 3. Left-border indentation with CSS state classes (no tree chars)
- * 4. Agent hierarchy rendered as container cards with accent borders
- * 5. Live streaming indicators: pulsing/solid/dashed borders
- * 6. Auto-collapse 300ms after all steps complete
- *
- * This is the SOURCE OF TRUTH for activity display.
- * */
-
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { SharedMarkdownRenderer } from '../MessageContent/SharedMarkdownRenderer';

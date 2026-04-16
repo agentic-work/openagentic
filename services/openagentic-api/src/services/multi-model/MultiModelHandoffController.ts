@@ -1,10 +1,3 @@
-/**
- * Multi-Model Handoff Controller
- *
- * Manages context preservation and handoffs between model roles
- * in the multi-model collaboration system.
- */
-
 import {
   ModelRole,
   ModelHandoffContext,

@@ -80,7 +80,6 @@ except ImportError:
         )
         return logging.getLogger(service_name)
 
-
 # =============================================================================
 # OPENTELEMETRY TRACING
 # =============================================================================
@@ -139,7 +138,6 @@ except ImportError:
         )
         return None
 
-
 # =============================================================================
 # PROMETHEUS METRICS
 # =============================================================================
@@ -197,13 +195,11 @@ except ImportError:
     MCP_SERVER_INFO = None
     MCP_TOOLS_AVAILABLE = None
 
-
 # =============================================================================
 # HTTP TRANSPORT
 # =============================================================================
 
 logger = logging.getLogger("mcp-http-transport")
-
 
 class MCPHTTPServer:
     """
@@ -750,7 +746,6 @@ class MCPHTTPServer:
             port=self.port,
             log_level="info"
         )
-
 
 def run_with_http_support(
     mcp_server: Any,

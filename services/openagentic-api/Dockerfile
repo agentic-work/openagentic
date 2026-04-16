@@ -1,3 +1,4 @@
+
 # Smart Dockerfile that works for both docker-compose and standalone builds
 # Usage:
 #   Standalone: docker build .
@@ -69,8 +70,6 @@ RUN pnpm tsc
 
 # Production image
 FROM node:20-slim
-
-LABEL org.opencontainers.image.licenses="Apache-2.0"
 
 # Version build args
 ARG PLATFORM_VERSION=0.0.0

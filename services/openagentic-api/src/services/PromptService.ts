@@ -571,7 +571,6 @@ export class PromptService {
     }
   }
 
-
   /**
    * Get all available prompt templates
    */

@@ -1,25 +1,3 @@
-/**
- * CodeMode v2 — tool dispatcher for chat-pipeline-direct backend.
- *
- * The v2 backend runs the LLM agentic loop on openagentic-api (reusing
- * ProviderManager + tool_use normalization). When the model emits a
- * tool_use block, we dispatch the call to the user's own exec pod over
- * HTTP instead of going through the openagentic CLI. The exec pod
- * exposes POST /tool-exec (built in parallel with this service) which
- * runs the tool in the user's workspace and returns the result.
- *
- * Exec pod service naming matches the existing WS proxies
- * (server.ts:2218): `openagentic-{userHash}-svc.{namespace}.svc.cluster.local:3060`
- * where userHash is the first 12 chars of sha256(userId).
- *
- * Auth: internal key header `X-Internal-API-Key`, same as every other
- * API→exec-pod call. Falls back to INTERNAL_API_KEY for compat with
- * older charts.
- *
- * Timeout: 60s — Bash can legitimately run that long (long tests,
- * builds). Tighter budgets caused spurious failures in chat mode.
- */
-
 import axios, { AxiosError } from 'axios';
 import crypto from 'crypto';
 import type { Logger } from 'pino';

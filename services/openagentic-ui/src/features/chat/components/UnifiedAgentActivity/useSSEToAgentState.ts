@@ -1,25 +1,3 @@
-/**
- * SSE to Agent State Adapter
- *
- * Bridges existing useSSEChat callbacks to the unified AgentState system.
- * Drop-in replacement for existing tool execution and thinking handlers.
- *
- * Usage:
- * ```typescript
- * const { agentState, handlers } = useSSEToAgentState();
- *
- * const { sendMessage } = useSSEChat({
- *   sessionId,
- *   onToolExecution: handlers.onToolExecution,
- *   onThinking: handlers.onThinking,
- *   ...other handlers
- * });
- *
- * // Then in render:
- * <UnifiedAgentActivity state={agentState.state} />
- * ```
- * */
-
 import { useCallback, useMemo } from 'react';
 import { useAgentState } from './useAgentState';
 import type { MultiModelEvent } from '../../hooks/useSSEChat';

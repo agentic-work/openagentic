@@ -1,7 +1,3 @@
-/**
- * AgentScheduleView - Schedule agents to run periodically
- * Visual cron builder, target workflow selection, and schedule management
- */
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, RefreshCw, Play, Search, X, Save, ChevronDown, ChevronRight } from '@/shared/icons';
 import { Clock, Settings } from '../Shared/AdminIcons';

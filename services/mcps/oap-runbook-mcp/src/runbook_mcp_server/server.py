@@ -50,7 +50,6 @@ KUBERNETES_NAMESPACE = os.getenv("KUBERNETES_NAMESPACE", "openagentic")
 # In-memory execution history (would be replaced with persistent storage in production)
 execution_history: List[Dict[str, Any]] = []
 
-
 # ============================================================================
 # RUNBOOK DEFINITIONS
 # ============================================================================
@@ -176,7 +175,6 @@ BUILTIN_RUNBOOKS = {
     }
 }
 
-
 # ============================================================================
 # RUNBOOK EXECUTION ENGINE
 # ============================================================================
@@ -217,7 +215,6 @@ async def execute_kubectl(command: List[str], timeout: int = 60) -> Dict[str, An
             "error": str(e),
             "command": " ".join(["kubectl"] + command)
         }
-
 
 async def run_builtin_runbook(runbook_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
     """Execute a built-in runbook"""
@@ -433,7 +430,6 @@ async def run_builtin_runbook(runbook_name: str, params: Dict[str, Any]) -> Dict
         while len(execution_history) > 100:
             execution_history.pop(0)
 
-
 # ============================================================================
 # TOOL DEFINITIONS
 # ============================================================================
@@ -480,7 +476,6 @@ async def runbook_list() -> str:
     except Exception as e:
         logger.error(f"Error in runbook_list: {e}")
         return f"Error: {str(e)}"
-
 
 @mcp.tool()
 async def runbook_describe(
@@ -533,7 +528,6 @@ async def runbook_describe(
     except Exception as e:
         logger.error(f"Error in runbook_describe: {e}")
         return f"Error: {str(e)}"
-
 
 @mcp.tool()
 async def runbook_execute(
@@ -605,7 +599,6 @@ async def runbook_execute(
         logger.error(f"Error in runbook_execute: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def runbook_history(
     limit: int = Field(default=10, description="Number of recent executions to show")
@@ -641,7 +634,6 @@ async def runbook_history(
         logger.error(f"Error in runbook_history: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def runbook_quick_restart(
     service: str = Field(description="Service/deployment name to restart"),
@@ -656,7 +648,6 @@ async def runbook_quick_restart(
         runbook="restart-service",
         params=json.dumps({"service": service, "namespace": namespace})
     )
-
 
 @mcp.tool()
 async def runbook_quick_scale(
@@ -674,7 +665,6 @@ async def runbook_quick_scale(
         params=json.dumps({"deployment": deployment, "replicas": replicas, "namespace": namespace})
     )
 
-
 @mcp.tool()
 async def runbook_quick_diagnostics(
     service: str = Field(description="Service/deployment name to diagnose"),
@@ -690,7 +680,6 @@ async def runbook_quick_diagnostics(
         params=json.dumps({"service": service, "namespace": namespace})
     )
 
-
 # ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
@@ -699,7 +688,6 @@ def main():
     """Run the MCP server"""
     logger.info(f"Starting Runbook MCP Server (Runbook dir: {RUNBOOK_DIR})")
     mcp.run()
-
 
 if __name__ == "__main__":
     main()

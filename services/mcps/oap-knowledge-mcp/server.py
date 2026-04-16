@@ -350,7 +350,6 @@ MCP_REGISTRY = {
     }
 }
 
-
 # =============================================================================
 # MCP TOOLS
 # =============================================================================
@@ -424,7 +423,6 @@ async def search_tool_documentation(query: str, top_k: int = 5) -> Dict[str, Any
         "total_matches": len(results)
     }
 
-
 @mcp.tool()
 async def get_tool_examples(tool_name: str) -> Dict[str, Any]:
     """
@@ -471,7 +469,6 @@ async def get_tool_examples(tool_name: str) -> Dict[str, Any]:
         "found": False,
         "message": f"No documentation found for tool '{tool_name}'. Available tools: {list(TOOL_KNOWLEDGE.keys())}"
     }
-
 
 @mcp.tool()
 async def suggest_tools_for_task(task_description: str = "", task: str = "") -> Dict[str, Any]:
@@ -575,7 +572,6 @@ async def suggest_tools_for_task(task_description: str = "", task: str = "") -> 
         "total_suggestions": len(suggestions)
     }
 
-
 @mcp.tool()
 async def list_available_mcps() -> Dict[str, Any]:
     """
@@ -591,7 +587,6 @@ async def list_available_mcps() -> Dict[str, Any]:
         "total_mcps": len(MCP_REGISTRY),
         "usage_hint": "Use suggest_tools_for_task(task) to find the right tool for your task, or get_tool_examples(tool_name) for detailed usage."
     }
-
 
 # =============================================================================
 # SERVER STARTUP

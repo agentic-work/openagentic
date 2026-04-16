@@ -60,7 +60,6 @@ def is_protected_namespace(namespace: str) -> bool:
     """Check if a namespace is the protected OpenAgentic namespace"""
     return namespace.lower() == PROTECTED_NAMESPACE.lower()
 
-
 def validate_namespace_write_access(namespace: str, operation: str = "modify"):
     """
     Validate that the namespace is not the protected OpenAgentic namespace.
@@ -75,7 +74,6 @@ def validate_namespace_write_access(namespace: str, operation: str = "modify"):
             f"The OpenAgentic deployment namespace is read-only for safety. "
             f"You can only read/view resources in this namespace."
         )
-
 
 # ============================================================================
 # KUBERNETES CLIENT INITIALIZATION
@@ -107,7 +105,6 @@ def get_k8s_client():
             raise RuntimeError(f"Kubernetes client initialization failed: {e}")
 
     return _k8s_api, _k8s_core_api, _k8s_apps_api
-
 
 # ============================================================================
 # NAMESPACE TOOLS (READ-ONLY for protected namespace)
@@ -143,7 +140,6 @@ async def k8s_list_namespaces() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to list namespaces: {e}")
         return {"success": False, "error": str(e)}
-
 
 @mcp.tool(description="Get detailed information about a specific namespace including resource quotas and limits.")
 async def k8s_get_namespace(namespace: str) -> Dict[str, Any]:
@@ -182,7 +178,6 @@ async def k8s_get_namespace(namespace: str) -> Dict[str, Any]:
         logger.error(f"Failed to get namespace {namespace}: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool(description="Create a new namespace. BLOCKED for protected namespace.")
 async def k8s_create_namespace(
     namespace: str,
@@ -218,7 +213,6 @@ async def k8s_create_namespace(
         logger.error(f"Failed to create namespace {namespace}: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool(description="Delete a namespace. BLOCKED for protected namespace. Use with caution - deletes all resources in the namespace.")
 async def k8s_delete_namespace(namespace: str) -> Dict[str, Any]:
     """Delete a namespace"""
@@ -242,7 +236,6 @@ async def k8s_delete_namespace(namespace: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to delete namespace {namespace}: {e}")
         return {"success": False, "error": str(e)}
-
 
 # ============================================================================
 # POD TOOLS
@@ -300,7 +293,6 @@ async def k8s_list_pods(
     except Exception as e:
         logger.error(f"Failed to list pods in {namespace}: {e}")
         return {"success": False, "error": str(e)}
-
 
 @mcp.tool(description="Get detailed information about a specific pod including containers, volumes, and events.")
 async def k8s_get_pod(namespace: str, pod_name: str) -> Dict[str, Any]:
@@ -367,7 +359,6 @@ async def k8s_get_pod(namespace: str, pod_name: str) -> Dict[str, Any]:
         logger.error(f"Failed to get pod {namespace}/{pod_name}: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool(description="Get logs from a pod container. Returns the last N lines of logs.")
 async def k8s_get_pod_logs(
     namespace: str,
@@ -402,7 +393,6 @@ async def k8s_get_pod_logs(
         logger.error(f"Failed to get logs for {namespace}/{pod_name}: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool(description="Delete a pod. BLOCKED for pods in protected namespace. The pod will be recreated by its controller.")
 async def k8s_delete_pod(namespace: str, pod_name: str) -> Dict[str, Any]:
     """Delete a pod (useful for forcing restart)"""
@@ -427,7 +417,6 @@ async def k8s_delete_pod(namespace: str, pod_name: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to delete pod {namespace}/{pod_name}: {e}")
         return {"success": False, "error": str(e)}
-
 
 # ============================================================================
 # DEPLOYMENT TOOLS
@@ -468,7 +457,6 @@ async def k8s_list_deployments(namespace: str = "default") -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to list deployments in {namespace}: {e}")
         return {"success": False, "error": str(e)}
-
 
 @mcp.tool(description="Get detailed information about a specific deployment including strategy and conditions.")
 async def k8s_get_deployment(namespace: str, deployment_name: str) -> Dict[str, Any]:
@@ -514,7 +502,6 @@ async def k8s_get_deployment(namespace: str, deployment_name: str) -> Dict[str, 
         logger.error(f"Failed to get deployment {namespace}/{deployment_name}: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool(description="Scale a deployment to a specified number of replicas. BLOCKED for deployments in protected namespace.")
 async def k8s_scale_deployment(
     namespace: str,
@@ -550,7 +537,6 @@ async def k8s_scale_deployment(
     except Exception as e:
         logger.error(f"Failed to scale deployment {namespace}/{deployment_name}: {e}")
         return {"success": False, "error": str(e)}
-
 
 @mcp.tool(description="Restart a deployment by triggering a rollout. BLOCKED for deployments in protected namespace.")
 async def k8s_restart_deployment(namespace: str, deployment_name: str) -> Dict[str, Any]:
@@ -594,7 +580,6 @@ async def k8s_restart_deployment(namespace: str, deployment_name: str) -> Dict[s
     except Exception as e:
         logger.error(f"Failed to restart deployment {namespace}/{deployment_name}: {e}")
         return {"success": False, "error": str(e)}
-
 
 # ============================================================================
 # SERVICE TOOLS
@@ -644,7 +629,6 @@ async def k8s_list_services(namespace: str = "default") -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to list services in {namespace}: {e}")
         return {"success": False, "error": str(e)}
-
 
 @mcp.tool(description="Get detailed information about a specific service including endpoints.")
 async def k8s_get_service(namespace: str, service_name: str) -> Dict[str, Any]:
@@ -704,7 +688,6 @@ async def k8s_get_service(namespace: str, service_name: str) -> Dict[str, Any]:
         logger.error(f"Failed to get service {namespace}/{service_name}: {e}")
         return {"success": False, "error": str(e)}
 
-
 # ============================================================================
 # CONFIGMAP AND SECRET TOOLS
 # ============================================================================
@@ -741,7 +724,6 @@ async def k8s_list_configmaps(namespace: str = "default") -> Dict[str, Any]:
         logger.error(f"Failed to list configmaps in {namespace}: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool(description="Get a ConfigMap with its data. Safe to view in any namespace.")
 async def k8s_get_configmap(namespace: str, configmap_name: str) -> Dict[str, Any]:
     """Get ConfigMap data"""
@@ -770,7 +752,6 @@ async def k8s_get_configmap(namespace: str, configmap_name: str) -> Dict[str, An
     except Exception as e:
         logger.error(f"Failed to get configmap {namespace}/{configmap_name}: {e}")
         return {"success": False, "error": str(e)}
-
 
 @mcp.tool(description="List all Secrets in a namespace (values are NOT returned for security).")
 async def k8s_list_secrets(namespace: str = "default") -> Dict[str, Any]:
@@ -805,7 +786,6 @@ async def k8s_list_secrets(namespace: str = "default") -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to list secrets in {namespace}: {e}")
         return {"success": False, "error": str(e)}
-
 
 # ============================================================================
 # NODE TOOLS
@@ -859,7 +839,6 @@ async def k8s_list_nodes() -> Dict[str, Any]:
         logger.error(f"Failed to list nodes: {e}")
         return {"success": False, "error": str(e)}
 
-
 # ============================================================================
 # CLUSTER HEALTH & EVENTS
 # ============================================================================
@@ -911,7 +890,6 @@ async def k8s_get_events(
     except Exception as e:
         logger.error(f"Failed to get events: {e}")
         return {"success": False, "error": str(e)}
-
 
 @mcp.tool(description="Get overall cluster health status including node status, component status, and resource usage.")
 async def k8s_cluster_health() -> Dict[str, Any]:
@@ -991,7 +969,6 @@ async def k8s_cluster_health() -> Dict[str, Any]:
         logger.error(f"Failed to get cluster health: {e}")
         return {"success": False, "error": str(e)}
 
-
 # ============================================================================
 # APPLY/PATCH TOOLS
 # ============================================================================
@@ -1058,7 +1035,6 @@ async def k8s_apply_yaml(
         logger.error(f"Failed to apply YAML: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool(description="Patch a Kubernetes resource using strategic merge patch. BLOCKED for protected namespace.")
 async def k8s_patch_resource(
     kind: str,
@@ -1109,7 +1085,6 @@ async def k8s_patch_resource(
     except Exception as e:
         logger.error(f"Failed to patch {kind}/{name} in {namespace}: {e}")
         return {"success": False, "error": str(e)}
-
 
 # ============================================================================
 # ROLLOUT TOOLS
@@ -1171,7 +1146,6 @@ async def k8s_rollout_status(
         logger.error(f"Failed to get rollout status for {namespace}/{deployment_name}: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool(description="Get rollout history for a deployment showing all revisions.")
 async def k8s_rollout_history(
     namespace: str,
@@ -1217,7 +1191,6 @@ async def k8s_rollout_history(
     except Exception as e:
         logger.error(f"Failed to get rollout history for {namespace}/{deployment_name}: {e}")
         return {"success": False, "error": str(e)}
-
 
 @mcp.tool(description="Undo a deployment rollout to a previous revision. BLOCKED for protected namespace.")
 async def k8s_rollout_undo(
@@ -1289,7 +1262,6 @@ async def k8s_rollout_undo(
         logger.error(f"Failed to rollback {namespace}/{deployment_name}: {e}")
         return {"success": False, "error": str(e)}
 
-
 # ============================================================================
 # CONTEXT TOOLS
 # ============================================================================
@@ -1322,7 +1294,6 @@ async def k8s_list_contexts() -> Dict[str, Any]:
         logger.error(f"Failed to list contexts: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool(description="Get current active Kubernetes context.")
 async def k8s_get_current_context() -> Dict[str, Any]:
     """Get current kubectl context"""
@@ -1346,7 +1317,6 @@ async def k8s_get_current_context() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to get current context: {e}")
         return {"success": False, "error": str(e)}
-
 
 # ============================================================================
 # API DISCOVERY TOOLS
@@ -1391,7 +1361,6 @@ async def k8s_list_api_resources() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to list API resources: {e}")
         return {"success": False, "error": str(e)}
-
 
 @mcp.tool(description="Explain a Kubernetes resource kind with its fields and documentation.")
 async def k8s_explain_resource(
@@ -1515,7 +1484,6 @@ async def k8s_explain_resource(
         logger.error(f"Failed to explain resource {kind}: {e}")
         return {"success": False, "error": str(e)}
 
-
 # ============================================================================
 # NODE MANAGEMENT TOOLS
 # ============================================================================
@@ -1540,7 +1508,6 @@ async def k8s_cordon_node(node_name: str) -> Dict[str, Any]:
         logger.error(f"Failed to cordon node {node_name}: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool(description="Uncordon a node to allow pods to be scheduled on it again.")
 async def k8s_uncordon_node(node_name: str) -> Dict[str, Any]:
     """Mark node as schedulable"""
@@ -1560,7 +1527,6 @@ async def k8s_uncordon_node(node_name: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to uncordon node {node_name}: {e}")
         return {"success": False, "error": str(e)}
-
 
 @mcp.tool(description="Drain a node by evicting all pods and cordoning it. Use for node maintenance.")
 async def k8s_drain_node(
@@ -1639,7 +1605,6 @@ async def k8s_drain_node(
         logger.error(f"Failed to drain node {node_name}: {e}")
         return {"success": False, "error": str(e)}
 
-
 # ============================================================================
 # POD CLEANUP TOOLS
 # ============================================================================
@@ -1709,7 +1674,6 @@ async def k8s_cleanup_pods(
         logger.error(f"Failed to cleanup pods in {namespace}: {e}")
         return {"success": False, "error": str(e)}
 
-
 # ============================================================================
 # HELM TOOLS
 # ============================================================================
@@ -1749,7 +1713,6 @@ async def helm_list(
         logger.error(f"Failed to list Helm releases: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool(description="Get status of a Helm release.")
 async def helm_status(
     release_name: str,
@@ -1778,7 +1741,6 @@ async def helm_status(
     except Exception as e:
         logger.error(f"Failed to get Helm status for {release_name}: {e}")
         return {"success": False, "error": str(e)}
-
 
 @mcp.tool(description="Get Helm release history showing all revisions.")
 async def helm_history(
@@ -1809,7 +1771,6 @@ async def helm_history(
     except Exception as e:
         logger.error(f"Failed to get Helm history for {release_name}: {e}")
         return {"success": False, "error": str(e)}
-
 
 @mcp.tool(description="Install a Helm chart. BLOCKED for protected namespace.")
 async def helm_install(
@@ -1872,7 +1833,6 @@ async def helm_install(
         logger.error(f"Failed to install Helm chart {chart}: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool(description="Upgrade a Helm release. BLOCKED for protected namespace.")
 async def helm_upgrade(
     release_name: str,
@@ -1932,7 +1892,6 @@ async def helm_upgrade(
         logger.error(f"Failed to upgrade Helm release {release_name}: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool(description="Uninstall a Helm release. BLOCKED for protected namespace.")
 async def helm_uninstall(
     release_name: str,
@@ -1970,7 +1929,6 @@ async def helm_uninstall(
     except Exception as e:
         logger.error(f"Failed to uninstall Helm release {release_name}: {e}")
         return {"success": False, "error": str(e)}
-
 
 @mcp.tool(description="Rollback a Helm release to a previous revision. BLOCKED for protected namespace.")
 async def helm_rollback(
@@ -2013,7 +1971,6 @@ async def helm_rollback(
         logger.error(f"Failed to rollback Helm release {release_name}: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool(description="Get values for a Helm release.")
 async def helm_get_values(
     release_name: str,
@@ -2048,7 +2005,6 @@ async def helm_get_values(
         logger.error(f"Failed to get Helm values for {release_name}: {e}")
         return {"success": False, "error": str(e)}
 
-
 # ============================================================================
 # FASTMCP SERVER INITIALIZATION
 # ============================================================================
@@ -2071,7 +2027,6 @@ def main():
     # Start FastMCP server
     logger.info("Kubernetes MCP Server ready - waiting for requests")
     mcp.run()
-
 
 if __name__ == "__main__":
     main()

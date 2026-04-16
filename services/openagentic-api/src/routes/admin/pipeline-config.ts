@@ -1,10 +1,3 @@
-/**
- * Pipeline Configuration Admin Routes
- *
- * Admin routes for viewing and updating pipeline configuration.
- * Manages settings for all chat pipeline stages.
- */
-
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import type { Logger } from 'pino';
 import { prisma } from '../../utils/prisma.js';

@@ -1,11 +1,4 @@
 /**
- * Multi-Model Collaboration Types
- *
- * Defines the data structures for orchestrating multiple LLM models
- * within a single chat request for optimal cost, speed, and quality.
- */
-
-/**
  * Model roles in the multi-model collaboration system
  */
 export enum ModelRole {

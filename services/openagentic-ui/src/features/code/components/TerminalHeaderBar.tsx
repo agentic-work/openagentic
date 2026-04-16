@@ -1,10 +1,3 @@
-/**
- * TerminalHeaderBar — compact chip row above the openagentic terminal
- *
- * Read-only display: theme · model · cwd · cli version · live token counts.
- * Model changes happen via /model in the CLI itself — no UI controls here.
- */
-
 import React from 'react';
 import {
   Cpu,

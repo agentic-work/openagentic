@@ -59,7 +59,6 @@ export const MCPProvider: React.FC<MCPProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-
   useEffect(() => {
     // Only load MCPs if user is authenticated
     if (!isAuthenticated) {

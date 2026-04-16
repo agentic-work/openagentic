@@ -1,10 +1,3 @@
-/**
- * CodeModeStatusBar — live status bar with real data
- *
- * Shows: connection status + latency, version + git SHA, pod CPU/mem/IO,
- * session uptime, and a reconnect button.
- */
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 interface CodeModeStatusBarProps {

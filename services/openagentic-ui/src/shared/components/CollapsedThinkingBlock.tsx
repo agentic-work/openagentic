@@ -1,17 +1,3 @@
-/**
- * CollapsedThinkingBlock - Unified thinking block component
- *
- * Used by BOTH Chat Mode and Code Mode for consistent thinking display.
- * Follows Claude Code CLI style:
- * - During streaming: Shows minimal "Thinking..." with animated indicator
- * - After completion: Shows collapsed "Thought for Xs (~N tokens)"
- * - Content is HIDDEN by default
- * - User can click to expand
- *
- * This replaces both InlineThinking (chat) and CLIThinkingDisplay (code)
- * to ensure consistent behavior across the application.
- * */
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronRight, ChevronDown } from '@/shared/icons';
 import { ThinkingSphere } from './ThinkingSphere';

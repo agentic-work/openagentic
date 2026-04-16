@@ -1,15 +1,3 @@
-/**
- * ToolUsagePanel - Sidebar section showing personal tool usage analytics
- *
- * Displays the authenticated user's MCP tool call statistics:
- * - Total tool calls and overall success rate
- * - Top tools by usage with per-tool success rates
- * - Recent tool activity timeline
- *
- * Data fetched from GET /api/v1/me/tool-usage on first expand.
- * Follows the same collapsible pattern as MemoryPanel.
- * */
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, ChevronRight, ChevronDown, Loader2, AlertCircle, CheckCircle, XCircle, Wrench } from '@/shared/icons';

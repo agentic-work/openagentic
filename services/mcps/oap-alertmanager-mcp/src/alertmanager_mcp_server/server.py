@@ -41,7 +41,6 @@ mcp = FastMCP("Alertmanager MCP Server - Manage Alerts and Silences")
 # Alertmanager configuration
 ALERTMANAGER_URL = os.getenv("ALERTMANAGER_URL", "http://alertmanager:9093")
 
-
 # ============================================================================
 # ALERTMANAGER CLIENT
 # ============================================================================
@@ -144,10 +143,8 @@ class AlertmanagerClient:
         response.raise_for_status()
         return response.json()
 
-
 # Global client instance
 alertmanager_client = AlertmanagerClient(ALERTMANAGER_URL)
-
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -194,7 +191,6 @@ def format_alert(alert: Dict[str, Any]) -> str:
 
     return "\n".join(lines)
 
-
 def format_silence(silence: Dict[str, Any]) -> str:
     """Format a silence for display"""
     status = silence.get("status", {}).get("state", "unknown")
@@ -226,7 +222,6 @@ def format_silence(silence: Dict[str, Any]) -> str:
         pass
 
     return "\n".join(lines)
-
 
 # ============================================================================
 # TOOL DEFINITIONS
@@ -292,7 +287,6 @@ async def alertmanager_get_alerts(
         logger.error(f"Error in alertmanager_get_alerts: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def alertmanager_get_alert_groups() -> str:
     """
@@ -338,7 +332,6 @@ async def alertmanager_get_alert_groups() -> str:
     except Exception as e:
         logger.error(f"Error in alertmanager_get_alert_groups: {e}")
         return f"Error: {str(e)}"
-
 
 @mcp.tool()
 async def alertmanager_get_silences(
@@ -390,7 +383,6 @@ async def alertmanager_get_silences(
     except Exception as e:
         logger.error(f"Error in alertmanager_get_silences: {e}")
         return f"Error: {str(e)}"
-
 
 @mcp.tool()
 async def alertmanager_create_silence(
@@ -476,7 +468,6 @@ async def alertmanager_create_silence(
         logger.error(f"Error in alertmanager_create_silence: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def alertmanager_delete_silence(
     silence_id: str = Field(description="ID of the silence to delete/expire")
@@ -498,7 +489,6 @@ async def alertmanager_delete_silence(
     except Exception as e:
         logger.error(f"Error in alertmanager_delete_silence: {e}")
         return f"Error: {str(e)}"
-
 
 @mcp.tool()
 async def alertmanager_silence_by_labels(
@@ -573,7 +563,6 @@ async def alertmanager_silence_by_labels(
         logger.error(f"Error in alertmanager_silence_by_labels: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def alertmanager_get_receivers() -> str:
     """
@@ -618,7 +607,6 @@ async def alertmanager_get_receivers() -> str:
         logger.error(f"Error in alertmanager_get_receivers: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def alertmanager_status() -> str:
     """
@@ -657,7 +645,6 @@ async def alertmanager_status() -> str:
     except Exception as e:
         logger.error(f"Error in alertmanager_status: {e}")
         return f"Error: {str(e)}"
-
 
 @mcp.tool()
 async def alertmanager_summary() -> str:
@@ -710,7 +697,6 @@ async def alertmanager_summary() -> str:
         logger.error(f"Error in alertmanager_summary: {e}")
         return f"Error: {str(e)}"
 
-
 # ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
@@ -719,7 +705,6 @@ def main():
     """Run the MCP server"""
     logger.info(f"Starting Alertmanager MCP Server (URL: {ALERTMANAGER_URL})")
     mcp.run()
-
 
 if __name__ == "__main__":
     main()

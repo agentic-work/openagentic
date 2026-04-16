@@ -1,6 +1,5 @@
 # Proprietary and confidential. Unauthorized copying prohibited.
 
-
 echo "=== Starting Azure Infrastructure Security Audit Test ==="
 echo "Time: $(date)"
 echo ""

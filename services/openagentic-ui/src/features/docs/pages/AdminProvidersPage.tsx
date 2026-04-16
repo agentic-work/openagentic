@@ -1,10 +1,3 @@
-/**
- * AdminProvidersPage - LLM Provider Management documentation.
- *
- * Documents provider types, card view, capability matrix, setup wizard,
- * embedding configuration, and API endpoints.
- */
-
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

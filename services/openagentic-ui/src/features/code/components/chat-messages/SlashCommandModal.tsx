@@ -1,18 +1,3 @@
-/**
- * SlashCommandModal — shared overlay container for interactive slash
- * command UIs (`/model`, `/theme`, `/config`, `/plan`, etc.).
- *
- * Renders as a centered card over the chat view with a backdrop,
- * Esc to dismiss, click-outside to dismiss, focus trap on the first
- * focusable child. Matches the visual grammar of the rest of
- * CodeMode (monospace, rounded border, cm-* CSS vars) so it doesn't
- * feel like a generic web modal.
- *
- * Use this for any slash command that needs interactive input. Pass
- * children for the body, `title` for the header, `onClose` to handle
- * dismissal.
- */
-
 import React, { useEffect, useRef } from 'react';
 
 interface SlashCommandModalProps {

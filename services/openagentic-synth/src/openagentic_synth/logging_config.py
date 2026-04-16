@@ -24,7 +24,6 @@ import logging
 import structlog
 from opentelemetry import trace
 
-
 def add_trace_context(logger, method_name, event_dict):
     """Add OpenTelemetry trace context to log entries."""
     span = trace.get_current_span()
@@ -33,7 +32,6 @@ def add_trace_context(logger, method_name, event_dict):
         event_dict["trace_id"] = format(ctx.trace_id, "032x")
         event_dict["span_id"] = format(ctx.span_id, "016x")
     return event_dict
-
 
 def setup_logging():
     """Configure structured logging with JSON output."""
@@ -70,7 +68,6 @@ def setup_logging():
     # Reduce noise from libraries
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
-
 
 def get_logger(name: str = None):
     """Get a structured logger instance."""

@@ -1,24 +1,3 @@
-/**
- * usePromptHistory — session-scoped prompt history with Up/Down
- * navigation. Matches openagentic's history:previous / history:next
- * bindings (src/keybindings/defaultBindings.ts).
- *
- * Behavior contract (1:1 with the TUI):
- *   - Up when input is empty       → last submitted prompt
- *   - Up while browsing history    → older entry, until the oldest
- *   - Down while browsing          → newer entry, until back to live
- *   - Down past newest             → restore the *draft* the user was
- *     typing before they started scrolling (nothing sent yet)
- *   - Any edit while browsing      → leaves history mode, the edited
- *     text becomes the new draft
- *   - push() on submit             → appends the prompt, dedupes if it
- *     matches the most recent one, caps at 200 entries
- *
- * Persisted to localStorage under `codemode:promptHistory:<sessionId>`
- * so a reload restores the stack. A session-less state still works in
- * memory.
- */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const KEY_PREFIX = 'codemode:promptHistory:';

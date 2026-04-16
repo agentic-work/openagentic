@@ -1,13 +1,3 @@
-/**
- * CodeMode Sync Service
- *
- * Fetches plugin metadata from GitHub repos and stores in SystemConfiguration.
- * Also seeds initial data from hardcoded defaults if DB is empty.
- *
- * Target repos:
- * - agentic-work/openagentic — check for plugins directory structure
- */
-
 import { prisma } from '../utils/prisma.js';
 
 // ---------------------------------------------------------------------------

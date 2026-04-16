@@ -1,10 +1,3 @@
-/**
- * DocsScreenshot - Reusable screenshot display component with lightbox.
- *
- * Renders documentation screenshots with rounded corners, subtle border,
- * shadow, optional caption, and click-to-expand lightbox modal.
- */
-
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 

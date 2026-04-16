@@ -1,10 +1,3 @@
-/**
- * SecurityArchPage - Deep security architecture documentation.
- *
- * Covers authentication, authorization, DLP, HITL, audit trail,
- * network security, MCP security, and compliance posture.
- */
-
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

@@ -1,10 +1,3 @@
-/**
- * Admin Agent Schedule Routes (stub)
- *
- * In-memory schedule store so the UI renders without errors.
- * No database table yet — schedules are lost on restart.
- */
-
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { authMiddleware, adminMiddleware } from '../middleware/unifiedAuth.js';
 import { loggers } from '../utils/logger.js';

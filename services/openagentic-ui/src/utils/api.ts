@@ -103,7 +103,6 @@ export function workflowEndpoint(path: string): string {
   return baseUrl ? `${baseUrl}/api${workflowPath}` : `/api${workflowPath}`;
 }
 
-
 // Helper to get API key from session storage
 export function getApiKey(): string | null {
   return sessionStorage.getItem('apiKey');

@@ -1,13 +1,3 @@
-/**
- * SessionInfoModal — reusable list/detail modal for slash commands
- * that display session metadata: /tools, /mcp, /agents, /skills,
- * /plugins, /permissions, /config, /memory.
- *
- * Renders a scrollable list with search, driven by the sessionMeta
- * snapshot from the system init event. Actions (enable/disable/etc.)
- * are sent as slash commands to openagentic via sendMessage.
- */
-
 import React, { useMemo, useState } from 'react';
 
 const MONO =

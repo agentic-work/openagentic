@@ -1,16 +1,3 @@
-/**
- * TerminalToolbar — Quick actions bar for the terminal panel
- *
- * Provides web-native controls that complement the terminal REPL:
- * - Slash command palette (/ commands)
- * - Model picker
- * - Yolo mode toggle
- * - Session actions (clear, compact, cost)
- * - Connection status indicator
- *
- * Actions inject text directly into the PTY stdin via WebSocket.
- */
-
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Zap,

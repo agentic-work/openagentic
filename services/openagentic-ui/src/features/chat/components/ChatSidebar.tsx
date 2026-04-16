@@ -611,7 +611,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                       )}
                     </motion.div>
 
-
                     {/* Delete Confirmation - Positioned to the right */}
                     <AnimatePresence>
                       {showDeleteConfirm === session.id && (
