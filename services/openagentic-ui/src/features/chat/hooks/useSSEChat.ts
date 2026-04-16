@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * useSSEChat Hook
  * Server-Sent Events (SSE) implementation for real-time chat streaming
  * Features: Message streaming, pipeline state tracking, error recovery, MCP tool handling
@@ -1795,34 +1779,34 @@ export const useSSEChat = ({
 
                   // OpenAgentic format: blockType + content directly on safeData
                   if (safeData.blockType && safeData.content !== undefined) {
-                    const openagenticBlockType = safeData.blockType;
-                    const openagenticContent = safeData.content || '';
+                    const awpBlockType = safeData.blockType;
+                    const awpContent = safeData.content || '';
 
                     // Update contentBlocks for interleaved display
                     if (deltaIndex !== undefined) {
                       setContentBlocks(prev => prev.map(block =>
                         block.index === deltaIndex
-                          ? { ...block, content: block.content + openagenticContent }
+                          ? { ...block, content: block.content + awpContent }
                           : block
                       ));
                       contentBlocksRef.current = contentBlocksRef.current.map(block =>
                         block.index === deltaIndex
-                          ? { ...block, content: block.content + openagenticContent }
+                          ? { ...block, content: block.content + awpContent }
                           : block
                       );
                     }
 
                     // Also update legacy state for backwards compatibility
-                    if (openagenticBlockType === 'thinking') {
-                      const newAccumulatedThinking = currentThinkingRef.current + openagenticContent;
+                    if (awpBlockType === 'thinking') {
+                      const newAccumulatedThinking = currentThinkingRef.current + awpContent;
                       currentThinkingRef.current = newAccumulatedThinking;
                       setCurrentThinking(newAccumulatedThinking);
                       onThinkingContent?.(newAccumulatedThinking);
-                    } else if (openagenticBlockType === 'text') {
-                      assistantMessage += openagenticContent;
+                    } else if (awpBlockType === 'text') {
+                      assistantMessage += awpContent;
                       const { cleaned } = extractAndCleanThinkingBlocks(assistantMessage);
                       setCurrentMessage(cleaned);
-                      onStream?.(openagenticContent);
+                      onStream?.(awpContent);
                     }
                     break;
                   }
@@ -2395,7 +2379,23 @@ export const useSSEChat = ({
                     // Previously only thinking blocks were captured → they got bunched at the top.
                     const allContentBlocks = contentBlocksRef.current
                       .filter(b => (b.type === 'thinking' || b.type === 'tool_use') && (b.content || b.toolName))
-                      .map(b => ({ id: b.id, type: b.type, content: b.content, toolName: b.toolName, toolId: b.toolId, isComplete: b.isComplete }));
+                      .map(b => ({
+                        id: b.id,
+                        type: b.type,
+                        content: b.content,
+                        toolName: b.toolName,
+                        toolId: b.toolId,
+                        isComplete: b.isComplete,
+                        // Carry tool input + output through to the persisted form so
+                        // the activity-stream adapter can populate ToolCall.input /
+                        // ToolCall.output and renderers (favicons on web_search,
+                        // resource-name summaries on cloud creates, etc.) light up.
+                        // Without these, all tool chips collapse to a bare title.
+                        // See openagentic-omhs#330.
+                        result: (b as any).result,
+                        error: (b as any).error,
+                        duration: (b as any).duration,
+                      }));
 
                     const thinkingBlocksArray = allContentBlocks.filter(b => b.type === 'thinking' && b.content);
 
@@ -2428,14 +2428,35 @@ export const useSSEChat = ({
                             status: 'completed',
                           };
                         } else {
-                          // tool_use block — preserve as MCP/tool step
+                          // tool_use block — preserve as MCP/tool step.
+                          //
+                          // `block.content` was JSON-stringified args at
+                          // tool_call_delta time (see this file ~line 1038);
+                          // `block.result` was JSON-stringified output at
+                          // tool_result time (~line 1064). Parse both back so
+                          // the InlineStep carries usable structured data
+                          // through `details.{args,result}` — that's what
+                          // useInlineStepsAdapter reads to populate
+                          // ToolCall.input / ToolCall.output, which in turn
+                          // powers the rich tool-card renderers (favicons on
+                          // web_search, resource-name summaries on cloud
+                          // creates, etc.). openagentic-omhs#330.
+                          let argsParsed: any;
+                          try { argsParsed = block.content ? JSON.parse(block.content) : undefined; } catch { argsParsed = block.content; }
+                          let resultParsed: any;
+                          try { resultParsed = (block as any).result ? JSON.parse((block as any).result) : undefined; } catch { resultParsed = (block as any).result; }
                           return {
                             id: block.id || `tool-block-${idx}`,
                             type: 'mcp' as const,
                             title: block.toolName || 'Tool',
                             content: block.toolName || '',
-                            status: 'completed',
+                            status: (block as any).error ? 'error' : 'completed',
                             toolId: block.toolId,
+                            duration: (block as any).duration,
+                            details: {
+                              args: argsParsed,
+                              result: resultParsed,
+                            },
                           };
                         }
                       });

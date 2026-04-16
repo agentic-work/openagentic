@@ -1,0 +1,469 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Service Health",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 2,
+      "title": "API",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "UP", "color": "green", "index": 0 }, "0": { "text": "DOWN", "color": "red", "index": 1 } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [ { "value": null, "color": "red" }, { "value": 1, "color": "green" } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "up{kubernetes_namespace=\"{{ .Release.Namespace }}\", kubernetes_pod_name=~\"openagentic-api.*\"}", "legendFormat": "API", "refId": "A" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Agent Proxy",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "UP", "color": "green", "index": 0 }, "0": { "text": "DOWN", "color": "red", "index": 1 } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [ { "value": null, "color": "red" }, { "value": 1, "color": "green" } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "up{kubernetes_namespace=\"{{ .Release.Namespace }}\", kubernetes_pod_name=~\"openagentic-openagentic-proxy.*\"}", "legendFormat": "Agent Proxy", "refId": "A" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Code Manager",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "UP", "color": "green", "index": 0 }, "0": { "text": "DOWN", "color": "red", "index": 1 } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [ { "value": null, "color": "red" }, { "value": 1, "color": "green" } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "up{kubernetes_namespace=\"{{ .Release.Namespace }}\", kubernetes_pod_name=~\"openagentic-code-manager.*\"}", "legendFormat": "Code Manager", "refId": "A" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "MCP Proxy",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "UP", "color": "green", "index": 0 }, "0": { "text": "DOWN", "color": "red", "index": 1 } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [ { "value": null, "color": "red" }, { "value": 1, "color": "green" } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "up{kubernetes_namespace=\"{{ .Release.Namespace }}\", kubernetes_pod_name=~\"openagentic-mcp-proxy.*\"}", "legendFormat": "MCP Proxy", "refId": "A" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Workflows",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "UP", "color": "green", "index": 0 }, "0": { "text": "DOWN", "color": "red", "index": 1 } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [ { "value": null, "color": "red" }, { "value": 1, "color": "green" } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "up{kubernetes_namespace=\"{{ .Release.Namespace }}\", kubernetes_pod_name=~\"openagentic-workflows.*\"}", "legendFormat": "Workflows", "refId": "A" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Ollama",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "UP", "color": "green", "index": 0 }, "0": { "text": "DOWN", "color": "red", "index": 1 } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [ { "value": null, "color": "red" }, { "value": 1, "color": "green" } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "vector(1)", "legendFormat": "Ollama", "refId": "A" }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "HTTP Traffic",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 11,
+      "title": "Total Requests/sec",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "thresholds": { "steps": [ { "value": null, "color": "blue" } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "value", "graphMode": "area", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "sum(rate(http_requests_total{kubernetes_namespace=\"{{ .Release.Namespace }}\"}[5m])) or vector(0)", "legendFormat": "req/s", "refId": "A" }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Request Duration Percentiles",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "fillOpacity": 10, "lineWidth": 2 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{kubernetes_namespace=\"{{ .Release.Namespace }}\"}[5m])) by (le))", "legendFormat": "p50", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{kubernetes_namespace=\"{{ .Release.Namespace }}\"}[5m])) by (le))", "legendFormat": "p95", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{kubernetes_namespace=\"{{ .Release.Namespace }}\"}[5m])) by (le))", "legendFormat": "p99", "refId": "C" }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Error Rate (4xx + 5xx)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "fillOpacity": 20, "lineWidth": 2 }, "color": { "mode": "fixed", "fixedColor": "red" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "sum(rate(http_requests_total{kubernetes_namespace=\"{{ .Release.Namespace }}\", status_code=~\"4..|5..\"}[5m])) or vector(0)", "legendFormat": "errors/s", "refId": "A" }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Requests by Service",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "fillOpacity": 30, "lineWidth": 1, "stacking": { "mode": "normal" } } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "sum(rate(http_requests_total{kubernetes_namespace=\"{{ .Release.Namespace }}\"}[5m])) by (kubernetes_pod_name)", "legendFormat": "{{kubernetes_pod_name}}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "LLM & Chat",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 12 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 21,
+      "title": "Chat Sessions (1h)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 13 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "steps": [ { "value": null, "color": "green" }, { "value": 50, "color": "yellow" }, { "value": 100, "color": "red" } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "value", "graphMode": "area", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "sum(increase(chat_sessions_total{kubernetes_namespace=\"{{ .Release.Namespace }}\"}[1h])) or vector(0)", "legendFormat": "sessions", "refId": "A" }
+      ]
+    },
+    {
+      "id": 22,
+      "title": "Token Usage Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 13 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "fillOpacity": 15, "lineWidth": 2 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "sum(rate(token_usage_total{kubernetes_namespace=\"{{ .Release.Namespace }}\"}[5m])) by (type)", "legendFormat": "{{type}}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 23,
+      "title": "Token Cost Rate ($/hr)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 13 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "unit": "currencyUSD", "custom": { "fillOpacity": 15, "lineWidth": 2 }, "color": { "mode": "fixed", "fixedColor": "orange" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "sum(rate(token_cost_total{kubernetes_namespace=\"{{ .Release.Namespace }}\"}[5m])) * 3600", "legendFormat": "cost/hr", "refId": "A" }
+      ]
+    },
+    {
+      "id": 24,
+      "title": "Chat Response Time p95",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 13 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "fillOpacity": 10, "lineWidth": 2 }, "color": { "mode": "fixed", "fixedColor": "purple" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "histogram_quantile(0.95, sum(rate(chat_response_time_seconds_bucket{kubernetes_namespace=\"{{ .Release.Namespace }}\"}[5m])) by (le))", "legendFormat": "p95", "refId": "A" }
+      ]
+    },
+    {
+      "id": 30,
+      "title": "MCP Tools",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 19 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 31,
+      "title": "MCP Calls/sec",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "fillOpacity": 15, "lineWidth": 2 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "sum(rate(mcp_calls_total{kubernetes_namespace=\"{{ .Release.Namespace }}\"}[5m])) by (server)", "legendFormat": "{{server}}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 32,
+      "title": "MCP Response Time p95",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "fillOpacity": 10, "lineWidth": 2 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "histogram_quantile(0.95, sum(rate(mcp_response_time_seconds_bucket{kubernetes_namespace=\"{{ .Release.Namespace }}\"}[5m])) by (le, server))", "legendFormat": "{{server}} p95", "refId": "A" }
+      ]
+    },
+    {
+      "id": 33,
+      "title": "Tool Calls by Status",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "fillOpacity": 20, "lineWidth": 2, "stacking": { "mode": "normal" } } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "sum(rate(openagentic_proxy_tool_calls_total{kubernetes_namespace=\"{{ .Release.Namespace }}\"}[5m])) by (status)", "legendFormat": "{{status}}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 34,
+      "title": "Active Agent Executions",
+      "type": "gauge",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0, "max": 50,
+          "thresholds": { "steps": [ { "value": null, "color": "green" }, { "value": 20, "color": "yellow" }, { "value": 40, "color": "red" } ] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "sum(openagentic_proxy_active_executions{kubernetes_namespace=\"{{ .Release.Namespace }}\"}) or vector(0)", "legendFormat": "active", "refId": "A" }
+      ]
+    },
+    {
+      "id": 40,
+      "title": "Infrastructure",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 41,
+      "title": "CPU Usage by Pod",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 27 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "fillOpacity": 10, "lineWidth": 1 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"{{ .Release.Namespace }}\", container!=\"\", container!=\"POD\"}[5m])) by (pod)", "legendFormat": "{{pod}}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 42,
+      "title": "Memory Usage by Pod",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 27 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "custom": { "fillOpacity": 10, "lineWidth": 1 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "sum(container_memory_working_set_bytes{namespace=\"{{ .Release.Namespace }}\", container!=\"\", container!=\"POD\"}) by (pod)", "legendFormat": "{{pod}}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 43,
+      "title": "Pod Restart Count",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 27 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "steps": [ { "value": null, "color": "green" }, { "value": 3, "color": "yellow" }, { "value": 10, "color": "red" } ] },
+          "custom": { "displayMode": "color-background-solid" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Time" }, "properties": [ { "id": "custom.hidden", "value": true } ] },
+          { "matcher": { "id": "byName", "options": "Value" }, "properties": [ { "id": "displayName", "value": "Restarts" } ] }
+        ]
+      },
+      "options": { "sortBy": [ { "displayName": "Restarts", "desc": true } ] },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "sum(kube_pod_container_status_restarts_total{namespace=\"{{ .Release.Namespace }}\"}) by (pod) > 0", "legendFormat": "{{pod}}", "refId": "A", "instant": true, "format": "table" }
+      ],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "pod": "Pod", "Value": "Restarts" } } }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [
+    "{{ .Release.Namespace }}",
+    "platform"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "{{ .Release.Namespace }}",
+          "value": "{{ .Release.Namespace }}"
+        },
+        "hide": 2,
+        "label": "Namespace",
+        "name": "namespace",
+        "query": "{{ .Release.Namespace }}",
+        "skipUrlSync": false,
+        "type": "constant"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "OpenAgentic - Platform",
+  "uid": "aw-platform",
+  "version": 1,
+  "weekStart": ""
+}

@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * GitHub OAuth Routes - API v1
  *
  * Handles GitHub OAuth flow and credential management for GitHub MCP.
@@ -461,7 +445,7 @@ export const githubRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
 
       // Inject GitHub token into running code mode pod (if active)
       try {
-        const codeManagerUrl = process.env.EXEC_URL || process.env.OPENAGENTIC_MANAGER_URL || 'http://openagentic-code-manager:3060';
+        const codeManagerUrl = process.env.CODE_MANAGER_URL || process.env.OPENAGENTIC_MANAGER_URL || 'http://openagentic-code-manager:3050';
         const { default: axios } = await import('axios');
         // Tell code-manager to refresh the user's session with the new GitHub token
         await axios.post(`${codeManagerUrl}/sessions/refresh-github`, {

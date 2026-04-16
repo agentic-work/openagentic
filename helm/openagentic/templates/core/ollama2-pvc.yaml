@@ -1,0 +1,22 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.ollama2.enabled .Values.ollama2.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ printf "%s-ollama2" (include "openagentic.fullname" .) }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama2
+spec:
+  accessModes:
+    {{- range .Values.ollama2.persistence.accessModes | default (list "ReadWriteOnce") }}
+    - {{ . }}
+    {{- end }}
+  {{- if .Values.ollama2.persistence.storageClass }}
+  storageClassName: {{ .Values.ollama2.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.ollama2.persistence.size | default "50Gi" }}
+{{- end }}

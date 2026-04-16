@@ -1,0 +1,27 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if .Values.mcpProxy.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openagentic.fullname" . }}-mcp-proxy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mcp-proxy
+spec:
+  type: {{ .Values.mcpProxy.service.type | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.mcpProxy.service.port | default 8080 }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    # MCPP port for MCP Inspector WebSocket connections
+    - port: 6277
+      targetPort: mcpp
+      protocol: TCP
+      name: mcpp
+  selector:
+    {{- include "openagentic.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: mcp-proxy
+{{- end }}

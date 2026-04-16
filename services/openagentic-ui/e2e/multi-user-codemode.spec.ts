@@ -1,19 +1,3 @@
-/**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { test, expect, Browser, Page, BrowserContext } from '@playwright/test';
 
 /**
@@ -26,16 +10,16 @@ import { test, expect, Browser, Page, BrowserContext } from '@playwright/test';
  * 4. Session reconnection scenarios
  */
 
-const BASE_URL = process.env.BASE_URL || 'https://chat-dev.openagentics.io';
+const BASE_URL = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
 const TEST_PASSWORD = 'TestPass123!';
 
 // Test users (created in database)
 const TEST_USERS = [
-  { email: 'codemode-test-1@openagentics.io', name: 'Test User 1' },
-  { email: 'codemode-test-2@openagentics.io', name: 'Test User 2' },
-  { email: 'codemode-test-3@openagentics.io', name: 'Test User 3' },
-  { email: 'codemode-test-4@openagentics.io', name: 'Test User 4' },
-  { email: 'codemode-test-5@openagentics.io', name: 'Test User 5' },
+  { email: 'codemode-test-1@openagentic.io', name: 'Test User 1' },
+  { email: 'codemode-test-2@openagentic.io', name: 'Test User 2' },
+  { email: 'codemode-test-3@openagentic.io', name: 'Test User 3' },
+  { email: 'codemode-test-4@openagentic.io', name: 'Test User 4' },
+  { email: 'codemode-test-5@openagentic.io', name: 'Test User 5' },
 ];
 
 interface UserSession {

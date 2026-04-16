@@ -1,0 +1,25 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.postgres .Values.postgres.enabled (or (.Values.postgres.podDisruptionBudget).enabled) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "openagentic.fullname" . }}-postgres
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+spec:
+  {{- if and (.Values.postgres.podDisruptionBudget).minAvailable }}
+  minAvailable: {{ .Values.postgres.podDisruptionBudget.minAvailable }}
+  {{- else if and (.Values.postgres.podDisruptionBudget).maxUnavailable }}
+  maxUnavailable: {{ .Values.postgres.podDisruptionBudget.maxUnavailable }}
+  {{- else }}
+  # Single-replica database: maxUnavailable ensures PDB doesn't block
+  # voluntary disruptions entirely for a single-pod deployment
+  maxUnavailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgres
+{{- end }}

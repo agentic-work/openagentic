@@ -1,17 +1,21 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * ArtifactRenderer - Renders interactive artifacts inline in chat
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Supports:
+ * - ```artifact:html - Pure HTML with CSS/JS
+ * - ```artifact:react - React components (transpiled in browser)
+ * - ```artifact:svg - Interactive SVG graphics
+ * - ```artifact:mermaid - Mermaid diagrams (flowcharts, sequence, etc.)
+ * - ```artifact:chart - Chart.js charts (bar, line, pie, etc.)
+ * - ```artifact:markdown - Rich markdown with preview
+ * - ```artifact:latex - LaTeX/Math equations
+ * - ```artifact:csv - Editable data tables
+ * - ```artifact:canvas - Excalidraw-style drawing
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Security: Uses sandboxed iframe with blob URLs
  */
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
@@ -43,6 +47,7 @@ function preloadBundledLib(name: string): void {
 // Preload common chart libraries on module load
 preloadBundledLib('plotly-basic.min.js');
 preloadBundledLib('d3.min.js');
+preloadBundledLib('d3-sankey.min.js');
 preloadBundledLib('chart.min.js');
 
 function getInlineLibScript(name: string): string {
@@ -96,6 +101,73 @@ interface ArtifactRendererProps {
   theme?: 'light' | 'dark';
   className?: string;
   onExpandToCanvas?: (code: string, type: string, title: string, language?: string) => void;
+}
+
+/**
+ * Theme-defensive base-style block injected into every artifact iframe.
+ * Uses `:where()` (zero specificity) so any style the LLM emits still wins
+ * — this only kicks in when the model forgot to set a background / text
+ * color. Also exposes CSS custom properties (`--app-bg`, `--app-text`...)
+ * so well-behaved models can produce theme-consistent output.
+ *
+ * openagentic-omhs#327: full-HTML artifacts previously passed through this
+ * renderer without any theme enforcement, which meant a model emitting
+ * `body { font: Arial }` ended up invisible on the dark app chrome.
+ */
+function artifactThemeDefenseBlock(theme: string): string {
+  const isDark = theme === 'dark';
+  const bg = isDark ? '#0d1117' : '#ffffff';
+  const surface = isDark ? '#161b22' : '#f6f8fa';
+  const border = isDark ? '#30363d' : '#d0d7de';
+  const text = isDark ? '#e6edf3' : '#1f2328';
+  const muted = isDark ? '#8b949e' : '#656d76';
+  const accent = isDark ? '#58a6ff' : '#0969da';
+  const danger = isDark ? '#f85149' : '#cf222e';
+  const success = isDark ? '#3fb950' : '#1a7f37';
+  const fontStack = `"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  return `<style data-aw-theme-defense>
+:root {
+  color-scheme: ${isDark ? 'dark' : 'light'};
+  --app-bg: ${bg};
+  --app-surface: ${surface};
+  --app-border: ${border};
+  --app-text: ${text};
+  --app-muted: ${muted};
+  --app-accent: ${accent};
+  --app-danger: ${danger};
+  --app-success: ${success};
+  --app-font: ${fontStack};
+}
+:where(html, body) {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: var(--app-font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+:where(body) { padding: 16px; min-height: 100vh; box-sizing: border-box; }
+:where(table) { border-collapse: collapse; }
+:where(a) { color: var(--app-accent); }
+
+/* ─── ALWAYS-VISIBLE OVERRIDES (openagentic-omhs#330) ──────────────────
+   See StreamingArtifactRenderer for rationale. !important on the
+   visibility-critical rules so model-emitted Plotly/D3/Chart.js text
+   defaults can't make the artifact unreadable against dark chrome.
+   ──────────────────────────────────────────────────────────────────── */
+html, body { background: var(--app-bg) !important; color: var(--app-text) !important; font-family: var(--app-font) !important; }
+svg text                                          { fill: var(--app-text) !important; }
+svg .tick text, svg .axis text, svg .legendtext   { fill: var(--app-muted) !important; }
+svg .domain, svg .tick line, svg .gridlayer line  { stroke: var(--app-border) !important; }
+.js-plotly-plot .plotly .bg, .js-plotly-plot rect.bg     { fill: transparent !important; }
+.modebar, .modebar-group                                  { background: transparent !important; }
+.modebar-btn path                                         { fill: var(--app-muted) !important; }
+.modebar-btn:hover path                                   { fill: var(--app-text) !important; }
+.legend rect.bg                                           { fill: var(--app-surface) !important; }
+canvas { background: var(--app-surface) !important; border-radius: 6px; }
+table th, table td { color: var(--app-text); border-color: var(--app-border); }
+table th { background: var(--app-surface); }
+</style>`;
 }
 
 // CSP meta tag for artifact iframe security — locked down, no CDN origins
@@ -302,14 +374,20 @@ const REACT_TEMPLATE = (code: string, theme: string) => `
 const HTML_TEMPLATE = (code: string, theme: string) => {
   // Detect which libraries the code needs
   const needsPlotly = code.includes('Plotly.') || code.includes('plotly');
-  const needsD3 = code.includes('d3.') && (code.includes('d3.select') || code.includes('d3.create'));
+  // d3.sankey() is a separate npm module (d3-sankey@0.12). Detect it
+  // independently so we inject the extra lib. agentic-work/openagentic-omhs#329.
+  const needsD3Sankey = /\bd3\.sankey\s*\(/.test(code) || /d3-sankey/i.test(code);
+  const needsD3 = needsD3Sankey || (code.includes('d3.') && (code.includes('d3.select') || code.includes('d3.create')));
   const needsChartJS = code.includes('new Chart(') || code.includes('Chart.register');
 
   // Inject libraries from bundled runtime — works because iframe has allow-same-origin for chart artifacts
   const libScripts: string[] = [];
   if (needsPlotly) libScripts.push('<script src="/artifact-runtime/plotly-basic.min.js"></script>');
   if (needsD3) libScripts.push('<script src="/artifact-runtime/d3.min.js"></script>');
+  if (needsD3Sankey) libScripts.push('<script src="/artifact-runtime/d3-sankey.min.js"></script>');
   if (needsChartJS) libScripts.push('<script src="/artifact-runtime/chart.min.js"></script>');
+
+  const themeDefense = artifactThemeDefenseBlock(theme);
 
   // Check if code already has full HTML structure
   if (code.trim().toLowerCase().startsWith('<!doctype') || code.trim().toLowerCase().startsWith('<html')) {
@@ -319,14 +397,25 @@ const HTML_TEMPLATE = (code: string, theme: string) => {
     html = html.replace(/<script[^>]*src=["'][^"']*d3js\.org[^"']*["'][^>]*><\/script>/gi, '');
     html = html.replace(/<script[^>]*src=["'][^"']*cdn\.jsdelivr\.net\/npm\/chart\.js[^"']*["'][^>]*><\/script>/gi, '');
     html = html.replace(/<script[^>]*src=["'][^"']*cdn\.tailwindcss\.com[^"']*["'][^>]*><\/script>/gi, '');
-    // Inject bundled libs INLINE after <head>
-    if (libScripts.length > 0) {
-      const libBlock = libScripts.join('\n');
-      const headMatch = html.match(/<head[^>]*>/i);
-      if (headMatch) {
-        html = html.replace(headMatch[0], `${headMatch[0]}\n${libBlock}`);
+    // Inject theme-defense + bundled libs into <head>. Theme defense goes
+    // FIRST so any styles in the model's own <head> override it (the
+    // defense uses :where() selectors with zero specificity). Previously
+    // this path skipped theme wrapping entirely — full-HTML artifacts
+    // inherited transparent bg / black text and became invisible on the
+    // dark app chrome. See openagentic-omhs#327.
+    const headInjection = [themeDefense, ...libScripts].join('\n');
+    const headMatch = html.match(/<head[^>]*>/i);
+    if (headMatch) {
+      html = html.replace(headMatch[0], `${headMatch[0]}\n${headInjection}`);
+    } else {
+      const htmlMatch = html.match(/<html[^>]*>/i);
+      if (htmlMatch) {
+        html = html.replace(
+          htmlMatch[0],
+          `${htmlMatch[0]}\n<head>\n${headInjection}\n</head>`,
+        );
       } else {
-        html = `${libBlock}\n${html}`;
+        html = `${headInjection}\n${html}`;
       }
     }
     return html;
@@ -340,16 +429,10 @@ const HTML_TEMPLATE = (code: string, theme: string) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   ${ARTIFACT_CSP_META_LEGACY}
+  ${themeDefense}
   ${libScripts.join('\n  ')}
   <style>
     * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      padding: 16px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: ${theme === 'dark' ? '#1a1a2e' : '#ffffff'};
-      color: ${theme === 'dark' ? '#e2e8f0' : '#1a202c'};
-    }
   </style>
 </head>
 <body>

@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Advanced Prompting Administration Routes
  * 
  * Admin interface for managing prompting techniques including Few-Shot,
@@ -112,12 +96,12 @@ const adminPromptingRoutes: FastifyPluginAsync = async (fastify, opts) => {
     
     // Check if user is admin (using groups or email domain)
     const isAdmin = user?.groups?.includes('admins') || 
-                    user?.email?.endsWith('@openagentics.io') ||
+                    user?.email?.endsWith('@openagentic.io') ||
                     user?.groups?.includes(process.env.VITE_AZURE_AD_ADMIN_GROUP || '7e3231af-41af-4e5c-abf5-bbc97dec73d3');
     
     // Allow access in development environment or for local testing
     if (process.env.FRONTEND_URL?.includes('localhost') || 
-        process.env.FRONTEND_URL?.includes('chat-dev.openagentics.io')) {
+        process.env.FRONTEND_URL?.includes('chat-dev.openagentic.io')) {
       // Allow any authenticated user or user with x-user-id header
       if (user || userId) {
         return;

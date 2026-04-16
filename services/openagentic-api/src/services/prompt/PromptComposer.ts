@@ -1,29 +1,15 @@
-/**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { PromptModuleRegistry } from './PromptModuleRegistry.js';
 import { ModuleScorer } from './ModuleScorer.js';
 import { ModelAdapterFactory } from './adapters/ModelAdapterFactory.js';
 import { TokenCounter } from '../context/TokenCounter.js';
+import { evaluateUserIntent } from './ArtifactIntentGate.js';
 import type {
   PromptModule,
   ComposeContext,
   ComposedPrompt,
   ModelCapabilities,
   AdapterFamily,
+  UserIntent,
 } from './types.js';
 
 export class PromptComposer {
@@ -42,6 +28,15 @@ export class PromptComposer {
   async compose(context: ComposeContext): Promise<ComposedPrompt> {
     const { loggers } = await import('../../utils/logger.js');
     const logger = loggers.services;
+
+    // 0. Evaluate user intent gate (if not pre-supplied). Used downstream to
+    //    filter modules whose injection rule requires a specific user intent.
+    //    See openagentic-omhs#327 — replaces broad keyword heuristics that
+    //    biased every chat toward artifact / cost-visualization output.
+    const intentDecision = context.userIntent !== undefined
+      ? { intent: context.userIntent ?? null, reason: 'caller-supplied' as const, matched: undefined as string | undefined }
+      : evaluateUserIntent(context.message);
+    const userIntent: UserIntent | null = intentDecision.intent;
 
     // 1. Get all enabled modules
     const allModules = await this.registry.getEnabled();
@@ -109,18 +104,70 @@ export class PromptComposer {
     );
     const domainBudget = Math.floor((systemPromptBudget - reservedTokens) * domainBudgetPct);
 
-    // 10. Select domain modules within budget (by score, filter score > 0.1 threshold)
+    // 10. Select domain modules. Two passes:
+    //   a) Intent-required modules whose `requiresUserIntent` matches the
+    //      caller-signalled / gate-evaluated intent ALWAYS get selected when
+    //      they fit the budget. They bypass the relevance-score threshold
+    //      because their injection rule already declares "only include when
+    //      intent matches" — so the intent signal IS the relevance signal.
+    //      Without this, intent-gated modules (e.g. `artifact-creation` on
+    //      the artifact agent's resolve path) were scored 0 on an empty
+    //      message and filtered out before even reaching the intent gate.
+    //      See openagentic-omhs#327.
+    //   b) Remaining domain modules filtered by score threshold as before.
     const selectedDomain: PromptModule[] = [];
     let domainTokensUsed = 0;
+    const intentMatchedNames = new Set<string>();
+    if (userIntent) {
+      for (const scored of domainScores) {
+        const req = scored.module.injection?.requiresUserIntent;
+        if (!req || !req.includes(userIntent)) continue;
+        if (domainTokensUsed + scored.module.tokenCost > domainBudget) continue;
+        selectedDomain.push(scored.module);
+        domainTokensUsed += scored.module.tokenCost;
+        intentMatchedNames.add(scored.module.name);
+      }
+    }
     for (const scored of domainScores) {
+      if (intentMatchedNames.has(scored.module.name)) continue;
       if (scored.score < 0.1) break; // Below relevance threshold — list is sorted, so stop here
       if (domainTokensUsed + scored.module.tokenCost > domainBudget) continue; // Skip if doesn't fit
       selectedDomain.push(scored.module);
       domainTokensUsed += scored.module.tokenCost;
     }
 
-    // 11. Assemble all selected modules
-    const allSelected = [...coreModules, ...modeModules, ...capabilityModules, ...selectedDomain];
+    // 11. Assemble all selected modules, then apply the user-intent gate.
+    //     Two complementary intent rules:
+    //       - `requiresUserIntent`: only inject when intent MATCHES one
+    //         of the listed values (positive gate, e.g. artifact-creation
+    //         only fires on visualization intent).
+    //       - `excludesUserIntent`: only inject when intent does NOT
+    //         match any of the listed values (inverse gate, e.g. an
+    //         "artifact-inhibitor" module fires on every non-visual
+    //         request to suppress the local model's training bias toward
+    //         emitting unsolicited artifact:html blocks).
+    //     See openagentic-omhs#327 + #330 follow-up.
+    const preGate = [...coreModules, ...modeModules, ...capabilityModules, ...selectedDomain];
+    const droppedByIntentGate: string[] = [];
+    const allSelected = preGate.filter((m) => {
+      const required = m.injection?.requiresUserIntent;
+      const excluded = m.injection?.excludesUserIntent;
+      // Positive gate: must match if set
+      if (required && required.length > 0) {
+        if (!userIntent || !required.includes(userIntent)) {
+          droppedByIntentGate.push(m.name);
+          return false;
+        }
+      }
+      // Inverse gate: must NOT match if set
+      if (excluded && excluded.length > 0) {
+        if (userIntent && excluded.includes(userIntent)) {
+          droppedByIntentGate.push(m.name);
+          return false;
+        }
+      }
+      return true;
+    });
 
     // 12. Apply model adapter to transform modules into system prompt string
     const adapter = ModelAdapterFactory.getAdapter(context.model, family);
@@ -155,6 +202,10 @@ export class PromptComposer {
         sliderPosition,
         domainModulesScored: domainScores.length,
         domainModulesSelected: selectedDomain.length,
+        userIntent,
+        userIntentReason: intentDecision.reason,
+        userIntentMatched: intentDecision.matched,
+        droppedByIntentGate,
       },
       '[PROMPT-COMPOSER] Composition complete',
     );
@@ -205,7 +256,14 @@ export class PromptComposer {
     return {
       thinking:
         family === 'claude' || m.includes('gemini-2') || m.startsWith('o1') || m.startsWith('o3'),
-      tools: family !== 'local' || m.includes('gpt-oss'),
+      // Tool use is not a family-level distinction. Every model in our
+      // routing reaches MCP tools through the same server-side bridge —
+      // local ollama models (gpt-oss, qwen3.5, ...) and cloud Claude
+      // models both emit tool-call JSON that the server executes.
+      // Treating `family === 'local'` as "no tools" excluded local
+      // models from capability-gated modules like `chart-rendering`
+      // even though they can and do use tools. See openagentic-omhs#327.
+      tools: true,
       vision:
         family === 'claude' ||
         family === 'gemini' ||

@@ -1,19 +1,3 @@
-/**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { FastifyRequest } from 'fastify';
 import jwt from 'jsonwebtoken';
 import * as jose from 'node-jose';
@@ -86,7 +70,7 @@ export class AzureADAuthService {
       clientSecret: config.clientSecret || process.env.AZURE_AD_CLIENT_SECRET,
       authority: config.authority || process.env.AZURE_AD_AUTHORITY || 
         `https://login.microsoftonline.com/${config.tenantId || process.env.AZURE_AD_TENANT_ID}`,
-      redirectUri: config.redirectUri || process.env.AZURE_AD_REDIRECT_URI || `${process.env.FRONTEND_URL || 'https://chat-dev.openagentics.io'}/api/auth/microsoft/callback`,
+      redirectUri: config.redirectUri || process.env.AZURE_AD_REDIRECT_URI || `${process.env.FRONTEND_URL || 'https://chat-dev.openagentic.io'}/api/auth/microsoft/callback`,
       // Request Azure ARM access directly - this gives a token usable against Azure Management APIs
       // For Graph/KeyVault/Storage, the MCP proxy will use the ID token for OBO exchange
       scopes: config.scopes || [

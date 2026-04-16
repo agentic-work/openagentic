@@ -1,22 +1,6 @@
-/**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { test, Page } from '@playwright/test';
 
-const BASE_URL = 'https://chat-dev.openagentics.io';
+const BASE_URL = 'https://chat-dev.openagentic.io';
 
 test('Debug Code Mode Login', async ({ page }) => {
   test.setTimeout(120000);
@@ -42,7 +26,7 @@ test('Debug Code Mode Login', async ({ page }) => {
   await page.screenshot({ path: 'test-results/debug-02-email-form.png', fullPage: true });
 
   console.log('Filling credentials...');
-  await page.locator('input[type="email"]').first().fill('codemode-test-1@openagentics.io');
+  await page.locator('input[type="email"]').first().fill('codemode-test-1@openagentic.io');
   await page.locator('input[type="password"]').first().fill('TestPass123!');
   await page.screenshot({ path: 'test-results/debug-03-filled-form.png', fullPage: true });
 

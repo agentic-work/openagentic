@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Provider Configuration Service
  *
  * Centralized service for loading and managing LLM provider configurations
@@ -323,7 +307,7 @@ export class ProviderConfigService {
     const imageModel = process.env.AWS_BEDROCK_IMAGE_MODEL;
     const compactionModel = process.env.AWS_BEDROCK_COMPACTION_MODEL;
 
-    // Custom endpoint (optional) - for VPC endpoints or private proxies.
+    // Custom endpoint (optional) - for VPC endpoints or proxies like CDC (bedrock-dev.cdc.gov)
     const endpoint = process.env.AWS_BEDROCK_ENDPOINT;
 
     this.logger.info({
@@ -347,7 +331,7 @@ export class ProviderConfigService {
         region,
         // Only include credentials if explicitly provided (IRSA doesn't need them)
         ...(hasExplicitCredentials && { accessKeyId, secretAccessKey }),
-        // Custom endpoint for VPC endpoints or private proxies.
+        // Custom endpoint for VPC endpoints or proxies (e.g., https://bedrock-dev.cdc.gov)
         ...(endpoint && { endpoint }),
         // Standardized model config
         chatModel,

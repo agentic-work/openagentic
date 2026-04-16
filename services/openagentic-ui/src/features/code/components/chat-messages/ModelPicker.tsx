@@ -1,17 +1,15 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * ModelPicker — `/model` slash command UI.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Fetches the available models from /api/chat/models (already an
+ * existing endpoint) and lets the user pick one. Selection is stored
+ * in localStorage under `codemode:model:<sessionId>` and applied to
+ * the next turn by passing `model: <id>` to sendMessage.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Like ThemePicker, keyboard-driven (↑↓/Enter/Esc) and accessible.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 import React, { useEffect, useState } from 'react';
@@ -50,7 +48,11 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
     (async () => {
       try {
         const token = localStorage.getItem('auth_token');
-        const r = await fetch('/api/chat/models', {
+        // curated=true restricts to models explicitly in model_config
+        // routing hints (chatModel / defaultModel / additionalModels[...])
+        // so the codemode picker matches the admin Model Registry view
+        // instead of dumping every auto-discovered upstream catalog entry.
+        const r = await fetch('/api/chat/models?curated=true', {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);

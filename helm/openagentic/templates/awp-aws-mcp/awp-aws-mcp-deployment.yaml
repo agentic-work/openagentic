@@ -1,0 +1,139 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if .Values.awpAwsMcp.enabled }}
+# ===================================================================================================
+# OpenAgentic-AWS-MCP DEPLOYMENT
+# ===================================================================================================
+# AWS cloud operations MCP server (Python FastAPI)
+# Provides AWS ARM/STS/S3/Bedrock capabilities via Identity Center OBO tokens
+# ===================================================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openagentic.fullname" . }}-oap-aws-mcp
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: oap-aws-mcp
+spec:
+  replicas: {{ .Values.awpAwsMcp.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: oap-aws-mcp
+  template:
+    metadata:
+      labels:
+        {{- include "openagentic.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: oap-aws-mcp
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.awpAwsMcp.service.port | default 8082 | quote }}
+        prometheus.io/path: "/metrics"
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.awpAwsMcp.nodeSelector | default .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      # Fix DNS: ndots:1 ensures external domains are tried as FQDN first
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+      containers:
+      - name: oap-aws-mcp
+        image: "{{ .Values.awpAwsMcp.image.repository }}:{{ .Values.awpAwsMcp.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.awpAwsMcp.image.pullPolicy | default "IfNotPresent" }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.awpAwsMcp.service.port | default 8082 }}
+          protocol: TCP
+        env:
+        - name: PORT
+          value: {{ .Values.awpAwsMcp.service.port | default 8082 | quote }}
+        - name: LOG_LEVEL
+          value: {{ .Values.awpAwsMcp.logLevel | default "INFO" | quote }}
+        # IMPORTANT: POSTGRES_PASSWORD must come BEFORE DATABASE_URL for $(POSTGRES_PASSWORD) substitution
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "openagentic.fullname" . }}-db-secrets
+              key: POSTGRES_PASSWORD
+        - name: DATABASE_URL
+          value: "postgresql://{{ include "openagentic.postgresql.username" . }}:$(POSTGRES_PASSWORD)@{{ include "openagentic.postgresql.serviceName" . }}:5432/{{ include "openagentic.postgresql.database" . }}?sslmode={{ .Values.postgresql.sslmode | default "require" }}"
+        # IMPORTANT: REDIS_PASSWORD must come BEFORE REDIS_URL for $(REDIS_PASSWORD) substitution
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-redis
+              key: redis-password
+        - name: REDIS_HOST
+          value: {{ include "openagentic.redis.serviceName" . | quote }}
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_URL
+          value: "redis://:$(REDIS_PASSWORD)@{{ include "openagentic.redis.serviceName" . }}:6379"
+        # AWS Credentials
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "openagentic.fullname" . }}-api-secrets
+              key: AWS_ACCESS_KEY_ID
+              optional: true
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "openagentic.fullname" . }}-api-secrets
+              key: AWS_SECRET_ACCESS_KEY
+              optional: true
+        - name: AWS_DEFAULT_REGION
+          value: {{ .Values.aws.defaultRegion | default "us-east-1" | quote }}
+        # AWS Identity Center / OBO Configuration
+        {{- if .Values.aws.identityCenter }}
+        {{- if .Values.aws.identityCenter.instanceArn }}
+        - name: AWS_IC_INSTANCE_ARN
+          value: {{ .Values.aws.identityCenter.instanceArn | quote }}
+        {{- end }}
+        {{- if .Values.aws.identityCenter.applicationArn }}
+        - name: AWS_IC_APPLICATION_ARN
+          value: {{ .Values.aws.identityCenter.applicationArn | quote }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.aws.accountId }}
+        - name: AWS_ACCOUNT_ID
+          value: {{ .Values.aws.accountId | quote }}
+        {{- end }}
+        {{- if .Values.aws.oboRoleArn }}
+        - name: AWS_OBO_ROLE_ARN
+          value: {{ .Values.aws.oboRoleArn | quote }}
+        {{- end }}
+        # Extra environment variables
+        {{- if .Values.awpAwsMcp.env }}
+        {{- range $key, $value := .Values.awpAwsMcp.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: {{ .Values.awpAwsMcp.livenessProbe.initialDelaySeconds | default 10 }}
+          periodSeconds: {{ .Values.awpAwsMcp.livenessProbe.periodSeconds | default 30 }}
+          timeoutSeconds: {{ .Values.awpAwsMcp.livenessProbe.timeoutSeconds | default 5 }}
+          failureThreshold: {{ .Values.awpAwsMcp.livenessProbe.failureThreshold | default 3 }}
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: {{ .Values.awpAwsMcp.readinessProbe.initialDelaySeconds | default 5 }}
+          periodSeconds: {{ .Values.awpAwsMcp.readinessProbe.periodSeconds | default 10 }}
+          timeoutSeconds: {{ .Values.awpAwsMcp.readinessProbe.timeoutSeconds | default 5 }}
+          failureThreshold: {{ .Values.awpAwsMcp.readinessProbe.failureThreshold | default 3 }}
+        resources:
+          {{- toYaml .Values.awpAwsMcp.resources | nindent 12 }}
+{{- end }}

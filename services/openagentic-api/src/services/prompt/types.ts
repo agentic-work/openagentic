@@ -1,22 +1,18 @@
-/**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 export type ModuleCategory = 'core' | 'domain' | 'mode' | 'capability';
 export type AdapterFamily = 'claude' | 'gemini' | 'openai' | 'local';
 export type ContextMode = 'chat' | 'code' | 'flow';
+
+/**
+ * Explicit user-intent signals derived from the request message.
+ *
+ * Intents are an additional injection gate so that modules whose content
+ * only makes sense for a specific kind of ask (e.g. artifact / visualization
+ * guidance) can be conditionally included. Without this gate, modules ride
+ * along on every request and bias the model toward unwanted output shapes —
+ * see openagentic-omhs#327 for the cost/artifact-injection regression that
+ * prompted introducing this.
+ */
+export type UserIntent = 'visualization';
 
 export interface ModuleInjectionRules {
   alwaysInject?: boolean;
@@ -24,6 +20,19 @@ export interface ModuleInjectionRules {
   requiresCapabilities?: string[];
   requiresMode?: ContextMode[];
   semanticMatch?: boolean;
+  /**
+   * If set, the module is only injected when the request's evaluated user
+   * intent matches one of these values. Combined AND with other gates.
+   */
+  requiresUserIntent?: UserIntent[];
+  /**
+   * Inverse of `requiresUserIntent` — the module is injected only when
+   * the request's intent does NOT match any of these values. Used for
+   * "inhibitor" modules that should fire only when a particular intent
+   * is absent (e.g. tell the model "don't create unsolicited artifacts"
+   * when the user hasn't asked for one). Combined AND with other gates.
+   */
+  excludesUserIntent?: UserIntent[];
 }
 
 export interface PromptModule {
@@ -71,6 +80,12 @@ export interface ComposeContext {
   agentRole?: string;        // e.g. "reasoning", "data_query"
   agentModules?: string[];   // Explicit module names from agent DB config
   modelFamily?: string;      // Override model family (openai, claude, gemini, local)
+  /**
+   * Pre-evaluated user intent. If omitted, PromptComposer evaluates from the
+   * message via ArtifactIntentGate. Tests / agent paths can pass this directly
+   * to skip the gate.
+   */
+  userIntent?: UserIntent | null;
 }
 
 export interface ComposedPrompt {

@@ -1,17 +1,3 @@
-# Copyright 2026 Gnomus.ai
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 # Use ARG to get the source path (default to services/openagentic-ui for GitHub Actions)
 ARG SRC_PATH=services/openagentic-ui
 
@@ -103,9 +89,7 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
-LABEL org.opencontainers.image.vendor="OpenAgentic LLC"
-LABEL org.opencontainers.image.licenses="LicenseRef-Proprietary"
-LABEL com.openagentic.copyright="Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved."
+LABEL org.opencontainers.image.licenses="Apache-2.0"
 
 # Re-declare ARG for the production stage
 ARG SRC_PATH=services/openagentic-ui
@@ -141,10 +125,6 @@ EXPOSE 80
 # Health check
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost/health || exit 1
-
-# IP Protection: NOTICE and LICENSE
-COPY NOTICE /NOTICE
-COPY LICENSE /LICENSE
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]

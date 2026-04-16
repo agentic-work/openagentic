@@ -1,0 +1,76 @@
+# Node modules - Force rebuild all images
+node_modules
+**/node_modules
+.pnpm-store
+**/.pnpm-store
+
+# Build artifacts
+**/dist
+**/build
+**/.next
+**/.vite
+**/.turbo
+
+# Exception: Pre-built CLI artifacts (must come after general ignore patterns above)
+!services/openagentic-cli/dist
+!services/openagentic-cli/dist/**
+!services/openagentic-cli/node_modules
+!services/openagentic-cli/node_modules/**
+!services/openagentic-cli/package.json
+
+# Exception: SDK and CLI at repo root (copied by build script for openagentic-manager)
+!sdk
+!sdk/**
+!openagentic-cli
+!openagentic-cli/**
+!openagentic-cli/dist
+!openagentic-cli/dist/**
+!openagentic-cli/node_modules
+!openagentic-cli/node_modules/**
+!openagentic-cli/package.json
+
+# Development files - NEVER include .env in Docker builds
+# Prisma reads .env during 'prisma generate' and bakes values as defaults
+.env
+**/.env
+**/.env.local
+**/.env.development
+**/.env.test
+
+# Testing
+**/coverage
+**/.nyc_output
+
+# IDE
+**/.vscode
+**/.idea
+
+# OS files
+**/.DS_Store
+**/Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Logs
+**/*.log
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+
+# Temporary files
+**/tmp
+**/temp
+**/.tmp
+**/.temp
+
+# Docker - Don't ignore Dockerfiles themselves!
+# **/Dockerfile*
+# **/.dockerignore
+
+# Docs and reports
+*.md
+*.pdf
+docs/

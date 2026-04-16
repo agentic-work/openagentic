@@ -1,0 +1,48 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+---
+# GatewayClass for Kong - defines Kong as the controller
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: kong
+  annotations:
+    konghq.com/gatewayclass-unmanaged: "true"
+spec:
+  controllerName: konghq.com/kic-gateway-controller
+
+---
+# Gateway resource - the actual gateway instance
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: kong-gateway
+  namespace: kong
+  annotations:
+    # Tell Kong to use existing proxy service (kong/kong chart uses kong-kong-proxy)
+    konghq.com/gateway-unmanaged: kong/kong-kong-proxy
+spec:
+  gatewayClassName: kong
+  listeners:
+    # HTTP listener (will redirect to HTTPS)
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All
+
+    # HTTPS listener with TLS termination
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "chat-dev.openagentic.io"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: openagenticchat-tls
+            namespace: kong
+      allowedRoutes:
+        namespaces:
+          from: All

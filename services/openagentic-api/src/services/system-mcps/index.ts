@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * SYSTEM MCPs
  *
  * System MCPs are internal MCPs that provide specialized capabilities to the LLM
@@ -24,41 +8,32 @@
  * The artifact system is the primary way to generate visualizations, diagrams,
  * and interactive content. This module provides context-aware guidance to encourage
  * LLMs to use artifacts appropriately.
+ *
+ * NOTE (openagentic-omhs#327): the canonical user-intent gate now lives in
+ * `services/prompt/ArtifactIntentGate.ts` and is consumed by PromptComposer.
+ * `isDiagramRequest` here is retained only as a defence-in-depth check for
+ * the legacy non-composable prompt path (see prompt.stage.ts fallback when
+ * USE_COMPOSABLE_PROMPTS=false). It delegates to the same gate so the two
+ * code paths cannot disagree.
  */
+
+import { evaluateUserIntent } from '../prompt/ArtifactIntentGate.js';
 
 // All registered system MCPs
 export const SYSTEM_MCPS = {} as const;
 
-// Keywords that indicate the user wants a visualization/diagram
-const VISUALIZATION_KEYWORDS = [
-  'diagram', 'chart', 'graph', 'visualize', 'visualization', 'flow',
-  'architecture', 'sankey', 'flowchart', 'sequence', 'timeline',
-  'gantt', 'pie chart', 'bar chart', 'heatmap', 'treemap',
-  'network diagram', 'entity relationship', 'er diagram', 'uml',
-  'class diagram', 'state diagram', 'mindmap', 'org chart',
-  'show me', 'draw', 'illustrate', 'breakdown', 'costs'
-];
-
-// Keywords that indicate cloud/infrastructure requests (good candidates for visualizations)
-const CLOUD_COST_KEYWORDS = [
-  'cost', 'spending', 'billing', 'budget', 'expense',
-  'azure', 'aws', 'gcp', 'cloud', 'infrastructure',
-  'subscription', 'resource', 'service'
-];
-
 /**
- * Detect if user message is requesting a visualization or diagram
+ * Returns true when the user's message expresses an explicit visualization
+ * intent. Delegates to the canonical ArtifactIntentGate so the legacy and
+ * composable prompt paths share one definition of "this user wants a chart".
+ *
+ * Earlier behaviour fired on ≥1 broad keyword (`'show me'`, `'breakdown'`,
+ * `'costs'`) OR ≥2 cloud-related keywords, which routed almost every cloud
+ * / cost question into the artifact-creation guidance pile. That's the
+ * regression #327 was filed against.
  */
 export function isDiagramRequest(message: string): boolean {
-  const lowerMessage = message.toLowerCase();
-
-  // Direct visualization requests
-  const hasVisualizationKeyword = VISUALIZATION_KEYWORDS.some(kw => lowerMessage.includes(kw));
-
-  // Cloud cost requests are good candidates for Sankey diagrams
-  const hasCloudCostRequest = CLOUD_COST_KEYWORDS.filter(kw => lowerMessage.includes(kw)).length >= 2;
-
-  return hasVisualizationKeyword || hasCloudCostRequest;
+  return evaluateUserIntent(message).intent === 'visualization';
 }
 
 /**

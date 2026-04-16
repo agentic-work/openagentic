@@ -1,0 +1,76 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if .Values.redisCommander.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openagentic.fullname" . }}-redis-commander
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis-commander
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis-commander
+  template:
+    metadata:
+      labels:
+        {{- include "openagentic.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis-commander
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.redisCommander.nodeSelector | default .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.redisCommander.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.redisCommander.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.redisCommander.podSecurityContext | nindent 8 }}
+      initContainers:
+      - name: wait-for-redis
+        image: {{ .Values.initContainer.image | default "busybox:latest" }}
+        command: ['sh', '-c', 'until nc -z {{ include "openagentic.redis.serviceName" . }} 6379; do echo waiting for redis; sleep 2; done;']
+      containers:
+      - name: redis-commander
+        image: "{{ .Values.redisCommander.image.repository }}:{{ .Values.redisCommander.image.tag }}"
+        imagePullPolicy: {{ .Values.redisCommander.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.redisCommander.service.port }}
+          name: http
+          protocol: TCP
+        env:
+        # Redis Commander auto-connect settings
+        # NOTE: HTTP authentication DISABLED (no HTTP_USER/HTTP_PASSWORD)
+        # Access is controlled by Admin Portal authentication
+        - name: REDIS_HOSTS
+          value: "local:{{ include "openagentic.redis.serviceName" . }}:6379"
+        - name: PORT
+          value: {{ .Values.redisCommander.service.port | quote }}
+        # HTTP_USER and HTTP_PASSWORD intentionally omitted to disable authentication
+        resources:
+          {{- toYaml .Values.redisCommander.resources | nindent 10 }}
+        livenessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.redisCommander.service.port }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.redisCommander.service.port }}
+          initialDelaySeconds: 10
+          periodSeconds: 5
+{{- end }}

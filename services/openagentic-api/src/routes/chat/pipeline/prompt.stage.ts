@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Prompt Engineering Pipeline Stage
  * 
  * Responsibilities:
@@ -904,8 +888,13 @@ Example structure:
     // CONDITIONAL ARTIFACT INSTRUCTIONS: Only inject artifact creation guidance
     // when the user's query indicates a visual/interactive request.
     // This prevents agents from spawning artifact_creation for simple factual questions.
+    //
+    // Detection now delegates to ArtifactIntentGate so the legacy fallback
+    // path agrees with the composable path on what counts as "the user wants
+    // a visual" (openagentic-omhs#327).
     const userQuery = (context.request?.message || '').toLowerCase();
-    const isVisualRequest = /chart|dashboard|visualiz|diagram|graph|table|report|html|artifact|interactive|svg|mermaid|canvas|plot|infographic/i.test(userQuery);
+    const { evaluateUserIntent } = await import('../../../services/prompt/ArtifactIntentGate.js');
+    const isVisualRequest = evaluateUserIntent(userQuery).intent === 'visualization';
 
     // DOMAIN ANCHORING: When the user's prompt is clearly about a cloud
     // provider (Azure/AWS/GCP) and there's no explicit mention of GitHub or

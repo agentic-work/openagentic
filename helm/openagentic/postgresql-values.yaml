@@ -1,0 +1,131 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+# ===================================================================================================
+# POSTGRESQL HA WITH PGVECTOR - DALEK (CPU-based, co-located with Milvus)
+# ===================================================================================================
+# Deploy with: helm install postgresql bitnami/postgresql -n openagentic -f helm/openagentic/postgresql-values.yaml
+#
+# Prerequisites:
+#   helm repo add bitnami https://charts.bitnami.com/bitnami
+#   helm repo update
+#
+# Note: pgvector is a CPU-based PostgreSQL extension for vector similarity search.
+#       It does not use GPU acceleration. This deployment runs on dalek for
+#       co-location with other data services (Milvus, etcd).
+#
+# Features:
+#   - pgvector extension for vector operations
+#   - pg_trgm extension for trigram-based text search
+#   - btree_gin extension for GIN indexes
+#   - Replication with 1 primary + 1 read replica
+# ===================================================================================================
+
+fullnameOverride: postgresql
+
+global:
+  # Don't set imageRegistry globally - let each image use its own registry
+  # imageRegistry: public.ecr.aws
+  security:
+    allowInsecureImages: true
+
+# Single node architecture (simpler, faster startup)
+architecture: standalone
+
+# Use official pgvector image which works with Bitnami chart
+# https://hub.docker.com/r/pgvector/pgvector
+image:
+  registry: docker.io
+  repository: pgvector/pgvector
+  tag: "pg17"
+  pullPolicy: IfNotPresent
+
+# Authentication
+auth:
+  postgresPassword: "openagentic123"
+  username: openagentic
+  password: "openagentic123"
+  database: openagentic
+  replicationUsername: repl_user
+  replicationPassword: "openagentic123"
+
+# Primary node configuration
+primary:
+  # Run on k8a (control plane - dalek/hal have secret mounting issues)
+  nodeSelector:
+    kubernetes.io/hostname: k8a
+
+  persistence:
+    enabled: true
+    storageClass: "nfs"
+    size: 20Gi
+
+  # Extra volumes for pgvector image compatibility
+  # The pgvector image needs /var/run/postgresql to be writable
+  extraVolumes:
+    - name: postgresql-run
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: postgresql-run
+      mountPath: /var/run/postgresql
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+
+  # Initialize extensions on database creation
+  initdb:
+    scripts:
+      init-extensions.sql: |
+        -- Enable pgvector for vector similarity search
+        CREATE EXTENSION IF NOT EXISTS vector;
+
+        -- Enable pg_trgm for trigram-based text search
+        CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+        -- Enable btree_gin for GIN indexes on scalar types
+        CREATE EXTENSION IF NOT EXISTS btree_gin;
+
+        -- Grant necessary permissions
+        GRANT ALL ON SCHEMA public TO openagentic;
+
+# Read replica disabled for standalone architecture
+readReplicas:
+  replicaCount: 0
+
+# Service configuration
+service:
+  type: ClusterIP
+  ports:
+    postgresql: 5432
+
+# Metrics for monitoring
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false  # Enable if Prometheus Operator is installed
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
+
+# Volume permissions
+volumePermissions:
+  enabled: false
+
+# Security context - relaxed for pgvector image compatibility
+containerSecurityContext:
+  enabled: true
+  runAsUser: 0
+  runAsNonRoot: false
+  allowPrivilegeEscalation: true
+
+podSecurityContext:
+  enabled: true
+  fsGroup: 0

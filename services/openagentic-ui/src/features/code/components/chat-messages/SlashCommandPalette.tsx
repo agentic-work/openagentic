@@ -1,17 +1,17 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * SlashCommandPalette — the `/` autocomplete dropdown.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Rendered above the input box whenever the current input starts with
+ * `/`. Arrow Up / Down navigate, Enter selects, Esc closes. Filter is
+ * live as the user types. Matches openagentic's TUI slash-command
+ * picker behavior (src/commands/*).
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * The selection callback receives the command name without the
+ * leading slash. The parent decides what to do with it (open a modal,
+ * dispatch a backend action, insert boilerplate, etc.).
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';

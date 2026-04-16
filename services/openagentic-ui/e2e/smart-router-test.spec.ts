@@ -1,23 +1,7 @@
-/**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { test, expect } from '@playwright/test';
 
 test('Smart Router Prometheus Query Test', async ({ page }) => {
-  const BASE_URL = 'https://chat-dev.openagentics.io';
+  const BASE_URL = 'https://chat-dev.openagentic.io';
   
   console.log('\n=== Smart Router Test ===\n');
   
@@ -34,7 +18,7 @@ test('Smart Router Prometheus Query Test', async ({ page }) => {
   }
   
   // Fill credentials
-  await page.fill('input[type="email"], input[name="email"]', 'admin@openagentics.io');
+  await page.fill('input[type="email"], input[name="email"]', 'admin@openagentic.io');
   await page.fill('input[type="password"], input[name="password"]', process.env.ADMIN_PASSWORD || '');
   
   // Click sign in

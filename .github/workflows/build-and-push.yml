@@ -1,0 +1,522 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+name: Build and Push Images
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'services/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'services/**'
+  # Manual trigger for building specific services
+  workflow_dispatch:
+    inputs:
+      build_all:
+        description: 'Build ALL images with same tag (recommended for deployments)'
+        required: true
+        default: true
+        type: boolean
+      services:
+        description: 'Services to build (only used if build_all is false)'
+        required: false
+        default: 'api,ui,mcp-proxy,flowise,code-manager,code-runner'
+        type: string
+      tag_suffix:
+        description: 'Optional tag suffix'
+        required: false
+        type: string
+
+env:
+  # Google Cloud Configuration
+  GCP_PROJECT_ID: openagentic-dev
+  # Use Artifact Registry (GAR)
+  GAR_REGISTRY: us-east4-docker.pkg.dev/openagentic-dev/openagentic
+
+jobs:
+  detect-changes:
+    runs-on: openagentic-runners
+    outputs:
+      api_changed: ${{ steps.changes.outputs.api }}
+      ui_changed: ${{ steps.changes.outputs.ui }}
+      mcp_proxy_changed: ${{ steps.changes.outputs.mcp_proxy }}
+      flowise_changed: ${{ steps.changes.outputs.flowise }}
+      code_manager_changed: ${{ steps.changes.outputs.code_manager }}
+      code_runner_changed: ${{ steps.changes.outputs.code_runner }}
+      image_tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Generate image tag
+        id: tag
+        shell: bash
+        run: |
+          TAG="${GITHUB_SHA:0:7}"
+          if [ "${{ inputs.tag_suffix }}" != "" ]; then
+            TAG="${TAG}-${{ inputs.tag_suffix }}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Detect service changes
+        id: changes
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # For manual dispatch, check if build_all is enabled
+            if [ "${{ inputs.build_all }}" = "true" ]; then
+              # Build ALL images with the same tag
+              echo "api=true" >> $GITHUB_OUTPUT
+              echo "ui=true" >> $GITHUB_OUTPUT
+              echo "mcp_proxy=true" >> $GITHUB_OUTPUT
+              echo "flowise=true" >> $GITHUB_OUTPUT
+              echo "code_manager=true" >> $GITHUB_OUTPUT
+              echo "code_runner=true" >> $GITHUB_OUTPUT
+            else
+              # For manual dispatch with build_all=false, check input services
+              SERVICES="${{ inputs.services }}"
+              echo "api=$(echo $SERVICES | grep -q 'api' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+              echo "ui=$(echo $SERVICES | grep -q 'ui' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+              echo "mcp_proxy=$(echo $SERVICES | grep -q 'mcp-proxy' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+              echo "flowise=$(echo $SERVICES | grep -q 'flowise' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+              echo "code_manager=$(echo $SERVICES | grep -q 'code-manager' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+              echo "code_runner=$(echo $SERVICES | grep -q 'code-runner' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+            fi
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            # For PRs, check changed files
+            echo "api=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q '^services/openagentic-api/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+            echo "ui=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q '^services/openagentic-ui/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+            echo "mcp_proxy=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q '^services/openagentic-mcp-proxy/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+            echo "flowise=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q '^services/openagentic-flowise/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+            echo "code_manager=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q '^services/openagentic-manager/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+            echo "code_runner=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q '^services/openagenticcode-runner/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          else
+            # For push events, check what changed in the commit
+            echo "api=$(git diff --name-only HEAD^ HEAD | grep -q '^services/openagentic-api/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+            echo "ui=$(git diff --name-only HEAD^ HEAD | grep -q '^services/openagentic-ui/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+            echo "mcp_proxy=$(git diff --name-only HEAD^ HEAD | grep -q '^services/openagentic-mcp-proxy/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+            echo "flowise=$(git diff --name-only HEAD^ HEAD | grep -q '^services/openagentic-flowise/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+            echo "code_manager=$(git diff --name-only HEAD^ HEAD | grep -q '^services/openagentic-manager/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+            echo "code_runner=$(git diff --name-only HEAD^ HEAD | grep -q '^services/openagenticcode-runner/' && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Changes detected:"
+          cat $GITHUB_OUTPUT
+
+  build-api:
+    runs-on: openagentic-runners  # Self-hosted on dalek
+    needs: detect-changes
+    if: needs.detect-changes.outputs.api_changed == 'true'
+    permissions:
+      contents: read
+      id-token: write  # Required for Workload Identity Federation
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Option 1: Workload Identity Federation (Recommended - no service account key needed)
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      # Option 2: Service Account Key (fallback if WIF not configured)
+      # - name: Authenticate to Google Cloud
+      #   uses: google-github-actions/auth@v2
+      #   with:
+      #     credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io --quiet
+
+      - name: Build and Push API Image
+        shell: bash
+        run: |
+          TAG=${{ needs.detect-changes.outputs.image_tag }}
+          IMAGE_TAG="${{ env.GCR_REGISTRY }}/openagentic-api:$TAG"
+          IMAGE_LATEST="${{ env.GCR_REGISTRY }}/openagentic-api:latest"
+
+          echo "Building API image with tag: $TAG"
+
+          DOCKER_BUILDKIT=1 docker build \
+            --no-cache \
+            --progress=plain \
+            -t $IMAGE_TAG \
+            -t $IMAGE_LATEST \
+            -f services/openagentic-api/Dockerfile . \
+            --build-arg SRC_PATH=services/openagentic-api
+
+          docker push $IMAGE_TAG
+          docker push $IMAGE_LATEST
+
+          echo "API image pushed: $IMAGE_TAG"
+
+  build-ui:
+    runs-on: openagentic-runners  # Self-hosted on dalek
+    needs: detect-changes
+    if: needs.detect-changes.outputs.ui_changed == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: services/openagentic-ui/package-lock.json
+
+      - name: Install UI dependencies
+        working-directory: services/openagentic-ui
+        run: npm ci
+
+      - name: Run ESLint (Theme Consistency Check)
+        working-directory: services/openagentic-ui
+        run: |
+          echo "Checking for hardcoded color violations..."
+          # Run lint with warnings only (not --max-warnings 0) to capture output
+          npx eslint src --ext .ts,.tsx --quiet 2>&1 | tee eslint-output.txt || true
+
+          # Count theme-related violations (our custom rules)
+          THEME_VIOLATIONS=$(grep -E "(Use theme\.|hardcoded rgba|CSS variable var\(--color-)" eslint-output.txt | wc -l)
+
+          if [ "$THEME_VIOLATIONS" -gt "0" ]; then
+            echo "::warning::Found $THEME_VIOLATIONS theme consistency violations"
+            grep -E "(Use theme\.|hardcoded rgba|CSS variable var\(--color-)" eslint-output.txt || true
+            # Currently warn-only, will fail after baseline is cleared
+            # exit 1
+          fi
+          echo "Theme consistency check passed (or only baseline violations)"
+
+      - name: Run TypeScript type check
+        working-directory: services/openagentic-ui
+        run: npm run build -- --mode production 2>&1 | head -100 || true
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io --quiet
+
+      - name: Build and Push UI Image
+        shell: bash
+        run: |
+          TAG=${{ needs.detect-changes.outputs.image_tag }}
+          IMAGE_TAG="${{ env.GCR_REGISTRY }}/openagentic-ui:$TAG"
+          IMAGE_LATEST="${{ env.GCR_REGISTRY }}/openagentic-ui:latest"
+
+          BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          GIT_COMMIT="${{ github.sha }}"
+          GIT_SHORT_COMMIT="${GITHUB_SHA:0:7}"
+          GIT_BRANCH="${{ github.ref_name }}"
+
+          DOCKER_BUILDKIT=1 docker build \
+            --no-cache \
+            --progress=plain \
+            -t $IMAGE_TAG \
+            -t $IMAGE_LATEST \
+            -f services/openagentic-ui/Dockerfile . \
+            --build-arg SRC_PATH=services/openagentic-ui \
+            --build-arg GIT_COMMIT="$GIT_COMMIT" \
+            --build-arg GIT_SHORT_COMMIT="$GIT_SHORT_COMMIT" \
+            --build-arg GIT_BRANCH="$GIT_BRANCH" \
+            --build-arg BUILD_TIME="$BUILD_TIME"
+
+          docker push $IMAGE_TAG
+          docker push $IMAGE_LATEST
+
+          echo "UI image pushed: $IMAGE_TAG"
+
+  build-mcp-proxy:
+    runs-on: openagentic-runners  # Self-hosted on dalek
+    needs: detect-changes
+    if: needs.detect-changes.outputs.mcp_proxy_changed == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io --quiet
+
+      - name: Build and Push MCP Proxy Image
+        shell: bash
+        run: |
+          TAG=${{ needs.detect-changes.outputs.image_tag }}
+          IMAGE_TAG="${{ env.GCR_REGISTRY }}/mcp-proxy:$TAG"
+          IMAGE_LATEST="${{ env.GCR_REGISTRY }}/mcp-proxy:latest"
+
+          DOCKER_BUILDKIT=1 docker build \
+            --no-cache \
+            --progress=plain \
+            -t $IMAGE_TAG \
+            -t $IMAGE_LATEST \
+            -f services/openagentic-mcp-proxy/Dockerfile . \
+            --build-arg SRC_PATH=services/openagentic-mcp-proxy
+
+          docker push $IMAGE_TAG
+          docker push $IMAGE_LATEST
+
+          echo "MCP Proxy image pushed: $IMAGE_TAG"
+
+  build-flowise:
+    runs-on: openagentic-runners  # Self-hosted on dalek
+    needs: detect-changes
+    if: needs.detect-changes.outputs.flowise_changed == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io --quiet
+
+      - name: Build and Push Flowise Image
+        shell: bash
+        run: |
+          TAG=${{ needs.detect-changes.outputs.image_tag }}
+          IMAGE_TAG="${{ env.GCR_REGISTRY }}/flowise:$TAG"
+          IMAGE_LATEST="${{ env.GCR_REGISTRY }}/flowise:latest"
+
+          # Flowise is a git submodule - verify it's checked out
+          ls -la services/openagentic-flowise/ || echo "Flowise submodule not found"
+
+          if [ -f "services/openagentic-flowise/Dockerfile" ]; then
+            DOCKER_BUILDKIT=1 docker build \
+              --no-cache \
+              --progress=plain \
+              -t $IMAGE_TAG \
+              -t $IMAGE_LATEST \
+              -f services/openagentic-flowise/Dockerfile services/openagentic-flowise
+
+            docker push $IMAGE_TAG
+            docker push $IMAGE_LATEST
+
+            echo "Flowise image pushed: $IMAGE_TAG"
+          else
+            echo "Flowise Dockerfile not found - skipping"
+          fi
+
+  build-code-manager:
+    runs-on: openagentic-runners  # Self-hosted on dalek
+    needs: detect-changes
+    if: needs.detect-changes.outputs.code_manager_changed == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io --quiet
+
+      - name: Build and Push OpenAgenticCode Manager Image
+        shell: bash
+        run: |
+          TAG=${{ needs.detect-changes.outputs.image_tag }}
+          IMAGE_TAG="${{ env.GCR_REGISTRY }}/openagentic-manager:$TAG"
+          IMAGE_LATEST="${{ env.GCR_REGISTRY }}/openagentic-manager:latest"
+
+          DOCKER_BUILDKIT=1 docker build \
+            --no-cache \
+            --progress=plain \
+            -t $IMAGE_TAG \
+            -t $IMAGE_LATEST \
+            -f services/openagentic-manager/Dockerfile services/openagentic-manager
+
+          docker push $IMAGE_TAG
+          docker push $IMAGE_LATEST
+
+          echo "Code Manager image pushed: $IMAGE_TAG"
+
+  build-code-runner:
+    runs-on: openagentic-runners  # Self-hosted on dalek
+    needs: detect-changes
+    if: needs.detect-changes.outputs.code_runner_changed == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io --quiet
+
+      - name: Build and Push OpenAgenticCode Runner Image
+        shell: bash
+        run: |
+          TAG=${{ needs.detect-changes.outputs.image_tag }}
+          IMAGE_TAG="${{ env.GCR_REGISTRY }}/openagenticcode-runner:$TAG"
+          IMAGE_LATEST="${{ env.GCR_REGISTRY }}/openagenticcode-runner:latest"
+
+          DOCKER_BUILDKIT=1 docker build \
+            --no-cache \
+            --progress=plain \
+            -t $IMAGE_TAG \
+            -t $IMAGE_LATEST \
+            -f services/openagenticcode-runner/Dockerfile services/openagenticcode-runner
+
+          docker push $IMAGE_TAG
+          docker push $IMAGE_LATEST
+
+          echo "Code Runner image pushed: $IMAGE_TAG"
+
+  summary:
+    runs-on: openagentic-runners
+    needs: [detect-changes, build-api, build-ui, build-mcp-proxy, build-flowise, build-code-manager, build-code-runner]
+    if: always()
+    steps:
+      - name: Build Summary
+        shell: bash
+        run: |
+          TAG=${{ needs.detect-changes.outputs.image_tag }}
+          REGISTRY="${{ env.GCR_REGISTRY }}"
+
+          echo "## Build Summary"
+          echo "Registry: $REGISTRY"
+          echo "Image Tag: $TAG"
+          echo ""
+
+          API_STATUS="${{ needs.build-api.result }}"
+          UI_STATUS="${{ needs.build-ui.result }}"
+          MCP_PROXY_STATUS="${{ needs.build-mcp-proxy.result }}"
+          FLOWISE_STATUS="${{ needs.build-flowise.result }}"
+          CODE_MANAGER_STATUS="${{ needs.build-code-manager.result }}"
+          CODE_RUNNER_STATUS="${{ needs.build-code-runner.result }}"
+
+          echo "### Built Images:"
+
+          if [ "${{ needs.detect-changes.outputs.api_changed }}" = "true" ]; then
+            if [ "$API_STATUS" = "success" ]; then
+              echo "- API: $REGISTRY/openagentic-api:$TAG"
+            else
+              echo "- API: FAILED"
+            fi
+          fi
+
+          if [ "${{ needs.detect-changes.outputs.ui_changed }}" = "true" ]; then
+            if [ "$UI_STATUS" = "success" ]; then
+              echo "- UI: $REGISTRY/openagentic-ui:$TAG"
+            else
+              echo "- UI: FAILED"
+            fi
+          fi
+
+          if [ "${{ needs.detect-changes.outputs.mcp_proxy_changed }}" = "true" ]; then
+            if [ "$MCP_PROXY_STATUS" = "success" ]; then
+              echo "- MCP Proxy: $REGISTRY/mcp-proxy:$TAG"
+            else
+              echo "- MCP Proxy: FAILED"
+            fi
+          fi
+
+          if [ "${{ needs.detect-changes.outputs.flowise_changed }}" = "true" ]; then
+            if [ "$FLOWISE_STATUS" = "success" ]; then
+              echo "- Flowise: $REGISTRY/flowise:$TAG"
+            else
+              echo "- Flowise: FAILED"
+            fi
+          fi
+
+          if [ "${{ needs.detect-changes.outputs.code_manager_changed }}" = "true" ]; then
+            if [ "$CODE_MANAGER_STATUS" = "success" ]; then
+              echo "- Code Manager: $REGISTRY/openagentic-manager:$TAG"
+            else
+              echo "- Code Manager: FAILED"
+            fi
+          fi
+
+          if [ "${{ needs.detect-changes.outputs.code_runner_changed }}" = "true" ]; then
+            if [ "$CODE_RUNNER_STATUS" = "success" ]; then
+              echo "- Code Runner: $REGISTRY/openagenticcode-runner:$TAG"
+            else
+              echo "- Code Runner: FAILED"
+            fi
+          fi
+
+          # Exit with error if any build failed
+          if [ "$API_STATUS" = "failure" ] || [ "$UI_STATUS" = "failure" ] || \
+             [ "$MCP_PROXY_STATUS" = "failure" ] || [ "$FLOWISE_STATUS" = "failure" ] || \
+             [ "$CODE_MANAGER_STATUS" = "failure" ] || [ "$CODE_RUNNER_STATUS" = "failure" ]; then
+            echo ""
+            echo "Some builds failed!"
+            exit 1
+          fi

@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Access Denied Page
  *
  * Shown when an unauthorized user attempts to login via Google OAuth.
@@ -177,19 +161,22 @@ const AccessDenied: React.FC = () => {
 
           {/* Contact info */}
           <p className="text-center text-gray-500 text-xs mt-6">
-            Questions? Contact us at{' '}
-            <a
-              href="mailto:hello@openagentics.io"
-              className="text-cyan-400 hover:text-cyan-300 transition-colors"
-            >
-              hello@openagentics.io
-            </a>
+            Questions? Contact your administrator.
           </p>
         </div>
 
         {/* Footer */}
         <div className="text-center mt-6 text-gray-600 text-xs">
-          <p>© {new Date().getFullYear()} Gnomus.ai</p>
+          <p>
+            <a
+              href="https://gnomus.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-gray-400 underline"
+            >
+              Learn more
+            </a>
+          </p>
         </div>
       </motion.div>
     </div>

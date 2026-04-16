@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * OpenAgentic v0.5.0 UAT - Data Layer, Synth, Grounding & Full Platform Tests
  *
  * Tests ALL v0.5.0 features per docs/uat/ac.md:
@@ -34,13 +18,13 @@
  * - TTFT benchmarks
  *
  * Run:
- *   HEADLESS=true BASE_URL=https://chat-dev.openagentics.io \
+ *   HEADLESS=true BASE_URL=https://chat-dev.openagentic.io \
  *   npx playwright test e2e/uat-v0.5.0-datalayer.spec.ts --reporter=list
  */
 
 import { test, expect } from '@playwright/test';
 
-const API_URL = process.env.BASE_URL || 'https://chat-dev.openagentics.io';
+const API_URL = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
 const API_KEY = process.env.API_KEY || '';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'mcp-tester@phatoldsungmail.onmicrosoft.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'TestMcp@2026';

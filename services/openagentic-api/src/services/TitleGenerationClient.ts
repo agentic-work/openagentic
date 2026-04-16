@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Title Generation Client
  *
  * Uses ProviderManager to support any configured LLM provider (Azure, AWS Bedrock, Vertex AI)
@@ -65,6 +49,9 @@ export class TitleGenerationClient {
   private logger: Logger;
   private config: TitleClientConfig;
   private providerManager: any;
+  // Cached resolved model (from providerManager.listModels) so we don't
+  // re-query on every title call. Cleared on updateConfig().
+  private resolvedModel?: string;
 
   constructor(logger: Logger, config: Partial<TitleClientConfig> = {}) {
     this.logger = logger.child({ service: 'TitleGenerationClient' });
@@ -86,6 +73,52 @@ export class TitleGenerationClient {
   }
 
   /**
+   * Resolve a real, available model id when the caller passed undefined or
+   * 'auto'. Walks the live provider.listModels() output and picks the
+   * cheapest/smallest-looking model by name heuristic. Cached after first
+   * successful resolve. Title generation is a tiny task — it's fine to pick
+   * any small chat model.
+   */
+  private async resolveModel(requested?: string): Promise<string | undefined> {
+    if (requested && requested !== 'auto') return requested;
+    if (this.config.defaultModel && this.config.defaultModel !== 'auto') {
+      return this.config.defaultModel;
+    }
+    if (this.resolvedModel) return this.resolvedModel;
+    if (!this.providerManager?.listModels) return undefined;
+
+    try {
+      const models: Array<{ id: string; name?: string; provider?: string }> =
+        await this.providerManager.listModels();
+      if (!Array.isArray(models) || models.length === 0) return undefined;
+
+      // Preference ordered by "likely cheapest / smallest first". These are
+      // heuristics on id substrings, so stay stable across stale model IDs.
+      const prefs = [
+        'haiku', 'nova-micro', 'nova-lite',
+        'gpt-oss:20b', 'gpt-oss', 'qwen3:14b', 'qwen2',
+        'llama3:8b', 'phi', 'mistral',
+        'gpt-4o-mini', 'gpt-5-mini', 'gpt-5-nano',
+      ];
+      for (const pref of prefs) {
+        const hit = models.find(m => m.id && m.id.toLowerCase().includes(pref));
+        if (hit) {
+          this.resolvedModel = hit.id;
+          this.logger.info({ model: hit.id, hint: pref }, 'TitleGen resolved model by preference');
+          return hit.id;
+        }
+      }
+      // Fall back to whatever's first.
+      this.resolvedModel = models[0].id;
+      this.logger.info({ model: models[0].id }, 'TitleGen resolved model by first-available');
+      return this.resolvedModel;
+    } catch (err: any) {
+      this.logger.warn({ err: err.message }, 'TitleGen failed to resolve model from providerManager');
+      return undefined;
+    }
+  }
+
+  /**
    * Generate a completion for title generation using ProviderManager
    */
   async generateCompletion(params: CompletionRequest): Promise<{ content: string }> {
@@ -95,9 +128,17 @@ export class TitleGenerationClient {
 
     const startTime = Date.now();
 
+    // Lazy-resolve the model when caller passed nothing or 'auto' — avoids
+    // ProviderManager erroring with `Model "auto" is not available` when
+    // TITLE_GENERATION_MODEL / ECONOMICAL_MODEL env vars are unset.
+    const model = await this.resolveModel(params.model);
+    if (!model) {
+      throw new Error('No model available for title generation');
+    }
+
     try {
       const response: any = await this.providerManager.createCompletion({
-        model: params.model || this.config.defaultModel,
+        model,
         messages: params.messages,
         temperature: params.temperature ?? 0.3,
         max_tokens: params.max_tokens ?? 20,
@@ -130,12 +171,12 @@ export class TitleGenerationClient {
       this.logger.error({
         error: error.message,
         latency,
-        model: params.model || this.config.defaultModel
+        model
       }, 'Title generation failed');
 
       // Track failure metrics
       this.trackMetrics({
-        model: params.model || this.config.defaultModel!,
+        model: model || 'unknown',
         latency,
         tokens: 0,
         success: false
@@ -229,6 +270,9 @@ No numbers, bullets, or prefixes - just the titles.`;
     this.config = { ...this.config, ...config };
     if (config.providerManager) {
       this.providerManager = config.providerManager;
+      // Invalidate cached model — new providerManager may expose a
+      // different model catalog.
+      this.resolvedModel = undefined;
     }
   }
 }

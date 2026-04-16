@@ -1,0 +1,80 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if .Values.codeManager.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openagentic.fullname" . }}-code-manager
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: code-manager
+spec:
+  type: {{ .Values.codeManager.service.type }}
+  {{- if or .Values.codeManager.service.sessionAffinity .Values.codeManager.sessionAffinity.enabled }}
+  # Session affinity ensures requests from the same client go to the same pod
+  # Required for multi-replica deployments where code-server runs on specific pods
+  {{- if .Values.codeManager.sessionAffinity.enabled }}
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: {{ .Values.codeManager.sessionAffinity.cookieTTLSeconds | default 86400 }}
+  {{- else if .Values.codeManager.service.sessionAffinity }}
+  sessionAffinity: {{ .Values.codeManager.service.sessionAffinity }}
+  {{- if eq .Values.codeManager.service.sessionAffinity "ClientIP" }}
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: {{ .Values.codeManager.service.sessionAffinityTimeout | default 3600 }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  ports:
+    - port: {{ .Values.codeManager.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    # Code-server instances run on dynamic ports 3100-3109
+    # These allow up to 10 concurrent VS Code sessions per pod
+    - port: 3100
+      targetPort: code-server-0
+      protocol: TCP
+      name: code-server-0
+    - port: 3101
+      targetPort: code-server-1
+      protocol: TCP
+      name: code-server-1
+    - port: 3102
+      targetPort: code-server-2
+      protocol: TCP
+      name: code-server-2
+    - port: 3103
+      targetPort: code-server-3
+      protocol: TCP
+      name: code-server-3
+    - port: 3104
+      targetPort: code-server-4
+      protocol: TCP
+      name: code-server-4
+    - port: 3105
+      targetPort: code-server-5
+      protocol: TCP
+      name: code-server-5
+    - port: 3106
+      targetPort: code-server-6
+      protocol: TCP
+      name: code-server-6
+    - port: 3107
+      targetPort: code-server-7
+      protocol: TCP
+      name: code-server-7
+    - port: 3108
+      targetPort: code-server-8
+      protocol: TCP
+      name: code-server-8
+    - port: 3109
+      targetPort: code-server-9
+      protocol: TCP
+      name: code-server-9
+  selector:
+    {{- include "openagentic.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: code-manager
+{{- end }}

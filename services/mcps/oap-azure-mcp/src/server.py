@@ -1,17 +1,4 @@
-#!/usr/bin/env python3
-# Copyright 2026 Gnomus.ai
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Proprietary and confidential. Unauthorized copying prohibited.
 
 """
 OpenAgentic Azure MCP Server - Full Azure SDK for az cli Parity
@@ -4808,11 +4795,11 @@ async def azure_list_subscriptions_in_management_group(
 ) -> Dict[str, Any]:
     """
     List all subscriptions under a specific management group. Use this to answer
-    questions like "list the subscriptions in management group example-management-group".
+    questions like "list the subscriptions in management group CDC-Centers-MG".
 
     The management_group_id can be either:
-      - The short name (e.g. "example-management-group")
-      - The full ARM ID (e.g. "/providers/Microsoft.Management/managementGroups/example-management-group")
+      - The short name (e.g. "CDC-Centers-MG")
+      - The full ARM ID (e.g. "/providers/Microsoft.Management/managementGroups/CDC-Centers-MG")
 
     Args:
         management_group_id: The management group identifier (name or full ARM path).

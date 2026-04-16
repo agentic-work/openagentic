@@ -1,0 +1,1908 @@
+event: stream_start
+data: {"sessionId":"session_1771633357776_0as1q0pyd","messageId":"msg_1771633503343_jhstnvzgm"}
+
+event: context_compacted
+data: {"freedPercent":4,"tokensFreed":4132,"messagesRemoved":15,"messagesSummarized":15,"compactionLevel":"aggressive"}
+
+event: message_saved
+data: {"messageId":"2rCaUpGI47BgMrxDZqK_i","role":"user","content":"Based on everything you found in the last two checks, give me a final health score from 0-100 and list the top 3 things that need attention. Be specific with actual numbers from your queries.","timestamp":"2026-02-21T00:25:03.561Z","source":"database","confirmed":true}
+
+event: context_injection_pending
+data: {"rag":true,"mcp":false,"timestamp":"2026-02-21T00:25:03.569Z"}
+
+event: memory_status
+data: {"memoriesRetrieved":10,"memoryTypes":["semantic"],"processingTime":203}
+
+event: message_saved
+data: {"messageId":"VK5GehV8ZMDWWutGQ6Kvr","role":"assistant","content":"","timestamp":"2026-02-21T00:25:04.470Z","source":"database","confirmed":true,"streaming":true}
+
+event: completion_start
+data: {"model":"us.anthropic.claude-opus-4-6-v1","messageId":"VK5GehV8ZMDWWutGQ6Kvr","source":"database"}
+
+event: cot_step
+data: {"step":{"id":"cot_thinking_1771633504471","type":"thinking","description":"Processing request","status":"in_progress","startTime":1771633504471}}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:25:06.343Z"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:25:09.343Z"}
+
+event: content_block_start
+data: {"index":0,"blockType":"text"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n##"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Ag"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"enticWork Platform"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Health Score"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n#"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"38"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"/ 100\n\nThe"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" platform is **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"oper"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ationally functional"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" for"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" basic"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" chat"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"**"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" but its"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" knowledge"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" layer"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":","}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" observ"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ability stack"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", and rate limiting are all"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" broken"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Users"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" can"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" send"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" messages and"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" get L"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"LM responses, but every"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" RA"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"G-"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"enhanced"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" feature"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" is sil"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ently failing.\n\n---"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n###"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Score"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Breakdown\n\n| Domain"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | Weight"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | Score"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Weighted"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Rat"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ionale |\n|--------|:"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"------"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":|:-----:|:--------:|--------"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"---|\n| **Core"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Orchest"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ration** ("}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:25:12.343Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"L"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ang"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Graph"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":","}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Cre"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"wAI) | 20"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"% | 90"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | 18"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"0"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | Both"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" healthy"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":";"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Flo"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"wise unh"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ealthy but"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" not"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" default"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n| **Vector"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" DB"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" /"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Knowledge**"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" (Milvus)"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | 25"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"% | 5"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | 1.3"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"7"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":","}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"313 write"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" failures/"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"30m,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" 2"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"missing"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" collections,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" 1"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" schema"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" mismatch |\n| **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Observ"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ability** (Prometheus, L"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"oki,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Admin"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":") | 20"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"% | 35"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | 7.0 |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Prometheus"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"50"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"/"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"54"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" targets"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" up"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", Loki working"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", but"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Admin"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" MCP fully"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" blocked ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"all"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:25:15.346Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"5"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" tools) |\n| **Data"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Layer"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** (Postgres, Redis)"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | 20"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"% | 30"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | 6.0 |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Redis"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"zremrangebyscore` broken"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ="}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" no"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" rate limiting;"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Postgres health"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" unver"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ifiable |\n| **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Kubernetes"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" /"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Inf"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ra** | 15% | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"40"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | 6.0 |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"4"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Prometheus"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" targets persist"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ently down, K"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"8s M"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"CP has"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" no"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ku"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"beconfig,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" 0"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" alert"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ing rules"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n| |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Total"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"**"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"38"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"3"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"**"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n---\n\n### Top 3 "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Issues"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Requiring Immediate"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Attention\n\n###"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" 1."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Milvus"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Embedding"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Dimension Mismatch —"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"7,313 Failed Writes in"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" 30 Minutes\n\nThis"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" is the single"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" highest"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"-volume"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:25:18.346Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" failure on"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the platform. The `A"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"zureSDKKnowledge"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Ingester` generates"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" embed"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"dings via"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Amazon"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Titan Embed v2**"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" at"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"1,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"024 dimensions**,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" but the Milvus collection `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"chat_conversations_v2` expects"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" **1,536 dimensions**."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Every"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" insert"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" is rejected"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n|"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Metric"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | Value |\n|--------|------"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":|\n| **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Failed writes ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"30"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"m"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":")** | 7,313 "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"|\n| **Sustained"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" error"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" rate** | ~"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"5"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"errors"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"/sec ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"steady"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"-"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"state),"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" s"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"piking to **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"578/sec** |\n| **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Collections"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" affected"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | `chat_conversations_"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"v2` (dim m"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ismatch),"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `azure_sdk_documentation` ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"field"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"source` not"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" found) |\n| **Collections"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" missing entirely"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | `chat_conversations`, `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"app_documentation` |\n| **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"RA"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"G search results"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" returned"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"**"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | **"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:25:21.346Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"0** ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"confirmed"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" in"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" A"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"rt"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ifactService logs"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":") |\n\n**Business"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" impact"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":** Every"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" user"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" interaction"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" that"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" relies"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" on knowledge retri"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"eval —"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Azure"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" SDK help"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", conversation"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" history recall"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", documentation"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" search — returns"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"zero"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" results**"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":". The L"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"LM is answ"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ering purely"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" from its"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" training data with"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" no platform"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"-specific context"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":".\n\n**Fix"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":** Either"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" recreate the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Milvus collections"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" with `dim=1024"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"` to"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" match"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Titan Embed v"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"2,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" or configure"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the embedding service"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" to output 1,536 "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"dimensions to"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" match the existing"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" schema"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" The former"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" is faster"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":";"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the latter preserv"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"es any"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" existing data.\n\n---"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n### 2. Redis"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Client API Break"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" — Rate Limiting Completely Disabled"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\nThe `ChatAuthService` calls"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `redis.zremrangebys"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"core()` on every incoming"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" chat"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" request"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" and"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:25:24.347Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" gets"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n```"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\""}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"redis"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":".zremrangebyscore is"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" not a function\"\n```\n\nThis"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" was"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" observed"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"3 times in "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"30 minutes** (once"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" per user"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" session in"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the window"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"),"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" and"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the service"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" catches"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" error and **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"allows the request through uncon"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ditionally**.\n\n|"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Metric | Value |\n|-----"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"---|------"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":|\n| **Occ"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"urrences in"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"30m"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | 3 ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"1"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" per chat"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" session start"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":")"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n| **Rate"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" limiting status"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | **Completely"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" bypassed** |\n| **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Affected"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" service"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | `ChatAuthService` in"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `ag"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"enticwork-api-"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"6ffdf956b5-6"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"gztf` |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n| **Root"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" cause** | Redis client library upgrade"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"likely"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ioredis v4"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"→"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"v5 "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"camelCase rename"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":") |\n\n**Business impact:** Any"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" user or"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" bot can"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" send"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" unlimited"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:25:27.348Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" requests"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" with"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" zero"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" thrott"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ling. This"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" is both"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" a **cost"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" exposure"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"un"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"cont"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"rolled"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Bed"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"rock API"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" spend"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":") and a"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" **security vulnerability"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** (no"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" abuse"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" protection).\n\n**Fix:** Update"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the call"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" from"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `redis.zremrangebys"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"core()` to `redis.z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"RemRangeByScore()`"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" (ioredis v5 "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"convention"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"),"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" or pin"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ioredis to v4."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"x"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n---\n\n### 3. Admin M"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"CP Total"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Failure"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" — 5 Health"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Tools"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Blocked,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Postgres Un"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"verifiable\n\nEvery"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" tool"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" in the `aw"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"p"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"-"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"admin-m"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"cp` server"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" returns"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n```\nInternal error: \""}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Attempt to overwrite 'args'"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" in LogRecord\"\n```\n\nThis"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" is a Python"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" logging framework bug where"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" a"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" custom"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" handler or"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" formatter"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" sets an"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" attribute"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" named"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `args` on `"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:25:30.348Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"LogRecord`,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" confl"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"icting with the built-in field"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":".\n\n| Metric | Value |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n|--------|------:|\n|"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" **Blocked tools** | `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"admin_full"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_system"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_test"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"`, `postgres"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_health"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_check`, `redis_health_"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"check`, `milvus_health"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_check`, `infrastructure"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_health_check`,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `postgres"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_raw"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_query`"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n| **Aud"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"its"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" affected"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | 3"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"+"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" consecutive"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" aud"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"its (pers"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"isting"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" across"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" sessions) |\n| **Postgres"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" vacuum"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" query"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"❌ Could"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" not execute —"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" your"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"pg"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_stat"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_user"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_tables` query"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" is un"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"runnable |\n| **Direct"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" consequence"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | Database"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" layer"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" health"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" is **completely"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" unob"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"servable** through"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" platform"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" tool"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ing |\n\n**Business impact:** You"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" cannot verify"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Postgre"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"SQL dead"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" tuple"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" counts,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Redis key"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" patterns"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":","}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:25:33.348Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Milvus collection"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" health, or run"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" full"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" system"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" test."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Any"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" database"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"-level degrad"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ation ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"blo"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"at, connection"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" exhaust"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ion, index"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" corruption"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":") will"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" go undetected until"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" it causes a user-"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"facing out"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"age.\n\n**Fix:** In"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `aw"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"p-admin-mcp` Python"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" c"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"odebase, find the logging"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" handler or"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" formatter that sets `record"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":".args` and rename the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" attribute to"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" avoid"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the collision"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" with"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Python"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"'s built-in `Log"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Record."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"args`."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n---"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n### Summary"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Pos"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ture\n\n```"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"m"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ermaid\nquad"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"rant"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Chart\n    title Platform"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Health"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Quad"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"rant\n    x-axis Low"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Severity"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" -->"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" High Severity\n    y"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"-axis Low Volume"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" --> High Volume\n    quadrant-"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"1 Critical"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" -"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Fix"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Now"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n    quadrant-2 Monitor"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n    quadrant-3 Low"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Priority"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:25:36.348Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n    "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"quadrant-4 "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Investigate"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n    "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"M"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ilvus Dim"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Mismatch:"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ["}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"0"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"9"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", 0.95"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"]"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n    Admin"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" MCP Blocked: [0."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"85"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", 0.3"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"]\n    Redis Rate Limit"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":": [0.75"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", 0.2"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"]\n    Missing"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Collections"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":": [0.7"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", 0.6"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"]\n    4"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" P"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"rom"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Targets Down: [0.4"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", 0.15"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"]\n    "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Flo"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"wise Unhealthy: [0"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":".3"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", 0.1]\n```"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n>"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" [!CA"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"UTION]\n> The"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" platform scores"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" **38/100** not"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" because it's down"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", but because **every intelligent"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" feature"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" is sil"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ently broken"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"**. Users"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" get"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" responses,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" but with"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" zero"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" RA"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"G context"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", no rate"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" protection"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", and no admin"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" visibility"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" into"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" data"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" layer"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"."}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:25:39.348Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" This"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" is a \""}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"lights"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" are"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" on but nobody's home\" scenario"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" that"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" will er"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ode trust in"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" platform"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" quality"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" if"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" not addressed within"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" next deployment"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" cycle."}
+
+event: content_block_stop
+data: {"index":0,"blockType":"text","finalContent":"\n\n## OpenAgentic Platform Health Score\n\n# 38 / 100\n\nThe platform is **operationally functional for basic chat** but its knowledge layer, observability stack, and rate limiting are all broken. Users can send messages and get LLM responses, but every RAG-enhanced feature is silently failing.\n\n---\n\n### Score Breakdown\n\n| Domain | Weight | Score | Weighted | Rationale |\n|--------|:------:|:-----:|:--------:|-----------|\n| **Core Orchestration** (LangGraph, CrewAI) | 20% | 90 | 18.0 | Both healthy; Flowise unhealthy but not default |\n| **Vector DB / Knowledge** (Milvus) | 25% | 5 | 1.3 | 7,313 write failures/30m, 2 missing collections, 1 schema mismatch |\n| **Observability** (Prometheus, Loki, Admin) | 20% | 35 | 7.0 | Prometheus 50/54 targets up, Loki working, but Admin MCP fully blocked (all 5 tools) |\n| **Data Layer** (Postgres, Redis) | 20% | 30 | 6.0 | Redis `zremrangebyscore` broken = no rate limiting; Postgres health unverifiable |\n| **Kubernetes / Infra** | 15% | 40 | 6.0 | 4 Prometheus targets persistently down, K8s MCP has no kubeconfig, 0 alerting rules |\n| | | **Total** | **38.3** | |\n\n---\n\n### Top 3 Issues Requiring Immediate Attention\n\n### 1. Milvus Embedding Dimension Mismatch — 7,313 Failed Writes in 30 Minutes\n\nThis is the single highest-volume failure on the platform. The `AzureSDKKnowledgeIngester` generates embeddings via **Amazon Titan Embed v2** at **1,024 dimensions**, but the Milvus collection `chat_conversations_v2` expects **1,536 dimensions**. Every insert is rejected.\n\n| Metric | Value |\n|--------|------:|\n| **Failed writes (30m)** | 7,313 |\n| **Sustained error rate** | ~5 errors/sec (steady-state), spiking to **578/sec** |\n| **Collections affected** | `chat_conversations_v2` (dim mismatch), `azure_sdk_documentation` (field `source` not found) |\n| **Collections missing entirely** | `chat_conversations`, `app_documentation` |\n| **RAG search results returned** | **0** (confirmed in ArtifactService logs) |\n\n**Business impact:** Every user interaction that relies on knowledge retrieval — Azure SDK help, conversation history recall, documentation search — returns **zero results**. The LLM is answering purely from its training data with no platform-specific context.\n\n**Fix:** Either recreate the Milvus collections with `dim=1024` to match Titan Embed v2, or configure the embedding service to output 1,536 dimensions to match the existing schema. The former is faster; the latter preserves any existing data.\n\n---\n\n### 2. Redis Client API Break — Rate Limiting Completely Disabled\n\nThe `ChatAuthService` calls `redis.zremrangebyscore()` on every incoming chat request and gets:\n\n```\n\"redis.zremrangebyscore is not a function\"\n```\n\nThis was observed **3 times in 30 minutes** (once per user session in the window), and the service catches the error and **allows the request through unconditionally**.\n\n| Metric | Value |\n|--------|------:|\n| **Occurrences in 30m** | 3 (1 per chat session start) |\n| **Rate limiting status** | **Completely bypassed** |\n| **Affected service** | `ChatAuthService` in `openagentic-api-6ffdf956b5-6gztf` |\n| **Root cause** | Redis client library upgrade (likely ioredis v4→v5 camelCase rename) |\n\n**Business impact:** Any user or bot can send unlimited requests with zero throttling. This is both a **cost exposure** (uncontrolled Bedrock API spend) and a **security vulnerability** (no abuse protection).\n\n**Fix:** Update the call from `redis.zremrangebyscore()` to `redis.zRemRangeByScore()` (ioredis v5 convention), or pin ioredis to v4.x.\n\n---\n\n### 3. Admin MCP Total Failure — 5 Health Tools Blocked, Postgres Unverifiable\n\nEvery tool in the `oap-admin-mcp` server returns:\n\n```\nInternal error: \"Attempt to overwrite 'args' in LogRecord\"\n```\n\nThis is a Python logging framework bug where a custom handler or formatter sets an attribute named `args` on `LogRecord`, conflicting with the built-in field.\n\n| Metric | Value |\n|--------|------:|\n| **Blocked tools** | `admin_full_system_test`, `postgres_health_check`, `redis_health_check`, `milvus_health_check`, `infrastructure_health_check`, `postgres_raw_query` |\n| **Audits affected** | 3+ consecutive audits (persisting across sessions) |\n| **Postgres vacuum query** | ❌ Could not execute — your `pg_stat_user_tables` query is unrunnable |\n| **Direct consequence** | Database layer health is **completely unobservable** through platform tooling |\n\n**Business impact:** You cannot verify PostgreSQL dead tuple counts, Redis key patterns, Milvus collection health, or run the full system test. Any database-level degradation (bloat, connection exhaustion, index corruption) will go undetected until it causes a user-facing outage.\n\n**Fix:** In the `oap-admin-mcp` Python codebase, find the logging handler or formatter that sets `record.args` and rename the attribute to avoid the collision with Python's built-in `LogRecord.args`.\n\n---\n\n### Summary Posture\n\n```mermaid\nquadrantChart\n    title Platform Health Quadrant\n    x-axis Low Severity --> High Severity\n    y-axis Low Volume --> High Volume\n    quadrant-1 Critical - Fix Now\n    quadrant-2 Monitor\n    quadrant-3 Low Priority\n    quadrant-4 Investigate\n    Milvus Dim Mismatch: [0.9, 0.95]\n    Admin MCP Blocked: [0.85, 0.3]\n    Redis Rate Limit: [0.75, 0.2]\n    Missing Collections: [0.7, 0.6]\n    4 Prom Targets Down: [0.4, 0.15]\n    Flowise Unhealthy: [0.3, 0.1]\n```\n\n> [!CAUTION]\n> The platform scores **38/100** not because it's down, but because **every intelligent feature is silently broken**. Users get responses, but with zero RAG context, no rate protection, and no admin visibility into the data layer. This is a \"lights are on but nobody's home\" scenario that will erode trust in platform quality if not addressed within the next deployment cycle."}
+
+event: cot_step
+data: {"step":{"id":"cot_thinking_1771633504471","type":"thinking","description":"Processing complete","status":"completed","endTime":1771633540077}}
+
+event: message_updated
+data: {"messageId":"VK5GehV8ZMDWWutGQ6Kvr","role":"assistant","content":"\n\n## OpenAgentic Platform Health Score\n\n# 38 / 100\n\nThe platform is **operationally functional for basic chat** but its knowledge layer, observability stack, and rate limiting are all broken. Users can send messages and get LLM responses, but every RAG-enhanced feature is silently failing.\n\n---\n\n### Score Breakdown\n\n| Domain | Weight | Score | Weighted | Rationale |\n|--------|:------:|:-----:|:--------:|-----------|\n| **Core Orchestration** (LangGraph, CrewAI) | 20% | 90 | 18.0 | Both healthy; Flowise unhealthy but not default |\n| **Vector DB / Knowledge** (Milvus) | 25% | 5 | 1.3 | 7,313 write failures/30m, 2 missing collections, 1 schema mismatch |\n| **Observability** (Prometheus, Loki, Admin) | 20% | 35 | 7.0 | Prometheus 50/54 targets up, Loki working, but Admin MCP fully blocked (all 5 tools) |\n| **Data Layer** (Postgres, Redis) | 20% | 30 | 6.0 | Redis `zremrangebyscore` broken = no rate limiting; Postgres health unverifiable |\n| **Kubernetes / Infra** | 15% | 40 | 6.0 | 4 Prometheus targets persistently down, K8s MCP has no kubeconfig, 0 alerting rules |\n| | | **Total** | **38.3** | |\n\n---\n\n### Top 3 Issues Requiring Immediate Attention\n\n### 1. Milvus Embedding Dimension Mismatch — 7,313 Failed Writes in 30 Minutes\n\nThis is the single highest-volume failure on the platform. The `AzureSDKKnowledgeIngester` generates embeddings via **Amazon Titan Embed v2** at **1,024 dimensions**, but the Milvus collection `chat_conversations_v2` expects **1,536 dimensions**. Every insert is rejected.\n\n| Metric | Value |\n|--------|------:|\n| **Failed writes (30m)** | 7,313 |\n| **Sustained error rate** | ~5 errors/sec (steady-state), spiking to **578/sec** |\n| **Collections affected** | `chat_conversations_v2` (dim mismatch), `azure_sdk_documentation` (field `source` not found) |\n| **Collections missing entirely** | `chat_conversations`, `app_documentation` |\n| **RAG search results returned** | **0** (confirmed in ArtifactService logs) |\n\n**Business impact:** Every user interaction that relies on knowledge retrieval — Azure SDK help, conversation history recall, documentation search — returns **zero results**. The LLM is answering purely from its training data with no platform-specific context.\n\n**Fix:** Either recreate the Milvus collections with `dim=1024` to match Titan Embed v2, or configure the embedding service to output 1,536 dimensions to match the existing schema. The former is faster; the latter preserves any existing data.\n\n---\n\n### 2. Redis Client API Break — Rate Limiting Completely Disabled\n\nThe `ChatAuthService` calls `redis.zremrangebyscore()` on every incoming chat request and gets:\n\n```\n\"redis.zremrangebyscore is not a function\"\n```\n\nThis was observed **3 times in 30 minutes** (once per user session in the window), and the service catches the error and **allows the request through unconditionally**.\n\n| Metric | Value |\n|--------|------:|\n| **Occurrences in 30m** | 3 (1 per chat session start) |\n| **Rate limiting status** | **Completely bypassed** |\n| **Affected service** | `ChatAuthService` in `openagentic-api-6ffdf956b5-6gztf` |\n| **Root cause** | Redis client library upgrade (likely ioredis v4→v5 camelCase rename) |\n\n**Business impact:** Any user or bot can send unlimited requests with zero throttling. This is both a **cost exposure** (uncontrolled Bedrock API spend) and a **security vulnerability** (no abuse protection).\n\n**Fix:** Update the call from `redis.zremrangebyscore()` to `redis.zRemRangeByScore()` (ioredis v5 convention), or pin ioredis to v4.x.\n\n---\n\n### 3. Admin MCP Total Failure — 5 Health Tools Blocked, Postgres Unverifiable\n\nEvery tool in the `oap-admin-mcp` server returns:\n\n```\nInternal error: \"Attempt to overwrite 'args' in LogRecord\"\n```\n\nThis is a Python logging framework bug where a custom handler or formatter sets an attribute named `args` on `LogRecord`, conflicting with the built-in field.\n\n| Metric | Value |\n|--------|------:|\n| **Blocked tools** | `admin_full_system_test`, `postgres_health_check`, `redis_health_check`, `milvus_health_check`, `infrastructure_health_check`, `postgres_raw_query` |\n| **Audits affected** | 3+ consecutive audits (persisting across sessions) |\n| **Postgres vacuum query** | ❌ Could not execute — your `pg_stat_user_tables` query is unrunnable |\n| **Direct consequence** | Database layer health is **completely unobservable** through platform tooling |\n\n**Business impact:** You cannot verify PostgreSQL dead tuple counts, Redis key patterns, Milvus collection health, or run the full system test. Any database-level degradation (bloat, connection exhaustion, index corruption) will go undetected until it causes a user-facing outage.\n\n**Fix:** In the `oap-admin-mcp` Python codebase, find the logging handler or formatter that sets `record.args` and rename the attribute to avoid the collision with Python's built-in `LogRecord.args`.\n\n---\n\n### Summary Posture\n\n```mermaid\nquadrantChart\n    title Platform Health Quadrant\n    x-axis Low Severity --> High Severity\n    y-axis Low Volume --> High Volume\n    quadrant-1 Critical - Fix Now\n    quadrant-2 Monitor\n    quadrant-3 Low Priority\n    quadrant-4 Investigate\n    Milvus Dim Mismatch: [0.9, 0.95]\n    Admin MCP Blocked: [0.85, 0.3]\n    Redis Rate Limit: [0.75, 0.2]\n    Missing Collections: [0.7, 0.6]\n    4 Prom Targets Down: [0.4, 0.15]\n    Flowise Unhealthy: [0.3, 0.1]\n```\n\n> [!CAUTION]\n> The platform scores **38/100** not because it's down, but because **every intelligent feature is silently broken**. Users get responses, but with zero RAG context, no rate protection, and no admin visibility into the data layer. This is a \"lights are on but nobody's home\" scenario that will erode trust in platform quality if not addressed within the next deployment cycle.","timestamp":"2026-02-21T00:25:40.105Z","tokenUsage":{"prompt_tokens":0,"completion_tokens":1738,"total_tokens":1738},"model":"us.anthropic.claude-opus-4-6-v1","source":"database","confirmed":true,"final":true}
+
+event: done
+data: {"messageId":"VK5GehV8ZMDWWutGQ6Kvr","toolCalls":[],"usage":{"prompt_tokens":0,"completion_tokens":1738,"total_tokens":1738},"finishReason":"stop","model":"us.anthropic.claude-opus-4-6-v1","source":"database"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:25:42.348Z"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:25:45.349Z"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:25:48.349Z"}
+
+event: response_complete
+data: {"messageId":"msg_1771633503343_grslr0r1f","sessionId":"session_1771633357776_0as1q0pyd","messageCount":27,"tokenUsage":{"prompt_tokens":0,"completion_tokens":1738,"total_tokens":1738}}
+
+event: thinking_complete
+data: {"stage":"complete"}
+
+event: stream_complete
+data: {"success":true,"processingTime":46177}
+

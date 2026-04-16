@@ -1,0 +1,21 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if .Values.attu.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openagentic.fullname" . }}-attu
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: attu
+spec:
+  type: {{ .Values.attu.service.type }}
+  ports:
+    - port: {{ .Values.attu.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openagentic.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: attu
+{{- end }}

@@ -1,0 +1,137 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.ui.enabled (.Values.ui.networkPolicy).enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "openagentic.fullname" . }}-ui
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ui
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ui
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from Ingress controller
+    - from:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 80
+    # Allow from TLS proxy (agenticadmin namespace — SNI router → tls-proxy → UI)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: agenticadmin
+      ports:
+        - protocol: TCP
+          port: 80
+    # Allow from API pod — docs RAG ingest + shared knowledge base
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: api
+      ports:
+        - protocol: TCP
+          port: 80
+    # Allow from HAProxy ingress (CDC envs)
+    - from:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: haproxy-ingress
+      ports:
+        - protocol: TCP
+          port: 80
+  egress:
+    # DNS
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # API (nginx proxies to API)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: api
+      ports:
+        - protocol: TCP
+          port: {{ .Values.api.service.port | default 8000 }}
+    # MCP Proxy (nginx proxies to MCP)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: mcp-proxy
+      ports:
+        - protocol: TCP
+          port: {{ .Values.mcpProxy.service.port | default 8080 }}
+    # Code Manager (nginx proxies to code-manager)
+    # Port 3050 = management API, Ports 3100-3109 = code-server proxy per session
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: code-manager
+      ports:
+        - protocol: TCP
+          port: 3050
+        - protocol: TCP
+          port: 3100
+        - protocol: TCP
+          port: 3101
+        - protocol: TCP
+          port: 3102
+        - protocol: TCP
+          port: 3103
+        - protocol: TCP
+          port: 3104
+        - protocol: TCP
+          port: 3105
+        - protocol: TCP
+          port: 3106
+        - protocol: TCP
+          port: 3107
+        - protocol: TCP
+          port: 3108
+        - protocol: TCP
+          port: 3109
+    # Agent Proxy (nginx proxies agent API calls)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: openagentic-proxy
+      ports:
+        - protocol: TCP
+          port: 3300
+    {{- if .Values.grafana.enabled }}
+    # Grafana (nginx proxies /grafana/ to Grafana in {{ .Values.grafana.namespace }})
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.grafana.namespace }}
+          podSelector:
+            matchLabels:
+              app: grafana
+      ports:
+        - protocol: TCP
+          port: {{ .Values.grafana.port | default 3000 }}
+    {{- end }}
+{{- end }}

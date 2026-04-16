@@ -1,17 +1,18 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * Code Mode Provisioning Service
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Handles the setup and lifecycle of per-user sandboxed development environments.
+ * When a user first accesses Code Mode, this service provisions:
+ * 1. Pod scheduling and container startup (K8s mode)
+ * 2. Local workspace setup on pod filesystem
+ * 3. VSCode/code-server settings
+ * 4. Openagentic CLI initialization
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Storage is local to the pod (no MinIO/S3).
+ * Works with both Docker Compose and Kubernetes deployments.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 import { PrismaClient, CodeModeProvisioning } from '@prisma/client';

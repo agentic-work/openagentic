@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Artifact Function Routes
  *
  * API endpoints for registering, executing, and approving OAT-backed functions.
@@ -39,7 +23,7 @@ const logger = loggers.routes?.child?.({ module: 'artifact-functions' }) || logg
 const SYNTH_EXECUTOR_URL = process.env.SYNTH_EXECUTOR_URL || 'http://openagentic-openagentic-synth:8090';
 
 /**
- * Capability translation map: semantic names → OpenAgentic Synth capability names.
+ * Capability translation map: semantic names → OAT executor capability names.
  */
 const CAPABILITY_MAP: Record<string, string[]> = {
   'data_processing': ['file_processing'],
@@ -52,7 +36,7 @@ const CAPABILITY_MAP: Record<string, string[]> = {
 };
 
 /**
- * Translate semantic capabilities to OpenAgentic Synth capabilities.
+ * Translate semantic capabilities to OAT executor capabilities.
  */
 function translateCapabilities(capabilities: string[]): string[] {
   const translated = new Set<string>();
@@ -278,10 +262,10 @@ const artifactFunctionRoutes: FastifyPluginAsync = async (fastify: FastifyInstan
         },
       });
 
-      // Translate capabilities for the OpenAgentic Synth
+      // Translate capabilities for the OAT executor
       const executorCapabilities = translateCapabilities(fn.capabilities);
 
-      // Forward to OpenAgentic Synth
+      // Forward to OAT executor
       const startTime = Date.now();
       const executorResponse = await axios.post(`${SYNTH_EXECUTOR_URL}/execute`, {
         code: fn.pythonCode,
@@ -322,15 +306,15 @@ const artifactFunctionRoutes: FastifyPluginAsync = async (fastify: FastifyInstan
     } catch (err: any) {
       // Log execution failure audit event
       if (err?.response) {
-        // OpenAgentic Synth returned an error response
+        // OAT executor returned an error response
         logger.error({
           functionId: id,
           status: err.response.status,
           data: err.response.data,
-        }, '[ArtifactFunctions] OpenAgentic Synth returned error');
+        }, '[ArtifactFunctions] OAT executor returned error');
 
         return reply.code(502).send({
-          error: 'OpenAgentic Synth error',
+          error: 'OAT executor error',
           details: err.response.data,
         });
       }

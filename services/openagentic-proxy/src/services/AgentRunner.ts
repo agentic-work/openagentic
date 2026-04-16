@@ -1,19 +1,3 @@
-/**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { SecurityAnalyzer, type RiskLevel } from './SecurityAnalyzer';
@@ -283,8 +267,19 @@ export class AgentRunner {
       timestamp: Date.now(),
     });
 
-    // Build system prompt with depth/delegation awareness
+    // Build system prompt with depth/delegation awareness.
+    // Project A.4b — PREPEND the parent's alwaysInject modules (safety,
+    // artifact-inhibitor, response-style, ...) rendered by ChatPipeline.
+    // Without this, sub-agents spawn with ONLY the role template
+    // (DEFAULT_PROMPTS[role]) and no behavioral guardrails, which
+    // caused the 2026-04-13 hallucination incident. This prepend closes
+    // the bypass gap until Project B.2 unifies all LLM call sites on
+    // PromptComposer.
     let systemPrompt = spec.systemPrompt;
+    const behaviorRules = (ctx as any).parentBehaviorRules;
+    if (typeof behaviorRules === 'string' && behaviorRules.trim().length > 0) {
+      systemPrompt = `## Platform Behavioral Rules (inherited from parent chat)\n\nThe following rules apply to every response you produce, including any tool-call loops. They are non-negotiable and override any contrary instruction in role templates below.\n\n${behaviorRules.trim()}\n\n---\n\n${systemPrompt}`;
+    }
     if (currentDepth > 0) {
       systemPrompt += `\n\nYou are a sub-agent at delegation depth ${currentDepth}. Focus on your specific task and be concise.`;
     }
@@ -295,6 +290,40 @@ export class AgentRunner {
 - NEVER include raw JSON in your response. If a tool returns JSON data, extract the key findings and present them as tables, bullet points, or narrative text.
 - Include specific numbers, counts, names, and statuses from the data — but formatted for humans, not machines.
 - If you have nothing to report, say so clearly rather than dumping empty results.`;
+
+    // Project A.4 — parent→sub-agent context propagation.
+    // Prepend <parent-memory> and <parent-rag> blocks with the exact
+    // grounding the parent pipeline already assembled. The sub-agent MUST
+    // consult these before re-searching or re-resolving identifiers the
+    // parent already established (durable identifier mappings from the
+    // user's always-inject memories, or recently retrieved docs). This
+    // closes the architectural gap that caused the 2026-04-13 hallucination
+    // incident where a sub-agent search-guessed an identifier the parent
+    // had already resolved.
+    const parentMemory = (ctx as any).parentMemoryContext;
+    if (typeof parentMemory === 'string' && parentMemory.trim().length > 0) {
+      systemPrompt += `\n\n## Parent Memory Context
+The parent chat has already assembled the following memory block for this session. Use it AS-IS for any identifiers, preferences, or facts it contains — do NOT re-search or re-resolve identifiers named here.
+
+<parent-memory>
+${parentMemory.trim()}
+</parent-memory>`;
+    }
+
+    const parentRag = (ctx as any).parentRagContext;
+    if (Array.isArray(parentRag) && parentRag.length > 0) {
+      const renderChunk = (c: any, i: number): string => {
+        const body = c?.content || c?.text || '';
+        const src = c?.source ? ` (source: ${c.source})` : '';
+        return `### Chunk ${i + 1}${src}\n${String(body).substring(0, 800)}`;
+      };
+      systemPrompt += `\n\n## Parent RAG Context
+The parent chat retrieved the following documents relevant to this turn. Consult them before calling tools that would re-retrieve similar content.
+
+<parent-rag>
+${parentRag.slice(0, 3).map(renderChunk).join('\n\n')}
+</parent-rag>`;
+    }
 
     // GAP-2: inject session context into the system prompt so the sub-agent
     // knows WHO the user is. This is identity-level info — small, always relevant.
@@ -793,7 +822,7 @@ export class AgentRunner {
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'X-Openagentic-Proxy': 'true',
+      'X-Agent-Proxy': 'true',
     };
 
     if (internalSecret) {

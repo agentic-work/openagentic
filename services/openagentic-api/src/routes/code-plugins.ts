@@ -1,17 +1,14 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * CodeMode Plugin Marketplace Routes
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * User-facing API for browsing, installing, and managing openagentic plugins.
+ * Fetches the official marketplace (anthropics/claude-plugins-official) via
+ * GitHub raw content and caches in SystemConfiguration for 24 hours.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Also proxies install-count stats from the openagentic stats repo.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';

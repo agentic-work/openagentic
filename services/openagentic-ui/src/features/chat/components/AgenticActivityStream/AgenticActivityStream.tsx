@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * AgenticActivityStream - Claude Code-inspired Agentic Activity Display
  *
  * REDESIGNED with professional UX patterns:
@@ -27,7 +11,7 @@
  *
  * This is the SOURCE OF TRUTH for activity display.
  *
- * @copyright 2026 Gnomus.ai
+ * @copyright 2025 Openagentic LLC
  */
 
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
@@ -48,6 +32,23 @@ import {
   Folder,
   XCircle,
   Zap,
+  // Rich-summary icons (resolved from RichSummary.icon name)
+  Database,
+  Brain,
+  Cloud,
+  Server,
+  Lock,
+  Coins,
+  Shield,
+  Cpu,
+  HardDrive,
+  Bot,
+  FileCode,
+  Sparkles,
+  Image as ImageIcon,
+  Search as SearchIcon,
+  Package,
+  GitBranch,
 } from '@/shared/icons';
 import ArtifactRenderer from '../MessageContent/ArtifactRenderer';
 import ChartRenderer from '../MessageContent/ChartRenderer';
@@ -56,7 +57,7 @@ import { detectStreamingArtifact, hasStreamingArtifact } from '../../utils/strea
 import { MCPToolRenderer } from './MCPRenderers';
 import { CollapsedThinkingBlock, ArtifactErrorBoundary } from '@/shared/components';
 import { humanizeToolName, getCategoryColor } from '../../utils/toolNameHumanizer';
-import { summarizeToolCall } from '../../utils/toolSummarizer';
+import { summarizeToolCall, type ToolSummary, type RichSummary } from '../../utils/toolSummarizer';
 import { AgentExecutionTimeline } from '@/features/agents/components/AgentExecutionTimeline';
 import type { ExecutionStep } from '@/features/agents/hooks/useAgentPlayground';
 import { useAgentTreeStore } from '@/stores/useAgentTreeStore';
@@ -169,11 +170,25 @@ const getToolIcon = (toolName: string): React.ReactNode => {
  * AgenticActivityStream still collapses to a text preview here (the grouped
  * view doesn't render favicons — only the individual chip does).
  */
-const getCompactSummary = (toolCall: ToolCall): string | null => {
+/**
+ * Compute the structured tool summary (text OR links). The richer-shape
+ * counterpart to `getCompactSummary` for callers that want to render
+ * favicons + clickable URL pills inline (web_search, web_fetch, etc).
+ *
+ * Why both? Most callsites in this file collapse the summary into a single
+ * line of overflow-ellipsised text where rich link rendering would never
+ * fit. Only the per-step tree row at the success branch has horizontal
+ * room for favicons, so it consumes this structured form. Other callsites
+ * stay on the string-flattened `getCompactSummary` to preserve their
+ * existing layout assumptions.
+ *
+ * Closes openagentic-omhs#330 Tier 1 — the favicon URLs were already
+ * being computed by `summarizeToolCall` and discarded by the string
+ * collapse below; this helper exposes them.
+ */
+const getStructuredSummary = (toolCall: ToolCall): ToolSummary | null => {
   if (!toolCall.output && !toolCall.input) return null;
 
-  // Normalize the local ToolCallStatus ('running'/'success'/'error') to the
-  // shared summarizer status vocabulary ('executing'/'completed'/'failed').
   const raw = String(toolCall.status || '');
   const status =
     raw === 'running' ? 'executing' :
@@ -182,11 +197,6 @@ const getCompactSummary = (toolCall: ToolCall): string | null => {
     raw === 'pending' ? 'pending' :
     undefined;
 
-  // FIELD SWAP NOTE: in the live ToolCall payload, `toolName` is often the
-  // generic placeholder "tool" while `displayName` actually carries the raw
-  // MCP tool id (e.g. "azure_create_resource_group"). Always prefer
-  // displayName when it looks like an MCP id (snake_case identifier),
-  // otherwise fall back to toolName.
   const looksLikeMcpId = (s?: string) =>
     !!s && /^[a-z][a-z0-9_]+$/i.test(s) && s.includes('_');
   const lookupName =
@@ -195,13 +205,12 @@ const getCompactSummary = (toolCall: ToolCall): string | null => {
     toolCall.displayName ||
     toolCall.toolName;
 
-  const summary = summarizeToolCall(
-    lookupName,
-    toolCall.input,
-    toolCall.output,
-    status as any
-  );
+  return summarizeToolCall(lookupName, toolCall.input, toolCall.output, status as any);
+};
 
+const getCompactSummary = (toolCall: ToolCall): string | null => {
+  const summary = getStructuredSummary(toolCall);
+  if (!summary) return null;
   if (summary.kind === 'text' && summary.text) return summary.text;
   if (summary.kind === 'links' && summary.items.length > 0) {
     // Grouped view has no room for favicons — collapse to title count + first title
@@ -210,6 +219,257 @@ const getCompactSummary = (toolCall: ToolCall): string | null => {
     return `${summary.items.length} results · ${first.title}`;
   }
   return null;
+};
+
+/**
+ * Inline render: a compact "icon + headline + badges + items" row for
+ * summarizers that return `kind: 'rich'`. Used by RAG retrieval, cloud
+ * resource creation, cost queries, agent delegation, etc. Items render
+ * as small chips with optional hint tooltips. Designed to fit on the
+ * single-line success row alongside the duration timestamp.
+ *
+ * openagentic-omhs#330 Tier 2.
+ */
+/** Map a RichSummary.icon name to a component from `@/shared/icons`. */
+const RICH_ICON_MAP = {
+  database:    Database,
+  brain:       Brain,
+  cloud:       Cloud,
+  package:     Package,
+  server:      Server,
+  globe:       Globe,
+  lock:        Lock,
+  coins:       Coins,
+  shield:      Shield,
+  cpu:         Cpu,
+  'hard-drive': HardDrive,
+  bot:         Bot,
+  terminal:    Terminal,
+  'file-code': FileCode,
+  sparkles:    Sparkles,
+  image:       ImageIcon,
+  search:      SearchIcon,
+} as const;
+
+const SummaryRich: React.FC<{ summary: RichSummary }> = ({ summary }) => {
+  const toneColor = (tone: 'default' | 'success' | 'warn' | 'danger' | 'info' | undefined) => {
+    switch (tone) {
+      case 'success': return { bg: 'color-mix(in srgb, #16a34a 18%, transparent)', fg: '#16a34a' };
+      case 'warn':    return { bg: 'color-mix(in srgb, #d97706 18%, transparent)', fg: '#d97706' };
+      case 'danger':  return { bg: 'color-mix(in srgb, #dc2626 18%, transparent)', fg: '#dc2626' };
+      case 'info':    return { bg: 'color-mix(in srgb, var(--color-primary) 18%, transparent)', fg: 'var(--color-primary)' };
+      default:        return { bg: 'color-mix(in srgb, var(--color-text) 8%, transparent)', fg: 'var(--color-text-secondary)' };
+    }
+  };
+  const IconComp = RICH_ICON_MAP[summary.icon] || Cloud;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, overflow: 'hidden' }}>
+      <IconComp size={13} style={{ flexShrink: 0, color: 'var(--color-text-secondary)' }} />
+      <span
+        style={{
+          fontSize: 11,
+          color: 'var(--color-text)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          fontWeight: 500,
+          flexShrink: 0,
+          maxWidth: '40%',
+        }}
+      >
+        {summary.primary}
+      </span>
+      {summary.secondary && (
+        <span
+          style={{
+            fontSize: 11,
+            color: 'var(--color-text-secondary)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            opacity: 0.8,
+            flexShrink: 1,
+            minWidth: 0,
+          }}
+        >
+          · {summary.secondary}
+        </span>
+      )}
+      {summary.badges?.slice(0, 3).map((b, i) => {
+        const c = toneColor(b.tone);
+        return (
+          <span
+            key={i}
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              padding: '1px 6px',
+              borderRadius: 4,
+              background: c.bg,
+              color: c.fg,
+              flexShrink: 0,
+              letterSpacing: '0.2px',
+              textTransform: 'uppercase' as const,
+            }}
+          >
+            {b.label}
+          </span>
+        );
+      })}
+      {summary.items && summary.items.length > 0 && (
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            marginLeft: 4,
+            overflow: 'hidden',
+            flexShrink: 1,
+            minWidth: 0,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {summary.items.slice(0, 3).map((item, i) => {
+            const inner = (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 3,
+                  padding: '1px 6px',
+                  borderRadius: 4,
+                  background: 'color-mix(in srgb, var(--color-text) 5%, transparent)',
+                  color: 'var(--color-text-secondary)',
+                  fontSize: 10,
+                  maxWidth: 140,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+                title={item.hint ? `${item.title} — ${item.hint}` : item.title}
+              >
+                {item.favicon && (
+                  <img
+                    src={item.favicon}
+                    alt=""
+                    width={11}
+                    height={11}
+                    style={{ flexShrink: 0, borderRadius: 2 }}
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
+                )}
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</span>
+                {item.badge && (() => {
+                  // Per-item status pill (✓ / ✕ / running / etc) — used by
+                  // delegate_to_agents to surface sub-agent outcomes at a
+                  // glance. openagentic-omhs#330 Tier 4.
+                  const c = toneColor(item.badgeTone);
+                  return (
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        padding: '0 4px',
+                        borderRadius: 3,
+                        background: c.bg,
+                        color: c.fg,
+                        flexShrink: 0,
+                        marginLeft: 2,
+                        letterSpacing: '0.2px',
+                      }}
+                    >
+                      {item.badge}
+                    </span>
+                  );
+                })()}
+              </span>
+            );
+            return item.url ? (
+              <a key={i} href={item.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                {inner}
+              </a>
+            ) : (
+              <React.Fragment key={i}>{inner}</React.Fragment>
+            );
+          })}
+          {summary.items.length > 3 && (
+            <span style={{ fontSize: 10, color: 'var(--color-text-secondary)', opacity: 0.6 }}>
+              +{summary.items.length - 3}
+            </span>
+          )}
+        </span>
+      )}
+    </span>
+  );
+};
+
+/**
+ * Inline render: a compact row of favicon + title pills, one per result
+ * URL, opening in a new tab. Used for `summary.kind === 'links'` (web
+ * search / web fetch). Defensively limits to 4 pills to keep the
+ * single-line summary visually balanced; expanding the step still shows
+ * the full result JSON.
+ */
+const SummaryLinks: React.FC<{ items: Array<{ title: string; url: string; favicon?: string }> }> = ({ items }) => {
+  const visible = items.slice(0, 4);
+  const overflow = items.length - visible.length;
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        flex: 1,
+        minWidth: 0,
+        overflow: 'hidden',
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {visible.map((item, i) => (
+        <a
+          key={`${item.url}-${i}`}
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={item.url}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '1px 6px 1px 4px',
+            borderRadius: 4,
+            background: 'color-mix(in srgb, var(--color-text) 5%, transparent)',
+            color: 'var(--color-text-secondary)',
+            textDecoration: 'none',
+            fontSize: 11,
+            lineHeight: 1.4,
+            maxWidth: 180,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            flexShrink: 1,
+          }}
+        >
+          {item.favicon && (
+            <img
+              src={item.favicon}
+              alt=""
+              width={12}
+              height={12}
+              style={{ flexShrink: 0, borderRadius: 2 }}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+            />
+          )}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</span>
+        </a>
+      ))}
+      {overflow > 0 && (
+        <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', opacity: 0.7 }}>
+          +{overflow} more
+        </span>
+      )}
+    </span>
+  );
 };
 
 // ============================================================================
@@ -280,21 +540,47 @@ const StatusDot: React.FC<StatusDotProps> = memo(({ status, size = 14 }) => {
 StatusDot.displayName = 'StatusDot';
 
 // ============================================================================
-// Category Badge
+// Category Badge — icon-led pill (icon + category name). Replaces the
+// text-only badge so users can scan tool steps by category at a glance
+// (☁️ AWS, ☁️ Azure, ⎈ Kubernetes, etc). openagentic-omhs#330.
 // ============================================================================
+
+const CATEGORY_ICON_MAP: Record<string, React.FC<any>> = {
+  AWS:           Cloud,
+  Azure:         Cloud,
+  GCP:           Cloud,
+  Kubernetes:    Cpu,
+  Database:      Database,
+  Memory:        Brain,
+  Web:           Globe,
+  GitHub:        GitBranch,
+  Network:       Globe,
+  Security:      Shield,
+  Monitoring:    Eye,
+  Diagrams:      Sparkles,
+  Orchestration: Bot,
+  Platform:      Server,
+  Synth:         Sparkles,
+  Tool:          Zap,
+};
 
 const CategoryBadge: React.FC<{ category: string; small?: boolean }> = memo(({ category, small }) => {
   const bgColor = getCategoryColor(category);
+  const Icon = CATEGORY_ICON_MAP[category] || Zap;
   return (
     <span
       className="activity-category-badge"
       style={{
         background: bgColor,
         fontSize: small ? 9 : 10,
-        padding: small ? '0 4px' : '1px 6px',
+        padding: small ? '1px 5px 1px 4px' : '2px 7px 2px 5px',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: small ? 3 : 4,
       }}
     >
-      {category}
+      <Icon size={small ? 9 : 11} strokeWidth={2.25} style={{ flexShrink: 0 }} />
+      <span>{category}</span>
     </span>
   );
 });
@@ -779,7 +1065,10 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
   // Humanize the tool name
   const humanized = useMemo(() => humanizeToolName(toolCall.toolName), [toolCall.toolName]);
 
-  // Compact summary
+  // Compact summary — structured form preserves favicon/link items so the
+  // success row can render them as pills (web_search, web_fetch). Falls
+  // back to the flat string for tools that return text-only summaries.
+  const structuredSummary = useMemo(() => getStructuredSummary(toolCall), [toolCall.output, toolCall.toolName]);
   const summary = useMemo(() => getCompactSummary(toolCall), [toolCall.output, toolCall.toolName]);
 
   // Brief input preview for running tools (e.g. "resourceGroupName: myRG, ...")
@@ -929,8 +1218,19 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
             </span>
           )}
 
-          {/* Completed: show compact result preview inline */}
-          {finalStatus === 'success' && summary && (
+          {/* Completed: show compact result preview inline. Dispatch by
+              summary kind so each tool gets the richest representation
+              its summarizer produces:
+                - 'rich'  → SummaryRich (icon + headline + badges + items)
+                - 'links' → SummaryLinks (favicon + title pills)
+                - 'text'  → flat text span
+              Anything else (kind 'none' or null) renders nothing.
+              See openagentic-omhs#330. */}
+          {finalStatus === 'success' && structuredSummary?.kind === 'rich' ? (
+            <SummaryRich summary={structuredSummary} />
+          ) : finalStatus === 'success' && structuredSummary?.kind === 'links' && structuredSummary.items.length > 0 ? (
+            <SummaryLinks items={structuredSummary.items} />
+          ) : finalStatus === 'success' && summary ? (
             <span style={{
               fontSize: 11,
               color: 'var(--color-text-secondary)',
@@ -942,7 +1242,7 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
             }}>
               {summary}
             </span>
-          )}
+          ) : null}
 
           {/* Compact result summary or error message */}
           {finalStatus === 'error' && errorMessage && (

@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * AWS Bedrock Provider
  *
  * Implements ILLMProvider for AWS Bedrock models (Claude, Titan, Jurassic, etc.)
@@ -138,6 +122,58 @@ const MODEL_TO_INFERENCE_PROFILE: Record<string, string> = {
   'amazon.nova-lite-v1:0': 'us.amazon.nova-lite-v1:0',
   'amazon.nova-pro-v1:0': 'us.amazon.nova-pro-v1:0',
 };
+
+/**
+ * Bedrock rejects `oneOf` / `allOf` / `anyOf` at the TOP level of a
+ * tool's input_schema. The openagentic CLI ships several tools whose
+ * top-level schema uses unions to describe variant inputs (e.g. Task
+ * with subagent_type vs free-form, AskUserQuestion with multi vs
+ * single).
+ *
+ * The first attempt at this fix kept only the first variant — that
+ * worked for Bedrock's validator but stripped sibling fields from the
+ * model's view, so the model produced empty/wrong tool inputs (bug
+ * symptom: `Grep("")`, `TestRun(tests)` with empty command). The CLI
+ * then either timed out (Grep on empty pattern matches everything)
+ * or no-op'd (TestRun "no supported framework").
+ *
+ * Correct behavior: MERGE every variant's `properties` into one flat
+ * properties bag with everything optional. The model can fill any
+ * combination, the CLI re-validates against the original union schema
+ * client-side, and Bedrock no longer sees a forbidden union keyword.
+ */
+function flattenTopLevelUnions(raw: any): Record<string, any> {
+  if (!raw || typeof raw !== 'object') {
+    return { type: 'object', properties: {} };
+  }
+  const cloned: Record<string, any> = { ...raw };
+  const unions = ['oneOf', 'allOf', 'anyOf'] as const;
+  let touched = false;
+  const mergedProps: Record<string, any> = { ...(cloned.properties || {}) };
+  for (const k of unions) {
+    if (Array.isArray(cloned[k])) {
+      for (const variant of cloned[k]) {
+        if (variant && typeof variant === 'object' && variant.properties) {
+          for (const [pk, pv] of Object.entries(variant.properties)) {
+            if (!(pk in mergedProps)) mergedProps[pk] = pv;
+          }
+        }
+      }
+      delete cloned[k];
+      touched = true;
+    }
+  }
+  if (touched) {
+    cloned.properties = mergedProps;
+    // Drop required since the union'd variants probably had different
+    // required sets — keeping any of them risks 400ing on valid inputs.
+    delete cloned.required;
+  }
+  // Bedrock requires top-level `type: object`.
+  if (!cloned.type) cloned.type = 'object';
+  if (!cloned.properties) cloned.properties = {};
+  return cloned;
+}
 
 export class AWSBedrockProvider extends BaseLLMProvider {
   readonly name = 'AWS Bedrock';
@@ -717,10 +753,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
           toolSpec: {
             name: tool.name,
             description: tool.description || '',
-            inputSchema: { json: (() => {
-              const raw = tool.input_schema || {};
-              return raw.type ? raw : { type: 'object', properties: {}, ...raw };
-            })() }
+            inputSchema: { json: flattenTopLevelUnions(tool.input_schema || {}) }
           }
         }))
       };
@@ -1305,12 +1338,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
           const toolDef: any = {
             name: tool.function?.name || tool.name,
             description: tool.function?.description || tool.description || '',
-            input_schema: (() => {
-              const raw = tool.function?.parameters || tool.input_schema || {};
-              // Bedrock API requires input_schema to have "type" field
-              // Some MCP tools (e.g. from FastMCP) emit empty schemas {} without "type": "object"
-              return raw.type ? raw : { type: 'object', properties: {}, ...raw };
-            })()
+            input_schema: flattenTopLevelUnions(tool.function?.parameters || tool.input_schema || {})
           };
 
           // Add cache_control to last tool definition for tool schema caching

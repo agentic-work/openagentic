@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Google OAuth Authentication Routes
  *
  * Handles Google OAuth 2.0 authentication flow with ACCESS CONTROL.
@@ -43,7 +27,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://ai.openagentics.io';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://ai.openagentic.io';
 
 // Cached database access control - refresh every 60 seconds
 let cachedDbAllowedUsers: Map<string, { isAdmin: boolean }> = new Map();
@@ -54,7 +38,7 @@ const CACHE_TTL_MS = 60000; // 60 seconds
 // Load allowed users from environment (fallback)
 function getEnvAllowedUsers(): Set<string> {
   const allowedUsersEnv = process.env.GOOGLE_ALLOWED_USERS || '';
-  const adminEmailsEnv = process.env.GOOGLE_ADMIN_EMAILS || 'trent@openagentics.io';
+  const adminEmailsEnv = process.env.GOOGLE_ADMIN_EMAILS || 'trent@openagentic.io';
 
   // Combine both allowed users and admin emails (admins are implicitly allowed)
   const allAllowed = `${allowedUsersEnv},${adminEmailsEnv}`
@@ -67,7 +51,7 @@ function getEnvAllowedUsers(): Set<string> {
 
 // Get admin emails from environment (fallback)
 function getEnvAdminEmails(): Set<string> {
-  const adminEmailsEnv = process.env.GOOGLE_ADMIN_EMAILS || 'trent@openagentics.io';
+  const adminEmailsEnv = process.env.GOOGLE_ADMIN_EMAILS || 'trent@openagentic.io';
   return new Set(
     adminEmailsEnv.split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
   );

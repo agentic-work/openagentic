@@ -1,0 +1,227 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+# SonarQube Server (Community Build / OSS) — local k3s deployment.
+#
+# Install:
+#   helm upgrade --install sonarqube sonarqube/sonarqube \
+#     --namespace sonarqube --create-namespace \
+#     -f helm/sonarqube/values.yaml
+#
+# Notes:
+#   - Embedded PostgreSQL via the chart's bundled subchart (single-tenant
+#     local cluster — no external DB needed).
+#   - PVC backed by `nfs` storage class so data survives node moves.
+#   - Ingress at https://sonarqube-dev.openagentic.io (TLS via cert-manager
+#     + letsencrypt-prod). DNS A record must point at the cluster's
+#     ingress LB IP (10.2.10.250).
+#   - Default admin login: admin / admin → change immediately on first
+#     login. The chart does NOT seed a custom password by default.
+#   - SonarQube runs Elasticsearch internally and needs
+#     vm.max_map_count >= 524288 on the host node. The chart's init
+#     container handles this when given securityContext privileges.
+# ---------------------------------------------------------------------------
+
+# Use the Community Build (OSS) edition — explicitly. Chart defaults to
+# Datacenter Edition (commercial); we want the free/OSS edition.
+community:
+  enabled: true
+
+# Pin to a single host. SonarQube + PostgreSQL traffic stays local
+# (no kube-proxy cross-node hop) and avoids the cross-node DNS/network
+# flakiness observed on `hal-388ac67b` where TCP SYN to a different
+# node's pod produces RST/refused. `dalek` is the other 32GB node.
+nodeSelector:
+  kubernetes.io/hostname: dalek
+
+# Monitoring passcode — required by chart validation even when we don't
+# scrape Prometheus. Generated random; not used for any external API
+# unless prometheusExporter.enabled is flipped on.
+monitoringPasscode: "change-me-monitoring-passcode-not-in-use"
+
+# JVM heap — SonarQube web + compute engine. Chart resource defaults
+# (6Gi limit / 2Gi req) are kept; these heap sizes leave headroom for
+# Elasticsearch which lives in the same container.
+jvmOpts: "-Xmx2048m -Xms512m"
+jvmCeOpts: "-Xmx1024m -Xms256m"
+
+# ---------------------------------------------------------------------------
+# Probes — relaxed for NFS-backed startup.
+#
+# Elasticsearch (embedded in SonarQube) does many small file ops at boot,
+# and on NFS each one round-trips to Synology. Cold start can take
+# 5–10 minutes; the chart's stock startup probe only allows 4.5 min,
+# which causes a kill/restart loop where the user sees the pod come up,
+# get killed mid-init, and never reach Ready.
+#
+# Long-term fix: move SQ data to local-path (Elasticsearch is officially
+# unsupported on NFS — performance and corruption risk both exist). The
+# downside is the pod gets pinned to one node. For a single-tenant dev
+# instance that's fine; just back up via pg_dump + tar of the data dir.
+#
+# Relaxed budget: 60s delay + (60 × 15s) = 16 minutes total before giving up.
+# timeoutSeconds bumped from 1s to 5s — exec probes spawn a shell and
+# curl which on NFS can easily blow 1s.
+# ---------------------------------------------------------------------------
+startupProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 15
+  failureThreshold: 60
+  timeoutSeconds: 5
+
+readinessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 6
+  timeoutSeconds: 5
+
+livenessProbe:
+  initialDelaySeconds: 120
+  periodSeconds: 30
+  failureThreshold: 6
+  timeoutSeconds: 5
+
+# ---------------------------------------------------------------------------
+# Persistence (SonarQube state — extensions, plugins, temp scan data)
+# ---------------------------------------------------------------------------
+persistence:
+  enabled: true
+  storageClass: nfs
+  accessMode: ReadWriteOnce
+  size: 20Gi
+  # Mount paths covered: /opt/sonarqube/data, /opt/sonarqube/extensions,
+  # /opt/sonarqube/temp, /opt/sonarqube/logs (chart handles subPath layout).
+
+# ---------------------------------------------------------------------------
+# Init containers — set vm.max_map_count and fs.file-max for ES on the host.
+# Requires privileged: true. Acceptable on a local k3s cluster; revisit
+# if this ever ships into a hardened environment (use a one-shot DaemonSet
+# instead and disable these init containers).
+# ---------------------------------------------------------------------------
+elasticsearch:
+  bootstrapChecks: true
+
+initSysctl:
+  enabled: true
+  vmMaxMapCount: 524288
+  fsFileMax: 131072
+  securityContext:
+    privileged: true
+    runAsUser: 0
+
+initFs:
+  enabled: true
+  securityContext:
+    privileged: true
+    runAsUser: 0
+
+# ---------------------------------------------------------------------------
+# External PostgreSQL — installed separately as bitnami/postgresql in the
+# same namespace. The SonarQube chart does NOT bundle a PG subchart; it
+# expects a reachable DB via jdbcOverwrite below.
+#
+# Install/upgrade the DB with:
+#   helm upgrade --install sonarqube-pg bitnami/postgresql \
+#     --namespace sonarqube \
+#     --set auth.username=sonarqube \
+#     --set auth.password=sonarqube_change_me \
+#     --set auth.database=sonarqube \
+#     --set primary.persistence.storageClass=nfs \
+#     --set primary.persistence.size=10Gi
+#
+# Service DNS inside the namespace is `sonarqube-pg-postgresql:5432`.
+# ---------------------------------------------------------------------------
+jdbcOverwrite:
+  enabled: true
+  # IMPORTANT: short name only (NOT the .sonarqube.svc.cluster.local FQDN).
+  #
+  # The cluster's pods inherit a `gnomuslabs.com` search domain from the
+  # node's /etc/resolv.conf, and the public DNS for *.gnomuslabs.com is
+  # a wildcard pointing at 72.75.224.129. With `options ndots:5` glibc
+  # tries each search-domain suffix BEFORE the absolute lookup, so the
+  # FQDN sonarqube-pg-postgresql.sonarqube.svc.cluster.local gets
+  # `.gnomuslabs.com` appended, the wildcard matches, and the connection
+  # ends up at a public IP with no PG listener — "Connection refused".
+  # The bare service name resolves cleanly via the namespace search path
+  # (sonarqube.svc.cluster.local) without triggering the leak.
+  #
+  # Long-term fix: remove `gnomuslabs.com` from the node's resolv.conf
+  # search path, or configure CoreDNS to handle the leak with a
+  # rewrite/forward rule. Until then, short names are the workaround.
+  jdbcUrl: "jdbc:postgresql://sonarqube-pg-postgresql:5432/sonarqube"
+  jdbcUsername: "sonarqube"
+  # Reference the bitnami/postgresql secret for the password instead of
+  # storing it in plain text here. The bitnami chart writes the user
+  # password under `password` (not `postgres-password` — that's the
+  # superuser).
+  jdbcSecretName: "sonarqube-pg-postgresql"
+  jdbcSecretPasswordKey: "password"
+
+# ---------------------------------------------------------------------------
+# Service / Ingress
+# ---------------------------------------------------------------------------
+service:
+  type: ClusterIP
+  externalPort: 9000
+  internalPort: 9000
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hosts:
+    - name: sonarqube-dev.openagentic.io
+      path: /
+      pathType: Prefix
+  annotations:
+    # No cert-manager annotation — we reuse the existing wildcard cert
+    # for *.openagentic.io (originally minted in `default` namespace
+    # via letsencrypt-prod-dns). The wildcard secret is copied into
+    # this namespace as `openagentic-wildcard-tls` (see install.sh).
+    # SonarQube responses can be large (rule descriptions, HTML reports);
+    # bump the proxy buffer.
+    nginx.ingress.kubernetes.io/proxy-body-size: "32m"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+  tls:
+    - secretName: openagentic-wildcard-tls
+      hosts:
+        - sonarqube-dev.openagentic.io
+
+# ---------------------------------------------------------------------------
+# Security / probes
+# ---------------------------------------------------------------------------
+# Default container SC — non-root with the chart's UID. Don't override
+# unless you have a reason; SonarQube's image expects 1000:1000 to own
+# the data dirs.
+
+# Liveness/readiness defaults are reasonable for a 30-90s cold start;
+# keeping the chart defaults.
+
+# ---------------------------------------------------------------------------
+# Telemetry — disable by default for a private deployment.
+# ---------------------------------------------------------------------------
+sonarProperties:
+  sonar.telemetry.enable: "false"
+  # Server base URL — needed for webhook URLs (PR decoration, etc.) to
+  # reference the public hostname instead of the internal cluster IP.
+  sonar.core.serverBaseURL: "https://sonarqube-dev.openagentic.io"
+
+# ---------------------------------------------------------------------------
+# Plugins
+# ---------------------------------------------------------------------------
+# Community Build ships built-in analyzers for: Java, JS/TS, Python, PHP,
+# Go, Kotlin, Ruby, Scala, HTML, CSS, XML, YAML, IaC (Terraform/CFN/K8s),
+# Secrets detection. No additional plugins needed for the openagentic
+# stack out of the box.
+plugins:
+  install: []
+  lib: []
+
+# ---------------------------------------------------------------------------
+# Monitoring (optional — enable if/when you wire prometheus scrape)
+# ---------------------------------------------------------------------------
+prometheusExporter:
+  enabled: false
+prometheusMonitoring:
+  podMonitor:
+    enabled: false

@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Modern Chat API - Comprehensive implementation with TDD approach
  * 
  * Features:
@@ -524,12 +508,21 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
       response: {
         200: {
           type: 'object',
+          additionalProperties: true,
           properties: {
             models: {
               type: 'array',
               items: { type: 'object', additionalProperties: true }
             },
-            count: { type: 'number' }
+            count: { type: 'number' },
+            defaultModel: { type: 'string' },
+            codemodeDefault: { type: ['string', 'null'] },
+            availableCount: { type: 'number' },
+            capabilities: { type: 'array', items: { type: 'string' } },
+            providers: { type: 'array', items: { type: 'string' } },
+            lastUpdated: { type: 'string' },
+            provider_status: { type: 'object', additionalProperties: true },
+            metadata: { type: 'object', additionalProperties: true }
           }
         },
         401: { type: 'object', properties: { error: { type: 'string' }, message: { type: 'string' } } },
@@ -538,26 +531,13 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
       security: [{ bearerAuth: [] }, { apiKey: [] }]
     }
   }, async (request, reply) => {
-    try {
-      // Use the simpler /api/models endpoint that already works
-      const response = await fetch('http://localhost:8005/api/models', {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch models: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return reply.send(data);
-    } catch (error) {
-      request.log.error({ error }, 'Failed to fetch models from /api/models, falling back to Azure discovery');
-      // Fallback to the original Azure discovery if needed
-      const { getModelsHandler } = await import('./models.js');
-      return getModelsHandler(request as any, reply, options.chatStorage);
-    }
+    // Always use the local handler so codemodeDefault + provider-aware
+    // fields are preserved. The earlier internal-fetch proxy returned a
+    // stripped {models, count} payload that broke the codemode default
+    // resolver in the UI (it couldn't read codemodeDefault and fell back
+    // to stale localStorage picks).
+    const { getModelsHandler } = await import('./models.js');
+    return getModelsHandler(request as any, reply, options.chatStorage);
   });
 
   // Knowledge Base: Ingest content into shared (DLP-scrubbed) or private Milvus collection

@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Chat Processing Pipeline
  * 
  * Orchestrates the flow of chat messages through multiple processing stages:
@@ -116,11 +100,13 @@ export class ChatPipeline extends EventEmitter {
     const milvusClient = services.milvus || (services.getMilvus ? services.getMilvus() : null);
 
     if (this.config.enableRAG && (services.knowledgeIngestionService || milvusClient)) {
+      // No per-stage `enabled` config — that flag was dead debt
+      // (always true everywhere). Per-request gating now lives in
+      // RagIntentGate inside the stage itself.
       stages.push(new RAGStage(
         services.knowledgeIngestionService,
         milvusClient,
         this.logger,
-        { enabled: true }
       ));
       this.logger.info('[ChatPipeline] RAG stage ADDED to pipeline');
     } else {
@@ -617,8 +603,17 @@ export class ChatPipeline extends EventEmitter {
         // ARTIFACT AUTO-DELEGATION: If the user requests an artifact, skip the LLM
         // decision and programmatically inject a delegate_to_agents tool call.
         // GPT-4.1 ignores "MUST delegate" instructions — this enforces it.
+        //
+        // Gate logic uses the canonical ArtifactIntentGate (services/prompt/
+        // ArtifactIntentGate.ts) so the auto-dispatch decision agrees with
+        // PromptComposer's module-selection decision — one definition of "user
+        // wants a visual" across both code paths. Previously this used a
+        // narrow verb+noun regex that missed shapes like "show me a sankey"
+        // or "sankey chart of costs". See openagentic-omhs#327.
+        const { evaluateUserIntent } = await import('../../../services/prompt/ArtifactIntentGate.js');
+        const isVisualIntent = evaluateUserIntent(context.request.message).intent === 'visualization';
         const isArtifactAutoDelegate = (stage.name === 'completion' || stage.name === 'multi-model-orchestration') &&
-          /\b(create|build|make|generate|design)\b.*\b(artifact|dashboard|visualization|interactive|textbook|simulation|presentation)\b/i.test(context.request.message || '') &&
+          isVisualIntent &&
           !context.request.message?.toLowerCase().includes('do not delegate');
 
         if (isArtifactAutoDelegate) {
@@ -660,7 +655,17 @@ export class ChatPipeline extends EventEmitter {
             }
           }
 
-          // Synthesize a tool call as if the LLM decided to delegate
+          // Synthesize a tool call as if the LLM decided to delegate.
+          //
+          // Intentionally NOT passing `model` — the artifact_creation agent
+          // declares its own `primaryModel: 'auto'` + `preferredTier: 'premium'`
+          // in AgentRegistry, and we want SmartRouter to resolve the best
+          // available premium model (Claude Opus, GPT-5, ...) for high-fidelity
+          // rendering. If the main chat is running on a local ollama model,
+          // passing that through would collapse the artifact agent back to
+          // ollama quality — defeating the tier-aware routing. When no
+          // premium is configured, SmartRouter falls back gracefully to
+          // whatever IS available. See openagentic-omhs#327.
           context.request.toolCalls = [{
             id: `auto-delegate-${Date.now()}`,
             type: 'function',
@@ -670,8 +675,6 @@ export class ChatPipeline extends EventEmitter {
                 agents: [{
                   role: 'artifact_creation',
                   task: artifactTask,
-                  // Pass the pipeline's resolved model so agents use admin-configured model
-                  model: context.request.model || (context as any).resolvedModel || undefined
                 }],
                 orchestration: 'sequential',
                 aggregation: 'first'
@@ -1046,6 +1049,36 @@ export class ChatPipeline extends EventEmitter {
                         messageCount: context.messages.length,
                       }, '[AGENT-DISPATCH] Image URL injection check');
 
+                      // Project A.4b — sub-agents spawned via openagentic-proxy
+                      // bypass PromptComposer entirely (they use hardcoded
+                      // DEFAULT_PROMPTS[role]). That means the strengthened
+                      // `safety` module + other alwaysInject modules never
+                      // reach them, leaving them free to confabulate file
+                      // contents from filename priors. Fix until Project B.2
+                      // unifies the bypass paths: render the alwaysInject
+                      // modules here and ship them verbatim as
+                      // `parentBehaviorRules`. AgentRunner prepends the block
+                      // to every sub-agent system prompt.
+                      let parentBehaviorRules = '';
+                      try {
+                        const { PromptModuleRegistry } = await import('../../../services/prompt/PromptModuleRegistry.js');
+                        const allModules = await PromptModuleRegistry.getInstance().getEnabled();
+                        const alwaysInject = allModules.filter((m: any) =>
+                          m?.injection?.alwaysInject === true
+                        );
+                        // Render as plain concatenated content (no variant
+                        // selection — sub-agent model family is not known
+                        // here, and the default `content` field is the generic
+                        // version that works for any family).
+                        parentBehaviorRules = alwaysInject
+                          .map((m: any) => `### ${m.name}\n${m.content}`)
+                          .join('\n\n')
+                          .trim();
+                      } catch (err: any) {
+                        context.logger.warn({ err: err?.message },
+                          '[AGENT-DISPATCH] Failed to render parentBehaviorRules; sub-agents will spawn without safety module');
+                      }
+
                       try {
                         response = await axios.post(`${openagenticProxyUrl}/api/agents/execute-sync`, {
                           executionId: relay.executionId,
@@ -1124,10 +1157,34 @@ export class ChatPipeline extends EventEmitter {
                           userGroups: context.user.groups || [],
                           isAdmin: context.user.isAdmin || false,
                           flowContext: (context.request as any).flowContext,
+                          // Project A.4 — parent→sub-agent context propagation.
+                          // Pass the parent's already-assembled memory + RAG
+                          // blocks so the sub-agent inherits the same grounding
+                          // the parent had (durable identifier mappings,
+                          // retrieved docs) without re-querying. Prevents the
+                          // sub-agent from searching for identifiers the parent
+                          // already resolved, which was the root cause of the
+                          // 2026-04-13 hallucination incident. See plan
+                          // sprightly-percolating-brook.
+                          parentBehaviorRules: parentBehaviorRules || undefined,
+                          parentMemoryContext: (context as any).memoryContext || undefined,
+                          parentRagContext: context.ragContext
+                            ? (() => {
+                                // Pass top 3 chunks only — sub-agents don't need
+                                // the full retrieval, just enough grounding to
+                                // avoid re-fetching the same docs.
+                                const rc = context.ragContext as any;
+                                const chunks = Array.isArray(rc?.chunks) ? rc.chunks.slice(0, 3)
+                                  : Array.isArray(rc?.results) ? rc.results.slice(0, 3)
+                                  : Array.isArray(rc) ? rc.slice(0, 3)
+                                  : null;
+                                return chunks && chunks.length > 0 ? chunks : undefined;
+                              })()
+                            : undefined,
                         }, {
                           headers: {
                             'Content-Type': 'application/json',
-                            'X-Openagentic-Proxy': 'true',
+                            'X-Agent-Proxy': 'true',
                             'Authorization': `Bearer ${process.env.OPENAGENTIC_PROXY_INTERNAL_KEY || ''}`,
                           },
                           timeout: 900000, // 15 minutes for complex multi-agent + LRO operations
@@ -1397,7 +1454,7 @@ export class ChatPipeline extends EventEmitter {
 
                       continue;
                     } catch (proxyErr: any) {
-                      this.logger.warn({ error: proxyErr.message }, 'Openagentic-proxy unavailable, falling back to inline');
+                      this.logger.warn({ error: proxyErr.message }, 'Agent-proxy unavailable, falling back to inline');
                     }
                   }
 
@@ -2882,7 +2939,7 @@ export class ChatPipeline extends EventEmitter {
       }, {
         headers: {
           'Content-Type': 'application/json',
-          'X-Openagentic-Proxy': 'true',
+          'X-Agent-Proxy': 'true',
           'Authorization': `Bearer ${process.env.OPENAGENTIC_PROXY_INTERNAL_KEY || ''}`,
         },
         timeout: 5000, // short timeout — fire and forget

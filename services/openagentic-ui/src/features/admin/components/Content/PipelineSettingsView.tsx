@@ -1,17 +1,18 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * Pipeline Settings Admin View
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Configure all chat pipeline stage settings including authentication,
+ * validation, RAG, memory, MCP, completion, multi-model, and response stages.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Features:
+ * - Interactive pipeline visualization diagram with hover tooltips
+ * - Horizontal tab navigation for each pipeline stage (left to right flow)
+ * - Skills system (Anthropic format) for professional capabilities
+ * - Dynamic model selection from API (no hardcoded models)
+ * - Custom SVG icons (no lucide-react dependency)
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';

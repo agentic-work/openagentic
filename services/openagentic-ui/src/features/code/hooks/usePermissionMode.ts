@@ -1,17 +1,14 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * usePermissionMode — the Shift+Tab-cycling permission mode state for
+ * a CodeMode session. Persists the current mode to localStorage scoped
+ * to a sessionId so a reload preserves the user's choice.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Matches openagentic's permission mode system 1:1 (see ../permissionMode.ts).
+ * The mode is sent to the backend on each prompt and translated to
+ * `--permission-mode <mode>` / `--permissive` flags by the exec daemon.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 import { useCallback, useEffect, useState } from 'react';

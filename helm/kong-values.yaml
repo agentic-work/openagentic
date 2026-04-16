@@ -1,0 +1,102 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+# Kong Gateway with Gateway API support for OpenAgenticChat
+# Based on kong/ingress chart v0.21.0
+
+# Gateway pod configuration
+gateway:
+  enabled: true
+
+  # Use Kong Gateway OSS image (AI plugins bundled)
+  image:
+    repository: kong/kong-gateway
+    tag: "3.9"
+
+  # Environment configuration for DB-less mode with Gateway API
+  env:
+    database: "off"
+    # Performance tuning for SSE/streaming (critical for chat)
+    nginx_proxy_proxy_read_timeout: "3600s"
+    nginx_proxy_proxy_send_timeout: "3600s"
+    nginx_proxy_proxy_connect_timeout: "60s"
+    # Buffering - disabled for SSE
+    nginx_proxy_proxy_buffering: "off"
+    # Trust all IPs for X-Forwarded-* headers (Docker Desktop)
+    trusted_ips: "0.0.0.0/0,::/0"
+    real_ip_header: "X-Forwarded-For"
+    real_ip_recursive: "on"
+    # Plugin loading
+    plugins: "bundled"
+
+  # Proxy service - use LoadBalancer for Docker Desktop
+  proxy:
+    enabled: true
+    type: LoadBalancer
+    http:
+      enabled: true
+      servicePort: 80
+      containerPort: 8000
+    tls:
+      enabled: true
+      servicePort: 443
+      containerPort: 8443
+
+  # Admin API (internal access only)
+  admin:
+    enabled: true
+    type: ClusterIP
+    http:
+      enabled: true
+      servicePort: 8001
+      containerPort: 8001
+    tls:
+      enabled: false
+
+  # Status endpoint for health checks
+  status:
+    enabled: true
+    http:
+      enabled: true
+      containerPort: 8100
+
+  # Resource requests/limits
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+# Kong Ingress Controller (KIC)
+controller:
+  enabled: true
+
+  image:
+    repository: kong/kubernetes-ingress-controller
+    tag: "3.3"
+
+  ingressController:
+    # Keep standard ingress class for backwards compatibility
+    ingressClass: kong
+    installCRDs: false  # Already installed separately
+
+    # Enable Gateway API support
+    env:
+      # Gateway API controller name
+      controller_gateway_api_controller_name: "konghq.com/kic-gateway-controller"
+      # Feature gates for Gateway API
+      feature_gates: "GatewayAlpha=true"
+      # Watch all namespaces
+      controller_watch_namespace: ""
+      # Log level
+      controller_log_level: "info"
+
+  # Admission webhook
+  admissionWebhook:
+    enabled: false
+
+# Service account
+serviceAccount:
+  create: true
+  name: kong-sa

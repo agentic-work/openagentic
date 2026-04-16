@@ -1,0 +1,2 @@
+# This directory stores Playwright auth state from MFA login
+# The user.json file is gitignored for security

@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Azure AI Foundry Provider
  *
  * Implements ILLMProvider for Azure AI Foundry serverless models (Mistral, Llama, Claude, etc.)
@@ -43,6 +27,12 @@ import {
 import { NormalizedStreamEvent } from '../NormalizedStreamTypes.js';
 import AnthropicFoundry from '@anthropic-ai/foundry-sdk';
 import { getBearerTokenProvider, DefaultAzureCredential, ClientSecretCredential } from '@azure/identity';
+
+// Responses API gate: certain Azure AIF deployments (gpt-5-codex family,
+// gpt-5-pro, o1-pro, o3-pro) reject /chat/completions with 400 "The requested
+// operation is unsupported." and require /openai/v1/responses?api-version=preview.
+// Keep this regex as the single source of truth; never scatter model literals.
+const RESPONSES_API_REQUIRED_PATTERN = /^(gpt-5.*-codex|gpt-5-pro|o1-pro|o3-pro)$/i;
 
 export class AzureAIFoundryProvider extends BaseLLMProvider {
   readonly name = 'azure-ai-foundry';
@@ -372,6 +362,134 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
   }
 
   /**
+   * Ensure an Azure AIF deployment exists for the given model (ARM PUT).
+   *
+   * Admin-console add-model path: when an operator registers a model via
+   * /api/admin/llm-providers/:id/models, we create the backing Azure
+   * deployment so the subsequent ARM-discovery sync finds it and doesn't
+   * prune the DB row. Idempotent — returns early if deployment already
+   * exists.
+   *
+   * Returns the deployment name on success; throws on hard error.
+   */
+  async ensureArmDeployment(params: {
+    deploymentName: string;
+    modelName: string;
+    modelVersion: string;
+    modelFormat?: string;
+    sku: string;
+    capacity: number;
+  }): Promise<{ created: boolean; deploymentName: string }> {
+    if (!this.useEntraAuth || !this.tenantId || !this.clientId || !this.clientSecret) {
+      throw new Error('[AIF] ensureArmDeployment requires Entra credentials on provider');
+    }
+    const accountName = new URL(this.endpointUrl).hostname.split('.')[0];
+    const armTokenResp = await fetch(
+      `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'client_credentials',
+          client_id: this.clientId,
+          client_secret: this.clientSecret,
+          scope: 'https://management.azure.com/.default',
+        }).toString(),
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+    if (!armTokenResp.ok) {
+      throw new Error(`[AIF] ARM token failed: ${armTokenResp.status}`);
+    }
+    const armToken = ((await armTokenResp.json()) as any).access_token as string;
+
+    // Locate the subscription + resource group.
+    const subsResp = await fetch(
+      'https://management.azure.com/subscriptions?api-version=2022-12-01',
+      { headers: { Authorization: `Bearer ${armToken}` }, signal: AbortSignal.timeout(10_000) },
+    );
+    if (!subsResp.ok) throw new Error(`[AIF] list subscriptions failed: ${subsResp.status}`);
+    const subs = ((await subsResp.json()) as any).value as any[];
+
+    let subId: string | null = null;
+    let rg: string | null = null;
+    for (const s of subs) {
+      const acctsUrl = `https://management.azure.com/subscriptions/${s.subscriptionId}/providers/Microsoft.CognitiveServices/accounts?api-version=2024-10-01`;
+      const acctsResp = await fetch(acctsUrl, {
+        headers: { Authorization: `Bearer ${armToken}` },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!acctsResp.ok) continue;
+      const accts = ((await acctsResp.json()) as any).value as any[];
+      const acct = accts.find(
+        a => a.name === accountName || a.properties?.endpoint?.includes(accountName),
+      );
+      if (!acct) continue;
+      const m = acct.id?.match(/resourceGroups\/([^/]+)/i);
+      if (!m) continue;
+      subId = s.subscriptionId;
+      rg = m[1];
+      break;
+    }
+    if (!subId || !rg) {
+      throw new Error(`[AIF] could not locate CognitiveServices account ${accountName}`);
+    }
+
+    // Check if the deployment already exists.
+    const deplUrl = `https://management.azure.com/subscriptions/${subId}/resourceGroups/${rg}/providers/Microsoft.CognitiveServices/accounts/${accountName}/deployments/${encodeURIComponent(params.deploymentName)}?api-version=2024-10-01`;
+    const headResp = await fetch(deplUrl, {
+      headers: { Authorization: `Bearer ${armToken}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (headResp.ok) {
+      this.logger.info(
+        { deployment: params.deploymentName, accountName },
+        '[AIF] ensureArmDeployment: already exists',
+      );
+      return { created: false, deploymentName: params.deploymentName };
+    }
+
+    // PUT the deployment.
+    const putBody = {
+      sku: { name: params.sku, capacity: params.capacity },
+      properties: {
+        model: {
+          format: params.modelFormat || 'OpenAI',
+          name: params.modelName,
+          version: params.modelVersion,
+        },
+      },
+    };
+    const putResp = await fetch(deplUrl, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${armToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(putBody),
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!putResp.ok) {
+      const errText = await putResp.text().catch(() => '');
+      throw new Error(
+        `[AIF] deployment PUT failed ${putResp.status}: ${errText.slice(0, 300)}`,
+      );
+    }
+    this.logger.info(
+      {
+        deployment: params.deploymentName,
+        model: params.modelName,
+        version: params.modelVersion,
+        sku: params.sku,
+        capacity: params.capacity,
+        accountName,
+      },
+      '[AIF] ensureArmDeployment: created',
+    );
+    return { created: true, deploymentName: params.deploymentName };
+  }
+
+  /**
    * Persist ARM-discovered models to DB so the chat selector has fresh data.
    * The chat selector reads from provider_config.models[], not in-memory.
    */
@@ -577,13 +695,28 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
   private convertToAnthropicTools(tools: any[] | undefined): any[] | undefined {
     if (!tools || tools.length === 0) return undefined;
 
-    return tools
-      .filter(tool => tool.function?.name) // Skip tools without function.name
-      .map(tool => ({
-        name: tool.function.name,
-        description: tool.function?.description || '',
-        input_schema: tool.function?.parameters || { type: 'object', properties: {} }
-      }));
+    // Accept BOTH OpenAI shape `{type, function:{name, parameters}}`
+    // and Anthropic-native shape `{name, input_schema}`. The /v1/messages
+    // route hands us OpenAI-shaped (we converted it ourselves), but if a
+    // caller passes already-Anthropic tools we should accept them too.
+    const out = tools
+      .map((tool) => {
+        const name = tool.function?.name || tool.name;
+        const description = tool.function?.description || tool.description || '';
+        const input_schema = tool.function?.parameters || tool.input_schema || { type: 'object', properties: {} };
+        if (!name) return null;
+        return { name, description, input_schema };
+      })
+      .filter((t): t is { name: string; description: string; input_schema: any } => t !== null);
+
+    this.logger.info({
+      inCount: tools.length,
+      outCount: out.length,
+      firstShape: tools[0] ? Object.keys(tools[0]).join(',') : 'empty',
+      firstName: tools[0]?.function?.name || tools[0]?.name,
+    }, '[AIF] convertToAnthropicTools');
+
+    return out.length > 0 ? out : undefined;
   }
 
   /**
@@ -1258,6 +1391,8 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
 
           try {
             const event = JSON.parse(data);
+            // DIAG: log every parsed AIF anthropic event to pinpoint breaks.
+            this.logger.info({ eventType: event?.type, blockIndex: event?.index, deltaType: event?.delta?.type }, '[AIF] anthropic event');
 
             // Yield Anthropic-native events — same format Bedrock uses.
             // The completion stage already handles these.
@@ -1501,6 +1636,17 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
     modelName: string,
     startTime: number
   ): AsyncGenerator<any> {
+    // Dispatch to Responses API branch for deployments that reject chat/completions.
+    // Safe fall-through: any non-matching model continues on the existing path.
+    if (this.shouldUseResponsesApi(modelName)) {
+      this.logger.info(
+        { deployment: modelName, model: modelName, reason: 'responses-api-required' },
+        '[AzureAIFoundryProvider] Routing to /openai/v1/responses (preview) — chat/completions unsupported for this deployment'
+      );
+      yield* this.streamResponsesApi(aifRequest, modelName, startTime);
+      return;
+    }
+
     try {
       const headers = await this.getAuthHeaders();
       const endpointUrl = this.getEndpointUrl(modelName);
@@ -1717,6 +1863,493 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
     } catch (error) {
       this.trackFailure();
       this.logger.error({ error }, '[AzureAIFoundryProvider] Stream failed');
+      throw error;
+    }
+  }
+
+  /**
+   * Gate: should this deployment/model be dispatched to the Responses API
+   * instead of chat/completions? Azure AOAI's gpt-5-codex family, gpt-5-pro,
+   * o1-pro and o3-pro return 400 "unsupported" on /chat/completions.
+   *
+   * Checks both the raw id passed in AND the discovered deployment's
+   * underlying modelName (ARM discovery result) in case the deployment
+   * has been renamed. Any uncertainty falls back to chat/completions.
+   */
+  private shouldUseResponsesApi(modelOrDeployment: string): boolean {
+    if (!modelOrDeployment) return false;
+
+    const candidates = new Set<string>();
+    const raw = modelOrDeployment.trim();
+    candidates.add(raw);
+    // Strip trailing -<version> / _<version> suffixes (e.g. "gpt-5-pro-2025-10-06")
+    candidates.add(raw.replace(/[-_](?:v?\d[\w.-]*)$/i, ''));
+
+    // Cross-reference discovered deployments so a deployment aliased to
+    // "codex-prod" still gates on its underlying modelName.
+    for (const m of this.discoveredModels) {
+      if (m.id === raw || m.name === raw) {
+        candidates.add(m.id);
+        candidates.add(m.name);
+      }
+    }
+
+    for (const c of candidates) {
+      if (c && RESPONSES_API_REQUIRED_PATTERN.test(c)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Build the Responses-API endpoint URL. Always uses `api-version=preview`
+   * per Azure docs — the stable surface does not yet cover the Responses API.
+   */
+  private getResponsesApiEndpointUrl(): string {
+    const base = this.endpointUrl
+      .replace(/\/openai.*$/, '')
+      .replace(/\/anthropic.*$/, '')
+      .replace(/\/$/, '');
+    return `${base}/openai/v1/responses?api-version=preview`;
+  }
+
+  /**
+   * Translate an internal OpenAI-chat-style messages array (system/user/
+   * assistant, optional tool_result content parts) into the Responses API
+   * `input` array, and hoist the system prompt into top-level `instructions`.
+   *
+   * Responses API content types used:
+   *   - input_text  (user text)
+   *   - output_text (assistant text, for replayed history)
+   *   - function_call / function_call_output (tool turns)
+   */
+  private buildResponsesApiBody(aifRequest: {
+    model: string;
+    messages: Array<{ role: string; content: unknown; tool_call_id?: string; tool_calls?: unknown }>;
+    tools?: unknown;
+    max_tokens?: number;
+    max_completion_tokens?: number;
+    reasoning_effort?: string;
+  }, deployment: string): Record<string, unknown> {
+    let instructions: string | undefined;
+    const input: Array<Record<string, unknown>> = [];
+
+    for (const msg of aifRequest.messages || []) {
+      if (msg.role === 'system') {
+        const txt = typeof msg.content === 'string'
+          ? msg.content
+          : Array.isArray(msg.content)
+            ? (msg.content as Array<{ text?: string }>).map((p) => p?.text || '').join('')
+            : '';
+        instructions = instructions ? `${instructions}\n\n${txt}` : txt;
+        continue;
+      }
+
+      if (msg.role === 'tool') {
+        // OpenAI-style tool result → Responses function_call_output item.
+        // Azure 400s on empty call_id, so skip rather than send invalid.
+        if (!msg.tool_call_id) continue;
+        const output = typeof msg.content === 'string'
+          ? msg.content
+          : JSON.stringify(msg.content ?? '');
+        input.push({
+          type: 'function_call_output',
+          call_id: msg.tool_call_id,
+          output,
+        });
+        continue;
+      }
+
+      const partType = msg.role === 'assistant' ? 'output_text' : 'input_text';
+      let textParts: Array<{ type: string; text: string }> = [];
+
+      if (typeof msg.content === 'string') {
+        textParts = [{ type: partType, text: msg.content }];
+      } else if (Array.isArray(msg.content)) {
+        for (const part of msg.content as Array<{ type?: string; text?: string; input?: unknown; id?: string; name?: string }>) {
+          if (part?.type === 'text' && typeof part.text === 'string') {
+            textParts.push({ type: partType, text: part.text });
+          } else if (part?.type === 'tool_use' && msg.role === 'assistant') {
+            // Replay of a prior assistant tool call. Azure Responses API
+            // rejects empty/missing call_id with "empty_string". Skip the
+            // replay entry rather than 400 the whole turn — the model will
+            // still see the prior text context.
+            const callId = typeof part.id === 'string' ? part.id : '';
+            if (!callId) continue;
+            input.push({
+              type: 'function_call',
+              call_id: callId,
+              name: part.name || '',
+              arguments: typeof part.input === 'string' ? part.input : JSON.stringify(part.input ?? {}),
+            });
+          } else if (part?.type === 'tool_result') {
+            const callId = typeof (part as { tool_use_id?: string }).tool_use_id === 'string'
+              ? (part as { tool_use_id?: string }).tool_use_id!
+              : '';
+            if (!callId) continue;
+            input.push({
+              type: 'function_call_output',
+              call_id: callId,
+              output: typeof part.text === 'string' ? part.text : JSON.stringify(part ?? ''),
+            });
+          }
+        }
+      }
+
+      if (textParts.length > 0) {
+        input.push({ role: msg.role, content: textParts });
+      }
+    }
+
+    const body: Record<string, unknown> = {
+      model: deployment,
+      stream: true,
+      input,
+      max_output_tokens: aifRequest.max_completion_tokens ?? aifRequest.max_tokens ?? 32768,
+    };
+    if (instructions) body.instructions = instructions;
+
+    // Translate upstream tool shape → Responses-API tool shape.
+    // Upstream may pass OpenAI (`{type:'function', function:{name,description,parameters}}`)
+    // or Anthropic (`{name, description, input_schema}`) — accept both. Responses API
+    // wants the flat form: `{type:'function', name, description, parameters}`. Any tool
+    // with no resolvable name is dropped (Azure rejects the whole request on a single
+    // missing tools[N].name, which happened in the first rollout).
+    if (Array.isArray(aifRequest.tools) && aifRequest.tools.length > 0) {
+      // Azure Responses API requires every tool's `parameters` to be a valid
+      // JSON Schema of type "object". MCP-discovered tools sometimes arrive
+      // with parameters missing, null, a non-object value, or an object
+      // without a `type` field — any of which trips
+      //   "Invalid schema for function 'X': schema must be a JSON Schema
+      //    of 'type: \"object\"', got 'type: \"None\"'."
+      // and fails the entire request. Normalize to a well-formed object
+      // schema before sending.
+      // Azure Responses API requires every tool parameters schema to be a
+      // strict object: type="object", no oneOf/anyOf/allOf/enum/not at the
+      // top level, a properties map present. MCP authors can write any
+      // JSON Schema, which breaks this regularly. Normalize:
+      //  - null / non-object / array → empty object schema
+      //  - object with no type → coerce type="object"
+      //  - object with a forbidden top-level combinator keyword → strip it
+      //    (keep any already-valid fields; fall back to empty schema if the
+      //    result would be unusable)
+      const FORBIDDEN_TOP_LEVEL = ['oneOf', 'anyOf', 'allOf', 'enum', 'not'];
+      const emptyObj = () => ({ type: 'object' as const, properties: {}, additionalProperties: false });
+      const normalizeParams = (raw: unknown): Record<string, unknown> => {
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return emptyObj();
+        const obj: Record<string, unknown> = { ...(raw as Record<string, unknown>) };
+        let stripped = false;
+        for (const k of FORBIDDEN_TOP_LEVEL) {
+          if (k in obj) { delete obj[k]; stripped = true; }
+        }
+        if (typeof obj.type !== 'string') obj.type = 'object';
+        if (obj.type !== 'object') {
+          // Some tools declare type: "string" or "array" at the top level.
+          // Responses-API only accepts object at the root. Wrap the original
+          // as a single "value" property so the tool remains callable.
+          return { type: 'object', properties: { value: raw }, required: ['value'] };
+        }
+        if (obj.properties === undefined || obj.properties === null || typeof obj.properties !== 'object') {
+          obj.properties = {};
+        }
+        if (stripped && Object.keys(obj.properties as Record<string, unknown>).length === 0) {
+          // Schema was ONLY combinator-based and we stripped everything.
+          // Keep it valid by leaving an empty properties map.
+          obj.additionalProperties = obj.additionalProperties ?? true;
+        }
+        return obj;
+      };
+
+      const mapped = (aifRequest.tools as Array<any>).map((t) => {
+        const name: string =
+          (typeof t?.function?.name === 'string' && t.function.name) ||
+          (typeof t?.name === 'string' && t.name) ||
+          '';
+        const description: string | undefined =
+          t?.function?.description ?? t?.description ?? undefined;
+        const rawParams: unknown =
+          t?.function?.parameters ?? t?.parameters ?? t?.input_schema;
+        const parameters = normalizeParams(rawParams);
+        if (!name) return null;
+        return { type: 'function', name, description, parameters };
+      }).filter(Boolean);
+      if (mapped.length > 0) body.tools = mapped;
+      this.logger.info({
+        inCount: aifRequest.tools.length,
+        outCount: mapped.length,
+        firstIn: Object.keys(aifRequest.tools[0] || {}).join(','),
+        firstFnKeys: aifRequest.tools[0] && (aifRequest.tools[0] as any).function
+          ? Object.keys((aifRequest.tools[0] as any).function).join(',') : 'no-fn',
+        firstSample: JSON.stringify(aifRequest.tools[0]).slice(0, 300),
+        firstOut: mapped[0] ? (mapped[0] as any).name : null,
+      }, '[AzureAIFoundryProvider] Responses API tool translation');
+    }
+    if (aifRequest.reasoning_effort) {
+      body.reasoning = { effort: aifRequest.reasoning_effort };
+    }
+    return body;
+  }
+
+  /**
+   * Responses-API streaming branch.
+   *
+   * WHY: Azure AIF deployments of codex/pro models require /openai/v1/responses
+   * and emit a different SSE event schema. We translate those events back to
+   * the same Anthropic Messages shape (message_start, content_block_start/
+   * delta/stop, message_delta, message_stop) that the rest of the codebase —
+   * especially routes/openagentic.ts — consumes from every other provider.
+   *
+   * Event mapping (Azure Responses → Anthropic):
+   *   response.created / response.in_progress → message_start
+   *   response.output_item.added (message)    → content_block_start (text)
+   *   response.output_text.delta              → content_block_delta(text_delta)
+   *   response.output_item.added (function)   → content_block_start (tool_use)
+   *   response.function_call_arguments.delta  → content_block_delta(input_json_delta)
+   *   response.output_item.done               → content_block_stop
+   *   response.completed                      → message_delta + message_stop
+   *   response.failed / response.incomplete   → throw
+   */
+  private async *streamResponsesApi(
+    aifRequest: { model: string; messages: Array<{ role: string; content: unknown }>; tools?: unknown; max_tokens?: number; max_completion_tokens?: number; reasoning_effort?: string },
+    deployment: string,
+    startTime: number
+  ): AsyncGenerator<any> {
+    const endpointUrl = this.getResponsesApiEndpointUrl();
+    const headers = await this.getAuthHeaders();
+    const body = this.buildResponsesApiBody(aifRequest, deployment);
+
+    this.logger.info({
+      endpointUrl,
+      deployment,
+      hasAuth: !!headers['Authorization'] || !!headers['api-key'],
+      authType: headers['Authorization'] ? 'bearer' : headers['api-key'] ? 'api-key' : 'none',
+    }, '[AzureAIFoundryProvider] Responses API stream request');
+
+    let response: Response;
+    try {
+      response = await fetch(endpointUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      this.trackFailure();
+      this.logger.error({ err, deployment, endpointUrl }, '[AzureAIFoundryProvider] Responses API fetch error');
+      throw err;
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      this.trackFailure();
+      this.logger.error({
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText.slice(0, 500),
+        deployment,
+        modelName: deployment,
+      }, '[AzureAIFoundryProvider] Responses API non-OK response');
+      throw new Error(`AIF Responses API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+    if (!response.body) {
+      this.trackFailure();
+      throw new Error('No response body from AIF Responses API');
+    }
+
+    // Track which output_index → Anthropic block index + block kind so we
+    // can translate output_item.done into the right content_block_stop.
+    type BlockInfo = { index: number; kind: 'text' | 'tool_use' };
+    const outputIndexToBlock = new Map<number, BlockInfo>();
+    let nextBlockIndex = 0;
+    let messageStarted = false;
+    let inputTokens = 0;
+    let outputTokens = 0;
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    const mapStopReason = (finish: string | undefined | null): 'end_turn' | 'tool_use' | 'max_tokens' | 'stop_sequence' => {
+      switch ((finish || '').toLowerCase()) {
+        case 'tool_calls':
+        case 'function_call':
+          return 'tool_use';
+        case 'length':
+        case 'max_output_tokens':
+        case 'max_tokens':
+          return 'max_tokens';
+        case 'stop_sequence':
+          return 'stop_sequence';
+        default:
+          return 'end_turn';
+      }
+    };
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data:')) continue;
+          const payload = trimmed.slice(5).trim();
+          if (!payload || payload === '[DONE]') continue;
+
+          let evt: Record<string, any>;
+          try {
+            evt = JSON.parse(payload);
+          } catch (e) {
+            this.logger.warn({ line, err: e }, '[AzureAIFoundryProvider] Failed to parse Responses SSE line');
+            continue;
+          }
+
+          const type: string = evt.type || '';
+
+          if (type === 'response.created' || type === 'response.in_progress') {
+            if (!messageStarted) {
+              messageStarted = true;
+              const r = evt.response || {};
+              yield {
+                type: 'message_start',
+                message: {
+                  id: r.id || `resp_${Date.now()}`,
+                  model: r.model || deployment,
+                  role: 'assistant',
+                  content: [],
+                  stop_reason: null,
+                  usage: { input_tokens: 0, output_tokens: 0 },
+                },
+              };
+            }
+            continue;
+          }
+
+          if (type === 'response.output_item.added') {
+            const item = evt.item || {};
+            const outputIndex: number = typeof evt.output_index === 'number' ? evt.output_index : nextBlockIndex;
+            const itemType: string = item.type || '';
+            if (itemType === 'message') {
+              const info: BlockInfo = { index: nextBlockIndex++, kind: 'text' };
+              outputIndexToBlock.set(outputIndex, info);
+              yield {
+                type: 'content_block_start',
+                index: info.index,
+                content_block: { type: 'text', text: '' },
+              };
+            } else if (itemType === 'function_call') {
+              const info: BlockInfo = { index: nextBlockIndex++, kind: 'tool_use' };
+              outputIndexToBlock.set(outputIndex, info);
+              yield {
+                type: 'content_block_start',
+                index: info.index,
+                content_block: {
+                  type: 'tool_use',
+                  id: item.call_id || item.id || `call_${info.index}`,
+                  name: item.name || '',
+                  input: {},
+                },
+              };
+            }
+            // Other item types (reasoning, etc.) are ignored for now — they
+            // don't map to Anthropic content blocks the consumers expect.
+            continue;
+          }
+
+          if (type === 'response.output_text.delta') {
+            const outputIndex: number = typeof evt.output_index === 'number' ? evt.output_index : 0;
+            const info = outputIndexToBlock.get(outputIndex);
+            const delta: string = typeof evt.delta === 'string' ? evt.delta : '';
+            if (info && info.kind === 'text' && delta) {
+              yield {
+                type: 'content_block_delta',
+                index: info.index,
+                delta: { type: 'text_delta', text: delta },
+              };
+            }
+            continue;
+          }
+
+          if (type === 'response.function_call_arguments.delta') {
+            const outputIndex: number = typeof evt.output_index === 'number' ? evt.output_index : 0;
+            const info = outputIndexToBlock.get(outputIndex);
+            const partial: string = typeof evt.delta === 'string' ? evt.delta : '';
+            if (info && info.kind === 'tool_use' && partial) {
+              yield {
+                type: 'content_block_delta',
+                index: info.index,
+                delta: { type: 'input_json_delta', partial_json: partial },
+              };
+            }
+            continue;
+          }
+
+          if (type === 'response.output_item.done') {
+            const outputIndex: number = typeof evt.output_index === 'number' ? evt.output_index : 0;
+            const info = outputIndexToBlock.get(outputIndex);
+            if (info) {
+              yield { type: 'content_block_stop', index: info.index };
+              outputIndexToBlock.delete(outputIndex);
+            }
+            continue;
+          }
+
+          if (type === 'response.completed') {
+            const r = evt.response || {};
+            const usage = r.usage || {};
+            inputTokens = usage.input_tokens ?? usage.prompt_tokens ?? 0;
+            outputTokens = usage.output_tokens ?? usage.completion_tokens ?? 0;
+            // Flush any blocks still open (defensive — the server normally
+            // emits output_item.done first).
+            for (const info of outputIndexToBlock.values()) {
+              yield { type: 'content_block_stop', index: info.index };
+            }
+            outputIndexToBlock.clear();
+
+            const finishReason: string = r.incomplete_details?.reason || r.stop_reason || r.status || '';
+            const stopReason = mapStopReason(
+              outputIndexToBlock.size === 0 && Array.isArray(r.output) &&
+              (r.output as Array<{ type?: string }>).some((o) => o?.type === 'function_call')
+                ? 'tool_calls'
+                : finishReason
+            );
+            yield {
+              type: 'message_delta',
+              delta: { stop_reason: stopReason, stop_sequence: null },
+              usage: { input_tokens: inputTokens, output_tokens: outputTokens },
+            };
+            yield { type: 'message_stop' };
+
+            const latency = Date.now() - startTime;
+            this.trackSuccess(latency, inputTokens + outputTokens, 0);
+            this.logger.info({
+              deployment,
+              duration: latency,
+              inputTokens,
+              outputTokens,
+            }, '[AzureAIFoundryProvider] Responses API stream completed');
+            continue;
+          }
+
+          if (type === 'response.failed' || type === 'response.incomplete') {
+            const r = evt.response || {};
+            const errMsg = r.error?.message || r.incomplete_details?.reason || type;
+            this.trackFailure();
+            this.logger.error({
+              deployment,
+              modelName: deployment,
+              status: type,
+              body: JSON.stringify(evt).slice(0, 500),
+            }, '[AzureAIFoundryProvider] Responses API stream reported failure');
+            throw new Error(`AIF Responses API stream ${type}: ${errMsg}`);
+          }
+        }
+      }
+    } catch (error) {
+      this.trackFailure();
+      this.logger.error({ error, deployment }, '[AzureAIFoundryProvider] Responses API stream error');
       throw error;
     }
   }

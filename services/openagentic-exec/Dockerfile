@@ -87,9 +87,7 @@ FROM node:20-slim AS runtime
 LABEL maintainer="OpenAgentic <engineering@openagentics.io>"
 LABEL description="Openagentic Exec - Lean Execution Container with Homebrew"
 LABEL security.hardened="true"
-LABEL org.opencontainers.image.vendor="OpenAgentic LLC"
-LABEL org.opencontainers.image.licenses="LicenseRef-Proprietary"
-LABEL com.openagentic.copyright="Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved."
+LABEL org.opencontainers.image.licenses="Apache-2.0"
 
 
 # -----------------------------------------------------------------------------

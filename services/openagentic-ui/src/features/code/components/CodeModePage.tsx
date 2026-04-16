@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * CodeModePage - Main entry point for Code Mode
  *
  * Renders the Openagentic-style Code Mode interface (CodeModeLayoutV2).
@@ -36,6 +20,7 @@ import { apiEndpoint } from '@/utils/api';
 import { CodeModeLayoutV2 } from './CodeModeLayoutV2';
 import { ProvisioningScreen } from './ProvisioningScreen';
 import { useCodeModeWebSocket } from '../hooks/useCodeModeWebSocket';
+import { useCodeModeSession } from '../hooks/useCodeModeSession';
 import { useCodeModeStore, useSession } from '@/stores/useCodeModeStore';
 
 type ProvisioningStatus = 'checking' | 'not_provisioned' | 'provisioning' | 'ready' | 'no_access' | 'error';
@@ -121,13 +106,80 @@ export const CodeModePage: React.FC = () => {
     }
   }, [provisioningStatus]);
 
-  // Connect WebSocket (only when provisioned)
+  // Hydrate prior session transcript on mount.
+  //
+  // Zustand `persist` middleware keeps `activeSessionId` in localStorage,
+  // but the `messages` array is intentionally NOT persisted (transcripts
+  // can be huge). After a tab switch / browser reload / re-login the store
+  // has the session id but an empty messages array — without this effect
+  // the WS would just connect to a new session and the user would see an
+  // empty chat even though the server still has every prior turn.
+  //
+  // The effect:
+  //   1. Reads `activeSessionId` from the store
+  //   2. Calls `/api/openagentic/sessions/:id/resume` via useCodeModeSession
+  //   3. Fills `messages[]` losslessly via store.hydrateMessages()
+  //   4. Releases the WS gate (`hydrated`) so it connects with the
+  //      existing session id rather than racing to create a fresh one
+  //
+  // If the API returns 404 (session reaped server-side) we clear the
+  // stale id and start fresh.
+  const { resumeSession } = useCodeModeSession({
+    authToken: authToken ?? '',
+    persistMessages: false,
+    autoLoadHistory: false,
+  });
+  const storedSessionId = useCodeModeStore((s) => s.activeSessionId);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    if (provisioningStatus !== 'ready') return;
+    if (hydrated) return;
+
+    // No prior session — nothing to resume; release the WS gate immediately.
+    if (!storedSessionId || !authToken) {
+      setHydrated(true);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await resumeSession(storedSessionId);
+        if (cancelled) return;
+        if (!result) {
+          // Session no longer exists server-side. Drop the stale id so the
+          // next WS connect creates a fresh session instead of trying to
+          // reattach to a tombstone.
+          console.warn(
+            '[CodeModePage] Resume failed for stored session — clearing and starting fresh',
+            { storedSessionId },
+          );
+          useCodeModeStore.getState().clearSession();
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('[CodeModePage] Resume threw:', err);
+        }
+      } finally {
+        if (!cancelled) setHydrated(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [provisioningStatus, storedSessionId, authToken, resumeSession, hydrated]);
+
+  // Connect WebSocket (only when provisioned AND hydration finished).
+  // The hydrated gate prevents a race where the WS spins up a new session
+  // before resumeSession finishes loading the prior transcript.
   const { sendMessage, stopExecution } = useCodeModeWebSocket({
     userId: user?.id || 'anonymous',
     initialSessionId: sessionId || undefined,
     workspacePath: workspacePath || '~',
     authToken,
-    enabled: provisioningStatus === 'ready',
+    enabled: provisioningStatus === 'ready' && hydrated,
   });
 
   // Handle exit - navigate back

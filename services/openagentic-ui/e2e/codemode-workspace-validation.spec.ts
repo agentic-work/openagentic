@@ -1,19 +1,3 @@
-/**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { test, expect, Page } from '@playwright/test';
 
 /**
@@ -31,11 +15,11 @@ import { test, expect, Page } from '@playwright/test';
 
 // Local admin user credentials (from environment or default to admin account)
 const LOCAL_ADMIN = {
-  email: process.env.ADMIN_EMAIL || 'admin@openagentics.io',
+  email: process.env.ADMIN_EMAIL || 'admin@openagentic.io',
   password: process.env.ADMIN_PASSWORD || 'admin123',
 };
 
-const BASE_URL = process.env.BASE_URL || 'https://chat-dev.openagentics.io';
+const BASE_URL = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
 const PYTHON_PROMPT = 'Create and run a simple Python hello world application that prints "Hello from OpenAgentic!" and the current date/time';
 
 /**

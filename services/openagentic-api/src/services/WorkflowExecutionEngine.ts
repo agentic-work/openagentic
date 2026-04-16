@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * WorkflowExecutionEngine
  *
  * Executes workflow graphs by traversing nodes and edges.
@@ -196,7 +180,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     // Get service URLs from environment
     this.mcpProxyUrl = process.env.MCP_PROXY_URL || 'http://openagentic-mcp-proxy:8080';
     this.apiUrl = process.env.API_URL || 'http://localhost:8000';
-    this.openagenticManagerUrl = process.env.OPENAGENTIC_MANAGER_URL || 'http://openagentic-code-manager:3060';
+    this.openagenticManagerUrl = process.env.OPENAGENTIC_MANAGER_URL || 'http://openagentic-code-manager:3050';
 
     // Initialize retry state tracking
     this.nodeRetryState = new Map();
@@ -868,7 +852,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       case 'agent_spawn':
       case 'a2a':
         return this.executeAgentSpawnNode(node, input);
-      // Openagentic-Proxy nodes
+      // Agent-Proxy nodes
       case 'agent_single':
         return this.executeOpenAgenticProxyNode(node, input, 'parallel');
       case 'agent_pool':
@@ -1608,7 +1592,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     });
 
     const info = await transport.sendMail({
-      from: smtpUser || process.env.SMTP_USER || 'noreply@openagentics.io',
+      from: smtpUser || process.env.SMTP_USER || 'noreply@openagentic.io',
       to: resolvedTo,
       cc: cc ? this.interpolateTemplate(cc, input) : undefined,
       subject: resolvedSubject,
@@ -2454,12 +2438,12 @@ export class WorkflowExecutionEngine extends EventEmitter {
         };
       }
 
-      // Openagentic-proxy not available — fallback to LLM completion
+      // Agent-proxy not available — fallback to LLM completion
       logger.warn({
         nodeId: node.id,
         status: executeResponse.status,
         error: executeResponse.data?.error,
-      }, '[WorkflowEngine] Openagentic-proxy unavailable, falling back to LLM completion');
+      }, '[WorkflowEngine] Agent-proxy unavailable, falling back to LLM completion');
 
       return this.agentSpawnFallbackLLM(node, resolvedTask, input, agentRole);
 
@@ -2468,7 +2452,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       logger.warn({
         nodeId: node.id,
         error: error.message,
-      }, '[WorkflowEngine] Openagentic-proxy call failed, falling back to LLM completion');
+      }, '[WorkflowEngine] Agent-proxy call failed, falling back to LLM completion');
 
       return this.agentSpawnFallbackLLM(node, resolvedTask, input, agentRole);
     }
@@ -3065,7 +3049,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
   }
 
   /**
-   * Execute an Openagentic-Proxy node -- delegates to openagentic-proxy service for orchestrated agent execution
+   * Execute an Agent-Proxy node -- delegates to openagentic-proxy service for orchestrated agent execution
    */
   private async executeOpenAgenticProxyNode(
     node: WorkflowNode,
@@ -3167,9 +3151,9 @@ export class WorkflowExecutionEngine extends EventEmitter {
       };
     } catch (error: any) {
       if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-        throw new Error(`Openagentic-proxy service is not reachable at ${openagenticProxyUrl}. Ensure the openagentic-proxy deployment is running.`);
+        throw new Error(`Agent-proxy service is not reachable at ${openagenticProxyUrl}. Ensure the openagentic-proxy deployment is running.`);
       }
-      throw new Error(`Openagentic-proxy execution failed: ${error.response?.data?.error || error.message}`);
+      throw new Error(`Agent-proxy execution failed: ${error.response?.data?.error || error.message}`);
     }
   }
 

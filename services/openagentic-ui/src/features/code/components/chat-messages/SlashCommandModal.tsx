@@ -1,17 +1,19 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * SlashCommandModal — shared overlay container for interactive slash
+ * command UIs (`/model`, `/theme`, `/config`, `/plan`, etc.).
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Renders as a centered card over the chat view with a backdrop,
+ * Esc to dismiss, click-outside to dismiss, focus trap on the first
+ * focusable child. Matches the visual grammar of the rest of
+ * CodeMode (monospace, rounded border, cm-* CSS vars) so it doesn't
+ * feel like a generic web modal.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Use this for any slash command that needs interactive input. Pass
+ * children for the body, `title` for the header, `onClose` to handle
+ * dismissal.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 import React, { useEffect, useRef } from 'react';

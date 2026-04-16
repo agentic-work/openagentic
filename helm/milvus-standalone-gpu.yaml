@@ -1,0 +1,135 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+# Milvus Standalone with GPU Support (dalek — RTX 2080 Ti)
+# Based on: https://milvus.io/docs/install_cluster-helm-gpu.md
+#
+# Deploy with:
+#   helm upgrade --install openagentic-milvus zilliztech/milvus \
+#     -f helm/milvus-standalone-gpu.yaml \
+#     -n agentic-dev
+#
+# Prerequisites:
+#   - NVIDIA GPU Operator installed (gpu-operator namespace)
+#   - Ollama pinned to GPU 0 (frees GPU 1 for Milvus)
+#   - dalek node with 2x RTX 2080 Ti (11GB each)
+
+# STANDALONE MODE — single process, rocksmq, no Pulsar overhead
+cluster:
+  enabled: false
+
+standalone:
+  enabled: true
+  nodeSelector:
+    kubernetes.io/hostname: dalek    # Pin to dalek (has GPUs)
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+      nvidia.com/gpu: "1"            # Request 1 GPU (device plugin assigns GPU 1)
+    limits:
+      cpu: 4000m
+      memory: 8Gi
+      nvidia.com/gpu: "1"
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: nfs
+
+# GPU image — v2.6.12-gpu (latest stable, 2026-03-10)
+image:
+  all:
+    pullPolicy: IfNotPresent
+    repository: milvusdb/milvus
+    tag: v2.6.12-gpu
+
+# GPU + RocksMQ configuration
+extraConfigFiles:
+  user.yaml: |
+    mq:
+      type: rocksmq
+    gpu:
+      initMemSize: 1024       # 1GB initial GPU memory (conservative for 11GB 2080 Ti)
+      maxMemSize: 4096         # 4GB max GPU memory
+      buildIndexOnGpu: true    # GPU-accelerated HNSW/IVF index building
+    common:
+      gracefulStopTimeout: 30
+
+# Disable all distributed message queues
+pulsarv3:
+  enabled: false
+pulsar:
+  enabled: false
+kafka:
+  enabled: false
+
+# etcd — single replica, also on dalek (avoids cross-node networking issues)
+etcd:
+  enabled: true
+  replicaCount: 1
+  nodeSelector:
+    kubernetes.io/hostname: dalek    # Same node as Milvus — no cross-node etcd issues
+  image:
+    registry: docker.io
+    repository: milvusdb/etcd
+    tag: 3.5.5-r4
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: nfs
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+# Use existing MinIO (openagentic-minio in agentic-dev namespace)
+minio:
+  enabled: false
+
+externalS3:
+  enabled: true
+  host: openagentic-minio
+  port: 9000
+  accessKey: "openagentic-minio-k3s"
+  secretKey: "openagentic-minio-Px9kWz7dR4m2Qv"
+  useSSL: false
+  bucketName: milvus
+  rootPath: file
+
+# Disable cluster components
+proxy:
+  enabled: false
+mixCoordinator:
+  enabled: false
+dataCoordinator:
+  enabled: false
+dataNode:
+  enabled: false
+indexCoordinator:
+  enabled: false
+indexNode:
+  enabled: false
+queryCoordinator:
+  enabled: false
+queryNode:
+  enabled: false
+rootCoordinator:
+  enabled: false
+streamingCoordinator:
+  enabled: false
+streamingNode:
+  enabled: false
+
+# Service
+service:
+  type: ClusterIP
+  port: 19530
+  annotations: {}
+
+# Metrics — Prometheus scraping
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false

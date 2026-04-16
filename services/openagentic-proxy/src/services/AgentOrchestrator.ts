@@ -1,19 +1,3 @@
-/**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import { AgentRunner, type AgentSpec, type AgentResult, type RunContext } from './AgentRunner';
@@ -60,6 +44,25 @@ export interface ExecuteRequest {
   timeoutMs?: number;
   maxConcurrency?: number;
   flowContext?: any;
+  // Project A.4 — parent→sub-agent context propagation.
+  // The parent chat's already-assembled <user_memory> markdown block.
+  // Passed verbatim so the sub-agent inherits the same grounding the
+  // parent had (durable identifier mappings + semantic hits for THIS
+  // session's topic) without re-querying. Prevents the sub-agent from
+  // fabricating identifiers the parent already resolved.
+  parentMemoryContext?: string;
+  // The parent's top RAG chunks (already retrieved). Pass-through rather
+  // than re-querying. Keep payload small — top 3 chunks.
+  parentRagContext?: Array<{ content?: string; text?: string; source?: string; score?: number }>;
+  // Project A.4b — sub-agents spawned through this service bypass
+  // PromptComposer (they use DEFAULT_PROMPTS[role] hardcoded in this
+  // file, not the DB-backed module system). Until Project B.2 unifies
+  // the bypass paths, the parent (ChatPipeline) renders the alwaysInject
+  // modules (safety, artifact-inhibitor, response-style, ...) and ships
+  // the concatenated content here. AgentRunner prepends this to every
+  // sub-agent's system prompt BEFORE the role template, so behavioral
+  // rules survive the bypass.
+  parentBehaviorRules?: string;
 }
 
 export interface ExecutionState {
@@ -959,7 +962,7 @@ Rules:
 
     try {
       const internalSecret = process.env.INTERNAL_SERVICE_SECRET;
-      const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-Openagentic-Proxy': 'true' };
+      const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-Agent-Proxy': 'true' };
 
       if (internalSecret) {
         headers['X-Request-From'] = 'openagentic-proxy';

@@ -1,17 +1,16 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * ThemeSelectorPill — compact dropdown that lives in the CodeMode
+ * header (top-left). Lets the user switch between the `cm-theme`
+ * palettes applied to the `.code-mode` root element. Paired with
+ * the /theme slash command (ThemePicker modal) — both write to the
+ * same `cm-theme` localStorage key so the state stays in sync.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Extracted from CodeModeLayoutV2 so the CodeModeHeaderStrip can
+ * render it alongside the session-identity row without a circular
+ * import through the layout container.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 import React, { useCallback, useEffect, useState } from 'react';

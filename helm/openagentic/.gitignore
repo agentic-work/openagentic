@@ -1,0 +1,30 @@
+# Values files with real secrets - NEVER commit these
+values-dev.yaml
+values-local-k8s.yaml
+values-local-airgapped.yaml
+values-docker-desktop-local.yaml
+values-prod.yaml
+values-staging.yaml
+
+# Any values file that is not a template
+values-*.yaml
+!values-*.yaml.template
+!values.yaml
+
+# Secret files
+*.secret
+*.secrets
+*-secrets.yaml
+secrets.yaml
+SECRETS-BACKUP.md
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.template
+
+# GCP credentials
+*-service-account.json
+gcp-*.json
+credentials.json

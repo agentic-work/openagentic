@@ -1,0 +1,29 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.ollama.enabled .Values.ollama.persistence.enabled (not .Values.ollama.persistence.existingClaim) .Values.ollama.persistence.standalone }}
+# Standalone PVC for Ollama models - survives helm uninstall
+# This PVC uses helm.sh/resource-policy: keep to persist across releases
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-models-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: ollama-models
+    purpose: model-storage
+    {{- include "openagentic.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+    description: "Standalone PVC for Ollama models - persists across helm releases"
+spec:
+  accessModes:
+    {{- range .Values.ollama.persistence.accessModes }}
+    - {{ . | quote }}
+    {{- end }}
+  {{- if .Values.ollama.persistence.storageClass }}
+  storageClassName: {{ .Values.ollama.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.ollama.persistence.size | default "50Gi" }}
+{{- end }}

@@ -1,6 +1,6 @@
 {
   "name": "openagentic-proxy",
-  "version": "0.1.0",
+  "version": "0.6.3",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
@@ -23,5 +23,5 @@
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.3.0"
   },
-  "description": "Openagentic-Proxy: Decoupled agent orchestration service for OpenAgentic"
+  "description": "Agent-Proxy: Decoupled agent orchestration service for OpenAgentic"
 }

@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Agent Routes (Non-Admin)
  *
  * Accessible to all authenticated users:
@@ -48,7 +32,7 @@ export const agentRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
         const res = await fetch(`${openagenticProxyUrl}/api/agents/definitions`, {
           headers: {
             'Authorization': `Bearer ${internalKey}`,
-            'X-Openagentic-Proxy': 'true',
+            'X-Agent-Proxy': 'true',
           },
           signal: AbortSignal.timeout(5000),
         });
@@ -120,7 +104,7 @@ export const agentRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${internalKey}`,
-            'X-Openagentic-Proxy': 'true',
+            'X-Agent-Proxy': 'true',
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -163,7 +147,7 @@ export const agentRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
         const res = await fetch(`${openagenticProxyUrl}/api/agents/stream/${executionId}`, {
           headers: {
             'Authorization': `Bearer ${internalKey}`,
-            'X-Openagentic-Proxy': 'true',
+            'X-Agent-Proxy': 'true',
           },
           signal: AbortSignal.timeout(300000), // 5 min timeout for long executions
         });
@@ -243,6 +227,15 @@ export const agentRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
         try {
           const { PromptComposer } = await import('../services/prompt/PromptComposer.js');
           const composer = new PromptComposer();
+          // Role-derived intent hints: the artifact_creation agent is
+          // dispatched ONLY to render visualizations. Declare that intent
+          // explicitly so intent-gated modules (artifact-creation, and any
+          // other future requiresUserIntent:['visualization'] module) make
+          // it into the composed prompt — otherwise they'd be filtered out
+          // because the resolve endpoint doesn't receive the user's original
+          // message to re-evaluate via ArtifactIntentGate. See openagentic-omhs#327.
+          const derivedUserIntent =
+            agent.agent_type === 'artifact_creation' ? 'visualization' : undefined;
           const composed = await composer.compose({
             message: '',
             mode: (mode || 'chat') as any,
@@ -253,6 +246,7 @@ export const agentRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
             agentRole: agent.agent_type,
             agentModules: agent.prompt_modules,
             sliderPosition: 0.6,
+            userIntent: derivedUserIntent,
           });
           if (composed?.systemPrompt) {
             systemPrompt = composed.systemPrompt;

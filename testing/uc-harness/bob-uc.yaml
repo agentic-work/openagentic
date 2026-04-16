@@ -1,0 +1,56 @@
+# Bob cloud_operations UC harness cases.
+# Source: docs/releases/0.6.5-plan.md + docs/usecases/UAT060/usecases_full_text.txt.
+# bob_uc_questions.md is not present in this repo; stock prompts are seeded
+# from the canonical UAT060 catalog (UC-022..UC-029) and Bob's cloud_operations
+# anchor (MEMORY.md).
+#
+# Each case:
+#   id:               stable identifier
+#   prompt:           verbatim user message
+#   expected_tools:   tool names that MUST be present in the tool-call stream
+#                     (subset; additional tools are fine)
+#   expected_patterns: regex strings that MUST each match the final assistant
+#                     text (case-insensitive)
+#   timeout_s:        per-case wall-clock budget
+#   model:            optional; omit for admin default
+
+- id: UC-022-list-rgs
+  prompt: "List all Azure resource groups in the current subscription and show their locations."
+  expected_tools:
+    - azure_list_resource_groups
+  expected_patterns:
+    - "resource group"
+    - "location|region"
+  timeout_s: 120
+
+- id: UC-023-storage-sku
+  prompt: "What SKU and replication tier is storage account 'openagenticdevsa' using? If it does not exist, say so clearly."
+  expected_tools: []
+  expected_patterns:
+    - "storage|sku|account"
+  timeout_s: 120
+
+- id: UC-024-loganalytics
+  prompt: "Describe the default retention and daily quota on the Log Analytics workspace in resource group rg-openagentic-dev. Explain what the values mean."
+  expected_tools: []
+  expected_patterns:
+    - "retention|quota|log analytics"
+  timeout_s: 120
+
+- id: UC-025-vm-family
+  prompt: "Give me a one-paragraph summary of the Standard_D8s_v5 VM size: vCPU, RAM, and what workloads it's suited for."
+  expected_patterns:
+    - "vcpu|cpu"
+    - "ram|memory|gb"
+    - "d8s_v5|d-series|dsv5"
+  expected_tools: []
+  timeout_s: 90
+
+- id: UC-026-aks-clusters
+  prompt: "List the AKS clusters visible in the current subscription, one per line with their Kubernetes version."
+  expected_tools:
+    - azure_list_aks_clusters
+  expected_patterns:
+    - "aks|kubernetes"
+    - "version|1\\.[0-9]+"
+  timeout_s: 150

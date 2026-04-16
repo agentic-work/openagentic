@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<!--
+ Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
+ Proprietary and confidential. Unauthorized copying prohibited.
+-->
+
+<html>
+<head>
+  <title>Interleaved Streaming Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #1a1a2e;
+      color: #eee;
+    }
+    h1 { color: #00d4ff; }
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    input, button, select {
+      padding: 10px 15px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    input { flex: 1; background: #252540; color: #eee; }
+    button {
+      background: #00d4ff;
+      color: #000;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover { background: #00b8e6; }
+    button:disabled { background: #666; cursor: not-allowed; }
+
+    #output {
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 15px;
+      min-height: 400px;
+      background: #0f0f1a;
+    }
+
+    .thinking-block {
+      background: rgba(147, 51, 234, 0.1);
+      border: 1px solid rgba(147, 51, 234, 0.3);
+      border-radius: 6px;
+      padding: 12px;
+      margin: 8px 0;
+    }
+    .thinking-block .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #a855f7;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .thinking-block .content {
+      margin-top: 8px;
+      padding-left: 24px;
+      color: #a1a1aa;
+      font-style: italic;
+      white-space: pre-wrap;
+      font-size: 13px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .text-block {
+      margin: 8px 0;
+      line-height: 1.6;
+    }
+
+    .tool-block {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin: 8px 0;
+    }
+    .tool-block .name {
+      color: #3b82f6;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tool-block .args {
+      font-family: monospace;
+      font-size: 12px;
+      color: #888;
+      margin-top: 6px;
+      white-space: pre-wrap;
+      max-height: 100px;
+      overflow: auto;
+    }
+
+    .event-log {
+      font-family: monospace;
+      font-size: 11px;
+      background: #1e1e2e;
+      padding: 10px;
+      margin-top: 20px;
+      border-radius: 6px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .event-log .event {
+      margin: 2px 0;
+      padding: 2px 4px;
+    }
+    .event-log .event-type { color: #00d4ff; }
+    .event-log .event-data { color: #888; }
+
+    .streaming { animation: pulse 1s infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      background: #00d4ff;
+      animation: blink 1s infinite;
+      vertical-align: text-bottom;
+    }
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+
+    #stats {
+      display: flex;
+      gap: 20px;
+      margin-top: 15px;
+      font-size: 12px;
+      color: #888;
+    }
+    #stats span { color: #00d4ff; }
+  </style>
+</head>
+<body>
+  <h1>Interleaved Streaming Test</h1>
+
+  <div class="controls">
+    <input type="text" id="apiUrl" placeholder="API URL" value="http://localhost:3000">
+    <input type="text" id="sessionId" placeholder="Session ID (leave empty to create)">
+  </div>
+
+  <div class="controls">
+    <input type="text" id="message" placeholder="Enter message..." value="Think step by step about how to calculate 15% of 85. Show your reasoning.">
+    <button id="sendBtn" onclick="sendMessage()">Send</button>
+    <button onclick="clearOutput()">Clear</button>
+  </div>
+
+  <div id="output"></div>
+
+  <div id="stats">
+    <div>Blocks: <span id="blockCount">0</span></div>
+    <div>Events: <span id="eventCount">0</span></div>
+    <div>Thinking: <span id="hasThinking">No</span></div>
+    <div>Tool Calls: <span id="toolCount">0</span></div>
+  </div>
+
+  <details>
+    <summary style="cursor: pointer; margin-top: 20px; color: #888;">Raw Events Log</summary>
+    <div id="eventLog" class="event-log"></div>
+  </details>
+
+  <script>
+    let contentBlocks = [];
+    let isInterleavedMode = false;
+    let eventCount = 0;
+    let currentSessionId = null;
+
+    function logEvent(type, data) {
+      eventCount++;
+      document.getElementById('eventCount').textContent = eventCount;
+
+      const log = document.getElementById('eventLog');
+      const div = document.createElement('div');
+      div.className = 'event';
+      div.innerHTML = `<span class="event-type">${type}</span>: <span class="event-data">${JSON.stringify(data).substring(0, 200)}</span>`;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function updateStats() {
+      document.getElementById('blockCount').textContent = contentBlocks.length;
+      document.getElementById('hasThinking').textContent = contentBlocks.some(b => b.type === 'thinking') ? 'Yes' : 'No';
+      document.getElementById('toolCount').textContent = contentBlocks.filter(b => b.type === 'tool_use').length;
+    }
+
+    function renderBlocks() {
+      const output = document.getElementById('output');
+      output.innerHTML = '';
+
+      contentBlocks.forEach((block, idx) => {
+        const div = document.createElement('div');
+
+        if (block.type === 'thinking') {
+          div.className = 'thinking-block';
+          div.innerHTML = `
+            <div class="header">
+              <span>🧠</span>
+              <span>${block.isComplete ? 'Thought process' : 'Thinking...'}</span>
+              ${!block.isComplete ? '<span class="streaming">●</span>' : ''}
+            </div>
+            <div class="content">${escapeHtml(block.content)}${!block.isComplete ? '<span class="cursor"></span>' : ''}</div>
+          `;
+        } else if (block.type === 'text') {
+          div.className = 'text-block';
+          div.innerHTML = escapeHtml(block.content) + (!block.isComplete ? '<span class="cursor"></span>' : '');
+        } else if (block.type === 'tool_use') {
+          div.className = 'tool-block';
+          div.innerHTML = `
+            <div class="name">
+              <span>🔧</span>
+              <span>${block.toolName || 'Tool'}</span>
+              ${!block.isComplete ? '<span class="streaming">●</span>' : '✓'}
+            </div>
+            ${block.content ? `<div class="args">${escapeHtml(block.content)}</div>` : ''}
+          `;
+        }
+
+        output.appendChild(div);
+      });
+
+      output.scrollTop = output.scrollHeight;
+      updateStats();
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+    }
+
+    async function createSession() {
+      const apiUrl = document.getElementById('apiUrl').value;
+      try {
+        const resp = await fetch(`${apiUrl}/api/chat/sessions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: 'Interleave Test ' + Date.now() })
+        });
+        const data = await resp.json();
+        return data.session?.id || data.id;
+      } catch (e) {
+        console.error('Failed to create session:', e);
+        // Generate a fake session ID for testing
+        return 'test-' + Date.now();
+      }
+    }
+
+    async function sendMessage() {
+      const btn = document.getElementById('sendBtn');
+      btn.disabled = true;
+
+      const apiUrl = document.getElementById('apiUrl').value;
+      const message = document.getElementById('message').value;
+      let sessionId = document.getElementById('sessionId').value || currentSessionId;
+
+      if (!sessionId) {
+        sessionId = await createSession();
+        currentSessionId = sessionId;
+        document.getElementById('sessionId').value = sessionId;
+      }
+
+      // Reset state
+      contentBlocks = [];
+      isInterleavedMode = false;
+      eventCount = 0;
+      document.getElementById('eventLog').innerHTML = '';
+      renderBlocks();
+
+      try {
+        const response = await fetch(`${apiUrl}/api/chat/stream`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream'
+          },
+          body: JSON.stringify({
+            sessionId,
+            message,
+            enableExtendedThinking: true
+          })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split('\n\n');
+          buffer = events.pop() || '';
+
+          for (const eventStr of events) {
+            if (!eventStr.trim()) continue;
+
+            const lines = eventStr.split('\n');
+            let eventType = null;
+            let eventData = '';
+
+            for (const line of lines) {
+              if (line.startsWith('event: ')) eventType = line.slice(7);
+              else if (line.startsWith('data: ')) eventData += line.slice(6);
+            }
+
+            if (eventData) {
+              try {
+                const data = JSON.parse(eventData);
+                handleEvent(eventType, data);
+              } catch (e) {
+                console.error('Parse error:', e);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Stream error:', e);
+        document.getElementById('output').innerHTML += `<div style="color: red;">Error: ${e.message}</div>`;
+      }
+
+      btn.disabled = false;
+    }
+
+    function handleEvent(type, data) {
+      logEvent(type, data);
+
+      switch (type) {
+        case 'content_block_start':
+          isInterleavedMode = true;
+          const blockType = data.content_block?.type;
+          if (blockType) {
+            contentBlocks.push({
+              index: data.index ?? contentBlocks.length,
+              type: blockType,
+              content: '',
+              isComplete: false,
+              toolName: blockType === 'tool_use' ? data.content_block?.name : undefined,
+              toolId: blockType === 'tool_use' ? data.content_block?.id : undefined
+            });
+            renderBlocks();
+          }
+          break;
+
+        case 'content_block_delta':
+          const idx = data.index;
+          if (idx !== undefined && contentBlocks[idx]) {
+            if (data.delta?.type === 'thinking_delta') {
+              contentBlocks[idx].content += data.delta.thinking || '';
+            } else if (data.delta?.type === 'text_delta') {
+              contentBlocks[idx].content += data.delta.text || '';
+            } else if (data.delta?.type === 'input_json_delta') {
+              contentBlocks[idx].content += data.delta.partial_json || '';
+            }
+            renderBlocks();
+          }
+          break;
+
+        case 'content_block_stop':
+          const stopIdx = data.index;
+          if (stopIdx !== undefined && contentBlocks[stopIdx]) {
+            contentBlocks[stopIdx].isComplete = true;
+            renderBlocks();
+          }
+          break;
+
+        case 'stream':
+        case 'content_delta':
+          // Only process if NOT in interleaved mode
+          if (!isInterleavedMode) {
+            const content = data.content || data.delta || data.text || '';
+            if (content) {
+              // Find or create text block
+              let textBlock = contentBlocks.find(b => b.type === 'text' && !b.isComplete);
+              if (!textBlock) {
+                textBlock = { index: contentBlocks.length, type: 'text', content: '', isComplete: false };
+                contentBlocks.push(textBlock);
+              }
+              textBlock.content += content;
+              renderBlocks();
+            }
+          }
+          break;
+
+        case 'thinking':
+        case 'thinking_event':
+          if (!isInterleavedMode) {
+            let thinkingBlock = contentBlocks.find(b => b.type === 'thinking' && !b.isComplete);
+            if (!thinkingBlock) {
+              thinkingBlock = { index: contentBlocks.length, type: 'thinking', content: '', isComplete: false };
+              contentBlocks.push(thinkingBlock);
+            }
+            thinkingBlock.content = data.accumulated || data.content || thinkingBlock.content;
+            renderBlocks();
+          }
+          break;
+
+        case 'thinking_complete':
+          const thinkBlock = contentBlocks.find(b => b.type === 'thinking' && !b.isComplete);
+          if (thinkBlock) thinkBlock.isComplete = true;
+          renderBlocks();
+          break;
+
+        case 'done':
+        case 'message_stop':
+          contentBlocks.forEach(b => b.isComplete = true);
+          renderBlocks();
+          break;
+      }
+    }
+
+    function clearOutput() {
+      contentBlocks = [];
+      isInterleavedMode = false;
+      eventCount = 0;
+      document.getElementById('output').innerHTML = '';
+      document.getElementById('eventLog').innerHTML = '';
+      updateStats();
+    }
+  </script>
+</body>
+</html>

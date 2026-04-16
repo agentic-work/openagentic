@@ -1,0 +1,53 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.mcpProxy.enabled .Values.mcpProxy.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "openagentic.fullname" . }}-mcp-proxy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mcp-proxy
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "openagentic.fullname" . }}-mcp-proxy
+  minReplicas: {{ .Values.mcpProxy.autoscaling.minReplicas | default 2 }}
+  maxReplicas: {{ .Values.mcpProxy.autoscaling.maxReplicas | default 10 }}
+  metrics:
+  {{- if .Values.mcpProxy.autoscaling.targetCPUUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.mcpProxy.autoscaling.targetCPUUtilizationPercentage }}
+  {{- end }}
+  {{- if .Values.mcpProxy.autoscaling.targetMemoryUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.mcpProxy.autoscaling.targetMemoryUtilizationPercentage }}
+  {{- end }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 4
+        periodSeconds: 15
+      selectPolicy: Max
+{{- end }}

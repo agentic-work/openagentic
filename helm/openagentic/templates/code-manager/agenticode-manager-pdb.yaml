@@ -1,0 +1,39 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.codeManager.enabled .Values.codeManager.podDisruptionBudget.enabled }}
+# ===================================================================================================
+# OPENAGENTIC MANAGER POD DISRUPTION BUDGET
+# ===================================================================================================
+# Ensures minimum availability during voluntary disruptions (upgrades, node drains).
+#
+# CONSIDERATIONS:
+#   - Code sessions are stateful - disrupting a pod kills active sessions
+#   - minAvailable ensures at least N pods remain during rolling updates
+#   - With Redis session state, sessions can be resumed on other pods
+#   - Without Redis, session data is lost when pod is terminated
+#
+# RECOMMENDATIONS:
+#   - Set minAvailable to at least 1 for small deployments
+#   - For large deployments (10+ pods), use percentage like "50%"
+#   - If using Redis session state, you can be more aggressive with disruptions
+# ===================================================================================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "openagentic.fullname" . }}-code-manager
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: code-manager
+spec:
+  {{- if .Values.codeManager.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.codeManager.podDisruptionBudget.minAvailable }}
+  {{- else if .Values.codeManager.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.codeManager.podDisruptionBudget.maxUnavailable }}
+  {{- else }}
+  minAvailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: code-manager
+{{- end }}

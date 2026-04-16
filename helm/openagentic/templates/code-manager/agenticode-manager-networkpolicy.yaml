@@ -1,0 +1,239 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.codeManager.enabled (.Values.codeManager.networkPolicy).enabled }}
+# ===================================================================================================
+# OPENAGENTIC MANAGER NETWORK POLICY
+# ===================================================================================================
+# Restricts network access for security:
+# - Ingress: Only from API and UI (nginx proxy) pods
+# - Egress: DNS, Kubernetes API (pod management), Redis, MinIO, external HTTPS
+# ===================================================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "openagentic.fullname" . }}-code-manager
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: code-manager
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: code-manager
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from API
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: api
+      ports:
+        - protocol: TCP
+          port: 3050
+    # Allow from Workflow Service (openagentic nodes in workflows)
+    {{- if .Values.workflows.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: workflows
+      ports:
+        - protocol: TCP
+          port: 3050
+    {{- end }}
+    # Allow from UI (nginx proxies code-server WebSocket)
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: ui
+      ports:
+        - protocol: TCP
+          port: 3050
+        # Code-server ports (3100-3109)
+        - protocol: TCP
+          port: 3100
+        - protocol: TCP
+          port: 3101
+        - protocol: TCP
+          port: 3102
+        - protocol: TCP
+          port: 3103
+        - protocol: TCP
+          port: 3104
+        - protocol: TCP
+          port: 3105
+        - protocol: TCP
+          port: 3106
+        - protocol: TCP
+          port: 3107
+        - protocol: TCP
+          port: 3108
+        - protocol: TCP
+          port: 3109
+    # Allow from Ingress controller (for direct code-server access)
+    - from:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 3050
+        - protocol: TCP
+          port: 3100
+        - protocol: TCP
+          port: 3101
+        - protocol: TCP
+          port: 3102
+        - protocol: TCP
+          port: 3103
+        - protocol: TCP
+          port: 3104
+        - protocol: TCP
+          port: 3105
+        - protocol: TCP
+          port: 3106
+        - protocol: TCP
+          port: 3107
+        - protocol: TCP
+          port: 3108
+        - protocol: TCP
+          port: 3109
+    # Allow from TLS proxy (agenticadmin namespace — SNI router → tls-proxy)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: agenticadmin
+      ports:
+        - protocol: TCP
+          port: 3050
+        - protocol: TCP
+          port: 3100
+        - protocol: TCP
+          port: 3101
+        - protocol: TCP
+          port: 3102
+        - protocol: TCP
+          port: 3103
+        - protocol: TCP
+          port: 3104
+        - protocol: TCP
+          port: 3105
+        - protocol: TCP
+          port: 3106
+        - protocol: TCP
+          port: 3107
+        - protocol: TCP
+          port: 3108
+        - protocol: TCP
+          port: 3109
+    {{- if .Values.grafana.enabled }}
+    # Allow Prometheus to scrape /metrics
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.grafana.namespace }}
+          podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 3050
+    {{- end }}
+  egress:
+    # DNS
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Kubernetes API (for pod creation/management in kubernetes execution mode)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+    # API (for internal callbacks)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: api
+      ports:
+        - protocol: TCP
+          port: {{ .Values.api.service.port | default 8000 }}
+    # Redis (for session state)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # PostgreSQL (for database access)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgresql
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # MinIO (workspace storage)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: minio
+      ports:
+        - protocol: TCP
+          port: 9000
+    # MCP Proxy
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: mcp-proxy
+      ports:
+        - protocol: TCP
+          port: {{ .Values.mcpProxy.service.port | default 8080 }}
+    # Ollama (for LLM inference)
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: ollama
+      ports:
+        - protocol: TCP
+          port: 11434
+    # Exec runner pods (openagentic-exec) — terminal WebSocket + code-server
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: runner
+              app.kubernetes.io/managed-by: openagentic-manager
+      ports:
+        - protocol: TCP
+          port: 3060
+        - protocol: TCP
+          port: 3100
+        {{- if .Values.codeManager.ghostpilot.enabled }}
+        - protocol: TCP
+          port: 3200  # GhostPilot browser preview
+        {{- end }}
+{{- end }}

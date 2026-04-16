@@ -1,17 +1,11 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * TerminalHeaderBar — compact chip row above the openagentic terminal
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Read-only display: theme · model · cwd · cli version · live token counts.
+ * Model changes happen via /model in the CLI itself — no UI controls here.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 import React from 'react';
@@ -116,11 +110,11 @@ export const TerminalHeaderBar: React.FC<TerminalHeaderBarProps> = ({
   }
 
   const handleOpenExternal = () => {
-    // Open terminal in a focused new window — append ?terminal-focus=1 so
-    // CodeModeLayoutV2 can detect it and hide sidebars/editor for a
-    // full-viewport terminal experience (like code-server's pop-out).
+    // Pop-out reuses the current URL with ?terminal-focus=1 — the host page
+    // (Chat with appMode='code') reads this and renders a focused terminal
+    // view. The standalone /code route was removed; pop-out only works when
+    // the user is already in code mode in the main app.
     const url = new URL(window.location.href);
-    url.pathname = '/code';
     url.searchParams.set('terminal-focus', '1');
     window.open(url.toString(), '_blank');
   };

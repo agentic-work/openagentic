@@ -1,19 +1,3 @@
-/**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { PipelineStage, PipelineContext } from './pipeline.types.js';
 import { ChatMessage } from '../interfaces/chat.types.js';
 
@@ -100,16 +84,45 @@ Use the above knowledge base documents to provide a specific, detailed answer. C
         tokenUsage: null
       });
 
-      // Emit RAG status event for UI rendering
+      // Emit RAG status event for UI rendering. Source records carry
+      // enough fields for the chat-mode tool card to render per-doc
+      // pills (icon + title + collection hint). The summarizer at
+      // services/openagentic-ui/.../toolSummarizer.ts:rag_context
+      // reads `title`/`filename`/`name` for display and
+      // `collection`/`source` for the hint chip — keep those names
+      // populated even when only a single field is available on the
+      // underlying doc. See openagentic-omhs#330.
       context.emit?.('rag_context', {
         docsRetrieved: context.ragContext.docs.length,
         collections: context.ragContext.metadata?.collections || [],
         retrievalTime: context.ragContext.metadata?.retrievalTime || 0,
-        sources: context.ragContext.docs.map((d: any) => ({
-          content: d.content?.substring(0, 100) + '...',
-          source: d.metadata?.source || 'knowledge_base',
-          score: d.score
-        }))
+        sources: (context.ragContext.docs || []).slice(0, 5).map((d: any) => {
+          const meta = d.metadata || {};
+          // Best-effort title — first non-empty of: explicit title,
+          // url-derived name, source label, or first words of the
+          // content snippet (so RAG hits without metadata still get
+          // something readable inline).
+          const snippet = (d.content || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+          const title = meta.title
+            || meta.filename
+            || meta.name
+            || (meta.url ? meta.url.split('/').pop() : '')
+            || snippet
+            || 'document';
+          const collection = meta.collection
+            || meta.source
+            || meta.namespace
+            || 'knowledge_base';
+          return {
+            title,
+            filename: meta.filename || meta.name,
+            collection,
+            source: collection,            // alias for older summarizer paths
+            url: meta.url,
+            content: snippet ? snippet + '…' : undefined,
+            score: d.score,
+          };
+        })
       });
 
       (context as any).logger?.info({

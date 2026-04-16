@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * MessageBubble - Memoized message rendering component
  * Wrapped with React.memo to prevent unnecessary re-renders
  * when other messages in the list change or streaming content updates.
@@ -686,15 +670,22 @@ const MessageBubble = memo(function MessageBubble({
             },
           });
         } else {
-          // Tool/MCP step — only add if not already present from mcpCalls/toolCalls
+          // Tool/MCP step — only add if not already present from mcpCalls/toolCalls.
+          // Pass through `details` (args + result) and `duration` so the
+          // activity-stream adapter can populate ToolCall.input/.output and
+          // surface rich summaries (favicons on web_search, resource names on
+          // cloud creates, etc.). Without these, tool chips render as
+          // bare title-only stubs. openagentic-omhs#330.
           const stepId = `interleaved-tool-${message.id}-${idx}`;
           if (!existingToolIds.has(step.id) && !existingToolIds.has(stepId)) {
             interleavedSteps.push({
               id: stepId,
               type: step.type || 'mcp',
               title: String(step.title || step.content || 'Tool'),
-              status: 'completed',
+              status: step.status || 'completed',
               model: messageModel,
+              details: step.details,
+              duration: step.duration,
             });
           }
         }

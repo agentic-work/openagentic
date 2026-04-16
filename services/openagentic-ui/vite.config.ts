@@ -1,17 +1,26 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
+ * 
+ * This file is the exclusive property of Openagentic LLC. All rights reserved.
+ * 
+ * NOTICE: This source code is proprietary and confidential. It contains trade
+ * secrets and proprietary information that is the exclusive property of
+ * Openagentic LLC. Any unauthorized use, reproduction, distribution, or
+ * disclosure of this material is strictly prohibited.
+ * 
+ * No part of this source code may be reproduced, stored in a retrieval system,
+ * or transmitted in any form or by any means (electronic, mechanical,
+ * photocopying, recording, or otherwise) without the prior written permission
+ * of Openagentic LLC.
+ * 
+ * This software is provided "as is" without warranty of any kind, either
+ * express or implied, including but not limited to the implied warranties of
+ * merchantability, fitness for a particular purpose, or non-infringement.
+ * 
+ * For licensing inquiries, please contact:
+ * Openagentic LLC
+ * legal@openagentic.io
  */
 
 import { defineConfig } from 'vite'
@@ -110,7 +119,7 @@ export default defineConfig({
       usePolling: false,
       useFsEvents: true
     },
-    // Allow all hosts for development (including k3s services and dev.openagentics.io)
+    // Allow all hosts for development (including k3s services and dev.openagentic.io)
     allowedHosts: true,
     proxy: {
       '/api': {

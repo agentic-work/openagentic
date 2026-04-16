@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * About Modal - OpenAgentic Platform
  * Simple modal showing real version information from the API
  */
@@ -273,17 +257,15 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
               }}
             >
               <p className="text-xs" style={{ color: 'var(--color-textMuted)' }}>
-                © {new Date().getFullYear()} OpenAgentic LLC
+                <a
+                  href="https://gnomus.ai"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'var(--color-textMuted)', textDecoration: 'underline' }}
+                >
+                  Learn more
+                </a>
               </p>
-              <a
-                href="https://openagentics.io"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs hover:underline"
-                style={{ color: '#3b82f6' }}
-              >
-                Website
-              </a>
             </div>
           </motion.div>
         </motion.div>

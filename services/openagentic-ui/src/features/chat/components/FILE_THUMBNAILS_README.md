@@ -10,7 +10,7 @@ This implementation adds inline thumbnail previews for file attachments in the O
 
 Main component that renders file attachment thumbnails.
 
-**Location:** `services/services/openagenticchat-ui/src/features/chat/components/FileAttachmentThumbnails.tsx`
+**Location:** `/mnt/synology/Code/company/cdc/agentic/services/openagenticchat-ui/src/features/chat/components/FileAttachmentThumbnails.tsx`
 
 **Features:**
 - Image thumbnails with actual preview
@@ -42,7 +42,7 @@ interface AttachmentFile {
 
 Demo component showcasing all features.
 
-**Location:** `services/services/openagenticchat-ui/src/features/chat/components/FileAttachmentThumbnailsDemo.tsx`
+**Location:** `/mnt/synology/Code/company/cdc/agentic/services/openagenticchat-ui/src/features/chat/components/FileAttachmentThumbnailsDemo.tsx`
 
 **Features:**
 - Interactive demo with sample files
@@ -57,7 +57,7 @@ Demo component showcasing all features.
 
 Updated to use the new FileAttachmentThumbnails component.
 
-**Location:** `services/services/openagenticchat-ui/src/features/chat/components/ChatInputBar.tsx`
+**Location:** `/mnt/synology/Code/company/cdc/agentic/services/openagenticchat-ui/src/features/chat/components/ChatInputBar.tsx`
 
 **Changes:**
 - Imported FileAttachmentThumbnails component
@@ -69,7 +69,7 @@ Updated to use the new FileAttachmentThumbnails component.
 
 Updated to detect and pass file types properly.
 
-**Location:** `services/services/openagenticchat-ui/src/features/chat/components/ChatContainer.tsx`
+**Location:** `/mnt/synology/Code/company/cdc/agentic/services/openagenticchat-ui/src/features/chat/components/ChatContainer.tsx`
 
 **Changes:**
 - Enhanced file type detection logic
@@ -244,10 +244,10 @@ Potential improvements:
 
 ## Files Modified
 
-1. `services/services/openagenticchat-ui/src/features/chat/components/FileAttachmentThumbnails.tsx` (NEW)
-2. `services/services/openagenticchat-ui/src/features/chat/components/FileAttachmentThumbnailsDemo.tsx` (NEW)
-3. `services/services/openagenticchat-ui/src/features/chat/components/ChatInputBar.tsx` (MODIFIED)
-4. `services/services/openagenticchat-ui/src/features/chat/components/ChatContainer.tsx` (MODIFIED)
+1. `/mnt/synology/Code/company/cdc/agentic/services/openagenticchat-ui/src/features/chat/components/FileAttachmentThumbnails.tsx` (NEW)
+2. `/mnt/synology/Code/company/cdc/agentic/services/openagenticchat-ui/src/features/chat/components/FileAttachmentThumbnailsDemo.tsx` (NEW)
+3. `/mnt/synology/Code/company/cdc/agentic/services/openagenticchat-ui/src/features/chat/components/ChatInputBar.tsx` (MODIFIED)
+4. `/mnt/synology/Code/company/cdc/agentic/services/openagenticchat-ui/src/features/chat/components/ChatContainer.tsx` (MODIFIED)
 
 ## Testing
 

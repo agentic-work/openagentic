@@ -1,17 +1,13 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * RichModals — dedicated React UIs for openagentic management slash commands:
+ *   /mcp, /tools, /plugins, /skills, /agents, /config, /permissions
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Each modal renders enriched data from the system init event's _detail
+ * field, providing a full visual interface matching what the TUI shows
+ * but with proper React interactivity.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';

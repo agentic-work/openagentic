@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * K8s Network Policy Service
  *
  * Manages NetworkPolicies via the Kubernetes API for the admin console's
@@ -33,7 +17,7 @@ const SERVICE_MAP: Record<string, { component: string; displayName: string; crit
   'mcp-proxy': { component: 'mcp-proxy', displayName: 'MCP Proxy' },
   'code-manager': { component: 'code-manager', displayName: 'Code Manager' },
   'openagentic-proxy': { component: 'openagentic-proxy', displayName: 'Agent Proxy' },
-  'openagentic-synth': { component: 'openagentic-synth', displayName: 'OpenAgentic Synth' },
+  'openagentic-synth': { component: 'openagentic-synth', displayName: 'OAT Executor' },
   minio: { component: 'minio', displayName: 'MinIO Storage' },
   attu: { component: 'attu', displayName: 'Attu (Milvus UI)' },
   postgres: { component: 'postgresql', displayName: 'PostgreSQL', critical: true },

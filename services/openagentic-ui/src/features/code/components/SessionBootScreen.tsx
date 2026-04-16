@@ -1,17 +1,24 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * SessionBootScreen — gate overlay shown on every CodeMode open (first
+ * connect AND every reconnect) until the full session is verifiably up:
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   1. Pod / workspace          — s3fs mount + sandbox user created
+ *   2. VS Code (code-server)    — HTTP endpoint ready
+ *   3. OpenAgentic CLI           — Ink REPL emitted its ready marker
+ *   4. Terminal rendering       — ghostty-web wasmTerm has real content
+ *                                 (any codepoint > 32, not just setup
+ *                                 escapes). Flips in TerminalPanel's
+ *                                 ws.onmessage handler.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Only dismisses when ALL four are green. On WS disconnect the store
+ * clears `terminalContentReady` → this component re-mounts visually
+ * and re-runs the gate. No more "fake terminal" with a flashing cursor
+ * in the background — CodeModeLayoutV2 keeps the real terminal mounted
+ * underneath (so the WS keeps flowing), we just cover it with this
+ * overlay until it's actually producing pixels.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';

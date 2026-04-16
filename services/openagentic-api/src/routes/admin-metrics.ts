@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Admin Metrics Routes
  * Provides metrics for MCP tool execution, LLM usage, services, Redis, and Milvus
  */
@@ -367,7 +351,7 @@ const adminMetricsRoutes: FastifyPluginAsync = async (fastify) => {
       const serviceProbes: Array<{ name: string; url: string }> = [
         { name: 'openagentic-ui', url: `${process.env.UI_URL || 'http://openagentic-ui:80'}/healthz` },
         { name: 'openagentic-mcp-proxy', url: `${process.env.MCP_PROXY_URL || 'http://openagentic-mcp-proxy:3100'}/health` },
-        { name: 'openagentic-manager', url: `${process.env.EXEC_URL || 'http://openagentic-exec:3060'}/health` },
+        { name: 'openagentic-manager', url: `${process.env.CODE_MANAGER_URL || 'http://openagentic-manager:3050'}/health` },
       ];
 
       // Build API service entry with real process metrics

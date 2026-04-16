@@ -1,0 +1,12 @@
+{
+  "taskId": "eae67e13-3ec4-40fc-bced-f957505a259e",
+  "status": "error",
+  "response": "",
+  "duration": 28369,
+  "tokens": {
+    "prompt": 0,
+    "completion": 0,
+    "total": 0
+  },
+  "completedAt": "2026-02-11T16:32:09.488Z"
+}

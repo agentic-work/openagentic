@@ -1,0 +1,22 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if .Values.awpAwsMcp.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openagentic.fullname" . }}-oap-aws-mcp
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: oap-aws-mcp
+spec:
+  type: {{ .Values.awpAwsMcp.service.type | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.awpAwsMcp.service.port | default 8082 }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openagentic.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: oap-aws-mcp
+{{- end }}

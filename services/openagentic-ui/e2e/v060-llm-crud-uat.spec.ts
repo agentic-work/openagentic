@@ -1,36 +1,20 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * UAT: LLM Provider/Model CRUD + Playground — v0.6.0
  *
  * 10 Admin Console CRUD tests + 10 Chat/Code/Flows integration tests
  *
- * Tests use Playwright for browser automation.
+ * Tests use GhostPilot API (http://localhost:4444) for browser automation.
  * All API calls are made from the authenticated browser context.
  *
  * Prerequisites:
- *   - Playwright installed (npx playwright install)
- *   - Logged in to https://chat-dev.openagentics.io as admin (mcp-tester@phatoldsungmail.onmicrosoft.com)
+ *   - GhostPilot running at localhost:4444
+ *   - Logged in to https://chat-dev.openagentic.io as admin (mcp-tester@phatoldsungmail.onmicrosoft.com)
  *   - Bedrock provider configured with valid AWS credentials
  *   - Ollama provider configured with local models loaded
  */
 
 const GP = 'http://localhost:4444';
-const APP = 'https://chat-dev.openagentics.io';
+const APP = 'https://chat-dev.openagentic.io';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

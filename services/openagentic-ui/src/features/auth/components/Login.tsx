@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Login Component - OpenAgentic Platform
  * Modern minimal design with glassmorphism
  * Conditionally shows auth providers based on environment config
@@ -51,9 +35,6 @@ const Login: React.FC = () => {
   const { login } = useAuth();
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showTerms, setShowTerms] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false);
-  const [showSupport, setShowSupport] = useState(false);
   const [showLocalForm, setShowLocalForm] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [pendingToken, setPendingToken] = useState<string | null>(null);
@@ -371,7 +352,7 @@ const Login: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          onClick={() => setShowSupport(true)}
+          onClick={() => {}}
           className="w-full mt-6 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-white/40 hover:text-white/70 hover:bg-white/5 transition-all text-sm"
         >
           <HelpCircle className="w-4 h-4" />
@@ -393,13 +374,6 @@ const Login: React.FC = () => {
 
       {/* Support Modal */}
       <AnimatePresence>
-        {showSupport && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowSupport(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
@@ -418,18 +392,15 @@ const Login: React.FC = () => {
                 </button>
               </div>
 
-              <a
-                href="mailto:support@openagentics.io"
-                className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/[0.07] transition-all"
-              >
+              <div className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
                 <div className="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center">
                   <Mail className="w-5 h-5 text-violet-400" />
                 </div>
                 <div>
-                  <p className="font-medium text-white">Email Support</p>
-                  <p className="text-sm text-white/50">support@openagentics.io</p>
+                  <p className="font-medium text-white">Contact your administrator</p>
+                  <p className="text-sm text-white/50">for access and support requests</p>
                 </div>
-              </a>
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -437,13 +408,6 @@ const Login: React.FC = () => {
 
       {/* Terms Modal */}
       <AnimatePresence>
-        {showTerms && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowTerms(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
@@ -482,13 +446,6 @@ const Login: React.FC = () => {
 
       {/* Privacy Modal */}
       <AnimatePresence>
-        {showPrivacy && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowPrivacy(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
@@ -516,7 +473,7 @@ const Login: React.FC = () => {
                   We do not share your data with third parties except as outlined in our privacy policy.
                 </p>
                 <p>
-                  For questions about data handling, contact our support team at support@openagentics.io.
+                  For questions about data handling, contact your administrator.
                 </p>
               </div>
             </motion.div>

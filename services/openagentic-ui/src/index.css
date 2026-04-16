@@ -1,22 +1,49 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
+ * Proprietary and confidential. Unauthorized copying prohibited.
  */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Self-hosted editorial fonts (CDC airgap-safe — no Google Fonts, no CDN).
+   The woff2 files already live in /public/artifact-runtime/fonts/ where
+   artifact iframes also consume them; registering them at the app level
+   gives us real Inter + JetBrains Mono for the main UI too. Without this
+   the "Inter" / "IBM Plex Sans" names in our --*-font stacks silently
+   fall through to system-ui on every client that lacks the font.
+   See docs/superpowers/specs/2026-04-14-codemode-ux-comparison.md.
+   ────────────────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: 'Inter';
+  src: url('/artifact-runtime/fonts/inter-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('/artifact-runtime/fonts/inter-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('/artifact-runtime/fonts/inter-700.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/artifact-runtime/fonts/jetbrains-mono-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 @import './styles/themes/catppuccin-mocha.css';
 @import './styles/themes/terminal-green.css';
@@ -4118,78 +4145,256 @@ pre.shiki-fallback {
   50%, 100% { opacity: 0; }
 }
 
+/* Assistant prose — "reads like a document".
+   Was: monospace 13px everywhere, crammed bullets, flat bold.
+   Now: sans body (theme-overridable via --cm-prose-font), mono ONLY
+   inside code/pre, bigger scale, airier spacing. Matches the editorial
+   aesthetic seen in claude.ai/code. All colors still flow through
+   --cm-* theme tokens, so every codemode theme (latte, frappé, mocha,
+   tokyo-night, dracula, terminal) keeps its palette. A theme that
+   genuinely wants mono prose can set
+     --cm-prose-font: var(--cm-mono-font);
+   on its root element. See docs/superpowers/specs/2026-04-14-codemode-ux-comparison.md. */
 .cm-markdown {
-  font-family: var(--cm-mono-font, ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
-  font-size: 13px;
-  line-height: 1.55;
+  /* Inter is self-hosted (see @font-face above) — putting it FIRST means
+     the real editorial font actually lands instead of falling through to
+     system-ui. The subsequent IBM Plex Sans / system-ui only take effect
+     on the brief pre-swap flash or if the woff2 fails to load. */
+  font-family: var(--cm-prose-font, "Inter", "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif);
+  font-size: 15px;
+  line-height: 1.6;
   color: var(--cm-text, #e6edf3);
   white-space: normal;
   word-break: break-word;
+  /* Font-rendering polish — brings us closer to Claude Code's editorial
+     feel. optimizeLegibility enables kerning + ligatures; tabular-nums
+     keeps numeric columns aligned in tables/lists; cv11 is Inter's
+     single-story 'a' variant for a friendlier feel. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "tnum" 1, "cv11" 1;
+  letter-spacing: -0.005em;
 }
-.cm-markdown p        { margin: 0 0 0.55em 0; }
+.cm-markdown p        { margin: 0 0 0.8em 0; }
 .cm-markdown p:last-child { margin-bottom: 0; }
 .cm-markdown strong   { font-weight: 600; color: var(--cm-text, #e6edf3); }
 .cm-markdown em       { font-style: italic; }
 .cm-markdown code {
-  font-family: var(--cm-mono-font);
-  background: var(--cm-bg-secondary, #161b22);
-  border: 1px solid var(--cm-border, #30363d);
-  border-radius: 3px;
-  padding: 0 4px;
-  font-size: 12px;
+  /* JetBrains Mono is self-hosted — same font-face pattern as Inter.
+     Falls through to the OS mono stack if the woff2 misses. */
+  font-family: var(--cm-mono-font, "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace);
+  background: color-mix(in srgb, var(--cm-bg-secondary, #161b22) 80%, var(--cm-accent, #ff7b72) 8%);
+  /* Use a subtle accent-tinted wash + border so the code stands out on
+     every theme, regardless of whether --cm-accent happens to equal
+     --cm-text (a real case in terminal-green where both are #00ff41). */
+  border: 1px solid color-mix(in srgb, var(--cm-border, #30363d) 60%, var(--cm-accent, #ff7b72) 40%);
+  color: var(--cm-accent, #ff7b72);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.88em;
+  font-feature-settings: "liga" 0, "calt" 0; /* keep code literal */
+  letter-spacing: 0;
 }
 .cm-markdown pre {
-  font-family: var(--cm-mono-font);
+  font-family: var(--cm-mono-font, "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace);
   background: var(--cm-bg-secondary, #161b22);
   border: 1px solid var(--cm-border, #30363d);
-  border-radius: 4px;
-  padding: 8px 10px;
+  border-radius: 8px;
+  padding: 12px 14px;
   overflow-x: auto;
-  margin: 0.4em 0;
-  font-size: 12px;
-  line-height: 1.5;
+  margin: 0.75em 0;
+  font-size: 13px;
+  line-height: 1.55;
+  /* Soft editorial shadow — separates the block from the surrounding
+     prose without a heavy border. Claude Code uses a similar subtle
+     elevation on its code blocks. */
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-feature-settings: "liga" 0, "calt" 0;
+  letter-spacing: 0;
 }
 .cm-markdown pre code {
   background: transparent;
   border: none;
   padding: 0;
-  font-size: 12px;
+  color: var(--cm-text, #e6edf3); /* don't tint inside fenced blocks */
+  font-size: 13px;
 }
-.cm-markdown ul, .cm-markdown ol { margin: 0.4em 0 0.55em 1.25em; padding: 0; }
-.cm-markdown li                  { margin: 0.15em 0; }
+
+/* Syntax-highlighted code block (prism-react-renderer) — claude.ai-style
+   header bar + token coloring. Wraps the prism <pre> so the language
+   label and copy button live in their own band above the code. */
+.cm-codeblock {
+  margin: 0.85em 0;
+  border: 1px solid var(--cm-border, #30363d);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--cm-bg-secondary, #161b22);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.18);
+  font-family: var(--cm-mono-font, "JetBrains Mono", ui-monospace, SFMono-Regular, monospace);
+  font-size: 13px;
+  line-height: 1.55;
+  font-feature-settings: "liga" 0, "calt" 0;
+  letter-spacing: 0;
+}
+.cm-codeblock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: color-mix(in srgb, var(--cm-bg-tertiary, #21262d) 80%, var(--cm-accent, #58a6ff) 6%);
+  border-bottom: 1px solid var(--cm-border, #30363d);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.cm-codeblock-lang {
+  color: var(--cm-text-secondary, #8b949e);
+  font-weight: 600;
+  font-family: var(--cm-prose-font, "Inter", system-ui, sans-serif);
+}
+.cm-codeblock .cm-copy-btn {
+  position: static;
+  opacity: 0.7;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--cm-text-secondary, #8b949e);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 120ms ease-out;
+  font-family: var(--cm-prose-font, "Inter", system-ui, sans-serif);
+}
+.cm-codeblock .cm-copy-btn:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--cm-bg, #0d1117) 60%, transparent);
+  border-color: var(--cm-border, #30363d);
+  color: var(--cm-text, #e6edf3);
+}
+.cm-codeblock .cm-copy-btn.copied {
+  opacity: 1;
+  color: var(--cm-success, #3fb950);
+}
+.cm-codeblock-pre {
+  margin: 0 !important;
+  padding: 12px 14px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow-x: auto;
+}
+.cm-markdown ul, .cm-markdown ol {
+  margin: 0.6em 0 0.8em 1.4em;
+  padding: 0;
+}
+.cm-markdown li { margin: 0.35em 0; }
 .cm-markdown h1, .cm-markdown h2, .cm-markdown h3,
 .cm-markdown h4, .cm-markdown h5, .cm-markdown h6 {
   font-weight: 600;
-  margin: 0.6em 0 0.3em 0;
+  margin: 1em 0 0.4em 0;
   color: var(--cm-text, #e6edf3);
+  line-height: 1.3;
 }
-.cm-markdown h1 { font-size: 16px; }
-.cm-markdown h2 { font-size: 15px; }
-.cm-markdown h3 { font-size: 14px; }
+.cm-markdown h1 { font-size: 1.35em; }
+.cm-markdown h2 { font-size: 1.2em; }
+.cm-markdown h3 { font-size: 1.08em; }
+.cm-markdown h4 { font-size: 1em; }
 .cm-markdown a {
   color: var(--cm-accent, #58a6ff);
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, var(--cm-accent, #58a6ff) 60%, transparent);
+  transition: text-decoration-color 120ms ease-out;
+}
+.cm-markdown a:hover {
+  text-decoration-color: var(--cm-accent, #58a6ff);
 }
 .cm-markdown blockquote {
-  border-left: 2px solid var(--cm-border, #30363d);
-  padding-left: 0.8em;
-  color: var(--cm-text-muted, #8b949e);
-  margin: 0.4em 0;
+  border-left: 3px solid color-mix(in srgb, var(--cm-accent, #58a6ff) 50%, var(--cm-border, #30363d));
+  padding: 0.2em 0 0.2em 0.9em;
+  color: var(--cm-text-secondary, #8b949e);
+  margin: 0.7em 0;
   font-style: italic;
 }
 .cm-markdown table {
-  border-collapse: collapse;
-  font-size: 12px;
-  margin: 0.4em 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  margin: 0.8em 0;
+  width: 100%;
+  border: 1px solid var(--cm-border, #30363d);
+  border-radius: 6px;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
 }
 .cm-markdown th, .cm-markdown td {
-  border: 1px solid var(--cm-border, #30363d);
-  padding: 4px 8px;
+  border-bottom: 1px solid var(--cm-border, #30363d);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
 }
+.cm-markdown tr:last-child td { border-bottom: none; }
 .cm-markdown th {
   background: var(--cm-bg-secondary, #161b22);
   font-weight: 600;
+  color: var(--cm-text, #e6edf3);
+  letter-spacing: 0.01em;
+  font-size: 12px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--cm-border, #30363d);
+}
+.cm-markdown tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--cm-bg-secondary, #161b22) 35%, transparent);
+}
+/* Horizontal rule — subtle gradient fade instead of a hard line */
+.cm-markdown hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cm-border, #30363d), transparent);
+  margin: 1.2em 0;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Input composer — modernized from the TUI-mimic bordered frame.
+   All visual chrome lives HERE (not inline) so :focus-within can
+   override it; inline styles always beat external CSS, so moving
+   border + radius + background off the component's style prop is
+   what lets the focus ring actually land.
+   ──────────────────────────────────────────────────────────────── */
+.cm-input-card {
+  background-color: var(--cm-bg, #0d1117);
+  border: 1px solid var(--cm-border, #30363d);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: border-color 140ms ease-out, box-shadow 140ms ease-out;
+}
+.cm-input-card:focus-within {
+  /* Hardcoded ring color fallback — color-mix(... transparent) was
+     resolving to zero alpha in some contexts (observed on the running
+     chat-dev bundle). Using explicit --cm-accent with inline rgba
+     alpha dodges the issue while still being theme-driven. */
+  border-color: var(--cm-accent, #58a6ff);
+  box-shadow:
+    0 0 0 3px rgba(88, 166, 255, 0.22),
+    0 2px 8px rgba(0, 0, 0, 0.28) !important;
+}
+.cm-input-card textarea {
+  /* Belt-and-suspenders — even if tailwind preflight or a parent
+     reset applies a default textarea border, we strip it here. The
+     outer .cm-input-card is the only visible boundary. */
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background: transparent !important;
+}
+.cm-input-card textarea::placeholder {
+  color: var(--cm-text-muted, #6e7681);
+  opacity: 0.85;
+  font-style: normal;
 }
 
 /* Context-gauge compaction flash — pulses the gauge briefly when

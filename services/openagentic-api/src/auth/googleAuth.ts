@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Google OAuth Authentication Service
  *
  * Handles Google OAuth 2.0 authentication flow for user login.
@@ -31,7 +15,7 @@ export interface GoogleAuthConfig {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
-  allowedDomains?: string[]; // Optional: restrict to specific domains (e.g., ['openagentics.io'])
+  allowedDomains?: string[]; // Optional: restrict to specific domains (e.g., ['openagentic.io'])
 }
 
 export interface GoogleUserContext {
@@ -79,7 +63,7 @@ export class GoogleAuthService {
       clientId: config?.clientId || process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: config?.clientSecret || process.env.GOOGLE_CLIENT_SECRET || '',
       redirectUri: config?.redirectUri || process.env.GOOGLE_REDIRECT_URI ||
-        `${process.env.FRONTEND_URL || 'https://ai.openagentics.io'}/api/auth/google/callback`,
+        `${process.env.FRONTEND_URL || 'https://ai.openagentic.io'}/api/auth/google/callback`,
       allowedDomains: config?.allowedDomains ||
         (process.env.GOOGLE_ALLOWED_DOMAINS?.split(',').map(d => d.trim()).filter(Boolean) || [])
     };
@@ -92,7 +76,7 @@ export class GoogleAuthService {
 
     // Load admin configuration from env
     this.adminEmails = new Set(
-      (process.env.GOOGLE_ADMIN_EMAILS || 'trent@openagentics.io')
+      (process.env.GOOGLE_ADMIN_EMAILS || 'trent@openagentic.io')
         .split(',')
         .map(e => e.trim().toLowerCase())
         .filter(Boolean)

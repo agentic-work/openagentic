@@ -1,0 +1,30 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.ollama.enabled .Values.ollama.persistence.enabled (not .Values.ollama.persistence.existingClaim) (not .Values.ollama.persistence.standalone) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "openagentic.fullname" . }}-ollama
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama
+  {{- with .Values.ollama.persistence.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    {{- range .Values.ollama.persistence.accessModes }}
+    - {{ . | quote }}
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.ollama.persistence.size | quote }}
+  {{- if .Values.ollama.persistence.storageClass }}
+  {{- if (eq "-" .Values.ollama.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.ollama.persistence.storageClass | quote }}
+  {{- end }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,52 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+# Test Self-Hosted Runner
+# Simple workflow to verify ARC runner is working
+
+name: Test Self-Hosted Runner
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/test-runner.yaml'
+
+jobs:
+  test:
+    runs-on: openagentic-runners
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: System Info
+        run: |
+          echo "=== Runner Info ==="
+          echo "Hostname: $(hostname)"
+          echo "User: $(whoami)"
+          echo "PWD: $(pwd)"
+          echo ""
+          echo "=== Node Info ==="
+          node --version || echo "Node not installed"
+          pnpm --version || echo "pnpm not installed"
+          echo ""
+          echo "=== Docker Info ==="
+          docker --version || echo "Docker not available"
+          docker info 2>/dev/null | head -10 || echo "Cannot connect to Docker"
+          echo ""
+          echo "=== Disk Space ==="
+          df -h | head -5
+          echo ""
+          echo "=== Memory ==="
+          free -h
+          echo ""
+          echo "✅ Self-hosted runner test complete!"
+
+      - name: Test Docker Build
+        run: |
+          echo "Testing Docker build capability..."
+          echo 'FROM alpine:latest
+          RUN echo "Hello from self-hosted runner!"' > /tmp/Dockerfile.test
+          docker build -t test-runner:latest -f /tmp/Dockerfile.test /tmp/
+          docker run --rm test-runner:latest cat /etc/os-release | head -3
+          docker rmi test-runner:latest
+          echo "✅ Docker build test passed!"

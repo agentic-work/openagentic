@@ -1,19 +1,3 @@
-/**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { PipelineStage, PipelineContext } from './pipeline.types.js';
 import { ChatMessage, ChatErrorCode } from '../interfaces/chat.types.js';
 import { StreamDelta } from '../interfaces/streaming.types.js';
@@ -684,7 +668,14 @@ export class CompletionStage implements PipelineStage {
       if (originalLength > maxPromptChars) {
         const corePrompt = context.systemPrompt.substring(0, maxPromptChars);
         const suffix = isLocalModel
-          ? `\n\n---\n## CRITICAL TOOL INSTRUCTIONS\nYou have access to tools. ALWAYS use them for:\n- Azure/AWS/GCP: Use azure_*, aws_*, gcp_* tools\n- Charts/diagrams: Create artifact code blocks (\`\`\`artifact:react or \`\`\`artifact:html)\n- Web search: Use web_search, web_fetch\nAfter tool results, synthesize into a clear response with the requested visualization. Do NOT repeat the same tool call. Do NOT ask the user for IDs — the tools will discover them automatically.`
+          // NOTE (openagentic-omhs#327): earlier revisions of this suffix
+          // included a "Charts/diagrams: Create artifact code blocks" bullet
+          // that bypassed PromptComposer's intent gate and re-injected
+          // artifact bias into every large-prompt chat with a local model.
+          // Removed — artifact creation guidance now lives exclusively in
+          // the `artifact-creation` prompt module, gated on explicit user
+          // visualization intent.
+          ? `\n\n---\n## CRITICAL TOOL INSTRUCTIONS\nYou have access to tools. ALWAYS use them for:\n- Azure/AWS/GCP: Use azure_*, aws_*, gcp_* tools\n- Web search: Use web_search, web_fetch\nAfter tool results, synthesize into a clear response. Do NOT repeat the same tool call. Do NOT ask the user for IDs — the tools will discover them automatically.`
           : '\n\n[Note: Additional context available via semantic search. Focus on the user\'s request.]';
         context.systemPrompt = corePrompt + suffix;
         context.logger.info({

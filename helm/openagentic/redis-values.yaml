@@ -1,0 +1,46 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+# Redis values for OpenAgentic K3s cluster
+# Install: helm install redis bitnami/redis -n openagentic -f redis-values.yaml
+
+fullnameOverride: redis
+
+global:
+  imageRegistry: docker.io
+  security:
+    allowInsecureImages: true
+
+architecture: replication
+
+auth:
+  enabled: true
+  password: "openagentic123"
+
+master:
+  nodeSelector: {}
+  persistence:
+    enabled: true
+    storageClass: nfs
+    size: 8Gi
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 1Gi
+      cpu: 500m
+
+replica:
+  replicaCount: 1
+  nodeSelector: {}
+  persistence:
+    enabled: true
+    storageClass: nfs
+    size: 8Gi
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 1Gi
+      cpu: 500m

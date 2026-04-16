@@ -1,17 +1,29 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * TerminalActivityOverlay — floating activity-state chip stack
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Renders one to three React chips at the top-right of the terminal pane,
+ * driven entirely by the CodeMode store. The terminal underneath is
+ * unmodified — these chips ride OVER it as transient overlays at the
+ * z-floating layer (see codeMode.css).
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Why an overlay instead of a row inside the header bar:
+ *   The header bar communicates session identity (model, cwd, cost) and
+ *   is stable across an entire session. Activity state churns every few
+ *   seconds — thinking → tool calling → streaming → idle. Mixing the two
+ *   creates visual noise on the otherwise-stable identity row. The
+ *   overlay floats over the canvas so it can animate in and out cleanly
+ *   without ever shifting layout.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * What it shows:
+ *   - When activityState !== 'idle': a pulsing chip with the current
+ *     activity label ("Thinking...", "Calling tool...", etc.)
+ *   - When the model is currently in a tool call: a second chip with
+ *     the current tool name (if available)
+ *   - The chips are click-through (pointer-events: none on the wrapper)
+ *     so they never block the user from interacting with the terminal.
+ *
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 import React from 'react';

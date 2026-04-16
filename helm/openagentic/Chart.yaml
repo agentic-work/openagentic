@@ -1,0 +1,35 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+apiVersion: v2
+name: openagentic
+description: A comprehensive Helm chart for openagentic application
+type: application
+version: 1.0.26
+appVersion: "0.6.3"
+keywords:
+  - openagentic
+  - chat
+  - mcp
+  - ai
+maintainers:
+  - name: OpenAgentic Team
+    email: hello@openagentic.io
+dependencies: []
+  # All subcharts deployed separately to keep helm release under 1MB etcd limit
+  # Deploy with: helm install <name> <chart> -n agentic-dev -f <values>
+  # - name: postgresql
+  #   version: "16.x.x"
+  #   repository: https://charts.bitnami.com/bitnami
+  #   condition: postgresql.enabled
+  # - name: redis
+  #   version: "20.x.x"
+  #   repository: https://charts.bitnami.com/bitnami
+  #   condition: redis.enabled
+  # - name: milvus
+  #   version: "5.x.x"
+  #   repository: https://zilliztech.github.io/milvus-helm/
+  #   condition: milvus.enabled
+# When dependencies are disabled (e.g. k3s-local), deploy them separately:
+#   helm install postgresql bitnami/postgresql -n openagentic -f postgresql-values.yaml
+#   helm install redis bitnami/redis -n openagentic -f redis-values.yaml
+#   helm install milvus zilliztech/milvus -n openagentic -f milvus-standalone-gpu.yaml

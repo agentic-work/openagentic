@@ -1,0 +1,48 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.uatDashboard.enabled .Values.uatDashboard.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "openagentic.fullname" . }}-uat-dashboard
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: uat-dashboard
+  annotations:
+    {{- with .Values.uatDashboard.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    # WebSocket support for real-time test output
+    {{- if eq .Values.ingress.ingressClassName "nginx" }}
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: "{{ include "openagentic.fullname" . }}-uat-dashboard"
+    {{- end }}
+spec:
+  {{- if .Values.ingress.ingressClassName }}
+  ingressClassName: {{ .Values.ingress.ingressClassName }}
+  {{- end }}
+  {{- if .Values.uatDashboard.ingress.tls }}
+  tls:
+    {{- range .Values.uatDashboard.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.uatDashboard.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          - path: {{ .path | default "/" }}
+            pathType: {{ .pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ include "openagentic.fullname" $ }}-uat-dashboard
+                port:
+                  number: 3333
+    {{- end }}
+{{- end }}

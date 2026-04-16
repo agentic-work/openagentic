@@ -1,0 +1,99 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.minio.enabled (.Values.minio.networkPolicy).enabled }}
+# ===================================================================================================
+# MINIO (UNIFIED STORAGE) NETWORK POLICY
+# ===================================================================================================
+# Restricts network access for security:
+# - Ingress: From API, Code Manager, Milvus components, and runner pods
+# - Egress: DNS only (MinIO serves local storage, no outbound needed)
+# ===================================================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "openagentic.fullname" . }}-minio
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: minio
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from API (images, blob storage)
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: api
+      ports:
+        - protocol: TCP
+          port: 9000
+        - protocol: TCP
+          port: 9001
+    # Allow from Code Manager (workspace storage)
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: code-manager
+      ports:
+        - protocol: TCP
+          port: 9000
+    # Allow from Milvus components (segment storage + Woodpecker WAL)
+    # Main release labels
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/name: milvus
+      ports:
+        - protocol: TCP
+          port: 9000
+    # Milvus subchart uses its own release instance name
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}-milvus
+              app.kubernetes.io/name: milvus
+      ports:
+        - protocol: TCP
+          port: 9000
+    # Allow from runner pods (workspace file access)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: runner
+      ports:
+        - protocol: TCP
+          port: 9000
+    {{- if .Values.grafana.enabled }}
+    # Allow Prometheus to scrape /metrics
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.grafana.namespace }}
+          podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 9000
+    {{- end }}
+  egress:
+    # DNS only - MinIO should not make external connections
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+{{- end }}

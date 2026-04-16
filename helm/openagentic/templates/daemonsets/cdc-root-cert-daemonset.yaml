@@ -1,0 +1,126 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if .Values.cdcRootCert.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openagentic.fullname" . }}-cdc-ca-bundle
+  namespace: kube-system
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+data:
+  min-cdc-bundle-ca.crt: |
+{{ .Files.Get "files/min-cdc-bundle-ca.crt" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "openagentic.fullname" . }}-cdc-root-cert
+  namespace: kube-system
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cdc-root-cert
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cdc-root-cert
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cdc-root-cert
+    spec:
+      # Run on ALL nodes including control plane and system nodes
+      tolerations:
+        - operator: Exists
+      # Use host PID to run nsenter
+      hostPID: true
+      # Run as root to modify system certs
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+      initContainers:
+        - name: install-cdc-cert
+          # Use MCR image for CDC network (Docker Hub is blocked)
+          image: mcr.microsoft.com/cbl-mariner/base/core:2.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "================================================"
+              echo "Installing CDC root certificates on host node..."
+              echo "================================================"
+
+              # Install util-linux for nsenter (CBL-Mariner uses tdnf)
+              echo "Installing util-linux for nsenter..."
+              tdnf install -y util-linux
+
+              # Copy cert to host's trusted CA directory
+              echo "Copying certificate to /usr/local/share/ca-certificates/"
+              cp /cdc-certs/min-cdc-bundle-ca.crt /host-certs/min-cdc-bundle-ca.crt
+              chmod 644 /host-certs/min-cdc-bundle-ca.crt
+
+              # Run update-ca-certificates on host via nsenter
+              echo "Running update-ca-certificates on host..."
+              nsenter --target 1 --mount --uts --ipc --net -- /bin/bash -c '
+                if [ -f /usr/local/share/ca-certificates/min-cdc-bundle-ca.crt ]; then
+                  echo "Certificate file present on host"
+                  if command -v update-ca-certificates &> /dev/null; then
+                    echo "Running update-ca-certificates..."
+                    update-ca-certificates --fresh
+                    echo "CA certificates updated successfully"
+                  elif command -v update-ca-trust &> /dev/null; then
+                    echo "Running update-ca-trust..."
+                    update-ca-trust
+                    echo "CA trust updated successfully"
+                  else
+                    echo "WARNING: No CA update command found"
+                    echo "Certificate installed but system trust store not updated"
+                  fi
+                else
+                  echo "ERROR: Certificate file not found on host"
+                  exit 1
+                fi
+              '
+
+              echo "================================================"
+              echo "CDC root certificates installed successfully!"
+              echo "================================================"
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: cdc-certs
+              mountPath: /cdc-certs
+              readOnly: true
+            - name: host-certs
+              mountPath: /host-certs
+      containers:
+        # Keep-alive container (DaemonSet requires at least one container)
+        - name: keepalive
+          # Use MCR pause image for CDC network (Docker Hub is blocked)
+          image: mcr.microsoft.com/oss/kubernetes/pause:3.9
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 1m
+              memory: 4Mi
+            limits:
+              cpu: 10m
+              memory: 16Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+      volumes:
+        - name: cdc-certs
+          configMap:
+            name: {{ include "openagentic.fullname" . }}-cdc-ca-bundle
+        - name: host-certs
+          hostPath:
+            path: /usr/local/share/ca-certificates
+            type: DirectoryOrCreate
+{{- end }}

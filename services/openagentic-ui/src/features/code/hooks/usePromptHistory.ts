@@ -1,17 +1,25 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * usePromptHistory — session-scoped prompt history with Up/Down
+ * navigation. Matches openagentic's history:previous / history:next
+ * bindings (src/keybindings/defaultBindings.ts).
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Behavior contract (1:1 with the TUI):
+ *   - Up when input is empty       → last submitted prompt
+ *   - Up while browsing history    → older entry, until the oldest
+ *   - Down while browsing          → newer entry, until back to live
+ *   - Down past newest             → restore the *draft* the user was
+ *     typing before they started scrolling (nothing sent yet)
+ *   - Any edit while browsing      → leaves history mode, the edited
+ *     text becomes the new draft
+ *   - push() on submit             → appends the prompt, dedupes if it
+ *     matches the most recent one, caps at 200 entries
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Persisted to localStorage under `codemode:promptHistory:<sessionId>`
+ * so a reload restores the stack. A session-less state still works in
+ * memory.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';

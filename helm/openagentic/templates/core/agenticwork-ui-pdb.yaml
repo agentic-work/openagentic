@@ -1,0 +1,23 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.ui.enabled (or (.Values.ui.podDisruptionBudget).enabled (.Values.ui.autoscaling).enabled) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "openagentic.fullname" . }}-ui
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ui
+spec:
+  {{- if and (.Values.ui.podDisruptionBudget).minAvailable }}
+  minAvailable: {{ .Values.ui.podDisruptionBudget.minAvailable }}
+  {{- else if and (.Values.ui.podDisruptionBudget).maxUnavailable }}
+  maxUnavailable: {{ .Values.ui.podDisruptionBudget.maxUnavailable }}
+  {{- else }}
+  maxUnavailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ui
+{{- end }}

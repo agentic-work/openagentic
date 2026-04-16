@@ -1,0 +1,23 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.attu.enabled (or (.Values.attu.podDisruptionBudget).enabled (.Values.attu.autoscaling).enabled) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "openagentic.fullname" . }}-attu
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: attu
+spec:
+  {{- if and (.Values.attu.podDisruptionBudget).minAvailable }}
+  minAvailable: {{ .Values.attu.podDisruptionBudget.minAvailable }}
+  {{- else if and (.Values.attu.podDisruptionBudget).maxUnavailable }}
+  maxUnavailable: {{ .Values.attu.podDisruptionBudget.maxUnavailable }}
+  {{- else }}
+  maxUnavailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: attu
+{{- end }}

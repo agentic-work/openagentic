@@ -1,10 +1,10 @@
-# OpenAgentic Synth
+# OAT Executor
 
 Secure, minimal Python execution environment for On-demand Agent Tooling (OAT).
 
 ## Overview
 
-The OpenAgentic Synth runs synthesized Python code in isolated subprocesses with:
+The OAT Executor runs synthesized Python code in isolated subprocesses with:
 
 - **Resource limits** - Memory and CPU time constraints
 - **No shell access** - Direct Python execution only
@@ -172,7 +172,7 @@ kubectl get hpa openagentic-synth-hpa -n openagentic
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OPENAGENTIC_SYNTH_PORT` | 8090 | Server port |
+| `OAT_EXECUTOR_PORT` | 8090 | Server port |
 | `OAT_MAX_EXECUTION_TIME` | 30 | Default timeout (seconds) |
 | `OAT_MAX_MEMORY_MB` | 256 | Default memory limit |
 | `OAT_MAX_CONCURRENT` | 5 | Max concurrent executions per pod |

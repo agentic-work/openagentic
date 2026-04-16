@@ -1,0 +1,80 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.codeManager.enabled (eq .Values.codeManager.executionMode "kubernetes") }}
+# ===================================================================================================
+# OPENAGENTIC MANAGER RBAC - POD SPAWNING PERMISSIONS
+# ===================================================================================================
+# When executionMode=kubernetes, the code-manager needs permission to dynamically spawn
+# openagentic-exec pods for each user session. This provides per-user isolation via separate pods.
+#
+# SECURITY MODEL:
+#   - Dedicated ServiceAccount (least privilege)
+#   - Namespace-scoped Role (NOT ClusterRole)
+#   - Can only create/delete pods with specific labels
+#   - Cannot access secrets or other sensitive resources
+#   - Uses OwnerReference for automatic cleanup when manager stops
+# ===================================================================================================
+---
+# Dedicated ServiceAccount for code-manager
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "openagentic.fullname" . }}-code-manager
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: code-manager
+---
+# Role with minimal permissions for pod management
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "openagentic.fullname" . }}-code-manager-runner
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: code-manager
+rules:
+# Pod management - create/delete/patch runner pods (patch needed for warm pool claiming)
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch", "create", "delete", "patch", "update"]
+# Pod logs - for debugging runner pods
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get", "list"]
+# Services - create services for code-server access
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list", "watch", "create", "delete"]
+# ConfigMaps - for runner configuration
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "create", "delete"]
+# Events - for monitoring pod lifecycle
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["get", "list", "watch"]
+# PersistentVolumeClaims - for user workspace storage (local PVC mode)
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "watch", "create", "delete"]
+---
+# RoleBinding - bind the role to the service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "openagentic.fullname" . }}-code-manager-runner
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: code-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "openagentic.fullname" . }}-code-manager-runner
+subjects:
+- kind: ServiceAccount
+  name: {{ include "openagentic.fullname" . }}-code-manager
+  namespace: {{ .Release.Namespace }}
+{{- end }}

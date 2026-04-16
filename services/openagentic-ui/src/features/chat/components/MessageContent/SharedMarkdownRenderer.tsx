@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * SharedMarkdownRenderer - SINGLE SOURCE OF TRUTH for markdown rendering
  *
  * This component is used by ALL markdown rendering paths:
@@ -38,7 +22,7 @@
  * - Excel-style professional table styling
  * - Sanitization
  *
- * @copyright 2026 Gnomus.ai
+ * @copyright 2025 Openagentic LLC
  */
 
 import React, { memo, useMemo, useState, useEffect, useRef, useCallback } from 'react';
@@ -398,6 +382,58 @@ const MARKDOWN_THROTTLE_MS = 100;
 // Content length threshold for throttling
 const THROTTLE_CONTENT_LENGTH = 500;
 
+// ─── ReAct stage decorator ────────────────────────────────────────────────
+// Maps a cognitive-loop marker to a tone color. Tones mirror the per-stage
+// category colors used elsewhere in the UI: think=blue (reasoning),
+// act=orange (doing), observe=green (reading tool output),
+// reflect=purple (summarizing), plan=teal (structured intent),
+// verify=amber (validation).
+const REACT_STAGE_TONES: Record<string, { bg: string; fg: string; label: string }> = {
+  THINK:   { bg: 'rgba(33, 150, 243, 0.18)', fg: '#2196f3', label: 'THINK' },
+  ACT:     { bg: 'rgba(255, 152, 0, 0.18)',  fg: '#ff9800', label: 'ACT' },
+  OBSERVE: { bg: 'rgba(63, 185, 80, 0.18)',  fg: '#3fb950', label: 'OBSERVE' },
+  REFLECT: { bg: 'rgba(124, 77, 255, 0.18)', fg: '#7c4dff', label: 'REFLECT' },
+  PLAN:    { bg: 'rgba(0, 188, 212, 0.18)',  fg: '#00bcd4', label: 'PLAN' },
+  VERIFY:  { bg: 'rgba(255, 193, 7, 0.18)',  fg: '#ffc107', label: 'VERIFY' },
+};
+
+const REACT_STAGE_REGEX = new RegExp(
+  `^(\\s*)(${Object.keys(REACT_STAGE_TONES).join('|')}):\\s*(.*)$`,
+);
+
+/**
+ * React renderer for a ReAct stage line. Takes the leading whitespace,
+ * stage name, and remaining text; renders a pill badge + content.
+ * Used inside the `p` component override since react-markdown 9.x escapes
+ * raw HTML by default (no rehype-raw wired up).
+ */
+const ReactStageBadge: React.FC<{ stage: keyof typeof REACT_STAGE_TONES; rest: React.ReactNode }> = ({ stage, rest }) => {
+  const tone = REACT_STAGE_TONES[stage];
+  return (
+    <>
+      <span
+        className={`react-stage react-stage-${stage.toLowerCase()}`}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          padding: '1px 7px',
+          marginRight: 6,
+          borderRadius: 4,
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.4px',
+          background: tone.bg,
+          color: tone.fg,
+          verticalAlign: 'middle',
+        }}
+      >
+        {tone.label}
+      </span>
+      {rest}
+    </>
+  );
+};
+
 /**
  * Fix incomplete markdown constructs during streaming
  * Handles: code fences (``` and ~~~), partial inline backticks,
@@ -546,6 +582,11 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
     result = result.replace(/\\\((.*?)\\\)/g, '$$$1$$');
     // Convert \[ ... \] to $$...$$
     result = result.replace(/\\\[(.*?)\\\]/g, '$$$$$$1$$$$');
+
+    // Note: ReAct stage badges (THINK/ACT/OBSERVE/REFLECT) are rendered
+    // inside the `p` component override below — not via preprocessing —
+    // because react-markdown 9.x escapes raw HTML unless rehype-raw is
+    // wired in, which would change escape semantics across the whole app.
 
     return result;
   }, [throttledContent, isStreaming]);
@@ -967,13 +1008,36 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
           ),
 
           // ================================================================
-          // Enhanced paragraph spacing
+          // Enhanced paragraph spacing.
+          // Also detects ReAct cognitive-loop stage markers at the START
+          // of the paragraph's first text child (THINK/ACT/OBSERVE/REFLECT/
+          // PLAN/VERIFY followed by ":") and renders a small colored pill
+          // before the content. Purely visual — the underlying markdown
+          // text is unchanged. Stops after the first child since stage
+          // markers always appear at line start.
           // ================================================================
-          p: ({ children }) => (
-            <p className="my-3 leading-relaxed">
-              {children}
-            </p>
-          ),
+          p: ({ children }) => {
+            const arr = React.Children.toArray(children);
+            if (arr.length > 0 && typeof arr[0] === 'string') {
+              const m = (arr[0] as string).match(REACT_STAGE_REGEX);
+              if (m) {
+                const [, leadingWs, stage, restOfFirstChild] = m;
+                const stageKey = stage as keyof typeof REACT_STAGE_TONES;
+                const remainingChildren = [restOfFirstChild, ...arr.slice(1)];
+                return (
+                  <p className="my-3 leading-relaxed">
+                    {leadingWs}
+                    <ReactStageBadge stage={stageKey} rest={remainingChildren} />
+                  </p>
+                );
+              }
+            }
+            return (
+              <p className="my-3 leading-relaxed">
+                {children}
+              </p>
+            );
+          },
 
           // ================================================================
           // Strong/bold with subtle color

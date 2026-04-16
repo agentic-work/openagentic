@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * LLM Provider Management API Routes
  *
  * Admin routes for monitoring and managing LLM providers
@@ -539,23 +523,32 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         (async () => {
           try {
             const existingConfig = (dbRecord.provider_config as any) || {};
+            const existingModels: any[] = Array.isArray(existingConfig.models) ? existingConfig.models : [];
             const modelsForDb = deployedModels.map((m: any) => ({
               id: m.id,
               name: m.name || m.id,
               capabilities: m.capabilities || { chat: true, tools: true, streaming: true },
               config: m.config || {},
             }));
+            // MERGE: preserve admin-added entries whose IDs are not in the
+            // fresh discovery set (Bedrock's ListFoundationModels only
+            // returns ON_DEMAND entries and omits inference-profile models
+            // like anthropic.claude-sonnet-4-6; admins add those manually
+            // and we must not wipe them on every Registry tab open).
+            const discoveredIds = new Set(modelsForDb.map(m => m.id));
+            const adminAdded = existingModels.filter(m => m?.id && !discoveredIds.has(m.id));
+            const mergedModels = [...modelsForDb, ...adminAdded];
             await prisma.lLMProvider.update({
               where: { id: dbRecord.id },
               data: {
                 provider_config: {
                   ...existingConfig,
-                  models: modelsForDb,
+                  models: mergedModels,
                   lastDiscoveryAt: new Date().toISOString(),
                 },
               },
             });
-            logger.info({ provider: dbRecord.name, modelCount: modelsForDb.length }, 'Persisted discovered models to DB');
+            logger.info({ provider: dbRecord.name, modelCount: mergedModels.length, adminAdded: adminAdded.length }, 'Persisted discovered + admin-added models to DB');
           } catch (persistErr) {
             logger.warn({ error: persistErr, provider: dbRecord.name }, 'Failed to persist discovered models (non-fatal)');
           }
@@ -1490,6 +1483,18 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         enabled?: boolean;
         roles?: string[];
       };
+      /**
+       * Azure AI Foundry: when present, the admin backend will PUT a
+       * CognitiveServices deployment with these parameters before the
+       * DB write. Required for AIF models that aren't already deployed.
+       */
+      deployment?: {
+        modelName: string;
+        modelVersion: string;
+        modelFormat?: string;
+        sku?: string;
+        capacity?: number;
+      };
     };
   }>('/llm-providers/:providerId/models', async (request, reply) => {
     try {
@@ -1506,6 +1511,38 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
 
       if (!provider) {
           return reply.code(404).send({ error: 'Provider not found', message: `Provider '${providerId}' not found` });
+      }
+
+      // Azure AI Foundry: if caller supplied deployment{ modelName,modelVersion,... }
+      // in the body, ensure the Azure CognitiveServices deployment exists BEFORE
+      // the DB write so the background ARM-discovery sync (which treats Azure as
+      // authoritative) doesn't prune the row. Callers that don't need provisioning
+      // (model is already deployed) simply omit the field. The dedicated
+      // /deploy-model endpoint remains the primary path used by the UI; this
+      // branch is a safety net for clients that POST /models directly.
+      if (provider.provider_type === 'azure-ai-foundry' && providerManager) {
+        const meta = (request.body as any)?.deployment;
+        if (meta && meta.modelVersion) {
+          try {
+            const providerInstance: any = providerManager.getProvider(provider.name);
+            if (providerInstance?.ensureArmDeployment) {
+              await providerInstance.ensureArmDeployment({
+                deploymentName: modelId,
+                modelName: meta.modelName || modelId,
+                modelVersion: meta.modelVersion,
+                modelFormat: meta.modelFormat || 'OpenAI',
+                sku: meta.sku || 'GlobalStandard',
+                capacity: meta.capacity ?? 1,
+              });
+            }
+          } catch (err: any) {
+            logger.error({ err: err?.message, modelId, providerId }, '[admin] ensureArmDeployment failed — aborting add');
+            return reply.code(502).send({
+              error: 'Azure deployment create failed',
+              message: err?.message || String(err),
+            });
+          }
+        }
       }
 
       const providerConfig = (provider.provider_config as any) || {};

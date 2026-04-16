@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * WorkflowExecutionEngine
  *
  * Executes workflow graphs by traversing nodes and edges.
@@ -240,13 +224,13 @@ export class WorkflowExecutionEngine extends EventEmitter {
     return this.context.authToken ? { 'Authorization': this.context.authToken } : {};
   }
 
-  /** Auth headers for openagentic-proxy (uses its own internal key + X-Openagentic-Proxy flag) */
+  /** Auth headers for openagentic-proxy (uses its own internal key + X-Agent-Proxy flag) */
   private getOpenAgenticProxyAuthHeaders(): Record<string, string> {
     const agentKey = process.env.OPENAGENTIC_PROXY_INTERNAL_KEY;
     if (agentKey) {
       return {
         'Authorization': `Bearer ${agentKey}`,
-        'X-Openagentic-Proxy': 'true',
+        'X-Agent-Proxy': 'true',
         'X-User-Id': this.context.userId || 'workflow-engine',
       };
     }
@@ -1068,7 +1052,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       case 'agent_spawn':
       case 'a2a':
         return this.executeAgentSpawnNode(node, input);
-      // Openagentic-Proxy nodes
+      // Agent-Proxy nodes
       case 'agent_single':
         return this.executeOpenAgenticProxyNode(node, input, 'parallel');
       case 'agent_pool':
@@ -1944,7 +1928,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     });
 
     const info = await transport.sendMail({
-      from: smtpUser || process.env.SMTP_USER || 'noreply@openagentics.io',
+      from: smtpUser || process.env.SMTP_USER || 'noreply@openagentic.io',
       to: resolvedTo,
       cc: cc ? this.interpolateTemplate(cc, input) : undefined,
       subject: resolvedSubject,
@@ -3247,12 +3231,12 @@ export class WorkflowExecutionEngine extends EventEmitter {
         return agentResult;
       }
 
-      // Openagentic-proxy not available — fallback to LLM completion
+      // Agent-proxy not available — fallback to LLM completion
       logger.warn({
         nodeId: node.id,
         status: executeResponse.status,
         error: executeResponse.data?.error,
-      }, '[WorkflowEngine] Openagentic-proxy unavailable, falling back to LLM completion');
+      }, '[WorkflowEngine] Agent-proxy unavailable, falling back to LLM completion');
 
       return this.agentSpawnFallbackLLM(node, resolvedTask, input, agentRole);
 
@@ -3261,7 +3245,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       logger.warn({
         nodeId: node.id,
         error: error.message,
-      }, '[WorkflowEngine] Openagentic-proxy call failed, falling back to LLM completion');
+      }, '[WorkflowEngine] Agent-proxy call failed, falling back to LLM completion');
 
       return this.agentSpawnFallbackLLM(node, resolvedTask, input, agentRole);
     }
@@ -3269,7 +3253,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
 
   /**
    * Record a flow-triggered agent execution to the DB for observability.
-   * Openagentic-proxy only records Prometheus metrics — this fills the gap so
+   * Agent-proxy only records Prometheus metrics — this fills the gap so
    * the Agent Execution Dashboard shows flow-spawned agents too.
    */
   private recordFlowAgentExecution(
@@ -3290,7 +3274,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
             session_id: this.context.executionId,
             user_id: this.context.userId,
             status,
-            model_used: 'auto', // Openagentic-proxy resolved the model
+            model_used: 'auto', // Agent-proxy resolved the model
             duration_ms: durationMs,
             input_tokens: metrics?.inputTokens || 0,
             output_tokens: metrics?.outputTokens || 0,
@@ -3786,7 +3770,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       };
     } catch (error: any) {
       // Fallback: direct LLM calls if openagentic-proxy is unavailable
-      logger.warn({ nodeId: node.id, error: error.message }, '[WorkflowEngine] Openagentic-proxy unavailable for multi_agent, falling back to direct LLM');
+      logger.warn({ nodeId: node.id, error: error.message }, '[WorkflowEngine] Agent-proxy unavailable for multi_agent, falling back to direct LLM');
 
       const results: any[] = [];
       for (let i = 0; i < agentSpecs.length; i += maxConcurrency) {
@@ -4007,7 +3991,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
   }
 
   /**
-   * Execute an Openagentic-Proxy node -- delegates to openagentic-proxy service for orchestrated agent execution
+   * Execute an Agent-Proxy node -- delegates to openagentic-proxy service for orchestrated agent execution
    */
   private async executeOpenAgenticProxyNode(
     node: WorkflowNode,
@@ -4122,9 +4106,9 @@ export class WorkflowExecutionEngine extends EventEmitter {
           Date.now() - startTime, undefined, (error as Error).message);
       }
       if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-        throw new Error(`Openagentic-proxy service is not reachable at ${openagenticProxyUrl}. Ensure the openagentic-proxy deployment is running.`);
+        throw new Error(`Agent-proxy service is not reachable at ${openagenticProxyUrl}. Ensure the openagentic-proxy deployment is running.`);
       }
-      throw new Error(`Openagentic-proxy execution failed: ${error.response?.data?.error || error.message}`);
+      throw new Error(`Agent-proxy execution failed: ${error.response?.data?.error || error.message}`);
     }
   }
 

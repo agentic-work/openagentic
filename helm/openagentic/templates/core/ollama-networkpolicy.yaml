@@ -1,0 +1,113 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.ollama.enabled (.Values.ollama.networkPolicy).enabled }}
+# ===================================================================================================
+# OLLAMA NETWORK POLICY
+# ===================================================================================================
+# Restricts network access for security:
+# - Ingress: Only from API and Code Manager pods
+# - Egress: DNS only (Ollama serves local models, no outbound needed)
+#
+# NOTE: If Ollama needs to pull models at runtime (not via init container),
+# add external HTTPS egress rule for registry.ollama.ai
+# ===================================================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "openagentic.fullname" . }}-ollama
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ollama
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from API
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: api
+      ports:
+        - protocol: TCP
+          port: 11434
+    # Allow from Code Manager
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: code-manager
+      ports:
+        - protocol: TCP
+          port: 11434
+    # Allow from MCP Proxy (for tool-based LLM calls)
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: mcp-proxy
+      ports:
+        - protocol: TCP
+          port: 11434
+    # Allow from runner pods (openagentic-exec direct LLM calls)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: runner
+              app.kubernetes.io/managed-by: openagentic-manager
+      ports:
+        - protocol: TCP
+          port: 11434
+    # Allow from Agent Proxy (multi-agent orchestration)
+    {{- if .Values.openagenticProxy.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: openagentic-proxy
+      ports:
+        - protocol: TCP
+          port: 11434
+    {{- end }}
+    # Allow from Workflow Service (direct Ollama calls)
+    {{- if .Values.workflows.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: workflows
+      ports:
+        - protocol: TCP
+          port: 11434
+    {{- end }}
+  egress:
+    # DNS
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- if (.Values.ollama.networkPolicy).allowModelPull }}
+    # External HTTPS (for model downloads from registry.ollama.ai)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+    {{- end }}
+{{- end }}

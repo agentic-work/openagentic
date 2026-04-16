@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * UserMemoryService — Unified memory read/write for adaptive user context.
  *
  * Read path (getContext): sync, <100ms target
@@ -102,6 +86,11 @@ export class UserMemoryService {
    */
   async getContext(userId: string, query: string, tokenBudget?: number): Promise<string> {
     const budget = tokenBudget || 1000;
+    // Reserve up to 40% of budget for always-inject (durable identifier
+    // mappings); cap at 400 tokens absolute. Semantic retrieval fills the
+    // rest. See sprightly-percolating-brook plan, Project A.3.
+    const alwaysBudget = Math.min(400, Math.floor(budget * 0.4));
+    const semanticBudget = budget - alwaysBudget;
     const startTime = Date.now();
 
     try {
@@ -117,7 +106,30 @@ export class UserMemoryService {
         } catch { /* cache miss, continue */ }
       }
 
-      // 2. Gather entries from multiple sources
+      // 2. Fetch ALWAYS-INJECT memories first — these bypass semantic
+      // scoring and are rendered verbatim. Durable identifier mappings
+      // the LLM must see every turn regardless of topic similarity.
+      // Query is cheap (indexed on user_id+injection_mode).
+      const alwaysEntries: Array<{ id: string; content: string; importance: number; created_at: Date; source: string }> = [];
+      try {
+        const rows = await (this.prisma as any).userMemoryEntry.findMany({
+          where: { user_id: userId, injection_mode: 'always' },
+          orderBy: { importance: 'desc' },
+          take: 20, // hard cap — more than this and the user is misusing the mode
+          select: {
+            id: true,
+            content: true,
+            importance: true,
+            created_at: true,
+            source: true,
+          },
+        });
+        for (const r of rows) alwaysEntries.push(r);
+      } catch (err: any) {
+        this.logger.warn({ error: err.message }, 'Always-inject memory lookup failed');
+      }
+
+      // 3. Gather semantic + recency entries from multiple sources (existing flow)
       const entries: MemoryEntry[] = [];
 
       // 2a. Milvus semantic search (if available)
@@ -157,10 +169,12 @@ export class UserMemoryService {
         }
       }
 
-      // 2b. PG recency-based entries
+      // 3b. PG recency-based entries — exclude always-inject rows since
+      // those were already fetched in step 2 and will render in their own
+      // section.
       try {
         const pgEntries = await (this.prisma as any).userMemoryEntry.findMany({
-          where: { user_id: userId },
+          where: { user_id: userId, injection_mode: 'semantic' },
           orderBy: { created_at: 'desc' },
           take: 10,
           select: {
@@ -211,20 +225,40 @@ export class UserMemoryService {
       } catch { /* no profile yet */ }
 
       // 5. Format entries
-      if (entries.length === 0 && !profileBlock) {
+      if (entries.length === 0 && alwaysEntries.length === 0 && !profileBlock) {
         return '';
       }
 
       const sections: string[] = [];
       if (profileBlock) sections.push(profileBlock);
 
+      // 5a. Persistent context — always-inject memories render first, in
+      // their own section, with their own budget. These are durable
+      // identifier mappings the LLM must see regardless of the current
+      // query's topic. Capped so a runaway "always" tag can't starve the
+      // semantic budget.
+      if (alwaysEntries.length > 0) {
+        const persistentLines: string[] = ['## Persistent Context'];
+        let alwaysTokens = estimateTokens(persistentLines[0]);
+        for (const e of alwaysEntries) {
+          const line = `- ${e.content}`;
+          const lineTokens = estimateTokens(line);
+          if (alwaysTokens + lineTokens > alwaysBudget) break;
+          persistentLines.push(line);
+          alwaysTokens += lineTokens;
+        }
+        if (persistentLines.length > 1) sections.push(persistentLines.join('\n'));
+      }
+
+      // 5b. Your Recent Activity — semantic + recency entries, bounded by
+      // the remaining (semantic) budget.
       if (entries.length > 0) {
         sections.push('## Your Recent Activity');
         let tokenCount = estimateTokens(profileBlock);
         for (const entry of entries) {
           const line = `- [${entry.source}] ${entry.content}`;
           const lineTokens = estimateTokens(line);
-          if (tokenCount + lineTokens > budget) break;
+          if (tokenCount + lineTokens > semanticBudget) break;
           sections.push(line);
           tokenCount += lineTokens;
         }
@@ -240,6 +274,7 @@ export class UserMemoryService {
       this.logger.info({
         userId,
         entries: entries.length,
+        alwaysInject: alwaysEntries.length,
         hasProfile: !!profileBlock,
         ms: Date.now() - startTime,
       }, 'Memory context assembled');
@@ -253,13 +288,32 @@ export class UserMemoryService {
   }
 
   /**
-   * ASYNC WRITE PATH — fire-and-forget from callers
+   * ASYNC WRITE PATH — fire-and-forget from callers.
+   *
+   * `injectionMode` controls retrieval behavior:
+   *   'semantic' (default) — retrieved by similarity to current query.
+   *   'always'             — prepended verbatim to every <user_memory>
+   *                          block regardless of current query. Reserve
+   *                          for durable identifier mappings.
+   *                          See sprightly-percolating-brook plan, Project A.3.
    */
-  async ingest(userId: string, source: string, sourceId: string | undefined, content: string, importance: number = 0.5): Promise<void> {
-    // Skip rules
-    if (!content || content.length < 30) return;
-    const lower = content.toLowerCase();
-    if (lower.includes('health check') || lower.startsWith('list ') || lower === 'hi' || lower === 'hello') return;
+  async ingest(
+    userId: string,
+    source: string,
+    sourceId: string | undefined,
+    content: string,
+    importance: number = 0.5,
+    injectionMode: 'semantic' | 'always' = 'semantic',
+  ): Promise<void> {
+    // Skip rules — don't auto-ingest trivial utterances as semantic memory.
+    // Always-inject memories bypass these rules since they're explicit.
+    if (injectionMode === 'semantic') {
+      if (!content || content.length < 30) return;
+      const lower = content.toLowerCase();
+      if (lower.includes('health check') || lower.startsWith('list ') || lower === 'hi' || lower === 'hello') return;
+    } else {
+      if (!content) return;
+    }
 
     try {
       // 1. Extract simple topics
@@ -281,6 +335,7 @@ export class UserMemoryService {
           importance,
           topics,
           token_count: tokenCount,
+          injection_mode: injectionMode,
         },
       });
 

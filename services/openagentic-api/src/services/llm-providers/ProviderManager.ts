@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * LLM Provider Manager
  *
  * Central service for managing multiple LLM providers (Azure OpenAI, AWS Bedrock, Google Vertex AI)
@@ -820,6 +804,33 @@ export class ProviderManager {
       return this.modelToProviderMap.get(modelWithoutVersion)!;
     }
 
+    // Alias resolution — bare canonical names like "claude-sonnet-4-6"
+    // map to Bedrock-registered "anthropic.claude-sonnet-4-6". Without this,
+    // a request silently routes to the platform default (gpt-oss) instead.
+    // Also handle version suffixes (-v1, -v1:0) that Bedrock appends to some
+    // Anthropic deployments.
+    for (const prefix of ['anthropic.', 'us.anthropic.']) {
+      if (modelLower.startsWith(prefix)) continue;
+      for (const suffix of ['', '-v1', '-v1:0']) {
+        const aliased = prefix + modelLower + suffix;
+        if (this.modelToProviderMap.has(aliased)) {
+          this.logger.info({
+            originalModel: model,
+            aliasedModel: aliased,
+          }, '[ProviderManager] Matched model via alias prefix');
+          return this.modelToProviderMap.get(aliased)!;
+        }
+      }
+    }
+    // Last-resort fuzzy: a registered entry whose stripped form matches.
+    for (const [key, provider] of this.modelToProviderMap.entries()) {
+      const stripped = key.replace(/^(us\.)?anthropic\./, '');
+      if (stripped === modelLower || stripped.startsWith(modelLower + '-v')) {
+        this.logger.info({ originalModel: model, fuzzyMatch: key }, '[ProviderManager] Matched model via fuzzy lookup');
+        return provider;
+      }
+    }
+
     // ── 2. Live-discovered capability lookup ────────────────────────────────
     // Each enabled provider runs discoverModels() during init/reload and
     // populates discoveredCapabilities. This catches models that are
@@ -875,6 +886,57 @@ export class ProviderManager {
    */
   public getProviderForModel(model: string): string | null {
     return this.detectProviderForModel(model);
+  }
+
+  /**
+   * Return the canonical (registered) model id for an input that may be a
+   * bare alias. E.g. "claude-sonnet-4-6" → "anthropic.claude-sonnet-4-6".
+   * Returns the input unchanged when no alias is needed (or when no provider
+   * matches — caller is expected to error out separately).
+   *
+   * Without this, downstream provider SDKs receive the bare alias and fail
+   * (e.g. Bedrock: "The provided model identifier is invalid"). Routing alone
+   * isn't enough — the request body must carry the canonical id too.
+   */
+  public resolveModelAlias(model: string): string {
+    if (!model) return model;
+    const modelLower = model.toLowerCase();
+    if (this.modelToProviderMap.has(modelLower)) return model;
+
+    // Try common prefix aliases first (exact match after prefix).
+    for (const prefix of ['anthropic.', 'us.anthropic.']) {
+      if (modelLower.startsWith(prefix)) continue;
+      const aliased = prefix + modelLower;
+      if (this.modelToProviderMap.has(aliased)) return aliased;
+    }
+
+    // Try prefix + model + common Bedrock version suffixes. Different Anthropic
+    // models carry different suffix conventions in Bedrock:
+    //   anthropic.claude-sonnet-4-6            (no suffix)
+    //   anthropic.claude-opus-4-6-v1           (-v1)
+    //   anthropic.claude-haiku-4-5-20251001-v1:0  (-v1:0)
+    // CLI/SDK consumers send the bare canonical name and expect the API to
+    // resolve it. Walk the modelToProviderMap keys for anything that ENDS WITH
+    // the requested name under a known prefix; if unambiguous, return it.
+    const suffixes = ['', '-v1', '-v1:0'];
+    for (const prefix of ['anthropic.', 'us.anthropic.']) {
+      for (const suffix of suffixes) {
+        if (!suffix) continue; // already tried above
+        const aliased = prefix + modelLower + suffix;
+        if (this.modelToProviderMap.has(aliased)) return aliased;
+      }
+    }
+
+    // Fuzzy: find any registered model that ends with the requested name
+    // (after dropping a leading provider prefix). Pick the first match.
+    for (const key of this.modelToProviderMap.keys()) {
+      const stripped = key.replace(/^(us\.)?anthropic\./, '');
+      if (stripped === modelLower) return key;
+      // Handle version-suffixed registered ids: anthropic.<model>-v1[:0]
+      if (stripped.startsWith(modelLower + '-v')) return key;
+    }
+
+    return model;
   }
 
   /**

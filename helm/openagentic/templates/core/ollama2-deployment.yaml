@@ -1,0 +1,132 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if .Values.ollama2.enabled }}
+{{- $gpuEnabled := and .Values.gpu.enabled .Values.ollama2.gpu.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openagentic.fullname" . }}-ollama2
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama2
+  annotations:
+    openagentic.io/gpu-enabled: {{ $gpuEnabled | quote }}
+    openagentic.io/gpu-device: {{ .Values.ollama2.gpu.deviceId | default "1" | quote }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ollama2
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ .Values.ollama2 | toYaml | sha256sum }}
+        openagentic.io/gpu-enabled: {{ $gpuEnabled | quote }}
+      labels:
+        {{- include "openagentic.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: ollama2
+    spec:
+      {{- $nodeSelector := .Values.ollama2.nodeSelector }}
+      {{- if $gpuEnabled }}
+      {{- $nodeSelector = merge (default dict .Values.ollama2.nodeSelector) (default dict .Values.gpu.nodeSelector) }}
+      {{- end }}
+      {{- with $nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ollama2.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- $tolerations := .Values.ollama2.tolerations }}
+      {{- if $gpuEnabled }}
+      {{- $tolerations = concat (default list .Values.ollama2.tolerations) (default list .Values.gpu.tolerations) }}
+      {{- end }}
+      {{- with $tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "openagentic.serviceAccountName" . }}
+      containers:
+        - name: ollama
+          image: {{ .Values.ollama2.image.repository }}:{{ .Values.ollama2.image.tag | default "latest" }}
+          imagePullPolicy: {{ .Values.ollama2.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 11434
+              protocol: TCP
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0:11434"
+            {{- if .Values.ollama2.env.OLLAMA_KEEP_ALIVE }}
+            - name: OLLAMA_KEEP_ALIVE
+              value: {{ .Values.ollama2.env.OLLAMA_KEEP_ALIVE | quote }}
+            {{- end }}
+            {{- if .Values.ollama2.env.OLLAMA_NUM_PARALLEL }}
+            - name: OLLAMA_NUM_PARALLEL
+              value: {{ .Values.ollama2.env.OLLAMA_NUM_PARALLEL | quote }}
+            {{- end }}
+            {{- if .Values.ollama2.env.OLLAMA_MAX_LOADED_MODELS }}
+            - name: OLLAMA_MAX_LOADED_MODELS
+              value: {{ .Values.ollama2.env.OLLAMA_MAX_LOADED_MODELS | quote }}
+            {{- end }}
+            - name: OLLAMA_NUM_GPU
+              {{- if $gpuEnabled }}
+              value: {{ .Values.ollama2.gpu.count | default "1" | quote }}
+              {{- else }}
+              value: "0"
+              {{- end }}
+            {{- if and $gpuEnabled .Values.ollama2.gpu.deviceId }}
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: {{ .Values.ollama2.gpu.deviceId | quote }}
+            {{- end }}
+            {{- if .Values.ollama2.env.OLLAMA_DEBUG }}
+            - name: OLLAMA_DEBUG
+              value: {{ .Values.ollama2.env.OLLAMA_DEBUG | quote }}
+            {{- end }}
+          volumeMounts:
+            - name: ollama-data
+              mountPath: /root/.ollama
+          livenessProbe:
+            httpGet:
+              path: /api/tags
+              port: http
+            initialDelaySeconds: {{ .Values.ollama2.livenessProbe.initialDelaySeconds | default 60 }}
+            periodSeconds: {{ .Values.ollama2.livenessProbe.periodSeconds | default 30 }}
+            timeoutSeconds: {{ .Values.ollama2.livenessProbe.timeoutSeconds | default 10 }}
+            failureThreshold: {{ .Values.ollama2.livenessProbe.failureThreshold | default 3 }}
+          readinessProbe:
+            httpGet:
+              path: /api/tags
+              port: http
+            initialDelaySeconds: {{ .Values.ollama2.readinessProbe.initialDelaySeconds | default 30 }}
+            periodSeconds: {{ .Values.ollama2.readinessProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.ollama2.readinessProbe.timeoutSeconds | default 5 }}
+            failureThreshold: {{ .Values.ollama2.readinessProbe.failureThreshold | default 3 }}
+          resources:
+            {{- if $gpuEnabled }}
+            limits:
+              {{- if .Values.ollama2.resources.limits }}
+              {{- toYaml .Values.ollama2.resources.limits | nindent 14 }}
+              {{- end }}
+              nvidia.com/gpu: {{ .Values.ollama2.gpu.count | default 1 | quote }}
+            requests:
+              {{- if .Values.ollama2.resources.requests }}
+              {{- toYaml .Values.ollama2.resources.requests | nindent 14 }}
+              {{- end }}
+              nvidia.com/gpu: {{ .Values.ollama2.gpu.count | default 1 | quote }}
+            {{- else }}
+            {{- toYaml .Values.ollama2.resources | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: ollama-data
+          {{- if .Values.ollama2.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ printf "%s-ollama2" (include "openagentic.fullname" .) }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+{{- end }}

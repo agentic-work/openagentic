@@ -1,0 +1,74 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.codeManager.enabled .Values.codeManager.autoscaling.enabled }}
+# ===================================================================================================
+# OPENAGENTIC MANAGER HORIZONTAL POD AUTOSCALER
+# ===================================================================================================
+# Automatically scales the code-manager deployment based on CPU/memory usage.
+#
+# SCALING CONSIDERATIONS:
+#   - Each pod can handle maxSessionsPerPod sessions (default: 50)
+#   - Sessions are stateful - sticky sessions or Redis session state required
+#   - Scale-down is configured conservatively to avoid disrupting active sessions
+#   - Uses custom metrics if available for more accurate scaling decisions
+#
+# REQUIREMENTS FOR SCALING:
+#   - metrics-server must be installed in the cluster
+#   - Session affinity (sticky sessions) should be enabled at ingress level
+#   - OR Redis session state backend should be enabled for pod failover
+# ===================================================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "openagentic.fullname" . }}-code-manager
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: code-manager
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "openagentic.fullname" . }}-code-manager
+  minReplicas: {{ .Values.codeManager.autoscaling.minReplicas | default 2 }}
+  maxReplicas: {{ .Values.codeManager.autoscaling.maxReplicas | default 20 }}
+  metrics:
+    {{- if .Values.codeManager.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.codeManager.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.codeManager.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.codeManager.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+  {{- if .Values.codeManager.autoscaling.behavior }}
+  behavior:
+    {{- if .Values.codeManager.autoscaling.behavior.scaleDown }}
+    scaleDown:
+      {{- if .Values.codeManager.autoscaling.behavior.scaleDown.stabilizationWindowSeconds }}
+      stabilizationWindowSeconds: {{ .Values.codeManager.autoscaling.behavior.scaleDown.stabilizationWindowSeconds }}
+      {{- end }}
+      {{- if .Values.codeManager.autoscaling.behavior.scaleDown.policies }}
+      policies:
+        {{- toYaml .Values.codeManager.autoscaling.behavior.scaleDown.policies | nindent 8 }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.codeManager.autoscaling.behavior.scaleUp }}
+    scaleUp:
+      {{- if .Values.codeManager.autoscaling.behavior.scaleUp.stabilizationWindowSeconds }}
+      stabilizationWindowSeconds: {{ .Values.codeManager.autoscaling.behavior.scaleUp.stabilizationWindowSeconds }}
+      {{- end }}
+      {{- if .Values.codeManager.autoscaling.behavior.scaleUp.policies }}
+      policies:
+        {{- toYaml .Values.codeManager.autoscaling.behavior.scaleUp.policies | nindent 8 }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}

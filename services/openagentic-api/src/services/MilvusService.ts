@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Milvus Vector Database Service
  * 
  * Provides comprehensive vector database operations using Milvus for storing and
@@ -29,7 +13,7 @@
  * - Collection statistics and health monitoring
  * - Flexible metadata storage with JSON support
  * 
- * @see {@link https://docs.openagentics.io/api/services/milvus | Milvus Vector Database Documentation}
+ * @see {@link https://docs.openagentic.io/api/services/milvus | Milvus Vector Database Documentation}
  */
 
 import { MilvusClient, DataType, ConsistencyLevelEnum } from '@zilliz/milvus2-sdk-node';

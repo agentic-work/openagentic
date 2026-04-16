@@ -1,0 +1,22 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if .Values.searxng.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openagentic.fullname" . }}-searxng
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: searxng
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.searxng.service.port | default 8080 }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openagentic.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: searxng
+{{- end }}

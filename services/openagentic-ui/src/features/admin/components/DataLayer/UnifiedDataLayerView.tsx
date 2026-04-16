@@ -1,17 +1,19 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * UnifiedDataLayerView - Unified Data Layer Management Panel
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Replaces separate Redis/Cache and Milvus/Vectors sections with ONE unified
+ * data layer management panel covering all three caching tiers:
+ *   L1 - Redis (in-memory cache)
+ *   L2 - pgvector (local ACID cache)
+ *   L3 - Milvus (vector semantic cache)
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Three tabs:
+ *   1. Cache Overview - Unified view of all caching layers
+ *   2. Vector Collections - Attu-like management for all vector stores
+ *   3. Diagnostics - Health & performance monitoring
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';

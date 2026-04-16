@@ -1,0 +1,179 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+---
+# Kubernetes Job to test AWS Bedrock via CDC proxy
+#
+# Usage:
+#   1. Create the secret with AWS credentials:
+#      kubectl create secret generic aws-bedrock-test-creds \
+#        --from-literal=AWS_ACCESS_KEY_ID=your-key \
+#        --from-literal=AWS_SECRET_ACCESS_KEY=your-secret \
+#        -n openagentic
+#
+#   2. Apply this job:
+#      kubectl apply -f k8s-bedrock-test-job.yaml
+#
+#   3. Watch logs:
+#      kubectl logs -f job/bedrock-cdc-proxy-test -n openagentic
+#
+#   4. Cleanup:
+#      kubectl delete job bedrock-cdc-proxy-test -n openagentic
+#      kubectl delete secret aws-bedrock-test-creds -n openagentic
+#
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: bedrock-cdc-proxy-test
+  namespace: openagentic
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: bedrock-test
+        image: python:3.11-slim
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: aws-bedrock-test-creds
+              key: AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aws-bedrock-test-creds
+              key: AWS_SECRET_ACCESS_KEY
+        - name: AWS_REGION
+          value: "us-east-1"
+        - name: CDC_BEDROCK_ENDPOINT
+          value: "https://bedrock-dev.cdc.gov"
+        # Skip SSL verification for CDC's internal CA (or mount CDC CA cert)
+        - name: AWS_CA_BUNDLE
+          value: ""
+        - name: CURL_CA_BUNDLE
+          value: ""
+        - name: REQUESTS_CA_BUNDLE
+          value: ""
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          echo "=============================================="
+          echo "CDC Bedrock Proxy Test"
+          echo "=============================================="
+          echo ""
+          echo "Endpoint: $CDC_BEDROCK_ENDPOINT"
+          echo "Region:   $AWS_REGION"
+          echo ""
+
+          # Install dependencies
+          echo "Installing dependencies..."
+          pip install -q boto3 urllib3
+
+          # Run test
+          python3 << 'PYTHON_SCRIPT'
+          import os
+          import json
+          import ssl
+          import socket
+          import urllib3
+
+          # Disable SSL warnings for CDC internal CA
+          urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+          # Configuration
+          ENDPOINT = os.environ.get('CDC_BEDROCK_ENDPOINT', 'https://bedrock-dev.cdc.gov')
+          REGION = os.environ.get('AWS_REGION', 'us-east-1')
+
+          MODELS = [
+              "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+              "us.anthropic.claude-sonnet-4-6",
+              "us.anthropic.claude-opus-4-6-v1",
+          ]
+
+          print("\n[Test 1] DNS Resolution")
+          print("-" * 40)
+          hostname = ENDPOINT.replace("https://", "").split("/")[0]
+          try:
+              ips = socket.gethostbyname_ex(hostname)[2]
+              print(f"  PASS: {hostname} -> {ips}")
+          except Exception as e:
+              print(f"  FAIL: {e}")
+
+          print("\n[Test 2] SSL Certificate")
+          print("-" * 40)
+          try:
+              context = ssl.create_default_context()
+              with socket.create_connection((hostname, 443), timeout=10) as sock:
+                  with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+                      cert = ssock.getpeercert()
+                      subject = dict(x[0] for x in cert.get('subject', []))
+                      print(f"  PASS: Valid cert for {subject.get('commonName', 'N/A')}")
+          except ssl.SSLCertVerificationError as e:
+              print(f"  WARN: CDC internal CA not trusted (expected)")
+              print(f"        {e}")
+          except Exception as e:
+              print(f"  FAIL: {e}")
+
+          print("\n[Test 3] Bedrock API Invocation")
+          print("-" * 40)
+
+          # Import boto3 after other tests
+          import boto3
+          from botocore.config import Config
+
+          # Configure to skip SSL verification for CDC CA
+          import botocore.httpsession
+          original_init = botocore.httpsession.URLLib3Session.__init__
+          def patched_init(self, *args, **kwargs):
+              kwargs['verify'] = False
+              return original_init(self, *args, **kwargs)
+          botocore.httpsession.URLLib3Session.__init__ = patched_init
+
+          config = Config(
+              region_name=REGION,
+              retries={'max_attempts': 1}
+          )
+
+          client = boto3.client(
+              'bedrock-runtime',
+              region_name=REGION,
+              endpoint_url=ENDPOINT,
+              config=config,
+              verify=False
+          )
+
+          for model_id in MODELS:
+              print(f"\n  Testing: {model_id}")
+              try:
+                  payload = {
+                      "anthropic_version": "bedrock-2023-05-31",
+                      "max_tokens": 50,
+                      "messages": [{"role": "user", "content": "Say hello"}]
+                  }
+                  response = client.invoke_model(
+                      modelId=model_id,
+                      contentType='application/json',
+                      accept='application/json',
+                      body=json.dumps(payload)
+                  )
+                  body = json.loads(response['body'].read())
+                  text = body.get('content', [{}])[0].get('text', 'N/A')[:50]
+                  print(f"    PASS: Response: {text}...")
+              except Exception as e:
+                  print(f"    FAIL: {e}")
+
+          print("\n" + "=" * 46)
+          print("Test Complete")
+          print("=" * 46)
+          PYTHON_SCRIPT
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

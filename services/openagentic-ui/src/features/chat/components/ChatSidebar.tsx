@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Chat Sidebar Component
  * Navigation sidebar for session management and user controls
  * Features: Session list, new chat creation, session deletion, user menu, theme toggle
@@ -39,6 +23,7 @@ import { FlowsSidebar } from '@/features/workflows/components/FlowsSidebar';
 import type { WorkflowTemplateItem } from '@/features/workflows/utils/workflowTemplates';
 import { MemoryPanel } from './MemoryPanel';
 import { ToolUsagePanel } from './ToolUsagePanel';
+import { CodeSessionsPanel } from './CodeSessionsPanel';
 
 /**
  * Format timestamp for display with relative time for recent updates
@@ -414,7 +399,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
         {/* Content Area - Different based on mode */}
         {appMode === 'code' && canUseCodeMode ? (
-          /* CODE MODE: no file sidebar — VS Code editor panel handles files */
+          /* CODE MODE: single continuous session with auto-compaction.
+             Sessions list removed — claude.ai/code shows one session. */
           <div className="flex-1" />
         ) : appMode === 'flows' && canUseFlows ? (
           /* FLOWS MODE: Show workflow sidebar with agents, workflows, templates

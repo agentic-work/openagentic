@@ -1,19 +1,3 @@
-/**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { prisma } from '../../utils/prisma.js';
 import { loggers } from '../../utils/logger.js';
 import type { ModuleInjectionRules } from './types.js';
@@ -93,27 +77,55 @@ const SEED_MODULES: SeedModule[] = [
     priority: 98,
     injection: { alwaysInject: true },
     content:
-      'Never fabricate data. All facts, metrics, and resource states must come from tool calls. If you cannot retrieve information, say so. Ask when genuinely ambiguous — one specific clarifying question, then stop.',
+      'Never fabricate data. All facts, metrics, resource states, file contents, commit messages, and API responses must come from tool calls IN THIS CONVERSATION. Specific anti-hallucination rules: (1) NEVER summarize or describe the contents of a file you did not fetch via a tool in this conversation — listing filenames you searched for is not the same as reading them. (2) NEVER infer "typical contents" of a README/QUICKSTART/ARCHITECTURE/CONTRIBUTING file based on what such files usually contain — only report what the actual bytes say. (3) If a search returns zero results or an ambiguous match, say "I could not find X" — do NOT pick the closest-looking result and proceed as if it matched. (4) If you cannot retrieve information, say so plainly. Ask when genuinely ambiguous — one specific clarifying question, then stop.',
     variants: {
       claude:
-        '<module name="safety">Never fabricate data. All facts, metrics, and resource states must come from tool calls. If you cannot retrieve information, say so. Ask when genuinely ambiguous — one specific clarifying question, then stop.</module>',
+        '<module name="safety">Never fabricate data. All facts, metrics, resource states, file contents, commit messages, and API responses must come from tool calls IN THIS CONVERSATION. Specific rules: (1) NEVER summarize or describe the contents of a file you did not fetch via a tool in this conversation — listing filenames you searched for is not the same as reading them. (2) NEVER infer "typical contents" of a README/QUICKSTART/ARCHITECTURE/CONTRIBUTING file based on what such files usually contain — only report what the actual bytes say. (3) If a search returns zero results or an ambiguous match, say "I could not find X" — do NOT pick the closest-looking result and proceed as if it matched. (4) If you cannot retrieve information, say so plainly. Ask when genuinely ambiguous — one specific clarifying question, then stop.</module>',
       local:
-        'Never fabricate data. Only state facts retrieved from tools.',
+        'Never fabricate data. Only state facts retrieved from tools in this conversation. Do not summarize files you did not fetch. Do not guess file contents from filename patterns.',
+    },
+  },
+  {
+    // Inhibitor — fires only when the request has NO visualization intent.
+    // Counters the local model's training bias toward emitting unsolicited
+    // artifact:html / artifact:react blocks for plain numerical questions
+    // ("what are my Azure costs?" → unwanted HTML cost dashboard).
+    // The artifact-creation module still fires when the user DOES ask for
+    // a visual; this module does NOT — they're a complementary pair gated
+    // on the same intent signal. openagentic-omhs#327 + #330 follow-up.
+    name: 'artifact-inhibitor',
+    category: 'core',
+    description: 'Suppress unsolicited artifact:html generation when no visualization was requested',
+    priority: 96,
+    injection: { alwaysInject: true, excludesUserIntent: ['visualization'] },
+    content:
+      'IMPORTANT: The user has NOT asked for a chart, dashboard, diagram, or visualization. Respond with plain text and markdown tables only. Do NOT emit `artifact:html`, `artifact:react`, or any other artifact code-block in your response. Numerical data goes in a markdown table — not a visualization.',
+    variants: {
+      claude:
+        '<module name="artifact-inhibitor">IMPORTANT: The user has NOT asked for a chart, dashboard, diagram, or visualization. Respond with plain text and markdown tables only. Do NOT emit `artifact:html`, `artifact:react`, or any other artifact code-block in your response. Numerical data goes in a markdown table — not a visualization.</module>',
+      local:
+        'CRITICAL: User did NOT ask for a chart or visualization. Reply with plain text and markdown tables ONLY. Do NOT emit ```artifact:html``` or ```artifact:react``` blocks. Tabular data goes in a markdown table.',
     },
   },
   {
     name: 'response-style',
     category: 'core',
-    description: 'Output formatting — markdown, artifacts, professional tone',
+    description: 'Output formatting — markdown structure, professional tone',
     priority: 97,
     injection: { alwaysInject: true },
+    // Neutral baseline. Artifact HOW-TO / WHEN-TO guidance lives in the
+    // `artifact-creation` domain module, gated by `requiresUserIntent` so
+    // it only fires when the user actually asked for a visual. Deliberately
+    // keeping this module silent on artifacts so every tier (including
+    // local models) retains native capability to emit artifacts when
+    // genuinely warranted. See openagentic-omhs#327.
     content:
-      'Professional, concise, direct. No filler phrases, no emojis. Use markdown structure: headers, code blocks with language tags, tables for structured data. Use artifact:html for visual content (NEVER artifact:react). Use chart-json for data visualization.',
+      'Professional, concise, direct. No filler phrases, no emojis. Use markdown structure: headers, code blocks with language tags, tables for structured data.',
     variants: {
       claude:
-        '<module name="response-style">Professional, concise, direct. No filler phrases, no emojis. Use markdown structure: headers, code blocks with language tags, tables for structured data. Use artifact:html for visual content (NEVER artifact:react). Use chart-json for data visualization.</module>',
+        '<module name="response-style">Professional, concise, direct. No filler phrases, no emojis. Use markdown structure: headers, code blocks with language tags, tables for structured data.</module>',
       local:
-        'Be concise and direct. Use markdown. artifact:html for visuals.',
+        'Be concise and direct. Use markdown structure.',
     },
   },
 
@@ -372,42 +384,103 @@ const SEED_MODULES: SeedModule[] = [
   {
     name: 'artifact-creation',
     category: 'domain',
-    description: 'Guidance for visual artifact delegation to agents',
+    description: 'Quality guidance for producing visual artifacts (gated on explicit visualization intent)',
     priority: 75,
-    injection: { requiresTools: ['delegate_to_agents'] },
+    // Gated on explicit visualization intent in the user's message.
+    // requiresTools keeps this aligned with the pipeline auto-dispatch path
+    // (which calls delegate_to_agents) — when no delegate tool is
+    // available, the module still applies so the executing model has the
+    // quality guidance it needs to render inline. See openagentic-omhs#327.
+    injection: {
+      requiresUserIntent: ['visualization'],
+    },
+    //
+    // Every variant carries the same visual standards (dark theme, system
+    // fonts, generous padding, real data, no placeholder values) so artifacts
+    // look consistent regardless of which tier of model rendered them.
+    // Tiers differ in DEPTH: cloud-tier variants describe multi-panel
+    // dashboards, interactive Plotly / D3; the local variant sticks to
+    // what a smaller model can reliably produce (a single clean chart or
+    // styled table with Chart.js) but still at the same visual standard.
+    //
+    // Bundled libs the iframe renderer loads from same-origin
+    // `/artifact-runtime/` (airgap-safe, no CDN reliance):
+    //   - Chart.js 4.x (window.Chart, script src /artifact-runtime/chart.min.js)
+    //   - Plotly basic (window.Plotly, script src /artifact-runtime/plotly-basic.min.js)
+    //   - D3 7.x         (window.d3,    script src /artifact-runtime/d3.min.js)
+    // artifact:html content that references any of these script srcs
+    // triggers the renderer to set sandbox="allow-scripts allow-same-origin"
+    // and inline the bundled lib, so the model can safely assume these
+    // APIs exist when it references those script tags.
+    //
     content:
-      'When user requests visual artifacts (dashboards, visualizations, reports, diagrams), MUST delegate to an artifact_creation agent via delegate_to_agents. Use artifact:html format (NEVER artifact:react). Light backgrounds, Google Fonts, multi-column CSS Grid, professional typography.',
+      [
+        'Rendering a visual artifact. Emit a single ```artifact:html``` block containing a complete self-contained HTML document.',
+        '',
+        'Libraries available at same-origin /artifact-runtime/ (no CDN needed — airgap-safe): Chart.js 4.x, Plotly basic, D3 7.x, d3-sankey 0.12. Reference them as <script src="/artifact-runtime/chart.min.js"> / plotly-basic.min.js / d3.min.js / d3-sankey.min.js. IMPORTANT: d3.sankey() lives in a SEPARATE module — if you use d3.sankey() you MUST load BOTH d3.min.js AND d3-sankey.min.js, in that order, or the layout throws and the chart renders blank. Prefer Plotly sankey (built-in to plotly-basic.min.js, no extra lib) whenever possible. Images stored on this platform are reachable at /api/images/{id}.png — embed those directly via <img>.',
+        '',
+        'Quality standard (every tier):',
+        '- Dark theme by default: background #0d1117, surfaces #161b22, borders #30363d, accents Tailwind slate/blue/emerald/violet; light theme OK if user asked for one.',
+        '- Typography: system font stack ("Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif), clear hierarchy, tabular numerals for numbers.',
+        '- Layout: generous padding 24–48px, max-width 1200px, 8px spacing grid, rounded corners 8–16px, soft 1px low-opacity borders.',
+        '- Data: ALWAYS use real data from tool results — never fabricate. If no data yet, call the tool first. Table numbers right-aligned, totals bold, currency formatted.',
+        '- Charts: readable axes with labels + units, legend with color-coded categories, 2–3px anti-aliased strokes, no neon.',
+        '- Interactive: hover states with 150ms transitions, accessible contrast, focus rings. No bouncing/spinning animation.',
+        '- Zero external URLs other than /artifact-runtime/* and /api/images/*.',
+        '',
+        'Pick the right artifact shape for the request:',
+        '- Numerical comparison or time-series: Chart.js (bar/line/area/pie). Include a legend, titled axes, tooltips.',
+        '- Distribution / statistical / Sankey / flow: Plotly basic.',
+        '- Custom / creative / force-directed / geo: D3.',
+        '- Architecture / topology diagram: absolute-positioned nested zones (Cloud → Cluster → Namespace → Service) with color-coded borders, emoji icons, → arrow chains.',
+        '- Dashboard: multi-panel grid (2×2 or 3×2) with a KPI strip on top, charts in main panels, recent-events table at bottom.',
+        '- If the question is really just "what are the numbers": a clean styled <table> is a valid artifact — do not force a chart.',
+        '',
+        'Reference benchmark for architecture diagrams: docs/architecture/openagentic-k3s-architecture.html (327 LOC, dark, zero external deps).',
+      ].join('\n'),
     variants: {
       claude:
-        `<module name="artifact-creation">When user requests visual artifacts (dashboards, diagrams, reports, architecture docs):
+        `<module name="artifact-creation">Rendering a visual artifact. Emit ONE \`\`\`artifact:html\`\`\` block — a complete self-contained HTML document.
 
-MUST delegate to artifact_creation agent via delegate_to_agents.
+Bundled same-origin libs (airgap-safe, no CDN): Chart.js 4.x (\`/artifact-runtime/chart.min.js\`), Plotly basic (\`/artifact-runtime/plotly-basic.min.js\`), D3 7.x (\`/artifact-runtime/d3.min.js\`), d3-sankey 0.12 (\`/artifact-runtime/d3-sankey.min.js\`). Images: \`/api/images/{id}.png\`. Important: \`d3.sankey()\` lives in the separate d3-sankey module — if you use it, load BOTH d3.min.js and d3-sankey.min.js (in that order) or the layout throws and the chart renders blank. Prefer Plotly sankey (included in plotly-basic) for flow/sankey charts whenever possible.
 
-CRITICAL QUALITY RULES for ALL artifacts:
-1. Use artifact:html format (NEVER artifact:react, NEVER Mermaid)
-2. ZERO external dependencies — no CDN imports, no Mermaid.js, no D3.js CDN, no Chart.js CDN
-3. Pure self-contained HTML + CSS + vanilla JavaScript ONLY
-4. Dark background (#0d1117) with colored borders and zones
-5. Professional typography: system font stack (Inter, -apple-system, sans-serif)
-6. Absolute-positioned nested zones with color-coded borders for hierarchy
-7. Service/component boxes with emoji icons, status badges, replica counts
-8. Flow diagrams with arrow characters (→) and connection chains
-9. Interactive: hover effects, tooltips, click-to-expand sections
-10. Animated: CSS transitions, pulse effects on active elements, data flow animations
-11. Grid layouts for provider/tool/metric comparisons
-12. Include specific real data — numbers, counts, names, versions, latencies
-13. Legend with color-coded categories
-14. Responsive within the artifact preview panel
+Consistent visual standard across every artifact you produce:
+1. Dark default — background #0d1117, surfaces #161b22, borders #30363d, accents from Tailwind slate/blue/emerald/violet family; switch to light only if the user asked for it.
+2. Typography — system font stack (\`"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif\`), tabular numerals for numbers, one clear title, subtle subtitle.
+3. Layout — 24–48px padding, max-width 1200px, 8px spacing grid, 8–16px corner radius, 1px low-opacity borders, soft box-shadow.
+4. Real data only — pull from tool results; never fabricate. If you don't have the data, call the tool first. Right-align numbers in tables, bold totals, format currency and percentages.
+5. Charts — readable labeled axes with units, color-coded legend, 2–3px anti-aliased strokes, tooltips on hover, no neon.
+6. Interactivity — hover transitions (150ms), click-to-expand for nested content, accessible contrast ratios, visible focus rings. No bouncing or distracting motion.
+7. Zero external URLs other than \`/artifact-runtime/*\` and \`/api/images/*\`.
 
-For architecture diagrams specifically:
-- Nested zones: Cloud → Cluster → Namespace → Node Pools → Services
-- Color coding: blue=API, purple=MCP, green=data, orange=GPU, red=security, cyan=UI
-- Show ingress chain, security layer, model routing tiers with TTFT
-- Include persistent storage inventory and platform statistics
+Pick the right shape:
+- Numerical comparison or time-series → Chart.js (bar/line/area/pie/donut) with labeled axes, title, legend.
+- Distribution / statistical / Sankey / flow → Plotly basic.
+- Custom / creative / force-directed / geo / bespoke → D3.
+- Architecture / topology → absolute-positioned nested zones (Cloud → Cluster → Namespace → Service), color-coded borders (blue=API, purple=MCP, green=data, orange=GPU, red=security, cyan=UI), emoji icons, → flow chains, replica counts.
+- Dashboard → multi-panel grid: KPI strip on top, 2×2 or 3×2 chart panels in the middle, recent-events table at bottom.
+- If the answer is really just "what are the numbers" → a clean styled table is a valid artifact; don't force a chart on top.
 
-Reference benchmark: docs/architecture/openagentic-k3s-architecture.html (327 LOC, zero deps, 22 services, dark theme)</module>`,
+Reference benchmark: \`docs/architecture/openagentic-k3s-architecture.html\` (327 LOC, dark, zero deps, 22 services, animated zones).</module>`,
       local:
-        'Delegate visual artifacts to artifact_creation agent. Use artifact:html with dark theme, zero external deps, pure CSS+JS. NEVER use Mermaid. Include interactivity.',
+        [
+          'Rendering a visual artifact. Emit ONE ```artifact:html``` block — a complete self-contained HTML document. Keep it simple and clean; pick ONE chart or ONE table — do not try multi-panel dashboards.',
+          '',
+          'Bundled libs (no CDN — airgap-safe): Chart.js at /artifact-runtime/chart.min.js. For simple tables no lib is needed. For sankey/flow charts: prefer Plotly basic at /artifact-runtime/plotly-basic.min.js — do NOT call d3.sankey() without also loading /artifact-runtime/d3-sankey.min.js (and /artifact-runtime/d3.min.js first), or the chart will render blank.',
+          '',
+          'Standards (same look-and-feel as the rest of the platform):',
+          '- Dark background #0d1117, surface #161b22, border #30363d, accent #3b82f6 (blue).',
+          '- Font: system-ui, -apple-system, "Segoe UI", sans-serif. White-ish text #e6edf3.',
+          '- 32px padding on body, 16px inside cards, 12px rounded corners.',
+          '- Real data from tool results only. Right-align numbers. Bold the total row.',
+          '- For a Chart.js bar/line: titled axes with units, legend, hover tooltips. Height ~420px.',
+          '- No external URLs other than /artifact-runtime/*.',
+          '',
+          'Shape:',
+          '- Simple chart (1 series, 2 series max): Chart.js.',
+          '- Plain table of figures: styled <table> with alternating rows and a totals row.',
+          '- Architecture sketch: single nested <div> grid with borders and emoji icons.',
+        ].join('\n'),
     },
   },
   {
@@ -710,6 +783,9 @@ export async function seedIfEmpty(): Promise<void> {
       // Backfill: add any SEED_MODULES that don't yet exist (handles upgrades that
       // ship new modules — e.g. cloud_operations adding cloud-ops-* modules).
       await backfillMissingModules();
+      // Migration: ensure intent-gated modules have their requiresUserIntent
+      // rule, even if admin-edited (version > 1). One-time fix for #327.
+      await migrateIntentGates();
       return;
     }
 
@@ -757,7 +833,16 @@ export async function seedIfEmpty(): Promise<void> {
 async function backfillMissingModules(): Promise<void> {
   try {
     const existing = await prisma.promptModule.findMany({
-      select: { id: true, name: true, content: true, variants: true, description: true, version: true },
+      select: {
+        id: true,
+        name: true,
+        content: true,
+        variants: true,
+        description: true,
+        version: true,
+        injection: true,
+        priority: true,
+      },
     });
     const existingByName = new Map(existing.map((m) => [m.name, m]));
 
@@ -789,17 +874,33 @@ async function backfillMissingModules(): Promise<void> {
         continue;
       }
 
-      // Pass 2: refresh content for modules that haven't been admin-edited
+      // Pass 2: refresh content / metadata for modules that haven't been
+      // admin-edited (version > 1 means an admin has touched it via the UI;
+      // do not overwrite their changes).
       if (dbRow.version !== 1) {
         skippedAdminEdited++;
         continue;
       }
       const seedVariantsJson = m.variants ? JSON.stringify(m.variants) : null;
       const dbVariantsJson = dbRow.variants ? JSON.stringify(dbRow.variants) : null;
+      const seedInjectionJson = JSON.stringify(m.injection);
+      const dbInjectionJson = JSON.stringify(dbRow.injection ?? {});
       const contentChanged = dbRow.content !== m.content;
       const variantsChanged = seedVariantsJson !== dbVariantsJson;
       const descriptionChanged = (dbRow.description || '') !== (m.description || '');
-      if (contentChanged || variantsChanged || descriptionChanged) {
+      // Injection rules and priority were previously NOT refreshed by the
+      // backfill — meaning a code-side change to a seed module's injection
+      // (e.g. adding requiresUserIntent) silently no-op'd against existing
+      // rows. Compare and update them too. See openagentic-omhs#327.
+      const injectionChanged = seedInjectionJson !== dbInjectionJson;
+      const priorityChanged = dbRow.priority !== m.priority;
+      if (
+        contentChanged ||
+        variantsChanged ||
+        descriptionChanged ||
+        injectionChanged ||
+        priorityChanged
+      ) {
         await prisma.promptModule.update({
           where: { id: dbRow.id },
           data: {
@@ -807,6 +908,8 @@ async function backfillMissingModules(): Promise<void> {
             description: m.description,
             token_cost: tokenCost,
             variants: m.variants ? (m.variants as any) : undefined,
+            injection: m.injection as any,
+            priority: m.priority,
             // Keep version at 1 — this is still the canonical seed, just refreshed.
           },
         });
@@ -878,5 +981,59 @@ async function migrateIdentitySplit(): Promise<void> {
   } catch (err) {
     // Non-fatal — migration is best-effort on startup
     log.warn({ err }, '[ModuleSeeder] Identity migration failed (non-fatal)');
+  }
+}
+
+/**
+ * One-time migration: ensure modules whose content is intrinsically about
+ * visualization / chart rendering carry `requiresUserIntent: ['visualization']`
+ * on their injection rule, even if an admin previously edited them through
+ * the UI (version > 1). Without this, modules like `chart-rendering` keep
+ * injecting chart-format guidance on every tool-capable request, reinforcing
+ * the bias #327 was filed against.
+ *
+ * Runs on every startup. Idempotent — if the rule is already set, no-op.
+ * The module's content and admin edits are preserved; only the injection
+ * JSON gains the intent gate.
+ */
+const INTENT_GATED_MODULE_NAMES = ['chart-rendering'];
+
+async function migrateIntentGates(): Promise<void> {
+  try {
+    const rows = await prisma.promptModule.findMany({
+      where: { name: { in: INTENT_GATED_MODULE_NAMES } },
+      select: { id: true, name: true, injection: true },
+    });
+
+    let patched = 0;
+    for (const row of rows) {
+      const current = (row.injection ?? {}) as Record<string, unknown>;
+      const currentIntents = Array.isArray(current.requiresUserIntent)
+        ? (current.requiresUserIntent as string[])
+        : [];
+      if (currentIntents.includes('visualization')) continue;
+
+      const next = {
+        ...current,
+        requiresUserIntent: Array.from(new Set([...currentIntents, 'visualization'])),
+      };
+      await prisma.promptModule.update({
+        where: { id: row.id },
+        data: { injection: next as any },
+      });
+      patched++;
+    }
+
+    if (patched > 0) {
+      log.info(
+        { patched, modules: INTENT_GATED_MODULE_NAMES },
+        '[ModuleSeeder] Intent-gate migration: added requiresUserIntent=["visualization"]',
+      );
+    }
+  } catch (err) {
+    // Non-fatal — migration is best-effort on startup. Missing gate degrades
+    // to the previous behaviour (always-inject for tool-capable models),
+    // which is the status quo, not a regression.
+    log.warn({ err }, '[ModuleSeeder] Intent-gate migration failed (non-fatal)');
   }
 }

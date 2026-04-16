@@ -1,0 +1,173 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.oat.enabled .Values.oat.executor.enabled }}
+# ===================================================================================================
+# OAT EXECUTOR DEPLOYMENT
+# ===================================================================================================
+# Secure Python execution environment for OAT synthesized tools.
+#
+# SECURITY MODEL:
+#   - Runs as non-root user (65532)
+#   - Read-only root filesystem
+#   - No privilege escalation
+#   - Dropped all capabilities
+#   - Resource limits enforced
+#   - Network policy restricts egress
+# ===================================================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openagentic.fullname" . }}-openagentic-synth
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: openagentic-synth
+  annotations:
+    openagentic.io/oat-enabled: "true"
+spec:
+  replicas: {{ .Values.oat.executor.replicas | default 2 }}
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: openagentic-synth
+  template:
+    metadata:
+      labels:
+        {{- include "openagentic.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: openagentic-synth
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.oat.executor.config.port | default 8090 }}"
+        prometheus.io/path: "/metrics"
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "openagentic.serviceAccountName" . }}
+      automountServiceAccountToken: false
+
+      # DNS config — override default ndots:5 to ndots:1.
+      # The cluster's resolv.conf search list contains "gnomuslabs.com" which has
+      # a wildcard DNS record. With ndots:5, hostnames like "api.github.com" (2 dots)
+      # get the search domains tried first → resolves to the wildcard IP → TLS handshake
+      # fails because the server cert doesn't match. Setting ndots:1 forces hostnames
+      # with ≥1 dot to be treated as absolute, bypassing the wildcard hijack.
+      # The API pod already uses ndots:1 for the same reason.
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+
+      # Pod security context
+      securityContext:
+        runAsNonRoot: {{ .Values.oat.executor.securityContext.runAsNonRoot | default true }}
+        runAsUser: {{ .Values.oat.executor.securityContext.runAsUser | default 65532 }}
+        runAsGroup: {{ .Values.oat.executor.securityContext.runAsGroup | default 65532 }}
+        fsGroup: {{ .Values.oat.executor.securityContext.runAsGroup | default 65532 }}
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: openagentic-synth
+          image: "{{ .Values.oat.executor.image.repository }}:{{ .Values.oat.executor.image.tag }}"
+          imagePullPolicy: {{ .Values.oat.executor.image.pullPolicy | default "Always" }}
+
+          ports:
+            - name: http
+              containerPort: {{ .Values.oat.executor.config.port | default 8090 }}
+              protocol: TCP
+
+          env:
+            # Executor configuration
+            - name: OAT_EXECUTOR_PORT
+              value: {{ .Values.oat.executor.config.port | default 8090 | quote }}
+            - name: OAT_MAX_EXECUTION_TIME
+              value: {{ .Values.oat.executor.config.maxExecutionTime | default 30 | quote }}
+            - name: OAT_MAX_MEMORY_MB
+              value: {{ .Values.oat.executor.config.maxMemoryMb | default 256 | quote }}
+            - name: OAT_MAX_CONCURRENT
+              value: {{ .Values.oat.executor.config.maxConcurrent | default 5 | quote }}
+            - name: OAT_LOG_LEVEL
+              value: {{ .Values.oat.executor.config.logLevel | default "INFO" | quote }}
+
+            # OpenTelemetry configuration
+            {{- if .Values.oat.executor.otel.enabled }}
+            - name: OTEL_SERVICE_NAME
+              value: "openagentic-synth"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.oat.executor.otel.endpoint | default "http://otel-collector.monitoring:4317" | quote }}
+            - name: OTEL_PYTHON_LOG_CORRELATION
+              value: "true"
+            {{- else }}
+            # Override Dockerfile default to prevent OTEL export errors when no collector exists
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "disabled"
+            {{- end }}
+
+            # Environment info
+            - name: ENVIRONMENT
+              value: {{ .Values.global.environment | default "production" | quote }}
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+
+          # Resource limits
+          resources:
+            {{- toYaml .Values.oat.executor.resources | nindent 12 }}
+
+          # Container security context
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.oat.executor.securityContext.allowPrivilegeEscalation | default false }}
+            readOnlyRootFilesystem: {{ .Values.oat.executor.securityContext.readOnlyRootFilesystem | default true }}
+            capabilities:
+              drop:
+                - ALL
+
+          # Health checks
+          livenessProbe:
+            {{- toYaml .Values.oat.executor.livenessProbe | nindent 12 }}
+
+          readinessProbe:
+            {{- toYaml .Values.oat.executor.readinessProbe | nindent 12 }}
+
+          # Volume mounts for temp execution
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /.cache
+
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: cache
+          emptyDir:
+            sizeLimit: 50Mi
+
+      # Topology spread for resilience
+      {{- if .Values.oat.executor.topologySpreadConstraints.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: {{ .Values.oat.executor.topologySpreadConstraints.maxSkew | default 1 }}
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: openagentic-synth
+      {{- end }}
+
+      {{- with .Values.oat.executor.nodeSelector | default .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.oat.executor.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.oat.executor.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

@@ -80,7 +80,7 @@ Code Mode provides you with:
 
 For help or to report issues:
 - Contact your OpenAgentic administrator
-- Check the documentation at https://docs.openagentics.io
+- Check the documentation at https://docs.openagentic.io
 - Submit issues at https://github.com/agentic-work/agentic/issues
 
 ---

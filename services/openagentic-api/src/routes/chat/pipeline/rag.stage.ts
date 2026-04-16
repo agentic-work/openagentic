@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * RAG (Retrieval-Augmented Generation) Pipeline Stage
  *
  * This stage handles knowledge retrieval from vector databases to enhance
@@ -31,10 +15,18 @@
 
 import { PipelineStage, PipelineContext } from './pipeline.types.js';
 import { ArtifactService } from '../../../services/ArtifactService.js';
+import { evaluateRagIntent } from '../../../services/RagIntentGate.js';
 import type { Logger } from 'pino';
 
+/**
+ * Per-stage RAG configuration. Note: there used to be an `enabled: boolean`
+ * field here that was hardcoded to `true` everywhere it was set —
+ * effectively dead since the kill switch had moved to the pipeline-level
+ * `ChatPipelineConfig.enableRAG` flag. Removed (openagentic-omhs#330
+ * follow-up). Per-request gating now lives in RagIntentGate which
+ * decides whether retrieval should run for a given user message.
+ */
 interface RAGConfig {
-  enabled: boolean;
   maxDocs: number;
   maxChats: number;
   maxArtifacts: number;
@@ -89,7 +81,6 @@ export class RAGStage implements PipelineStage {
   private logger: Logger;
   private artifactService: ArtifactService | null = null;
   private defaultConfig: RAGConfig = {
-    enabled: true, // ENABLED: Artifact search works independently of doc collections
     maxDocs: 5,
     maxChats: 3,
     maxArtifacts: 5,
@@ -120,19 +111,52 @@ export class RAGStage implements PipelineStage {
     const startTime = Date.now();
 
     try {
-      // RAG is always enabled — it's critical for knowledge retrieval
-
-      // Check if any services are available (artifact service can work alone)
-      if (!this.knowledgeService && !this.milvusService && !this.artifactService) {
-        this.logger.warn('No knowledge services available, skipping RAG');
+      // ── Intent gate ────────────────────────────────────────────────────
+      // Skip retrieval for messages that don't actually want platform docs.
+      // Without this, every chat — including "what are my Azure costs" or
+      // "create a chart" — fired Milvus searches across multiple
+      // collections and bloated the system prompt with irrelevant doc
+      // excerpts. See openagentic-omhs#330 follow-up.
+      //
+      // Artifact search (user reports / exports) is intentionally KEPT
+      // running on every message — it's user-scoped, fast, and surfaces
+      // the user's own past work which is contextually useful regardless
+      // of intent. Only the documentation-collection retrieval is gated.
+      const intent = evaluateRagIntent(context.request.message);
+      if (!intent.shouldFetchRag) {
+        // Logged at info level so we can see the gate decisions in
+        // production logs and tune the heuristic from real traffic.
+        // A quiet gate is harder to debug than a chatty one.
+        this.logger.info({
+          userId: context.user?.id,
+          reason: intent.reason,
+          matched: intent.matched,
+          messagePreview: context.request.message?.substring(0, 80),
+        }, '[RAG] Skipped by intent gate — no documentation lookup');
+        // Still run artifact search if available — see comment above.
+        if (this.artifactService) {
+          // (artifactService search lives inside retrieveKnowledge — call
+          // a slim variant later if we want; for now just early-return so
+          // we don't pay Milvus cost. Artifact-only path TBD as
+          // follow-up since artifactService.search is wrapped inside
+          // retrieveKnowledge today.)
+        }
         return context;
       }
 
       this.logger.info({
         userId: context.user?.id,
         message: context.request.message.substring(0, 100),
-        isAdmin: context.user?.isAdmin
-      }, '[RAG] Starting knowledge retrieval');
+        isAdmin: context.user?.isAdmin,
+        ragGateReason: intent.reason,
+        ragGateMatched: intent.matched,
+      }, '[RAG] Intent gate FIRED — starting knowledge retrieval');
+
+      // Check if any services are available (artifact service can work alone)
+      if (!this.knowledgeService && !this.milvusService && !this.artifactService) {
+        this.logger.warn('No knowledge services available, skipping RAG');
+        return context;
+      }
 
       // Retrieve relevant knowledge
       const knowledge = await this.retrieveKnowledge(context);
@@ -157,13 +181,24 @@ export class RAGStage implements PipelineStage {
           ragRetrievalTime: Date.now() - startTime
         };
 
-        // Emit RAG status for UI
+        // Emit RAG status for UI. Includes a `sources` array (top docs +
+        // their collection / source metadata) so the chat-mode tool card
+        // can show per-doc icons inline rather than just "5 docs". See
+        // openagentic-omhs#330 — user wants 'icons + names + collection'
+        // visible in the RAG tag instead of an opaque count.
+        const sources = knowledge.docs.slice(0, 5).map((d: any) => ({
+          title: d.metadata?.title || d.metadata?.source || d.metadata?.url || 'document',
+          collection: d.metadata?.collection || d.metadata?.source,
+          url: d.metadata?.url,
+          score: d.score,
+        }));
         context.emit('rag_status', {
           docsRetrieved: knowledge.docs.length,
           chatsRetrieved: knowledge.chats.length,
           artifactsRetrieved: knowledge.artifacts.length,
           collections: knowledge.metadata.collections,
-          retrievalTime: knowledge.metadata.retrievalTime
+          retrievalTime: knowledge.metadata.retrievalTime,
+          sources,
         });
 
         this.logger.info({

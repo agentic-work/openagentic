@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * OnboardingTour - Lightweight guided discovery for first-time users
  *
  * Shows a 4-step tooltip tour highlighting key features:
@@ -27,7 +11,7 @@
  * Uses absolute positioning with a backdrop highlight effect.
  * Auto-dismisses on "Skip" or after completing all steps.
  *
- * @copyright 2026 Gnomus.ai
+ * @copyright 2025 Openagentic LLC
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';

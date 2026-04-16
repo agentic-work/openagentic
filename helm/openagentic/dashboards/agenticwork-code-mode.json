@@ -1,0 +1,177 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true, "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts", "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1, "title": "Session Overview", "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "collapsed": false, "panels": []
+    },
+    {
+      "id": 2, "title": "Active Sessions", "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "thresholds": { "steps": [ { "value": null, "color": "green" }, { "value": 10, "color": "yellow" }, { "value": 20, "color": "red" } ] } },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "area", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "count(kube_pod_status_phase{namespace=\"{{ .Release.Namespace }}\", pod=~\"openagentic-.*\", phase=\"Running\"}) or vector(0)", "legendFormat": "active", "refId": "A" }
+      ]
+    },
+    {
+      "id": 3, "title": "Total Pods (24h)", "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [ { "value": null, "color": "blue" } ] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "count(kube_pod_status_phase{namespace=\"{{ .Release.Namespace }}\", pod=~\"openagentic-.*\"}) or vector(0)", "legendFormat": "total", "refId": "A" }
+      ]
+    },
+    {
+      "id": 4, "title": "Running vs Pending",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "fillOpacity": 15, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "count(kube_pod_status_phase{namespace=\"{{ .Release.Namespace }}\", pod=~\"openagentic-.*\", phase=\"Running\"}) or vector(0)", "legendFormat": "Running", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "count(kube_pod_status_phase{namespace=\"{{ .Release.Namespace }}\", pod=~\"openagentic-.*\", phase=\"Pending\"}) or vector(0)", "legendFormat": "Pending", "refId": "B" }
+      ]
+    },
+    {
+      "id": 5, "title": "Pod Restarts",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [ { "value": null, "color": "green" }, { "value": 1, "color": "yellow" }, { "value": 5, "color": "red" } ] } }, "overrides": [] },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "sum(kube_pod_container_status_restarts_total{namespace=\"{{ .Release.Namespace }}\", pod=~\"openagentic-.*\"}) or vector(0)", "legendFormat": "restarts", "refId": "A" }
+      ]
+    },
+    {
+      "id": 10, "title": "Pod Lifecycle", "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 }, "collapsed": false, "panels": []
+    },
+    {
+      "id": 11, "title": "Pod Startup Latency", "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "histogram_quantile(0.50, sum(rate(kubelet_pod_start_sli_duration_seconds_bucket{pod=~\"openagentic-.*\"}[5m])) by (le))", "legendFormat": "p50", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "histogram_quantile(0.95, sum(rate(kubelet_pod_start_sli_duration_seconds_bucket{pod=~\"openagentic-.*\"}[5m])) by (le))", "legendFormat": "p95", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "histogram_quantile(0.99, sum(rate(kubelet_pod_start_sli_duration_seconds_bucket{pod=~\"openagentic-.*\"}[5m])) by (le))", "legendFormat": "p99", "refId": "C" }
+      ]
+    },
+    {
+      "id": 12, "title": "Exec Pod Count by State", "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "custom": { "fillOpacity": 20, "lineWidth": 2, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "count(kube_pod_status_phase{namespace=\"{{ .Release.Namespace }}\", pod=~\"openagentic-exec-.*\", phase=\"Running\"}) or vector(0)", "legendFormat": "Running", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "count(kube_pod_status_phase{namespace=\"{{ .Release.Namespace }}\", pod=~\"openagentic-exec-.*\", phase=\"Pending\"}) or vector(0)", "legendFormat": "Pending", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "count(kube_pod_status_phase{namespace=\"{{ .Release.Namespace }}\", pod=~\"openagentic-exec-.*\", phase=\"Failed\"}) or vector(0)", "legendFormat": "Failed", "refId": "C" }
+      ]
+    },
+    {
+      "id": 20, "title": "Code Manager Process Metrics", "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 }, "collapsed": false, "panels": []
+    },
+    {
+      "id": 21, "title": "Heap Used (Code Manager)", "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "fillOpacity": 15, "lineWidth": 2 }, "color": { "mode": "fixed", "fixedColor": "orange" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "nodejs_heap_size_used_bytes{kubernetes_namespace=\"{{ .Release.Namespace }}\", kubernetes_pod_name=~\"openagentic-code-manager.*\"}", "legendFormat": "heap used", "refId": "A" }
+      ]
+    },
+    {
+      "id": 22, "title": "Heap Total vs Used", "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "nodejs_heap_size_total_bytes{kubernetes_namespace=\"{{ .Release.Namespace }}\", kubernetes_pod_name=~\"openagentic-code-manager.*\"}", "legendFormat": "heap total", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "nodejs_heap_size_used_bytes{kubernetes_namespace=\"{{ .Release.Namespace }}\", kubernetes_pod_name=~\"openagentic-code-manager.*\"}", "legendFormat": "heap used", "refId": "B" }
+      ]
+    },
+    {
+      "id": 23, "title": "Event Loop Lag", "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "fillOpacity": 10, "lineWidth": 2 }, "color": { "mode": "fixed", "fixedColor": "red" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "nodejs_eventloop_lag_seconds{kubernetes_namespace=\"{{ .Release.Namespace }}\", kubernetes_pod_name=~\"openagentic-code-manager.*\"}", "legendFormat": "event loop lag", "refId": "A" }
+      ]
+    },
+    {
+      "id": 30, "title": "Exec Pod Resources", "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 }, "collapsed": false, "panels": []
+    },
+    {
+      "id": 31, "title": "Exec Pod CPU Usage", "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "fillOpacity": 10, "lineWidth": 1 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"{{ .Release.Namespace }}\", pod=~\"openagentic-exec-.*\", container!=\"\", container!=\"POD\"}[5m])) by (pod)", "legendFormat": "{{pod}}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 32, "title": "Exec Pod Memory Usage", "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "fillOpacity": 10, "lineWidth": 1 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "sum(container_memory_working_set_bytes{namespace=\"{{ .Release.Namespace }}\", pod=~\"openagentic-exec-.*\", container!=\"\", container!=\"POD\"}) by (pod)", "legendFormat": "{{pod}}", "refId": "A" }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [ "{{ .Release.Namespace }}", "code-mode" ],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "{{ .Release.Namespace }}", "value": "{{ .Release.Namespace }}" },
+        "hide": 2, "label": "Namespace", "name": "namespace",
+        "query": "{{ .Release.Namespace }}", "skipUrlSync": false, "type": "constant"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "OpenAgentic - Code Mode",
+  "uid": "aw-code-mode",
+  "version": 1,
+  "weekStart": ""
+}

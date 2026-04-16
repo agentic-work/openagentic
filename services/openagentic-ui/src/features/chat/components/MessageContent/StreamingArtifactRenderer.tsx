@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Streaming Artifact Renderer
  *
  * Renders artifacts LIVE during SSE streaming, providing visual feedback
@@ -107,7 +91,7 @@ let _streamingLibsReady = false;
 const _streamingLibReadyCallbacks: Array<() => void> = [];
 
 // Preload chart libraries immediately on module load
-['plotly-basic.min.js', 'd3.min.js', 'chart.min.js'].forEach(name => {
+['plotly-basic.min.js', 'd3.min.js', 'd3-sankey.min.js', 'chart.min.js'].forEach(name => {
   fetch(`/artifact-runtime/${name}`)
     .then(r => r.ok ? r.text() : '')
     .then(text => { if (text.length > 100) _streamingLibCache[name] = text; })
@@ -126,11 +110,91 @@ const OAT_BRIDGE_SCRIPT = '<script>' +
   '(function(){var p={},c=0;window.addEventListener("message",function(e){if(e.data&&e.data.type==="oat-result"){var q=p[e.data.callId];if(q){delete p[e.data.callId];e.data.success?q.resolve(e.data.result):q.reject(new Error(e.data.error||"OAT call failed"))}}});window.ArtifactRuntime=window.ArtifactRuntime||{};window.ArtifactRuntime.oat=function(id,args){return new Promise(function(res,rej){var i=++c;p[i]={resolve:res,reject:rej};setTimeout(function(){if(p[i]){delete p[i];rej(new Error("OAT timeout"))}},30000);window.parent.postMessage({type:"oat-execute",callId:i,functionId:id,args:args||{}},"*")})};window.ArtifactRuntime.loadFont=function(){}})()' +
   '</script>';
 
+/**
+ * Build a theme-defensive base-style block that every artifact iframe
+ * inherits. Uses the `:where()` selector (zero specificity) so any style
+ * the LLM emits still wins — this only kicks in when the model forgot to
+ * set a background/text color. Also exposes CSS custom properties
+ * (`--app-bg`, `--app-text`, etc.) so models that know about them can
+ * produce theme-consistent artifacts without guessing hex codes.
+ *
+ * Background (openagentic-omhs#327): when the model emitted a full HTML
+ * doc with `body { font-family: Arial }` and no background, the iframe
+ * rendered black text on a transparent bg, which sat over the dark app
+ * chrome — the user literally could not see the artifact.
+ */
+function themeDefenseBlock(isDark: boolean): string {
+  const bg = isDark ? '#0d1117' : '#ffffff';
+  const surface = isDark ? '#161b22' : '#f6f8fa';
+  const border = isDark ? '#30363d' : '#d0d7de';
+  const text = isDark ? '#e6edf3' : '#1f2328';
+  const muted = isDark ? '#8b949e' : '#656d76';
+  const accent = isDark ? '#58a6ff' : '#0969da';
+  const danger = isDark ? '#f85149' : '#cf222e';
+  const success = isDark ? '#3fb950' : '#1a7f37';
+  const fontStack = `"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  return `<style data-aw-theme-defense>
+:root {
+  color-scheme: ${isDark ? 'dark' : 'light'};
+  --app-bg: ${bg};
+  --app-surface: ${surface};
+  --app-border: ${border};
+  --app-text: ${text};
+  --app-muted: ${muted};
+  --app-accent: ${accent};
+  --app-danger: ${danger};
+  --app-success: ${success};
+  --app-font: ${fontStack};
+}
+:where(html, body) {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: var(--app-font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+:where(body) {
+  padding: 16px;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+:where(table) { border-collapse: collapse; }
+:where(a) { color: var(--app-accent); }
+
+/* ─── ALWAYS-VISIBLE OVERRIDES (openagentic-omhs#330) ──────────────────
+   Force visibility regardless of what the model emits. Models write
+   Plotly / D3 / Chart.js charts with default text fills that are
+   invisible against our dark chrome — these !important rules guarantee
+   the user can always READ the artifact. Model-specified colors are
+   intentionally overridden here because invisible-by-accident is worse
+   than chart-style-mismatch.
+   ──────────────────────────────────────────────────────────────────── */
+html, body { background: var(--app-bg) !important; color: var(--app-text) !important; font-family: var(--app-font) !important; }
+/* SVG: ALL text legible, axis lines visible */
+svg text                                          { fill: var(--app-text) !important; }
+svg .tick text, svg .axis text, svg .legendtext   { fill: var(--app-muted) !important; }
+svg .domain, svg .tick line, svg .gridlayer line  { stroke: var(--app-border) !important; }
+/* Plotly: paper + plot areas transparent so our bg shows */
+.js-plotly-plot .plotly .bg, .js-plotly-plot rect.bg     { fill: transparent !important; }
+.modebar, .modebar-group                                  { background: transparent !important; }
+.modebar-btn path                                         { fill: var(--app-muted) !important; }
+.modebar-btn:hover path                                   { fill: var(--app-text) !important; }
+.legend rect.bg                                           { fill: var(--app-surface) !important; }
+/* Chart.js canvas frame */
+canvas { background: var(--app-surface) !important; border-radius: 6px; }
+/* Plain table cells stay readable on dark chrome */
+table th, table td { color: var(--app-text); border-color: var(--app-border); }
+table th { background: var(--app-surface); }
+</style>`;
+}
+
 // Generate HTML wrapper for artifact content
 function wrapArtifactContent(content: string, type: ArtifactType, theme: 'light' | 'dark'): string {
   const isDark = theme === 'dark';
-  const bgColor = isDark ? '#1a1a2e' : '#ffffff';
-  const textColor = isDark ? '#e0e0e0' : '#333333';
+  const bgColor = isDark ? '#0d1117' : '#ffffff';
+  const textColor = isDark ? '#e6edf3' : '#1f2328';
+  const themeDefense = themeDefenseBlock(isDark);
   // For HTML type, check if user content has CDN URLs and use legacy CSP if so
   const htmlCsp = /https?:\/\/(cdn\.jsdelivr\.net|unpkg\.com|cdn\.tailwindcss\.com|fonts\.googleapis\.com|esm\.sh)/i.test(content)
     ? CSP_META_LEGACY : CSP_META_STRICT;
@@ -139,7 +203,11 @@ function wrapArtifactContent(content: string, type: ArtifactType, theme: 'light'
     case 'html': {
       // Detect chart libraries needed and inject from bundled runtime
       const needsPlotly = content.includes('Plotly.') || content.includes('plotly');
-      const needsD3 = content.includes('d3.select') || content.includes('d3.create');
+      // d3.sankey() is a separate npm module (d3-sankey@0.12). Detect its
+      // use independently of plain d3 so we inject the extra lib.
+      // agentic-work/openagentic-omhs#329.
+      const needsD3Sankey = /\bd3\.sankey\s*\(/.test(content) || /d3-sankey/i.test(content);
+      const needsD3 = needsD3Sankey || content.includes('d3.select') || content.includes('d3.create');
       const needsChart = content.includes('new Chart(');
       // Use legacy CSP if any libraries needed (allows CDN fallback)
       const effectiveCsp = (needsPlotly || needsD3 || needsChart) ? CSP_META_LEGACY : htmlCsp;
@@ -147,6 +215,7 @@ function wrapArtifactContent(content: string, type: ArtifactType, theme: 'light'
       const libScripts: string[] = [];
       if (needsPlotly) libScripts.push('<script src="/artifact-runtime/plotly-basic.min.js"><\/script>');
       if (needsD3) libScripts.push('<script src="/artifact-runtime/d3.min.js"><\/script>');
+      if (needsD3Sankey) libScripts.push('<script src="/artifact-runtime/d3-sankey.min.js"><\/script>');
       if (needsChart) libScripts.push('<script src="/artifact-runtime/chart.min.js"><\/script>');
       // Clean the content: strip artifact label, CDN script tags
       let cleanContent = content
@@ -158,16 +227,28 @@ function wrapArtifactContent(content: string, type: ArtifactType, theme: 'light'
         .replace(/<script[^>]*src=["'][^"']*cdn\.jsdelivr\.net\/npm\/chart\.js[^"']*["'][^>]*><\/script>/gi, '')
         .replace(/<script[^>]*src=["'][^"']*cdn\.tailwindcss\.com[^"']*["'][^>]*><\/script>/gi, '');
 
-      // If content is a full HTML document, inject libs into <head> and return as-is
+      // If content is a full HTML document, inject libs AND the theme-
+      // defense block into <head> and return. Previously the passthrough
+      // skipped all theme wrapping, so any full-HTML artifact that didn't
+      // set its own background rendered as transparent black-on-dark and
+      // was invisible against the dark app chrome. See openagentic-omhs#327.
       const trimmed = cleanContent.trim().toLowerCase();
       if (trimmed.startsWith('<!doctype') || trimmed.startsWith('<html')) {
-        if (libScripts.length > 0) {
-          const libBlock = libScripts.join('\n');
-          const headMatch = cleanContent.match(/<head[^>]*>/i);
-          if (headMatch) {
-            cleanContent = cleanContent.replace(headMatch[0], `${headMatch[0]}\n${libBlock}`);
+        const headInjection = [themeDefense, ...libScripts].join('\n');
+        const headMatch = cleanContent.match(/<head[^>]*>/i);
+        if (headMatch) {
+          cleanContent = cleanContent.replace(headMatch[0], `${headMatch[0]}\n${headInjection}`);
+        } else {
+          // Model emitted <html>...</html> without a <head>; splice one in
+          // right after the opening <html> so our defense lands inside it.
+          const htmlMatch = cleanContent.match(/<html[^>]*>/i);
+          if (htmlMatch) {
+            cleanContent = cleanContent.replace(
+              htmlMatch[0],
+              `${htmlMatch[0]}\n<head>\n${headInjection}\n</head>`,
+            );
           } else {
-            cleanContent = `${libBlock}\n${cleanContent}`;
+            cleanContent = `${headInjection}\n${cleanContent}`;
           }
         }
         return cleanContent;
@@ -178,15 +259,10 @@ function wrapArtifactContent(content: string, type: ArtifactType, theme: 'light'
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   ${effectiveCsp}
+  ${themeDefense}
   ${libScripts.join('\n  ')}
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: ${bgColor};
-      color: ${textColor};
-      padding: 16px;
-    }
+    * { box-sizing: border-box; }
   </style>
 </head>
 <body>${cleanContent}${SAFETY_HARNESS_JS}${OAT_BRIDGE_SCRIPT}</body>
@@ -199,14 +275,13 @@ function wrapArtifactContent(content: string, type: ArtifactType, theme: 'light'
 <html>
 <head>
   ${CSP_META_STRICT}
+  ${themeDefense}
   <style>
-    body {
-      margin: 0;
+    :where(body) {
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100%;
-      background: ${bgColor};
+      min-height: 100vh;
     }
     svg { max-width: 100%; height: auto; }
   </style>
@@ -219,9 +294,9 @@ function wrapArtifactContent(content: string, type: ArtifactType, theme: 'light'
 <html>
 <head>
   ${CSP_META_LEGACY}
+  ${themeDefense}
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <style>
-    body { margin: 0; padding: 16px; background: ${bgColor}; }
     .mermaid { display: flex; justify-content: center; }
   </style>
 </head>
@@ -238,14 +313,11 @@ function wrapArtifactContent(content: string, type: ArtifactType, theme: 'light'
 <html>
 <head>
   ${CSP_META_LEGACY}
+  ${themeDefense}
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <style>
-    body {
-      margin: 0;
-      padding: 16px;
-      background: ${bgColor};
-      color: ${textColor};
+    :where(body) {
       display: flex;
       justify-content: center;
     }
@@ -269,16 +341,16 @@ function wrapArtifactContent(content: string, type: ArtifactType, theme: 'light'
       const rows = content.trim().split('\n').map(row => row.split(','));
       const tableHtml = `<table style="border-collapse: collapse; width: 100%;">
         ${rows.map((row, i) => `<tr>${row.map(cell =>
-          `<${i === 0 ? 'th' : 'td'} style="border: 1px solid ${isDark ? '#444' : '#ddd'}; padding: 8px;">${cell.trim()}</${i === 0 ? 'th' : 'td'}>`
+          `<${i === 0 ? 'th' : 'td'} style="border: 1px solid var(--app-border); padding: 8px;">${cell.trim()}</${i === 0 ? 'th' : 'td'}>`
         ).join('')}</tr>`).join('')}
       </table>`;
       return `<!DOCTYPE html>
 <html>
 <head>
   ${CSP_META_STRICT}
+  ${themeDefense}
   <style>
-    body { margin: 0; padding: 16px; background: ${bgColor}; color: ${textColor}; }
-    th { background: ${isDark ? '#2a2a4e' : '#f5f5f5'}; }
+    th { background: var(--app-surface); }
   </style>
 </head>
 <body>${tableHtml}${SAFETY_HARNESS_JS}${OAT_BRIDGE_SCRIPT}</body>

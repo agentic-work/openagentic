@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * AgentExecutionTimeline - Live visualization of agent execution steps
  *
  * Renders a vertical timeline with animated step cards showing:
@@ -26,8 +10,66 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Wrench, CheckCircle, XCircle, Clock } from '@/shared/icons';
+import {
+  Brain, Wrench, CheckCircle, XCircle, Clock,
+  // Category icons — mirrors CategoryBadge in AgenticActivityStream so
+  // delegated agents' tool steps look identical to top-level chat steps
+  Cloud, Cpu, Database, Globe, GitBranch, Shield, Eye, Bot, Server,
+  Sparkles, Zap, Lock, Coins, HardDrive, Package,
+} from '@/shared/icons';
+import { summarizeToolCall } from '../../chat/utils/toolSummarizer';
 import type { ExecutionStep } from '../hooks/useAgentPlayground';
+
+// Category → icon (kept in sync with CategoryBadge in AgenticActivityStream).
+// Used to give the agent timeline the same visual scan rate as the main
+// chat-mode activity stream. openagentic-omhs#330 follow-up.
+const TIMELINE_ICON_MAP: Record<string, React.FC<any>> = {
+  azure: Cloud, aws: Cloud, gcp: Cloud,
+  k8s: Cpu, kubernetes: Cpu, kubectl: Cpu,
+  database: Database, sql: Database, postgres: Database, cosmos: Database,
+  rds: Database, query: Database, knowledge: Database, rag: Database,
+  memory: Brain, recall: Brain,
+  web: Globe, search: Globe, fetch: Globe, network: Globe, vnet: Globe,
+  github: GitBranch, git: GitBranch,
+  security: Shield, iam: Shield, role: Shield,
+  monitor: Eye, log: Eye, metrics: Eye,
+  delegate: Bot, agent: Bot,
+  admin: Server, system: Server, platform: Server,
+  diagram: Sparkles, synth: Sparkles, image: Sparkles,
+  vm: Server, virtual_machine: Server, compute: Server,
+  storage: HardDrive, blob: HardDrive, s3: HardDrive,
+  vault: Lock, key: Lock, secret: Lock,
+  cost: Coins, billing: Coins,
+  resource_group: Package, rg: Package,
+};
+
+/** Pick an icon for a tool name based on its prefix / keyword. */
+function pickToolIcon(toolName?: string): React.FC<any> {
+  if (!toolName) return Wrench;
+  const lower = toolName.toLowerCase();
+  for (const [key, Icon] of Object.entries(TIMELINE_ICON_MAP)) {
+    if (lower.includes(key)) return Icon;
+  }
+  return Wrench;
+}
+
+/** Tone color for provisioning state badges. */
+function stateColor(state: string): { fg: string; bg: string } {
+  const s = state.toLowerCase();
+  if (s === 'succeeded' || s === 'success' || s === 'available' || s === 'running') return { fg: '#3fb950', bg: 'rgba(63, 185, 80, 0.18)' };
+  if (s === 'failed' || s === 'error' || s === 'rejected') return { fg: '#f85149', bg: 'rgba(248, 81, 73, 0.18)' };
+  if (s === 'creating' || s === 'updating' || s === 'pending' || s === 'in_progress' || s === 'running') return { fg: '#d29922', bg: 'rgba(210, 153, 34, 0.18)' };
+  return { fg: 'var(--color-text-secondary)', bg: 'rgba(139, 148, 158, 0.18)' };
+}
+
+/** Best-effort extract of the resource name from a tool's args. */
+function extractResourceName(args: any): string | null {
+  if (!args || typeof args !== 'object') return null;
+  return args.name || args.resource_group_name || args.resourceGroupName ||
+    args.vm_name || args.account_name || args.cluster_name || args.app_name ||
+    args.function_app_name || args.vault_name || args.vnet_name || args.nsg_name ||
+    args.subnet_name || args.bucket_name || args.role_name || args.id || null;
+}
 
 interface AgentExecutionTimelineProps {
   steps: ExecutionStep[];
@@ -111,10 +153,54 @@ export const AgentExecutionTimeline: React.FC<AgentExecutionTimelineProps> = ({ 
 
                 {/* Content */}
                 <div className="flex-1 min-w-0 py-0.5">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Tool icon — picked from the tool name's prefix
+                        (azure_*, k8s_*, aws_*, ...) so users can scan
+                        the timeline by category at a glance. */}
+                    {(step.type === 'tool_call' || step.type === 'tool_result') && step.toolName && (() => {
+                      const ToolIcon = pickToolIcon(step.toolName);
+                      return <ToolIcon style={{ width: 12, height: 12, color: config.color, flexShrink: 0 }} />;
+                    })()}
                     <span className="text-[12px] font-medium" style={{ color: config.color }}>
                       {step.toolName || config.label}
                     </span>
+                    {/* Resource name extracted from the tool args
+                        (e.g. "uc-test-arch-rg"). Surfaces what was
+                        actually being created/queried instead of just
+                        the tool name. openagentic-omhs#330. */}
+                    {(step.type === 'tool_call' || step.type === 'tool_result') && (() => {
+                      const args = (step.data?.arguments) || step.data?.args || step.data?.input;
+                      const resourceName = extractResourceName(args);
+                      if (!resourceName) return null;
+                      return (
+                        <span
+                          className="text-[11px] truncate"
+                          style={{ color: 'var(--color-text)', fontWeight: 500, maxWidth: 220 }}
+                          title={resourceName}
+                        >
+                          · {resourceName}
+                        </span>
+                      );
+                    })()}
+                    {/* Provisioning state badge from the result */}
+                    {step.type === 'tool_result' && (() => {
+                      const result = step.data?.result;
+                      if (!result || typeof result !== 'object') return null;
+                      const state = result.properties?.provisioningState
+                        || result.provisioning_state
+                        || (result.is_error === false ? 'succeeded' : null)
+                        || (result.is_error === true ? 'failed' : null);
+                      if (!state) return null;
+                      const c = stateColor(state);
+                      return (
+                        <span
+                          className="text-[10px] font-semibold px-1.5 py-px rounded uppercase tracking-wide"
+                          style={{ background: c.bg, color: c.fg, letterSpacing: '0.3px' }}
+                        >
+                          {state}
+                        </span>
+                      );
+                    })()}
                     {step.agentRole && (
                       <span className="text-[10px] px-1 rounded" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text-tertiary)' }}>
                         {step.agentRole}

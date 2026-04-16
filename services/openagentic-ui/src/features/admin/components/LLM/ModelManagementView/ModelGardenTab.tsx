@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Model Garden Tab — Live discovery from provider APIs with config panel for adding
  */
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
@@ -376,7 +360,20 @@ export const ModelGardenTab: React.FC<{
         const deployData = await deployRes.json();
         showToast('success', (deployData as any).message || `Deployed ${addConfig.modelId}`);
       } else {
-        // Non-AIF or already deployed: just add to config
+        // Non-AIF or already deployed: add to config. For AIF providers we also
+        // ship the deployment metadata so the server can idempotently ensure
+        // the Azure deployment exists (belt + suspenders for stale `.deployed`
+        // flags that would otherwise skip the /deploy-model branch above).
+        const aifDeployment =
+          selectedProvider.provider_type === 'azure-ai-foundry' && sourceModel && (sourceModel as any).modelVersion
+            ? {
+                modelName: addConfig.modelId,
+                modelVersion: (sourceModel as any).modelVersion,
+                modelFormat: (sourceModel as any).modelFormat || 'OpenAI',
+                sku: 'GlobalStandard',
+                capacity: 1,
+              }
+            : undefined;
         const res = await apiRequest(`/admin/llm-providers/${encodeURIComponent(selectedProvider.name)}/models`, {
           method: 'POST',
           body: JSON.stringify({
@@ -384,6 +381,7 @@ export const ModelGardenTab: React.FC<{
             displayName: addConfig.displayName,
             capabilities: addConfig.capabilities,
             config: addConfig.config,
+            ...(aifDeployment ? { deployment: aifDeployment } : {}),
           }),
         });
         if (!res.ok) throw new Error(await res.text());

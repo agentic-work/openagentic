@@ -1,9 +1,9 @@
-# OpenAgentic Synth Dependencies
+# OAT Executor Dependencies
 # Minimal set for secure code execution with full observability
 
 # setuptools<81 — setuptools 81 removed the `pkg_resources` legacy module
 # that opentelemetry-instrumentation-* still imports. Without this pin
-# the OpenAgentic Synth won't start on a fresh Python environment.
+# the OAT executor won't start on a fresh Python environment.
 setuptools<81
 
 # Web framework - minimal async

@@ -1,17 +1,15 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * CanvasPanel — Gemini-style artifact canvas with Code | Preview toggle
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Features:
+ * - Split-pane slide-out from right (60vw default, maximizable)
+ * - Code view with syntax highlighting + line numbers
+ * - Live Preview in sandboxed iframe (HTML/React/SVG/Markdown)
+ * - GhostPilot integration: AI can screenshot the preview via /api/canvas/screenshot
+ * - Toolbar: title, save, undo/redo, download, share, maximize, close
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -53,11 +51,95 @@ const OAT_BRIDGE_SCRIPT = '<script>' +
 // Preview HTML builder — wraps content in a complete HTML document
 // ============================================================================
 
+/**
+ * Theme-defensive base-style block injected into every artifact iframe.
+ * Uses `:where()` (zero specificity) so any style the LLM emits still wins
+ * — this only kicks in when the model forgot to set a background / text
+ * color. Also exposes CSS custom properties (`--app-bg`, `--app-text`...)
+ * so well-behaved models can produce theme-consistent output.
+ *
+ * openagentic-omhs#327: the full-HTML passthrough below used to return the
+ * model's raw output with zero wrapping, so a model that emitted
+ * `body { font: Arial }` with no background rendered transparent / black
+ * text — completely invisible on the dark app chrome.
+ */
+function canvasThemeDefenseBlock(isDark: boolean): string {
+  const bg = isDark ? '#0d1117' : '#ffffff';
+  const surface = isDark ? '#161b22' : '#f6f8fa';
+  const border = isDark ? '#30363d' : '#d0d7de';
+  const text = isDark ? '#e6edf3' : '#1f2328';
+  const muted = isDark ? '#8b949e' : '#656d76';
+  const accent = isDark ? '#58a6ff' : '#0969da';
+  const danger = isDark ? '#f85149' : '#cf222e';
+  const success = isDark ? '#3fb950' : '#1a7f37';
+  const fontStack = `"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  return `<style data-aw-theme-defense>
+:root {
+  color-scheme: ${isDark ? 'dark' : 'light'};
+  --app-bg: ${bg};
+  --app-surface: ${surface};
+  --app-border: ${border};
+  --app-text: ${text};
+  --app-muted: ${muted};
+  --app-accent: ${accent};
+  --app-danger: ${danger};
+  --app-success: ${success};
+  --app-font: ${fontStack};
+}
+:where(html, body) {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: var(--app-font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+:where(body) { padding: 16px; min-height: 100vh; box-sizing: border-box; }
+:where(table) { border-collapse: collapse; }
+:where(a) { color: var(--app-accent); }
+
+/* ─── ALWAYS-VISIBLE OVERRIDES (openagentic-omhs#330) ──────────────────
+   See StreamingArtifactRenderer for rationale. !important on the
+   visibility-critical rules so model-emitted Plotly/D3/Chart.js text
+   defaults can't make the artifact unreadable against dark chrome.
+   ──────────────────────────────────────────────────────────────────── */
+html, body { background: var(--app-bg) !important; color: var(--app-text) !important; font-family: var(--app-font) !important; }
+svg text                                          { fill: var(--app-text) !important; }
+svg .tick text, svg .axis text, svg .legendtext   { fill: var(--app-muted) !important; }
+svg .domain, svg .tick line, svg .gridlayer line  { stroke: var(--app-border) !important; }
+.js-plotly-plot .plotly .bg, .js-plotly-plot rect.bg     { fill: transparent !important; }
+.modebar, .modebar-group                                  { background: transparent !important; }
+.modebar-btn path                                         { fill: var(--app-muted) !important; }
+.modebar-btn:hover path                                   { fill: var(--app-text) !important; }
+.legend rect.bg                                           { fill: var(--app-surface) !important; }
+canvas { background: var(--app-surface) !important; border-radius: 6px; }
+table th, table td { color: var(--app-text); border-color: var(--app-border); }
+table th { background: var(--app-surface); }
+</style>`;
+}
+
+/**
+ * Splice a payload into the <head> of a full HTML doc. If the doc has no
+ * <head>, fabricate one inside the <html> tag. Last-resort: prepend.
+ */
+function injectIntoHead(html: string, payload: string): string {
+  const headMatch = html.match(/<head[^>]*>/i);
+  if (headMatch) {
+    return html.replace(headMatch[0], `${headMatch[0]}\n${payload}`);
+  }
+  const htmlMatch = html.match(/<html[^>]*>/i);
+  if (htmlMatch) {
+    return html.replace(htmlMatch[0], `${htmlMatch[0]}\n<head>\n${payload}\n</head>`);
+  }
+  return `${payload}\n${html}`;
+}
+
 function buildPreviewHTML(content: CanvasContent, theme: 'light' | 'dark'): string {
   const raw = typeof content.content === 'string' ? content.content : JSON.stringify(content.content, null, 2);
   const isDark = theme === 'dark';
-  const bg = isDark ? '#161618' : '#ffffff';
-  const fg = isDark ? '#e8e8ed' : '#1a1a1a';
+  const bg = isDark ? '#0d1117' : '#ffffff';
+  const fg = isDark ? '#e6edf3' : '#1f2328';
+  const themeDefense = canvasThemeDefenseBlock(isDark);
 
   // Legacy CDN detection — artifacts with CDN URLs get permissive CSP, new ones get locked down
   const hasCDNUrls = /https?:\/\/(cdn\.jsdelivr\.net|unpkg\.com|cdn\.tailwindcss\.com|fonts\.googleapis\.com|esm\.sh)/i.test(raw);
@@ -128,17 +210,27 @@ ${OAT_BRIDGE_SCRIPT}
 
   // For HTML: use as-is (or wrap minimally)
   if (content.type === 'html' || content.language === 'html') {
-    // If it's a full document (has <html> or <!DOCTYPE>), use as-is
+    // If it's a full document (has <html> or <!DOCTYPE>), inject the
+    // theme defense + OAT bridge into the head and return. Previously the
+    // passthrough returned the model's raw output verbatim, which meant
+    // any artifact missing an explicit background rendered invisible on
+    // the dark app chrome. See openagentic-omhs#327.
     if (raw.includes('<html') || raw.includes('<!DOCTYPE') || raw.includes('<!doctype')) {
-      return raw;
+      const withDefense = injectIntoHead(raw, themeDefense);
+      // OAT bridge at end of body so child scripts can use it.
+      const bodyEndMatch = withDefense.match(/<\/body>/i);
+      if (bodyEndMatch) {
+        return withDefense.replace(bodyEndMatch[0], `${OAT_BRIDGE_SCRIPT}\n${bodyEndMatch[0]}`);
+      }
+      return `${withDefense}\n${OAT_BRIDGE_SCRIPT}`;
     }
     return `<!DOCTYPE html>
 <html><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${cspMeta}
+${themeDefense}
 ${hasCDNUrls ? '<script src="https://cdn.tailwindcss.com"></script>' : ''}
-<style>body { margin: 0; background: ${bg}; color: ${fg}; font-family: system-ui, sans-serif; }</style>
 </head><body>${raw}${OAT_BRIDGE_SCRIPT}</body></html>`;
   }
 
@@ -265,8 +357,10 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
     }
   }, [content, highlighter, isLoading, theme]);
 
+  // Expose preview screenshot for GhostPilot / AI vision
   useEffect(() => {
     if (!isOpen || !content) return;
+    // Register a global function that GhostPilot can call to get canvas state
     (window as any).__canvasPanel = {
       getContent: () => ({
         id: content.id,
@@ -540,6 +634,7 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
                     className="w-full h-full border-0"
                     style={{ background: theme === 'dark' ? '#161618' : '#fff' }}
                   />
+                  {/* Floating GhostPilot indicator — AI can see this preview */}
                   <div
                     className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded-full text-xs"
                     style={{

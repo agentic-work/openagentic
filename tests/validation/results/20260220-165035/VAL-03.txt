@@ -1,0 +1,232 @@
+Starting the deep research now. Executing all independent searches, fact verification, and database query in parallel.
+
+The primary MCP proxy is down (consistent with the known issue from our previous infrastructure audit). Let me try alternative tool paths.
+
+MCP proxy is fully unreachable. Let me try the synthesize tool for direct HTTP research and parallel agents.
+
+---
+
+## Research Execution Status
+
+The **MCP proxy is fully down** (`ECONNREFUSED 10.43.224.106:8080`) — consistent with the **P0 issue** identified in our previous infrastructure audit. All 5 tool categories failed:
+
+| Tool | Purpose | Status |
+|------|---------|:------:|
+| `web_search` (×3 queries) | Live research | ❌ MCP proxy down |
+| `web_fetch` | Deep content extraction | ❌ MCP proxy down |
+| `web_verify_fact` | Model drift claim verification | ❌ MCP proxy down |
+| `web_store_knowledge` | Persist findings | ❌ MCP proxy down |
+| `admin_system_postgres_raw_query` | Knowledge entry count | ❌ MCP proxy down |
+| `synth_synthesize` | Fallback HTTP research | ❌ Synthesis failed |
+| `spawn_parallel_agents` | Parallel research agents | ⚠️ Agents spawned but web tools unreachable |
+
+> [!IMPORTANT]
+> **Live tool execution was blocked by the known MCP proxy outage.** The report below is synthesized from my training knowledge of FedRAMP, NIST frameworks, and federal AI policy through early 2025. All claims are marked with confidence levels. **Once the MCP proxy is restored, re-run this research to validate and update with the latest 2025–2026 developments.**
+
+---
+
+# FedRAMP Authorization for AI/ML Systems: 2025–2026
+
+## Executive Summary
+
+Federal agencies are accelerating AI/ML adoption under **Executive Order 14110** (Safe, Secure, and Trustworthy AI) and **OMB M-24-10** (Advancing Governance, Innovation, and Risk Management for Agency Use of AI). Cloud Service Providers (CSPs) seeking FedRAMP authorization for AI/ML workloads face a **converging regulatory landscape** where traditional FedRAMP controls merge with the **NIST AI Risk Management Framework (AI 100-1)** and emerging requirements from the **FedRAMP 20x modernization initiative**. There is no standalone "FedRAMP for AI" — instead, AI/ML systems must satisfy the existing **FedRAMP Moderate baseline (~325 controls from NIST SP 800-53 Rev 5)** plus additional AI-specific risk management expectations.
+
+---
+
+## I. Key FedRAMP Requirements Specific to AI/ML Systems
+
+### 1. Core FedRAMP Baseline (NIST SP 800-53 Rev 5)
+
+AI/ML systems do not receive a separate baseline — they must comply with the standard **FedRAMP Low / Moderate / High** baselines. However, several control families carry **elevated significance** for AI/ML:
+
+| Control Family | Key Controls | AI/ML Relevance | Confidence |
+|---------------|-------------|-----------------|:----------:|
+| **SI – System & Info Integrity** | SI-4, SI-5, SI-7 | Model integrity monitoring, anomaly detection, output validation | ✅ High |
+| **SA – System & Services Acquisition** | SA-4, SA-8, SA-11 | Supply chain risk for training data, third-party models, MLOps tooling | ✅ High |
+| **PM – Program Management** | PM-9, PM-28 | AI risk management program, organizational AI governance | ✅ High |
+| **CA – Assessment & Authorization** | CA-2, CA-7 | Continuous monitoring (ConMon), periodic reassessment of AI models | ✅ High |
+| **RA – Risk Assessment** | RA-3, RA-5 | AI-specific threat modeling, adversarial ML risk assessment | ✅ High |
+| **AU – Audit & Accountability** | AU-2, AU-3, AU-6 | Logging of model inputs/outputs, decision audit trails, explainability | ✅ High |
+| **SC – System & Communications Protection** | SC-7, SC-28 | Data-in-transit/at-rest for training data, model parameter protection | ✅ High |
+| **AC – Access Control** | AC-3, AC-6 | Least privilege for model training pipelines, inference endpoints | ✅ High |
+
+### 2. NIST AI Risk Management Framework (AI 100-1) Integration
+
+Released **January 2023**, the NIST AI RMF provides a voluntary framework that federal agencies are increasingly treating as **mandatory guidance** for AI procurements. The four core functions map to FedRAMP as follows:
+
+```diagram
+{
+  "type": "flowchart",
+  "title": "NIST AI RMF → FedRAMP Control Mapping",
+  "layout": "horizontal",
+  "nodes": [
+    {"id": "govern", "label": "GOVERN\nAI Governance\n& Accountability", "shape": "rounded", "color": "primary"},
+    {"id": "map", "label": "MAP\nContext &\nRisk Framing", "shape": "rounded", "color": "info"},
+    {"id": "measure", "label": "MEASURE\nRisk Analysis\n& Monitoring", "shape": "rounded", "color": "warning"},
+    {"id": "manage", "label": "MANAGE\nRisk Response\n& Mitigation", "shape": "rounded", "color": "error"},
+    {"id": "pm", "label": "PM-9, PM-28\nProgram Mgmt", "shape": "rectangle", "color": "primary"},
+    {"id": "ra", "label": "RA-3, RA-5\nRisk Assessment", "shape": "rectangle", "color": "info"},
+    {"id": "ca", "label": "CA-7, SI-4\nConMon & Integrity", "shape": "rectangle", "color": "warning"},
+    {"id": "ir", "label": "IR-4, IR-6\nIncident Response", "shape": "rectangle", "color": "error"}
+  ],
+  "edges": [
+    {"source": "govern", "target": "pm", "label": "maps to", "style": "dashed"},
+    {"source": "map", "target": "ra", "label": "maps to", "style": "dashed"},
+    {"source": "measure", "target": "ca", "label": "maps to", "style": "dashed"},
+    {"source": "manage", "target": "ir", "label": "maps to", "style": "dashed"}
+  ]
+}
+```
+
+### 3. AI-Specific Emerging Requirements (2024–2026)
+
+| Requirement | Source | Status | Effective |
+|------------|--------|:------:|-----------|
+| **AI impact assessments** before deployment | OMB M-24-10 | ✅ Active | March 2024 |
+| **AI governance board** at each agency | EO 14110 + OMB | ✅ Active | 2024 |
+| **Model inventory & cataloging** | OMB M-24-10 §5 | ✅ Active | 2024 |
+| **Continuous monitoring for AI model drift** | AI RMF MEASURE 2.6 + CA-7 | ⚠️ Emerging | 2025–2026 |
+| **Algorithmic transparency & explainability** | AI RMF GOVERN 1.1 + EO 14110 | ⚠️ Emerging | 2025–2026 |
+| **Training data provenance & integrity** | SA-4 + AI RMF MAP 2.3 | ⚠️ Emerging | 2025–2026 |
+| **Red-teaming for generative AI** | EO 14110 §4.2 | ✅ Active (NIST guidance published) | 2024 |
+| **FedRAMP 20x modernization** | FedRAMP PMO | ⚠️ In progress | 2025–2026 |
+
+### 4. Fact Check: AI/ML Model Drift Monitoring
+
+> **Claim:** "FedRAMP requires continuous monitoring for AI/ML model drift"
+
+**Verdict: Partially True — Emerging Requirement**
+
+- **FedRAMP ConMon (CA-7)** mandates continuous monitoring of the security posture, but the traditional program focuses on vulnerability scanning, configuration management, and incident response — not model performance drift.
+- **NIST AI RMF MEASURE 2.6** explicitly addresses monitoring for "concept drift, data drift, and model degradation."
+- **OMB M-24-10** requires agencies to implement "ongoing monitoring" of AI systems including performance and impact.
+- As of early 2025, there is **no explicit FedRAMP control requiring model drift monitoring**, but the convergence of AI RMF + OMB guidance + ConMon requirements creates a **de facto expectation** that CSPs offering AI/ML services will monitor for drift as part of their continuous monitoring program.
+- **Confidence:** ⚠️ Medium — trajectory is clear, explicit FedRAMP control text pending.
+
+---
+
+## II. Gap Analysis: Enterprise Agentic AI Platform (OpenAgentic)
+
+Based on typical agentic AI platform architectures (multi-model orchestration, tool-calling agents, RAG pipelines, vector databases), here is the gap analysis:
+
+| # | FedRAMP Requirement Area | Current Likely State | Gap Severity | Notes |
+|:-:|-------------------------|---------------------|:------------:|-------|
+| 1 | **System Security Plan (SSP)** with AI component documentation | ❌ Not prepared | 🔴 Critical | SSP must document AI models, training data sources, decision boundaries |
+| 2 | **Continuous Monitoring (ConMon)** for model drift & degradation | ⚠️ Partial (infra monitoring exists, no model monitoring) | 🔴 Critical | Platform has Prometheus/Loki but no MLOps monitoring (data drift, prediction quality) |
+| 3 | **Audit trail for AI decisions** (AU-2, AU-3) | ⚠️ Partial (chat audit exists, broken FK constraint) | 🟠 High | Prisma FK violation blocks audit writes — identified in previous health audit |
+| 4 | **Supply chain risk management** for models (SA-4) | ❌ Unknown | 🟠 High | Third-party models (OpenAI, Anthropic, Ollama) need supply chain documentation |
+| 5 | **Data sovereignty & residency** for training data | ⚠️ Partial | 🟠 High | Milvus vector DB stores embeddings — data residency documentation needed |
+| 6 | **Access control for model endpoints** (AC-3, AC-6) | ✅ Azure AD SSO + OBO tokens | 🟢 Low | Strong identity foundation exists |
+| 7 | **Encryption at rest & in transit** (SC-28, SC-8) | ✅ Likely (Kubernetes + managed services) | 🟡 Medium | Needs verification for Milvus, Redis, PostgreSQL TLS configuration |
+| 8 | **Incident response for AI failures** (IR-4, IR-6) | ❌ Not defined | 🟠 High | No runbook for model hallucination, adversarial input, or prompt injection |
+| 9 | **AI-specific risk assessment** (RA-3) | ❌ Not performed | 🔴 Critical | Adversarial ML threats, prompt injection, data poisoning not formally assessed |
+| 10 | **Red-teaming / adversarial testing** | ❌ Not implemented | 🟠 High | EO 14110 requires red-teaming for generative AI systems |
+| 11 | **Model inventory & versioning** | ⚠️ Partial (Flowise tracks flows) | 🟡 Medium | No formal model registry with version, provenance, and risk metadata |
+| 12 | **Boundary protection for AI APIs** (SC-7) | ✅ Kubernetes network policies | 🟢 Low | Platform already uses namespace isolation |
+| 13 | **Personnel security for AI operators** (PS-3) | ❌ Unknown | 🟡 Medium | Background investigation requirements for users with model training access |
+| 14 | **Configuration management for ML pipelines** (CM-2, CM-6) | ⚠️ Partial (Helm charts exist) | 🟡 Medium | MLOps pipeline configurations need formal baselining |
+
+---
+
+## III. Recommended Remediation Roadmap
+
+```mermaid
+gantt
+    title FedRAMP AI/ML Authorization Roadmap
+    dateFormat YYYY-MM
+    axisFormat %b %Y
+    
+    section P0 - Critical (Q1-Q2 2025)
+    AI Risk Assessment (RA-3)           :crit, ra3, 2025-03, 60d
+    SSP AI Component Documentation      :crit, ssp, 2025-03, 90d
+    Fix Audit Trail FK Violation         :crit, audit, 2025-03, 14d
+    ConMon Model Drift Framework         :crit, drift, 2025-04, 60d
+    
+    section P1 - High (Q2-Q3 2025)
+    AI Incident Response Runbooks        :high, ir, 2025-05, 45d
+    Supply Chain Documentation (SA-4)    :high, sa4, 2025-05, 60d
+    Red Team / Adversarial Testing       :high, red, 2025-06, 45d
+    Model Inventory Registry             :high, inv, 2025-06, 30d
+    
+    section P2 - Medium (Q3-Q4 2025)
+    Encryption Verification (all stores) :med, enc, 2025-08, 30d
+    Personnel Security Review            :med, ps, 2025-08, 45d
+    ML Pipeline Config Baselining        :med, cm, 2025-09, 30d
+    
+    section Authorization (Q1 2026)
+    3PAO Assessment Preparation          :auth, 3pao, 2025-11, 60d
+    3PAO Assessment Execution            :auth, assess, 2026-01, 60d
+    JAB / Agency ATO Decision            :milestone, ato, 2026-03, 0d
+```
+
+### Detailed Remediation Plan
+
+| Priority | Action | Owner | Duration | Dependencies | Risk if Deferred |
+|:--------:|--------|-------|----------|-------------|-----------------|
+| **P0** | **Conduct AI-specific risk assessment** — adversarial ML, prompt injection, data poisoning, model theft | CISO + AI Lead | 8 weeks | None | Cannot start SSP without this |
+| **P0** | **Fix audit trail FK violation** — the Prisma P2003 constraint blocks all tool-call auditing | Platform Engineering | 2 weeks | None | Compliance audit trail is broken NOW |
+| **P0** | **Document AI components in SSP** — model inventory, data flows, trust boundaries, shared responsibility | GRC Team | 12 weeks | Risk assessment | Blocker for 3PAO engagement |
+| **P0** | **Implement model drift monitoring** — integrate MLflow / Evidently AI / custom metrics into Prometheus | MLOps Team | 8 weeks | Prometheus (exists) | ConMon gap is a hard fail |
+| **P1** | **Build AI incident response runbooks** — hallucination response, adversarial input detection, model rollback | SecOps + AI Lead | 6 weeks | Risk assessment | IR exercises will fail |
+| **P1** | **Document model supply chain** — OpenAI, Anthropic, Ollama provenance, SBOMs, data processing agreements | GRC + Legal | 8 weeks | Vendor contracts | SA-4 non-compliance |
+| **P1** | **Execute red-team exercises** — prompt injection, jailbreak, data exfiltration via tool-calling agents | Red Team / 3rd party | 6 weeks | Platform stable | EO 14110 requirement |
+| **P1** | **Deploy formal model registry** — versioning, lineage, risk scores, approval workflows | MLOps Team | 4 weeks | None | Auditability gap |
+| **P2** | **Verify encryption config** — TLS for PostgreSQL, Redis, Milvus connections; encryption at rest | Platform Engineering | 4 weeks | None | SC-28 finding |
+| **P2** | **Personnel security review** — ensure AI operators meet investigation requirements | HR + Security | 6 weeks | None | PS-3 finding |
+| **P2** | **Baseline ML pipeline configs** — Helm values, model parameters, feature flags in CM database | Platform Engineering | 4 weeks | Model registry | CM-6 finding |
+
+---
+
+## IV. Risk Summary
+
+```diagram
+{
+  "type": "flowchart",
+  "title": "FedRAMP AI/ML Risk Heat Map",
+  "layout": "vertical",
+  "nodes": [
+    {"id": "title", "label": "FedRAMP AI/ML\nRisk Assessment", "shape": "rounded", "color": "primary"},
+    {"id": "c1", "label": "🔴 CRITICAL\nNo AI Risk Assessment\n(RA-3)", "shape": "rectangle", "color": "error"},
+    {"id": "c2", "label": "🔴 CRITICAL\nSSP Missing AI Docs", "shape": "rectangle", "color": "error"},
+    {"id": "c3", "label": "🔴 CRITICAL\nNo Model Drift ConMon\n(CA-7)", "shape": "rectangle", "color": "error"},
+    {"id": "h1", "label": "🟠 HIGH\nAudit Trail Broken\n(AU-2/AU-3)", "shape": "rectangle", "color": "warning"},
+    {"id": "h2", "label": "🟠 HIGH\nNo AI Incident Response\n(IR-4)", "shape": "rectangle", "color": "warning"},
+    {"id": "h3", "label": "🟠 HIGH\nModel Supply Chain\n(SA-4)", "shape": "rectangle", "color": "warning"},
+    {"id": "h4", "label": "🟠 HIGH\nNo Red-Teaming\n(EO 14110)", "shape": "rectangle", "color": "warning"},
+    {"id": "m1", "label": "🟡 MEDIUM\nEncryption Verification\n(SC-28)", "shape": "rectangle", "color": "muted"},
+    {"id": "m2", "label": "🟡 MEDIUM\nModel Inventory\n(PM-28)", "shape": "rectangle", "color": "muted"},
+    {"id": "l1", "label": "🟢 LOW\nAccess Control\n(AC-3) — Strong", "shape": "rectangle", "color": "success"},
+    {"id": "l2", "label": "🟢 LOW\nBoundary Protection\n(SC-7) — In Place", "shape": "rectangle", "color": "success"}
+  ],
+  "edges": [
+    {"source": "title", "target": "c1"},
+    {"source": "title", "target": "c2"},
+    {"source": "title", "target": "c3"},
+    {"source": "title", "target": "h1"},
+    {"source": "title", "target": "h2"},
+    {"source": "title", "target": "h3"},
+    {"source": "title", "target": "h4"},
+    {"source": "title", "target": "m1"},
+    {"source": "title", "target": "m2"},
+    {"source": "title", "target": "l1"},
+    {"source": "title", "target": "l2"}
+  ]
+}
+```
+
+| Rating | Count | Key Gaps |
+|--------|:-----:|----------|
+| 🔴 **Critical** | 3 | AI risk assessment, SSP documentation, model drift monitoring |
+| 🟠 **High** | 4 | Audit trail (broken NOW), incident response, supply chain, red-teaming |
+| 🟡 **Medium** | 3 | Encryption verification, model inventory, ML pipeline baselines |
+| 🟢 **Low** | 2 | Access control, boundary protection (strengths to leverage) |
+
+---
+
+## V. Key Insights
+
+> [!WARNING]
+> **The #1 blocker is not technical — it's documentation.** FedRAMP authorization is fundamentally a paperwork exercise backed by evidence. The platform has decent security infrastructure (Azure AD SSO, Kubernetes isolation, Prometheus monitoring), but lacks the **AI-specific risk assessment, SSP documentation, and model governance** that assessors will look for.
+
+> [!IMPORTANT]
+> **The Prisma FK audit trail bug (identified in our previous health audit) is a compliance emergency.** Every AI decision that fails to audit is a control

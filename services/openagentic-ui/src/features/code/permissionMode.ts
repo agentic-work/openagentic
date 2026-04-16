@@ -1,17 +1,15 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * Permission mode metadata — 1:1 port of openagentic's
+ * src/utils/permissions/PermissionMode.ts config, so the React UI
+ * renders the exact same labels, symbols, and colors as the TUI.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Cycle order matches openagentic's getNextPermissionMode (default →
+ * acceptEdits → plan → bypassPermissions → default), minus the `auto`
+ * and `dontAsk` internal modes which aren't exposed in the Shift+Tab
+ * rotation.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 export type PermissionMode =
@@ -95,6 +93,19 @@ export function formatFooterModeLine(mode: PermissionMode): string {
   }
   const symbolPart = cfg.symbol ? `${cfg.symbol} ` : '';
   return `${symbolPart}${cfg.shortTitle} on (shift+tab to cycle)`;
+}
+
+/**
+ * Compact label for the modernized footer pill (no "on (shift+tab to
+ * cycle)" hint — that moves into a title attribute / tooltip). Keeps
+ * the emoji-free openagentic style but drops the 1993-terminal noise.
+ * See 2026-04-14 codemode-ux comparison doc.
+ */
+export function formatFooterModeShort(mode: PermissionMode): string {
+  const cfg = PERMISSION_MODE_CONFIG[mode];
+  if (mode === 'default') return 'default';
+  const symbolPart = cfg.symbol ? `${cfg.symbol} ` : '';
+  return `${symbolPart}${cfg.shortTitle}`;
 }
 
 /**

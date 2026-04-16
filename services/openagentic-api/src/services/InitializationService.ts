@@ -1,21 +1,3 @@
-/**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-
-
 import type { Logger } from 'pino';
 import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
@@ -769,7 +751,7 @@ export class InitializationService {
    * Create test non-admin user for testing permissions
    */
   private async initializeTestUser(): Promise<void> {
-    const testUserEmail = 'user@openagentics.io';
+    const testUserEmail = 'user@openagentic.io';
     const testUserPassword = process.env.ADMIN_SEED_PASSWORD || process.env.ADMIN_USER_PASSWORD; // Same password as admin for testing
     const testUserName = 'Test User';
 

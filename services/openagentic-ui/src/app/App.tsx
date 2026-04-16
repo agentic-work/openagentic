@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Main Application Component
  * Root component that sets up routing, authentication, theming, and global providers
  * Features: Protected routes, auth flow, theme management, error boundaries
@@ -32,7 +16,6 @@ import AuthCallback from '@/features/auth/components/AuthCallback';
 import AccessDenied from '@/features/auth/components/AccessDenied';
 // AdminPortal removed - lazy loaded in ChatContainer
 import { WorkflowsPage } from '@/features/workflows/components/WorkflowsPage';
-import { CodeModePage } from '@/features/code/components';
 import ErrorBoundary from '@/shared/components/ErrorBoundary';
 import { AuthProvider, useAuth } from './providers/AuthContext';
 import { useTheme, ThemeProvider } from '@/contexts/ThemeContext';
@@ -282,10 +265,10 @@ function AppContent(): React.ReactElement {
                   } />
                   <Route path="/settings" element={<Settings />} />
 
-                  {/* Code Mode - AI Coding Assistant */}
-                  <Route path="/code" element={
-                    <CodeModePage />
-                  } />
+                  {/* Code Mode is reached via the in-app sidebar toggle
+                      (appMode='code' inside ChatContainer), not as a public
+                      URL. Direct /code navigation is intentionally a 404 so
+                      the entry path is always: log in → click Code Mode. */}
 
                   {/* OpenAgentic Flows - Native Workflow Builder */}
                   <Route path="/workflows" element={

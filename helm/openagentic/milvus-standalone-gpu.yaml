@@ -1,0 +1,113 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+# ===================================================================================================
+# MILVUS GPU STANDALONE - DALEK GPU 1 (RTX 2080 Ti 11GB)
+# ===================================================================================================
+# Deploy with: helm install milvus zilliztech/milvus -n openagentic -f helm/openagentic/milvus-standalone-gpu.yaml
+#
+# Prerequisites:
+#   helm repo add zilliztech https://zilliztech.github.io/milvus-helm/
+#   helm repo update
+#
+# GPU Assignment: DALEK GPU 1 (CUDA_VISIBLE_DEVICES=1)
+# ===================================================================================================
+
+# Standalone mode (not cluster)
+cluster:
+  enabled: false
+
+standalone:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: "2000m"
+      memory: "8Gi"
+      nvidia.com/gpu: 1
+    limits:
+      cpu: "4000m"
+      memory: "16Gi"
+      nvidia.com/gpu: 1
+  nodeSelector:
+    kubernetes.io/hostname: dalek
+  extraEnv:
+    - name: NVIDIA_VISIBLE_DEVICES
+      value: "all"  # Let K8s device plugin manage GPU visibility
+    - name: CUDA_VISIBLE_DEVICES
+      value: "0"  # Use the first visible GPU (remapped by K8s)
+
+# GPU-enabled Milvus image
+image:
+  all:
+    repository: milvusdb/milvus
+    tag: v2.5.26-gpu
+    pullPolicy: IfNotPresent
+
+# etcd for metadata storage
+etcd:
+  enabled: true
+  replicaCount: 1
+  persistence:
+    enabled: true
+    storageClass: nfs
+    size: 10Gi
+  nodeSelector:
+    kubernetes.io/hostname: dalek
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+# MinIO for object storage (Milvus-specific, separate from workspace MinIO)
+minio:
+  enabled: true
+  mode: standalone
+  existingSecret: milvus-minio
+  accessKey: minioadmin
+  secretKey: minioadmin123
+  persistence:
+    enabled: true
+    storageClass: nfs
+    size: 50Gi
+  nodeSelector:
+    kubernetes.io/hostname: dalek
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+# Pulsar disabled for standalone mode
+pulsar:
+  enabled: false
+pulsarv3:
+  enabled: false
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 19530
+  annotations: {}
+
+# GPU-specific configuration
+extraConfigFiles:
+  user.yaml: |
+    # Use rocksmq for standalone mode (embedded message queue)
+    mq:
+      type: rocksmq
+    messageQueue: rocksmq
+    gpu:
+      initMemSize: 2048
+      maxMemSize: 8192
+      buildIndexOnGpu: true
+
+# Metrics for monitoring
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false  # Enable if Prometheus Operator is installed

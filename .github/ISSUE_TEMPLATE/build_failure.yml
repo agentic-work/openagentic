@@ -1,0 +1,149 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+name: 🚨 Build Failure
+description: Report a build or deployment failure
+title: "[BUILD]: "
+labels: ["build-failure", "high-priority", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        🚨 **Build Failure Report**
+
+        Please provide details about the build failure to help us resolve it quickly.
+
+  - type: checkboxes
+    id: search-existing
+    attributes:
+      label: Check for existing build issues
+      description: Please check if this build failure is already reported
+      options:
+        - label: I have checked existing build failure issues and this is not a duplicate
+          required: true
+
+  - type: dropdown
+    id: build-type
+    attributes:
+      label: Build Type
+      description: What type of build failed?
+      options:
+        - Local Development Build
+        - CI/CD Pipeline Build
+        - Docker Image Build
+        - Kubernetes Deployment
+        - npm/pnpm Build
+        - TypeScript Compilation
+        - Test Execution
+        - Linting/Quality Checks
+    validations:
+      required: true
+
+  - type: dropdown
+    id: service
+    attributes:
+      label: Affected Service
+      description: Which service or component failed to build?
+      options:
+        - openagenticchat-api
+        - openagenticchat-ui
+        - mcp-orchestrator
+        - mcp-executor
+        - All Services
+        - Unknown/Multiple
+    validations:
+      required: true
+
+  - type: input
+    id: branch
+    attributes:
+      label: Branch/Commit
+      description: Which branch or commit SHA is affected?
+      placeholder: e.g., performance/ui-optimization-gemini-inspired, main, abc123f
+    validations:
+      required: true
+
+  - type: textarea
+    id: error-message
+    attributes:
+      label: Error Message
+      description: Full error message or build log output
+      placeholder: |
+        ```
+        Paste the complete error message here...
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: build-command
+    attributes:
+      label: Build Command
+      description: What command were you running when the build failed?
+      placeholder: |
+        e.g., npm run build
+        e.g., docker build -t openagenticchat-api .
+        e.g., helm upgrade openagenticchat ./helm/openagenticchat-v3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: failure-type
+    attributes:
+      label: Failure Type
+      description: What type of failure occurred?
+      options:
+        - TypeScript Compilation Error
+        - ESLint/Prettier Error
+        - Jest Test Failure
+        - Docker Build Error
+        - Package Installation Error
+        - Import/Module Resolution Error
+        - Syntax Error
+        - Memory/Resource Error
+        - Network/Timeout Error
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: recent-changes
+    attributes:
+      label: Recent Changes
+      description: What changes were made recently that might have caused this?
+      placeholder: |
+        - Added new dependency X
+        - Modified component Y
+        - Updated configuration Z
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Attempted Solutions
+      description: What have you tried to fix this issue?
+      placeholder: |
+        - Cleared node_modules and reinstalled
+        - Ran npm run clean
+        - Checked for syntax errors
+        - etc.
+
+  - type: textarea
+    id: environment-info
+    attributes:
+      label: Environment Information
+      description: Build environment details
+      placeholder: |
+        - OS: Windows 11 / macOS / Ubuntu 20.04
+        - Node Version: 20.9.0
+        - npm/pnpm Version: 9.1.0
+        - Docker Version: 24.0.6
+        - CI/CD: GitHub Actions / Local
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other information that might help diagnose the issue

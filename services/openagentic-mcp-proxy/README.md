@@ -821,10 +821,10 @@ MIT License - see [LICENSE](../../LICENSE)
 
 ## Support
 
-- **Documentation**: https://docs.openagentics.io/mcp-proxy
+- **Documentation**: https://docs.openagentic.io/mcp-proxy
 - **Issues**: https://github.com/your-org/openagentic/issues
 - **Slack**: #mcp-proxy-dev
-- **Email**: mcp-proxy-team@openagentics.io
+- **Email**: mcp-proxy-team@openagentic.io
 
 ---
 

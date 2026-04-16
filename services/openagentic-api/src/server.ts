@@ -1273,18 +1273,6 @@ async function registerAllRoutes() {
     loggers.routes.error({ err: error }, 'Failed to register image routes');
   }
 
-  // Register Openagentic routes (config + chat endpoint for openagentic-cli)
-  try {
-    const { openagenticRoutes } = await import('./routes/openagentic.js');
-    await server.register(openagenticRoutes, {
-      prefix: '/api/openagentic',
-      providerManager: providerManager as any,
-    });
-    loggers.routes.info('Openagentic routes registered at /api/openagentic/* (CLI config and chat)');
-  } catch (error) {
-    loggers.routes.error({ err: error }, 'Failed to register openagentic routes');
-  }
-
   // MCP Inspector removed - no longer using orchestrator
 
   // Register Files routes - DISABLED: duplicate with file-attachment routes
@@ -1378,16 +1366,6 @@ async function registerAllRoutes() {
     loggers.routes.info('MCP logs routes registered at /api/mcp-logs/* (no auth for internal service)');
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register MCP logs routes');
-  }
-
-  // Register AWCode Internal routes (for awcode-manager to persist sessions/messages)
-  // NOTE: No auth required for internal service communication
-  try {
-    const { default: awcodeRoutes } = await import('./routes/awcode.js');
-    await server.register(awcodeRoutes, { prefix: '/api/awcode' });
-    loggers.routes.info('AWCode internal routes registered at /api/awcode/* (no auth for internal service)');
-  } catch (error) {
-    loggers.routes.error({ err: error }, 'Failed to register AWCode routes');
   }
 
   // Register Documentation routes
@@ -1741,7 +1719,6 @@ async function registerAllRoutes() {
 
   // Register OpenAgenticCode routes (for sandboxed development environment)
   try {
-    const codeRoutes = (await import('./routes/code.js')).default;
     const EXEC_URL = process.env.EXEC_URL || 'http://openagentic-exec:3060';
 
     // Health endpoint - NO auth required (for UI connectivity check)
@@ -1805,18 +1782,16 @@ async function registerAllRoutes() {
     });
     loggers.routes.info('Code access-check endpoint registered at /api/code/access-check (no auth - internal MCP use)');
 
-    // Other code routes - with auth
+    // Other code routes - with auth. The primary session + chat routes (code.ts)
+    // were agenticode-specific and have been removed for OSS; what's left are the
+    // plugin marketplace + provisioning endpoints, which talk directly to the
+    // exec service.
     await server.register(async (instance) => {
       instance.addHook('preHandler', authMiddleware);
-      await instance.register(codeRoutes, {
-        providerManager: providerManager as any
-      });
-      // Plugin marketplace routes (browse, install, manage)
       const { default: codePluginsRoutes } = await import('./routes/code-plugins.js');
       await instance.register(codePluginsRoutes);
       loggers.routes.info('Code plugin marketplace routes registered');
 
-      // Code Mode provisioning routes (user environment setup)
       const { default: codeModeProvisioningRoutes } = await import('./routes/code-mode-provisioning.js');
       await instance.register(codeModeProvisioningRoutes, { prefix: '/provisioning' });
       loggers.routes.info('Code Mode provisioning routes registered at /api/code/provisioning/*');

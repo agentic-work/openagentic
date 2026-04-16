@@ -1,0 +1,268 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e1204]:
+    - generic [ref=e1205]:
+      - generic [ref=e1206]:
+        - generic [ref=e1207]:
+          - img [ref=e1208]
+          - generic [ref=e1211]: Admin Console
+        - button [ref=e1212] [cursor=pointer]:
+          - img [ref=e1213]
+      - generic [ref=e1216]:
+        - button "Dashboard Overview" [ref=e1218] [cursor=pointer]:
+          - img [ref=e1220]:
+            - generic [ref=e1226]: 98%
+            - generic [ref=e1227]: 2.1k
+          - generic [ref=e1229]: Dashboard Overview
+        - button "System Management" [ref=e1231] [cursor=pointer]:
+          - img [ref=e1233]
+          - generic [ref=e1244]: System Management
+          - img [ref=e1245]
+        - generic [ref=e1247]:
+          - button "LLM Providers" [ref=e1248] [cursor=pointer]:
+            - img [ref=e1250]
+            - generic [ref=e1256]: LLM Providers
+            - img [ref=e1257]
+          - generic [ref=e2360]:
+            - button "Provider Management" [ref=e2362] [cursor=pointer]:
+              - img [ref=e2364]
+              - generic [ref=e2366]: Provider Management
+            - button "Models" [ref=e2368] [cursor=pointer]:
+              - img [ref=e2370]
+              - generic [ref=e2375]: Models
+            - button "Ollama Hosts" [ref=e2377] [cursor=pointer]:
+              - img [ref=e2379]
+              - generic [ref=e2382]: Ollama Hosts
+            - button "Tiered Function Calling" [ref=e2384] [cursor=pointer]:
+              - img [ref=e2386]
+              - generic [ref=e2387]: Tiered Function Calling
+            - button "Performance Metrics" [ref=e2389] [cursor=pointer]:
+              - img [ref=e2391]
+              - generic [ref=e2396]: Performance Metrics
+        - button "Tools Management" [ref=e1260] [cursor=pointer]:
+          - img [ref=e1262]
+          - generic [ref=e1267]: Tools Management
+          - img [ref=e1268]
+        - button "OpenAgentic Flows" [ref=e1271] [cursor=pointer]:
+          - img [ref=e1273]
+          - generic [ref=e1282]: OpenAgentic Flows
+          - img [ref=e1283]
+        - button "Code Mode" [ref=e1286] [cursor=pointer]:
+          - img [ref=e1288]
+          - generic [ref=e1296]: Code Mode
+          - img [ref=e1297]
+        - button "Agent Management" [ref=e1300] [cursor=pointer]:
+          - img [ref=e1302]
+          - generic [ref=e1309]: Agent Management
+          - img [ref=e1310]
+        - button "Integrations" [ref=e1313] [cursor=pointer]:
+          - img [ref=e1315]
+          - generic [ref=e1318]: Integrations
+          - img [ref=e1319]
+        - button "Prompt Engineering" [ref=e1322] [cursor=pointer]:
+          - img [ref=e1324]
+          - generic [ref=e1326]: Prompt Engineering
+          - img [ref=e1327]
+        - button "Content & Data" [ref=e1330] [cursor=pointer]:
+          - img [ref=e1332]
+          - generic [ref=e1340]: Content & Data
+          - img [ref=e1341]
+        - button "Chargeback & Costs" [ref=e1344] [cursor=pointer]:
+          - img [ref=e1346]:
+            - generic [ref=e1352]: $
+          - generic [ref=e1355]: Chargeback & Costs
+          - img [ref=e1356]
+        - button "Monitoring & Logs" [ref=e1359] [cursor=pointer]:
+          - img [ref=e1361]
+          - generic [ref=e1366]: Monitoring & Logs
+          - img [ref=e1367]
+        - button "Security & Access" [ref=e1370] [cursor=pointer]:
+          - img [ref=e1372]
+          - generic [ref=e1379]: Security & Access
+          - img [ref=e1380]
+      - generic [ref=e1382]:
+        - button "v0.6.3 prod" [ref=e1385] [cursor=pointer]:
+          - generic [ref=e1387]: v0.6.3
+          - generic [ref=e1388]: prod
+          - img [ref=e1389]
+        - button "Settings & more" [ref=e1392] [cursor=pointer]:
+          - img [ref=e1393]
+          - generic [ref=e1396]: Settings & more
+    - generic [ref=e1397]:
+      - generic [ref=e1398]:
+        - generic [ref=e1399]:
+          - img [ref=e1400]
+          - generic [ref=e1403]: "Last updated: 7:46:42 AM"
+        - generic "System Status" [ref=e1405]:
+          - img [ref=e1406]
+          - generic [ref=e1409]: Healthy
+      - generic [ref=e1411]:
+        - generic [ref=e1412]:
+          - generic [ref=e1413]:
+            - heading "Dashboard Overview" [level=2] [ref=e1414]
+            - generic "More information" [ref=e1416]: i
+          - generic [ref=e1417]:
+            - generic [ref=e1418]:
+              - img
+              - textbox "Search..." [ref=e1419]
+            - generic [ref=e1420]:
+              - button "1h" [ref=e1421] [cursor=pointer]
+              - button "6h" [ref=e1422] [cursor=pointer]
+              - button "12h" [ref=e1423] [cursor=pointer]
+              - button "24h" [ref=e1424] [cursor=pointer]
+              - button "7d" [ref=e1425] [cursor=pointer]
+              - button "30d" [ref=e1426] [cursor=pointer]
+              - button "90d" [ref=e1427] [cursor=pointer]
+            - button "Refresh" [ref=e1428] [cursor=pointer]:
+              - img [ref=e1429]
+        - generic [ref=e1432]:
+          - generic [ref=e1963]:
+            - img [ref=e1965]
+            - generic [ref=e1970]: Total Users
+            - generic [ref=e1972]: "5"
+            - generic [ref=e1973]: 1 active
+          - generic [ref=e1974]:
+            - img [ref=e1976]
+            - generic [ref=e1978]: Chat Sessions
+            - generic [ref=e1979]:
+              - generic [ref=e1980]: "1"
+              - generic [ref=e1981]: ↓ 95.2%
+          - generic [ref=e1982]:
+            - img [ref=e1984]
+            - generic [ref=e1986]: Messages
+            - generic [ref=e1987]:
+              - generic [ref=e1988]: "24"
+              - generic [ref=e1989]: ↓ 85.6%
+          - generic [ref=e1990]:
+            - img [ref=e1992]
+            - generic [ref=e1994]: Code Sessions
+            - generic [ref=e1996]: "0"
+            - generic [ref=e1997]: 0 requests
+          - generic [ref=e1998]:
+            - img [ref=e2000]
+            - generic [ref=e2004]: Flow Executions
+            - generic [ref=e2006]: "1"
+            - generic [ref=e2007]: 100% success
+          - generic [ref=e2008]:
+            - img [ref=e2010]
+            - generic [ref=e2013]: Agent Runs
+            - generic [ref=e2015]: "1"
+            - generic [ref=e2016]: $0.21
+        - generic [ref=e1487]:
+          - generic [ref=e2017]:
+            - img [ref=e2019]
+            - generic [ref=e2021]: Chat Tokens
+            - generic [ref=e2023]: 3.0M
+          - generic [ref=e2024]:
+            - img [ref=e2026]
+            - generic [ref=e2030]: Code Tokens
+            - generic [ref=e2032]: "0"
+          - generic [ref=e2033]:
+            - img [ref=e2035]
+            - generic [ref=e2037]: Total Cost
+            - generic [ref=e2039]: $0.28
+            - generic [ref=e2040]: Chat $0.07 | Code $0.00
+          - generic [ref=e2041]:
+            - img [ref=e2043]
+            - generic [ref=e2046]: API Requests
+            - generic [ref=e2048]: 34.1K
+            - generic [ref=e2049]: 69459ms avg
+          - generic [ref=e2050]:
+            - img [ref=e2052]
+            - generic [ref=e2054]: MCP Tool Calls
+            - generic [ref=e2056]: "12"
+          - generic [ref=e2057]:
+            - img [ref=e2059]
+            - generic [ref=e2063]: Images Generated
+            - generic [ref=e2065]: "0"
+          - generic [ref=e1537]:
+            - generic [ref=e1538]:
+              - img [ref=e1540]
+              - generic [ref=e1543]:
+                - generic [ref=e1544]: Last Updated
+                - generic [ref=e1545]: 7:46:33 AM
+            - generic [ref=e1548]: Live
+        - generic [ref=e1549]:
+          - button "Overview" [ref=e1550] [cursor=pointer]:
+            - img [ref=e1551]
+            - text: Overview
+          - button "Usage & Tokens" [ref=e1553] [cursor=pointer]:
+            - img [ref=e1554]
+            - text: Usage & Tokens
+          - button "Cost Analysis" [ref=e1556] [cursor=pointer]:
+            - img [ref=e1557]
+            - text: Cost Analysis
+          - button "Flows & Agents" [ref=e1559] [cursor=pointer]:
+            - img [ref=e1560]
+            - text: Flows & Agents
+          - button "MCP & Tools" [ref=e1564] [cursor=pointer]:
+            - img [ref=e1565]
+            - text: MCP & Tools
+          - button "API & Limits" [ref=e1567] [cursor=pointer]:
+            - img [ref=e1568]
+            - text: API & Limits
+          - button "Infrastructure" [ref=e1570] [cursor=pointer]:
+            - img [ref=e1571]
+            - text: Infrastructure
+        - generic [ref=e1575]:
+          - generic [ref=e1576]:
+            - generic [ref=e2066]:
+              - heading "Chat Sessions" [level=3] [ref=e2067]
+              - img [ref=e2071]:
+                - generic [ref=e2076]
+                - generic [ref=e2102]
+            - generic [ref=e2119]:
+              - heading "Messages" [level=3] [ref=e2120]
+              - img [ref=e2124]:
+                - generic [ref=e2129]
+                - generic [ref=e2155]
+          - generic [ref=e1683]:
+            - generic [ref=e2172]:
+              - heading "Code Mode Sessions" [level=3] [ref=e2173]
+              - img [ref=e2177]:
+                - generic [ref=e2182]
+                - generic [ref=e2208]
+            - generic [ref=e2219]:
+              - heading "Workflow Executions" [level=3] [ref=e2220]
+              - img [ref=e2224]:
+                - generic [ref=e2229]
+                - generic [ref=e2255]
+          - generic [ref=e1784]:
+            - generic [ref=e2272]:
+              - heading "Token Usage by Source" [level=3] [ref=e2273]
+              - img [ref=e2277]:
+                - generic [ref=e2282]
+                - generic [ref=e2332]
+              - generic [ref=e2347]:
+                - generic [ref=e2350]: Chat
+                - generic [ref=e2353]: Code Mode
+                - generic [ref=e2356]: API
+                - generic [ref=e2359]: Flows & Agents
+            - generic [ref=e1873]:
+              - generic [ref=e1874]:
+                - text: "Chat:"
+                - strong [ref=e1875]: 2.9M
+                - text: tokens
+              - generic [ref=e1876]:
+                - text: "Code Mode:"
+                - strong [ref=e1877]: "0"
+                - text: tokens
+              - generic [ref=e1878]:
+                - text: "API:"
+                - strong [ref=e1879]: "0"
+                - text: tokens
+              - generic [ref=e1880]:
+                - text: "Flows & Agents:"
+                - strong [ref=e1881]: 66.7K
+                - text: tokens
+          - generic [ref=e1882]:
+            - heading "Token Usage by User & Feature More information" [level=3] [ref=e1883]:
+              - img [ref=e1884]
+              - text: Token Usage by User & Feature
+              - generic "More information" [ref=e1890]: i
+            - table [ref=e1892]:
+              - rowgroup [ref=e1893]:
+                - row "User Chat Code Mode Flows Total" [ref=e1894]
+              - rowgroup [ref=e1900]:
+                - row "Unknown Unknown 0 0 66.7K 66.7K" [ref=e1901]
+                - row "Trenton White phatoldsun@gmail.com 48.6K 0 0 48.6K" [ref=e1913]
+  - generic [ref=e1925]: $0.00

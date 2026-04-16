@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Model Management View — Dynamic Model Discovery + Per-Model Configuration
  *
  * Three tabs:
@@ -91,10 +75,23 @@ export const ModelManagementView: React.FC<ModelManagementViewProps> = ({ theme 
         const persistedById = new Map(persistedModels.map(m => [m.id || m.name, m]));
         const disabledModels: string[] = Array.isArray(mc.disabledModels) ? mc.disabledModels : [];
 
-        // Use live discovery if available, otherwise fall back to persisted
-        const sourceList = (discovered.length > 0 || !discErr) ? discovered : persistedModels;
+        // Merge discovered + persisted by id — some providers (e.g. AWS
+        // Bedrock) don't return inference-profile models through their
+        // public ListFoundationModels API, so admin-curated entries in
+        // provider_config.models[] need to surface even when discovery
+        // didn't include them.
+        const merged = new Map<string, any>();
+        for (const m of discovered) {
+          const key = m.id || m.name;
+          if (key) merged.set(key, m);
+        }
+        for (const m of persistedModels) {
+          const key = m.id || m.name;
+          if (key && !merged.has(key)) merged.set(key, m);
+        }
+        const sourceList = [...merged.values()];
         if (discErr && discovered.length === 0) {
-          console.warn(`[ModelManagement] Discovery failed for ${p.name}: ${discErr} — falling back to persisted models`);
+          console.warn(`[ModelManagement] Discovery failed for ${p.name}: ${discErr} — showing persisted models only`);
         }
 
         for (const m of sourceList) {

@@ -1,0 +1,123 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if .Values.awpAzureMcp.enabled }}
+# ===================================================================================================
+# OpenAgentic-AZURE-MCP DEPLOYMENT
+# ===================================================================================================
+# Azure cloud operations MCP server (Python FastAPI)
+# Provides Azure ARM, Graph, Key Vault capabilities via OBO tokens from user session
+# ===================================================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openagentic.fullname" . }}-oap-azure-mcp
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: oap-azure-mcp
+spec:
+  replicas: {{ .Values.awpAzureMcp.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: oap-azure-mcp
+  template:
+    metadata:
+      labels:
+        {{- include "openagentic.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: oap-azure-mcp
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.awpAzureMcp.service.port | default 8081 | quote }}
+        prometheus.io/path: "/metrics"
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.awpAzureMcp.nodeSelector | default .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      # Fix DNS: ndots:1 ensures external domains are tried as FQDN first
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+      containers:
+      - name: oap-azure-mcp
+        image: "{{ .Values.awpAzureMcp.image.repository }}:{{ .Values.awpAzureMcp.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.awpAzureMcp.image.pullPolicy | default "IfNotPresent" }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.awpAzureMcp.service.port | default 8081 }}
+          protocol: TCP
+        env:
+        - name: PORT
+          value: {{ .Values.awpAzureMcp.service.port | default 8081 | quote }}
+        - name: LOG_LEVEL
+          value: {{ .Values.awpAzureMcp.logLevel | default "INFO" | quote }}
+        # IMPORTANT: POSTGRES_PASSWORD must come BEFORE DATABASE_URL for $(POSTGRES_PASSWORD) substitution
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "openagentic.fullname" . }}-db-secrets
+              key: POSTGRES_PASSWORD
+        - name: DATABASE_URL
+          value: "postgresql://{{ include "openagentic.postgresql.username" . }}:$(POSTGRES_PASSWORD)@{{ include "openagentic.postgresql.serviceName" . }}:5432/{{ include "openagentic.postgresql.database" . }}?sslmode={{ .Values.postgresql.sslmode | default "require" }}"
+        # IMPORTANT: REDIS_PASSWORD must come BEFORE REDIS_URL for $(REDIS_PASSWORD) substitution
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-redis
+              key: redis-password
+        - name: REDIS_URL
+          value: "redis://:$(REDIS_PASSWORD)@{{ include "openagentic.redis.serviceName" . }}:6379"
+        # Azure AD Credentials (for OBO token exchange)
+        - name: AZURE_TENANT_ID
+          value: {{ .Values.mcpProxy.env.AZURE_TENANT_ID | quote }}
+        - name: AZURE_CLIENT_ID
+          value: {{ .Values.mcpProxy.env.AZURE_CLIENT_ID | quote }}
+        - name: AZURE_CLIENT_SECRET
+          {{- if .Values.mcpProxy.useInlineSecrets }}
+          value: {{ .Values.secrets.azureClientSecret | default "" | quote }}
+          {{- else }}
+          valueFrom:
+            secretKeyRef:
+              {{- if .Values.azureKeyVault.enabled }}
+              name: {{ include "openagentic.fullname" . }}-keyvault-secrets
+              {{- else if .Values.externalSecrets.enabled }}
+              name: {{ include "openagentic.fullname" . }}-api-secrets
+              {{- else }}
+              name: {{ include "openagentic.fullname" . }}-azure-secrets
+              {{- end }}
+              key: AZURE_CLIENT_SECRET
+          {{- end }}
+        - name: AZURE_SUBSCRIPTION_ID
+          value: {{ .Values.env.AZURE_SUBSCRIPTION_ID | default "" | quote }}
+        # Extra environment variables
+        {{- if .Values.awpAzureMcp.env }}
+        {{- range $key, $value := .Values.awpAzureMcp.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: {{ .Values.awpAzureMcp.livenessProbe.initialDelaySeconds | default 10 }}
+          periodSeconds: {{ .Values.awpAzureMcp.livenessProbe.periodSeconds | default 30 }}
+          timeoutSeconds: {{ .Values.awpAzureMcp.livenessProbe.timeoutSeconds | default 5 }}
+          failureThreshold: {{ .Values.awpAzureMcp.livenessProbe.failureThreshold | default 3 }}
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: {{ .Values.awpAzureMcp.readinessProbe.initialDelaySeconds | default 5 }}
+          periodSeconds: {{ .Values.awpAzureMcp.readinessProbe.periodSeconds | default 10 }}
+          timeoutSeconds: {{ .Values.awpAzureMcp.readinessProbe.timeoutSeconds | default 5 }}
+          failureThreshold: {{ .Values.awpAzureMcp.readinessProbe.failureThreshold | default 3 }}
+        resources:
+          {{- toYaml .Values.awpAzureMcp.resources | nindent 12 }}
+{{- end }}

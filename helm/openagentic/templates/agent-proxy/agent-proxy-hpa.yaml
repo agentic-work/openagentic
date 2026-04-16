@@ -1,0 +1,35 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.openagenticProxy.enabled (.Values.openagenticProxy.hpa).enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "openagentic.fullname" . }}-openagentic-proxy
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: openagentic-proxy
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "openagentic.fullname" . }}-openagentic-proxy
+  minReplicas: {{ .Values.openagenticProxy.hpa.minReplicas | default 1 }}
+  maxReplicas: {{ .Values.openagenticProxy.hpa.maxReplicas | default 5 }}
+  metrics:
+    {{- if .Values.openagenticProxy.hpa.targetCPU }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.openagenticProxy.hpa.targetCPU }}
+    {{- end }}
+    {{- if .Values.openagenticProxy.hpa.targetMemory }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.openagenticProxy.hpa.targetMemory }}
+    {{- end }}
+{{- end }}

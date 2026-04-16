@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Developer API Documentation View
  *
  * Embeds Swagger UI for API documentation within the Admin Portal
@@ -1076,7 +1060,7 @@ yarn add @openagentic/sdk`}
 // Initialize the client
 const client = new OpenAgenticClient({
   apiKey: 'awc_your_api_key',
-  baseUrl: 'https://your-instance.openagentics.io'
+  baseUrl: 'https://<your-deploy-host>'
 });
 
 // Send a chat message
@@ -1146,7 +1130,7 @@ const result = await client.mcp.execute({
 # Initialize the client
 client = OpenAgenticClient(
     api_key="awc_your_api_key",
-    base_url="https://your-instance.openagentics.io"
+    base_url="https://<your-deploy-host>"
 )
 
 # Send a chat message

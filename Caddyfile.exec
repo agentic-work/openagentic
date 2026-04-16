@@ -1,0 +1,156 @@
+# Caddyfile for OpenAgentic - EXEC-CONTAINER MODE
+# Uses pre-existing wildcard certificate from K8s cert-manager
+
+{
+	auto_https off
+}
+
+# Local testing - HTTP only
+:8080 {
+	handle /api/* {
+		reverse_proxy openagentic-api:8000
+	}
+	handle /v1/* {
+		reverse_proxy openagentic-api:8000
+	}
+	handle /ws/* {
+		reverse_proxy openagentic-api:8000
+	}
+	handle /flowise/* {
+		uri strip_prefix /flowise
+		reverse_proxy openagentic-flowise:3000
+	}
+	handle /mcp/* {
+		uri strip_prefix /mcp
+		reverse_proxy openagentic-mcp-proxy:8080
+	}
+	handle /openagentic/* {
+		uri strip_prefix /openagentic
+		reverse_proxy openagentic-manager:3050
+	}
+	# Code Server - EXEC-CONTAINER MODE: routes to openagentic-exec
+	@localcs3100 path /code-server/3100 /code-server/3100/*
+	handle @localcs3100 {
+		uri strip_prefix /code-server/3100
+		reverse_proxy openagentic-exec:3100
+	}
+	@localcs3101 path /code-server/3101 /code-server/3101/*
+	handle @localcs3101 {
+		uri strip_prefix /code-server/3101
+		reverse_proxy openagentic-exec:3101
+	}
+	@localcs3102 path /code-server/3102 /code-server/3102/*
+	handle @localcs3102 {
+		uri strip_prefix /code-server/3102
+		reverse_proxy openagentic-exec:3102
+	}
+	@localcs3103 path /code-server/3103 /code-server/3103/*
+	handle @localcs3103 {
+		uri strip_prefix /code-server/3103
+		reverse_proxy openagentic-exec:3103
+	}
+	@localcs3104 path /code-server/3104 /code-server/3104/*
+	handle @localcs3104 {
+		uri strip_prefix /code-server/3104
+		reverse_proxy openagentic-exec:3104
+	}
+	@localcs3105 path /code-server/3105 /code-server/3105/*
+	handle @localcs3105 {
+		uri strip_prefix /code-server/3105
+		reverse_proxy openagentic-exec:3105
+	}
+	handle {
+		reverse_proxy openagentic-ui:80
+	}
+}
+
+# UAT Dashboard
+uat.openagentic.io {
+	tls /certs/wildcard.crt /certs/wildcard.key
+	reverse_proxy 10.2.10.36:30333
+}
+
+# Production HTTPS - EXEC-CONTAINER MODE
+chat-dev.openagentic.io, mac.openagentic.io {
+	tls /certs/wildcard.crt /certs/wildcard.key
+
+	handle /api/* {
+		reverse_proxy openagentic-api:8000
+	}
+	handle /v1/* {
+		reverse_proxy openagentic-api:8000
+	}
+	handle /ws/* {
+		reverse_proxy openagentic-api:8000
+	}
+	handle /flowise/* {
+		uri strip_prefix /flowise
+		reverse_proxy openagentic-flowise:3000
+	}
+	handle /openagentic/* {
+		uri strip_prefix /openagentic
+		reverse_proxy openagentic-manager:3050
+	}
+	# Code Server - EXEC-CONTAINER MODE: routes to openagentic-exec
+	@codeserver3100 path /code-server/3100 /code-server/3100/*
+	handle @codeserver3100 {
+		uri strip_prefix /code-server/3100
+		reverse_proxy openagentic-exec:3100 {
+			header_up Host {upstream_hostport}
+			header_up Connection {>Connection}
+			header_up Upgrade {>Upgrade}
+		}
+	}
+	@codeserver3101 path /code-server/3101 /code-server/3101/*
+	handle @codeserver3101 {
+		uri strip_prefix /code-server/3101
+		reverse_proxy openagentic-exec:3101 {
+			header_up Host {upstream_hostport}
+			header_up Connection {>Connection}
+			header_up Upgrade {>Upgrade}
+		}
+	}
+	@codeserver3102 path /code-server/3102 /code-server/3102/*
+	handle @codeserver3102 {
+		uri strip_prefix /code-server/3102
+		reverse_proxy openagentic-exec:3102 {
+			header_up Host {upstream_hostport}
+			header_up Connection {>Connection}
+			header_up Upgrade {>Upgrade}
+		}
+	}
+	@codeserver3103 path /code-server/3103 /code-server/3103/*
+	handle @codeserver3103 {
+		uri strip_prefix /code-server/3103
+		reverse_proxy openagentic-exec:3103 {
+			header_up Host {upstream_hostport}
+			header_up Connection {>Connection}
+			header_up Upgrade {>Upgrade}
+		}
+	}
+	@codeserver3104 path /code-server/3104 /code-server/3104/*
+	handle @codeserver3104 {
+		uri strip_prefix /code-server/3104
+		reverse_proxy openagentic-exec:3104 {
+			header_up Host {upstream_hostport}
+			header_up Connection {>Connection}
+			header_up Upgrade {>Upgrade}
+		}
+	}
+	@codeserver3105 path /code-server/3105 /code-server/3105/*
+	handle @codeserver3105 {
+		uri strip_prefix /code-server/3105
+		reverse_proxy openagentic-exec:3105 {
+			header_up Host {upstream_hostport}
+			header_up Connection {>Connection}
+			header_up Upgrade {>Upgrade}
+		}
+	}
+	handle /mcp/* {
+		uri strip_prefix /mcp
+		reverse_proxy openagentic-mcp-proxy:8080
+	}
+	handle {
+		reverse_proxy openagentic-ui:80
+	}
+}

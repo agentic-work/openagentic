@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<!--
+ Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
+ Proprietary and confidential. Unauthorized copying prohibited.
+-->
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440, initial-scale=1">
+<title>CodeMode v3 — Native React Mockup</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, system-ui, sans-serif; background: #0a0a0f; color: #e4e4e7; height: 100vh; overflow: hidden; }
+  .layout { display: flex; height: 100vh; }
+
+  /* ═══════════════════════════════════════════════════════════════
+     LEFT SIDEBAR — Workspace Files + Milvus Collections
+     The ONLY things worth showing: the user's actual files
+     (MinIO persistent storage) and their indexed collections.
+     ═══════════════════════════════════════════════════════════════ */
+  .sidebar {
+    width: 280px; flex-shrink: 0;
+    background: #0f0f17;
+    border-right: 1px solid #1e1e2e;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Drop zone overlay */
+  .drop-zone {
+    position: absolute; inset: 0; z-index: 10;
+    background: #6366f120;
+    border: 2px dashed #6366f1;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: #a5b4fc; font-weight: 500;
+    pointer-events: none;
+    display: none;
+  }
+  .sidebar.dragging .drop-zone { display: flex; }
+
+  /* Tabs */
+  .sidebar-tabs {
+    display: flex; border-bottom: 1px solid #1e1e2e; flex-shrink: 0;
+  }
+  .sidebar-tab {
+    flex: 1; padding: 10px 0; text-align: center;
+    font-size: 12px; font-weight: 500;
+    color: #52525b; cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .sidebar-tab:hover { color: #a1a1aa; }
+  .sidebar-tab.active { color: #e4e4e7; border-bottom-color: #6366f1; }
+
+  /* File tree */
+  .file-section { flex: 1; overflow-y: auto; position: relative; }
+  .file-header {
+    padding: 8px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; color: #52525b; text-transform: uppercase; letter-spacing: 0.5px;
+    position: sticky; top: 0; background: #0f0f17; z-index: 2;
+  }
+  .file-header-actions { display: flex; gap: 4px; }
+  .file-header-btn {
+    width: 22px; height: 22px; border-radius: 4px; border: none;
+    background: transparent; color: #52525b; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+    transition: all 0.15s;
+  }
+  .file-header-btn:hover { background: #1e1e2e; color: #a1a1aa; }
+
+  .file-item {
+    padding: 4px 12px 4px 16px;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: #a1a1aa; cursor: pointer;
+    transition: background 0.1s;
+    line-height: 1.4;
+  }
+  .file-item:hover { background: #1a1a2e; }
+  .file-item.dir { color: #e4e4e7; }
+  .file-icon { width: 14px; text-align: center; font-size: 12px; flex-shrink: 0; }
+  .file-icon.dir { color: #60a5fa; }
+  .file-icon.py { color: #3b82f6; }
+  .file-icon.ts { color: #3b82f6; }
+  .file-icon.md { color: #a1a1aa; }
+  .file-icon.json { color: #f59e0b; }
+  .file-icon.csv { color: #22c55e; }
+  .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-size { font-size: 10px; color: #3f3f46; flex-shrink: 0; }
+  .file-indent { width: 16px; flex-shrink: 0; }
+
+  /* Upload button */
+  .upload-area {
+    padding: 12px;
+    border-top: 1px solid #1e1e2e;
+    flex-shrink: 0;
+  }
+  .upload-btn {
+    width: 100%; padding: 8px;
+    background: #1e1e2e; border: 1px dashed #27272a; border-radius: 8px;
+    color: #71717a; font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: all 0.15s;
+  }
+  .upload-btn:hover { border-color: #6366f1; color: #a5b4fc; background: #6366f108; }
+
+  /* Collections section */
+  .collections-section { flex: 1; overflow-y: auto; }
+  .collection-search {
+    padding: 8px 12px;
+    position: sticky; top: 0; background: #0f0f17; z-index: 2;
+  }
+  .collection-search input {
+    width: 100%; padding: 6px 10px 6px 28px;
+    background: #111118; border: 1px solid #1e1e2e; border-radius: 6px;
+    color: #e4e4e7; font-size: 12px; outline: none;
+    transition: border-color 0.15s;
+  }
+  .collection-search input:focus { border-color: #6366f1; }
+  .collection-search .search-icon {
+    position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+    font-size: 12px; color: #3f3f46;
+  }
+
+  .collection-item {
+    padding: 8px 12px;
+    display: flex; align-items: flex-start; gap: 8px;
+    cursor: pointer; transition: background 0.1s;
+    border-bottom: 1px solid #1e1e2e08;
+  }
+  .collection-item:hover { background: #1a1a2e; }
+  .collection-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .collection-info { flex: 1; min-width: 0; }
+  .collection-title { font-size: 12px; color: #e4e4e7; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .collection-meta { font-size: 10px; color: #52525b; margin-top: 2px; display: flex; gap: 8px; }
+  .collection-tag { font-size: 9px; padding: 1px 5px; border-radius: 3px; background: #1e1e2e; color: #71717a; }
+  .collection-score { font-size: 10px; color: #22c55e; flex-shrink: 0; margin-top: 2px; }
+
+  /* Storage info */
+  .storage-info {
+    padding: 8px 12px;
+    border-top: 1px solid #1e1e2e;
+    font-size: 10px; color: #3f3f46;
+    display: flex; justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     MIDDLE — Native Conversation View (replaces xterm.js)
+     ═══════════════════════════════════════════════════════════════ */
+  .conversation {
+    flex: 1; display: flex; flex-direction: column; min-width: 0;
+    background: #0d0d14;
+  }
+  .conv-toolbar {
+    padding: 8px 16px;
+    border-bottom: 1px solid #1e1e2e;
+    display: flex; align-items: center; gap: 12px;
+    font-size: 12px; color: #71717a;
+  }
+  .conv-toolbar .model-badge {
+    background: #1e1e2e; padding: 3px 10px; border-radius: 12px;
+    font-size: 11px; color: #a1a1aa;
+  }
+  .conn-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
+  .conv-messages {
+    flex: 1; overflow-y: auto; padding: 16px 24px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  /* Messages */
+  .msg { max-width: 100%; animation: slideIn 0.2s ease-out; }
+  .msg-user {
+    background: #1a1a2e; border: 1px solid #27272a; border-radius: 12px;
+    padding: 12px 16px; font-size: 14px; line-height: 1.6;
+  }
+  .msg-thinking {
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #1a1025 0%, #0f0f17 100%);
+    border-left: 2px solid #7c3aed; border-radius: 0 8px 8px 0;
+    font-size: 13px; color: #8b5cf6; line-height: 1.5; margin-bottom: 8px;
+  }
+  .msg-thinking summary {
+    cursor: pointer; font-size: 12px; color: #6d28d9; font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .msg-thinking summary::before { content: ''; display: inline-block; width: 8px; height: 8px; background: #7c3aed; border-radius: 50%; animation: pulse 2s infinite; }
+  .msg-thinking .think-content { margin-top: 6px; color: #a78bfa; font-size: 12px; }
+  .msg-text { font-size: 14px; line-height: 1.7; color: #d4d4d8; }
+  .msg-text code { background: #1e1e2e; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #a5b4fc; }
+  .msg-text p { margin-bottom: 8px; }
+
+  /* Tool blocks */
+  .tool-block { background: #111118; border: 1px solid #1e1e2e; border-radius: 8px; overflow: hidden; margin: 8px 0; }
+  .tool-header {
+    padding: 8px 12px; display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 500; border-bottom: 1px solid #1e1e2e; cursor: pointer;
+  }
+  .tool-header:hover { background: #1a1a2e; }
+  .tool-icon { font-size: 14px; }
+  .tool-name { color: #e4e4e7; font-family: 'JetBrains Mono', monospace; }
+  .tool-path { color: #60a5fa; font-family: 'JetBrains Mono', monospace; font-size: 11px; margin-left: 4px; }
+  .tool-status { margin-left: auto; font-size: 11px; }
+  .tool-status.success { color: #22c55e; }
+  .tool-body { max-height: 300px; overflow-y: auto; }
+  .tool-body pre { padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.5; color: #a1a1aa; white-space: pre-wrap; }
+
+  .diff-line { padding: 0 12px; font-size: 11px; font-family: 'JetBrains Mono', monospace; line-height: 1.6; }
+  .diff-line.add { background: #22c55e12; color: #4ade80; }
+  .diff-line.del { background: #ef444412; color: #f87171; }
+  .diff-line.ctx { color: #52525b; }
+  .diff-header { padding: 6px 12px; font-size: 11px; color: #71717a; border-bottom: 1px solid #1e1e2e; font-family: 'JetBrains Mono', monospace; }
+
+  .bash-output { background: #0a0a0f; padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.5; color: #a1a1aa; }
+  .bash-cmd { color: #22c55e; }
+  .bash-exit { font-size: 10px; color: #52525b; margin-top: 4px; }
+
+  .todo-block { padding: 10px 12px; }
+  .todo-item { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; }
+  .todo-check { width: 14px; height: 14px; border: 1.5px solid #3f3f46; border-radius: 3px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+  .todo-check.done { background: #22c55e20; border-color: #22c55e; color: #22c55e; }
+  .todo-text { color: #a1a1aa; }
+  .todo-text.done { text-decoration: line-through; color: #52525b; }
+
+  /* Input */
+  .conv-input { padding: 12px 24px 16px; border-top: 1px solid #1e1e2e; }
+  .input-wrapper {
+    display: flex; align-items: flex-end;
+    background: #111118; border: 1px solid #27272a; border-radius: 12px; padding: 10px 14px;
+    transition: border-color 0.2s;
+  }
+  .input-wrapper:focus-within { border-color: #6366f1; }
+  .input-field {
+    flex: 1; background: none; border: none; outline: none;
+    color: #e4e4e7; font-size: 14px; font-family: inherit;
+    resize: none; min-height: 20px; max-height: 120px;
+  }
+  .input-field::placeholder { color: #3f3f46; }
+  .send-btn {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: #6366f1; border: none; color: white;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0; margin-left: 8px;
+  }
+  .send-btn:hover { background: #4f46e5; }
+
+  /* ═══════════════════════════════════════════════════════════════
+     RIGHT — Editor Panel (VS Code)
+     ═══════════════════════════════════════════════════════════════ */
+  .editor-panel {
+    width: 500px; flex-shrink: 0; background: #1e1e2e;
+    border-left: 1px solid #1e1e2e; display: flex; flex-direction: column;
+  }
+  .editor-header {
+    padding: 8px 12px; border-bottom: 1px solid #27272a;
+    display: flex; align-items: center; gap: 8px; font-size: 12px; color: #a1a1aa;
+  }
+  .editor-tab { padding: 4px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .editor-tab.active { background: #27272a; color: #e4e4e7; }
+  .editor-tab:not(.active) { color: #52525b; }
+  .editor-body { flex: 1; background: #1a1a2a; display: flex; align-items: center; justify-content: center; color: #3f3f46; font-size: 13px; }
+
+  .resize-handle { width: 4px; cursor: col-resize; background: transparent; transition: background 0.15s; }
+  .resize-handle:hover { background: #6366f144; }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .streaming::after { content: '▌'; animation: pulse 0.8s infinite; color: #6366f1; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ═══ LEFT SIDEBAR — Files + Collections ═══ -->
+  <div class="sidebar" id="sidebar">
+    <!-- Drop zone overlay (shows during drag) -->
+    <div class="drop-zone">Drop files to upload</div>
+
+    <!-- Tabs: Files | Collections -->
+    <div class="sidebar-tabs">
+      <div class="sidebar-tab active" onclick="showTab('files')">Files</div>
+      <div class="sidebar-tab" onclick="showTab('collections')">Collections</div>
+    </div>
+
+    <!-- FILES TAB -->
+    <div class="file-section" id="files-tab">
+      <div class="file-header">
+        <span>Workspace</span>
+        <div class="file-header-actions">
+          <button class="file-header-btn" title="New file">+</button>
+          <button class="file-header-btn" title="Refresh">↻</button>
+        </div>
+      </div>
+
+      <!-- File tree -->
+      <div class="file-item dir">
+        <span class="file-icon dir">▾</span>
+        <span class="file-name">src</span>
+      </div>
+      <div class="file-item" style="padding-left: 28px;">
+        <span class="file-icon dir">▾</span>
+        <span class="file-name">services</span>
+      </div>
+      <div class="file-item" style="padding-left: 44px;">
+        <span class="file-icon ts">TS</span>
+        <span class="file-name">auth.ts</span>
+        <span class="file-size">4.2K</span>
+      </div>
+      <div class="file-item" style="padding-left: 44px;">
+        <span class="file-icon ts">TS</span>
+        <span class="file-name">tokenValidator.ts</span>
+        <span class="file-size">3.8K</span>
+      </div>
+      <div class="file-item" style="padding-left: 28px;">
+        <span class="file-icon dir">▸</span>
+        <span class="file-name">middleware</span>
+      </div>
+      <div class="file-item" style="padding-left: 28px;">
+        <span class="file-icon dir">▸</span>
+        <span class="file-name">utils</span>
+      </div>
+      <div class="file-item dir">
+        <span class="file-icon dir">▸</span>
+        <span class="file-name">tests</span>
+      </div>
+      <div class="file-item dir">
+        <span class="file-icon dir">▸</span>
+        <span class="file-name">scripts</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon md">📄</span>
+        <span class="file-name">OPENAGENTIC.md</span>
+        <span class="file-size">1.2K</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon json">{ }</span>
+        <span class="file-name">package.json</span>
+        <span class="file-size">890</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon md">📄</span>
+        <span class="file-name">README.md</span>
+        <span class="file-size">2.1K</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon csv">📊</span>
+        <span class="file-name">data.csv</span>
+        <span class="file-size">48K</span>
+      </div>
+
+      <!-- Upload button -->
+      <div class="upload-area">
+        <button class="upload-btn">
+          <span>↑</span> Upload files or drag & drop
+        </button>
+      </div>
+    </div>
+
+    <!-- COLLECTIONS TAB -->
+    <div class="collections-section" id="collections-tab" style="display:none;">
+      <div class="collection-search">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Semantic search files..." />
+      </div>
+
+      <div class="file-header">
+        <span>Indexed Files</span>
+        <span style="font-size:10px;">8 files · 24 vectors</span>
+      </div>
+
+      <div class="collection-item">
+        <span class="collection-icon">📄</span>
+        <div class="collection-info">
+          <div class="collection-title">tokenValidator.ts</div>
+          <div class="collection-meta">
+            <span>TypeScript</span>
+            <span class="collection-tag">uploaded</span>
+          </div>
+        </div>
+        <span class="collection-score">0.94</span>
+      </div>
+      <div class="collection-item">
+        <span class="collection-icon">📄</span>
+        <div class="collection-info">
+          <div class="collection-title">auth.ts</div>
+          <div class="collection-meta">
+            <span>TypeScript</span>
+            <span class="collection-tag">uploaded</span>
+          </div>
+        </div>
+        <span class="collection-score">0.91</span>
+      </div>
+      <div class="collection-item">
+        <span class="collection-icon">📊</span>
+        <div class="collection-info">
+          <div class="collection-title">data.csv</div>
+          <div class="collection-meta">
+            <span>CSV · 48KB</span>
+            <span class="collection-tag">file-collection</span>
+          </div>
+        </div>
+        <span class="collection-score">0.87</span>
+      </div>
+      <div class="collection-item">
+        <span class="collection-icon">📝</span>
+        <div class="collection-info">
+          <div class="collection-title">API Design Notes</div>
+          <div class="collection-meta">
+            <span>Markdown</span>
+            <span class="collection-tag">documentation</span>
+          </div>
+        </div>
+        <span class="collection-score">0.82</span>
+      </div>
+      <div class="collection-item">
+        <span class="collection-icon">📄</span>
+        <div class="collection-info">
+          <div class="collection-title">middleware/rateLimiter.ts</div>
+          <div class="collection-meta">
+            <span>TypeScript</span>
+            <span class="collection-tag">uploaded</span>
+          </div>
+        </div>
+        <span class="collection-score">0.78</span>
+      </div>
+
+      <div class="upload-area">
+        <button class="upload-btn">
+          <span>↑</span> Upload & auto-index
+        </button>
+      </div>
+    </div>
+
+    <!-- Storage info -->
+    <div class="storage-info">
+      <span>MinIO · openagentic-workspaces</span>
+      <span>12.4 MB / 5 GB</span>
+    </div>
+  </div>
+
+  <!-- ═══ MIDDLE — Native Conversation View ═══ -->
+  <div class="conversation">
+    <div class="conv-toolbar">
+      <div class="conn-dot"></div>
+      <span>Connected</span>
+      <div class="model-badge">⚡ Sonnet 4.6</div>
+      <span style="margin-left: auto; font-size:11px; color:#3f3f46;">$0.42 · 134K tokens · 18 tools</span>
+    </div>
+
+    <div class="conv-messages">
+      <div class="msg">
+        <div class="msg-user">Fix the authentication bug where expired tokens aren't being rejected by the middleware.</div>
+      </div>
+
+      <div class="msg msg-assistant">
+        <details class="msg-thinking" open>
+          <summary>Thinking about the auth bug...</summary>
+          <div class="think-content">The user reports expired tokens passing validation. Let me check the token validator — likely the expiry check is missing or the clock skew tolerance is too large.</div>
+        </details>
+      </div>
+
+      <div class="msg msg-assistant">
+        <div class="tool-block">
+          <div class="tool-header">
+            <span class="tool-icon">🔍</span>
+            <span class="tool-name">Grep</span>
+            <span class="tool-path">validateToken · src/</span>
+            <span class="tool-status success">✓ 3 matches</span>
+          </div>
+          <div class="tool-body">
+            <pre>src/middleware/auth.ts:47:  const valid = validateToken(token, secret);
+src/utils/tokenValidator.ts:12:export function validateToken(token: string, secret: string) {
+src/utils/tokenValidator.ts:89:  // TODO: check expiry</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg msg-assistant">
+        <div class="tool-block">
+          <div class="tool-header">
+            <span class="tool-icon">📄</span>
+            <span class="tool-name">Read</span>
+            <span class="tool-path">src/utils/tokenValidator.ts:80-95</span>
+            <span class="tool-status success">✓</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg msg-assistant">
+        <div class="msg-text">
+          <p>Found the bug. In <code>tokenValidator.ts:89</code> there's a <code>// TODO: check expiry</code> — the expiry validation was never implemented.</p>
+        </div>
+      </div>
+
+      <div class="msg msg-assistant">
+        <div class="tool-block">
+          <div class="tool-header">
+            <span class="tool-icon">✏️</span>
+            <span class="tool-name">Edit</span>
+            <span class="tool-path">src/utils/tokenValidator.ts</span>
+            <span class="tool-status success">✓ applied</span>
+          </div>
+          <div class="tool-body">
+            <div class="diff-header">@@ -86,4 +86,12 @@</div>
+            <div class="diff-line ctx">  const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] });</div>
+            <div class="diff-line del">- // TODO: check expiry</div>
+            <div class="diff-line del">- return { valid: true, payload: decoded };</div>
+            <div class="diff-line add">+ const now = Math.floor(Date.now() / 1000);</div>
+            <div class="diff-line add">+ if (decoded.exp && decoded.exp < now - 30) {</div>
+            <div class="diff-line add">+   return { valid: false, error: 'Token expired' };</div>
+            <div class="diff-line add">+ }</div>
+            <div class="diff-line add">+ return { valid: true, payload: decoded };</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg msg-assistant">
+        <div class="tool-block">
+          <div class="tool-header">
+            <span class="tool-icon">⚡</span>
+            <span class="tool-name">Bash</span>
+            <span class="tool-path">npm test -- --grep "token"</span>
+            <span class="tool-status success">✓ exit 0</span>
+          </div>
+          <div class="tool-body">
+            <div class="bash-output">
+              <div class="bash-cmd">$ npm test -- --grep "token"</div>
+<pre style="margin-top:6px;">  tokenValidator
+    ✓ validates correct token (3ms)
+    ✓ rejects invalid signature (1ms)
+    ✓ rejects expired token (2ms)
+    ✓ accepts token within clock skew (1ms)
+
+  14 passing (42ms)</pre>
+              <div class="bash-exit">Exit code: 0 · 1.2s</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg msg-assistant">
+        <div class="msg-text streaming">
+          <p>All tests pass. The fix adds expiry validation with 30s clock skew tolerance. Let me verify the middleware integration</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="conv-input">
+      <div class="input-wrapper">
+        <textarea class="input-field" rows="1" placeholder="Ask anything... (⌘+Enter to send)"></textarea>
+        <button class="send-btn">↑</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="resize-handle"></div>
+
+  <!-- ═══ RIGHT — Editor Panel ═══ -->
+  <div class="editor-panel">
+    <div class="editor-header">
+      <div class="editor-tab active">Editor</div>
+      <div class="editor-tab">Preview</div>
+      <div style="flex:1"></div>
+      <span style="font-size:11px; color:#3f3f46;">⌘+E toggle</span>
+    </div>
+    <div class="editor-body">
+      <div style="text-align:center;">
+        <div style="font-size: 48px; opacity: 0.3; margin-bottom: 12px;">⟨/⟩</div>
+        <div>VS Code Web IDE</div>
+        <div style="font-size: 11px; margin-top: 4px; color: #27272a;">Files auto-open when agent edits them</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(tab) {
+  document.getElementById('files-tab').style.display = tab === 'files' ? '' : 'none';
+  document.getElementById('collections-tab').style.display = tab === 'collections' ? '' : 'none';
+  document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+// Drag/drop simulation
+const sidebar = document.getElementById('sidebar');
+sidebar.addEventListener('dragover', (e) => { e.preventDefault(); sidebar.classList.add('dragging'); });
+sidebar.addEventListener('dragleave', () => sidebar.classList.remove('dragging'));
+sidebar.addEventListener('drop', (e) => { e.preventDefault(); sidebar.classList.remove('dragging'); alert('Files uploaded!'); });
+</script>
+</body>
+</html>

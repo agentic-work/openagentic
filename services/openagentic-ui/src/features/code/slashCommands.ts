@@ -1,17 +1,26 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * Slash command registry for the React CodeMode view.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Ported 1:1 from openagentic's src/commands/ — the full inventory is
+ * in slash-commands-inventory.md. This file is the runtime-typed
+ * version that the slash command palette renders from and the command
+ * dispatcher routes against.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * Priority:
+ *   p0 — essential, must work before the port ships
+ *   p1 — commonly used, should port early
+ *   p2 — less common, can stub initially
+ *   p3 — debug / feature-gated / internal, stub OK
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * UI shape:
+ *   none   — state-mutating, prints a line, no interactive UI
+ *   picker — CustomSelect/dropdown of choices
+ *   form   — multi-field input widget
+ *   modal  — fullscreen overlay (Settings, Plan, etc.)
+ *   custom — bespoke React tree
+ *
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 export type SlashCommandUi = 'none' | 'picker' | 'form' | 'modal' | 'custom';

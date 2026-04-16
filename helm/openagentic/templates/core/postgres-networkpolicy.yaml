@@ -1,0 +1,57 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.postgres .Values.postgres.enabled (.Values.postgres.networkPolicy).enabled }}
+# ===================================================================================================
+# POSTGRESQL NETWORK POLICY (Built-in Deployment)
+# ===================================================================================================
+# Restricts network access for security:
+# - Ingress: Only from API and Code Manager pods
+# - Egress: DNS only (database should not initiate external connections)
+# ===================================================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "openagentic.fullname" . }}-postgres
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgres
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from API
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: api
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow from Code Manager
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: code-manager
+      ports:
+        - protocol: TCP
+          port: 5432
+  egress:
+    # DNS only - database should not make external connections
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+{{- end }}

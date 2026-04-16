@@ -1,17 +1,22 @@
 /**
- * Copyright 2026 Gnomus.ai
+ * PermissionDialog — modal prompt for mid-turn tool approvals.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Renders when useCodeModeChat.pendingPermission is non-null (i.e. an
+ * openagentic control_request with subtype `can_use_tool` arrived on
+ * the stream). The user picks allow/deny and the response is sent
+ * back via POST /api/code/sessions/:id/chat/control — see
+ * useCodeModeChat.respondToPermission.
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * This is a generic, tool-agnostic dialog: it shows the tool name,
+ * a one-line summary (via toolRenderers), and the full input JSON in
+ * an expandable code block. Variant-specific UIs (FileWrite diff,
+ * Bash command preview, WebFetch URL preview, …) are a future
+ * refinement but fall back here cleanly in the meantime.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Keyboard: A / Enter = allow, D / Escape = deny.
+ *
+ * @copyright 2025 Openagentic LLC
+ * @license PROPRIETARY
  */
 
 import React, { useEffect } from 'react';

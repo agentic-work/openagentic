@@ -1,0 +1,32 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if .Values.pgadmin.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openagentic.fullname" . }}-pgadmin-config
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pgadmin
+data:
+  servers.json: |
+    {
+      "Servers": {
+        "1": {
+          "Name": "{{ .Release.Name }}-PostgreSQL",
+          "Group": "openagentic",
+          "Host": "{{ include "openagentic.postgresql.serviceName" . }}",
+          "Port": {{ include "openagentic.postgresql.port" . }},
+          "MaintenanceDB": "postgres",
+          "Username": "{{ include "openagentic.postgresql.username" . }}",
+          "Password": "{{ include "openagentic.postgresql.password" . }}",
+          "SSLMode": "prefer",
+          "Comment": "openagentic PostgreSQL Server",
+          "DBRestriction": "",
+          "PassFile": null,
+          "Shared": true,
+          "SharedUsername": null
+        }
+      }
+    }
+{{- end }}

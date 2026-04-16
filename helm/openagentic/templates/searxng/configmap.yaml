@@ -1,0 +1,64 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if .Values.searxng.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openagentic.fullname" . }}-searxng-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: searxng
+data:
+  settings.yml: |
+    use_default_settings: true
+
+    general:
+      debug: false
+      instance_name: "OpenAgentic SearXNG"
+
+    search:
+      safe_search: 0
+      autocomplete: ""
+      default_lang: "en"
+      formats:
+        - html
+        - json
+
+    server:
+      port: 8080
+      bind_address: "0.0.0.0"
+      secret_key: {{ randAlphaNum 32 | quote }}
+      limiter: false
+      image_proxy: false
+      public_instance: false
+
+    ui:
+      static_use_hash: true
+
+    engines:
+      - name: google
+        engine: google
+        shortcut: g
+        disabled: false
+
+      - name: bing
+        engine: bing
+        shortcut: b
+        disabled: false
+
+      - name: brave
+        engine: brave
+        shortcut: br
+        disabled: false
+
+      - name: wikipedia
+        engine: wikipedia
+        shortcut: w
+        disabled: false
+
+      - name: duckduckgo
+        engine: duckduckgo
+        shortcut: ddg
+        disabled: false
+{{- end }}
