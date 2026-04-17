@@ -44,7 +44,7 @@ export default async function promptModuleRoutes(fastify: FastifyInstance) {
   fastify.post('/modules', async (request, reply) => {
     try {
       const body = (request.body || {}) as any;
-      const { name, category, content, description, priority, enabled, injection, variants } = body;
+      const { name, category, content, description, priority, enabled, injection } = body;
 
       if (!name || !category || !content || !description) {
         return reply.code(400).send({ error: 'name, category, content, and description are required' });
@@ -59,7 +59,6 @@ export default async function promptModuleRoutes(fastify: FastifyInstance) {
         tokenCost: Math.ceil(content.length / 3.5),
         enabled: enabled !== false,
         injection: injection ?? {},
-        variants,
       });
 
       return reply.code(201).send(created);

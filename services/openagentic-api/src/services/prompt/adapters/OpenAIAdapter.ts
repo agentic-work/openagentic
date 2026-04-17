@@ -1,35 +1,22 @@
 import type { PromptModule, ModelCapabilities } from '../types.js';
 import type { ModelAdapter } from './types.js';
 
-/** Strip XML tags from content */
-function stripXml(text: string): string {
-  return text.replace(/<[^>]+>/g, '').trim();
-}
-
+/**
+ * Renders a neutral module list into OpenAI-family prompt shape
+ * (numbered rules). For thinking models (o1/o3) the adapter also trims
+ * to core modules — thinking models infer domain behavior from context
+ * and over-instruction degrades them. That trim is a structural render
+ * choice, not vendor content. See
+ * docs/architecture/composable-prompt-neutralization.md.
+ */
 export class OpenAIAdapter implements ModelAdapter {
   readonly family = 'openai' as const;
 
   transform(modules: PromptModule[], capabilities: ModelCapabilities): string {
-    const rules: string[] = [];
+    const selected = capabilities.thinking
+      ? modules.filter((m) => m.category === 'core')
+      : modules;
 
-    // For o1/o3 style thinking models: minimal instructions — they reason internally
-    if (capabilities.thinking) {
-      // Keep minimal; thinking models infer behavior from context
-      const coreModules = modules.filter((m) => m.category === 'core');
-      coreModules.forEach((mod, i) => {
-        const content = stripXml(mod.variants?.openai ?? mod.content);
-        rules.push(`${i + 1}. ${content}`);
-      });
-      return rules.join('\n');
-    }
-
-    modules.forEach((mod, i) => {
-      // Use openai variant if available, else strip XML from content
-      const raw = mod.variants?.openai ?? mod.content;
-      const content = stripXml(raw);
-      rules.push(`${i + 1}. ${content}`);
-    });
-
-    return rules.join('\n');
+    return selected.map((mod, i) => `${i + 1}. ${mod.content}`).join('\n');
   }
 }

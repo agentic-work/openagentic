@@ -1892,9 +1892,11 @@ export class ChatPipeline extends EventEmitter {
               const { PromptModuleRegistry } = await import('../../../services/prompt/PromptModuleRegistry.js');
               const registry = PromptModuleRegistry.getInstance();
               const continuationModule = await registry.getByName('continuation-react');
-              const continuationTemplate = isOllamaModel
-                ? (continuationModule?.variants?.local || continuationModule?.content || 'Review the tool results above. Continue if incomplete.')
-                : (continuationModule?.content || 'Review the tool results above. Continue if incomplete.');
+              // Neutral single-content path — the module's `content` is the
+              // only prose payload after neutralization; adapter-level render
+              // shaping happens inside the PromptComposer output, not here.
+              const continuationTemplate =
+                continuationModule?.content || 'Review the tool results above. Continue if incomplete.';
 
               // Build progress-aware continuation for Ollama (appends tool-specific tracking)
               let ollamaExtra = '';

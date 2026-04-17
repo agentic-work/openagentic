@@ -33,6 +33,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Orchestration: 'color-mix(in srgb, #7C3AED 85%, transparent)',     // Violet
   Synth:         'color-mix(in srgb, #0891B2 85%, transparent)',     // Cyan
   Database:      'color-mix(in srgb, #0D9488 85%, transparent)',     // Teal-dark
+  Knowledge:     'color-mix(in srgb, #06B6D4 85%, transparent)',     // Cyan — RAG / docs retrieval
   Security:      'color-mix(in srgb, #DC2626 85%, transparent)',     // Red-dark
   Network:       'color-mix(in srgb, #2563EB 85%, transparent)',     // Blue-dark
   Tool:          'color-mix(in srgb, #6B7280 85%, transparent)',     // Gray fallback
@@ -146,6 +147,11 @@ const TOOL_MAP: Record<string, HumanizedTool> = {
   milvus_query: { label: 'Vector Query', category: 'Database', color: c('Database') },
   milvus_list_collections: { label: 'List Collections', category: 'Database', color: c('Database') },
 
+  // RAG / Knowledge retrieval
+  rag_context:        { label: 'Knowledge Lookup', category: 'Knowledge', color: c('Knowledge'), activeForm: 'Searching knowledge base' },
+  rag_knowledge:      { label: 'Knowledge Lookup', category: 'Knowledge', color: c('Knowledge'), activeForm: 'Searching knowledge base' },
+  knowledge_search:   { label: 'Knowledge Lookup', category: 'Knowledge', color: c('Knowledge'), activeForm: 'Searching knowledge base' },
+
   // Agent delegation
   delegate_to_agents: { label: 'Delegate to Agents', category: 'Orchestration', color: c('Orchestration'), activeForm: 'Delegating to agents' },
   spawn_parallel_agents: { label: 'Spawn Agents', category: 'Orchestration', color: c('Orchestration'), activeForm: 'Orchestrating agents' },
@@ -186,6 +192,18 @@ export function humanizeToolName(rawName: string): HumanizedTool {
   // Exact match first
   const exact = TOOL_MAP[rawName];
   if (exact) return exact;
+
+  // Synthetic RAG row names from useSSEChat: `RAG Knowledge (5 docs)`.
+  // Map to the Knowledge category so the collapsed/expanded tool rows
+  // render with the book-icon badge + cyan pill instead of falling
+  // through to the generic Tool fallback.
+  if (/^rag[\s_-]?knowledge|^rag_context|knowledge[\s_-]?(search|lookup|retrieval)/i.test(rawName)) {
+    // Preserve the `(N docs)` suffix when present so the label still
+    // signals cardinality without forcing the caller to concat it back.
+    const match = rawName.match(/\(([^)]+)\)/);
+    const label = match ? `Knowledge Lookup (${match[1]})` : 'Knowledge Lookup';
+    return { label, category: 'Knowledge', color: c('Knowledge'), activeForm: 'Searching knowledge base' };
+  }
 
   // Prefix-based category detection
   for (const [prefix, meta] of Object.entries(CATEGORY_PREFIXES)) {

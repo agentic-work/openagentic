@@ -417,6 +417,36 @@ export class RAGStage implements PipelineStage {
       // Wait for all retrievals to complete
       await Promise.all(retrievalPromises);
 
+      // ── Quality filter + dedup ──────────────────────────────────────────
+      // Corpus noise observed in prod (user report 2026-04-17):
+      //   * `flow-generated` demo seed documents — test fixtures from flow
+      //     authoring, never actual platform knowledge. Drop outright.
+      //   * Near-duplicate titles across collections (same doc ingested
+      //     into app_documentation AND shared_knowledge AND user_documents)
+      //     so the user sees "FIVE rag docs, all the same".
+      // The metric-agnostic dedup below keeps the first occurrence (which
+      // is the highest-scored after the sort) and discards lower-ranked
+      // dupes regardless of which collection they came from.
+      const BAD_COLLECTIONS = new Set(['flow-generated', 'flow_generated', 'flow-demo']);
+      const titleKey = (d: any): string => {
+        const m = d?.metadata || {};
+        return String(m.title || m.source || m.url || m.filename || '')
+          .toLowerCase()
+          .replace(/[#*`_\s]+/g, ' ')
+          .trim()
+          .slice(0, 80);
+      };
+      const seenTitles = new Set<string>();
+      results.docs = results.docs.filter((d: any) => {
+        const coll = d?.metadata?.collection || d?.metadata?.source;
+        if (coll && BAD_COLLECTIONS.has(String(coll))) return false;
+        const k = titleKey(d);
+        if (!k) return true;
+        if (seenTitles.has(k)) return false;
+        seenTitles.add(k);
+        return true;
+      });
+
       // Sort by relevance score
       results.docs.sort((a, b) => b.score - a.score);
       results.chats.sort((a, b) => b.score - a.score);

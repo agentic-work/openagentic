@@ -19,6 +19,7 @@ import { loggers } from '../utils/logger.js';
 import { Prisma } from '@prisma/client';
 import { getCachedMetrics, setCachedMetrics } from '../services/AdminMetricsCache.js';
 import { prisma } from '../utils/prisma.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 // Request/Response interfaces
 interface BudgetCreateRequest {
@@ -69,6 +70,9 @@ interface UsageQuerystring {
 }
 
 export const adminChargebackRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   const logger = loggers.routes;
 
   // ==================== BUDGET ROUTES ====================
