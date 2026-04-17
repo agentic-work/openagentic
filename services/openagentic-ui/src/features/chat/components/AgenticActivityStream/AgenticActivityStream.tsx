@@ -38,7 +38,7 @@ import ArtifactRenderer from '../MessageContent/ArtifactRenderer';
 import ChartRenderer from '../MessageContent/ChartRenderer';
 import StreamingArtifactRenderer from '../MessageContent/StreamingArtifactRenderer';
 import { detectStreamingArtifact, hasStreamingArtifact } from '../../utils/streamingArtifactDetector';
-import { MCPToolRenderer } from './MCPRenderers';
+import { MCPToolRenderer, getRendererForTool, GenericMCPRenderer } from './MCPRenderers';
 import { CollapsedThinkingBlock, ArtifactErrorBoundary } from '@/shared/components';
 import { humanizeToolName, getCategoryColor } from '../../utils/toolNameHumanizer';
 import { summarizeToolCall, type ToolSummary, type RichSummary } from '../../utils/toolSummarizer';
@@ -68,6 +68,99 @@ const formatDuration = (ms: number): string => {
  * Detect if tool output indicates an error (500, 4xx, error messages, etc.)
  * Used to show correct status icon on tool calls even when "complete"
  */
+// ----- Inline chip extraction for collapsed tool rows ---------------------
+// Turns the structured summary from getStructuredSummary into a strip of small
+// inline chips rendered next to the tool-row label. Restores #330 Tier-1 for
+// web_search (favicon + domain) and extends the same pattern to rag_context
+// (doc filename + collection hint) and any other rich summary that exposes an
+// items[] list (memory_recall, list_datasets, cloud list_* tools, etc.).
+type InlineChip = {
+  label: string;       // visible text on the chip
+  tooltip?: string;    // title attribute — full URL, filename, path, or hint
+  url?: string;        // when present, chip renders as a clickable <a>
+  favicon?: string;    // resolves to an <img src=…> — google s2 for URLs, portal icon for cloud, etc.
+};
+const extractInlineChips = (toolName: string, tc: any, block?: any): InlineChip[] => {
+  // FAST PATH for RAG Knowledge rows — synthetic client-side blocks carry
+  // {docsRetrieved, collections, sources:[{title, collection, source, ...}]}
+  // in block.content (JSON-stringified). Parse directly; don't rely on the
+  // getStructuredSummary → rag_context pipeline because the synthesized
+  // block often lacks an Anthropic-shape wrapper the summarizer expects.
+  if (/rag[\s_-]?knowledge|^rag_context/i.test(toolName)) {
+    let data: any = null;
+    const raw = block?.content ?? tc?.output;
+    if (typeof raw === 'string') {
+      try { data = JSON.parse(raw); } catch { /* ignore */ }
+    } else if (raw && typeof raw === 'object') {
+      data = raw;
+    }
+    const sources = Array.isArray(data?.sources) ? data.sources : [];
+    const chips: InlineChip[] = [];
+    for (const s of sources.slice(0, 3)) {
+      const titleRaw = s?.title || s?.filename || s?.file || s?.name || s?.id || s?.content;
+      if (!titleRaw) continue;
+      // Trim markdown headings ("## 5. Flows Workflow Builder...") to something
+      // readable in a chip — strip leading ##/numbers/whitespace, cap at 40 chars.
+      const title = String(titleRaw).replace(/^[#\s\d.]+/, '').slice(0, 40);
+      chips.push({
+        label: title || 'source',
+        tooltip: (s?.collection || s?.source || s?.path) ? `${titleRaw} — ${s.collection || s.source || s.path}` : String(titleRaw),
+      });
+    }
+    if (chips.length > 0) return chips;
+    // Fall through to the normal path if we couldn't parse sources.
+  }
+
+  if (!tc && block?.content) {
+    tc = { toolName, output: block.content, status: 'success' };
+  }
+  if (!tc) return [];
+  const summary = getStructuredSummary(tc);
+  if (!summary) return [];
+  const isWebSearch = /web.*search|search.*web|websearch|brave.*search|google.*search/i.test(toolName);
+  const chips: InlineChip[] = [];
+
+  if (summary.kind === 'links') {
+    for (const item of summary.items) {
+      if (!item?.url) continue;
+      try {
+        const domain = new URL(item.url).hostname.replace(/^www\./, '');
+        chips.push({
+          label: domain,
+          tooltip: item.title || item.url,
+          url: item.url,
+          favicon: item.favicon || `https://www.google.com/s2/favicons?domain=${domain}&sz=32`,
+        });
+        if (chips.length >= 3) break;
+      } catch { /* skip invalid urls */ }
+    }
+    return chips;
+  }
+
+  // Rich summaries (rag_context, memory_recall, list_datasets, etc.) carry
+  // their per-item data in summary.items; expose up to 3 as label+tooltip.
+  if (summary.kind === 'rich' && Array.isArray(summary.items)) {
+    for (const item of summary.items) {
+      if (!item?.title) continue;
+      chips.push({
+        label: String(item.title).slice(0, 40),
+        tooltip: item.hint ? `${item.title} — ${item.hint}` : item.title,
+      });
+      if (chips.length >= 3) break;
+    }
+    return chips;
+  }
+
+  // Fallback for web_search with non-standard output shapes: if no summary
+  // but we have raw results in tc.output, best-effort extract up to 3 URLs.
+  if (isWebSearch && tc.output) {
+    // Intentionally no-op — getStructuredSummary already handles the standard
+    // shapes; this branch is a sentinel to keep the regex check meaningful.
+  }
+
+  return chips;
+};
+
 const detectErrorInOutput = (output: unknown): boolean => {
   if (!output) return false;
 
@@ -1753,32 +1846,55 @@ const ExpandableToolItem: React.FC<{
         </div>
       )}
 
-      {/* Expandable detail panel */}
-      {isDetailOpen && !isRunning && !isAgentBlock && !hasChildren && (
-        <div className="activity-detail-panel" style={{ marginLeft: 16 }}>
-          {inputStr && (
-            <div style={{ borderBottom: outputStr ? '1px solid color-mix(in srgb, var(--color-border) 30%, transparent)' : 'none' }}>
-              <div className="activity-detail-panel__section-label">Request</div>
-              <pre className="activity-detail-panel__content">
-                {inputStr.length > 1000 ? inputStr.slice(0, 1000) + '...' : inputStr}
-              </pre>
+      {/* Expandable detail panel
+          First try a specialized MCPToolRenderer (WebSearchRenderer, WebFetchRenderer,
+          SerenaFileRenderer, etc.) — these render rich views with favicons + links
+          for web_search, line-numbered excerpts for file reads, etc. If the tool
+          has no specialized renderer, fall back to raw Request/Response JSON dump. */}
+      {isDetailOpen && !isRunning && !isAgentBlock && !hasChildren && (() => {
+        const Specialized = getRendererForTool(toolName);
+        const hasSpecialized = Specialized !== GenericMCPRenderer;
+        if (hasSpecialized) {
+          return (
+            <div className="activity-detail-panel" style={{ marginLeft: 16 }}>
+              <Specialized
+                toolName={toolName}
+                toolId={toolCall?.id || block.toolId || ''}
+                input={toolInput}
+                output={toolOutput}
+                status={hasError ? 'error' : 'success'}
+                isComplete={true}
+                duration={toolCall?.duration}
+              />
             </div>
-          )}
-          {outputStr && (
-            <div>
-              <div className="activity-detail-panel__section-label" style={{ color: hasError ? '#da3633' : undefined }}>
-                Response
+          );
+        }
+        return (
+          <div className="activity-detail-panel" style={{ marginLeft: 16 }}>
+            {inputStr && (
+              <div style={{ borderBottom: outputStr ? '1px solid color-mix(in srgb, var(--color-border) 30%, transparent)' : 'none' }}>
+                <div className="activity-detail-panel__section-label">Request</div>
+                <pre className="activity-detail-panel__content">
+                  {inputStr.length > 1000 ? inputStr.slice(0, 1000) + '...' : inputStr}
+                </pre>
               </div>
-              <pre className="activity-detail-panel__content" style={{ color: hasError ? '#da3633' : undefined }}>
-                {outputStr.length > 2000 ? outputStr.slice(0, 2000) + '...' : outputStr}
-              </pre>
-            </div>
-          )}
-          {!inputStr && !outputStr && (
-            <div style={{ padding: '8px 12px', color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: 12 }}>No data available</div>
-          )}
-        </div>
-      )}
+            )}
+            {outputStr && (
+              <div>
+                <div className="activity-detail-panel__section-label" style={{ color: hasError ? '#da3633' : undefined }}>
+                  Response
+                </div>
+                <pre className="activity-detail-panel__content" style={{ color: hasError ? '#da3633' : undefined }}>
+                  {outputStr.length > 2000 ? outputStr.slice(0, 2000) + '...' : outputStr}
+                </pre>
+              </div>
+            )}
+            {!inputStr && !outputStr && (
+              <div style={{ padding: '8px 12px', color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: 12 }}>No data available</div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 });
@@ -1942,6 +2058,10 @@ const ToolCallGroup: React.FC<ToolCallGroupProps> = memo(({ blocks, toolCalls, t
             const tc = toolCalls.find(t => t.id === block.toolId);
             const sum = tc ? getCompactSummary(tc) : null;
             const isErr = block.isComplete && (block.error || (tc && detectErrorInOutput(tc.output)));
+            // Extract inline chips for the collapsed row — favicon + clickable
+            // anchor for web_search, filename+collection pill for rag_context,
+            // labeled pill for memory_recall/list_*. Restores #330 Tier-1.
+            const inlineChips = extractInlineChips(name, tc, block);
             return (
               <div key={block.id} style={{
                 display: 'flex',
@@ -1955,6 +2075,60 @@ const ToolCallGroup: React.FC<ToolCallGroupProps> = memo(({ blocks, toolCalls, t
                 <CategoryBadge category={h.category} small />
                 <span style={{ fontWeight: 500, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{h.label}</span>
                 {sum && <span style={{ opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{sum}</span>}
+                {inlineChips.length > 0 && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                    {inlineChips.map((chip, i) => {
+                      const pillStyle: React.CSSProperties = {
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 3,
+                        padding: '1px 6px',
+                        borderRadius: 3,
+                        background: 'color-mix(in srgb, var(--color-border) 25%, transparent)',
+                        color: 'var(--color-text-secondary)',
+                        textDecoration: 'none',
+                        maxWidth: 160,
+                      };
+                      const inner = (
+                        <>
+                          {chip.favicon && (
+                            <img
+                              src={chip.favicon}
+                              alt=""
+                              width={12}
+                              height={12}
+                              style={{ borderRadius: 2, flexShrink: 0 }}
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            />
+                          )}
+                          <span style={{ fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {chip.label}
+                          </span>
+                        </>
+                      );
+                      if (chip.url) {
+                        return (
+                          <a
+                            key={chip.url + i}
+                            href={chip.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={chip.tooltip}
+                            onClick={(e) => e.stopPropagation()}
+                            style={pillStyle}
+                          >
+                            {inner}
+                          </a>
+                        );
+                      }
+                      return (
+                        <span key={chip.label + i} title={chip.tooltip} style={pillStyle}>
+                          {inner}
+                        </span>
+                      );
+                    })}
+                  </span>
+                )}
                 {block.duration != null && block.duration > 0 && (
                   <span style={{ opacity: 0.4, fontSize: 11, fontFamily: 'var(--font-mono)', flexShrink: 0 }}>
                     {formatDuration(block.duration)}

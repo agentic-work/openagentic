@@ -140,6 +140,28 @@ PRESERVE = {
     '.github/workflows/sonar-summary.yml',
     'sonar-project.properties',
     'tools/verify-oss-integrity.sh',
+    'tools/gate-enterprise-routes.py',
+    'tools/fix-fastapi-annotated.py',
+    'services/openagentic-api/create-api-key.js',  # DATABASE_URL env-only, no hardcoded creds
+    # Admin routes that carry OSS 402 gates — always re-apply via
+    # gate-enterprise-routes.py after sync if the upstream edition flipped them.
+    'services/openagentic-api/src/routes/admin-chargeback.ts',
+    'services/openagentic-api/src/routes/admin-audit.ts',
+    'services/openagentic-api/src/routes/admin-audit-logs.ts',
+    'services/openagentic-api/src/routes/admin-audit-chat.ts',
+    'services/openagentic-api/src/routes/admin-credential-audit.ts',
+    'services/openagentic-api/src/routes/admin-metrics.ts',
+    'services/openagentic-api/src/routes/admin-llm-metrics.ts',
+    'services/openagentic-api/src/routes/admin-dashboard-metrics.ts',
+    'services/openagentic-api/src/routes/admin-user-permissions.ts',
+    'services/openagentic-api/src/routes/admin-rate-limits.ts',
+    'services/openagentic-api/src/routes/admin-webhook-security.ts',
+    'services/openagentic-api/src/routes/admin-tiered-fc.ts',
+    'services/openagentic-api/src/routes/admin-slider.ts',
+    'services/openagentic-api/src/routes/admin/dlp.ts',
+    'services/openagentic-mcp-proxy/src/main.py',  # Annotated FastAPI deps
+    '.env.example',  # REPLACE_ME_AT_INSTALL_TIME placeholder for secrets
+    'docker-compose.yml',  # log rotation + compose-env (duplicates earlier entry)
     'services/openagentic-api/src/routes/chat/pipeline/validation.stage.ts',
     'services/openagentic-api/src/services/llm-providers/OllamaProvider.ts',
     'services/openagentic-api/src/routes/admin/codemode.ts',

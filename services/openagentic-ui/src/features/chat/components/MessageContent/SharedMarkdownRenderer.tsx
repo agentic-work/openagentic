@@ -556,6 +556,24 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
     // Convert \[ ... \] to $$...$$
     result = result.replace(/\\\[(.*?)\\\]/g, '$$$$$$1$$$$');
 
+    // Normalize inline GFM tables that were emitted without row newlines.
+    // Qwen (local) and some other models occasionally return an entire table
+    // on a single line like `| h1 | h2 | |---|---| | v1 | v2 | | v3 | v4 |`.
+    // Without newlines remark-gfm doesn't detect a table and renders raw
+    // pipes. When we see an inline `|---|---|` separator, split the line at
+    // each `| ... | |` boundary so remark-gfm sees proper rows.
+    result = result.split('\n').map((line) => {
+      if (!line.includes('|')) return line;
+      // Inline separator signature — at least 2 dash groups between pipes,
+      // with no surrounding newlines.
+      const hasInlineSep = /\|\s*:?-{2,}:?\s*\|\s*:?-{2,}:?\s*\|/.test(line);
+      if (!hasInlineSep) return line;
+      // Insert a newline at every `|<spaces>|` boundary between rows. Use
+      // a lookbehind-free split: replace `| |` (one pipe, whitespace, one
+      // pipe) with `|\n|`.
+      return line.replace(/\|\s+\|/g, '|\n|');
+    }).join('\n');
+
     // Note: ReAct stage badges (THINK/ACT/OBSERVE/REFLECT) are rendered
     // inside the `p` component override below — not via preprocessing —
     // because react-markdown 9.x escapes raw HTML unless rehype-raw is
