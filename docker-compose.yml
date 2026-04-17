@@ -29,7 +29,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-openagentic}
       POSTGRES_USER: ${POSTGRES_USER:-openagentic}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openagentic}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
       - pg-data:/var/lib/postgresql/data
       # Runs on first-boot only; creates the pgvector extension so
@@ -157,7 +157,7 @@ services:
       - "hal:10.2.10.148"
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER:-openagentic}:${POSTGRES_PASSWORD:-openagentic}@postgres:5432/${POSTGRES_DB:-openagentic}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openagentic}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-openagentic}
       REDIS_URL: redis://redis:6379
       MILVUS_HOST: milvus
       MILVUS_PORT: "19530"
@@ -253,7 +253,7 @@ services:
       context: .
       dockerfile: services/openagentic-workflows/Dockerfile
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-openagentic}:${POSTGRES_PASSWORD:-openagentic}@postgres:5432/${POSTGRES_DB:-openagentic}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openagentic}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-openagentic}
       REDIS_URL: redis://redis:6379
       API_URL: http://api:8000
     depends_on:

@@ -16,7 +16,7 @@ import time
 import redis
 import subprocess
 import uuid
-from typing import Dict, Any, Optional, List, Union
+from typing import Annotated, Dict, Any, Optional, List, Union
 from fastapi import FastAPI, HTTPException, Depends, Request, BackgroundTasks, Cookie, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
@@ -633,7 +633,7 @@ def check_tool_access(
 
     return (True, "default_allow", False)
 
-async def get_user_info(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Optional[Dict[str, Any]]:
+async def get_user_info(credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]) -> Optional[Dict[str, Any]]:
     """
     Get user info from JWT token or return system admin for local users.
 
@@ -963,7 +963,7 @@ async def proxy_mcp_request(
     mcp_request: MCPRequest,
     background_tasks: BackgroundTasks,
     request: Request,
-    user_info: Optional[Dict[str, Any]] = Depends(get_user_info)
+    user_info: Annotated[Optional[Dict[str, Any]], Depends(get_user_info)]
 ):
     """Route MCP requests to appropriate server with comprehensive logging"""
     start_time = time.time()
@@ -1324,7 +1324,7 @@ async def call_mcp_tool(
     tool_call: MCPToolCall,
     background_tasks: BackgroundTasks,
     request: Request,
-    user_info: Optional[Dict[str, Any]] = Depends(get_user_info)
+    user_info: Annotated[Optional[Dict[str, Any]], Depends(get_user_info)]
 ):
     """Call a specific tool on an MCP server"""
 
@@ -1490,7 +1490,7 @@ class ServerEnabledRequest(BaseModel):
 async def set_server_enabled(
     server_id: str,
     request: ServerEnabledRequest,
-    user_info: Optional[Dict[str, Any]] = Depends(get_user_info)
+    user_info: Annotated[Optional[Dict[str, Any]], Depends(get_user_info)]
 ):
     """
     Enable or disable an MCP server at runtime.
@@ -1613,17 +1613,17 @@ async def _list_all_tools_impl(user_info: Optional[Dict[str, Any]] = None):
     }
 
 @app.get("/tools")
-async def list_all_tools(user_info: Optional[Dict[str, Any]] = Depends(get_user_info)):
+async def list_all_tools(user_info: Annotated[Optional[Dict[str, Any]], Depends(get_user_info)]):
     """List all tools from all running MCP servers"""
     return await _list_all_tools_impl(user_info)
 
 @app.get("/v1/mcp/tools")
-async def list_all_tools_v1(user_info: Optional[Dict[str, Any]] = Depends(get_user_info)):
+async def list_all_tools_v1(user_info: Annotated[Optional[Dict[str, Any]], Depends(get_user_info)]):
     """List all tools from all running MCP servers (OpenAI-compatible endpoint)"""
     return await _list_all_tools_impl(user_info)
 
 @app.get("/servers/{server_name}/tools")
-async def list_server_tools(server_name: str, user_info: Optional[Dict[str, Any]] = Depends(get_user_info)):
+async def list_server_tools(server_name: str, user_info: Annotated[Optional[Dict[str, Any]], Depends(get_user_info)]):
     """List tools from a specific MCP server"""
     if not mcp_manager:
         raise HTTPException(status_code=503, detail="MCP Manager not initialized")
@@ -1661,7 +1661,7 @@ class UserSessionStopRequest(BaseModel):
     user_id: str
 
 @app.post("/user-sessions/start")
-async def start_user_session(request: UserSessionStartRequest, user_info: Optional[Dict[str, Any]] = Depends(get_user_info)):
+async def start_user_session(request: UserSessionStartRequest, user_info: Annotated[Optional[Dict[str, Any]], Depends(get_user_info)]):
     """Start a per-user Azure MCP session with OBO authentication"""
     try:
         session_manager = get_user_session_manager()
@@ -1676,7 +1676,7 @@ async def start_user_session(request: UserSessionStartRequest, user_info: Option
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/user-sessions/stop")
-async def stop_user_session(request: UserSessionStopRequest, user_info: Optional[Dict[str, Any]] = Depends(get_user_info)):
+async def stop_user_session(request: UserSessionStopRequest, user_info: Annotated[Optional[Dict[str, Any]], Depends(get_user_info)]):
     """Stop a per-user Azure MCP session"""
     try:
         session_manager = get_user_session_manager()
@@ -1687,7 +1687,7 @@ async def stop_user_session(request: UserSessionStopRequest, user_info: Optional
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/user-sessions")
-async def list_user_sessions(user_info: Optional[Dict[str, Any]] = Depends(get_user_info)):
+async def list_user_sessions(user_info: Annotated[Optional[Dict[str, Any]], Depends(get_user_info)]):
     """List all active user sessions"""
     try:
         session_manager = get_user_session_manager()
@@ -1698,7 +1698,7 @@ async def list_user_sessions(user_info: Optional[Dict[str, Any]] = Depends(get_u
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/user-sessions/{user_id}")
-async def get_user_session(user_id: str, user_info: Optional[Dict[str, Any]] = Depends(get_user_info)):
+async def get_user_session(user_id: str, user_info: Annotated[Optional[Dict[str, Any]], Depends(get_user_info)]):
     """Get a specific user's session info including their Azure MCP tools"""
     try:
         session_manager = get_user_session_manager()
@@ -2088,7 +2088,7 @@ async def batch_call_tools(
     batch_request: BatchCallRequest,
     http_request: Request,
     background_tasks: BackgroundTasks,
-    user_info: Optional[Dict[str, Any]] = Depends(get_user_info)
+    user_info: Annotated[Optional[Dict[str, Any]], Depends(get_user_info)]
 ):
     """
     Execute multiple MCP tool calls in parallel within a single HTTP request.
@@ -2308,7 +2308,7 @@ async def batch_call_tools(
 async def call_mcp_tool(
     call_request: MCPCallRequest,
     http_request: Request,
-    user_info: Optional[Dict[str, Any]] = Depends(get_user_info)
+    user_info: Annotated[Optional[Dict[str, Any]], Depends(get_user_info)]
 ):
     """
     Simple endpoint to call MCP tools directly.
