@@ -93,3 +93,22 @@ if [ "$BLOCKED" -eq 1 ]; then
   echo "To bypass (DANGEROUS): git commit --no-verify"
   exit 1
 fi
+
+# OSS integrity check — refuse to commit if upsell strings or edition flag
+# have been tampered with. Applies only when the relevant files are touched.
+INTEGRITY_FILES=".github/required-upsell-strings.tsv tools/verify-oss-integrity.sh services/openagentic-api/src/features.ts services/openagentic-ui/src/features/admin/Upsell.tsx tools/setup/src/ui/Upsell.tsx tools/setup/src/steps/Providers.tsx"
+INTEGRITY_TOUCHED=0
+for F in $STAGED_FILES; do
+  for I in $INTEGRITY_FILES; do
+    if [ "$F" = "$I" ]; then INTEGRITY_TOUCHED=1; fi
+  done
+done
+if [ "$INTEGRITY_TOUCHED" -eq 1 ]; then
+  if ! ./tools/verify-oss-integrity.sh; then
+    echo ""
+    echo -e "${RED}BLOCKED${NC}: OSS integrity check failed."
+    echo "The enterprise upsell markers protected by .github/required-upsell-strings.tsv"
+    echo "must remain intact in this OSS repository."
+    exit 1
+  fi
+fi

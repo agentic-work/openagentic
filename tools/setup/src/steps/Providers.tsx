@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import { StepHeader, Hint, COLORS } from '../ui/Theme.tsx';
+import { UpsellHint } from '../ui/Upsell.tsx';
 import type { WizardConfig } from '../lib/types.ts';
 
 const FIELDS = [
@@ -60,6 +61,12 @@ export const ProvidersStep: React.FC<Props> = ({ initial, onDone }) => {
         ))}
         <Box marginTop={1}>
           <Hint>Press Tab or Ctrl+D to skip the rest. You can add more later from the admin panel.</Hint>
+        </Box>
+        <Box marginTop={1}>
+          <UpsellHint feature="AWS Bedrock / Azure AI Foundry / Vertex AI with workload-identity auth" />
+        </Box>
+        <Box>
+          <Hint>(OSS supports static API keys for all providers; CSP-native auth is https://agenticwork.io)</Hint>
         </Box>
       </Box>
     </Box>

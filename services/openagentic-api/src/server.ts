@@ -2926,6 +2926,13 @@ const start = async () => {
   }
 
   try {
+    const { logIntegrityAtBoot } = await import('./utils/oss-integrity.js');
+    logIntegrityAtBoot(loggers.services);
+  } catch (err) {
+    loggers.services.warn({ err }, 'OSS integrity check could not run');
+  }
+
+  try {
     const port = parseInt(process.env.PORT || process.env.API_PORT || '8000');
     await server.listen({ port, host: '0.0.0.0' });
 
