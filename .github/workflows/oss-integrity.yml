@@ -13,7 +13,7 @@ on:
 jobs:
   integrity:
     name: Verify edition + upsell strings
-    runs-on: ubuntu-latest
+    runs-on: openagentic-runners
     steps:
       - uses: actions/checkout@v4
 
