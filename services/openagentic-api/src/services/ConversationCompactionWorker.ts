@@ -242,7 +242,7 @@ export class ConversationCompactionWorker {
       // Extract time range
       const timestamps = messages
         .map((m: any) => m.timestamp ? new Date(m.timestamp).getTime() : Date.now())
-        .sort();
+        .sort((a, b) => a - b);
 
       return {
         sessionId: '', // Will be filled by caller

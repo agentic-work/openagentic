@@ -2480,7 +2480,7 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
   const allTags = useMemo(() => {
     const tags = new Set<string>();
     workflows.forEach(w => (w.tags || []).forEach((t: string) => tags.add(t)));
-    return Array.from(tags).sort();
+    return Array.from(tags).sort((a, b) => a.localeCompare(b));
   }, [workflows]);
 
   const toggleTag = (tag: string) => {

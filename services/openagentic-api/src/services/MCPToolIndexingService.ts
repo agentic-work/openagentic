@@ -84,7 +84,7 @@ export class MCPToolIndexingService {
    * Used by indexAllMCPTools() change-detection and persisted to Redis.
    */
   private computeToolSetHash(names: string[]): string {
-    const sorted = [...new Set(names)].sort();
+    const sorted = [...new Set(names)].sort((a, b) => a.localeCompare(b));
     const crypto = require('crypto');
     return crypto.createHash('sha256').update(sorted.join('|')).digest('hex').substring(0, 16);
   }

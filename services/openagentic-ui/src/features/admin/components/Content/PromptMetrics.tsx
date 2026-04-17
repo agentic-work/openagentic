@@ -181,7 +181,7 @@ const PromptMetrics: React.FC<PromptMetricsProps> = ({ theme }) => {
   // Get all unique techniques for filter dropdown
   const allTechniques = Array.from(
     new Set(metrics.flatMap(m => m.appliedTechniques))
-  ).sort();
+  ).sort((a, b) => a.localeCompare(b));
 
   const formatNumber = (num: number) => {
     return num.toLocaleString('en-US');

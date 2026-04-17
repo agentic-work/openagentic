@@ -245,7 +245,7 @@ export const RegistryTab: React.FC<{
   // #53: sort dropdown — name (default), provider, tier, capability count
   const [sortBy, setSortBy] = useState<'name' | 'provider' | 'tier' | 'capabilities'>('name');
 
-  const providerNames = useMemo(() => [...new Set(models.map(m => m.provider))].sort(), [models]);
+  const providerNames = useMemo(() => [...new Set(models.map(m => m.provider))].sort((a, b) => a.localeCompare(b)), [models]);
 
   const countCapabilities = (m: ModelInfo) => {
     const caps = (m.capabilities as any) || {};

@@ -130,7 +130,7 @@ const RulesTab: React.FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
     }
   }, [fetchRules, showToast]);
 
-  const categories = useMemo(() => [...new Set(rules.map(r => r.category))].sort(), [rules]);
+  const categories = useMemo(() => [...new Set(rules.map(r => r.category))].sort((a, b) => a.localeCompare(b)), [rules]);
 
   const filteredRules = useMemo(() => {
     return rules.filter(r => {

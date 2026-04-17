@@ -175,7 +175,7 @@ export class SemanticLearningService {
    * Generate hash for tool input parameters
    */
   private generateInputHash(inputParams: any): string {
-    const normalized = JSON.stringify(inputParams || {}, Object.keys(inputParams || {}).sort());
+    const normalized = JSON.stringify(inputParams || {}, Object.keys(inputParams || {}).sort((a, b) => a.localeCompare(b)));
     return createHash('sha256').update(normalized).digest('hex');
   }
 
