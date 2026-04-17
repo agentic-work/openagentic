@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
 import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
-import { StepHeader, Hint, COLORS } from '../ui/Theme.tsx';
+import { Screen, Hint, COLORS } from '../ui/Theme.tsx';
 import type { WizardConfig } from '../lib/types.ts';
 
 interface Props {
   initial: WizardConfig['ollama'];
+  step: number;
+  total: number;
   onDone: (ollama: WizardConfig['ollama']) => void;
 }
 
-export const OllamaStep: React.FC<Props> = ({ initial, onDone }) => {
+export const OllamaStep: React.FC<Props> = ({ initial, step, total, onDone }) => {
   const [host, setHost] = useState(initial.host);
 
   return (
-    <Box flexDirection="column">
-      <StepHeader step={3} total={7} title="Where is your Ollama?" />
-      <Box marginLeft={2} flexDirection="column">
+    <Screen step={step} total={total} title="Where is your Ollama?">
+      <Box flexDirection="column">
         <Box>
           <Text color={COLORS.accent}>❯ </Text>
           <Text>host: </Text>
@@ -34,6 +35,6 @@ export const OllamaStep: React.FC<Props> = ({ initial, onDone }) => {
           <Hint>Ollama is required for embeddings (semantic tool routing). Models are not pulled now.</Hint>
         </Box>
       </Box>
-    </Box>
+    </Screen>
   );
 };

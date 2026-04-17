@@ -1,23 +1,24 @@
 import React, { useState } from 'react';
 import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
-import { StepHeader, Hint, COLORS } from '../ui/Theme.tsx';
+import { Screen, Hint, COLORS } from '../ui/Theme.tsx';
 import type { WizardConfig } from '../lib/types.ts';
 
 interface Props {
   initial: WizardConfig['admin'];
+  step: number;
+  total: number;
   onDone: (admin: WizardConfig['admin']) => void;
 }
 
-export const AdminUserStep: React.FC<Props> = ({ initial, onDone }) => {
+export const AdminUserStep: React.FC<Props> = ({ initial, step, total, onDone }) => {
   const [email, setEmail] = useState(initial.email);
   const [password, setPassword] = useState(initial.password);
   const [field, setField] = useState<'email' | 'password'>('email');
 
   return (
-    <Box flexDirection="column">
-      <StepHeader step={2} total={7} title="Create your admin account" />
-      <Box marginLeft={2} flexDirection="column">
+    <Screen step={step} total={total} title="Create your admin account">
+      <Box flexDirection="column">
         <Box>
           <Text color={field === 'email' ? COLORS.accent : COLORS.muted}>
             {field === 'email' ? '❯ ' : '  '}
@@ -55,6 +56,6 @@ export const AdminUserStep: React.FC<Props> = ({ initial, onDone }) => {
           <Hint>Minimum 8 characters. You can change this later from the admin panel.</Hint>
         </Box>
       </Box>
-    </Box>
+    </Screen>
   );
 };

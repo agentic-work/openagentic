@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Text } from 'ink';
 import open from 'open';
-import { StepHeader, Hint, COLORS } from '../ui/Theme.tsx';
+import { Screen, Hint, COLORS } from '../ui/Theme.tsx';
 import type { WizardConfig } from '../lib/types.ts';
 import { writeEnv } from '../lib/env.ts';
 import { launchDocker } from '../backends/docker.ts';
@@ -10,6 +10,8 @@ import { MCPS, mcpById } from '../lib/mcps.ts';
 
 interface Props {
   config: WizardConfig;
+  step: number;
+  total: number;
   onDone: () => void;
 }
 
@@ -18,7 +20,7 @@ interface Task { label: string; state: TaskState; detail?: string; }
 
 const DRY_RUN = process.env.WIZARD_DRY_RUN === '1';
 
-export const LaunchStep: React.FC<Props> = ({ config, onDone }) => {
+export const LaunchStep: React.FC<Props> = ({ config, step, total, onDone }) => {
   const [tasks, setTasks] = useState<Task[]>(() => {
     const baseLabels = DRY_RUN
       ? ['Write .env (dry-run)', 'Skip build (dry-run)', 'Skip start (dry-run)', 'Skip health (dry-run)', 'Skip browser (dry-run)']
@@ -78,9 +80,8 @@ export const LaunchStep: React.FC<Props> = ({ config, onDone }) => {
   }, [config]);
 
   return (
-    <Box flexDirection="column">
-      <StepHeader step={7} total={7} title={DRY_RUN ? 'Bringing up openagentic (dry-run)' : 'Bringing up openagentic'} />
-      <Box marginLeft={2} flexDirection="column">
+    <Screen step={step} total={total} title={DRY_RUN ? 'Bringing up openagentic (dry-run)' : 'Bringing up openagentic'}>
+      <Box flexDirection="column">
         {tasks.map((t, i) => (
           <Box key={i}>
             <Text color={icon(t.state).color}>{icon(t.state).char}</Text>
@@ -92,14 +93,14 @@ export const LaunchStep: React.FC<Props> = ({ config, onDone }) => {
           </Box>
         ))}
       </Box>
-      <Box marginTop={1} marginLeft={2}>
+      <Box marginTop={1}>
         <Hint>
           {DRY_RUN
             ? 'WIZARD_DRY_RUN=1 — only .env is written; no containers are touched.'
             : 'First boot pulls the embedding model and seeds Milvus — give it a couple minutes.'}
         </Hint>
       </Box>
-    </Box>
+    </Screen>
   );
 };
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
-import { StepHeader, Hint, COLORS } from '../ui/Theme.tsx';
+import { Screen, Hint, COLORS } from '../ui/Theme.tsx';
 import { UpsellHint } from '../ui/Upsell.tsx';
 import type { WizardConfig } from '../lib/types.ts';
 
@@ -15,10 +15,12 @@ const FIELDS = [
 
 interface Props {
   initial: WizardConfig['providers'];
+  step: number;
+  total: number;
   onDone: (providers: WizardConfig['providers']) => void;
 }
 
-export const ProvidersStep: React.FC<Props> = ({ initial, onDone }) => {
+export const ProvidersStep: React.FC<Props> = ({ initial, step, total, onDone }) => {
   const [values, setValues] = useState<Record<string, string>>({ ...initial } as Record<string, string>);
   const [idx, setIdx] = useState(0);
   const current = FIELDS[idx];
@@ -35,9 +37,8 @@ export const ProvidersStep: React.FC<Props> = ({ initial, onDone }) => {
   };
 
   return (
-    <Box flexDirection="column">
-      <StepHeader step={4} total={7} title="LLM providers (all optional)" />
-      <Box marginLeft={2} flexDirection="column">
+    <Screen step={step} total={total} title="LLM providers (all optional)">
+      <Box flexDirection="column">
         {FIELDS.map((f, i) => (
           <Box key={f.key}>
             <Text color={i === idx ? COLORS.accent : COLORS.muted}>
@@ -69,6 +70,6 @@ export const ProvidersStep: React.FC<Props> = ({ initial, onDone }) => {
           <Hint>(OSS supports static API keys for all providers; CSP-native auth is https://agenticwork.io)</Hint>
         </Box>
       </Box>
-    </Box>
+    </Screen>
   );
 };

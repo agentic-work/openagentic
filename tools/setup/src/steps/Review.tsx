@@ -1,17 +1,19 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import SelectInput from 'ink-select-input';
-import { StepHeader, Hint, COLORS } from '../ui/Theme.tsx';
+import { Screen, Hint, COLORS } from '../ui/Theme.tsx';
 import type { WizardConfig } from '../lib/types.ts';
 import { mcpsThatNeedAuth } from '../lib/mcps.ts';
 
 interface Props {
   config: WizardConfig;
+  step: number;
+  total: number;
   onLaunch: () => void;
   onCancel: () => void;
 }
 
-export const ReviewStep: React.FC<Props> = ({ config, onLaunch, onCancel }) => {
+export const ReviewStep: React.FC<Props> = ({ config, step, total, onLaunch, onCancel }) => {
   const providerCount = Object.values(config.providers).filter(Boolean).length;
 
   // Summarize MCPs: enabled count + which ones still need creds filled in.
@@ -40,10 +42,10 @@ export const ReviewStep: React.FC<Props> = ({ config, onLaunch, onCancel }) => {
   );
 
   return (
-    <Box flexDirection="column">
-      <StepHeader step={7} total={7} title="Review & launch" />
-      <Box marginLeft={2} flexDirection="column">
+    <Screen step={step} total={total} title="Review & launch">
+      <Box flexDirection="column">
         {row('deploy target', config.target)}
+        {config.target === 'helm' && config.kubeconfigPath && row('kubeconfig', config.kubeconfigPath)}
         {row('admin email', config.admin.email)}
         {row('ollama host', config.ollama.host)}
         {row('embedding model', config.ollama.embedModel)}
@@ -57,7 +59,7 @@ export const ReviewStep: React.FC<Props> = ({ config, onLaunch, onCancel }) => {
           </Box>
         )}
       </Box>
-      <Box marginTop={1} marginLeft={2}>
+      <Box marginTop={1}>
         <SelectInput
           items={[
             { label: `Launch ${config.target}`, value: 'go' as const },
@@ -67,9 +69,9 @@ export const ReviewStep: React.FC<Props> = ({ config, onLaunch, onCancel }) => {
           indicatorComponent={({ isSelected }) => <Text color={COLORS.accent}>{isSelected ? '❯ ' : '  '}</Text>}
         />
       </Box>
-      <Box marginTop={1} marginLeft={2}>
+      <Box marginTop={1}>
         <Hint>Nothing has been written to disk yet. Launch will write .env and bring the stack up.</Hint>
       </Box>
-    </Box>
+    </Screen>
   );
 };

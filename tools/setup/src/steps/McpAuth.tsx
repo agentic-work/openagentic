@@ -5,12 +5,14 @@ import SelectInput from 'ink-select-input';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { StepHeader, Hint, COLORS } from '../ui/Theme.tsx';
+import { Screen, Hint, COLORS } from '../ui/Theme.tsx';
 import { mcpsThatNeedAuth, type McpDefinition } from '../lib/mcps.ts';
 
 interface Props {
   enabledIds: string[];
   initialAuth: Record<string, string>;
+  step: number;
+  total: number;
   onDone: (auth: Record<string, string>) => void;
 }
 
@@ -23,7 +25,7 @@ const CLOUD_SECRETS_DIR = path.join(os.homedir(), '.openagentic', 'cloud-secrets
  * the list one MCP at a time; each has either an env-file source picker
  * or a set of inline fields.
  */
-export const McpAuthStep: React.FC<Props> = ({ enabledIds, initialAuth, onDone }) => {
+export const McpAuthStep: React.FC<Props> = ({ enabledIds, initialAuth, step, total, onDone }) => {
   const needAuth = mcpsThatNeedAuth(enabledIds);
   const [idx, setIdx] = useState(0);
   const [auth, setAuth] = useState<Record<string, string>>({ ...initialAuth });
@@ -43,17 +45,14 @@ export const McpAuthStep: React.FC<Props> = ({ enabledIds, initialAuth, onDone }
   };
 
   return (
-    <Box flexDirection="column">
-      <StepHeader
-        step={5}
-        total={7}
-        title={`${current.label}: credentials (${idx + 1} of ${needAuth.length})`}
-      />
-      <Box marginLeft={2}>
-        {/* Key forces a fresh mount per MCP so fieldIdx/phase/values reset cleanly. */}
-        <McpAuthPrompt key={current.id} mcp={current} auth={auth} onDone={finishCurrent} />
-      </Box>
-    </Box>
+    <Screen
+      step={step}
+      total={total}
+      title={`${current.label}: credentials (${idx + 1} of ${needAuth.length})`}
+    >
+      {/* Key forces a fresh mount per MCP so fieldIdx/phase/values reset cleanly. */}
+      <McpAuthPrompt key={current.id} mcp={current} auth={auth} onDone={finishCurrent} />
+    </Screen>
   );
 };
 

@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { StepHeader, Hint, COLORS } from '../ui/Theme.tsx';
+import { Screen, Hint, COLORS } from '../ui/Theme.tsx';
 import { MCPS } from '../lib/mcps.ts';
 
 interface Props {
   initial: string[];
+  step: number;
+  total: number;
   onDone: (selected: string[]) => void;
 }
 
 /**
  * Multi-select MCP picker. Space toggles; Enter commits.
  */
-export const McpSelectionStep: React.FC<Props> = ({ initial, onDone }) => {
+export const McpSelectionStep: React.FC<Props> = ({ initial, step, total, onDone }) => {
   const [selected, setSelected] = useState<Set<string>>(new Set(initial));
   const [cursor, setCursor] = useState(0);
 
@@ -40,9 +42,8 @@ export const McpSelectionStep: React.FC<Props> = ({ initial, onDone }) => {
   });
 
   return (
-    <Box flexDirection="column">
-      <StepHeader step={5} total={7} title="Which MCPs do you want enabled?" />
-      <Box marginLeft={2} flexDirection="column">
+    <Screen step={step} total={total} title="Which MCPs do you want enabled?">
+      <Box flexDirection="column">
         {MCPS.map((m, i) => {
           const on = selected.has(m.id);
           const isCursor = i === cursor;
@@ -64,6 +65,6 @@ export const McpSelectionStep: React.FC<Props> = ({ initial, onDone }) => {
           <Hint>Space toggles  ·  a = all  ·  n = none  ·  Enter to continue</Hint>
         </Box>
       </Box>
-    </Box>
+    </Screen>
   );
 };

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Box, Text } from 'ink';
+import { Text } from 'ink';
 import SelectInput from 'ink-select-input';
-import { Banner, StepHeader, Hint, COLORS } from '../ui/Theme.tsx';
+import { Screen, Hint, COLORS } from '../ui/Theme.tsx';
 import type { DeployTarget } from '../lib/types.ts';
 
 interface Props {
@@ -14,16 +14,10 @@ export const DeployTargetStep: React.FC<Props> = ({ onPick }) => {
     { label: 'Helm     (production / kubernetes)', value: 'helm' as const },
   ];
   return (
-    <Box flexDirection="column">
-      <Banner />
-      <StepHeader step={1} total={7} title="Where do you want to run openagentic?" />
-      <Box marginLeft={2}>
-        <SelectInput items={items} onSelect={(i) => onPick(i.value)} indicatorComponent={Indicator} />
-      </Box>
-      <Box marginTop={1} marginLeft={2}>
-        <Hint>Both paths land at http://localhost:8080 with the same UI.</Hint>
-      </Box>
-    </Box>
+    <Screen step={1} total={9} title="Where do you want to run openagentic?">
+      <SelectInput items={items} onSelect={(i) => onPick(i.value)} indicatorComponent={Indicator} />
+      <Hint>Both paths land at http://localhost:8080 with the same UI.</Hint>
+    </Screen>
   );
 };
 

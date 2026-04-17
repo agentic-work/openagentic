@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { render, Box, Text } from 'ink';
 import { Banner, COLORS } from './ui/Theme.tsx';
 import { DeployTargetStep } from './steps/DeployTarget.tsx';
+import { HelmPreflightStep } from './steps/HelmPreflight.tsx';
 import { AdminUserStep } from './steps/AdminUser.tsx';
 import { OllamaStep } from './steps/Ollama.tsx';
 import { ProvidersStep } from './steps/Providers.tsx';
@@ -14,7 +15,7 @@ import { DEFAULT_CONFIG, type WizardConfig, type DeployTarget, type CodingAdapte
 import { defaultEnabledMcps } from './lib/mcps.ts';
 import { readCurrent } from './lib/env.ts';
 
-type Screen = 'target' | 'admin' | 'ollama' | 'providers' | 'mcps' | 'mcp-auth' | 'coding' | 'review' | 'launch' | 'done';
+type Screen = 'target' | 'helm-preflight' | 'admin' | 'ollama' | 'providers' | 'mcps' | 'mcp-auth' | 'coding' | 'review' | 'launch' | 'done';
 
 const App: React.FC = () => {
   // Seed from any existing .env so re-running the wizard is non-destructive.
@@ -45,11 +46,42 @@ const App: React.FC = () => {
   }));
   const [screen, setScreen] = useState<Screen>('target');
 
+  // Step numbering — Docker path = 9 screens total, Helm path inserts a
+  // preflight as step 2/10 so downstream steps bump by 1.
+  const total = config.target === 'helm' ? 10 : 9;
+  const stepOffset = config.target === 'helm' ? 1 : 0;  // admin onwards shift +1 on Helm
+  const stepNum = {
+    target: 1,
+    helmPreflight: 2,
+    admin: 2 + stepOffset,
+    ollama: 3 + stepOffset,
+    providers: 4 + stepOffset,
+    mcps: 5 + stepOffset,
+    mcpAuth: 6 + stepOffset,
+    coding: 7 + stepOffset,
+    review: 8 + stepOffset,
+    launch: 9 + stepOffset,
+  };
+
   if (screen === 'target') {
     return (
       <DeployTargetStep
         onPick={(t: DeployTarget) => {
           setConfig({ ...config, target: t });
+          setScreen(t === 'helm' ? 'helm-preflight' : 'admin');
+        }}
+      />
+    );
+  }
+  if (screen === 'helm-preflight') {
+    return (
+      <HelmPreflightStep
+        onContinue={(kubeconfigPath) => {
+          setConfig({ ...config, kubeconfigPath });
+          setScreen('admin');
+        }}
+        onBackToDocker={() => {
+          setConfig({ ...config, target: 'docker', kubeconfigPath: undefined });
           setScreen('admin');
         }}
       />
@@ -59,6 +91,8 @@ const App: React.FC = () => {
     return (
       <AdminUserStep
         initial={config.admin}
+        step={stepNum.admin}
+        total={total}
         onDone={(admin) => {
           setConfig({ ...config, admin });
           setScreen('ollama');
@@ -70,6 +104,8 @@ const App: React.FC = () => {
     return (
       <OllamaStep
         initial={config.ollama}
+        step={stepNum.ollama}
+        total={total}
         onDone={(ollama) => {
           setConfig({ ...config, ollama });
           setScreen('providers');
@@ -81,6 +117,8 @@ const App: React.FC = () => {
     return (
       <ProvidersStep
         initial={config.providers}
+        step={stepNum.providers}
+        total={total}
         onDone={(providers) => {
           setConfig({ ...config, providers });
           setScreen('mcps');
@@ -92,6 +130,8 @@ const App: React.FC = () => {
     return (
       <McpSelectionStep
         initial={config.mcps}
+        step={stepNum.mcps}
+        total={total}
         onDone={(mcps) => {
           setConfig({ ...config, mcps });
           setScreen('mcp-auth');
@@ -104,6 +144,8 @@ const App: React.FC = () => {
       <McpAuthStep
         enabledIds={config.mcps}
         initialAuth={config.mcpAuth}
+        step={stepNum.mcpAuth}
+        total={total}
         onDone={(mcpAuth) => {
           // Drop any MCP the user said "skip" on from the enabled list
           const skipped = Object.keys(mcpAuth).filter((k) => k.startsWith('__skip_')).map((k) => k.slice(7));
@@ -123,6 +165,8 @@ const App: React.FC = () => {
     return (
       <CodingCliStep
         initial={config.codingAdapter}
+        step={stepNum.coding}
+        total={total}
         onPick={(id) => {
           setConfig({ ...config, codingAdapter: id });
           setScreen('review');
@@ -134,13 +178,15 @@ const App: React.FC = () => {
     return (
       <ReviewStep
         config={config}
+        step={stepNum.review}
+        total={total}
         onLaunch={() => setScreen('launch')}
         onCancel={() => process.exit(0)}
       />
     );
   }
   if (screen === 'launch') {
-    return <LaunchStep config={config} onDone={() => setScreen('done')} />;
+    return <LaunchStep config={config} step={stepNum.launch} total={total} onDone={() => setScreen('done')} />;
   }
   return (
     <Box flexDirection="column">

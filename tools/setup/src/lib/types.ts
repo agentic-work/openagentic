@@ -29,6 +29,8 @@ export interface WizardConfig {
   /** Per-MCP inline auth values keyed by env var name (merged into .env at launch). */
   mcpAuth: Record<string, string>;
   uiPort: number;
+  /** Helm path only: resolved kubeconfig path used for cluster probe. */
+  kubeconfigPath?: string;
 }
 
 export const DEFAULT_CONFIG: WizardConfig = {

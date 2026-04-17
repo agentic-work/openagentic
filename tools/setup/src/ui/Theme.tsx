@@ -10,35 +10,40 @@ export const COLORS = {
 } as const;
 
 export const Banner: React.FC = () => (
-  <Box flexDirection="column" paddingY={1}>
-    <Text color={COLORS.accent} bold>
-      {'  ╭─────────────────────────────────────────────────╮'}
-    </Text>
-    <Text color={COLORS.accent} bold>
-      {'  │   '}
-      <Text color="white">openagentic</Text>
-      {'   '}
+  <Box paddingY={1}>
+    <Box borderStyle="round" borderColor={COLORS.accent} paddingX={2}>
+      <Text color="white" bold>openagentic</Text>
+      <Text>{'   '}</Text>
       <Text color={COLORS.muted}>the agentic platform for IT</Text>
-      {'   │'}
-    </Text>
-    <Text color={COLORS.accent} bold>
-      {'  ╰─────────────────────────────────────────────────╯'}
-    </Text>
+    </Box>
   </Box>
 );
 
 export const StepHeader: React.FC<{ step: number; total: number; title: string }> = ({ step, total, title }) => (
-  <Box marginY={1}>
-    <Text color={COLORS.muted}>
-      step {step}/{total}
-    </Text>
-    <Text color="white" bold>
-      {' '}
-      {title}
-    </Text>
+  <Box marginBottom={1}>
+    <Text color={COLORS.muted}>step {step}/{total}</Text>
+    <Text color={COLORS.muted}> · </Text>
+    <Text color="white" bold>{title}</Text>
   </Box>
 );
 
 export const Hint: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Text color={COLORS.muted}>{children}</Text>
+);
+
+// Screen wrapper — consistent 2-col left padding + top banner + step header for every wizard step.
+// Eliminates per-step margin drift.
+interface ScreenProps {
+  step: number;
+  total: number;
+  title: string;
+  children: React.ReactNode;
+}
+
+export const Screen: React.FC<ScreenProps> = ({ step, total, title, children }) => (
+  <Box flexDirection="column" paddingX={2}>
+    <Banner />
+    <StepHeader step={step} total={total} title={title} />
+    {children}
+  </Box>
 );
