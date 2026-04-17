@@ -301,7 +301,7 @@ const FileLineRefPill: React.FC<{ path: string; line: number }> = ({ path, line 
       // wire this into EditorPanel.tsx so the click actually jumps to the
       // referenced location. Until then we postMessage + console.log so
       // any listener that gets added later works without touching callers.
-      window.postMessage({ type: 'openInEditor', path, line }, '*');
+      window.postMessage({ type: 'openInEditor', path, line }, window.location.origin);
       // eslint-disable-next-line no-console
       console.log('[codemode] openInEditor', { path, line });
     } catch { /* noop */ }

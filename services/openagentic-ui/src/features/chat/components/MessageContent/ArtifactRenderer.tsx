@@ -1172,11 +1172,11 @@ const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({
         const result = await response.json();
         iframeRef.current?.contentWindow?.postMessage({
           type: 'oat-result', callId, success: true, result: result.result || result
-        }, '*');
+        }, window.location.origin);
       } catch (error: any) {
         iframeRef.current?.contentWindow?.postMessage({
           type: 'oat-result', callId, success: false, error: error.message
-        }, '*');
+        }, window.location.origin);
       }
     };
     window.addEventListener('message', handler);

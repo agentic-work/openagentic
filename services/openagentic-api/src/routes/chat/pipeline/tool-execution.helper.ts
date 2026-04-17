@@ -212,7 +212,7 @@ function normalizeArgsForCache(toolArgs: any): any {
   const queryLikeFields = ['query', 'search', 'q', 'keyword', 'term', 'text', 'question'];
 
   const normalized: Record<string, any> = {};
-  const sortedKeys = Object.keys(toolArgs).sort();
+  const sortedKeys = Object.keys(toolArgs).sort((a, b) => a.localeCompare(b));
 
   for (const key of sortedKeys) {
     const value = toolArgs[key];

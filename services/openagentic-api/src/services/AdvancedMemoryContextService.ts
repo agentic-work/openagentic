@@ -466,7 +466,7 @@ export class AdvancedMemoryContextService {
   private calculateTimespan(memories: any[]): string {
     if (memories.length < 2) return '1 session';
 
-    const dates = memories.map(m => m.created_at.getTime()).sort();
+    const dates = memories.map(m => m.created_at.getTime()).sort((a, b) => a - b);
     const days = (dates[dates.length - 1] - dates[0]) / (1000 * 60 * 60 * 24);
 
     if (days < 1) return 'same day';
