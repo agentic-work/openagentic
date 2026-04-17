@@ -15,6 +15,7 @@ import { FastifyInstance, FastifyPluginAsync, FastifyRequest, FastifyReply } fro
 import { SliderService } from '../services/SliderService.js';
 import { loggers } from '../utils/logger.js';
 import { prisma } from '../utils/prisma.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 interface SliderUpdateBody {
   value: number;
@@ -26,6 +27,9 @@ interface UserIdParams {
 }
 
 export const adminSliderRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   const logger = loggers.routes;
   const sliderService = new SliderService(prisma, logger);
 

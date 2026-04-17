@@ -11,6 +11,13 @@
 x-defaults: &defaults
   restart: unless-stopped
   networks: [oap]
+  # Log rotation so container stdout/stderr never fills the WSL VHD.
+  # 3 files × 10MB = max 30MB per container. Tune per service if needed.
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
 
 services:
 
@@ -25,6 +32,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openagentic}
     volumes:
       - pg-data:/var/lib/postgresql/data
+      # Runs on first-boot only; creates the pgvector extension so
+      # Prisma's halfvec columns can be created during db push.
+      - ./scripts/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-openagentic}"]
       interval: 5s
@@ -197,6 +207,8 @@ services:
       ADMIN_USER_EMAIL: ${ADMIN_USER_EMAIL:-admin@openagentic.local}
       ADMIN_SEED_PASSWORD: ${ADMIN_SEED_PASSWORD:-changeme-on-first-login}
       LOCAL_ADMIN_USERNAME: ${LOCAL_ADMIN_USERNAME:-Admin}
+      # Shared key api↔exec — both sides must agree.
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-openagentic-dev-internal-key-change-me}
       # Code Mode default coding CLI (seeded to SystemConfiguration on first boot)
       CODING_ADAPTER: ${CODING_ADAPTER:-claude-code}
       # The user already picked their password via ADMIN_SEED_PASSWORD in .env
@@ -255,9 +267,45 @@ services:
       dockerfile: services/openagentic-mcp-proxy/Dockerfile
       args:
         SRC_PATH: services/openagentic-mcp-proxy
+    # Cloud-MCP credentials live under ~/.openagentic/cloud-secrets/*.env.
+    # install.sh creates empty stubs on first run so these mounts never fail;
+    # the wizard (or the user, directly) fills them with real values. Any MCP
+    # the wizard didn't enable is shut off via the per-MCP _DISABLED vars.
+    env_file:
+      - ${HOME}/.openagentic/cloud-secrets/aws.env
+      - ${HOME}/.openagentic/cloud-secrets/azure.env
+      - ${HOME}/.openagentic/cloud-secrets/gcp.env
     environment:
       API_HOST: api
       API_PORT: "8000"
+      # Must match api's secrets so internal JWTs the api issues to reach
+      # the proxy validate. Defaults here mirror the api service above.
+      JWT_SECRET: ${JWT_SECRET:-openagentic-dev-jwt-secret-change-me}
+      SIGNING_SECRET: ${SIGNING_SECRET:-openagentic-dev-signing-secret-change-me}
+      # Flipped true/false per MCP by the wizard.
+      MCPS_ENABLED: ${MCPS_ENABLED:-web,knowledge,admin}
+      OpenAgentic_WEB_MCP_DISABLED: ${OpenAgentic_WEB_MCP_DISABLED:-false}
+      OpenAgentic_KNOWLEDGE_MCP_DISABLED: ${OpenAgentic_KNOWLEDGE_MCP_DISABLED:-false}
+      OpenAgentic_ADMIN_MCP_DISABLED: ${OpenAgentic_ADMIN_MCP_DISABLED:-false}
+      SEQUENTIAL_THINKING_MCP_DISABLED: ${SEQUENTIAL_THINKING_MCP_DISABLED:-true}
+      OpenAgentic_AWS_MCP_DISABLED: ${OpenAgentic_AWS_MCP_DISABLED:-true}
+      OpenAgentic_AZURE_MCP_DISABLED: ${OpenAgentic_AZURE_MCP_DISABLED:-true}
+      OpenAgentic_GCP_MCP_DISABLED: ${OpenAgentic_GCP_MCP_DISABLED:-true}
+      OpenAgentic_KUBERNETES_MCP_DISABLED: ${OpenAgentic_KUBERNETES_MCP_DISABLED:-true}
+      OpenAgentic_GITHUB_MCP_DISABLED: ${OpenAgentic_GITHUB_MCP_DISABLED:-true}
+      OpenAgentic_PROMETHEUS_MCP_DISABLED: ${OpenAgentic_PROMETHEUS_MCP_DISABLED:-true}
+      OpenAgentic_LOKI_MCP_DISABLED: ${OpenAgentic_LOKI_MCP_DISABLED:-true}
+      OpenAgentic_ALERTMANAGER_MCP_DISABLED: ${OpenAgentic_ALERTMANAGER_MCP_DISABLED:-true}
+      # Inline creds (fields-type MCPs — envs go straight into .env from the wizard)
+      KUBECONFIG: ${KUBECONFIG:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      PROMETHEUS_URL: ${PROMETHEUS_URL:-}
+      PROMETHEUS_USERNAME: ${PROMETHEUS_USERNAME:-}
+      PROMETHEUS_PASSWORD: ${PROMETHEUS_PASSWORD:-}
+      LOKI_URL: ${LOKI_URL:-}
+      LOKI_USERNAME: ${LOKI_USERNAME:-}
+      LOKI_PASSWORD: ${LOKI_PASSWORD:-}
+      ALERTMANAGER_URL: ${ALERTMANAGER_URL:-}
     depends_on: [api]
 
   proxy:
@@ -267,6 +315,9 @@ services:
       dockerfile: services/openagentic-proxy/Dockerfile
     environment:
       API_URL: http://api:8000
+      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
 
   exec:
     <<: *defaults
@@ -276,6 +327,15 @@ services:
     environment:
       API_URL: http://api:8000
       OPENAGENTIC_PROXY_URL: http://proxy:3300
+      # Shared key so api can talk to exec (and exec rejects anyone else).
+      # Must match api's INTERNAL_API_KEY.
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-openagentic-dev-internal-key-change-me}
+      # Which CLI ptyManager spawns for Code Mode sessions (claude/gemini/...)
+      CODING_ADAPTER: ${CODING_ADAPTER:-claude-code}
+      # Provider API keys passed through so the CLI can authenticate.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-${GOOGLE_GENERATIVE_AI_API_KEY:-}}
 
   synth:
     <<: *defaults

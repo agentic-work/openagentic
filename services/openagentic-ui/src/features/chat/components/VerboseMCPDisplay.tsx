@@ -1,7 +1,9 @@
 /**
  * Enhanced MCP Tool Call Display - Shows detailed execution information
  *
- * For all inquiries, please contact: * hello@openagentic.io
+ * For all inquiries, please contact:
+ * Openagentic LLC
+ * hello@openagentic.io
  */
 
 import React, { useState } from 'react';

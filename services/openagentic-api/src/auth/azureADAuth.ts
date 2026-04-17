@@ -821,4 +821,3 @@ export function extractUserFromToken(request: FastifyRequest): UserContext | nul
   }
 }
 
-

@@ -1,10 +1,3 @@
-/**
- * Pipeline Configuration Schema
- *
- * Comprehensive configuration for all chat pipeline stages.
- * Stored in SystemConfiguration table as JSON.
- */
-
 import type { BudgetConfig } from '../../../services/context/types.js';
 
 /**

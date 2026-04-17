@@ -1,18 +1,3 @@
-/**
- * UnifiedDataLayerView - Unified Data Layer Management Panel
- *
- * Replaces separate Redis/Cache and Milvus/Vectors sections with ONE unified
- * data layer management panel covering all three caching tiers:
- *   L1 - Redis (in-memory cache)
- *   L2 - pgvector (local ACID cache)
- *   L3 - Milvus (vector semantic cache)
- *
- * Three tabs:
- *   1. Cache Overview - Unified view of all caching layers
- *   2. Vector Collections - Attu-like management for all vector stores
- *   3. Diagnostics - Health & performance monitoring
- */
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Database,

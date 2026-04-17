@@ -1,29 +1,38 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Text } from 'ink';
-import Spinner from 'ink-spinner';
 import open from 'open';
-import { StepHeader, Hint, COLORS } from '../ui/Theme.tsx';
+import { Screen, Hint, COLORS } from '../ui/Theme.tsx';
 import type { WizardConfig } from '../lib/types.ts';
 import { writeEnv } from '../lib/env.ts';
 import { launchDocker } from '../backends/docker.ts';
 import { launchHelm } from '../backends/helm.ts';
+import { MCPS, mcpById } from '../lib/mcps.ts';
 
 interface Props {
   config: WizardConfig;
+  step: number;
+  total: number;
   onDone: () => void;
 }
 
 type TaskState = 'pending' | 'running' | 'ok' | 'fail';
 interface Task { label: string; state: TaskState; detail?: string; }
 
-export const LaunchStep: React.FC<Props> = ({ config, onDone }) => {
-  const [tasks, setTasks] = useState<Task[]>([
-    { label: 'Write .env', state: 'pending' },
-    { label: config.target === 'docker' ? 'Build images' : 'Render chart', state: 'pending' },
-    { label: config.target === 'docker' ? 'Start containers' : 'Apply release', state: 'pending' },
-    { label: 'Wait for health', state: 'pending' },
-    { label: 'Open browser', state: 'pending' },
-  ]);
+const DRY_RUN = process.env.WIZARD_DRY_RUN === '1';
+
+export const LaunchStep: React.FC<Props> = ({ config, step, total, onDone }) => {
+  const [tasks, setTasks] = useState<Task[]>(() => {
+    const baseLabels = DRY_RUN
+      ? ['Write .env (dry-run)', 'Skip build (dry-run)', 'Skip start (dry-run)', 'Skip health (dry-run)', 'Skip browser (dry-run)']
+      : [
+          'Write .env',
+          config.target === 'docker' ? 'Build images' : 'Render chart',
+          config.target === 'docker' ? 'Start containers' : 'Apply release',
+          'Wait for health',
+          'Open browser',
+        ];
+    return baseLabels.map((label) => ({ label, state: 'pending' as const }));
+  });
 
   const setTask = (i: number, patch: Partial<Task>) =>
     setTasks((ts) => ts.map((t, j) => (j === i ? { ...t, ...patch } : t)));
@@ -35,6 +44,15 @@ export const LaunchStep: React.FC<Props> = ({ config, onDone }) => {
         setTask(0, { state: 'running' });
         writeEnv(toEnv(config));
         setTask(0, { state: 'ok' });
+
+        if (DRY_RUN) {
+          setTask(1, { state: 'ok', detail: 'skipped' });
+          setTask(2, { state: 'ok', detail: 'skipped' });
+          setTask(3, { state: 'ok', detail: 'skipped' });
+          setTask(4, { state: 'ok', detail: 'skipped' });
+          setTimeout(onDone, 50);
+          return;
+        }
 
         const backend = config.target === 'docker' ? launchDocker : launchHelm;
         const url = await backend(config, {
@@ -62,9 +80,8 @@ export const LaunchStep: React.FC<Props> = ({ config, onDone }) => {
   }, [config]);
 
   return (
-    <Box flexDirection="column">
-      <StepHeader step={6} total={6} title="Bringing up openagentic" />
-      <Box marginLeft={2} flexDirection="column">
+    <Screen step={step} total={total} title={DRY_RUN ? 'Bringing up openagentic (dry-run)' : 'Bringing up openagentic'}>
+      <Box flexDirection="column">
         {tasks.map((t, i) => (
           <Box key={i}>
             <Text color={icon(t.state).color}>{icon(t.state).char}</Text>
@@ -76,10 +93,14 @@ export const LaunchStep: React.FC<Props> = ({ config, onDone }) => {
           </Box>
         ))}
       </Box>
-      <Box marginTop={1} marginLeft={2}>
-        <Hint>First boot pulls the embedding model and seeds Milvus — give it a couple minutes.</Hint>
+      <Box marginTop={1}>
+        <Hint>
+          {DRY_RUN
+            ? 'WIZARD_DRY_RUN=1 — only .env is written; no containers are touched.'
+            : 'First boot pulls the embedding model and seeds Milvus — give it a couple minutes.'}
+        </Hint>
       </Box>
-    </Box>
+    </Screen>
   );
 };
 
@@ -101,11 +122,31 @@ function toEnv(c: WizardConfig): Record<string, string> {
     OLLAMA_EMBED_MODEL: c.ollama.embedModel,
     CODING_ADAPTER: c.codingAdapter,
     UI_HOST_PORT: String(c.uiPort),
+    MCPS_ENABLED: c.mcps.join(','),
   };
   if (c.providers.anthropic)            env.ANTHROPIC_API_KEY = c.providers.anthropic;
   if (c.providers.openai)               env.OPENAI_API_KEY = c.providers.openai;
   if (c.providers.google)               env.GOOGLE_GENERATIVE_AI_API_KEY = c.providers.google;
   if (c.providers.azureOpenAIEndpoint)  env.AZURE_OPENAI_ENDPOINT = c.providers.azureOpenAIEndpoint;
   if (c.providers.azureOpenAIKey)       env.AZURE_OPENAI_API_KEY = c.providers.azureOpenAIKey;
+
+  // Per-MCP gating: flip the proxy's *_DISABLED var for anything NOT selected.
+  // Selected ones get the env explicitly set to "false" so re-running the
+  // wizard and un-disabling clears any stale "true" from a prior run.
+  const enabled = new Set(c.mcps);
+  for (const mcp of MCPS) {
+    env[mcp.disabledEnv] = enabled.has(mcp.id) ? 'false' : 'true';
+  }
+
+  // Inline auth values — whatever the user typed in McpAuth fields.
+  for (const [k, v] of Object.entries(c.mcpAuth)) {
+    if (k.startsWith('__skip_')) continue;  // markers, not real env vars
+    if (v) env[k] = v;
+  }
+
   return env;
 }
+
+// Exported for the PTY test harness so it can assert .env contents without
+// parsing the file a second time.
+export const __toEnv = toEnv;

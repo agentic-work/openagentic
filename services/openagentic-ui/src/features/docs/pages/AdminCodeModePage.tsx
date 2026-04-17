@@ -1,10 +1,3 @@
-/**
- * AdminCodeModePage - Openagentic admin documentation.
- *
- * Documents active sessions list, per-user Kubernetes pod management,
- * sandbox settings, resource limits, and session metrics.
- */
-
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

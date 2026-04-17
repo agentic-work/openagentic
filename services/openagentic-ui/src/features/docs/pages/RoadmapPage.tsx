@@ -1,10 +1,3 @@
-/**
- * RoadmapPage - Future plans and platform direction for OpenAgentic.
- *
- * Covers the v0.7.0 planned release, platform vision, and a visual
- * timeline of upcoming milestones. Follows WelcomePage styling patterns.
- */
-
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

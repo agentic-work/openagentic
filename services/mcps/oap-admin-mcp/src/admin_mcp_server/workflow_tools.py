@@ -20,7 +20,6 @@ logger = logging.getLogger("admin-mcp.workflow-tools")
 # API base URL - resolves to the openagentic-api service inside k8s
 API_BASE = os.getenv("API_BASE_URL", "http://openagentic-api:8000")
 
-
 async def _api_call(
     method: str,
     path: str,
@@ -46,7 +45,6 @@ async def _api_call(
             return {"success": False, "error": error_data.get("error", response.text), "status": response.status_code}
 
         return {"success": True, "data": response.json(), "status": response.status_code}
-
 
 # ============================================================================
 # READ OPERATIONS
@@ -87,7 +85,6 @@ async def workflow_list(
         ],
     }
 
-
 @mcp.tool(description="Get a workflow's full definition by ID, including all nodes, edges, and configuration. Use after workflow_list to inspect a specific workflow.")
 async def workflow_get(workflow_id: str) -> Dict[str, Any]:
     """Get workflow definition by ID."""
@@ -95,7 +92,6 @@ async def workflow_get(workflow_id: str) -> Dict[str, Any]:
     if not result["success"]:
         return result
     return {"success": True, "workflow": result["data"].get("workflow", result["data"])}
-
 
 @mcp.tool(description="List recent executions for a workflow. Shows execution status, duration, timestamps, and error info.")
 async def workflow_execution_list(
@@ -108,7 +104,6 @@ async def workflow_execution_list(
         return result
     return {"success": True, "executions": result["data"].get("executions", [])}
 
-
 @mcp.tool(description="Get detailed execution info including per-node I/O, logs, and timing. Use to debug a specific execution run.")
 async def workflow_execution_get(
     workflow_id: str,
@@ -119,7 +114,6 @@ async def workflow_execution_get(
     if not result["success"]:
         return result
     return {"success": True, **result["data"]}
-
 
 # ============================================================================
 # WRITE OPERATIONS
@@ -155,7 +149,6 @@ async def workflow_create(
         "name": workflow.get("name"),
         "message": f"Workflow '{name}' created successfully with {len(definition.get('nodes', []))} nodes.",
     }
-
 
 @mcp.tool(description="Create a workflow from a natural language description. Describe what the workflow should do and the AI will generate the node graph. Example: 'Monitor an S3 bucket for new CSV files, parse them, classify content with Claude, and send a Slack notification with the summary.'")
 async def workflow_create_from_description(
@@ -228,7 +221,6 @@ async def workflow_create_from_description(
         "tip": "Use the AI Builder in Flows mode for more sophisticated workflow generation with multi-node graphs.",
     }
 
-
 @mcp.tool(description="Update an existing workflow's definition, name, description, or configuration. Pass only the fields you want to change.")
 async def workflow_update(
     workflow_id: str,
@@ -260,7 +252,6 @@ async def workflow_update(
 
     return {"success": True, "message": f"Workflow updated successfully."}
 
-
 @mcp.tool(description="Execute a saved workflow by ID. Triggers the workflow engine and returns the execution ID. Pass optional input data for the trigger node.")
 async def workflow_execute(
     workflow_id: str,
@@ -277,7 +268,6 @@ async def workflow_execute(
         "message": "Workflow execution started.",
         "execution_id": result["data"].get("executionId") or result["data"].get("execution", {}).get("id"),
     }
-
 
 @mcp.tool(description="Execute a published workflow by name. Searches for the workflow, then executes it. Returns the execution results. Use this when you know the workflow name but not the ID.")
 async def workflow_execute_by_name(
@@ -319,7 +309,6 @@ async def workflow_execute_by_name(
         "workflow_name": matched.get("name"),
         "execution_id": result["data"].get("executionId") or result["data"].get("execution", {}).get("id"),
     }
-
 
 @mcp.tool(description="Check the status of a workflow execution by execution ID. Returns status, duration, node results, and any errors. Does not require the workflow ID.")
 async def workflow_status(
@@ -373,7 +362,6 @@ async def workflow_status(
 
         return {"success": False, "error": f"Execution '{execution_id}' not found in recent executions"}
 
-
 @mcp.tool(description="Delete a workflow (soft delete). The workflow can be restored by an admin.")
 async def workflow_delete(workflow_id: str) -> Dict[str, Any]:
     """Soft delete a workflow."""
@@ -381,7 +369,6 @@ async def workflow_delete(workflow_id: str) -> Dict[str, Any]:
     if not result["success"]:
         return result
     return {"success": True, "message": "Workflow deleted."}
-
 
 # ============================================================================
 # ADVANCED OPERATIONS
@@ -401,7 +388,6 @@ async def workflow_duplicate(workflow_id: str) -> Dict[str, Any]:
         "name": workflow.get("name"),
         "message": "Workflow duplicated successfully.",
     }
-
 
 @mcp.tool(description="Test a workflow definition without saving it to the database. Useful for dry runs and validation before committing changes.")
 async def workflow_test(

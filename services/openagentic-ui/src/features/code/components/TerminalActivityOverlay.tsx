@@ -1,28 +1,3 @@
-/**
- * TerminalActivityOverlay — floating activity-state chip stack
- *
- * Renders one to three React chips at the top-right of the terminal pane,
- * driven entirely by the CodeMode store. The terminal underneath is
- * unmodified — these chips ride OVER it as transient overlays at the
- * z-floating layer (see codeMode.css).
- *
- * Why an overlay instead of a row inside the header bar:
- *   The header bar communicates session identity (model, cwd, cost) and
- *   is stable across an entire session. Activity state churns every few
- *   seconds — thinking → tool calling → streaming → idle. Mixing the two
- *   creates visual noise on the otherwise-stable identity row. The
- *   overlay floats over the canvas so it can animate in and out cleanly
- *   without ever shifting layout.
- *
- * What it shows:
- *   - When activityState !== 'idle': a pulsing chip with the current
- *     activity label ("Thinking...", "Calling tool...", etc.)
- *   - When the model is currently in a tool call: a second chip with
- *     the current tool name (if available)
- *   - The chips are click-through (pointer-events: none on the wrapper)
- *     so they never block the user from interacting with the terminal.
- */
-
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, Brain, Wrench, Sparkles } from '@/shared/icons';

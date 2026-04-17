@@ -1,15 +1,3 @@
-/**
- * OllamaManagementView — Multi-Host Ollama Management with Live Sync
- *
- * Features:
- * - Multi-host: Each Ollama LLMProvider shown as a tab/card
- * - Live sync: Models auto-synced from Ollama hosts every 60s
- * - Sync button: Immediate on-demand sync
- * - Models tab: Pull, delete, test, info per model
- * - Metrics tab: Running models, VRAM usage, sync status
- * - Proper Ollama branding
- * */
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Download, Trash2, Play, HardDrive, Info, MessageSquare } from '@/shared/icons';
 import {

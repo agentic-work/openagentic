@@ -48,7 +48,6 @@ prisma_client: Optional[Any] = None  # Will be initialized when prisma is availa
 # Flag to track if connections are initialized
 _connections_initialized = False
 
-
 # ============================================================================
 # FASTMCP LIFESPAN CONTEXT MANAGER
 # ============================================================================
@@ -78,14 +77,12 @@ async def lifespan(app):
     await cleanup_connections()
     logger.info("Admin MCP Server stopped")
 
-
 # Create FastMCP instance with lifespan manager
 # MUST be defined BEFORE any @mcp.tool() decorators
 # Disable DNS rebinding protection for in-cluster access (MCP proxy connects from pod IPs)
 os.environ.setdefault("FASTMCP_ALLOWED_HOSTS", "*")
 os.environ.setdefault("FASTMCP_ALLOWED_ORIGINS", "*")
 mcp = FastMCP("Admin MCP Server", lifespan=lifespan)
-
 
 # ============================================================================
 # DATABASE CONNECTION MANAGEMENT
@@ -122,7 +119,6 @@ class DatabaseConfig:
             "user": os.getenv("MILVUS_USERNAME", ""),
             "password": os.getenv("MILVUS_PASSWORD", "")
         }
-
 
 async def init_connections():
     """Initialize all database connections"""
@@ -184,7 +180,6 @@ async def init_connections():
     _connections_initialized = True
     logger.info("✅ Connection initialization complete")
 
-
 async def cleanup_connections():
     """Cleanup all database connections"""
     global redis_client, prisma_client
@@ -206,7 +201,6 @@ async def cleanup_connections():
             pass
         logger.info("PostgreSQL connection closed")
 
-
 # ============================================================================
 # AUTH CONTEXT - This is passed from MCP Proxy
 # ============================================================================
@@ -218,7 +212,6 @@ class UserContext(BaseModel):
     email: str
     is_admin: bool
     groups: List[str] = []
-
 
 def validate_admin_access(user_context: Optional[Dict[str, Any]] = None) -> UserContext:
     """
@@ -252,7 +245,6 @@ def validate_admin_access(user_context: Optional[Dict[str, Any]] = None) -> User
         is_admin=True,
         groups=user_context.get("groups", [])
     )
-
 
 # ============================================================================
 # POSTGRESQL TOOLS
@@ -317,7 +309,6 @@ async def admin_system_postgres_raw_query(
         logger.error(f"Database query failed: {e}")
         raise RuntimeError(f"Database query failed: {str(e)}")
 
-
 @mcp.tool(description="List all tables in the OpenAgentic system PostgreSQL database with schema information (NOT Azure SQL databases)")
 async def admin_system_postgres_list_tables() -> Dict[str, Any]:
     """List all tables in the system database"""
@@ -348,7 +339,6 @@ async def admin_system_postgres_list_tables() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to list tables: {e}")
         raise RuntimeError(f"Failed to list tables: {str(e)}")
-
 
 @mcp.tool(description="Check health and connection status of the OpenAgentic system PostgreSQL database (NOT Azure databases)")
 async def admin_system_postgres_health_check() -> Dict[str, Any]:
@@ -385,7 +375,6 @@ async def admin_system_postgres_health_check() -> Dict[str, Any]:
             "healthy": False,
             "message": f"Database connection failed: {str(e)}"
         }
-
 
 # ============================================================================
 # PGVECTOR TOOLS
@@ -500,7 +489,6 @@ async def admin_system_pgvector_list_collections() -> Dict[str, Any]:
         logger.error(f"Failed to list pgvector collections: {e}")
         raise RuntimeError(f"Failed to list pgvector collections: {str(e)}")
 
-
 # ============================================================================
 # REDIS TOOLS
 # ============================================================================
@@ -526,7 +514,6 @@ async def admin_system_redis_get_key(key: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Redis GET failed: {e}")
         raise RuntimeError(f"Redis GET failed: {str(e)}")
-
 
 @mcp.tool(description="List keys in the OpenAgentic system Redis cache matching a pattern (NOT Azure Redis Cache). Use with caution on large datasets.")
 async def admin_system_redis_list_keys_by_pattern(
@@ -565,7 +552,6 @@ async def admin_system_redis_list_keys_by_pattern(
         logger.error(f"Redis SCAN failed: {e}")
         raise RuntimeError(f"Redis SCAN failed: {str(e)}")
 
-
 @mcp.tool(description="Check health and connection status of the OpenAgentic system Redis cache (NOT Azure Redis Cache)")
 async def admin_system_redis_health_check() -> Dict[str, Any]:
     """Check Redis cache health — connection status, memory usage, key count, uptime"""
@@ -592,7 +578,6 @@ async def admin_system_redis_health_check() -> Dict[str, Any]:
             "message": f"Redis connection failed: {str(e)}"
         }
 
-
 # ============================================================================
 # MILVUS TOOLS
 # ============================================================================
@@ -613,7 +598,6 @@ async def admin_system_milvus_list_collections() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to list Milvus collections: {e}")
         raise RuntimeError(f"Failed to list Milvus collections: {str(e)}")
-
 
 @mcp.tool(description="Get detailed information about a collection in the OpenAgentic system Milvus vector database (NOT Azure AI Search)")
 async def admin_system_milvus_get_collection_info(collection_name: str) -> Dict[str, Any]:
@@ -659,7 +643,6 @@ async def admin_system_milvus_get_collection_info(collection_name: str) -> Dict[
         logger.error(f"Failed to get Milvus collection info: {e}")
         raise RuntimeError(f"Failed to get Milvus collection info: {str(e)}")
 
-
 @mcp.tool(description="Check health and connection status of the OpenAgentic system Milvus vector database (NOT Azure AI Search)")
 async def admin_system_milvus_health_check() -> Dict[str, Any]:
     """Check Milvus vector database health — connection status, collection count, GPU availability"""
@@ -682,7 +665,6 @@ async def admin_system_milvus_health_check() -> Dict[str, Any]:
             "healthy": False,
             "message": f"Milvus connection failed: {str(e)}"
         }
-
 
 # ============================================================================
 # POSTGRES OBSERVABILITY TOOLS
@@ -752,7 +734,6 @@ async def admin_system_postgres_active_connections() -> Dict[str, Any]:
         logger.error(f"Failed to get active connections: {e}")
         raise RuntimeError(f"Failed to get active connections: {str(e)}")
 
-
 @mcp.tool(description="Show active user chat sessions with message counts, last activity, models used, and session duration. For admin support and usage monitoring.")
 async def admin_system_user_sessions() -> Dict[str, Any]:
     """List active user sessions from the chat_sessions table (READ-ONLY)"""
@@ -802,7 +783,6 @@ async def admin_system_user_sessions() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to get user sessions: {e}")
         raise RuntimeError(f"Failed to get user sessions: {str(e)}")
-
 
 @mcp.tool(description="Show LLM provider configuration, model availability, priority routing, and recent usage stats. Essential for debugging model routing and availability issues.")
 async def admin_system_llm_provider_status() -> Dict[str, Any]:
@@ -856,7 +836,6 @@ async def admin_system_llm_provider_status() -> Dict[str, Any]:
         logger.error(f"Failed to get LLM provider status: {e}")
         raise RuntimeError(f"Failed to get LLM provider status: {str(e)}")
 
-
 # ============================================================================
 # REDIS OBSERVABILITY TOOLS
 # ============================================================================
@@ -907,7 +886,6 @@ async def admin_system_redis_stats() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to get Redis stats: {e}")
         raise RuntimeError(f"Failed to get Redis stats: {str(e)}")
-
 
 # ============================================================================
 # MILVUS OBSERVABILITY TOOLS
@@ -972,7 +950,6 @@ async def admin_system_milvus_collection_stats() -> Dict[str, Any]:
         logger.error(f"Failed to get Milvus collection stats: {e}")
         raise RuntimeError(f"Failed to get Milvus collection stats: {str(e)}")
 
-
 # ============================================================================
 # NETWORK & SERVICE CONNECTIVITY TOOLS
 # ============================================================================
@@ -1030,7 +1007,6 @@ async def admin_system_network_connectivity_check() -> Dict[str, Any]:
         "services": results
     }
 
-
 @mcp.tool(description="Show API server health, version info, and endpoint status by calling the OpenAgentic API health endpoint. Quick pulse check without Grafana.")
 async def admin_system_api_health() -> Dict[str, Any]:
     """Check the OpenAgentic API health endpoint (READ-ONLY)"""
@@ -1060,7 +1036,6 @@ async def admin_system_api_health() -> Dict[str, Any]:
             "healthy": False,
             "message": f"Failed to reach API: {str(e)}"
         }
-
 
 # ============================================================================
 # SYSTEM HEALTH CHECK
@@ -1107,7 +1082,6 @@ async def admin_system_infrastructure_health_check() -> Dict[str, Any]:
 
     return health
 
-
 # ============================================================================
 # FULL SYSTEM TEST TOOL
 # ============================================================================
@@ -1139,7 +1113,6 @@ async def admin_full_system_test(
         verbose=verbose
     )
 
-
 # ============================================================================
 # IMPORT TOOL MODULES TO REGISTER TOOLS WITH FASTMCP
 # ============================================================================
@@ -1155,7 +1128,6 @@ try:
 except ImportError as e:
     logger.warning(f"Some tool modules could not be loaded: {e}")
 
-
 # ============================================================================
 # FASTMCP SERVER INITIALIZATION
 # ============================================================================
@@ -1170,7 +1142,6 @@ try:
     HTTP_TRANSPORT_AVAILABLE = True
 except ImportError:
     HTTP_TRANSPORT_AVAILABLE = False
-
 
 def main():
     """
@@ -1195,7 +1166,6 @@ def main():
     else:
         # The lifespan context manager will handle init_connections() and cleanup_connections()
         mcp.run()
-
 
 if __name__ == "__main__":
     main()

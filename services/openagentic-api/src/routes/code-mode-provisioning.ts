@@ -1,14 +1,3 @@
-/**
- * Code Mode Provisioning API Routes
- *
- * Handles user Code Mode environment provisioning with SSE progress updates.
- *
- * Endpoints:
- * - GET /api/code-mode/provisioning/status - Check provisioning status
- * - POST /api/code-mode/provisioning/start - Start provisioning (returns SSE stream)
- * - GET /api/code-mode/provisioning/progress - SSE stream for progress updates
- */
-
 import { FastifyPluginAsync } from 'fastify';
 import { prisma } from '../utils/prisma.js';
 import {

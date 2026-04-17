@@ -1,17 +1,3 @@
-/**
- * SlideInPanel - GCP Console-style Slide-in Panel Component
- *
- * Provides a full-height panel that slides in from the right edge:
- * - Slides in from right with smooth animation
- * - Full viewport height
- * - Dark backdrop with click-to-close
- * - Header with title, subtitle, close button
- * - Scrollable content area
- * - Fixed footer for actions (Save/Cancel)
- * - Keyboard: Escape to close
- * - Focus trap for accessibility
- * */
-
 import React, { useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';

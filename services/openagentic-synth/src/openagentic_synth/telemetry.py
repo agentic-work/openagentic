@@ -32,7 +32,6 @@ from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 
-
 def setup_telemetry():
     """Initialize OpenTelemetry with OTLP exporters."""
 
@@ -80,7 +79,6 @@ def setup_telemetry():
             print(f"Warning: Could not configure OTLP metric exporter: {e}")
 
     return trace.get_tracer(__name__)
-
 
 # Global tracer instance
 tracer = trace.get_tracer(__name__)

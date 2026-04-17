@@ -1,10 +1,3 @@
-/**
- * ChatModePage - Explains how the OpenAgentic chat system works.
- *
- * Covers the 10-stage chat pipeline, intelligence slider, agent delegation,
- * and MCP tool selection with interactive ReactFlow diagrams.
- */
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

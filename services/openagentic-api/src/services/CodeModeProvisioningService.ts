@@ -1,17 +1,3 @@
-/**
- * Code Mode Provisioning Service
- *
- * Handles the setup and lifecycle of per-user sandboxed development environments.
- * When a user first accesses Code Mode, this service provisions:
- * 1. Pod scheduling and container startup (K8s mode)
- * 2. Local workspace setup on pod filesystem
- * 3. VSCode/code-server settings
- * 4. Openagentic CLI initialization
- *
- * Storage is local to the pod (no MinIO/S3).
- * Works with both Docker Compose and Kubernetes deployments.
- */
-
 import { PrismaClient, CodeModeProvisioning } from '@prisma/client';
 import type { Logger } from 'pino';
 

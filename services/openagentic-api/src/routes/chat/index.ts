@@ -398,7 +398,6 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
     });
   });
 
-
   // Get MCP status
   fastify.get('/mcp/status', { preHandler: authMiddleware }, async (request: any, reply) => {
     try {
@@ -440,7 +439,6 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
       });
     }
   });
-
 
   // Get MCP functions (alias for tools) - used by UI
   fastify.get('/mcp-functions', { preHandler: authMiddleware }, async (request: any, reply) => {
@@ -496,7 +494,6 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
       return reply.code(500).send({ error: 'Failed to list MCP functions' });
     }
   });
-
 
   // Get available OpenAI models - import from models handler
   fastify.get('/models', {

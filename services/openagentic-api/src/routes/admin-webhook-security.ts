@@ -17,11 +17,15 @@ import { FastifyInstance, FastifyPluginAsync, FastifyRequest, FastifyReply } fro
 import { loggers } from '../utils/logger.js';
 import { prisma } from '../utils/prisma.js';
 import { webhookSecurityService, WebhookSecurityConfig } from '../services/WebhookSecurityService.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 const logger = loggers.routes;
 
 export const adminWebhookSecurityRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   /**
    * GET /config — current webhook security configuration
    */

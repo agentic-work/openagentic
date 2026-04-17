@@ -1642,7 +1642,6 @@ export class ProviderManager {
   }
 }
 
-
 // Singleton accessor for ProviderManager — set by server.ts on init
 let _providerManagerInstance: ProviderManager | null = null;
 

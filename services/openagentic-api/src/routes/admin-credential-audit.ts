@@ -11,10 +11,14 @@ import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import { adminMiddleware } from '../middleware/unifiedAuth.js';
 import { credentialAuditService, type CredentialAuditQuery } from '../services/CredentialAuditService.js';
 import { loggers } from '../utils/logger.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 const logger = loggers.routes.child({ component: 'AdminCredentialAudit' });
 
 const adminCredentialAuditRoutes: FastifyPluginAsync = async (fastify) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   /**
    * GET /api/admin/audit/credentials
    *

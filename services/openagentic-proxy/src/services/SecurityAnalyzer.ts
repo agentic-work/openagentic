@@ -59,8 +59,6 @@ const MEDIUM_RISK_PATTERNS = [
   /^k8s_(?:create|apply|scale|restart|cordon|uncordon|patch|label|annotate)/i,
   /^admin_(?:create|update|delete|set|configure|enable|disable)/i,
   /^(?:aws|azure|gcp)_(?:create|update|modify|start|stop|restart|set)/i,
-  /^azure_arm_execute$/i,
-  /^azure_arm_execute_and_wait$/i,
   /^gcp_api_execute$/i,
   /^openagentic_/i,
   /^helm_(?:install|upgrade|rollback|uninstall)$/i,

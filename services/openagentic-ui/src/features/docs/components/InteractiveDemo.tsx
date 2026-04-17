@@ -1,10 +1,3 @@
-/**
- * InteractiveDemo - Interactive demo sub-components for OpenAgentic docs.
- *
- * Contains PipelineVisualizer, SliderDemo, and AgentTypeExplorer —
- * animated, interactive components that demonstrate platform concepts.
- */
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 

@@ -1,13 +1,3 @@
-/**
- * CodeMode Plugin Marketplace Routes
- *
- * User-facing API for browsing, installing, and managing openagentic plugins.
- * Fetches the official marketplace (anthropics/claude-plugins-official) via
- * GitHub raw content and caches in SystemConfiguration for 24 hours.
- *
- * Also proxies install-count stats from the openagentic stats repo.
- */
-
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../utils/prisma.js';
 

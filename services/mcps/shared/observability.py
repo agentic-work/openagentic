@@ -16,7 +16,6 @@ import sys
 
 import structlog
 
-
 def configure_logging(service_name: str, log_level: str = None):
     """Configure structlog for JSON structured logging.
 

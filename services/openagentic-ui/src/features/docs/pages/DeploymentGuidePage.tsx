@@ -1,10 +1,3 @@
-/**
- * DeploymentGuidePage - Complete build, deploy, and infrastructure reference.
- *
- * Covers build scripts, Helm deployment, infrastructure components, cluster
- * topology, and secrets management. Follows WelcomePage styling patterns.
- */
-
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { DocsInfraIcon } from '../components/DocsIcons';

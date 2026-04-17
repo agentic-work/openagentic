@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Admin Dashboard Metrics API
  *
  * Provides comprehensive time-series metrics for the admin dashboard
@@ -31,6 +15,7 @@ import { loggers } from '../utils/logger.js';
 import { LLMMetricsService } from '../services/LLMMetricsService.js';
 import { getCachedMetrics, setCachedMetrics } from '../services/AdminMetricsCache.js';
 import { prisma } from '../utils/prisma.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 const logger = loggers.routes.child({ component: 'AdminDashboardMetrics' });
 const llmMetricsService = new LLMMetricsService();
@@ -51,6 +36,9 @@ interface MetricSeries {
 // Costs are calculated by LLMMetricsService at request time and stored in llm_request_logs
 
 const adminDashboardMetricsRoutes: FastifyPluginAsync = async (fastify) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   /**
    * GET /api/admin/dashboard/metrics
    * Returns comprehensive time-series metrics for the admin dashboard

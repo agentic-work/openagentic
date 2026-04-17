@@ -1,17 +1,3 @@
-/**
- * OnboardingTour - Lightweight guided discovery for first-time users
- *
- * Shows a 4-step tooltip tour highlighting key features:
- * 1. Chat input area
- * 2. Intelligence Slider (cost/quality tradeoff)
- * 3. MCP Tools toggle
- * 4. Flows tab (visual workflow builder)
- *
- * Checks localStorage for `onboarding_completed` to determine first visit.
- * Uses absolute positioning with a backdrop highlight effect.
- * Auto-dismisses on "Skip" or after completing all steps.
- * */
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronRight, MessageSquare, Zap, PuzzleIcon, Workflow } from '@/shared/icons';

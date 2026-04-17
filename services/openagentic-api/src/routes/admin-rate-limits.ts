@@ -20,6 +20,7 @@ import { loggers } from '../utils/logger.js';
 import { rateLimitService, RateLimitTierConfig } from '../services/RateLimitService.js';
 import { prisma } from '../utils/prisma.js';
 import { getRedisClient } from '../utils/redis-client.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 /**
  * Sync rate limit config to Redis so the Fastify rate limiter picks it up immediately.
@@ -69,6 +70,9 @@ interface ViolationsQuery {
 }
 
 export const adminRateLimitsRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   const logger = loggers.routes;
 
   // Seed default tiers on first load and sync to Redis

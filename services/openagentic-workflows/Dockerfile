@@ -19,7 +19,6 @@ FROM node:20-slim
 
 LABEL maintainer="OpenAgentic <engineering@openagentic.io>"
 LABEL description="OpenAgentic Workflow Execution Service"
-LABEL org.opencontainers.image.licenses="Apache-2.0"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     dumb-init openssl ca-certificates python3 \
@@ -38,6 +37,5 @@ EXPOSE 3400
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3400/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
-
 
 CMD ["dumb-init", "node", "--max-old-space-size=2048", "dist/index.js"]

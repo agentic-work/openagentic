@@ -1,23 +1,3 @@
-/**
- * SessionBootScreen — gate overlay shown on every CodeMode open (first
- * connect AND every reconnect) until the full session is verifiably up:
- *
- *   1. Pod / workspace          — s3fs mount + sandbox user created
- *   2. VS Code (code-server)    — HTTP endpoint ready
- *   3. OpenAgentic CLI           — Ink REPL emitted its ready marker
- *   4. Terminal rendering       — ghostty-web wasmTerm has real content
- *                                 (any codepoint > 32, not just setup
- *                                 escapes). Flips in TerminalPanel's
- *                                 ws.onmessage handler.
- *
- * Only dismisses when ALL four are green. On WS disconnect the store
- * clears `terminalContentReady` → this component re-mounts visually
- * and re-runs the gate. No more "fake terminal" with a flashing cursor
- * in the background — CodeModeLayoutV2 keeps the real terminal mounted
- * underneath (so the WS keeps flowing), we just cover it with this
- * overlay until it's actually producing pixels.
- */
-
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {

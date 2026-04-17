@@ -1,11 +1,3 @@
-/**
- * ArtifactErrorBoundary - Catches rendering failures in artifact/content blocks
- *
- * Prevents a single bad artifact (bad HTML, unsupported format, malformed code)
- * from breaking the entire message or chat stream. Shows a graceful fallback
- * with the raw content when available.
- * */
-
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 interface ArtifactErrorBoundaryProps {

@@ -54,3 +54,30 @@
     - "aks|kubernetes"
     - "version|1\\.[0-9]+"
   timeout_s: 150
+
+- id: UC-027-perf-monitoring
+  prompt: "Give me a high-level plan for monitoring Azure App Gateway backend pool latency with alerting when P95 exceeds 500ms. Cite the specific Azure Monitor metric name(s) you'd watch and the alert threshold shape."
+  expected_tools: []
+  expected_patterns:
+    - "monitor|metric|alert"
+    - "latency|response|p95|percentile"
+    - "threshold|rule|action"
+  timeout_s: 120
+
+- id: UC-028-sec-incident
+  prompt: "A burst of 4xx responses is hitting our Front Door profile fd-prod. Describe the first three triage steps you'd take in Azure, which MCP tools you'd invoke for each step, and what you'd look at in the logs."
+  expected_tools: []
+  expected_patterns:
+    - "front ?door|waf|diagnostic"
+    - "triage|investigate|step"
+    - "log|analytics|kusto|trace"
+  timeout_s: 120
+
+- id: UC-029-capacity-forecast
+  prompt: "For a typical App Service Plan running at 70% average CPU, what's the standard capacity planning heuristic for when to scale up vs scale out? Give numbers."
+  expected_patterns:
+    - "scale[ -](up|out)"
+    - "cpu|70%|utilization"
+    - "instance|node|replica"
+  expected_tools: []
+  timeout_s: 90

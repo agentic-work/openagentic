@@ -40,7 +40,6 @@ mcp = FastMCP("Prometheus MCP Server - Query Metrics and Alerts")
 # Prometheus configuration
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://prometheus:9090")
 
-
 # ============================================================================
 # PROMETHEUS CLIENT
 # ============================================================================
@@ -147,10 +146,8 @@ class PrometheusClient:
         response.raise_for_status()
         return response.json()
 
-
 # Global client instance
 prometheus_client = PrometheusClient(PROMETHEUS_URL)
-
 
 # ============================================================================
 # TOOL DEFINITIONS
@@ -210,7 +207,6 @@ async def prometheus_query(
         logger.error(f"Error in prometheus_query: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def prometheus_query_range(
     query: str = Field(description="PromQL query to execute"),
@@ -267,7 +263,6 @@ async def prometheus_query_range(
         logger.error(f"Error in prometheus_query_range: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def prometheus_alerts() -> str:
     """
@@ -314,7 +309,6 @@ async def prometheus_alerts() -> str:
     except Exception as e:
         logger.error(f"Error in prometheus_alerts: {e}")
         return f"Error: {str(e)}"
-
 
 @mcp.tool()
 async def prometheus_targets() -> str:
@@ -372,7 +366,6 @@ async def prometheus_targets() -> str:
         logger.error(f"Error in prometheus_targets: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def prometheus_metrics_list(
     filter: Optional[str] = Field(default=None, description="Optional filter pattern to match metric names (e.g., 'http_' or 'memory')")
@@ -422,7 +415,6 @@ async def prometheus_metrics_list(
         logger.error(f"Error in prometheus_metrics_list: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def prometheus_metric_info(
     metric: str = Field(description="Name of the metric to get info about")
@@ -466,7 +458,6 @@ async def prometheus_metric_info(
     except Exception as e:
         logger.error(f"Error in prometheus_metric_info: {e}")
         return f"Error: {str(e)}"
-
 
 @mcp.tool()
 async def prometheus_rules() -> str:
@@ -523,7 +514,6 @@ async def prometheus_rules() -> str:
     except Exception as e:
         logger.error(f"Error in prometheus_rules: {e}")
         return f"Error: {str(e)}"
-
 
 @mcp.tool()
 async def prometheus_health_summary() -> str:
@@ -589,7 +579,6 @@ async def prometheus_health_summary() -> str:
         logger.error(f"Error in prometheus_health_summary: {e}")
         return f"Error generating health summary: {str(e)}"
 
-
 # ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
@@ -598,7 +587,6 @@ def main():
     """Run the MCP server"""
     logger.info(f"Starting Prometheus MCP Server (Prometheus URL: {PROMETHEUS_URL})")
     mcp.run()
-
 
 if __name__ == "__main__":
     main()

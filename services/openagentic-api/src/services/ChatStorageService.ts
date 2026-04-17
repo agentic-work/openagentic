@@ -23,7 +23,6 @@ import { TitleGenerationClient } from './TitleGenerationClient.js';
 // Repository pattern - gradual integration
 import { SimpleChatSessionRepository } from '../repositories/SimpleChatSessionRepository.js';
 
-
 // Define MessageRole since it's not an enum in our schema - it's a string field
 export type MessageRole = 'user' | 'assistant' | 'system' | 'tool';
 
@@ -141,7 +140,6 @@ export class ChatStorageService {
 
     // Initialize repository
     this.sessionRepo = new SimpleChatSessionRepository(this.prisma, this.logger, true);
-
 
     // Log slow queries for debugging
     this.prisma.$on('query', (e) => {

@@ -67,6 +67,8 @@ SKIP_PREFIXES = (
     'gitops/', 'helm/values/',
     # Companion repos (pulled at build time, not synced)
     'agenticode-cli/', 'ghostpilot/', 'sdk/', 'oat/',
+    # Test results / UAT reports live only in the internal upstream
+    'tests/MCP_', 'tests/uat',
     # Build artifacts / editor state / internal workspace
     'node_modules/', 'dist/', 'build/', '.next/', '.astro/', '__pycache__/',
     '.venv/', 'venv/', '.turbo/',
@@ -114,10 +116,30 @@ SKIP_CONTENT_HINTS = (
     'GhostPilot', 'ghostpilot', 'GHOSTPILOT',
 )
 
+# Stale filename patterns left behind by past renames — filter by path, not content.
+SKIP_PATH_HINTS = (
+    'doc-generators/agenticode-cli.gen.ts',
+    'doc-generators/oat-executor.gen.ts',
+    'doc-generators/oat-synth.gen.ts',
+    'doc-generators/oat-framework.gen.ts',
+)
+
 # ─── Preserve: our local fixes (never overwrite) ─────────────────────────────
 PRESERVE = {
-    'services/openagentic-api/src/server.ts',
+    'services/openagentic-api/src/server.ts',  # boot made non-fatal on empty MCP index + integrity check
     'services/openagentic-api/src/utils/redis-client.ts',
+    'services/openagentic-api/package.json',  # OSS-added deps (undici) + any upstream strips
+    'services/openagentic-api/src/features.ts',  # OSS edition flag — integrity-guarded
+    'services/openagentic-api/src/utils/oss-integrity.ts',
+    'services/openagentic-api/src/middleware/enterpriseOnly.ts',
+    'services/openagentic-ui/src/features/admin/Upsell.tsx',
+    'tools/setup/src/ui/Upsell.tsx',
+    '.github/required-upsell-strings.tsv',
+    '.github/workflows/oss-integrity.yml',
+    '.github/workflows/sonar.yml',
+    '.github/workflows/sonar-summary.yml',
+    'sonar-project.properties',
+    'tools/verify-oss-integrity.sh',
     'services/openagentic-api/src/routes/chat/pipeline/validation.stage.ts',
     'services/openagentic-api/src/services/llm-providers/OllamaProvider.ts',
     'services/openagentic-api/src/routes/admin/codemode.ts',
@@ -126,6 +148,7 @@ PRESERVE = {
     'services/openagentic-exec/src/ptyManager.ts',
     'services/openagentic-exec/Dockerfile',
     'services/openagentic-ui/docker-entrypoint.sh',
+    'services/openagentic-api/docker-entrypoint.sh',  # we added prisma migrate deploy here
     'services/openagentic-ui/nginx.conf.template',
     'services/openagentic-ui/Dockerfile',
     'services/openagentic-ui/src/features/chat/components/SettingsMenu.tsx',
@@ -185,6 +208,8 @@ def should_skip(rel):
         if rel.endswith(sfx): return True
     for p in SKIP_PREFIXES:
         if rel.startswith(p): return True
+    for h in SKIP_PATH_HINTS:
+        if h in rel: return True
     return False
 
 def rewrite(text):
@@ -253,6 +278,13 @@ def main():
     print(f"\nPreserved (your local fixes — kept untouched): {len(set(preserved_seen))} files")
     if DRY_RUN:
         print("\n(dry-run — no writes)")
+        return
+
+    # Post-pass: strip copyright/license boilerplate the upstream keeps reintroducing.
+    scrubber = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scrub-headers.py')
+    if os.path.exists(scrubber):
+        print("\nScrubbing upstream copyright/license headers…")
+        os.system(f"python3 {scrubber}")
 
 if __name__ == '__main__':
     main()

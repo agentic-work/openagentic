@@ -447,7 +447,6 @@ kubectl logs -n openagentic -l app.kubernetes.io/component=workspace-minio --tai
 - [Gateway API Migration](GATEWAY-API-MIGRATION.md)
 - [Secrets Backup](SECRETS-BACKUP.md)
 
-
 IF YOU GET LOST YOU MUWST FOLLOW THIS TO DEPLOY MILVUS WITH GPU SUPPORT USING WOODPECKER
 
 Install Helm Chart for Milvus

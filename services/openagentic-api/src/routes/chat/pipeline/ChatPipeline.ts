@@ -752,10 +752,10 @@ export class ChatPipeline extends EventEmitter {
           // Particularly important for synth_synthesize where Gemini modifies HTML on each retry.
           //
           // The cap was originally 3 — too aggressive for legitimate multi-step infrastructure
-          // work where one polymorphic tool (e.g., azure_arm_execute) is called many times with
-          // genuinely different bodies (try F1 → B1 → S1 → westus2 → Container App). Bumped to
-          // 10 globally, AND polymorphic execute-style tools are exempted entirely below — they
-          // are by-design called many times with different arguments to drive multi-step work.
+          // work where one polymorphic tool is called many times with genuinely different
+          // bodies (try F1 → B1 → S1 → westus2 → Container App). Bumped to 10 globally, AND
+          // polymorphic execute-style tools are exempted entirely below — they are by-design
+          // called many times with different arguments to drive multi-step work.
           // Exact-arg dedup (MAX_IDENTICAL_CALLS) still catches actual no-progress loops.
           const toolNameCallCounts = new Map<string, number>();
           const MAX_SAME_TOOL_CALLS = 10;
@@ -763,8 +763,6 @@ export class ChatPipeline extends EventEmitter {
           // and may be called many times in a multi-step infra task. The exact-args dedup still
           // catches the no-progress case for these.
           const POLYMORPHIC_EXEC_TOOLS = new Set([
-            'azure_arm_execute',
-            'azure_arm_execute_and_wait',
             'aws_cli_execute',
             'call_aws',
             'gcp_api_execute',
@@ -839,8 +837,8 @@ export class ChatPipeline extends EventEmitter {
 
               // Check 2: Same tool name called too many times (catches varied-args loops)
               // e.g., Gemini calling synth_synthesize with slightly different HTML each time.
-              // Polymorphic execute tools (azure_arm_execute, aws_cli_execute, etc.) are
-              // exempted because they carry the full intent in their args and are designed
+              // Polymorphic execute tools (aws_cli_execute, gcp_api_execute, k8s_apply, etc.)
+              // are exempted because they carry the full intent in their args and are designed
               // to be called many times in legitimate multi-step infra work.
               const nameCount = toolNameCallCounts.get(toolName) || 0;
               if (!POLYMORPHIC_EXEC_TOOLS.has(toolName) && nameCount >= MAX_SAME_TOOL_CALLS) {

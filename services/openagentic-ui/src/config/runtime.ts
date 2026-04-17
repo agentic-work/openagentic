@@ -160,7 +160,6 @@ export function isLocalLoginEnabled(): boolean {
   return true; // Default to enabled for local/development
 }
 
-
 /**
  * Export runtime config object for debugging
  * SECURITY: Only available in development mode to prevent config leakage

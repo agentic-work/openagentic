@@ -38,7 +38,6 @@ except ImportError:
 # Initialize FastMCP server
 mcp = FastMCP("Incident MCP Server - Incident Lifecycle Management")
 
-
 # ============================================================================
 # DATA MODELS
 # ============================================================================
@@ -49,7 +48,6 @@ class Severity(str, Enum):
     SEV3 = "sev3"  # Minor - limited impact
     SEV4 = "sev4"  # Low - informational
 
-
 class Status(str, Enum):
     OPEN = "open"
     INVESTIGATING = "investigating"
@@ -58,13 +56,11 @@ class Status(str, Enum):
     RESOLVED = "resolved"
     CLOSED = "closed"
 
-
 class TimelineEntry(BaseModel):
     timestamp: str
     action: str
     description: str
     author: str = "OpenAgentic AI"
-
 
 class Incident(BaseModel):
     id: str
@@ -86,7 +82,6 @@ class Incident(BaseModel):
     root_cause: Optional[str] = None
     resolution: Optional[str] = None
 
-
 # ============================================================================
 # IN-MEMORY STORAGE
 # ============================================================================
@@ -94,13 +89,11 @@ class Incident(BaseModel):
 # In-memory incident storage (would be replaced with database in production)
 incidents: Dict[str, Incident] = {}
 
-
 def generate_incident_id() -> str:
     """Generate a human-readable incident ID"""
     now = datetime.utcnow()
     count = len([i for i in incidents.values() if i.created_at.startswith(now.strftime('%Y-%m-%d'))])
     return f"INC-{now.strftime('%Y%m%d')}-{count + 1:04d}"
-
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -163,7 +156,6 @@ def format_incident(incident: Incident, verbose: bool = False) -> str:
 
     return "\n".join(lines)
 
-
 def add_timeline_entry(incident: Incident, action: str, description: str, author: str = "OpenAgentic AI"):
     """Add a timeline entry to an incident"""
     incident.timeline.append({
@@ -173,7 +165,6 @@ def add_timeline_entry(incident: Incident, action: str, description: str, author
         "author": author
     })
     incident.updated_at = datetime.utcnow().isoformat() + "Z"
-
 
 # ============================================================================
 # TOOL DEFINITIONS
@@ -241,7 +232,6 @@ async def incident_create(
         logger.error(f"Error in incident_create: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def incident_list(
     status: Optional[str] = Field(default=None, description="Filter by status (open, investigating, identified, mitigating, resolved, closed)"),
@@ -300,7 +290,6 @@ async def incident_list(
         logger.error(f"Error in incident_list: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def incident_get(
     id: str = Field(description="Incident ID (e.g., INC-20240115-0001)")
@@ -326,7 +315,6 @@ async def incident_get(
     except Exception as e:
         logger.error(f"Error in incident_get: {e}")
         return f"Error: {str(e)}"
-
 
 @mcp.tool()
 async def incident_update_status(
@@ -368,7 +356,6 @@ async def incident_update_status(
         logger.error(f"Error in incident_update_status: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def incident_assign(
     id: str = Field(description="Incident ID"),
@@ -398,7 +385,6 @@ async def incident_assign(
         logger.error(f"Error in incident_assign: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def incident_add_note(
     id: str = Field(description="Incident ID"),
@@ -425,7 +411,6 @@ async def incident_add_note(
     except Exception as e:
         logger.error(f"Error in incident_add_note: {e}")
         return f"Error: {str(e)}"
-
 
 @mcp.tool()
 async def incident_escalate(
@@ -460,7 +445,6 @@ async def incident_escalate(
     except Exception as e:
         logger.error(f"Error in incident_escalate: {e}")
         return f"Error: {str(e)}"
-
 
 @mcp.tool()
 async def incident_resolve(
@@ -504,7 +488,6 @@ async def incident_resolve(
         logger.error(f"Error in incident_resolve: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def incident_close(
     id: str = Field(description="Incident ID"),
@@ -535,7 +518,6 @@ async def incident_close(
         logger.error(f"Error in incident_close: {e}")
         return f"Error: {str(e)}"
 
-
 @mcp.tool()
 async def incident_link_runbook(
     id: str = Field(description="Incident ID"),
@@ -560,7 +542,6 @@ async def incident_link_runbook(
     except Exception as e:
         logger.error(f"Error in incident_link_runbook: {e}")
         return f"Error: {str(e)}"
-
 
 @mcp.tool()
 async def incident_summary() -> str:
@@ -613,7 +594,6 @@ async def incident_summary() -> str:
         logger.error(f"Error in incident_summary: {e}")
         return f"Error: {str(e)}"
 
-
 # ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
@@ -622,7 +602,6 @@ def main():
     """Run the MCP server"""
     logger.info("Starting Incident MCP Server")
     mcp.run()
-
 
 if __name__ == "__main__":
     main()

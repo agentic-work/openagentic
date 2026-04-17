@@ -1,7 +1,3 @@
-/**
- * UserContextView - Admin dashboard for the unified cross-mode memory layer
- * Allows admins to view per-user context stats, search, and purge data
- */
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Trash2, RefreshCw, Users, Brain, Code, GitBranch, MessageSquare } from '@/shared/icons';
 import { Database } from '../Shared/AdminIcons';

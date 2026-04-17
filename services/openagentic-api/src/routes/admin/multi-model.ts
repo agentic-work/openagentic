@@ -1,10 +1,3 @@
-/**
- * Multi-Model Configuration API Routes
- *
- * Admin routes for managing multi-model orchestration configuration
- * Requires admin authentication
- */
-
 import { FastifyPluginAsync } from 'fastify';
 import type { Logger } from 'pino';
 import { ModelRole, getDefaultMultiModelConfig, MultiModelConfig } from '../../services/multi-model/index.js';
@@ -70,7 +63,6 @@ const multiModelRoutes: FastifyPluginAsync<MultiModelRoutesOptions> = async (fas
           ...(runtimeConfig?.sliderOverrides || {})
         }
       };
-
 
       return reply.send({
         config,
@@ -151,7 +143,6 @@ const multiModelRoutes: FastifyPluginAsync<MultiModelRoutesOptions> = async (fas
         }
       });
 
-
       logger.info({ config: configData }, 'Multi-model configuration updated');
 
       return reply.send({
@@ -213,7 +204,6 @@ const multiModelRoutes: FastifyPluginAsync<MultiModelRoutesOptions> = async (fas
           value: configData
         }
       });
-
 
       logger.info({ enabled, user: (request as any).user?.email }, 'Multi-model orchestration toggled');
 
@@ -455,7 +445,6 @@ Respond with a JSON object in this exact format:
       // Get default config for comparison
       const defaultConfig = getDefaultMultiModelConfig();
 
-
       // Group by role
       const roleGroups: Record<string, any[]> = {
         [ModelRole.REASONING]: [],
@@ -595,7 +584,6 @@ Respond with a JSON object in this exact format:
         logger.info({ roleId: result.id, role, model }, 'Model role assignment created');
       }
 
-
       return reply.code(existing ? 200 : 201).send({
         message: existing ? 'Role assignment updated' : 'Role assignment created',
         roleAssignment: result,
@@ -637,7 +625,6 @@ Respond with a JSON object in this exact format:
       await prisma.modelRoleAssignment.delete({
         where: { id }
       });
-
 
       logger.info({ roleId: id, role: existing.role, model: existing.model }, 'Model role assignment deleted');
 
@@ -741,7 +728,6 @@ Respond with a JSON object in this exact format:
         _count: true
       });
 
-
       return reply.send({
         metrics,
         aggregates: {
@@ -814,7 +800,6 @@ Respond with a JSON object in this exact format:
           total_duration_ms: true
         }
       });
-
 
       const runtimeEnabled = (runtimeConfig?.value as any)?.enabled ?? false;
       const effectivelyEnabled = featureFlagEnabled && runtimeEnabled;

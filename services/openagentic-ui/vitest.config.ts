@@ -1,7 +1,9 @@
 /**
 
  * For all inquiries, please contact:
- * * hello@openagentic.io
+ * 
+ * Openagentic LLC
+ * hello@openagentic.io
  */
 
 import { defineConfig } from 'vitest/config';

@@ -64,7 +64,7 @@ const DEFAULT_SETTINGS: WorkflowSettings = {
   maxToolCallsPerAgent: 25,
   agentCostBudgetCap: 5.0,
   requireApprovalForHighRiskTools: true,
-  highRiskToolsList: 'admin_postgres_raw_query, azure_arm_execute, k8s_delete',
+  highRiskToolsList: 'admin_postgres_raw_query, azure_create_resource_group, k8s_delete',
   disabledNodeTypes: [],
   defaultRetryCount: 2,
   defaultRetryDelay: 1000,

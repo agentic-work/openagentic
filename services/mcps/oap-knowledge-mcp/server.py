@@ -70,8 +70,9 @@ These rules are CRITICAL - get them wrong and your call will fail:
 
 | Task Type | CORRECT Tool | WRONG Tool |
 |-----------|--------------|------------|
-| Azure AD users/groups | `azure_graph_execute` | `azure_arm_execute` |
-| Azure VMs/storage/networking | `azure_arm_execute` | `azure_graph_execute` |
+| Azure AD users/groups | `azure_list_users` / `azure_list_groups` / `azure_get_user` | `azure_create_*` / `azure_list_vms` |
+| Azure VMs/storage/networking | typed `azure_create_*` / `azure_list_*` / `azure_get_*` | hand-crafted ARM JSON |
+| Azure resource discovery | `azure_resource_graph_query` | looping `azure_list_*` calls |
 | Weather/news/current events | `web_search` | (guessing from training data) |
 | Read specific URL | `web_fetch` | `web_search` |
 
@@ -138,63 +139,69 @@ TOOL_KNOWLEDGE = {
             }
         ],
         "common_mistakes": [
-            "Using azure_arm_execute for AD operations - WRONG! Use azure_graph_execute",
+            "Using the Azure management tools (azure_list_vms / azure_create_*) for AD operations — those are for infrastructure, not identity. Use azure_graph_execute for users, groups, apps.",
             "Forgetting the leading slash in path - path should be '/users' not 'users'",
             "Using POST for read operations - use GET for listing/reading"
         ],
-        "related_tools": ["azure_arm_execute", "azure_keyvault_secret"]
+        "related_tools": ["azure_list_users", "azure_list_groups", "azure_keyvault_secret"]
     },
 
-    "azure_arm_execute": {
-        "description": "Execute Azure Resource Manager (ARM) API operations. Use for infrastructure: VMs, storage, networking, databases, etc. NOT for Azure AD.",
-        "when_to_use": [
-            "Creating/managing VMs",
-            "Managing storage accounts",
-            "Working with networking (VNets, NSGs)",
-            "Managing databases (SQL, Cosmos, PostgreSQL)",
-            "App Services and Functions",
-            "Any Azure infrastructure resource"
-        ],
-        "examples": [
-            {
-                "task": "List all subscriptions",
-                "call": 'azure_arm_execute(method="GET", path="/subscriptions?api-version=2022-12-01")'
-            },
-            {
-                "task": "List resource groups in a subscription",
-                "call": 'azure_arm_execute(method="GET", path="/subscriptions/{subscriptionId}/resourceGroups?api-version=2022-12-01")'
-            },
-            {
-                "task": "List VMs in a resource group",
-                "call": 'azure_arm_execute(method="GET", path="/subscriptions/{subscriptionId}/resourceGroups/{rgName}/providers/Microsoft.Compute/virtualMachines?api-version=2023-07-01")'
-            }
-        ],
-        "common_mistakes": [
-            "Using this for Azure AD operations - use azure_graph_execute instead",
-            "Forgetting api-version parameter - it's required for all ARM calls",
-            "Wrong subscription ID format"
-        ],
-        "related_tools": ["azure_graph_execute", "subscription_list", "resource_group_list"]
-    },
-
-    "subscription_list": {
-        "description": "List Azure subscriptions accessible to the current user. Shortcut for azure_arm_execute with subscriptions path.",
+    "azure_list_subscriptions": {
+        "description": "List Azure subscriptions accessible to the current user. Typed tool — no ARM JSON required.",
         "when_to_use": ["Getting list of subscriptions", "Finding subscription IDs"],
         "examples": [
-            {"task": "List my Azure subscriptions", "call": "subscription_list()"}
+            {"task": "List my Azure subscriptions", "call": "azure_list_subscriptions()"}
         ],
         "common_mistakes": [],
-        "related_tools": ["azure_arm_execute", "resource_group_list"]
+        "related_tools": ["azure_list_resource_groups"]
     },
 
-    "resource_group_list": {
+    "azure_list_resource_groups": {
         "description": "List resource groups in a subscription.",
         "when_to_use": ["Listing resource groups", "Finding resource group names"],
         "examples": [
-            {"task": "List resource groups", "call": 'resource_group_list(subscription_id="your-sub-id")'}
+            {"task": "List resource groups", "call": 'azure_list_resource_groups(subscription_id="your-sub-id")'}
         ],
         "common_mistakes": ["Forgetting subscription_id parameter"],
-        "related_tools": ["subscription_list", "azure_arm_execute"]
+        "related_tools": ["azure_list_subscriptions", "azure_create_resource_group"]
+    },
+
+    "azure_create_resource_group": {
+        "description": "Create (or idempotently upsert) a resource group.",
+        "when_to_use": ["Starting any Azure deployment", "Grouping related resources for single-call cleanup"],
+        "examples": [
+            {"task": "Create RG in eastus", "call": 'azure_create_resource_group(name="rg-demo", location="eastus")'}
+        ],
+        "common_mistakes": ["Passing a region like 'East US' instead of slug 'eastus'"],
+        "related_tools": ["azure_create_vnet", "azure_create_vm", "azure_create_app_gateway"]
+    },
+
+    "azure_create_app_gateway": {
+        "description": "Create an Application Gateway v2 with a public IP, single listener, one backend pool, and one routing rule. Accepts 100+ backend addresses.",
+        "when_to_use": ["Provisioning an L7 gateway to front a large set of servers", "Building Front Door → App Gateway enterprise edges"],
+        "examples": [
+            {"task": "Create Std_v2 App Gateway",
+             "call": 'azure_create_app_gateway(name="agw-demo", resource_group="rg-demo", location="eastus", vnet_name="vnet-demo", subnet_name="appgw-subnet", backend_addresses=["svc1.internal", "svc2.internal"])'}
+        ],
+        "common_mistakes": [
+            "Subnet shared with other resources — App Gateway v2 REQUIRES a dedicated /24+ subnet",
+            "Expecting HTTPS to work — this tool only wires port 80 listener"
+        ],
+        "related_tools": ["azure_create_vnet", "azure_create_subnet", "azure_create_front_door"]
+    },
+
+    "azure_create_front_door": {
+        "description": "Create Azure Front Door Standard/Premium profile with default endpoint, optional origin group + origin.",
+        "when_to_use": ["Adding a global edge in front of backend workloads", "Fronting an App Gateway"],
+        "examples": [
+            {"task": "Create Standard FD wired to an App Gateway",
+             "call": 'azure_create_front_door(name="fd-demo", resource_group="rg-demo", origin_hostname="<appgw-frontend-ip>")'}
+        ],
+        "common_mistakes": [
+            "Omitting origin_hostname and expecting routing — you need origins to actually serve traffic",
+            "Passing a private-only hostname — Front Door origins must be publicly reachable"
+        ],
+        "related_tools": ["azure_create_app_gateway", "azure_list_front_doors", "azure_get_front_door"]
     },
 
     # =========================================================================
@@ -314,8 +321,8 @@ flowchart TD
 # =============================================================================
 MCP_REGISTRY = {
     "oap-azure-mcp": {
-        "description": "Azure cloud operations via ARM and Graph APIs",
-        "primary_tools": ["azure_arm_execute", "azure_graph_execute", "azure_keyvault_secret", "azure_cost_query"],
+        "description": "Azure cloud operations via typed SDK tools (azure_create_*, azure_list_*, azure_get_*) and Graph API",
+        "primary_tools": ["azure_create_resource_group", "azure_create_vnet", "azure_create_app_gateway", "azure_create_front_door", "azure_list_resource_groups", "azure_graph_execute", "azure_keyvault_secret", "azure_cost_query"],
         "use_cases": ["Azure infrastructure management", "Azure AD/Entra ID operations", "Cost analysis"]
     },
     "oap-aws-mcp": {
@@ -349,7 +356,6 @@ MCP_REGISTRY = {
         "use_cases": ["Learning how to use tools", "Finding the right tool for a task", "Getting tool examples"]
     }
 }
-
 
 # =============================================================================
 # MCP TOOLS
@@ -424,7 +430,6 @@ async def search_tool_documentation(query: str, top_k: int = 5) -> Dict[str, Any
         "total_matches": len(results)
     }
 
-
 @mcp.tool()
 async def get_tool_examples(tool_name: str) -> Dict[str, Any]:
     """
@@ -472,7 +477,6 @@ async def get_tool_examples(tool_name: str) -> Dict[str, Any]:
         "message": f"No documentation found for tool '{tool_name}'. Available tools: {list(TOOL_KNOWLEDGE.keys())}"
     }
 
-
 @mcp.tool()
 async def suggest_tools_for_task(task_description: str = "", task: str = "") -> Dict[str, Any]:
     """
@@ -507,13 +511,27 @@ async def suggest_tools_for_task(task_description: str = "", task: str = "") -> 
         })
 
     # Azure infrastructure patterns
-    if any(kw in task_lower for kw in ["vm", "virtual machine", "storage", "vnet", "network", "resource group", "subscription", "database", "app service"]):
-        suggestions.append({
-            "tool": "azure_arm_execute",
-            "confidence": "high",
-            "reason": "Azure infrastructure operations require ARM API",
-            "example": TOOL_KNOWLEDGE["azure_arm_execute"]["examples"][0]
-        })
+    if any(kw in task_lower for kw in ["vm", "virtual machine", "storage", "vnet", "network", "resource group", "subscription", "database", "app service", "front door", "app gateway", "application gateway"]):
+        # Route to the most specific typed tool the knowledge base has for the task.
+        if "resource group" in task_lower:
+            primary = "azure_create_resource_group" if "create" in task_lower else "azure_list_resource_groups"
+        elif "front door" in task_lower:
+            primary = "azure_create_front_door" if "create" in task_lower else "azure_list_front_doors"
+        elif "app gateway" in task_lower or "application gateway" in task_lower:
+            primary = "azure_create_app_gateway" if "create" in task_lower else "azure_list_app_gateways"
+        elif "vnet" in task_lower or "network" in task_lower:
+            primary = "azure_create_vnet" if "create" in task_lower else "azure_list_vnets"
+        elif "subscription" in task_lower:
+            primary = "azure_list_subscriptions"
+        else:
+            primary = "azure_list_resource_groups"
+        if primary in TOOL_KNOWLEDGE:
+            suggestions.append({
+                "tool": primary,
+                "confidence": "high",
+                "reason": "Azure infrastructure operation — use the typed tool",
+                "example": TOOL_KNOWLEDGE[primary]["examples"][0]
+            })
 
     # AWS patterns
     if any(kw in task_lower for kw in ["aws", "ec2", "s3", "lambda", "dynamodb", "cloudformation", "iam"]):
@@ -575,7 +593,6 @@ async def suggest_tools_for_task(task_description: str = "", task: str = "") -> 
         "total_suggestions": len(suggestions)
     }
 
-
 @mcp.tool()
 async def list_available_mcps() -> Dict[str, Any]:
     """
@@ -591,7 +608,6 @@ async def list_available_mcps() -> Dict[str, Any]:
         "total_mcps": len(MCP_REGISTRY),
         "usage_hint": "Use suggest_tools_for_task(task) to find the right tool for your task, or get_tool_examples(tool_name) for detailed usage."
     }
-
 
 # =============================================================================
 # SERVER STARTUP

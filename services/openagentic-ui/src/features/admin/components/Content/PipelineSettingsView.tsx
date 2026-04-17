@@ -1,17 +1,3 @@
-/**
- * Pipeline Settings Admin View
- *
- * Configure all chat pipeline stage settings including authentication,
- * validation, RAG, memory, MCP, completion, multi-model, and response stages.
- *
- * Features:
- * - Interactive pipeline visualization diagram with hover tooltips
- * - Horizontal tab navigation for each pipeline stage (left to right flow)
- * - Skills system (Anthropic format) for professional capabilities
- * - Dynamic model selection from API (no hardcoded models)
- * - Custom SVG icons (no lucide-react dependency)
- */
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../../../app/providers/AuthContext';
 import { useConfirm } from '@/shared/hooks/useConfirm';

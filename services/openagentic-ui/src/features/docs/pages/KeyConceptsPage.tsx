@@ -1,11 +1,3 @@
-/**
- * KeyConceptsPage - Explains the fundamental concepts of OpenAgentic.
- *
- * Each concept is presented as a card with icon, title, explanation,
- * and link to the full guide. The agent types table pulls from
- * generated manifest data when available.
- */
-
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useDocsStore } from '@/stores/useDocsStore';

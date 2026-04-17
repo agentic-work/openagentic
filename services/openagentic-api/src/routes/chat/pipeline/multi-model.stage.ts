@@ -1,10 +1,3 @@
-/**
- * Multi-Model Orchestration Pipeline Stage
- *
- * Replaces or wraps the CompletionStage when multi-model is enabled.
- * Coordinates between reasoning, tool execution, and synthesis models.
- */
-
 import { PipelineStage, PipelineContext, PipelineConfig } from './pipeline.types.js';
 import {
   MultiModelOrchestrator,

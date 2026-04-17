@@ -1,10 +1,3 @@
-/**
- * ArtifactsPage - Comprehensive documentation for interactive AI artifacts.
- *
- * Covers artifact types (HTML, React, SVG), live streaming, security model,
- * toolbar controls, and use cases with interactive examples.
- */
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { DocsCodeIcon } from '../components/DocsIcons';

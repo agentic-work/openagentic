@@ -1,14 +1,3 @@
-/**
- * TerminalPanel — xterm.js wrapper for OpenAgentic Ink TUI
- *
- * Renders the actual OpenAgentic REPL in a web terminal emulator.
- * All keyboard, mouse, scroll, and rendering is handled by xterm.js + Ink.
- * The user interacts with the REPL exactly like a real terminal.
- *
- * Communication:
- *   Browser ←→ WebSocket (/ws/terminal) ←→ openagentic-manager ←→ PTY ←→ OpenAgentic CLI
- */
-
 import React, { useEffect, useRef, useCallback } from 'react';
 import { init as initGhostty, Terminal, FitAddon } from 'ghostty-web';
 import { useCodeModeStore } from '@/stores/useCodeModeStore';

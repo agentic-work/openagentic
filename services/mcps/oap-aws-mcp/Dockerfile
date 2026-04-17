@@ -21,7 +21,6 @@ FROM python:3.11-slim
 LABEL maintainer="OpenAgentic <devops@openagentic.io>"
 LABEL description="OpenAgentic AWS MCP Server - Universal AWS operations via Identity Center OBO"
 LABEL version="1.0.0"
-LABEL org.opencontainers.image.licenses="Apache-2.0"
 
 WORKDIR /app
 
@@ -76,7 +75,6 @@ RUN python -m compileall -b /app/shared/ 2>/dev/null; \
     python -c "import py_compile; py_compile.compile('/app/server.py', '/app/server.pyc')" 2>/dev/null; \
     find /app/shared/ -name '*.py' -delete 2>/dev/null; \
     rm -f /app/server.py 2>/dev/null || true
-
 
 # Create non-root user for security (CRIT-004 compliance)
 RUN useradd -m -u 1000 -s /bin/bash mcp \

@@ -103,7 +103,7 @@ function computeAutoTags(definition: { nodes?: any[]; edges?: any[] }): string[]
 
     // Cloud/service tags from tool names
     if (toolName.includes('aws') || toolName.includes('s3') || toolName.includes('ec2') || toolName.includes('bedrock')) tags.add('aws');
-    if (toolName.includes('azure') || toolName.includes('arm_execute')) tags.add('azure');
+    if (toolName.includes('azure')) tags.add('azure');
     if (toolName.includes('gcp') || toolName.includes('google')) tags.add('gcp');
     if (toolName.includes('k8s') || toolName.includes('kubernetes') || toolName.includes('kubectl')) tags.add('kubernetes');
     if (toolName.includes('github') || toolName.includes('git')) tags.add('github');
@@ -3927,6 +3927,5 @@ const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
     },
   },
 ];
-
 
 export default workflowRoutes;

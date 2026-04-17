@@ -1,15 +1,3 @@
-/**
- * OllamaModelSyncService — Background sync between Ollama hosts and LLMProvider DB records.
- *
- * For each Ollama provider in the DB:
- * 1. Polls the host's GET /api/tags to discover actual models
- * 2. Adds newly-found models to provider_config.models[]
- * 3. Removes models no longer on the host (hard-remove from chat selector)
- * 4. Updates model_config.chatModel if the current chatModel was removed
- *
- * Supports multiple Ollama hosts — each LLMProvider with provider_type='ollama' is synced independently.
- * */
-
 import { loggers } from '../utils/logger.js';
 import { prisma } from '../utils/prisma.js';
 

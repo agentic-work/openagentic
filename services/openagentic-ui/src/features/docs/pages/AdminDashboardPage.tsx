@@ -1,10 +1,3 @@
-/**
- * AdminDashboardPage - Admin Dashboard Overview documentation.
- *
- * Documents the admin dashboard with its metric summaries, 7 tabs,
- * time range selector, Recharts visualizations, and auto-refresh behavior.
- */
-
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

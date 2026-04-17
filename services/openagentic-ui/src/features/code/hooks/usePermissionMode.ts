@@ -1,13 +1,3 @@
-/**
- * usePermissionMode — the Shift+Tab-cycling permission mode state for
- * a CodeMode session. Persists the current mode to localStorage scoped
- * to a sessionId so a reload preserves the user's choice.
- *
- * Matches openagentic's permission mode system 1:1 (see ../permissionMode.ts).
- * The mode is sent to the backend on each prompt and translated to
- * `--permission-mode <mode>` / `--permissive` flags by the exec daemon.
- */
-
 import { useCallback, useEffect, useState } from 'react';
 import {
   getNextPermissionMode,

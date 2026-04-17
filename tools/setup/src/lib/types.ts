@@ -24,7 +24,13 @@ export interface WizardConfig {
   /** Which coding CLI to bundle as Code Mode's default. Both claude-code
    * and gemini-cli are pre-installed in the exec sandbox. */
   codingAdapter: CodingAdapterId;
+  /** MCPs the user chose to enable. Used as compose profiles + MCPS_ENABLED. */
+  mcps: string[];
+  /** Per-MCP inline auth values keyed by env var name (merged into .env at launch). */
+  mcpAuth: Record<string, string>;
   uiPort: number;
+  /** Helm path only: resolved kubeconfig path used for cluster probe. */
+  kubeconfigPath?: string;
 }
 
 export const DEFAULT_CONFIG: WizardConfig = {
@@ -40,5 +46,7 @@ export const DEFAULT_CONFIG: WizardConfig = {
   },
   providers: {},
   codingAdapter: 'claude-code',
+  mcps: [],          // populated from defaultEnabledMcps() in the MCP step
+  mcpAuth: {},
   uiPort: 8080,
 };

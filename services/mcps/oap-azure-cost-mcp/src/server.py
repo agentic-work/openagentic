@@ -243,7 +243,6 @@ async def azure_cost_query(
         logger.error(f"Cost query failed: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool()
 async def azure_cost_breakdown(
     breakdown_by: str = "ResourceType",
@@ -373,7 +372,6 @@ async def azure_cost_breakdown(
         logger.error(f"Cost breakdown failed: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool()
 async def azure_cost_forecast(
     forecast_days: int = 30,
@@ -479,7 +477,6 @@ async def azure_cost_forecast(
         logger.error(f"Cost forecast failed: {e}")
         return {"success": False, "error": str(e)}
 
-
 @mcp.tool()
 async def azure_cost_set_obo_token(user_assertion: str, client_id: Optional[str] = None, scope: Optional[str] = None) -> Dict[str, Any]:
     """
@@ -496,7 +493,6 @@ async def azure_cost_set_obo_token(user_assertion: str, client_id: Optional[str]
     """
     set_obo_context(user_assertion, client_id, scope)
     return {"success": True, "message": "OBO context set - subsequent cost operations will run as user", "obo_active": True}
-
 
 # =============================================================================
 # STARTUP

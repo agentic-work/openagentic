@@ -80,7 +80,6 @@ REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", None)
 # Initialize Redis client (global, lazy init)
 _redis_client: Optional[redis.Redis] = None
 
-
 def _get_redis() -> Optional[redis.Redis]:
     """Get or create Redis client."""
     global _redis_client
@@ -111,7 +110,6 @@ class Credentials(BaseModel):
     secret_access_key: str
     session_token: Optional[str] = None
 
-
 # =============================================================================
 # CREDENTIAL CACHE
 # =============================================================================
@@ -138,7 +136,6 @@ CREDENTIAL_CACHE_TTL_SECONDS = 50 * 60
 # Cache IC access tokens for 55 minutes (they expire in 60 min)
 IC_TOKEN_CACHE_TTL_SECONDS = 55 * 60
 
-
 def _get_user_from_token(token: str) -> str:
     """Extract user identifier from JWT token for caching and logging.
 
@@ -156,7 +153,6 @@ def _get_user_from_token(token: str) -> str:
     except Exception:
         return 'unknown'
 
-
 def _get_user_display_name(token: str) -> str:
     """Extract human-readable name from token for logging."""
     try:
@@ -167,7 +163,6 @@ def _get_user_display_name(token: str) -> str:
         return decoded.get('preferred_username') or decoded.get('email') or decoded.get('name') or decoded.get('sub', 'unknown')
     except Exception:
         return 'unknown'
-
 
 def _get_user_info_from_token(token: str) -> dict:
     """Extract full user info from JWT token for executed_as badge."""
@@ -188,7 +183,6 @@ def _get_user_info_from_token(token: str) -> dict:
     except Exception as e:
         logger.warning(f"Could not decode token for user info: {e}")
         return {"upn": "unknown", "name": "Unknown User"}
-
 
 def _get_cached_credentials(token: str) -> Optional[Credentials]:
     """Get cached credentials from Redis or in-memory cache.
@@ -247,7 +241,6 @@ def _get_cached_credentials(token: str) -> Optional[Credentials]:
                 f"expires in {remaining}s)")
     return cached.credentials
 
-
 def _get_cached_ic_token(user_id: str) -> Optional[str]:
     """Get cached IC access token from Redis or in-memory cache."""
     redis_key = f"{REDIS_IC_TOKEN_PREFIX}user:{user_id}"
@@ -274,7 +267,6 @@ def _get_cached_ic_token(user_id: str) -> Optional[str]:
 
     return None
 
-
 def _cache_ic_token(user_id: str, user_display_name: str, ic_access_token: str, expires_in_seconds: int = IC_TOKEN_CACHE_TTL_SECONDS) -> None:
     """Cache IC access token to Redis."""
     redis_key = f"{REDIS_IC_TOKEN_PREFIX}user:{user_id}"
@@ -293,7 +285,6 @@ def _cache_ic_token(user_id: str, user_display_name: str, ic_access_token: str, 
             logger.info(f"✅ Cached IC access token to REDIS for {user_display_name} (TTL: {expires_in_seconds}s)")
         except Exception as e:
             logger.warning(f"Redis IC token cache write failed: {e}")
-
 
 def _cache_credentials(
     token: str,
@@ -343,7 +334,6 @@ def _cache_credentials(
     logger.info(f"✅ Cached AWS credentials to MEMORY for {user_display_name} "
                 f"(account: {account_id}, role: {role_name}, TTL: {expires_in_seconds}s)")
 
-
 # =============================================================================
 # OBO CONTEXT & AUTHENTICATION
 # =============================================================================
@@ -351,17 +341,14 @@ def _cache_credentials(
 # Per-request OBO context
 _obo_context: Dict[str, Any] = {}
 
-
 def set_obo_context(azure_token: str):
     """Set OBO context for the current request."""
     _obo_context["azure_token"] = azure_token
     logger.info(f"OBO context set with Azure token (length: {len(azure_token)})")
 
-
 def clear_obo_context():
     """Clear OBO context after request."""
     _obo_context.clear()
-
 
 def get_obo_credentials() -> Optional[Credentials]:
     """
@@ -411,7 +398,6 @@ def get_obo_credentials() -> Optional[Credentials]:
 
     # Fallback: Direct OIDC federation (requires IAM OIDC provider for Azure AD)
     return _get_credentials_via_direct_oidc(azure_token, user_identity, user_display, region)
-
 
 def _get_credentials_via_identity_center(
     azure_token: str,
@@ -547,7 +533,6 @@ def _get_credentials_via_identity_center(
         logger.error(f"[IC OBO] Traceback: {traceback.format_exc()}")
         return None
 
-
 def _get_credentials_via_direct_oidc(
     azure_token: str,
     user_identity: str,
@@ -626,7 +611,6 @@ def _get_credentials_via_direct_oidc(
         logger.error(f"[OIDC OBO] Traceback: {traceback.format_exc()}")
         return None
 
-
 def get_fallback_credentials() -> Optional[Credentials]:
     """Get fallback credentials from environment variables."""
     if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
@@ -637,7 +621,6 @@ def get_fallback_credentials() -> Optional[Credentials]:
             session_token=None
         )
     return None
-
 
 def get_aws_session(credentials: Optional[Credentials] = None) -> boto3.Session:
     """Get AWS session from credentials or default chain."""
@@ -654,7 +637,6 @@ def get_aws_session(credentials: Optional[Credentials] = None) -> boto3.Session:
     # Use default credential chain (instance profile, etc.)
     logger.info("Using default AWS credential chain")
     return boto3.Session(region_name=region)
-
 
 # =============================================================================
 # FASTMCP SERVER
@@ -712,7 +694,6 @@ This MCP supports On-Behalf-Of (OBO) authentication:
 """
 
 mcp = FastMCP("OpenAgentic-AWS-MCP", instructions=AWS_SERVER_INSTRUCTIONS)
-
 
 # =============================================================================
 # TOOLS - Compatible with official aws-api-mcp-server interface
@@ -836,7 +817,6 @@ async def call_aws(
     finally:
         clear_obo_context()
 
-
 @mcp.tool()
 async def suggest_aws_commands(
     query: Annotated[str, Field(description='A natural language description of what you want to do in AWS', max_length=2000)],
@@ -869,7 +849,6 @@ async def suggest_aws_commands(
         "suggestions": suggestions,
         "tip": "Use call_aws to execute any of these commands"
     }
-
 
 @mcp.tool()
 async def aws_list_accounts(
@@ -994,7 +973,6 @@ async def aws_list_accounts(
     finally:
         clear_obo_context()
 
-
 # =============================================================================
 # INTERNAL AWS EXECUTION FUNCTION
 # This is the actual implementation, shared by both the tool and convenience wrappers
@@ -1059,7 +1037,6 @@ async def _execute_aws_command(
     finally:
         clear_obo_context()
 
-
 # =============================================================================
 # CONVENIENCE TOOLS - Simple wrappers for common operations
 # These make it easier for LLMs to pick the right tool without complex arguments
@@ -1088,7 +1065,6 @@ async def aws_identity(
         cli_command="aws sts get-caller-identity",
         meta=meta
     )
-
 
 @mcp.tool()
 async def aws_cost_summary(
@@ -1153,7 +1129,6 @@ async def aws_cost_summary(
             return result  # Return raw result if parsing fails
 
     return result
-
 
 @mcp.tool()
 async def aws_cost_by_service(
@@ -1249,7 +1224,6 @@ async def aws_cost_by_service(
 
     return result
 
-
 @mcp.tool()
 async def aws_list_ec2(
     region: Optional[str] = None,
@@ -1279,7 +1253,6 @@ async def aws_list_ec2(
         meta=meta
     )
 
-
 @mcp.tool()
 async def aws_list_s3(
     meta: Optional[Dict[str, Any]] = None
@@ -1302,7 +1275,6 @@ async def aws_list_s3(
         cli_command="aws s3api list-buckets",
         meta=meta
     )
-
 
 # =============================================================================
 # CLI COMMAND EXECUTION - Uses real AWS CLI for full compatibility
@@ -1422,7 +1394,6 @@ async def execute_cli_command(
         logger.error(f"Command execution failed: {e}")
         return {"success": False, "error": str(e)}
 
-
 def get_command_suggestions(query: str) -> list:
     """Get command suggestions based on query."""
     query_lower = query.lower()
@@ -1511,7 +1482,6 @@ def get_command_suggestions(query: str) -> list:
 
     return results[:5]  # Limit to 5 suggestions
 
-
 # =============================================================================
 # MAIN
 # =============================================================================
@@ -1526,7 +1496,6 @@ try:
     HTTP_TRANSPORT_AVAILABLE = True
 except ImportError:
     HTTP_TRANSPORT_AVAILABLE = False
-
 
 def main():
     """Main entry point for the OpenAgentic AWS MCP server."""
@@ -1553,7 +1522,6 @@ def main():
         )
     else:
         mcp.run()
-
 
 if __name__ == "__main__":
     main()

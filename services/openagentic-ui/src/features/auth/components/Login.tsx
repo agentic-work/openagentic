@@ -372,7 +372,6 @@ const Login: React.FC = () => {
         </motion.div>
       </div>
 
-
       {/* Disclaimer Modal */}
       {showDisclaimer && (
         <DisclaimerModal

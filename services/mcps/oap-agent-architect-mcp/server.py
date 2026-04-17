@@ -47,7 +47,6 @@ except ImportError:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger("oap-agent-architect-mcp")
 
-
 # =============================================================================
 # MODELS
 # =============================================================================
@@ -60,7 +59,6 @@ class AgentRole(BaseModel):
     backstory: Optional[str] = Field(None, description="Background context for the agent")
     tools: List[str] = Field(default_factory=list, description="MCP tools available to this agent")
 
-
 class WorkflowStep(BaseModel):
     """Definition of a workflow step."""
     name: str = Field(..., description="Name of the step")
@@ -71,7 +69,6 @@ class WorkflowStep(BaseModel):
     next_steps: List[str] = Field(default_factory=list, description="Possible next steps")
     condition: Optional[str] = Field(None, description="Condition for conditional routing")
 
-
 class AgentSpec(BaseModel):
     """Complete specification for an agent or multi-agent system."""
     name: str = Field(..., description="Name of the agent/workflow")
@@ -80,7 +77,6 @@ class AgentSpec(BaseModel):
     steps: List[WorkflowStep] = Field(default_factory=list, description="Workflow steps")
     tools: List[str] = Field(default_factory=list, description="MCP tools to include")
     state_schema: Dict[str, Any] = Field(default_factory=dict, description="State schema for the workflow")
-
 
 # =============================================================================
 # AGENT TEMPLATES
@@ -210,13 +206,11 @@ AGENT_TEMPLATES = {
     }
 }
 
-
 # =============================================================================
 # MCP SERVER
 # =============================================================================
 
 mcp = FastMCP("Agent Architect MCP")
-
 
 @mcp.tool()
 async def list_agent_templates() -> str:
@@ -238,7 +232,6 @@ async def list_agent_templates() -> str:
 
     return json.dumps({"templates": templates}, indent=2)
 
-
 @mcp.tool()
 async def get_agent_template(template_id: str) -> str:
     """
@@ -253,7 +246,6 @@ async def get_agent_template(template_id: str) -> str:
         return json.dumps({"error": f"Template '{template_id}' not found. Use list_agent_templates to see available templates."})
 
     return json.dumps({"template": AGENT_TEMPLATES[template_id]}, indent=2)
-
 
 @mcp.tool()
 async def create_agent_from_template(
@@ -272,7 +264,6 @@ async def create_agent_from_template(
         "Native workflow engine code-gen TBD — external framework code-gen removed 2026-04-11 v0.6.3"
     )
 
-
 @mcp.tool()
 async def design_custom_agent(
     description: str,
@@ -287,7 +278,6 @@ async def design_custom_agent(
         "Native workflow engine code-gen TBD — external framework code-gen removed 2026-04-11 v0.6.3"
     )
 
-
 @mcp.tool()
 async def generate_agent_code(
     spec_json: str
@@ -301,7 +291,6 @@ async def generate_agent_code(
         "Native workflow engine code-gen TBD — external framework code-gen removed 2026-04-11 v0.6.3"
     )
 
-
 @mcp.tool()
 async def deploy_agent(
     spec_json: str
@@ -314,7 +303,6 @@ async def deploy_agent(
     raise NotImplementedError(
         "Native workflow engine deployment TBD — external framework deployment removed 2026-04-11 v0.6.3"
     )
-
 
 @mcp.tool()
 async def list_available_tools() -> str:
@@ -355,7 +343,6 @@ async def list_available_tools() -> str:
     }
 
     return json.dumps({"tools": tools}, indent=2)
-
 
 # =============================================================================
 # MAIN

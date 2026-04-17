@@ -1,26 +1,3 @@
-/**
- * Openagentic-style message rendering tree.
- *
- * Port of openagentic's src/components/messages/*.tsx components to React
- * DOM. Matches the visual grammar of the TUI: left-gutter symbols (`>`,
- * `●`, `∴`, `⎿`), monospace everywhere, dim italic for thinking,
- * markdown-rendered assistant text, per-tool input summaries.
- *
- * Source components this replaces (in openagentic):
- *   - UserPromptMessage, UserTextMessage → UserRow
- *   - AssistantTextMessage → AssistantTextRow
- *   - AssistantThinkingMessage → ThinkingRow
- *   - AssistantToolUseMessage → ToolUseRow
- *   - UserToolResultMessage → ToolResultRow (future phase)
- *   - SystemTextMessage / SystemAPIErrorMessage → SystemRow
- *
- * Visual constants:
- *   ● = BLACK_CIRCLE (assistant bullet)
- *   ∴ = "therefore" (thinking marker)
- *   ⎿ = BOTTOM_LEFT_CORNER (tool result indent)
- *   > = user prompt prefix
- */
-
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -766,7 +743,6 @@ const ToolUseRow: React.FC<{ block: UiToolUseBlock; isFirstBlock: boolean }> = (
   );
 };
 
-
 /**
  * Nested child transcript for Task / Agent tool invocations. openagentic
  * spawns a sub-LLM whose stream_event records arrive on the parent
@@ -1352,7 +1328,8 @@ const AssistantMessageBody: React.FC<{
 
   return (
     <>
-      {breadcrumbs.length > 0 && <BreadcrumbPills labels={breadcrumbs} />}
+      {/* Breadcrumb pills removed — claude code CLI shows each tool
+          inline without a per-turn setup summary. */}
       {!hasAny && message.streaming && (
         <Row gutter={BLACK_CIRCLE} gutterColor={ACCENT} marginTop={8}>
           <StreamingPlaceholder />
@@ -1366,17 +1343,15 @@ const AssistantMessageBody: React.FC<{
           firstContentIndex={firstContentIndex}
         />
       ))}
-      {message.streaming && hasAny && (
-        <Row gutter="" marginTop={0}>
-          <span className="cm-caret" aria-hidden="true" />
-        </Row>
-      )}
-      {/* Bottom: "Ran N commands" collapsible summary, only once the
-          turn is no longer streaming (so the count is final). */}
-      {!message.streaming && toolUses.length > 0 && (
-        <RanNCommandsSummary toolUses={toolUses} />
-      )}
-      {/* Cost readout removed per user feedback — footer shows session totals */}
+      {/* Blinking caret removed — was rendering per streaming assistant
+          message, causing multiple cursors throughout the interleave.
+          Claude code CLI (PTY) shows a single spinner in the footer
+          while streaming; the StreamingPlaceholder at the top of a new
+          turn serves that purpose here. */}
+      {/* Claude code CLI (PTY) renders tools inline without any per-turn
+          rollup summary. "Ran N commands" + the startup breadcrumb are
+          both off by default — each tool_use + tool_result reads cleanly
+          on its own inline. Cost/session stats live in the bottom status bar. */}
     </>
   );
 };

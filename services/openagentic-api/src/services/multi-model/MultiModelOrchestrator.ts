@@ -1,11 +1,3 @@
-/**
- * Multi-Model Orchestrator
- *
- * Coordinates multiple LLM models within a single chat request for
- * optimal cost, speed, and quality. Manages model role assignments,
- * handoffs, and context preservation.
- */
-
 import pino from 'pino';
 import {
   ModelRole,

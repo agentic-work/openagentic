@@ -1218,7 +1218,6 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         data: updateData
       });
 
-
       logger.info({ providerId: provider.id, name: provider.name }, 'LLM provider updated');
 
       // Audit: credential update (generic admin audit)
@@ -1366,7 +1365,6 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         }
       });
 
-
       logger.info({ providerId: provider.id, name: provider.name }, 'LLM provider soft deleted');
 
       // Audit: credential deletion (generic admin audit)
@@ -1438,7 +1436,6 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
       const { prisma } = await import('../../utils/prisma.js');
 
       const provider = await resolveProvider(prisma, providerId);
-
 
       if (!provider) {
         return reply.code(404).send({ error: 'Provider not found', message: `Provider '${providerId}' not found` });
@@ -1606,7 +1603,6 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
           updated_by: (request as any).user?.id
         }
       });
-
 
       logger.info({ providerId: provider.id, modelId, isUpdate }, isUpdate ? 'Model upserted (was stuck in provider_config, now in model_config too)' : 'Model added to provider');
 
@@ -1853,7 +1849,6 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         data: updateData,
       });
 
-
       logger.info({ providerId, modelId: decodedModelId }, 'Model updated on provider');
 
       // Trigger hot-reload
@@ -1990,7 +1985,6 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         }
       });
 
-
       logger.info({ providerId: provider.id, modelId: decodedModelId }, 'Model removed from provider');
 
       // Audit log
@@ -2058,7 +2052,6 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
           }
         }
       });
-
 
       // Get environment-based providers from ProviderConfigService
       let envProviders: any[] = [];
@@ -3896,7 +3889,6 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
           });
         }
       }
-
 
       // Reload provider manager if available
       if (providerManager) {

@@ -1,10 +1,3 @@
-/**
- * ApiReferencePage - API endpoint reference with Swagger link.
- *
- * Replaces the previous iframe approach with a styled link to the Swagger UI
- * and a comprehensive listing of API endpoint groups with method badges.
- */
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { DocsCodeIcon } from '../components/DocsIcons';

@@ -1,10 +1,3 @@
-/**
- * AdminMonitoringPage - Monitoring & Observability documentation.
- *
- * Documents MCP tool execution metrics, LLM usage metrics, top charts,
- * debug tools, Grafana dashboards, and Prometheus endpoints.
- */
-
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

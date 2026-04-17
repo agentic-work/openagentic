@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
+
 # Proprietary and confidential. Unauthorized copying prohibited.
 
 # OpenAgentic Custom Ollama Image

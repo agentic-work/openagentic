@@ -1,10 +1,3 @@
-/**
- * Multi-Model Configuration Admin View
- * 
- * Configure the multi-model collaboration system where different LLM models
- * handle different roles (reasoning, tool execution, synthesis, fallback).
- */
-
 import React, { useState, useEffect, useCallback } from 'react';
 // Basic UI icons from lucide
 import { Settings, Brain, Wrench, Save, ChevronDown, ChevronRight, Info, Sparkles, X } from '@/shared/icons';

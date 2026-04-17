@@ -13,9 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-# Copyright (c) 2025 Gnomus.ai
-# For all inquiries, please contact:
 # Gnomus.ai
 # hello@openagentics.io
 

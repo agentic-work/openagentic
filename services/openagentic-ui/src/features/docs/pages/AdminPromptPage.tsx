@@ -1,10 +1,3 @@
-/**
- * AdminPromptPage - Prompt Engineering admin documentation.
- *
- * Documents prompt modules, module scoring, effectiveness metrics,
- * legacy prompt templates, and pipeline settings.
- */
-
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

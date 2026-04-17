@@ -1,10 +1,3 @@
-/**
- * Agent State Hook
- *
- * Manages the state machine for agentic activities including
- * thinking, tool execution, multi-model handoffs, and streaming.
- * */
-
 import { useState, useCallback, useMemo } from 'react';
 import type { AgentState, AgentActivity, AgentPhase } from './types';
 

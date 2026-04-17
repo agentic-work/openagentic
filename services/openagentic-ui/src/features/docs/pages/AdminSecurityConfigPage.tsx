@@ -1,10 +1,3 @@
-/**
- * AdminSecurityConfigPage - Security & Access admin settings documentation.
- *
- * Documents auth access control, user permissions, lockout management,
- * API token management, rate limits, network security, webhooks, and DLP.
- */
-
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

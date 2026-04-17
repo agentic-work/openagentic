@@ -52,7 +52,7 @@ export function getVendorIcon(nodeType: string, data: Record<string, any>): Vend
   }
 
   // ── Azure — official logo ──
-  if (hint.includes('azure') || hint.includes('arm_execute') || hint.includes('azure_ad')) {
+  if (hint.includes('azure') || hint.includes('azure_ad')) {
     return {
       bgColor: '#0078d4',
       icon: (

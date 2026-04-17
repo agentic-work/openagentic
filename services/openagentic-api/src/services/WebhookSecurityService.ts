@@ -145,7 +145,7 @@ const DEFAULT_CONFIG: WebhookSecurityConfig = {
   blockedTools: [
     'admin_postgres_raw_query', 'admin_user_create', 'admin_user_delete',
     'admin_config_update', 'k8s_delete', 'k8s_exec',
-    'azure_arm_execute', 'aws_iam_create',
+    'aws_iam_create',
   ],
   requireHmacGlobal: false,
 };

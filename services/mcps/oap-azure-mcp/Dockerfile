@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
+
 # Proprietary and confidential. Unauthorized copying prohibited.
 
 # OpenAgentic Azure MCP Server - Full Azure SDK (az cli Parity)
@@ -30,7 +30,6 @@ FROM python:3.11-slim
 LABEL maintainer="OpenAgentic <devops@openagentic.io>"
 LABEL description="OpenAgentic Azure MCP Server - Full Azure SDK with az cli parity"
 LABEL version="2.0.0"
-LABEL org.opencontainers.image.licenses="Apache-2.0"
 
 WORKDIR /app
 
@@ -71,7 +70,6 @@ COPY services/mcps/oap-azure-mcp/src/ ./src/
 # IP Protection: compile Python source to bytecode and strip .py files
 RUN python -m compileall -b /app/src/ /app/shared/ 2>/dev/null; \
     find /app/src/ /app/shared/ -name '*.py' -delete 2>/dev/null || true
-
 
 # Create non-root user for security (CRIT-004 compliance)
 RUN useradd -m -u 1000 -s /bin/bash mcp \

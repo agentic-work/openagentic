@@ -1,15 +1,3 @@
-/**
- * ThemeSelectorPill — compact dropdown that lives in the CodeMode
- * header (top-left). Lets the user switch between the `cm-theme`
- * palettes applied to the `.code-mode` root element. Paired with
- * the /theme slash command (ThemePicker modal) — both write to the
- * same `cm-theme` localStorage key so the state stays in sync.
- *
- * Extracted from CodeModeLayoutV2 so the CodeModeHeaderStrip can
- * render it alongside the session-identity row without a circular
- * import through the layout container.
- */
-
 import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 

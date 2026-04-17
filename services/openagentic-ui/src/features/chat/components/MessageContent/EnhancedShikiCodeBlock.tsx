@@ -13,7 +13,9 @@
  * 
 
  * For all inquiries, please contact:
- * * hello@openagentic.io
+ * 
+ * Openagentic LLC
+ * hello@openagentic.io
  */
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
@@ -274,8 +276,6 @@ const EnhancedShikiCodeBlock: React.FC<EnhancedShikiCodeBlockProps> = ({
       console.error('Failed to copy:', err);
     }
   };
-
-
 
   const langConfig = languageConfig[language] || {
     displayName: language,

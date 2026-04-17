@@ -199,7 +199,6 @@ def check_user_access(user_id: str) -> bool:
         # Default deny if no cache and API unavailable
         return False
 
-
 def require_access(user_id: str) -> Optional[Dict[str, Any]]:
     """
     Check user access and return error dict if denied.
@@ -220,7 +219,6 @@ def require_access(user_id: str) -> Optional[Dict[str, Any]]:
             "access_denied": True
         }
     return None
-
 
 def get_or_create_session(user_id: str, model: Optional[str] = None) -> Dict[str, Any]:
     """Get existing session or create a new one for the user."""
@@ -249,7 +247,6 @@ def send_message_to_session(session_id: str, message: str) -> str:
         logger.error(f"Failed to send message: {e}")
         raise
 
-
 def direct_write_file(user_id: str, filepath: str, content: str) -> Dict[str, Any]:
     """Write file directly to workspace (bypasses CLI)."""
     try:
@@ -262,7 +259,6 @@ def direct_write_file(user_id: str, filepath: str, content: str) -> Dict[str, An
     except httpx.HTTPError as e:
         logger.error(f"Direct write failed: {e}")
         return {"success": False, "error": str(e)}
-
 
 def direct_read_file(user_id: str, filepath: str) -> Dict[str, Any]:
     """Read file directly from workspace (bypasses CLI)."""
@@ -277,7 +273,6 @@ def direct_read_file(user_id: str, filepath: str) -> Dict[str, Any]:
         logger.error(f"Direct read failed: {e}")
         return {"success": False, "error": str(e), "content": ""}
 
-
 def direct_list_files(user_id: str, directory: str = ".", recursive: bool = False) -> Dict[str, Any]:
     """List files directly from workspace (bypasses CLI)."""
     try:
@@ -290,7 +285,6 @@ def direct_list_files(user_id: str, directory: str = ".", recursive: bool = Fals
     except httpx.HTTPError as e:
         logger.error(f"Direct list failed: {e}")
         return {"success": False, "error": str(e), "files": []}
-
 
 def direct_exec_command(user_id: str, command: str, timeout: int = 60000) -> Dict[str, Any]:
     """Execute command directly in workspace (bypasses CLI)."""
@@ -450,7 +444,6 @@ def execute_code(
         "filepath": write_result.get("filepath", "")
     }
 
-
 @mcp.tool()
 def run_shell_command(
     command: str,
@@ -516,7 +509,6 @@ def run_shell_command(
 
     return result
 
-
 @mcp.tool()
 def write_file(
     filepath: str,
@@ -571,7 +563,6 @@ def write_file(
 
     return result
 
-
 @mcp.tool()
 def read_file(
     filepath: str,
@@ -608,7 +599,6 @@ def read_file(
     # Use direct file read (bypasses CLI for reliability)
     return direct_read_file(effective_user_id, filepath)
 
-
 @mcp.tool()
 def list_files(
     directory: str = ".",
@@ -643,7 +633,6 @@ def list_files(
 
     # Use direct list files (bypasses CLI for reliability)
     return direct_list_files(effective_user_id, directory, recursive)
-
 
 @mcp.tool()
 def get_session_info(user_id: str = "default", meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -681,7 +670,6 @@ def get_session_info(user_id: str = "default", meta: Optional[Dict[str, Any]] = 
             "success": False,
             "error": str(e)
         }
-
 
 @mcp.tool()
 def stop_session(user_id: str, session_id: Optional[str] = None, meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -723,7 +711,6 @@ def stop_session(user_id: str, session_id: Optional[str] = None, meta: Optional[
     except Exception as e:
         logger.error(f"[OpenAgenticMCP] Stop session failed: {e}")
         return {"success": False, "error": str(e)}
-
 
 # =============================================================================
 # MAIN

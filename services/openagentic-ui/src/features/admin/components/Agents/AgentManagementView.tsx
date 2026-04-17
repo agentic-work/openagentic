@@ -1021,7 +1021,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                         border: '1px solid var(--color-border, var(--color-border-default))',
                         color: 'var(--color-text-primary)',
                       }}
-                      placeholder="admin_postgres_raw_query, azure_arm_execute, k8s_delete"
+                      placeholder="admin_postgres_raw_query, azure_create_resource_group, k8s_delete"
                     />
                   </div>
                 )}
@@ -1030,7 +1030,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                   border: '1px solid color-mix(in srgb, var(--color-warning) 15%, transparent)',
                   color: 'var(--color-text-secondary)',
                 }}>
-                  <strong style={{ color: 'var(--color-warning)' }}>High-risk tools</strong> (admin_postgres_raw_query, azure_arm_execute, k8s_delete, etc.) trigger HITL approval when auto-detection is enabled.
+                  <strong style={{ color: 'var(--color-warning)' }}>High-risk tools</strong> (admin_postgres_raw_query, azure_create_resource_group, k8s_delete, etc.) trigger HITL approval when auto-detection is enabled.
                 </div>
               </div>
 

@@ -2,7 +2,9 @@
  * UnifiedActivityTree — renders a NormalizedStreamEvent[] as a nested tree.
  *
  * For all inquiries, please contact:
- * * hello@openagentic.io
+ *
+ * Openagentic LLC
+ * hello@openagentic.io
  */
 
 import React, { useMemo, useState } from 'react';

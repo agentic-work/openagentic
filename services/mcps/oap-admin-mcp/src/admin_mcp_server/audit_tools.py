@@ -13,7 +13,6 @@ from .server import mcp, prisma_client
 
 logger = logging.getLogger("admin-mcp.audit-tools")
 
-
 # ============================================================================
 # AUDIT LOG QUERY TOOLS
 # ============================================================================
@@ -153,7 +152,6 @@ async def admin_audit_get_user_activity(
         logger.error(f"Failed to get user activity: {e}")
         raise RuntimeError(f"Failed to get user activity: {str(e)}")
 
-
 @mcp.tool(description="Get all user chat messages and interactions from audit logs with advanced filtering and search")
 async def admin_audit_get_user_chats(
     user_id: Optional[str] = None,
@@ -248,7 +246,6 @@ async def admin_audit_get_user_chats(
     except Exception as e:
         logger.error(f"Failed to get user chats: {e}")
         raise RuntimeError(f"Failed to get user chats: {str(e)}")
-
 
 @mcp.tool(description="Get comprehensive login/logout history with geographic and security analysis")
 async def admin_audit_get_login_history(
@@ -372,7 +369,6 @@ async def admin_audit_get_login_history(
         logger.error(f"Failed to get login history: {e}")
         raise RuntimeError(f"Failed to get login history: {str(e)}")
 
-
 @mcp.tool(description="Get comprehensive error analysis from audit logs with categorization and trends")
 async def admin_audit_get_error_analysis(
     start_date: Optional[str] = None,
@@ -471,7 +467,6 @@ async def admin_audit_get_error_analysis(
     except Exception as e:
         logger.error(f"Failed to get error analysis: {e}")
         raise RuntimeError(f"Failed to get error analysis: {str(e)}")
-
 
 @mcp.tool(description="Get comprehensive usage statistics and analytics from audit logs")
 async def admin_audit_get_usage_statistics(

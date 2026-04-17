@@ -1,20 +1,4 @@
 /**
- * Copyright 2026 Gnomus.ai
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
  * Ollama Provider
  *
  * Implements ILLMProvider for Ollama local models
@@ -33,6 +17,7 @@ import {
   type NormalizerState,
 } from './ILLMProvider.js';
 import { getRedisClient } from '../../utils/redis-client.js';
+import { ollamaAgent } from '../../utils/ollama-agent.js';
 import { NormalizedStreamEvent } from '../NormalizedStreamTypes.js';
 
 // Simple semaphore for single-GPU concurrency control
@@ -164,8 +149,9 @@ export class OllamaProvider extends BaseLLMProvider {
     try {
       const response = await fetch(`${this.baseUrl}/api/tags`, {
         headers: this.getHeaders(),
-        signal: AbortSignal.timeout(5_000)
-      });
+        dispatcher: ollamaAgent,
+        signal: AbortSignal.timeout(10_000),
+      } as any);
       if (response.ok) {
         const data = await response.json();
         for (const m of (data.models || [])) {
@@ -551,8 +537,9 @@ export class OllamaProvider extends BaseLLMProvider {
       const response = await fetch(url, {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify(ollamaRequest)
-      });
+        body: JSON.stringify(ollamaRequest),
+        dispatcher: ollamaAgent,
+      } as any);
 
       if (!response.ok) {
         // DEBUG: Log the failed response details
@@ -894,8 +881,9 @@ export class OllamaProvider extends BaseLLMProvider {
       const response = await fetch(`${this.baseUrl}/api/chat`, {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify({ ...ollamaRequest, stream: false })
-      });
+        body: JSON.stringify({ ...ollamaRequest, stream: false }),
+        dispatcher: ollamaAgent,
+      } as any);
 
       if (!response.ok) {
         throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
@@ -1140,7 +1128,6 @@ export class OllamaProvider extends BaseLLMProvider {
 
     return null;
   }
-
 
   /**
    * Injects tool descriptions into the system prompt for gpt-oss models.
@@ -1424,7 +1411,9 @@ When you need information from a tool, use the format above. After receiving too
     try {
       const response = await fetch(`${this.baseUrl}/api/tags`, {
         headers: this.getHeaders(),
-        signal: AbortSignal.timeout(5000),
+        // @ts-expect-error — dispatcher is a Node-specific fetch option
+        dispatcher: ollamaAgent,
+        signal: AbortSignal.timeout(10_000),
       });
       if (response.ok) {
         const data = await response.json();
@@ -1450,6 +1439,8 @@ When you need information from a tool, use the format above. After receiving too
                     tools: [{ type: 'function', function: { name: '_probe', description: 'probe', parameters: { type: 'object', properties: {} } } }],
                     stream: true, // Stream mode — Ollama rejects unsupported tools before loading model
                   }),
+                  // @ts-expect-error — dispatcher is a Node-specific fetch option
+                  dispatcher: ollamaAgent,
                   signal: AbortSignal.timeout(30000), // 30s — model may need to load into VRAM
                 });
                 // Read just enough to see if it's an error or a valid stream
@@ -1474,7 +1465,9 @@ When you need information from a tool, use the format above. After receiving too
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: id }),
-                signal: AbortSignal.timeout(3000),
+                // @ts-expect-error — dispatcher is a Node-specific fetch option
+                dispatcher: ollamaAgent,
+                signal: AbortSignal.timeout(5_000),
               });
               const showData = await showResp.json();
               const info = showData.model_info || {};

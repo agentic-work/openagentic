@@ -1,11 +1,3 @@
-/**
- * WelcomePage - The landing page for OpenAgentic documentation.
- *
- * Visually rich overview with animated hero, mode cards, architecture
- * diagram, capabilities grid, and AI assistant promotion. Styled to
- * match the openagentic.io brand language.
- */
-
 import React, { useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

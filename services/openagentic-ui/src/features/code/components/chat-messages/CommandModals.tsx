@@ -1,9 +1,3 @@
-/**
- * CommandModals — dedicated React UIs for slash commands that need
- * more than just passthrough to openagentic. Each component matches
- * the TUI's interactive behavior for that command.
- */
-
 import React, { useCallback, useState } from 'react';
 
 const MONO =

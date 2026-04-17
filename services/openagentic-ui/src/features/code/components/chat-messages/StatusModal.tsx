@@ -1,8 +1,3 @@
-/**
- * StatusModal — 3-tab Settings dialog matching openagentic TUI's
- * /status command: Status · Config · Usage tabs.
- */
-
 import React, { useState } from 'react';
 
 const MONO =

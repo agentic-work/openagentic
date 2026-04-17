@@ -1,10 +1,3 @@
-/**
- * Test script for DeepSeek tool call parser
- *
- * This demonstrates how the parser handles DeepSeek's proprietary Unicode marker format
- * and converts it to standard OpenAI tool_calls format.
- */
-
 // Sample DeepSeek response with tool call markers
 const sampleDeepSeekResponse = `I'll help you fetch that URL. Let me use the fetch tool.
 

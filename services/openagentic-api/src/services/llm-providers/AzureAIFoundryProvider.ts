@@ -771,11 +771,7 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
     };
   }
 
-  /**
-   * Detect and parse DeepSeek's proprietary tool call format
-   * DeepSeek uses Unicode markers like: <｜tool▁calls▁begin｜>...<｜tool▁calls▁end｜>
-   */
-  private parseDeepSeekToolCalls(content: string): {
+    private parseDeepSeekToolCalls(content: string): {
     toolCalls: any[];
     cleanedContent: string;
     hasDeepSeekMarkers: boolean;
@@ -1123,17 +1119,7 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
     return false;
   }
 
-  /**
-   * Intelligent model selection based on request characteristics
-   * Azure model-router cannot be controlled via API parameters, so we implement
-   * application-level routing to ensure optimal model selection
-   *
-   * NOTE: DeepSeek models use proprietary tool call format with Unicode markers.
-   * If model-router selects DeepSeek, the parseDeepSeekToolCalls() method will
-   * automatically detect and convert the markers to standard OpenAI format.
-   * Alternatively, you can exclude DeepSeek via AIF_EXCLUDED_MODELS env var.
-   */
-  private selectModel(request: CompletionRequest): { model: string; reason: string } {
+    private selectModel(request: CompletionRequest): { model: string; reason: string } {
     const hasTools = request.tools && request.tools.length > 0;
     const toolCount = request.tools?.length || 0;
     const isComplexFunctionCalling = toolCount > 3; // More than 3 tools = complex
@@ -1391,9 +1377,6 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
 
           try {
             const event = JSON.parse(data);
-            // DIAG: log every parsed AIF anthropic event to pinpoint breaks.
-            this.logger.info({ eventType: event?.type, blockIndex: event?.index, deltaType: event?.delta?.type }, '[AIF] anthropic event');
-
             // Yield Anthropic-native events — same format Bedrock uses.
             // The completion stage already handles these.
             if (event.type === 'content_block_start') {

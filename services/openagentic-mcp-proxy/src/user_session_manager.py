@@ -38,7 +38,6 @@ class UserSession:
         """Check if the process is still running"""
         return self.process and self.process.poll() is None
 
-
 class UserSessionManager:
     """Manages per-user Azure MCP sessions"""
 
@@ -363,7 +362,6 @@ class UserSessionManager:
         except Exception as e:
             logger.error(f"[USER_SESSION] Error getting tools from process: {str(e)}")
             return []
-
 
 # Global singleton instance
 _user_session_manager: Optional[UserSessionManager] = None

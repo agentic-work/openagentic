@@ -628,7 +628,6 @@ export class DatabaseService {
     }
   }
 
-
   /**
    * Migrate old mcp_server_status table data if it exists
    */
@@ -818,7 +817,6 @@ export class DatabaseService {
     
     logger.info('✅ Performance index creation completed');
   }
-
 
   /**
    * Initialize secure storage table if not exists
@@ -1300,7 +1298,6 @@ export class DatabaseService {
       throw error;
     }
   }
-
 
   // ============================================================================
   // SETTINGS MANAGEMENT

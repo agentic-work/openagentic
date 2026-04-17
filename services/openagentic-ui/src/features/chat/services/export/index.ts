@@ -180,7 +180,6 @@ export class ExportService implements IExportService {
     return this.exportToPDF(exportData);
   }
 
-
   /**
    * Detects system theme preference
    */

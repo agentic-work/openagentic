@@ -11,6 +11,7 @@ import { adminMiddleware } from '../middleware/unifiedAuth.js';
 import { AuditLogger } from '../services/AuditLogger.js';
 import { loggers } from '../utils/logger.js';
 import axios from 'axios';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 const logger = loggers.routes.child({ component: 'AdminAuditChat' });
 
@@ -36,6 +37,9 @@ interface ChatCompletionTool {
 }
 
 const adminAuditChatRoutes: FastifyPluginAsync = async (fastify) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   const auditLogger = new AuditLogger(logger);
 
   // Get MCP Proxy endpoint
