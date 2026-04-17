@@ -7,13 +7,12 @@ const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: 'postgresql://openagentic:openagentic123@localhost:5432/openagentic'
-    }
-  }
-});
+if (!process.env.DATABASE_URL) {
+  console.error('DATABASE_URL env var is required. e.g. DATABASE_URL=postgresql://user:pass@host:5432/db node create-api-key.js');
+  process.exit(1);
+}
+
+const prisma = new PrismaClient();
 
 async function main() {
   const userEmail = 'phatoldsun@gmail.com';
