@@ -315,6 +315,9 @@ services:
       dockerfile: services/openagentic-proxy/Dockerfile
     environment:
       API_URL: http://api:8000
+      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
 
   exec:
     <<: *defaults
