@@ -4,8 +4,8 @@ apiVersion: v2
 name: openagentic
 description: A comprehensive Helm chart for openagentic application
 type: application
-version: 1.0.26
-appVersion: "0.6.3"
+version: 1.0.27
+appVersion: "0.6.5"
 keywords:
   - openagentic
   - chat

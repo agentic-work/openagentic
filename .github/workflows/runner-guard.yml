@@ -1,0 +1,22 @@
+name: Runner Guard
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths: ['.github/workflows/**']
+  push:
+    branches: [main, develop]
+    paths: ['.github/workflows/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Reject GitHub-hosted runners
+    runs-on: openagentic-runners
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan workflows for github-hosted runner labels
+        run: ./tools/verify-self-hosted-runners.sh
