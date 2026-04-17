@@ -20,7 +20,9 @@ function dbRowToModule(row: any): PromptModule {
     tokenCost: row.token_cost,
     enabled: row.enabled,
     injection: row.injection as any,
-    variants: row.variants as any,
+    // `row.variants` on legacy DB rows is read-ignored — post-neutralization
+    // every adapter renders from `content` alone. See
+    // docs/architecture/composable-prompt-neutralization.md.
     version: row.version,
   };
 }
@@ -136,7 +138,6 @@ export class PromptModuleRegistry {
         ...(data.priority !== undefined && { priority: data.priority }),
         ...(data.enabled !== undefined && { enabled: data.enabled }),
         ...(data.injection !== undefined && { injection: data.injection as any }),
-        ...(data.variants !== undefined && { variants: data.variants as any }),
         token_cost: newTokenCost,
         version: { increment: 1 },
       },
@@ -147,7 +148,6 @@ export class PromptModuleRegistry {
       data: {
         module_id: id,
         content: current.content,
-        variants: current.variants ?? undefined,
         version: current.version,
         edited_by: editedBy,
       },
@@ -170,7 +170,6 @@ export class PromptModuleRegistry {
         token_cost: tokenCost,
         enabled: data.enabled,
         injection: data.injection as any,
-        variants: data.variants ? (data.variants as any) : undefined,
         version: 1,
       },
     });

@@ -39,13 +39,18 @@ export interface PromptModule {
   id: string;
   name: string;
   category: ModuleCategory;
+  // Neutral behavioral rule. This is the ONLY prose payload a module ships.
+  // Adapters render it into their family's preferred prompt shape (Claude →
+  // XML wrap, Gemini → markdown headings, OpenAI → numbered list, local →
+  // strip+truncate). A module must NEVER include vendor-specific prose,
+  // identity framing, or per-family rewrites — see
+  // docs/architecture/composable-prompt-neutralization.md.
   content: string;
   description: string;
   priority: number;
   tokenCost: number;
   enabled: boolean;
   injection: ModuleInjectionRules;
-  variants?: Partial<Record<AdapterFamily, string>>;
   version: number;
 }
 
@@ -66,6 +71,8 @@ export interface ModelCapabilities {
   grounding: boolean;
 }
 
+export type OutputProfile = 'executive' | 'technical' | 'analyst';
+
 export interface ComposeContext {
   message: string;
   mode: ContextMode;
@@ -76,6 +83,14 @@ export interface ComposeContext {
   sessionId: string;
   sliderPosition?: number;
   isAdmin?: boolean;  // Caller can pass this to avoid DB lookup; defaults to DB check
+  /**
+   * Output shape profile. When omitted, PromptComposer picks via (a) semantic
+   * cues in `message`, (b) user preference from profile associations,
+   * (c) workspace default from system config, (d) hard fallback 'executive'.
+   * Drives which `output-profile-*` module is injected. The
+   * `output-interleave-structure` module is always paired.
+   */
+  outputProfile?: OutputProfile;
   // Agent-specific: when set, PromptComposer uses these modules instead of auto-selecting domain modules
   agentRole?: string;        // e.g. "reasoning", "data_query"
   agentModules?: string[];   // Explicit module names from agent DB config

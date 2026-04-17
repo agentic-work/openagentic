@@ -125,12 +125,12 @@ describe('PromptComposer', () => {
         {
           id: 'core-1', name: 'identity', category: 'core', content: 'You are OpenAgentic AI.',
           description: 'Platform identity', priority: 100, token_cost: 20, enabled: true,
-          injection: { alwaysInject: true }, variants: null, version: 1,
+          injection: { alwaysInject: true }, version: 1,
         },
         {
           id: 'mode-1', name: 'chat-mode', category: 'mode', content: 'Respond conversationally.',
           description: 'Chat mode behaviour', priority: 80, token_cost: 15, enabled: true,
-          injection: { requiresMode: ['chat'] }, variants: null, version: 1,
+          injection: { requiresMode: ['chat'] }, version: 1,
         },
       ];
       (prismaModule.prisma.promptModule.findMany as any).mockResolvedValue(rows);
@@ -146,17 +146,17 @@ describe('PromptComposer', () => {
         {
           id: 'core-1', name: 'identity', category: 'core', content: 'You are OpenAgentic.',
           description: 'Core', priority: 100, token_cost: 10, enabled: true,
-          injection: { alwaysInject: true }, variants: null, version: 1,
+          injection: { alwaysInject: true }, version: 1,
         },
         {
           id: 'mode-chat', name: 'chat-mode', category: 'mode', content: 'Chat guidance.',
           description: 'Chat', priority: 80, token_cost: 10, enabled: true,
-          injection: { requiresMode: ['chat'] }, variants: null, version: 1,
+          injection: { requiresMode: ['chat'] }, version: 1,
         },
         {
           id: 'mode-code', name: 'code-mode', category: 'mode', content: 'Code guidance.',
           description: 'Code', priority: 80, token_cost: 10, enabled: true,
-          injection: { requiresMode: ['code'] }, variants: null, version: 1,
+          injection: { requiresMode: ['code'] }, version: 1,
         },
       ];
       (prismaModule.prisma.promptModule.findMany as any).mockResolvedValue(rows);
@@ -172,17 +172,17 @@ describe('PromptComposer', () => {
         {
           id: 'core-1', name: 'identity', category: 'core', content: 'You are OpenAgentic.',
           description: 'Core', priority: 100, token_cost: 10, enabled: true,
-          injection: { alwaysInject: true }, variants: null, version: 1,
+          injection: { alwaysInject: true }, version: 1,
         },
         {
           id: 'mode-1', name: 'chat-mode', category: 'mode', content: 'Chat guidance.',
           description: 'Chat', priority: 80, token_cost: 10, enabled: true,
-          injection: { requiresMode: ['chat'] }, variants: null, version: 1,
+          injection: { requiresMode: ['chat'] }, version: 1,
         },
         {
           id: 'dom-1', name: 'azure-ops', category: 'domain', content: 'Azure guidance.',
           description: 'Azure ops', priority: 50, token_cost: 100, enabled: true,
-          injection: { requiresTools: ['azure_*'] }, variants: null, version: 1,
+          injection: { requiresTools: ['azure_*'] }, version: 1,
         },
       ];
       (prismaModule.prisma.promptModule.findMany as any).mockResolvedValue(rows);
@@ -205,17 +205,17 @@ describe('PromptComposer', () => {
         {
           id: 'core-1', name: 'identity', category: 'core', content: 'You are OpenAgentic.',
           description: 'Core', priority: 100, token_cost: 10, enabled: true,
-          injection: { alwaysInject: true }, variants: null, version: 1,
+          injection: { alwaysInject: true }, version: 1,
         },
         {
           id: 'dom-azure', name: 'azure-ops', category: 'domain', content: 'Azure guidance here.',
           description: 'Azure ops domain', priority: 50, token_cost: 100, enabled: true,
-          injection: { requiresTools: ['azure_*'] }, variants: null, version: 1,
+          injection: { requiresTools: ['azure_*'] }, version: 1,
         },
         {
           id: 'dom-aws', name: 'aws-cost', category: 'domain', content: 'AWS cost guidance.',
           description: 'AWS cost domain', priority: 50, token_cost: 100, enabled: true,
-          injection: { requiresTools: ['aws_*'] }, variants: null, version: 1,
+          injection: { requiresTools: ['aws_*'] }, version: 1,
         },
       ];
       (prismaModule.prisma.promptModule.findMany as any).mockResolvedValue(rows);
@@ -240,13 +240,13 @@ describe('PromptComposer', () => {
         {
           id: 'core-1', name: 'identity', category: 'core', content: 'You are OpenAgentic.',
           description: 'Core', priority: 100, token_cost: 10, enabled: true,
-          injection: { alwaysInject: true }, variants: null, version: 1,
+          injection: { alwaysInject: true }, version: 1,
         },
         ...['a', 'b', 'c', 'd', 'e'].map((l) => ({
           id: `dom-${l}`, name: `domain-${l}`, category: 'domain',
           content: 'x'.repeat(3500), // ~1000 tokens
           description: 'Domain guidance', priority: 50, token_cost: 1000, enabled: true,
-          injection: { alwaysInject: true }, variants: null, version: 1,
+          injection: { alwaysInject: true }, version: 1,
         })),
       ];
       (prismaModule.prisma.promptModule.findMany as any).mockResolvedValue(rows);
@@ -263,14 +263,14 @@ describe('PromptComposer', () => {
         {
           id: 'core-1', name: 'identity', category: 'core', content: 'You are OpenAgentic.',
           description: 'Core', priority: 100, token_cost: 10, enabled: true,
-          injection: { alwaysInject: true }, variants: null, version: 1,
+          injection: { alwaysInject: true }, version: 1,
         },
         // 3 small domain modules, each 50 tokens — all should fit at 100% budget
         ...['a', 'b', 'c'].map((l) => ({
           id: `dom-${l}`, name: `domain-${l}`, category: 'domain',
           content: 'Short domain guidance.',
           description: 'Domain guidance', priority: 50, token_cost: 50, enabled: true,
-          injection: { alwaysInject: true }, variants: null, version: 1,
+          injection: { alwaysInject: true }, version: 1,
         })),
       ];
       (prismaModule.prisma.promptModule.findMany as any).mockResolvedValue(rows);
@@ -289,12 +289,12 @@ describe('PromptComposer', () => {
         {
           id: 'core-1', name: 'identity', category: 'core', content: 'Core.',
           description: 'Core', priority: 100, token_cost: 5, enabled: true,
-          injection: { alwaysInject: true }, variants: null, version: 1,
+          injection: { alwaysInject: true }, version: 1,
         },
         {
           id: 'cap-1', name: 'thinking-guidance', category: 'capability', content: 'Think step by step.',
           description: 'Thinking capability guidance', priority: 70, token_cost: 20, enabled: true,
-          injection: { requiresCapabilities: ['thinking'] }, variants: null, version: 1,
+          injection: { requiresCapabilities: ['thinking'] }, version: 1,
         },
       ];
       (prismaModule.prisma.promptModule.findMany as any).mockResolvedValue(rows);
@@ -311,12 +311,12 @@ describe('PromptComposer', () => {
         {
           id: 'core-1', name: 'identity', category: 'core', content: 'Core.',
           description: 'Core', priority: 100, token_cost: 5, enabled: true,
-          injection: { alwaysInject: true }, variants: null, version: 1,
+          injection: { alwaysInject: true }, version: 1,
         },
         {
           id: 'cap-1', name: 'thinking-guidance', category: 'capability', content: 'Think step by step.',
           description: 'Thinking capability guidance', priority: 70, token_cost: 20, enabled: true,
-          injection: { requiresCapabilities: ['thinking'] }, variants: null, version: 1,
+          injection: { requiresCapabilities: ['thinking'] }, version: 1,
         },
       ];
       (prismaModule.prisma.promptModule.findMany as any).mockResolvedValue(rows);
@@ -334,7 +334,7 @@ describe('PromptComposer', () => {
         {
           id: 'core-1', name: 'identity', category: 'core', content: 'You are OpenAgentic.',
           description: 'Core', priority: 100, token_cost: 10, enabled: true,
-          injection: { alwaysInject: true }, variants: null, version: 1,
+          injection: { alwaysInject: true }, version: 1,
         },
       ];
       (prismaModule.prisma.promptModule.findMany as any).mockResolvedValue(rows);
@@ -357,7 +357,7 @@ describe('PromptComposer', () => {
         {
           id: 'core-1', name: 'identity', category: 'core', content: 'You are OpenAgentic.',
           description: 'Core', priority: 100, token_cost: 10, enabled: true,
-          injection: { alwaysInject: true }, variants: null, version: 1,
+          injection: { alwaysInject: true }, version: 1,
         },
       ];
       (prismaModule.prisma.promptModule.findMany as any).mockResolvedValue(rows);
@@ -372,7 +372,7 @@ describe('PromptComposer', () => {
         {
           id: 'core-1', name: 'identity', category: 'core', content: 'You are OpenAgentic AI.',
           description: 'Core', priority: 100, token_cost: 10, enabled: true,
-          injection: { alwaysInject: true }, variants: null, version: 1,
+          injection: { alwaysInject: true }, version: 1,
         },
       ];
       (prismaModule.prisma.promptModule.findMany as any).mockResolvedValue(rows);
@@ -387,7 +387,7 @@ describe('PromptComposer', () => {
         {
           id: 'core-1', name: 'identity', category: 'core', content: 'Short.',
           description: 'Core', priority: 100, token_cost: 2, enabled: true,
-          injection: { alwaysInject: true }, variants: null, version: 1,
+          injection: { alwaysInject: true }, version: 1,
         },
       ];
       (prismaModule.prisma.promptModule.findMany as any).mockResolvedValue(rows);
@@ -434,12 +434,12 @@ describe('PromptComposer', () => {
         {
           id: 'core-1', name: 'identity', category: 'core', content: 'You are OpenAgentic.',
           description: 'Core', priority: 100, token_cost: 10, enabled: true,
-          injection: { alwaysInject: true }, variants: null, version: 1,
+          injection: { alwaysInject: true }, version: 1,
         },
         {
           id: 'core-2', name: 'disabled-core', category: 'core', content: 'Disabled.',
           description: 'Disabled core', priority: 90, token_cost: 10, enabled: false,
-          injection: { alwaysInject: true }, variants: null, version: 1,
+          injection: { alwaysInject: true }, version: 1,
         },
       ];
       (prismaModule.prisma.promptModule.findMany as any).mockResolvedValue(rows);

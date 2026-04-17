@@ -3,12 +3,14 @@ import { ModuleScorer } from './ModuleScorer.js';
 import { ModelAdapterFactory } from './adapters/ModelAdapterFactory.js';
 import { TokenCounter } from '../context/TokenCounter.js';
 import { evaluateUserIntent } from './ArtifactIntentGate.js';
+import { selectOutputProfile } from './OutputProfileSelector.js';
 import type {
   PromptModule,
   ComposeContext,
   ComposedPrompt,
   ModelCapabilities,
   AdapterFamily,
+  OutputProfile,
   UserIntent,
 } from './types.js';
 
@@ -58,6 +60,17 @@ export class PromptComposer {
 
     // 4. Select core modules — role-aware identity selection
     const isAdmin = context.isAdmin ?? await this.checkIsAdmin(context.userId);
+
+    // Pick exactly ONE output-profile-* module + always pair with
+    // output-interleave-structure. Selection precedence: caller-supplied →
+    // semantic cues in message → admin workspace default → 'executive'.
+    // See services/prompt/OutputProfileSelector.ts.
+    const outputProfile: OutputProfile = await selectOutputProfile(
+      context.message,
+      context.outputProfile,
+    );
+    const profileModuleName = `output-profile-${outputProfile}`;
+
     const coreModules = allModules.filter((m) => {
       if (m.category !== 'core') return false;
       // Identity modules: pick the right one based on role
@@ -65,6 +78,10 @@ export class PromptComposer {
       if (m.name === 'identity-default') return !isAdmin;
       // Old identity module (before split): treat as default — only inject for non-admins
       if (m.name === 'identity') return !isAdmin;
+      // Output-profile family: inject ONLY the selected profile + the
+      // shared interleave-structure partner. All others stay out.
+      if (m.name.startsWith('output-profile-')) return m.name === profileModuleName;
+      if (m.name === 'output-interleave-structure') return true;
       // All other core modules: always inject unless explicitly disabled
       return m.injection.alwaysInject !== false;
     });

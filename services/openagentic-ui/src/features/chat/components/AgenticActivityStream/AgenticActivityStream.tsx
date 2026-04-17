@@ -33,6 +33,7 @@ import {
   Search as SearchIcon,
   Package,
   GitBranch,
+  Book,
 } from '@/shared/icons';
 import ArtifactRenderer from '../MessageContent/ArtifactRenderer';
 import ChartRenderer from '../MessageContent/ChartRenderer';
@@ -628,6 +629,7 @@ const CATEGORY_ICON_MAP: Record<string, React.FC<any>> = {
   GCP:           Cloud,
   Kubernetes:    Cpu,
   Database:      Database,
+  Knowledge:     Book,
   Memory:        Brain,
   Web:           Globe,
   GitHub:        GitBranch,

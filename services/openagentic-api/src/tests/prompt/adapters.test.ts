@@ -37,13 +37,7 @@ const makeModule = (overrides: Partial<PromptModule> = {}): PromptModule => ({
   priority: 100,
   tokenCost: 13,
   enabled: true,
-  injection: { alwaysInject: true },
-  variants: {
-    claude:
-      '<module name="identity">You are OpenAgentic, an enterprise AI assistant.</module>',
-    local: 'You are OpenAgentic enterprise AI.',
-  },
-  version: 1,
+  injection: { alwaysInject: true },  version: 1,
   ...overrides,
 });
 
@@ -54,23 +48,13 @@ const threeModules: PromptModule[] = [
     name: 'safety',
     category: 'core',
     priority: 98,
-    content: 'Never fabricate data.',
-    variants: {
-      claude: '<module name="safety">Never fabricate data.</module>',
-      local: 'Never fabricate data.',
-    },
-  }),
+    content: 'Never fabricate data.',  }),
   makeModule({
     id: 'uuid-3',
     name: 'azure-ops',
     category: 'domain',
     priority: 70,
-    content: 'Azure tool routing: use azure_arm_execute.',
-    variants: {
-      claude: '<module name="azure-ops">Azure tool routing: use azure_arm_execute.</module>',
-      local: 'Use azure_arm_execute for ARM resources.',
-    },
-  }),
+    content: 'Azure tool routing: use azure_arm_execute.',  }),
 ];
 
 // ── ClaudeAdapter ────────────────────────────────────────────────────────────
@@ -94,28 +78,30 @@ describe('ClaudeAdapter', () => {
     expect(result).toContain('</module>');
   });
 
-  it('includes role identity prefix', () => {
+  // Post-neutralization: the adapter contributes zero prose. Identity prefix
+  // ("You are OpenAgentic…") now comes from the `identity-default` /
+  // `identity-admin` seeded modules; thinking/reasoning guidance from the
+  // `thinking-guidance` capability-gated module. See
+  // docs/architecture/composable-prompt-neutralization.md.
+  it('adapter does NOT inject vendor identity prefix', () => {
     const result = adapter.transform(threeModules, defaultCaps);
-    expect(result).toMatch(/You are Claude/);
+    expect(result).not.toMatch(/You are Claude/);
   });
 
-  it('adds thinking instruction when thinking capability is set', () => {
+  it('adapter does NOT inject its own thinking prose', () => {
     const result = adapter.transform(threeModules, thinkingCaps);
-    expect(result.toLowerCase()).toMatch(/think|reason/);
-  });
-
-  it('does NOT add thinking instruction without thinking capability', () => {
-    const result = adapter.transform(threeModules, defaultCaps);
-    // Should not have the thinking-specific line added by adapter (not module content)
+    // If the only content is the XML-wrapped modules, the raw words
+    // "reason"/"think" only appear when the modules themselves mention them.
+    // The fixture modules deliberately don't, so the adapter-added line is gone.
     const lines = result.split('\n');
-    const hasThinkingLine = lines.some(
+    const hasAdapterThinkingLine = lines.some(
       (l) => l.trim().startsWith('Reason step by step'),
     );
-    expect(hasThinkingLine).toBe(false);
+    expect(hasAdapterThinkingLine).toBe(false);
   });
 
   it('generates XML tags for modules without claude variant', () => {
-    const mod = makeModule({ variants: undefined });
+    const mod = makeModule({ });
     const result = adapter.transform([mod], defaultCaps);
     expect(result).toContain('<module name="identity">');
   });
@@ -208,9 +194,7 @@ describe('LocalAdapter', () => {
         name: `module-${i}`,
         category: i < 10 ? 'core' : 'domain',
         priority: 100 - i,
-        content: 'A'.repeat(200), // 200 chars each
-        variants: { local: 'A'.repeat(200) },
-      }),
+        content: 'A'.repeat(200), // 200 chars each      }),
     );
 
     const result = adapter.transform(manyModules, defaultCaps);
@@ -239,9 +223,7 @@ describe('LocalAdapter', () => {
           name: `domain-${i}`,
           category: 'domain',
           priority: 70 - i,
-          content: `Domain module ${i} content.`,
-          variants: { local: `Domain ${i}.` },
-        }),
+          content: `Domain module ${i} content.`,        }),
       ),
     ];
 

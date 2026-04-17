@@ -134,14 +134,22 @@ export function evaluateRagIntent(message: string | undefined | null): RagIntent
   m = text.match(DOC_SEEK_RE);
   if (m) return { shouldFetchRag: true, reason: 'explicit-doc-seek', matched: m[0] };
 
-  m = text.match(FEATURE_NAME_RE);
-  if (m) return { shouldFetchRag: true, reason: 'internal-feature-name', matched: m[0] };
-
-  // Meta-question + platform self-reference together → RAG.
-  // (Either alone is too broad — "what is the smart router?" needs both
-  // "what is" AND "smart router" / "the platform" to count.)
-  if (META_QUESTION_RE.test(text) && PLATFORM_SELF_RE.test(text)) {
-    return { shouldFetchRag: true, reason: 'platform-meta-question', matched: 'meta + self-ref' };
+  // Feature-name / platform-self-reference require a META-QUESTION lead-in.
+  // Standalone mentions ("I use OpenAgentic daily", "smart router is great")
+  // should NOT fire RAG — the user isn't asking about the thing, just
+  // mentioning it. Previously the gate fired on FEATURE_NAME alone which
+  // over-triggered on every message that named a platform component.
+  // User report 2026-04-17: "Still FIVE rag docs — all the same" on a
+  // simple TL;DR prompt because it mentioned "the OpenAgentic platform".
+  if (META_QUESTION_RE.test(text)) {
+    const featureMatch = text.match(FEATURE_NAME_RE);
+    if (featureMatch) {
+      return { shouldFetchRag: true, reason: 'internal-feature-name', matched: featureMatch[0] };
+    }
+    const selfMatch = text.match(PLATFORM_SELF_RE);
+    if (selfMatch) {
+      return { shouldFetchRag: true, reason: 'platform-meta-question', matched: selfMatch[0] };
+    }
   }
 
   // 3. Default: skip. Asymmetric cost (false positive >> false negative).

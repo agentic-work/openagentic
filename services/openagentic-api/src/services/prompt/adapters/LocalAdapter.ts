@@ -35,9 +35,7 @@ export class LocalAdapter implements ModelAdapter {
 
     for (let i = 0; i < selected.length; i++) {
       const mod = selected[i];
-      // Prefer local variant — it's already ultra-short
-      const raw = mod.variants?.local ?? mod.content;
-      const content = stripFormatting(raw);
+      const content = stripFormatting(mod.content);
 
       const line = `${i + 1}. ${content}`;
       if (totalChars + line.length > MAX_CHARS) {

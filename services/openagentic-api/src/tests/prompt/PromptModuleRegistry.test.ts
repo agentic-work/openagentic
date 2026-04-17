@@ -47,9 +47,7 @@ const makeDbRow = (overrides: Partial<any> = {}) => ({
   priority: 100,
   token_cost: 6,
   enabled: true,
-  injection: { alwaysInject: true },
-  variants: { claude: '<module>...</module>', local: 'You are OpenAgentic.' },
-  version: 1,
+  injection: { alwaysInject: true },  version: 1,
   ...overrides,
 });
 
@@ -62,9 +60,7 @@ const makeModule = (overrides: Partial<PromptModule> = {}): PromptModule => ({
   priority: 100,
   tokenCost: 6,
   enabled: true,
-  injection: { alwaysInject: true },
-  variants: { claude: '<module>...</module>', local: 'You are OpenAgentic.' },
-  version: 1,
+  injection: { alwaysInject: true },  version: 1,
   ...overrides,
 });
 
