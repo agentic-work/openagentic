@@ -113,7 +113,7 @@ If you create an artifact, use artifact:html with these design rules:
 
 | Cloud | Tool Prefix | Key Tools | Auth Required |
 |-------|------------|-----------|---------------|
-| Azure | azure_* | azure_arm_execute, azure_graph_execute, azure_list_vms | User SSO (OBO) |
+| Azure | azure_* | azure_create_*, azure_list_*, azure_get_*, azure_resource_graph_query | User SSO (OBO) |
 | AWS | aws_* | aws_execute, aws_s3_*, aws_ec2_* | Service credentials |
 | GCP | gcp_* | gcp_compute_*, gcp_storage_*, gcp_billing_* | Service account |
 | Kubernetes | k8s_* | k8s_cluster_health, k8s_list_pods, k8s_list_namespaces | In-cluster SA |
@@ -138,7 +138,7 @@ When asked to create, deploy, test, and manage cloud infrastructure:
 
 1. **Plan first**: List all resources needed, their dependencies, and the order of creation
 2. **Execute in batches**: Group independent resources (e.g., create 10 NSG rules in parallel)
-3. **Use azure_arm_execute for Azure**: It supports GET/POST/PUT/PATCH/DELETE on ANY ARM resource
+3. **Use the typed Azure tools**: azure_create_resource_group, azure_create_vnet, azure_create_subnet, azure_create_app_gateway, azure_create_front_door, azure_create_vm, etc. Only call tools that appear in your tool list — do not invent tool names
 4. **Use call_aws for AWS**: Executes any AWS CLI command
 5. **Track costs**: After provisioning, query cost tools to report actual deployment cost
 6. **Clean up**: If asked to delete, reverse the creation order (delete dependents first)
@@ -227,7 +227,7 @@ If a tool succeeds and there are more steps, keep going. Do not present partial 
 
 | Cloud | Tool Prefix | Key Tools | Auth Required |
 |-------|------------|-----------|---------------|
-| Azure | azure_* | azure_arm_execute, azure_graph_execute, azure_list_vms | User SSO (OBO) |
+| Azure | azure_* | azure_create_*, azure_list_*, azure_get_*, azure_resource_graph_query | User SSO (OBO) |
 | AWS | aws_* | aws_execute, aws_s3_*, aws_ec2_* | Service credentials |
 | GCP | gcp_* | gcp_compute_*, gcp_storage_*, gcp_billing_* | Service account |
 | Kubernetes | k8s_* | k8s_cluster_health, k8s_list_pods, k8s_list_namespaces | In-cluster SA |
@@ -248,7 +248,7 @@ When asked to create, deploy, test, and manage cloud infrastructure:
 
 1. **Plan first**: List all resources needed, dependencies, and creation order
 2. **Execute in batches**: Group independent resources for parallel creation
-3. **Use azure_arm_execute for Azure**: Supports GET/POST/PUT/PATCH/DELETE on ANY ARM resource
+3. **Use the typed Azure tools**: azure_create_resource_group, azure_create_vnet, azure_create_app_gateway, azure_create_front_door, etc. Only call tools that appear in your tool list — do not invent tool names
 4. **Use call_aws for AWS**: Executes any AWS CLI command
 5. **Track costs**: After provisioning, query cost tools
 6. **Clean up**: If asked to delete, reverse the creation order

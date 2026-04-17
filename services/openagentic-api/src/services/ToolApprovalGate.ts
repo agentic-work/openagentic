@@ -121,7 +121,6 @@ const DEFAULT_MEDIUM_RISK_PATTERNS = [
   /^k8s_(?:create|apply|scale|restart|cordon|uncordon|patch|label|annotate)/i,
   /^admin_(?:create|update|delete|set|configure|enable|disable)/i,
   /^(?:aws|azure|gcp)_(?:create|update|modify|start|stop|restart|set)/i,
-  /^azure_arm_execute$/i,
   /^gcp_api_execute$/i,
   /^openagentic_/i,
   /^helm_(?:install|upgrade|rollback|uninstall)$/i,
@@ -366,6 +365,28 @@ export class ToolApprovalGate {
    */
   async evaluate(toolCall: ToolCallInfo, emit: (event: string, data: unknown) => void): Promise<ApprovalResult> {
     const riskLevel = this.classifyRisk(toolCall);
+
+    // Dev/test escape hatch: when DISABLE_HITL_GATE=true the gate auto-approves
+    // every tool call (bypasses the modal + 120s timeout). Useful for:
+    //   - k3s dev env where every user is the operator
+    //   - CI / UC harness runs
+    //   - Playwright tests where the auto-approver can be throttled by
+    //     backgrounded-tab setInterval limits
+    if (process.env.DISABLE_HITL_GATE === 'true') {
+      this.logger.info({
+        tool: toolCall.toolName,
+        userId: toolCall.userId,
+        riskLevel,
+      }, '[HITL] Auto-approved via DISABLE_HITL_GATE env flag');
+      return {
+        approved: true,
+        riskLevel,
+        reason: 'Auto-approved — DISABLE_HITL_GATE=true',
+        requiresHuman: false,
+        approvedBy: 'auto',
+      };
+    }
+
     const userTrust = this.getUserTrust(toolCall.userId, toolCall.toolName);
     let requiresHuman = this.requiresApproval(riskLevel);
 

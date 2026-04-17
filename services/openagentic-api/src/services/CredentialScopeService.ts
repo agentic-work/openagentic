@@ -65,10 +65,9 @@ export interface ScopedCredentials {
 // ---------------------------------------------------------------------------
 
 const DEFAULT_TOOL_SCOPES: Record<string, CredentialScope> = {
-  // Azure ARM tools → need ARM-scoped token only
-  'azure_arm_execute': { type: 'azure_arm', oboScope: 'https://management.azure.com/.default' },
-  'azure_arm_list_resources': { type: 'azure_arm', oboScope: 'https://management.azure.com/.default' },
-  'azure_arm_get_resource': { type: 'azure_arm', oboScope: 'https://management.azure.com/.default' },
+  // Azure management tools → need ARM-scoped token only. Prefix match `azure_`
+  // catches all typed tools (azure_create_*, azure_list_*, azure_get_*, etc.)
+  // via the prefix-match fallback in getCredentialScopeForTool below.
 
   // Azure Graph tools → need Graph-scoped token only
   'azure_graph_execute': { type: 'azure_graph', oboScope: 'https://graph.microsoft.com/.default' },
@@ -206,11 +205,20 @@ export class CredentialScopeService {
     // Exact match first
     if (this.toolScopes[toolName]) return this.toolScopes[toolName];
 
-    // Prefix match (e.g., 'azure_arm_' matches 'azure_arm_execute')
+    // Prefix match (e.g., 'azure_graph_*' matches 'azure_graph_list_users')
     for (const [pattern, scope] of Object.entries(this.toolScopes)) {
       if (pattern.endsWith('*') && toolName.startsWith(pattern.slice(0, -1))) {
         return scope;
       }
+    }
+
+    // Azure management tools without a dedicated entry → ARM scope (covers all
+    // the typed azure_create_* / azure_list_* / azure_get_* tools).
+    if (toolName.startsWith('azure_') && !toolName.startsWith('azure_graph_')) {
+      return { type: 'azure_arm', oboScope: 'https://management.azure.com/.default' };
+    }
+    if (toolName.startsWith('azure_graph_')) {
+      return { type: 'azure_graph', oboScope: 'https://graph.microsoft.com/.default' };
     }
 
     return this.defaultScope;

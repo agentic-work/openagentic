@@ -130,7 +130,7 @@ export function extractResourceScope(toolName: string, toolArgs: any): string | 
   // ===========================================
   // AZURE Resource Scope Extraction
   // ===========================================
-  if (normalizedTool.includes('azure') || normalizedTool.includes('arm_execute') || normalizedTool.includes('azmcp')) {
+  if (normalizedTool.includes('azure') || normalizedTool.includes('azmcp')) {
     const path = toolArgs?.path || toolArgs?.resource_path || '';
 
     // Extract subscription ID: /subscriptions/{sub-id}/...

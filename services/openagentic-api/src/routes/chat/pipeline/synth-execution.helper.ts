@@ -65,7 +65,7 @@ export function getSynthToolDefinitions(): any[] {
         description: `ABSOLUTE LAST RESORT ONLY. You MUST check all available MCP tools FIRST before even considering this tool.
 
 NEVER use this for:
-- Azure operations (use azure_arm_execute, azure_list_*, azure_start_vm, etc.)
+- Azure operations (use the typed azure_create_*, azure_list_*, azure_get_* tools)
 - AWS operations (use aws_*, call_aws)
 - Kubernetes operations (use k8s_*)
 - GitHub operations (use github_*)

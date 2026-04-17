@@ -33,8 +33,14 @@ const COMPLEXITY_SIGNALS = {
   // cloudOps: long-horizon multi-step provisioning OR cross-resource enterprise audit.
   // When this matches, AgentsStage prepends a strong delegation hint to the LLM
   // so it picks cloud_operations via delegate_to_agents instead of running inline.
+  //
+  // Kept in lock-step with TaskAnalysisService.detectComplexity() —
+  // `multiStepProvisioningPattern` + `enterpriseAuditPattern` + `provisionPlusAuditPattern`.
+  // If you change one, change both. P3.2 (2026-04-16) widened the provisioning window
+  // to 400 chars and added the `provisionPlusAudit` alternative to close the regex-drift
+  // gap documented in docs/releases/0.6.5-evidence/temporal-plan-landing.md §Gap 2.
   cloudOps:
-    /\b(create|provision|deploy|spin\s*up|set\s*up|launch|stand\s*up)\b[\s\S]{0,300}\b(then|after|next|and\s+(?:then|also|create|provision|deploy)|step\s*\d|first[\s\S]{0,80}then)\b|\b(audit|inventory|enumerate|discover|map|catalog)\b[\s\S]{0,200}\b(across|all|every|enterprise|organi[sz]ation|tenant|subscriptions?|accounts?|projects?|resource\s*groups?)\b/i,
+    /\b(create|provision|deploy|spin\s*up|set\s*up|launch|stand\s*up)\b[\s\S]{0,400}\b(then|after|next|and\s+(?:then|also|create|provision|deploy|run|spin|set|launch|stand|list|fetch)|step\s*\d|first[\s\S]{0,80}then|plus\s+a)\b|\b(audit|inventory|enumerate|discover|map|catalog)\b[\s\S]{0,300}\b(across|all|every|enterprise|organi[sz]ation|tenant|subscriptions?|accounts?|projects?|resource\s*groups?|public[- ]facing)\b|\b(create|provision|deploy|spin\s*up|launch)\b[\s\S]+\b(audit|list\s+all|inventory|enumerate|fetch\s+(advisor|service\s+health|recommendations))\b/i,
 };
 
 export class AgentsStage implements PipelineStage {

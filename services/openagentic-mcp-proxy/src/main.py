@@ -183,8 +183,8 @@ def is_tool_blocked_in_read_only(tool_name: str, arguments: dict, server_name: s
         if pattern.lower() in tool_lower:
             return True, f"Tool '{tool_name}' is blocked in read-only mode on cloud servers (matches pattern: {pattern})"
 
-    # Check for ARM/REST DELETE operations
-    if tool_name in ("azure_arm_execute", "aws_execute", "gcp_execute", "k8s_execute"):
+    # Check for DELETE via generic cloud-REST passthroughs (still relevant for AWS/GCP/K8s)
+    if tool_name in ("aws_execute", "gcp_execute", "k8s_execute"):
         method = arguments.get("method", "").upper()
         if method in BLOCKED_METHODS:
             return True, f"HTTP DELETE method is blocked in read-only mode for tool '{tool_name}'"

@@ -479,6 +479,28 @@ export class MCPStage implements PipelineStage {
       }
 
       // =================================================================
+      // 🧰 ESSENTIAL TOOLS TOP-UP (domain-specific)
+      // =================================================================
+      // pgvector's top-K semantic search can drop highly-relevant typed tools
+      // for a given domain when the query is phrased in a way that ranks other
+      // tools higher (e.g., a "create Front Door" prompt pushes azure_list_
+      // subscriptions below the cut). These helpers re-add known-essential
+      // tools for the detected domain without exceeding the final MAX_TOTAL_TOOLS
+      // ceiling trim downstream.
+      try {
+        context.availableTools = await this.ensureEssentialAzureInfraTools(context.availableTools, userQuery, context);
+        context.availableTools = await this.ensureEssentialAzureADTools(context.availableTools, userQuery, context);
+        context.availableTools = await this.ensureEssentialK8sTools(context.availableTools, userQuery, context);
+        context.availableTools = await this.ensureEssentialAWSTools(context.availableTools, userQuery, context);
+        context.availableTools = await this.ensureEssentialGCPTools(context.availableTools, userQuery, context);
+        context.availableTools = await this.ensureEssentialGitHubTools(context.availableTools, userQuery, context);
+        context.availableTools = await this.ensureEssentialObservabilityTools(context.availableTools, userQuery, context);
+        context.availableTools = await this.ensureEssentialWebTools(context.availableTools, userQuery, context);
+      } catch (essentialErr: any) {
+        context.logger.warn({ err: essentialErr?.message }, '[MCP] essential-tools top-up failed — continuing with semantic set only');
+      }
+
+      // =================================================================
       // 📊 DATA LAYER TOOLS: query_data + list_datasets
       // =================================================================
       // Inject data layer tools so LLM can drill into large stored datasets.
@@ -536,13 +558,40 @@ export class MCPStage implements PipelineStage {
       // =================================================================
       // 🔒 FINAL HARD CEILING: Absolute maximum after ALL injections
       // =================================================================
-      // Reserved tools (memory, synth, data-layer) are always-on and get priority.
-      // If we exceed MAX_TOTAL_TOOLS, trim semantic tools (lowest similarity first).
-      const MAX_TOTAL_TOOLS = 25;
+      // Reserved tools (memory, synth, data-layer, domain-essential typed tools)
+      // are always-on and get priority. If we exceed MAX_TOTAL_TOOLS, trim
+      // semantic tools (lowest similarity first).
+      //
+      // 40 is comfortable for gpt-5.x, claude-opus-4-6, sonnet-4-6. Lower models
+      // (gpt-4o-mini, haiku) could drop this further but those models rarely
+      // hit the ceiling with semantic pre-filtering in place.
+      const MAX_TOTAL_TOOLS = 40;
       if (context.availableTools.length > MAX_TOTAL_TOOLS) {
         const beforeFinalTrim = context.availableTools.length;
-        // Partition into reserved (memory, synth, data-layer) and semantic tools
         const reservedServerIds = new Set(['data-layer-service', 'system-memory', 'synth-engine']);
+        // Domain-essential typed tool names — never trim these when the query
+        // matched the corresponding domain (ensureEssential* already gated them).
+        const ESSENTIAL_TYPED_TOOLS = new Set([
+          // Azure infra
+          'azure_list_subscriptions', 'azure_list_resource_groups', 'azure_list_vnets',
+          'azure_list_nsgs', 'azure_list_app_gateways', 'azure_get_app_gateway',
+          'azure_list_front_doors', 'azure_get_front_door', 'azure_resource_graph_query',
+          'azure_create_resource_group', 'azure_create_vnet', 'azure_create_subnet',
+          'azure_create_nsg', 'azure_create_app_gateway', 'azure_create_front_door',
+          // Azure AD
+          'azure_list_users', 'azure_get_user', 'azure_list_groups', 'azure_list_apps',
+          // K8s
+          'k8s_cluster_health', 'k8s_list_pods', 'k8s_list_namespaces',
+          'k8s_list_deployments', 'k8s_get_pod_logs',
+          // AWS
+          'aws_execute', 'call_aws', 'aws_s3_list', 'aws_ec2_list',
+          // GCP
+          'gcp_compute_list', 'gcp_storage_list', 'gcp_billing_query',
+          // GitHub
+          'github_list_repos', 'github_create_pr', 'github_list_issues', 'github_search_code',
+          // Web
+          'web_search', 'web_fetch', 'web_news_search',
+        ]);
         const reservedTools: any[] = [];
         const semanticTools: any[] = [];
         for (const tool of context.availableTools) {
@@ -551,13 +600,13 @@ export class MCPStage implements PipelineStage {
           if (reservedServerIds.has(serverId) ||
               toolName.startsWith('memory_') ||
               toolName === 'query_data' || toolName === 'list_datasets' ||
-              toolName === 'synthesize_tool') {
+              toolName === 'synthesize_tool' ||
+              ESSENTIAL_TYPED_TOOLS.has(toolName)) {
             reservedTools.push(tool);
           } else {
             semanticTools.push(tool);
           }
         }
-        // Keep all reserved + top semantic tools up to ceiling
         const semanticSlots = Math.max(0, MAX_TOTAL_TOOLS - reservedTools.length);
         context.availableTools = [...reservedTools, ...semanticTools.slice(0, semanticSlots)];
         context.logger.info({
@@ -565,7 +614,8 @@ export class MCPStage implements PipelineStage {
           afterFinalTrim: context.availableTools.length,
           reservedKept: reservedTools.length,
           semanticKept: Math.min(semanticTools.length, semanticSlots),
-          semanticDropped: Math.max(0, semanticTools.length - semanticSlots)
+          semanticDropped: Math.max(0, semanticTools.length - semanticSlots),
+          ceiling: MAX_TOTAL_TOOLS,
         }, '[MCP] 🔒 FINAL HARD CEILING: Enforced absolute maximum tool count');
       }
 
@@ -916,6 +966,66 @@ export class MCPStage implements PipelineStage {
   }
 
   /**
+   * ☁️ ESSENTIAL AZURE INFRASTRUCTURE TOOLS
+   * Ensures the typed azure_create_* / azure_list_* / azure_get_* tools are
+   * available when the user is asking to provision or audit Azure infra.
+   * Without this, pgvector's top-K semantic search may drop e.g.
+   * azure_list_subscriptions below the cut line for an "App Gateway + Front
+   * Door" prompt, and the agent will refuse to proceed.
+   */
+  private async ensureEssentialAzureInfraTools(
+    tools: any[], userQuery: string, context: PipelineContext
+  ): Promise<any[]> {
+    const infraKeywords = [
+      'azure', 'arm',
+      'resource group', 'resource-group', 'rg-',
+      'vnet', 'virtual network', 'subnet', 'nsg', 'network security',
+      'app gateway', 'application gateway', 'appgw', 'app-gateway',
+      'front door', 'frontdoor', 'afd',
+      'load balancer',
+      'app service', 'web app', 'function app', 'container app', 'aks', 'kubernetes service',
+      'storage account', 'blob container', 'key vault', 'keyvault',
+      'provision', 'deploy', 'create', 'spin up', 'stand up',
+      'subscription', 'subscriptions',
+      'virtual machine', 'vm ', ' vms', 'scale set',
+    ];
+    const queryLower = userQuery.toLowerCase();
+    const looksLikeAzureInfra = queryLower.includes('azure') ||
+      infraKeywords.some(kw => queryLower.includes(kw));
+    if (!looksLikeAzureInfra) return tools;
+
+    const essentialNames = [
+      // Discovery / read
+      'azure_list_subscriptions',
+      'azure_list_resource_groups',
+      'azure_list_vnets',
+      'azure_list_nsgs',
+      'azure_list_app_gateways',
+      'azure_get_app_gateway',
+      'azure_list_front_doors',
+      'azure_get_front_door',
+      'azure_resource_graph_query',
+      // Create / provision
+      'azure_create_resource_group',
+      'azure_create_vnet',
+      'azure_create_subnet',
+      'azure_create_nsg',
+      'azure_create_app_gateway',
+      'azure_create_front_door',
+    ];
+    const toolNames = tools.map(t => t.function?.name || t.name || '');
+    const missing = essentialNames.filter(t => !toolNames.includes(t));
+    if (missing.length === 0) return tools;
+
+    const found = await this.searchMissingEssentialTools(
+      missing,
+      'Azure infrastructure networking resource group VNet subnet NSG Application Gateway Front Door subscription resource-graph',
+      context, '☁️ AZURE INFRA'
+    );
+    return found.length > 0 ? [...found, ...tools] : tools;
+  }
+
+  /**
    * 🔐 ESSENTIAL AZURE AD/ENTRA ID TOOLS
    */
   private async ensureEssentialAzureADTools(
@@ -938,14 +1048,14 @@ export class MCPStage implements PipelineStage {
     const queryLower = userQuery.toLowerCase();
     if (!azureADKeywords.some(keyword => queryLower.includes(keyword))) return tools;
 
-    const essentialNames = ['azure_list_users', 'azure_get_user', 'azure_list_groups', 'azure_list_apps', 'azure_arm_execute'];
+    const essentialNames = ['azure_list_users', 'azure_get_user', 'azure_list_groups', 'azure_list_apps', 'azure_list_subscriptions', 'azure_list_resource_groups'];
     const toolNames = tools.map(t => t.function?.name || '');
     const missing = essentialNames.filter(t => !toolNames.includes(t));
     if (missing.length === 0) return tools;
 
     const found = await this.searchMissingEssentialTools(
       missing,
-      'Azure Active Directory Entra ID users groups applications service principals ARM execute',
+      'Azure Active Directory Entra ID users groups applications service principals subscriptions resource groups',
       context, '🔐 AZURE AD'
     );
     return found.length > 0 ? [...found, ...tools] : tools;

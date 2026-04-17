@@ -1120,27 +1120,26 @@ When the user uploads a file, pass it to synth_synthesize:
     // ⏳ INJECT LONG-RUNNING OPERATIONS GUIDANCE
     // =================================================================
     // When Azure/cloud tools are available, add rules for handling
-    // long-running operations (LROs) like resource creation.
-    const hasCloudTools = context.availableTools?.some((t: any) =>
-      t.name?.includes('azure_arm') || t.name?.includes('aws_') || t.function?.name?.includes('azure_arm')
-    );
+    // long-running operations (LROs) like resource creation. We use
+    // typed tools (azure_create_*, azure_list_*, azure_get_*).
+    const hasCloudTools = context.availableTools?.some((t: any) => {
+      const n = t.name || t.function?.name || '';
+      return n.startsWith('azure_') || n.startsWith('aws_') || n.startsWith('aif_');
+    });
     if (hasCloudTools) {
       systemPrompt += `\n\n---\n\n## LONG-RUNNING CLOUD OPERATIONS
 
 ### CRITICAL RULES:
-1. For write operations (PUT/POST/DELETE) that create or modify Azure resources, use \`azure_arm_execute_and_wait\` instead of \`azure_arm_execute\`. This tool polls until the operation completes (Succeeded/Failed), instead of returning immediately with "Creating".
-2. When \`azure_arm_execute\` returns \`is_long_running: true\`, it means the resource is being provisioned. Do NOT assume the operation is complete.
-3. For complex deployments requiring multiple resources:
-   - Break into numbered steps: [1/N] Create RG → [2/N] Create VNet → [3/N] Create NSG → etc.
-   - Report each step's status before proceeding to the next
-   - If a step fails, report the error clearly with remediation options
-4. NEVER silently stop mid-task. Always report progress:
-   - "Step 3/5 complete: VNet created. Starting AppGW creation..."
+1. Azure resource provisioning (App Gateway, Front Door, VMs, AKS, etc.) takes minutes. The typed create tools (\`azure_create_app_gateway\`, \`azure_create_front_door\`, \`azure_create_vm\`, \`azure_create_aks_cluster\`, etc.) block until provisioning reaches a terminal state. Do NOT assume a resource is ready before the tool returns.
+2. For complex deployments requiring multiple resources:
+   - Break into numbered steps: [1/N] Create RG → [2/N] Create VNet → [3/N] Create NSG → [4/N] Create AppGW → etc.
+   - Report each step's status before proceeding to the next.
+   - If a step fails, report the error clearly with remediation options.
+3. NEVER silently stop mid-task. Always report progress:
+   - "Step 3/5 complete: VNet created. Starting App Gateway creation..."
    - "FAILED at step 4: NSG rule conflict. Here's what happened and options..."
-5. For complex multi-resource tasks with independent operations, use \`delegate_to_agents\` with parallel orchestration to run them concurrently.
-
-### MULTI-AGENT DELEGATION:
-When a request requires 3+ independent Azure/AWS operations, use \`delegate_to_agents\` with orchestration="parallel". Each agent should use \`azure_arm_execute_and_wait\` for write operations. Use "sequential" when steps depend on each other (e.g., create RG before VNet in that RG).`;
+4. For complex multi-resource tasks with INDEPENDENT operations, use \`delegate_to_agents\` with orchestration="parallel" to run them concurrently. Use "sequential" when steps depend on each other (e.g., create RG before VNet in that RG).
+5. Only call tools that actually appear in your tool list. Do not invent tool names — if a capability is missing, say so and stop.`;
     }
 
     // =================================================================

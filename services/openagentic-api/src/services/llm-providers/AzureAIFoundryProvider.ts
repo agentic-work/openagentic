@@ -1377,9 +1377,6 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
 
           try {
             const event = JSON.parse(data);
-            // DIAG: log every parsed AIF anthropic event to pinpoint breaks.
-            this.logger.info({ eventType: event?.type, blockIndex: event?.index, deltaType: event?.delta?.type }, '[AIF] anthropic event');
-
             // Yield Anthropic-native events — same format Bedrock uses.
             // The completion stage already handles these.
             if (event.type === 'content_block_start') {

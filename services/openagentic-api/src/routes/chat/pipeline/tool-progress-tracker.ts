@@ -23,7 +23,7 @@ export interface ToolProgressSummary {
  */
 const TOOL_CATEGORIES: Record<string, { keywords: string[]; label: string }> = {
   azure_cost:       { keywords: ['azure cost', 'azure spend', 'azure billing'],          label: 'Azure costs' },
-  azure_arm:        { keywords: ['azure resource', 'azure vm', 'azure infra'],           label: 'Azure resources' },
+  azure_list:       { keywords: ['azure resource', 'azure vm', 'azure infra'],           label: 'Azure resources' },
   azure_graph:      { keywords: ['azure ad', 'azure user', 'entra'],                     label: 'Azure AD / Entra' },
   aws_cost:         { keywords: ['aws cost', 'aws spend', 'aws billing'],                label: 'AWS costs' },
   aws_:             { keywords: ['aws'],                                                  label: 'AWS resources' },

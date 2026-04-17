@@ -128,7 +128,6 @@ const CACHEABLE_TOOL_PATTERNS = [
   // Azure - List operations (subscriptions, resource groups, resources)
   /azure.*list/i,
   /azure.*get/i,
-  /azure_arm_execute.*method.*GET/i,  // ARM GET operations
   /azmcp.*list/i,
   /azmcp.*get/i,
 
@@ -181,13 +180,6 @@ function isToolCacheable(toolName: string, toolArgs: any): boolean {
     if (pattern.test(normalizedName)) {
       return false;
     }
-  }
-
-  // Special handling for azure_arm_execute - check HTTP method
-  if (normalizedName.includes('arm_execute') || normalizedName.includes('arm-execute')) {
-    const method = toolArgs?.method?.toUpperCase() || 'GET';
-    // Only cache GET requests
-    return method === 'GET';
   }
 
   // Check cacheable patterns
@@ -2665,13 +2657,25 @@ async function executeSingleMCPProxyCall(
 
         // Check if response meets storage threshold
         if (dataLayer.shouldStoreResponse(toolResult)) {
+          // Extract cross-user-shareable resource scope (e.g. "azure:sub-X:rg-Y")
+          // so the store path can promote the blob to PostgreSQL shared storage.
+          // The same extractor drives the ToolResultCache shared-scope path below,
+          // so shared datasets + shared cache stay coherent.
+          let shareScope: string | null = null;
+          try {
+            const { extractResourceScope } = await import('../../../services/ToolResultCacheService.js');
+            shareScope = extractResourceScope(resolvedToolName, toolArgs);
+          } catch {
+            shareScope = null;
+          }
           const storeResult = await dataLayer.storeToolResponse(
             sessionId || 'standalone',
             effectiveUserId,
             resolvedToolName,
             toolArgs,
             originalQuery || '',
-            toolResult
+            toolResult,
+            { resourceScope: shareScope, tenantId, toolCallId: toolCall.id },
           );
 
           datasetReference = storeResult.datasetId;

@@ -298,12 +298,12 @@ const SEED_MODULES: SeedModule[] = [
     priority: 70,
     injection: { requiresTools: ['azure_*'] },
     content:
-      'Azure tool routing: azure_arm_execute for GET/POST/PUT/PATCH/DELETE on ANY ARM resource. azure_graph_execute for Microsoft Graph API. Auth: User SSO (OBO). If auth fails, explain which credential is missing.',
+      'Azure tool routing: use the typed azure_create_* / azure_list_* / azure_get_* tools that appear in your tool list. Auth: User SSO (OBO). If auth fails, explain which credential is missing. Do not invent tool names — only call tools that actually appear in the provided tool list.',
     variants: {
       claude:
-        '<module name="azure-ops">Azure tool routing: azure_arm_execute for GET/POST/PUT/PATCH/DELETE on ANY ARM resource. azure_graph_execute for Microsoft Graph API. Auth: User SSO (OBO). If auth fails, explain which credential is missing.</module>',
+        '<module name="azure-ops">Azure tool routing: use the typed azure_create_* / azure_list_* / azure_get_* tools that appear in your tool list. Auth: User SSO (OBO). If auth fails, explain which credential is missing. Do not invent tool names.</module>',
       local:
-        'Use azure_arm_execute for ARM resources, azure_graph_execute for Graph API.',
+        'Only call typed Azure tools that appear in your tool list (azure_create_*, azure_list_*, azure_get_*). Do not invent tool names.',
     },
   },
   {
@@ -612,16 +612,16 @@ Reference benchmark: \`docs/architecture/openagentic-k3s-architecture.html\` (32
   {
     name: 'cloud-ops-typed-tools-first',
     category: 'domain',
-    description: 'Cloud-ops: prefer typed SDK tools over generic CLI/ARM passthroughs',
+    description: 'Cloud-ops: only call tools that actually exist in your tool list',
     priority: 80,
     injection: { alwaysInject: false },
     content:
-      'Prefer typed SDK tools (azure_create_*, aws_create_*, gcp_create_*) over generic CLI/ARM passthroughs (azure_arm_execute, aws_cli_execute, gcp_cli_execute). Typed tools handle API versions, parameter validation, and async polling for you. Only fall back to a generic passthrough when no typed tool exists, and document why in your response. For cross-resource discovery use Resource Graph / Config / Asset Inventory tools (azure_resource_graph_query, aws_config_query, gcp_asset_inventory_query) instead of looping list_* calls.',
+      'Only call tools that actually appear in the provided tool list. The typed Azure/AWS/GCP tools (azure_create_*, azure_list_*, azure_get_*, aws_create_*, aws_list_*, gcp_create_*, gcp_list_*) handle API versions, parameter validation, and async polling for you. If a capability is missing from the tool list, say so and stop — do NOT invent a tool name. For cross-resource discovery use the typed Resource Graph / Config / Asset Inventory tools (azure_resource_graph_query, aws_config_query, gcp_asset_inventory_query) instead of looping list_* calls.',
     variants: {
       claude:
-        '<module name="cloud-ops-typed-tools-first">Prefer typed SDK tools (azure_create_*, aws_create_*, gcp_create_*) over generic CLI/ARM passthroughs (azure_arm_execute, aws_cli_execute, gcp_cli_execute). Typed tools handle API versions, parameter validation, and async polling for you. Only fall back to a generic passthrough when no typed tool exists, and document why in your response. For cross-resource discovery use Resource Graph / Config / Asset Inventory tools (azure_resource_graph_query, aws_config_query, gcp_asset_inventory_query) instead of looping list_* calls.</module>',
+        '<module name="cloud-ops-typed-tools-first">Only call tools that actually appear in the provided tool list. Use typed cloud SDK tools (azure_create_*, azure_list_*, azure_get_*, etc.). If a capability is missing, say so and stop — do NOT invent a tool name. For cross-resource discovery use Resource Graph / Config / Asset Inventory tools instead of looping list_* calls.</module>',
       local:
-        'Prefer typed cloud SDK tools over generic CLI passthroughs. Use Resource Graph for cross-resource discovery.',
+        'Only call tools that appear in your tool list. Use typed SDK tools. Do not invent tool names. Use Resource Graph for discovery.',
     },
   },
   {
@@ -706,10 +706,10 @@ Reference benchmark: \`docs/architecture/openagentic-k3s-architecture.html\` (32
     priority: 82,
     injection: { alwaysInject: false },
     content:
-      'When a tool call is denied by the human approver or times out: 1. Do NOT retry the same operation. 2. Do NOT try a workaround tool that achieves the same effect (e.g. azure_arm_execute to bypass a denied azure_create_*). 3. Tell the user clearly what you wanted to do and why it was needed. 4. Ask how they want to proceed — different SKU, different region, skip this step, abort the whole task. 5. If the approval gate emits a "denied" tool result, that is a final decision for that operation — respect it.',
+      'When a tool call is denied by the human approver or times out: 1. Do NOT retry the same operation. 2. Do NOT try a workaround tool that achieves the same effect. 3. Tell the user clearly what you wanted to do and why it was needed. 4. Ask how they want to proceed — different SKU, different region, skip this step, abort the whole task. 5. If the approval gate emits a "denied" tool result, that is a final decision for that operation — respect it.',
     variants: {
       claude:
-        '<module name="cloud-ops-hitl-denial">When a tool call is denied by the human approver or times out: 1. Do NOT retry the same operation. 2. Do NOT try a workaround tool that achieves the same effect (e.g. azure_arm_execute to bypass a denied azure_create_*). 3. Tell the user clearly what you wanted to do and why it was needed. 4. Ask how they want to proceed — different SKU, different region, skip this step, abort the whole task. 5. If the approval gate emits a "denied" tool result, that is a final decision for that operation — respect it.</module>',
+        '<module name="cloud-ops-hitl-denial">When a tool call is denied by the human approver or times out: 1. Do NOT retry the same operation. 2. Do NOT try a workaround tool that achieves the same effect. 3. Tell the user clearly what you wanted to do and why it was needed. 4. Ask how they want to proceed — different SKU, different region, skip this step, abort the whole task. 5. If the approval gate emits a "denied" tool result, that is a final decision for that operation — respect it.</module>',
       local:
         'On HITL denial: no retry, no workaround, tell the user what you wanted, ask how to proceed.',
     },

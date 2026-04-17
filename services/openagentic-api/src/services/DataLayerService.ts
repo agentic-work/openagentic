@@ -21,6 +21,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../utils/logger.js';
 import { getRedisClient, type UnifiedRedisClient } from '../utils/redis-client.js';
+import prisma from '../utils/prisma.js';
 import type { Logger } from 'pino';
 
 // =============================================================================
@@ -228,7 +229,8 @@ export class DataLayerService {
     toolName: string,
     toolArgs: Record<string, unknown>,
     userQuery: string,
-    data: unknown
+    data: unknown,
+    opts?: { resourceScope?: string | null; tenantId?: string | null; toolCallId?: string }
   ): Promise<{ datasetId: string; summary: string; schema: DataSchema }> {
     const datasetId = `data_${uuidv4().substring(0, 12)}`;
     const now = new Date();
@@ -258,21 +260,107 @@ export class DataLayerService {
       lastAccessedAt: now
     };
 
-    // Store in Redis or local
+    // Store in Redis for this user's fast-path
     await this.persistDataset(dataset);
 
     // Generate summary for LLM context
     const summary = this.generateSummary(dataset);
+
+    // Shared-scope promotion: if a resourceScope is provided, also write
+    // the full blob to PostgreSQL (LargeResponseStorage) so other users
+    // hitting the semantic cache for the SAME scope can dereference the
+    // datasetId cross-user. Without this step, shared cache hits return a
+    // datasetId that only lives in the fetching user's Redis → dangling
+    // reference from the querying user's perspective.
+    if (opts?.resourceScope) {
+      void this.promoteToSharedStorage({
+        datasetId,
+        sessionId,
+        toolCallId: opts.toolCallId || datasetId,
+        toolName,
+        resourceScope: opts.resourceScope,
+        tenantId: opts.tenantId ?? null,
+        data,
+        summary,
+        userQuery,
+        totalSizeBytes,
+        itemCount,
+      });
+    }
 
     this.log.info({
       datasetId,
       toolName,
       itemCount,
       sizeKB: Math.round(totalSizeBytes / 1024),
-      sessionId
+      sessionId,
+      resourceScope: opts?.resourceScope || null,
     }, 'Stored large tool response');
 
     return { datasetId, summary, schema };
+  }
+
+  /**
+   * Fire-and-forget write of the full dataset to PostgreSQL
+   * LargeResponseStorage so cross-user semantic-cache hits can resolve
+   * the blob even after the fetching user's Redis key expires or the
+   * querying user's Redis never had it.
+   */
+  private async promoteToSharedStorage(args: {
+    datasetId: string;
+    sessionId: string;
+    toolCallId: string;
+    toolName: string;
+    resourceScope: string;
+    tenantId: string | null;
+    data: unknown;
+    summary: string;
+    userQuery: string;
+    totalSizeBytes: number;
+    itemCount: number;
+  }): Promise<void> {
+    try {
+      const fullResult = JSON.stringify(args.data);
+      const resultHash = Buffer.from(fullResult).toString('base64').slice(0, 32);
+      const compressedSize = args.summary.length;
+      const tokenEstimate = Math.ceil(args.totalSizeBytes / 4); // ~4 chars/token
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h in PG vs 1h in Redis
+
+      await prisma.largeResponseStorage.create({
+        data: {
+          id: args.datasetId,
+          session_id: args.sessionId,
+          tool_call_id: args.toolCallId,
+          tool_name: args.toolName,
+          server_id: args.resourceScope, // server_id field repurposed to scope key for now
+          full_result: fullResult,
+          result_hash: resultHash,
+          original_size: args.totalSizeBytes,
+          token_estimate: tokenEstimate,
+          compressed_summary: args.summary,
+          compressed_size: compressedSize,
+          compression_strategy: 'summarize',
+          information_loss: 'moderate',
+          user_query: args.userQuery,
+          total_items: args.itemCount,
+          items_shown: 0,
+          current_page: 1,
+          has_more: args.itemCount > 0,
+          resource_scope: args.resourceScope,
+          is_shared: true,
+          tenant_id: args.tenantId,
+          expires_at: expiresAt,
+        },
+      });
+      this.log.info({
+        datasetId: args.datasetId,
+        resourceScope: args.resourceScope,
+        sizeKB: Math.round(args.totalSizeBytes / 1024),
+      }, '[DATA-LAYER-SHARED] Dataset promoted to PostgreSQL LargeResponseStorage');
+    } catch (err) {
+      // Non-fatal — primary Redis store already succeeded.
+      this.log.warn({ err, datasetId: args.datasetId }, '[DATA-LAYER-SHARED] Promotion failed (non-fatal, Redis still holds data)');
+    }
   }
 
   /**
@@ -719,24 +807,49 @@ export class DataLayerService {
   private async getDataset(datasetId: string): Promise<StoredDataset | null> {
     const key = `${this.REDIS_KEY_PREFIX}${datasetId}`;
 
-    if (!this.redis) {
-      this.log.error({ datasetId }, 'Redis not available — cannot retrieve dataset');
-      return null;
+    // Primary: Redis fast-path (per-user fetch cache).
+    if (this.redis) {
+      try {
+        const data = await this.redis.get(key);
+        if (data) {
+          if (typeof data === 'string') return JSON.parse(data) as StoredDataset;
+          return data as StoredDataset;
+        }
+      } catch (error) {
+        this.log.error({ error, datasetId }, 'Redis get failed for dataset');
+        // fall through to PG fallback
+      }
     }
 
+    // Fallback: PostgreSQL LargeResponseStorage — reached when the user's
+    // Redis never had this datasetId (cross-user shared-cache hit), or the
+    // Redis TTL elapsed. Only rows with is_shared=true are returned.
     try {
-      const data = await this.redis.get(key);
-      if (data) {
-        // UnifiedRedisClient.get() already JSON.parse()s the value,
-        // so `data` is already a StoredDataset object — don't double-parse
-        if (typeof data === 'string') {
-          return JSON.parse(data) as StoredDataset;
-        }
-        return data as StoredDataset;
-      }
-      return null;
-    } catch (error) {
-      this.log.error({ error, datasetId }, 'Redis get failed for dataset');
+      const row = await prisma.largeResponseStorage.findFirst({
+        where: { id: datasetId, is_shared: true, expires_at: { gt: new Date() } },
+      });
+      if (!row) return null;
+      this.log.info({ datasetId, scope: row.resource_scope }, '[DATA-LAYER-SHARED] Redis miss, served from PostgreSQL shared storage');
+      const parsedData = JSON.parse(row.full_result);
+      return {
+        id: row.id,
+        sessionId: row.session_id,
+        userId: '', // original fetcher — not propagated to consumers
+        toolName: row.tool_name,
+        toolArgs: {},
+        userQuery: row.user_query,
+        data: parsedData,
+        dataType: this.determineDataType(parsedData),
+        itemCount: row.total_items ?? this.countItems(parsedData),
+        totalSizeBytes: row.original_size,
+        schema: this.inferSchema(parsedData, row.user_query),
+        createdAt: row.created_at,
+        expiresAt: row.expires_at,
+        accessCount: 0,
+        lastAccessedAt: new Date(),
+      };
+    } catch (pgErr) {
+      this.log.error({ pgErr, datasetId }, '[DATA-LAYER-SHARED] PG fallback failed');
       return null;
     }
   }

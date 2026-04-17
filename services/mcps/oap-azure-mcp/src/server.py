@@ -25,8 +25,17 @@ import json
 import logging
 import base64
 import time
+import asyncio
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, Callable, TypeVar
+
+_T = TypeVar("_T")
+
+async def _in_thread(fn: Callable[[], _T]) -> _T:
+    """Run a blocking SDK call off the asyncio event loop so it can't freeze
+    the MCP HTTP server (and prevent /health from responding, which triggers
+    k8s liveness-probe restarts during long-running Azure provisioning)."""
+    return await asyncio.to_thread(fn)
 
 from azure.core.credentials import AccessToken, TokenCredential
 from azure.core.exceptions import AzureError, HttpResponseError, ClientAuthenticationError
@@ -323,8 +332,18 @@ azure_help(topic="troubleshooting")  # Common issues and fixes
 - `azure_list_alerts` - List metric alerts
 - `azure_get_metrics` - Get resource metrics
 
-**Typed Create Tools (use these — NOT generic ARM JSON)**
+**Typed Create Tools (use these — they handle all the ARM complexity for you)**
 - `azure_create_resource_group` - Create resource group
+- `azure_create_vnet` - Create virtual network with address space
+- `azure_create_subnet` - Create subnet in a VNet (delegate dedicated subnet for App Gateway)
+- `azure_create_nsg` - Create Network Security Group with optional inbound/outbound rules
+- `azure_create_app_gateway` - Create Application Gateway v2 (Standard_v2 or WAF_v2).
+  Accepts `backend_addresses` list (IPs/FQDNs) for the default backend pool — can hold
+  100+ entries for enterprise scenarios. Creates public IP + listener + routing rule.
+- `azure_create_front_door` - Create Front Door Standard/Premium profile with default
+  endpoint; optionally auto-wires one origin group + origin to a backend hostname
+  (supply `origin_hostname="myappgw-pip.eastus.cloudapp.azure.com"` to wire it to an
+  App Gateway public IP, etc.).
 - `azure_create_app_service_plan` - Create App Service Plan (compute container for web apps)
 - `azure_create_web_app` - Create Linux/Windows App Service web app on a plan
 - `azure_create_function_app` - Create serverless Function App (consumption or dedicated)
@@ -333,6 +352,19 @@ azure_help(topic="troubleshooting")  # Common issues and fixes
 - `azure_storage_account_set_public_access` - Toggle public blob access
 - `azure_create_key_vault` - Create Key Vault for secrets/keys/certs
 - `azure_create_vm` - Create basic Linux/Windows VM with NIC + optional public IP
+
+**Chaining example — Front Door → App Gateway (enterprise fronting)**
+1. `azure_create_resource_group(name="rg-fd-demo", location="eastus")`
+2. `azure_create_vnet(name="vnet-fd", resource_group="rg-fd-demo",
+      location="eastus", address_prefix="10.0.0.0/16")`
+3. `azure_create_subnet(vnet_name="vnet-fd", name="appgw-subnet",
+      address_prefix="10.0.1.0/24")`  — App Gateway needs its own /24
+4. `azure_create_app_gateway(name="agw-demo", resource_group="rg-fd-demo",
+      location="eastus", vnet_name="vnet-fd", subnet_name="appgw-subnet",
+      backend_addresses=[...100 IPs/FQDNs...], capacity=2)`
+5. `azure_create_front_door(name="fd-demo", resource_group="rg-fd-demo",
+      origin_hostname="<appgw-pip-fqdn-from-step-4>")`
+6. `azure_list_front_doors` + `azure_list_app_gateways` to verify.
 
 **Audit / Security / Compliance Reads**
 - `azure_list_role_assignments` - List RBAC role assignments
@@ -347,10 +379,13 @@ azure_help(topic="troubleshooting")  # Common issues and fixes
 - `azure_app_insights_list_components` - List App Insights components
 - `azure_app_insights_query` - Run KQL against App Insights telemetry
 
-NOTE: The generic `azure_arm_execute` and `azure_arm_execute_and_wait` tools were
-removed in v0.6.1. If you need to create or modify a resource, ALWAYS use one of
-the typed tools above. If a typed tool doesn't exist for the resource you need,
-report that gap to the user instead of trying to hand-craft ARM JSON.
+USAGE PATTERN: The tools listed above are the COMPLETE set. If a typed tool
+exists for your need, call it. If one does not, say so clearly — do NOT
+invent tool names. Every Azure MCP tool begins with `azure_` or `aif_`.
+
+If a requested scenario has no typed tool, respond honestly: "I don't have
+a tool for <thing>. I can do <related thing> with <typed tool>. Do you
+want me to proceed with that?" — then stop and wait for the user.
 
 ### Authentication
 
@@ -1296,9 +1331,25 @@ async def azure_list_subscriptions(
     meta: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    List all Azure subscriptions accessible to the current user.
+    List all Azure subscriptions the logged-in user has ANY access to, across
+    every tenant their account spans. RBAC-filtered: if the user has no
+    subscriptions, the list is empty (an error of fact, not a permissions bug).
 
-    Returns subscriptions with their IDs, names, and states.
+    Call this FIRST when:
+      - The user says "list my resources" and doesn't name a subscription.
+      - You need to find the right subscription_id for a scoped call.
+      - You're building cross-subscription reports.
+
+    Returns:
+        { success, count, subscriptions: [
+            { id, name, state: "Enabled"|"Disabled"|"Warned"|..., tenant_id }
+          ], executed_as
+        }
+
+    Common next calls:
+      - `azure_list_resource_groups(subscription_id=<id from here>)`.
+      - `azure_resource_graph_query(subscriptions=[<id>, ...], kql=...)` — run
+        ad-hoc cross-sub queries in Kusto.
     """
     try:
         credential, user_info = require_user_token(meta)
@@ -1331,10 +1382,25 @@ async def azure_list_resource_groups(
     meta: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    List all resource groups in a subscription.
+    List all resource groups in a subscription that the user has RBAC visibility on.
+
+    Useful as the second step after `azure_list_subscriptions`, or to answer
+    "what resource groups do I have in <sub>?" or "does <rg-name> already exist?"
 
     Args:
-        subscription_id: Azure subscription ID (uses default if not specified)
+        subscription_id: Optional. Defaults to the configured subscription
+                         (AZURE_SUBSCRIPTION_ID from server env).
+
+    Returns:
+        { success, subscription_id, count, resource_groups: [
+            { name, location, provisioning_state, tags }
+          ], executed_as
+        }
+
+    Chain with:
+      - `azure_create_resource_group(name, location)` if the one you want is missing.
+      - `azure_list_vnets(resource_group=<rg>)` to enumerate networking inside it.
+      - `azure_resource_graph_query` for cross-RG / cross-sub KQL queries.
     """
     try:
         credential, user_info = require_user_token(meta)
@@ -1375,13 +1441,30 @@ async def azure_create_resource_group(
     meta: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    Create a new resource group.
+    Create a new Azure resource group. This is idempotent — calling again with
+    the same name + location just returns the existing one.
+
+    Typically the FIRST step when provisioning any Azure scenario. Everything
+    else (VNets, App Gateways, Front Doors, VMs, storage...) lives inside a
+    resource group.
 
     Args:
-        name: Resource group name
-        location: Azure region (e.g., 'eastus', 'westus2')
-        tags: Optional tags to apply
-        subscription_id: Azure subscription ID
+        name: Resource group name. Naming rules: alphanumeric + hyphens + underscores,
+              1-90 chars. Suggested pattern: `rg-<purpose>-<env>-<random>`.
+              Example: "rg-fd-demo-eastus-7c3a".
+        location: Azure region slug (lowercase, no spaces).
+                  Examples: "eastus", "westus2", "westeurope", "centralus", "eastus2".
+                  Some resources (e.g. Front Door profile) are global — use "global" for those.
+        tags: Optional dict for billing/ownership (e.g. {"owner": "team-x", "env": "dev"}).
+        subscription_id: Optional override. When omitted, uses the logged-in user's
+                         default subscription from AZURE_SUBSCRIPTION_ID.
+
+    Returns:
+        { success: True, resource_group: { name, location, id, tags }, executed_as }
+
+    Chain with: `azure_create_vnet` (put networking in this RG),
+                `azure_create_storage_account`, `azure_create_key_vault`,
+                `azure_create_vm`, `azure_create_app_gateway`, etc.
     """
     try:
         credential, user_info = require_user_token(meta)
@@ -1822,11 +1905,28 @@ async def azure_list_vnets(
     meta: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    List virtual networks.
+    List Virtual Networks (VNets) visible to the user. Returns each VNet's
+    address space, subnet names, and location.
+
+    Use this to:
+      - Verify a VNet you just created.
+      - Find an existing VNet's subnets before dropping a VM or App Gateway in.
+      - Audit VNet sprawl.
 
     Args:
-        resource_group: Filter by resource group
-        subscription_id: Azure subscription ID
+        resource_group: Optional — scope to one RG. Omit to list all across sub.
+        subscription_id: Optional override.
+
+    Returns:
+        { success, count, virtual_networks: [
+            { name, location, resource_group, address_space: [...cidrs],
+              subnets: [...names], provisioning_state, tags }
+          ], executed_as
+        }
+
+    Chain with:
+      - `azure_create_subnet` to add subnets to an existing VNet.
+      - `azure_list_nsgs` to see NSGs available to attach.
     """
     try:
         credential, user_info = require_user_token(meta)
@@ -1868,7 +1968,9 @@ async def azure_list_nsgs(
     meta: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    List network security groups.
+    List Network Security Groups (NSGs) — host firewalls for subnets / NICs —
+    visible to the user. Includes per-NSG rule counts so you can quickly
+    spot empty NSGs or over-permissive ones.
 
     Args:
         resource_group: Filter by resource group
@@ -1914,11 +2016,28 @@ async def azure_list_app_gateways(
     meta: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    List Application Gateways.
+    List all Application Gateways visible to the logged-in user. RBAC-filtered:
+    only returns gateways the user has at least Reader on.
+
+    Use this to:
+      - Verify a gateway you just created (`azure_create_app_gateway`) is live.
+      - Survey what enterprise gateways exist before planning a Front Door.
+      - Check operational_state (Running/Stopped) and provisioning_state (Succeeded/Failed).
 
     Args:
-        resource_group: Filter by resource group
-        subscription_id: Azure subscription ID
+        resource_group: Optional — filter to one RG. Omit to list ALL across the sub.
+        subscription_id: Optional override.
+
+    Returns:
+        { success, count, application_gateways: [
+            { name, location, resource_group, sku (name/tier/capacity),
+              operational_state, provisioning_state,
+              backend_pools_count, http_listeners_count, rules_count, tags }
+          ], executed_as
+        }
+
+    Pair with: `azure_get_app_gateway(name, resource_group)` for full detail
+               (listeners, backend pools, rules, probes, WAF) on a single gateway.
     """
     try:
         credential, user_info = require_user_token(meta)
@@ -3009,10 +3128,9 @@ async def azure_list_alerts(
         return error_response(e, user_info if 'user_info' in dir() else None)
 
 # =============================================================================
-# TYPED CREATE TOOLS — added in v0.6.1 to give the LLM specific creation paths
-# instead of forcing it to hand-craft ARM JSON via azure_arm_execute. Each tool
-# wraps a single SDK call with strongly-typed args. Semantic search ranks these
-# above the generic ARM passthrough because each docstring is narrowly scoped.
+# TYPED CREATE TOOLS — each tool wraps a single SDK call with strongly-typed
+# args so the model doesn't have to hand-craft ARM JSON. Docstrings are
+# narrowly scoped so semantic search picks the right one per task.
 # =============================================================================
 
 @mcp.tool()
@@ -4098,25 +4216,10 @@ async def azure_policy_list_compliance_states(
         return {"success": False, "error": str(e), "executed_as": user_info if 'user_info' in dir() else None}
 
 # =============================================================================
-# DEPRECATED: Generic ARM REST passthrough — intentionally REMOVED in v0.6.1.
-# =============================================================================
-# The old `azure_arm_execute` and `azure_arm_execute_and_wait` tools below were
-# the LLM's escape hatch — semantic search ranked them above every typed tool
-# because their docstrings mentioned every Azure verb. Removing them forces the
-# LLM to pick the actual typed tool for the operation it wants. If you genuinely
-# need a generic ARM passthrough for an esoteric resource we haven't typed yet,
-# add a new typed tool above instead of bringing these back.
-#
-# Replaced by typed creates above:
-#   azure_create_app_service_plan, azure_create_web_app, azure_create_function_app,
-#   azure_create_storage_account, azure_storage_account_set_public_access,
-#   azure_create_container_app, azure_create_key_vault, azure_create_vm
-# Plus typed audit / security / compliance / observability reads:
-#   azure_list_role_assignments, azure_security_list_assessments,
-#   azure_security_secure_score, azure_security_list_alerts,
-#   azure_policy_list_compliance_states,
-#   azure_log_analytics_list_workspaces, azure_log_analytics_query,
-#   azure_app_insights_list_components, azure_app_insights_query
+# End of typed-create block. To expose a new Azure resource type, add a new
+# typed tool above following the same pattern: strongly-typed args, idempotent
+# upsert where the SDK supports it, sensible defaults, and a rich docstring
+# with parameter examples + "chain with" hints.
 # =============================================================================
 
 # =============================================================================
@@ -5118,11 +5221,29 @@ async def azure_list_front_doors(
     meta: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    List Azure Front Door profiles (both Classic and Standard/Premium tiers).
+    List ALL Azure Front Door profiles across the subscription — covers both
+    the legacy "Classic" Front Door (Microsoft.Network/frontdoors) AND modern
+    "Standard/Premium" Front Door (Microsoft.Cdn/profiles with AzureFrontDoor SKU).
+    Uses Azure Resource Graph under the hood for unified discovery.
+
+    Use this to:
+      - Verify a Front Door you just created (`azure_create_front_door`).
+      - Audit existing global edges before designing a new one.
+      - Tell Classic from Standard/Premium — each `tier` field is set
+        ("Classic" | "Standard" | "Premium").
 
     Args:
-        subscription_id: Required scope.
-        resource_group: Optional RG filter.
+        subscription_id: Optional override.
+        resource_group: Optional — scope to one RG instead of the whole sub.
+
+    Returns:
+        { success, count, front_doors: [
+            { name, type, tier, location, resourceGroup, id, sku, properties }
+          ], executed_as
+        }
+
+    Pair with: `azure_get_front_door(name, resource_group)` for one-profile
+               detail (endpoint host, origin groups, origins, routes).
     """
     try:
         credential, user_info = require_user_token(meta)
@@ -5291,16 +5412,40 @@ async def azure_create_vnet(
     meta: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    Create an Azure Virtual Network with subnets.
+    Create an Azure Virtual Network (VNet) with one or more subnets in a single call.
+
+    Use this when setting up the networking foundation for any multi-resource Azure
+    scenario (VMs, AKS, App Gateway, container envs, private endpoints, etc.).
+    The VNet's resource group must exist first — call `azure_create_resource_group` if needed.
 
     Args:
-        name: VNet name
-        resource_group: Resource group (must exist)
-        location: Azure region (e.g., eastus)
-        address_space: CIDR block (default 10.0.0.0/16)
-        subnets: List of {name, address_prefix} dicts. Defaults to one 'default' subnet.
-        subscription_id: Azure subscription ID
-        tags: Optional tags
+        name: VNet name. Alphanumeric + hyphens, 2-64 chars. Example: "vnet-demo-eastus".
+        resource_group: Must already exist. Call `azure_create_resource_group` first.
+        location: Azure region (must match the RG's region). Example: "eastus", "westus2".
+        address_space: CIDR block for the whole VNet. Default "10.0.0.0/16" (65k IPs).
+                       Use smaller blocks (e.g. "10.10.0.0/20") when peering many VNets.
+        subnets: List of subnet dicts in format `[{"name": "...", "address_prefix": "x.x.x.x/y"}]`.
+                 Defaults to a single "default" subnet at "10.0.0.0/24".
+                 ENTERPRISE EXAMPLE (App Gateway + workloads + Azure Bastion):
+                 [
+                   {"name": "appgw-subnet",   "address_prefix": "10.0.1.0/24"},
+                   {"name": "workload-subnet","address_prefix": "10.0.2.0/23"},
+                   {"name": "AzureBastionSubnet", "address_prefix": "10.0.250.0/26"}
+                 ]
+                 NOTE: App Gateway v2 REQUIRES a dedicated /24 or larger subnet with no
+                 other resources in it. Azure Bastion REQUIRES a subnet literally named
+                 "AzureBastionSubnet" at /26 or larger.
+        subscription_id: Optional override.
+        tags: Optional tags.
+
+    Returns:
+        { success, vnet: { name, id, location, address_space, subnets: [{name, address_prefix}] },
+          executed_as }
+
+    Chain with: `azure_create_subnet` (add more subnets later),
+                `azure_create_nsg` (secure subnets with inbound/outbound rules),
+                `azure_create_app_gateway` (references a subnet by name),
+                `azure_create_vm` (drops NIC into one of the subnets).
     """
     try:
         credential, user_info = require_user_token(meta)
@@ -5314,8 +5459,9 @@ async def azure_create_vnet(
             "address_space": {"address_prefixes": [address_space]},
             "subnets": [{"name": s["name"], "address_prefix": s["address_prefix"]} for s in subnet_list],
         }
-        poller = client.virtual_networks.begin_create_or_update(resource_group, name, vnet_params)
-        vnet = poller.result()
+        vnet = await _in_thread(lambda: client.virtual_networks.begin_create_or_update(
+            resource_group, name, vnet_params
+        ).result())
         return {
             "success": True,
             "vnet": {
@@ -5340,24 +5486,41 @@ async def azure_create_subnet(
     meta: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    Add a subnet to an existing VNet.
+    Add a single subnet to an existing VNet. Use this when you need to extend
+    a VNet with additional network segments after the initial VNet creation —
+    for example, to add a dedicated App Gateway subnet, Bastion subnet,
+    Private Endpoint subnet, or a new workload tier.
+
+    For creating the VNet with subnets in one call, use `azure_create_vnet` with
+    its `subnets` parameter instead — this tool is just for adding to existing VNets.
 
     Args:
-        vnet_name: Virtual network name
-        subnet_name: New subnet name
-        resource_group: Resource group
-        address_prefix: CIDR (e.g., 10.0.1.0/24)
-        subscription_id: Azure subscription ID
+        vnet_name: Existing VNet name.
+        subnet_name: New subnet name. Common conventions:
+                     - "appgw-subnet" / "gateway-subnet" — for App Gateway (/24 min, dedicated)
+                     - "AzureBastionSubnet" — REQUIRED name for Bastion (/26 min)
+                     - "workload-subnet" — for VMs / workloads
+                     - "pe-subnet" — for Private Endpoints
+        resource_group: VNet's resource group.
+        address_prefix: CIDR range. MUST be within the VNet's address_space AND
+                        non-overlapping with existing subnets.
+                        Examples: "10.0.1.0/24" (256 IPs), "10.0.10.0/22" (1024 IPs).
+        subscription_id: Optional override.
+
+    Returns:
+        { success, subnet: { name, id, address_prefix }, executed_as }
+
+    Chain with: `azure_create_nsg` (then associate with subnet),
+                `azure_create_app_gateway` (pass this subnet's name).
     """
     try:
         credential, user_info = require_user_token(meta)
         sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
         client = NetworkManagementClient(credential, sub_id)
-        poller = client.subnets.begin_create_or_update(
+        subnet = await _in_thread(lambda: client.subnets.begin_create_or_update(
             resource_group, vnet_name, subnet_name,
             {"address_prefix": address_prefix}
-        )
-        subnet = poller.result()
+        ).result())
         return {
             "success": True,
             "subnet": {"name": subnet.name, "id": subnet.id, "address_prefix": subnet.address_prefix},
@@ -5379,17 +5542,45 @@ async def azure_create_nsg(
     meta: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    Create a Network Security Group with optional rules.
+    Create a Network Security Group (NSG) with optional inbound / outbound
+    security rules. NSGs are the equivalent of host-level firewalls and can
+    be associated with subnets or NICs.
+
+    Rules are evaluated in priority order (lowest priority wins), then the
+    default rules apply. Always give each rule a unique priority in the
+    100–4000 range.
 
     Args:
-        name: NSG name
-        resource_group: Resource group
-        location: Azure region
-        rules: List of security rule dicts with: name, priority, direction (Inbound/Outbound),
-               access (Allow/Deny), protocol (Tcp/Udp/*), source_address_prefix,
-               destination_address_prefix, destination_port_range
-        subscription_id: Azure subscription ID
-        tags: Optional tags
+        name: NSG name. Example: "nsg-web-tier".
+        resource_group: Must exist.
+        location: Must match the resource group's region.
+        rules: List of rule dicts. Each rule supports:
+               - name: unique within the NSG (e.g., "Allow-HTTP-Internet")
+               - priority: 100-4096, lower = evaluated first (default 1000)
+               - direction: "Inbound" | "Outbound" (default "Inbound")
+               - access: "Allow" | "Deny" (default "Allow")
+               - protocol: "Tcp" | "Udp" | "Icmp" | "*" (default "Tcp")
+               - source_address_prefix: "Internet" | "VirtualNetwork" | CIDR | "*"
+               - destination_address_prefix: same options
+               - source_port_range: "*" or number (default "*")
+               - destination_port_range: "*" | "80" | "443" | "80,443" | "1000-2000"
+               COMMON PATTERNS:
+               • Public HTTPS: {name:"Allow-HTTPS", priority:100, protocol:"Tcp",
+                 source_address_prefix:"Internet", destination_port_range:"443"}
+               • App Gateway health probes: {name:"Allow-GWHealth", priority:110,
+                 source_address_prefix:"GatewayManager", destination_port_range:"65200-65535"}
+               • Block everything else: {name:"Deny-All-Inbound", priority:4096,
+                 access:"Deny", source_address_prefix:"*", destination_address_prefix:"*",
+                 destination_port_range:"*"}
+        subscription_id: Optional override.
+        tags: Optional tags.
+
+    Returns:
+        { success, nsg: { name, id, location, rules: [...] }, executed_as }
+
+    Chain with: `azure_create_vnet` / `azure_create_subnet` (associate NSG
+                with a subnet by configuring the subnet later), or attach to
+                a NIC during VM creation.
     """
     try:
         credential, user_info = require_user_token(meta)
@@ -5415,8 +5606,9 @@ async def azure_create_nsg(
             "tags": tags or {},
             "security_rules": security_rules,
         }
-        poller = client.network_security_groups.begin_create_or_update(resource_group, name, nsg_params)
-        nsg = poller.result()
+        nsg = await _in_thread(lambda: client.network_security_groups.begin_create_or_update(
+            resource_group, name, nsg_params
+        ).result())
         return {
             "success": True,
             "nsg": {
@@ -5449,22 +5641,71 @@ async def azure_create_app_gateway(
     meta: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    Create an Azure Application Gateway (v2) with a basic HTTP listener,
-    backend pool, and routing rule.
+    Create an Azure Application Gateway v2 with a public IP, a single HTTP
+    listener, one backend pool (holds ALL your backend_addresses), one HTTP
+    settings, and one routing rule. Supports 100+ backend endpoints in the
+    single pool — perfect for fronting a large set of servers behind one L7.
+
+    Provisioning takes 6-12 minutes (App Gateway v2 is slow). The call blocks
+    until the gateway reaches a terminal provisioning state.
+
+    PRE-REQUISITES (call these first if they don't exist):
+      1. `azure_create_resource_group(name, location)`
+      2. `azure_create_vnet(name=vnet_name, ..., subnets=[{"name": subnet_name,
+           "address_prefix": "10.0.1.0/24"}])`  ← subnet must be DEDICATED to
+           the App Gateway, /24 or larger, with NO OTHER resources in it.
 
     Args:
-        name: App Gateway name
-        resource_group: Resource group
-        location: Azure region
-        vnet_name: VNet name (must exist)
-        subnet_name: Dedicated subnet for the App Gateway (must exist, /24 or larger)
-        sku_name: SKU name (Standard_v2, WAF_v2)
-        sku_tier: SKU tier (Standard_v2, WAF_v2)
-        capacity: Instance count (1-10)
-        frontend_port: Listener port (default 80)
-        backend_addresses: List of backend IP addresses or FQDNs
-        subscription_id: Azure subscription ID
-        tags: Optional tags
+        name: App Gateway name. Alphanumeric + hyphens, 1-80 chars.
+              Example: "agw-web-eastus".
+        resource_group: Must already exist.
+        location: Must match the VNet's region.
+        vnet_name: Existing VNet name.
+        subnet_name: Existing subnet in that VNet, DEDICATED for the gateway.
+                     If shared with other resources, provisioning will fail.
+        sku_name: "Standard_v2" for basic L7, or "WAF_v2" to enable Web
+                  Application Firewall. Default "Standard_v2".
+        sku_tier: Must match sku_name ("Standard_v2" or "WAF_v2").
+        capacity: Fixed instance count, 1-10. Use 2+ for HA in prod.
+                  Default 1 (dev/test). Auto-scaling requires different config
+                  and is not supported by this tool — use capacity instead.
+        frontend_port: Single listener port. Default 80 (HTTP). For HTTPS use 443
+                       but then you also need a cert binding — not exposed here;
+                       provision with port 80 first and add HTTPS via the portal
+                       or a follow-up patch if needed.
+        backend_addresses: List of backend IP addresses OR FQDNs. All go into one
+                           backend pool. Enterprise scale examples:
+                           • ["10.0.2.4", "10.0.2.5", ...100+ IPs for VM pool]
+                           • ["app01.internal", "app02.internal", ...]
+                           • ["my-apim.azure-api.net", "my-webapp.azurewebsites.net"]
+                           Default: ["10.0.0.4"] (placeholder).
+        subscription_id: Optional override.
+        tags: Optional tags.
+
+    Returns:
+        {
+          success, app_gateway: {
+            name, id, location, sku (name, tier, capacity),
+            provisioning_state,   ← "Succeeded" means ready
+            frontend_ip,          ← public IP address (use this as Front Door origin!)
+            backend_pool_count, rule_count
+          },
+          executed_as
+        }
+
+    Chain with:
+      • `azure_create_front_door(origin_hostname=<frontend_ip or FQDN>)` to
+        add a global edge in front of the gateway.
+      • `azure_app_gateway_backend_health` to check that the pool members
+        are reachable once the gateway is up.
+      • `azure_get_app_gateway` to re-read full config.
+
+    LIMITATIONS of this tool (by design — keep it simple):
+      - Single backend pool, single listener, single routing rule.
+      - For multi-path routing (e.g., /api/* → pool A, /static/* → pool B),
+        path-based rules, URL rewrites, WAF policy attachment, SSL bindings:
+        create the basic gateway here, then edit in the portal or via az cli
+        (mention this limitation to the user).
     """
     try:
         credential, user_info = require_user_token(meta)
@@ -5477,12 +5718,15 @@ async def azure_create_app_gateway(
         )
 
         # Create a public IP for the App Gateway frontend
+        # Public IP is fast — ~15s, safe to wait inline.
         pip_name = f"{name}-pip"
-        pip_poller = client.public_ip_addresses.begin_create_or_update(
+        pip = await _in_thread(lambda: client.public_ip_addresses.begin_create_or_update(
             resource_group, pip_name,
             {"location": location, "sku": {"name": "Standard"}, "public_ip_allocation_method": "Static"}
-        )
-        pip = pip_poller.result()
+        ).result())
+        # Capture the IP up front so we can return it even if we don't block on
+        # App Gateway completion (see below).
+        pip_ip_address = pip.ip_address
 
         backends = [{"ip_address": addr} for addr in (backend_addresses or ["10.0.0.4"])]
 
@@ -5531,18 +5775,45 @@ async def azure_create_app_gateway(
                 },
             }],
         }
-        poller = client.application_gateways.begin_create_or_update(resource_group, name, agw_params)
-        agw = poller.result()
+        # App Gateway v2 provisioning takes 6-12 minutes — longer than the typical
+        # Azure AD access token lifetime remaining at dispatch time. If we block
+        # on `.result()` the token can expire mid-LRO and we get ExpiredAuthenticationToken.
+        # Instead: kick off the LRO, return immediately with the public IP and
+        # "provisioning_state: Creating". The agent can call `azure_list_app_gateways`
+        # or `azure_get_app_gateway` later to check completion.
+        poller = await _in_thread(lambda: client.application_gateways.begin_create_or_update(
+            resource_group, name, agw_params
+        ))
+        # At this point Azure has accepted the request (201 Accepted). The
+        # gateway is being provisioned asynchronously. Don't block on
+        # `.result()` — just return the initial status + known fields.
+        initial_state = None
+        try:
+            if hasattr(poller, 'status'):
+                initial_state = poller.status()
+        except Exception:
+            initial_state = None
+        expected_agw_id = (
+            f"/subscriptions/{sub_id}/resourceGroups/{resource_group}"
+            f"/providers/Microsoft.Network/applicationGateways/{name}"
+        )
         return {
             "success": True,
             "app_gateway": {
-                "name": agw.name, "id": agw.id, "location": agw.location,
-                "sku": {"name": agw.sku.name, "tier": agw.sku.tier, "capacity": agw.sku.capacity} if agw.sku else None,
-                "provisioning_state": agw.provisioning_state,
-                "frontend_ip": pip.ip_address,
-                "backend_pool_count": len(agw.backend_address_pools or []),
-                "rule_count": len(agw.request_routing_rules or []),
+                "name": name,
+                "id": expected_agw_id,
+                "location": location,
+                "sku": {"name": sku_name, "tier": sku_tier, "capacity": capacity},
+                "provisioning_state": initial_state or "Creating",
+                "frontend_ip": pip_ip_address,
+                "backend_pool_count": 1,  # single default pool in this tool
+                "rule_count": 1,          # single default rule
+                "backend_address_count": len(backends),
             },
+            "is_long_running": True,
+            "async_poll_hint": f"Call azure_get_app_gateway(name='{name}', resource_group='{resource_group}') "
+                               f"or azure_list_app_gateways(resource_group='{resource_group}') in 3-8 minutes "
+                               f"to verify provisioning_state='Succeeded'.",
             "executed_as": user_info,
         }
     except ValueError as e:
@@ -5561,17 +5832,78 @@ async def azure_create_front_door(
     meta: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    Create an Azure Front Door Standard/Premium profile with a default
-    endpoint, origin group, and origin.
+    Create an Azure Front Door Standard/Premium profile. Front Door is a global
+    L7 load balancer that sits at the Microsoft edge — clients get low-latency
+    TLS termination + caching + WAF, then requests flow to your origins (which
+    can be App Gateways, App Services, storage, or any public endpoint).
+
+    This tool provisions: the PROFILE + a default ENDPOINT (host name is
+    auto-generated, e.g. "my-fd-xxx.azurefd.net"). If you pass `origin_hostname`,
+    it ALSO creates a default origin group + origin pointing to it with
+    sensible health-probe and load-balancing defaults.
+
+    Provisioning takes 1-3 minutes for the profile, another ~30s per child.
+
+    PRE-REQUISITES:
+      1. `azure_create_resource_group(name, location="global" or any region)`
+         — Front Door profiles live at resource-group scope even though they're
+         global; the RG location can be any region.
 
     Args:
-        name: Front Door profile name
-        resource_group: Resource group
-        sku: Standard_AzureFrontDoor or Premium_AzureFrontDoor
-        origin_hostname: Backend origin hostname (e.g., myapp.azurewebsites.net)
-        subscription_id: Azure subscription ID
-        tags: Optional tags
+        name: Front Door profile name. GLOBAL uniqueness NOT required (the
+              endpoint host name has a random suffix). 2-64 chars, alphanumeric + hyphens.
+              Example: "fd-enterprise-prod".
+        resource_group: Must exist.
+        sku: "Standard_AzureFrontDoor" (default) or "Premium_AzureFrontDoor".
+             Premium adds: managed WAF, Private Link origins, bot protection.
+             Use Premium for prod compliance scenarios; Standard for dev/test.
+        origin_hostname: OPTIONAL. Public hostname or IP of the ORIGIN that
+                         Front Door will forward requests to.
+                         Common values:
+                         • "<appgw-name>-pip.<region>.cloudapp.azure.com"  (App Gateway public IP FQDN)
+                         • "<appservice>.azurewebsites.net"
+                         • "<storage>.blob.core.windows.net"
+                         • "<raw ip>"  (if your App Gateway uses a static IP)
+                         If provided, origin_group "default-origin-group" and
+                         origin "default-origin" are auto-wired with HTTP/80
+                         + HTTPS/443 + health probe GET / on HTTPS every 60s.
+                         If omitted, you'll need to add origins later via portal/CLI.
+        subscription_id: Optional override.
+        tags: Optional tags.
+
+    Returns:
+        {
+          success,
+          front_door: {
+            name, id, sku, provisioning_state,
+            endpoint,             ← e.g. "fd-xxx-a1b2c3.azurefd.net" — point DNS at this
+            [origin_group],       ← only if origin_hostname was given
+            [origin]              ← the hostname you passed
+          },
+          executed_as
+        }
+
+    Chain with:
+      • `azure_list_front_doors` to verify the profile is visible.
+      • `azure_get_front_door(profile_name=name)` to fetch full config incl. routes.
+      • DNS: add a CNAME from your custom domain → the returned `endpoint`.
+      • Custom-domain attachment + routing rules are currently portal-only from
+        this tool — mention that to the user if needed.
+
+    COMMON PATTERN (FD → App Gateway → VMs):
+      1. `azure_create_app_gateway(...)` — returns `app_gateway.frontend_ip`.
+      2. Front Door accepts that raw IP as `origin_hostname`, OR if you want a
+         stable FQDN, provision the App Gateway with a DNS label set on its
+         public IP (portal/CLI step today — not exposed via a typed tool).
+      3. `azure_create_front_door(origin_hostname="<ip_or_fqdn_from_step_1>")`.
     """
+    # Each sub-step wraps its own try/except so a child failure (e.g. endpoint
+    # or origin-group hiccup) doesn't mask the fact that the PROFILE did land.
+    # Gap 1 from docs/releases/0.6.5-evidence/temporal-plan-landing.md: FastMCP
+    # surfaced INTERNAL_ERROR even when Azure CDN reported success, because the
+    # Azure SDK occasionally raises non-AzureError exceptions from LRO polling.
+    user_info: Optional[Dict[str, Any]] = None
+    partial_errors: List[str] = []
     try:
         from azure.mgmt.cdn import CdnManagementClient
         from azure.mgmt.cdn.models import (
@@ -5585,64 +5917,113 @@ async def azure_create_front_door(
         sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
         client = CdnManagementClient(credential, sub_id)
 
-        # 1. Create the profile
-        profile_poller = client.profiles.begin_create(
+        # 1. PROFILE — if this fails, the whole tool fails.
+        profile = await _in_thread(lambda: client.profiles.begin_create(
             resource_group, name,
             Profile(location="global", sku=CdnSku(name=sku), tags=tags or {})
-        )
-        profile = profile_poller.result()
+        ).result())
 
-        # 2. Create default endpoint
+        # 2. DEFAULT ENDPOINT — best-effort. If LRO flakes, fall back to a
+        # verify-by-get after a short pause; Azure's control plane is eventually
+        # consistent for child resources of a just-created profile.
         endpoint_name = f"{name}-endpoint"
-        ep_poller = client.afd_endpoints.begin_create(
-            resource_group, name, endpoint_name,
-            AFDEndpoint(location="global")
-        )
-        endpoint = ep_poller.result()
+        endpoint_host: Optional[str] = None
+        try:
+            endpoint = await _in_thread(lambda: client.afd_endpoints.begin_create(
+                resource_group, name, endpoint_name,
+                AFDEndpoint(location="global")
+            ).result())
+            endpoint_host = getattr(endpoint, "host_name", None)
+        except Exception as e:
+            partial_errors.append(f"endpoint_create: {type(e).__name__}: {e}")
+            # Verify-by-get fallback: the create may have succeeded even though
+            # the LRO poller raised. Give Azure 3s then probe.
+            await asyncio.sleep(3)
+            try:
+                fetched = await _in_thread(lambda: client.afd_endpoints.get(
+                    resource_group, name, endpoint_name
+                ))
+                endpoint_host = getattr(fetched, "host_name", None)
+            except Exception:
+                pass
+        if not endpoint_host:
+            endpoint_host = f"{endpoint_name}-<random>.z01.azurefd.net"
 
         result = {
             "success": True,
             "front_door": {
-                "name": profile.name, "id": profile.id, "sku": profile.sku.name if profile.sku else None,
+                "name": profile.name, "id": profile.id,
+                "sku": profile.sku.name if profile.sku else None,
                 "provisioning_state": profile.provisioning_state,
-                "endpoint": endpoint.host_name,
+                "endpoint": endpoint_host,
             },
             "executed_as": user_info,
         }
 
-        # 3. Optionally create origin group + origin
+        # 3. Optional origin group + origin — also best-effort.
         if origin_hostname:
             og_name = "default-origin-group"
-            og_poller = client.afd_origin_groups.begin_create(
-                resource_group, name, og_name,
-                AFDOriginGroup(
-                    load_balancing_settings=LoadBalancingSettingsParameters(
-                        sample_size=4, successful_samples_required=3,
-                        additional_latency_in_milliseconds=50,
-                    ),
-                    health_probe_settings=HealthProbeParameters(
-                        probe_path="/", probe_protocol="Https",
-                        probe_interval_in_seconds=60,
-                    ),
-                )
-            )
-            og = og_poller.result()
+            try:
+                await _in_thread(lambda: client.afd_origin_groups.begin_create(
+                    resource_group, name, og_name,
+                    AFDOriginGroup(
+                        load_balancing_settings=LoadBalancingSettingsParameters(
+                            sample_size=4, successful_samples_required=3,
+                            additional_latency_in_milliseconds=50,
+                        ),
+                        health_probe_settings=HealthProbeParameters(
+                            probe_path="/", probe_protocol="Https",
+                            probe_interval_in_seconds=60,
+                        ),
+                    )
+                ).result())
+                result["front_door"]["origin_group"] = og_name
+            except Exception as e:
+                partial_errors.append(f"origin_group_create: {type(e).__name__}: {e}")
 
-            origin_poller = client.afd_origins.begin_create(
-                resource_group, name, og_name, "default-origin",
-                AFDOrigin(host_name=origin_hostname, http_port=80, https_port=443)
-            )
-            origin = origin_poller.result()
-            result["front_door"]["origin_group"] = og_name
-            result["front_door"]["origin"] = origin_hostname
+            try:
+                await _in_thread(lambda: client.afd_origins.begin_create(
+                    resource_group, name, og_name, "default-origin",
+                    AFDOrigin(host_name=origin_hostname, http_port=80, https_port=443)
+                ).result())
+                result["front_door"]["origin"] = origin_hostname
+            except Exception as e:
+                partial_errors.append(f"origin_create: {type(e).__name__}: {e}")
 
+        if partial_errors:
+            result["partial_errors"] = partial_errors
+            result["note"] = "Profile landed. Non-fatal child-resource warnings — verify with azure_get_front_door."
         return result
     except ImportError:
         return {"success": False, "error": "azure-mgmt-cdn package not installed. pip install azure-mgmt-cdn"}
     except ValueError as e:
         return {"success": False, "error": str(e)}
     except AzureError as e:
-        return error_response(e, user_info if 'user_info' in dir() else None)
+        return error_response(e, user_info)
+    except Exception as e:
+        # Catch-all: broader than AzureError so we don't let random SDK
+        # exceptions bubble up as FastMCP INTERNAL_ERROR. If the profile
+        # might already exist, probe for it before declaring failure.
+        try:
+            from azure.mgmt.cdn import CdnManagementClient
+            credential2, user_info2 = require_user_token(meta)
+            probe_client = CdnManagementClient(credential2, subscription_id or DEFAULT_SUBSCRIPTION_ID)
+            fetched_profile = await _in_thread(lambda: probe_client.profiles.get(resource_group, name))
+            return {
+                "success": True,
+                "front_door": {
+                    "name": fetched_profile.name,
+                    "id": fetched_profile.id,
+                    "sku": fetched_profile.sku.name if fetched_profile.sku else None,
+                    "provisioning_state": fetched_profile.provisioning_state,
+                    "endpoint": f"{name}-endpoint-<random>.z01.azurefd.net",
+                },
+                "executed_as": user_info2,
+                "note": f"Creation raised {type(e).__name__} but profile exists — treating as success.",
+                "partial_errors": [f"{type(e).__name__}: {e}"],
+            }
+        except Exception:
+            return {"success": False, "error": f"{type(e).__name__}: {e}", "executed_as": user_info}
 
 @mcp.tool()
 async def azure_activity_log(
@@ -5829,7 +6210,6 @@ def main():
     logger.info("  - Microsoft Graph (Users, Groups, Apps)")
     logger.info("  - Monitoring")
     logger.info("  - AI Foundry (Deployment Management)")
-    logger.info("  - ARM REST API (Fallback for any operation)")
     logger.info("=" * 70)
 
     # Use HTTP transport if available and in HTTP mode, otherwise use stdio

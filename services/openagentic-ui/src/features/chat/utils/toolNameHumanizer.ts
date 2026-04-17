@@ -62,8 +62,6 @@ const TOOL_MAP: Record<string, HumanizedTool> = {
   k8s_get_events: { label: 'Get Events', category: 'Kubernetes', color: c('Kubernetes'), activeForm: 'Fetching events' },
 
   // Azure
-  azure_arm_execute: { label: 'ARM Execute', category: 'Azure', color: c('Azure'), activeForm: 'Executing Azure operation' },
-  azure_arm_execute_and_wait: { label: 'ARM Execute & Wait', category: 'Azure', color: c('Azure'), activeForm: 'Provisioning Azure resource' },
   azure_graph_execute: { label: 'Graph Execute', category: 'Azure', color: c('Azure'), activeForm: 'Querying Azure Graph' },
   azure_list_vms: { label: 'List VMs', category: 'Azure', color: c('Azure'), activeForm: 'Listing Azure VMs' },
   azure_list_users: { label: 'List Users', category: 'Azure', color: c('Azure'), activeForm: 'Listing Azure AD users' },

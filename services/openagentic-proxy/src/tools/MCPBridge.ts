@@ -23,14 +23,15 @@ export class MCPBridge {
     this.timeout = config.timeout || 30000;
   }
 
-  // Dynamic timeout: LRO tools (azure_arm_execute_and_wait) get 15 minutes,
-  // standard tools get the configured timeout (default 30s)
+  // Dynamic timeout: typed cloud-resource creates (e.g. azure_create_app_gateway,
+  // azure_create_front_door, azure_create_vm) can take minutes to provision,
+  // so bump their timeout. Azure Front Door / App Gateway typically 5-15 min.
   private getToolTimeout(toolName: string): number {
-    if (toolName.includes('_and_wait') || toolName.includes('_execute_and_wait')) {
-      return 900000; // 15 minutes for LRO polling tools
+    if (/^azure_create_(app_gateway|front_door|aks_cluster|vm)/.test(toolName)) {
+      return 900000; // 15 minutes — heavy provisioning
     }
-    if (toolName.includes('azure_arm') || toolName.includes('aws_')) {
-      return 120000; // 2 minutes for cloud operations
+    if (toolName.startsWith('azure_') || toolName.startsWith('aws_') || toolName.startsWith('aif_')) {
+      return 120000; // 2 minutes for general cloud operations
     }
     return this.timeout;
   }
