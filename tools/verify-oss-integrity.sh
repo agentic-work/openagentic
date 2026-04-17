@@ -45,5 +45,17 @@ if [ $fail -ne 0 ]; then
   exit 1
 fi
 
+# Reject GitHub-hosted runners anywhere — all jobs must run on the self-hosted
+# ARC pool (`openagentic-runners`).
+if [ -d "$REPO/.github/workflows" ]; then
+  bad_runner=$(grep -rEn 'runs-on:[[:space:]]*(ubuntu-latest|ubuntu-[0-9]+\.[0-9]+|macos-latest|macos-[0-9]+|windows-latest|windows-[0-9]+)' "$REPO/.github/workflows" 2>/dev/null || true)
+  if [ -n "$bad_runner" ]; then
+    echo "INTEGRITY FAIL: GitHub-hosted runner label detected. All jobs must"
+    echo "                use a self-hosted runner (openagentic-runners)."
+    echo "$bad_runner"
+    exit 1
+  fi
+fi
+
 echo "OSS integrity: intact."
 exit 0
