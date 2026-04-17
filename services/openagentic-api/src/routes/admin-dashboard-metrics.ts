@@ -15,6 +15,7 @@ import { loggers } from '../utils/logger.js';
 import { LLMMetricsService } from '../services/LLMMetricsService.js';
 import { getCachedMetrics, setCachedMetrics } from '../services/AdminMetricsCache.js';
 import { prisma } from '../utils/prisma.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 const logger = loggers.routes.child({ component: 'AdminDashboardMetrics' });
 const llmMetricsService = new LLMMetricsService();
@@ -35,6 +36,9 @@ interface MetricSeries {
 // Costs are calculated by LLMMetricsService at request time and stored in llm_request_logs
 
 const adminDashboardMetricsRoutes: FastifyPluginAsync = async (fastify) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   /**
    * GET /api/admin/dashboard/metrics
    * Returns comprehensive time-series metrics for the admin dashboard

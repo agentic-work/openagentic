@@ -20,6 +20,7 @@ import {
 } from '../services/TieredFunctionCallingService.js';
 import { loggers } from '../utils/logger.js';
 import { prisma } from '../utils/prisma.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 interface ConfigUpdateBody {
   cheapModel?: string;
@@ -31,6 +32,9 @@ interface ConfigUpdateBody {
 }
 
 export const adminTieredFunctionCallingRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   const logger = loggers.routes;
 
   // Ensure service is initialized

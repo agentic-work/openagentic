@@ -21,6 +21,7 @@ import {
 } from '../services/ScopeEnforcementService.js';
 import { SliderService } from '../services/SliderService.js';
 import { rateLimitService } from '../services/RateLimitService.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 // Admin request type
 type AdminRequest = AuthenticatedRequest;
@@ -124,6 +125,9 @@ const errorResponseSchema = {
 export const adminUserPermissionsRoutes = async (fastify: FastifyInstance) => {
   const logger = loggers.routes;
   const permissionsService = new UserPermissionsService(prisma, logger);
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
 
   // Helper to get admin user ID
   const getAdminUserId = (request: AdminRequest): string => {

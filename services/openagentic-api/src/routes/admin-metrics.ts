@@ -9,10 +9,14 @@ import { loggers } from '../utils/logger.js';
 import { Redis } from 'ioredis';
 import { MilvusClient } from '@zilliz/milvus2-sdk-node';
 import { prisma } from '../utils/prisma.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 const logger = loggers.routes.child({ component: 'AdminMetrics' });
 
 const adminMetricsRoutes: FastifyPluginAsync = async (fastify) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   /**
    * Get MCP execution metrics
    */

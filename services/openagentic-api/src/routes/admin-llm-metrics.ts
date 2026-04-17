@@ -10,6 +10,7 @@ import { prisma } from '../utils/prisma.js';
 import { loggers } from '../utils/logger.js';
 import { llmMetricsService } from '../services/LLMMetricsService.js';
 import { getCachedMetrics, setCachedMetrics } from '../services/AdminMetricsCache.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 const logger = loggers.routes.child({ component: 'AdminLLMMetrics' });
 
@@ -46,6 +47,9 @@ interface MCPToolMetrics {
 // Costs are calculated by LLMMetricsService at request time and stored in llm_request_logs
 
 const adminLLMMetricsRoutes: FastifyPluginAsync = async (fastify) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   /**
    * Get comprehensive LLM metrics overview
    */
