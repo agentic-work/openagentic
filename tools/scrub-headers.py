@@ -88,7 +88,7 @@ def walk(roots):
             yield full; continue
         if not os.path.isdir(full): continue
         for base, dirs, files in os.walk(full):
-            dirs[:] = [d for d in dirs if d not in {'node_modules', 'dist', 'build', '__pycache__', '.venv'}]
+            dirs[:] = [d for d in dirs if d not in {'node_modules', 'dist', 'build', '__pycache__', '.venv', '.pnpm-store'}]
             for f in files:
                 p = os.path.join(base, f)
                 if is_text(p): yield p
