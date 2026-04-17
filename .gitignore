@@ -368,3 +368,8 @@ tools/.sync-cache/
 
 # Local tsc scratch install — shouldn't be in tree
 services/*/.pnpm-store/
+
+# Playwright MCP test artifacts
+.playwright-mcp/
+test-results/
+playwright-report/
