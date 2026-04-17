@@ -3857,6 +3857,11 @@ model LargeResponseStorage {
   current_page  Int      @default(1)
   has_more      Boolean  @default(false)
 
+  // Cross-user sharing (set when promoted to shared storage)
+  resource_scope String?
+  is_shared      Boolean @default(false)
+  tenant_id      String?
+
   // TTL
   created_at    DateTime @default(now())
   expires_at    DateTime // Auto-cleanup after N hours
@@ -3865,6 +3870,7 @@ model LargeResponseStorage {
   @@index([tool_call_id])
   @@index([result_hash])
   @@index([expires_at])
+  @@index([resource_scope])
   @@map("large_response_storage")
   @@schema("public")
 }

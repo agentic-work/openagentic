@@ -126,8 +126,17 @@ SKIP_PATH_HINTS = (
 
 # ─── Preserve: our local fixes (never overwrite) ─────────────────────────────
 PRESERVE = {
-    'services/openagentic-api/src/server.ts',  # boot made non-fatal on empty MCP index
+    'services/openagentic-api/src/server.ts',  # boot made non-fatal on empty MCP index + integrity check
     'services/openagentic-api/src/utils/redis-client.ts',
+    'services/openagentic-api/package.json',  # OSS-added deps (undici) + any upstream strips
+    'services/openagentic-api/src/features.ts',  # OSS edition flag — integrity-guarded
+    'services/openagentic-api/src/utils/oss-integrity.ts',
+    'services/openagentic-api/src/middleware/enterpriseOnly.ts',
+    'services/openagentic-ui/src/features/admin/Upsell.tsx',
+    'tools/setup/src/ui/Upsell.tsx',
+    '.github/required-upsell-strings.tsv',
+    '.github/workflows/oss-integrity.yml',
+    'tools/verify-oss-integrity.sh',
     'services/openagentic-api/src/routes/chat/pipeline/validation.stage.ts',
     'services/openagentic-api/src/services/llm-providers/OllamaProvider.ts',
     'services/openagentic-api/src/routes/admin/codemode.ts',

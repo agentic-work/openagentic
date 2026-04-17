@@ -11,6 +11,13 @@
 x-defaults: &defaults
   restart: unless-stopped
   networks: [oap]
+  # Log rotation so container stdout/stderr never fills the WSL VHD.
+  # 3 files × 10MB = max 30MB per container. Tune per service if needed.
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
 
 services:
 
