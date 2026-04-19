@@ -167,28 +167,26 @@ export class FormattingCapabilitiesService {
       guidance.tips.push('Use emoji indicators for status columns');
     }
 
-    // Chart-specific triggers - recommend Mermaid charts for visualization requests
+    // Chart-specific triggers — recommend ```chart JSON (Chart.js spec) for visualization requests.
+    // Mermaid is deprecated on this platform; do not emit ```mermaid blocks.
     if (/\b(pie\s*chart|pie\s*graph|breakdown|distribution|percentage|proportion|share)\b/i.test(query)) {
-      this.addIfNotPresent(guidance.recommendedCapabilities, ['chart-mermaid-pie']);
-      guidance.tips.push('Use Mermaid pie charts for showing proportions and distributions');
-      guidance.tips.push('Pie chart syntax: ```mermaid\npie title Chart Title\n  "Label A" : 40\n  "Label B" : 60\n```');
+      this.addIfNotPresent(guidance.recommendedCapabilities, ['chart-js']);
+      guidance.tips.push('Use ```chart JSON (Chart.js spec) for proportions: {"type":"pie","data":{"labels":[...],"datasets":[{"data":[...]}]}}');
     }
 
     if (/\b(bar\s*chart|bar\s*graph|compare.*values|histogram|column\s*chart)\b/i.test(query)) {
-      this.addIfNotPresent(guidance.recommendedCapabilities, ['chart-mermaid-bar']);
-      guidance.tips.push('Use Mermaid xychart-beta for bar charts comparing values');
-      guidance.tips.push('Bar chart syntax: ```mermaid\nxychart-beta\n  title "Chart Title"\n  x-axis [A, B, C]\n  bar [10, 20, 30]\n```');
+      this.addIfNotPresent(guidance.recommendedCapabilities, ['chart-js']);
+      guidance.tips.push('Use ```chart JSON (Chart.js spec) with "type":"bar" for value comparisons');
     }
 
     if (/\b(gantt|timeline|project\s*schedule|schedule|milestones|roadmap|project\s*plan)\b/i.test(query)) {
-      this.addIfNotPresent(guidance.recommendedCapabilities, ['chart-mermaid-gantt']);
-      guidance.tips.push('Use Mermaid Gantt charts for project timelines and schedules');
-      guidance.tips.push('Gantt syntax: ```mermaid\ngantt\n  title Project Timeline\n  dateFormat YYYY-MM-DD\n  section Phase 1\n  Task A :a1, 2024-01-01, 30d\n```');
+      this.addIfNotPresent(guidance.recommendedCapabilities, ['diagram-reactflow']);
+      guidance.tips.push('Use ```reactflow JSON with "type":"timeline" for schedules and roadmaps');
     }
 
     if (/\b(chart|graph|visualize|visualization|plot)\b/i.test(query)) {
-      this.addIfNotPresent(guidance.recommendedCapabilities, ['chart-mermaid-pie', 'chart-mermaid-bar', 'chart-mermaid-gantt']);
-      guidance.tips.push('Consider using Mermaid charts: pie for proportions, xychart-beta for bar comparisons, gantt for timelines');
+      this.addIfNotPresent(guidance.recommendedCapabilities, ['chart-js', 'diagram-reactflow']);
+      guidance.tips.push('Use ```chart JSON (Chart.js) for data viz; ```reactflow JSON for flows/architectures; ```svg for static illustrations');
     }
 
     // Interactive artifacts - for games, emulators, demos, simulations
@@ -363,33 +361,23 @@ export class FormattingCapabilitiesService {
     sections.push('');
     sections.push('## 📊 DIAGRAMS AND FLOWCHARTS');
     sections.push('');
-    sections.push('You have TWO diagram options - choose based on complexity:');
+    sections.push('This platform deprecated Mermaid. Emit ```reactflow JSON or inline ```svg — NEVER ```mermaid.');
     sections.push('');
-    sections.push('### Option 1: Mermaid (Simple diagrams)');
-    sections.push('Use \\`\\`\\`mermaid for:');
-    sections.push('- Simple flowcharts');
+    sections.push('### Option 1: Inline SVG (Simple static illustrations)');
+    sections.push('Use \\`\\`\\`svg for:');
+    sections.push('- Icons, badges, simple shapes');
+    sections.push('- Geometric proofs, math illustrations');
+    sections.push('- Hand-authored static graphics');
+    sections.push('');
+    sections.push('### Option 2: ReactFlow JSON (Everything else — flows, architecture, sequence, ERDs, mindmaps)');
+    sections.push('Use \\`\\`\\`reactflow for:');
+    sections.push('- Flowcharts and decision trees');
+    sections.push('- Architecture diagrams');
     sections.push('- Sequence diagrams');
-    sections.push('- Class diagrams');
-    sections.push('- Basic graphs');
+    sections.push('- ERDs, network topology, mindmaps, state machines, timelines');
     sections.push('');
     sections.push('Example:');
-    sections.push('```mermaid');
-    sections.push('flowchart TD');
-    sections.push('    A[Start] --> B{Decision}');
-    sections.push('    B -->|Yes| C[Action 1]');
-    sections.push('    B -->|No| D[Action 2]');
-    sections.push('```');
-    sections.push('');
-    sections.push('### Option 2: ReactFlow Diagram JSON (Complex/Interactive diagrams)');
-    sections.push('Use \\`\\`\\`diagram for:');
-    sections.push('- Complex architecture diagrams');
-    sections.push('- Interactive flowcharts');
-    sections.push('- Network topology');
-    sections.push('- Mind maps');
-    sections.push('- State machines');
-    sections.push('');
-    sections.push('Example:');
-    sections.push('```diagram');
+    sections.push('```reactflow');
     sections.push('{');
     sections.push('  "type": "flowchart",');
     sections.push('  "title": "System Architecture",');
@@ -422,7 +410,7 @@ export class FormattingCapabilitiesService {
     sections.push('6. **Avoid overusing bullet lists** - use prose, tables, or headers instead');
     sections.push('7. **Use inline code ONLY** for actual code, commands, or technical identifiers');
     sections.push('8. **Use bold for emphasis**, not backticks');
-    sections.push('9. **Use Mermaid or ReactFlow diagrams** for architecture and flows');
+    sections.push('9. **Use ```reactflow JSON or inline ```svg** for diagrams — Mermaid is deprecated on this platform');
     sections.push('10. **Validate your output** - check for unclosed code blocks, unbalanced math delimiters');
     sections.push('11. **PROACTIVELY use artifacts** - when the user wants something interactive, use artifact:html without being asked');
     sections.push('12. **Professional tone** - your audience is enterprise IT executives (CIOs, CTOs, AIOps). Keep responses precise and data-driven');

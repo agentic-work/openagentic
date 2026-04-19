@@ -578,31 +578,47 @@ export class GitHubCredentialService {
   // Encryption helpers
   // ============================================================================
 
+  /**
+   * AES-256-GCM encrypt. Format: `ghenc2:<iv-hex>:<tag-hex>:<ciphertext-hex>`.
+   * 12-byte IV (GCM standard) + 16-byte auth tag bind integrity to confidentiality.
+   * Legacy `ghenc:` CBC rows are still readable via decrypt() for a seamless migration.
+   */
   private encrypt(text: string): string {
-    const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv('aes-256-cbc', this.encryptionKey, iv);
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', this.encryptionKey, iv);
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    return `ghenc:${iv.toString('hex')}:${encrypted}`;
+    const tag = cipher.getAuthTag();
+    return `ghenc2:${iv.toString('hex')}:${tag.toString('hex')}:${encrypted}`;
   }
 
   private decrypt(text: string): string {
-    if (!text.startsWith('ghenc:')) {
-      // Not encrypted - return as-is (for backwards compatibility)
-      return text;
+    // GCM (new format)
+    if (text.startsWith('ghenc2:')) {
+      const parts = text.split(':');
+      if (parts.length !== 4) throw new Error('Invalid ghenc2 format');
+      const iv = Buffer.from(parts[1], 'hex');
+      const tag = Buffer.from(parts[2], 'hex');
+      const encrypted = parts[3];
+      const decipher = crypto.createDecipheriv('aes-256-gcm', this.encryptionKey, iv);
+      decipher.setAuthTag(tag);
+      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
     }
-
-    const parts = text.split(':');
-    if (parts.length !== 3) {
-      throw new Error('Invalid encrypted format');
+    // Legacy CBC — kept for existing rows written before the GCM migration.
+    // New writes always use GCM; old rows re-encrypt to GCM on next write.
+    if (text.startsWith('ghenc:')) {
+      const parts = text.split(':');
+      if (parts.length !== 3) throw new Error('Invalid ghenc format');
+      const iv = Buffer.from(parts[1], 'hex');
+      const encrypted = parts[2];
+      const decipher = crypto.createDecipheriv('aes-256-cbc', this.encryptionKey, iv);
+      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
     }
-
-    const iv = Buffer.from(parts[1], 'hex');
-    const encrypted = parts[2];
-    const decipher = crypto.createDecipheriv('aes-256-cbc', this.encryptionKey, iv);
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
+    return text; // Not encrypted — backwards-compat passthrough.
   }
 }
 

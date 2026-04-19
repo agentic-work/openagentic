@@ -1090,7 +1090,7 @@ export const PermissionsModal: React.FC<PermissionsModalProps> = ({ permissionMo
         display: 'flex', flexWrap: 'wrap', gap: 4, padding: '6px 0',
         maxHeight: 200, overflowY: 'auto',
       }}>
-        {tools.sort().map(t => (
+        {[...tools].sort((a, b) => a.localeCompare(b)).map(t => (
           <span key={t} style={{
             fontSize: 10, padding: '2px 6px', borderRadius: 3,
             backgroundColor: BG_DEEP, color: DIM, border: `1px solid ${BORDER}`,

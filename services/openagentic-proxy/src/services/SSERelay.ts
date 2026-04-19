@@ -41,9 +41,11 @@ export class SSERelay {
       }
     });
 
-    return async () => {
-      await redis.unsubscribe(channel);
-      await redis.quit();
+    return () => {
+      // Fire-and-forget cleanup on disconnect. Errors swallowed intentionally —
+      // the client has already disconnected; there's nothing to report to.
+      redis.unsubscribe(channel).catch(() => {});
+      redis.quit().catch(() => {});
     };
   }
 }

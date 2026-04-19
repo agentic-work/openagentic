@@ -1,0 +1,22 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+{{- if and .Values.synth.enabled .Values.synth.executor.enabled .Values.synth.executor.podDisruptionBudget.enabled }}
+# ===================================================================================================
+# SYNTH EXECUTOR POD DISRUPTION BUDGET
+# ===================================================================================================
+# Ensures availability during updates and node maintenance
+# ===================================================================================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "openagentic.fullname" . }}-synth-executor-pdb
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: synth-executor
+spec:
+  minAvailable: {{ .Values.synth.executor.podDisruptionBudget.minAvailable | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: synth-executor
+{{- end }}

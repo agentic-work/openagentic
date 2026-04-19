@@ -1,0 +1,49 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+# coverage.py configuration.
+#
+# Parallel mode + subprocess tracing so PTY tests (which spawn the `synth`
+# binary as a subprocess) contribute to the coverage total — without this,
+# synth/cli/main.py stays at 0% even though 38 PTY tests exercise it.
+
+[run]
+branch = True
+parallel = True
+concurrency = thread,multiprocessing
+source = synth
+omit =
+    # Planned/internal stubs — no live imports today; tracked for later wiring.
+    synth/core/identity.py
+    synth/core/metrics.py
+    synth/platform/integration.py
+    synth/mcp/server.py
+    # Test harness itself
+    tests/*
+    # Bytecode / venv
+    .venv/*
+    **/__pycache__/*
+
+[paths]
+source =
+    synth
+    */synth
+
+[report]
+# Show missing line numbers; skip 100%-covered files from the summary output
+# so reviewers focus on the gaps.
+show_missing = True
+skip_covered = False
+precision = 1
+exclude_lines =
+    # re-ignore explicit coverage pragmas
+    pragma: no cover
+    # debug-only branches
+    def __repr__
+    if self\.debug
+    if __name__ == .__main__.:
+    # abstract method signatures
+    @(abc\.)?abstractmethod
+    raise NotImplementedError
+
+[xml]
+output = coverage.xml

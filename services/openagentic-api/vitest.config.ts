@@ -13,7 +13,10 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      // lcov is the format SonarQube consumes via sonar.javascript.lcov.reportPaths.
+      // Keep text/json/html for local dev.
+      reporter: ['text', 'json', 'html', 'lcov'],
+      reportsDirectory: './coverage',
       exclude: [
         'node_modules/**',
         'dist/**',

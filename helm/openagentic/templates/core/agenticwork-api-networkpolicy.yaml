@@ -73,12 +73,12 @@ spec:
         - protocol: TCP
           port: {{ .Values.api.service.port | default 8000 }}
     {{- end }}
-    # Allow from OAT Executor (callback with execution results)
+    # Allow from Synth Executor (callback with execution results)
     - from:
         - podSelector:
             matchLabels:
               {{- include "openagentic.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: openagentic-synth
+              app.kubernetes.io/component: synth-executor
       ports:
         - protocol: TCP
           port: {{ .Values.api.service.port | default 8000 }}
@@ -207,12 +207,12 @@ spec:
       ports:
         - protocol: TCP
           port: 3060
-    # OAT Executor
+    # Synth Executor
     - to:
         - podSelector:
             matchLabels:
               {{- include "openagentic.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: openagentic-synth
+              app.kubernetes.io/component: synth-executor
       ports:
         - protocol: TCP
           port: 8090

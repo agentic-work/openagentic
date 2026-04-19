@@ -17,6 +17,7 @@ import { logger } from '../utils/logger.js';
 import { createSubagentOrchestrator, type OrchestrationResult, type LLMClient, type OrchestratorEvent, type EventEmitter } from '../services/SubagentOrchestrator.js';
 import { createMCPProxyClient } from '../services/MCPProxyClient.js';
 import { GoogleVertexProvider } from '../services/llm-providers/GoogleVertexProvider.js';
+import { ndjsonHeaders, writeNDJSON } from '../infra/ndjson.js';
 
 const OrchestrateStreamSchema = z.object({
   request: z.string().min(1, 'Request is required'),
@@ -236,16 +237,15 @@ export default async function orchestrateRoutes(fastify: FastifyInstance) {
         requestLength: body.request.length
       }, '[Orchestrate] Starting streaming execution');
 
-      // Set up SSE headers
-      reply.raw.setHeader('Content-Type', 'text/event-stream');
-      reply.raw.setHeader('Cache-Control', 'no-cache');
-      reply.raw.setHeader('Connection', 'keep-alive');
-      reply.raw.setHeader('X-Accel-Buffering', 'no');
+      // NDJSON streaming (v0.6.7 — SSE removed from orchestrate, Phase C).
+      reply.raw.writeHead(200, ndjsonHeaders());
 
-      // Create event emitter that writes to SSE stream
+      // Writes one typed JSON line per orchestrator event. The sub-agent
+      // event vocabulary (`subagent_started`, `subagent_tool_call`,
+      // `subagent_completed`, `orchestration_completed`) is preserved —
+      // only the wire envelope changes.
       const emitEvent: EventEmitter = (event: OrchestratorEvent) => {
-        const data = JSON.stringify(event);
-        reply.raw.write(`data: ${data}\n\n`);
+        writeNDJSON(reply, event.type, event as unknown as Record<string, unknown>);
       };
 
       // Create MCP client with user's token
@@ -291,8 +291,12 @@ export default async function orchestrateRoutes(fastify: FastifyInstance) {
           synthesis: result.synthesis
         }
       };
-      reply.raw.write(`data: ${JSON.stringify(finalEvent)}\n\n`);
-      reply.raw.write('data: [DONE]\n\n');
+      writeNDJSON(reply, finalEvent.type, finalEvent as unknown as Record<string, unknown>);
+      // NDJSON streams signal end-of-stream by closing the connection —
+      // no `data: [DONE]` sentinel like SSE. Explicit `done` event is
+      // emitted so clients that key off a named terminal event can still
+      // react cleanly.
+      writeNDJSON(reply, 'done', { timestamp: new Date().toISOString() });
       reply.raw.end();
 
       return reply;
@@ -304,13 +308,11 @@ export default async function orchestrateRoutes(fastify: FastifyInstance) {
         userId
       }, '[Orchestrate] Streaming execution failed');
 
-      // Send error event
-      const errorEvent = {
-        type: 'error',
+      writeNDJSON(reply, 'error', {
         timestamp: new Date().toISOString(),
-        data: { error: error.message }
-      };
-      reply.raw.write(`data: ${JSON.stringify(errorEvent)}\n\n`);
+        code: 'ORCHESTRATION_FAILED',
+        message: error.message,
+      });
       reply.raw.end();
 
       return reply;

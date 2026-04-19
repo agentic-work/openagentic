@@ -6,6 +6,7 @@
 
 import { workflowEndpoint } from '@/utils/api';
 import type { Workflow, WorkflowDefinition } from '../types/workflow.types';
+import { parseNDJSONStream } from '@/utils/ndjsonStream';
 
 export interface CreateWorkflowRequest {
   name: string;
@@ -191,11 +192,16 @@ export class WorkflowApiService {
   }
 
   /**
-   * Execute workflow (with SSE streaming via EventSource)
+   * Execute workflow with NDJSON streaming.
    *
-   * Uses async mode: POST returns { executionId } immediately,
-   * then EventSource subscribes to GET /executions/:id/stream for real-time updates.
-   * This avoids proxy buffering issues with POST response body streaming.
+   * Async mode: POST returns `{ executionId }` immediately, then we open
+   * a GET stream to `/executions/:id/stream` and parse NDJSON via the
+   * shared `parseNDJSONStream` util. Replaces the v0.6.6-and-earlier
+   * EventSource + named-event-handler dance.
+   *
+   * v0.6.7: SSE removed server-side (Phase C), so EventSource is no
+   * longer an option even if we wanted one — fetch + async iterator is
+   * the canonical pattern across chat, flows, admin, etc.
    */
   async executeWorkflow(
     id: string,
@@ -228,57 +234,38 @@ export class WorkflowApiService {
 
     if (!onProgress || !executionId) return;
 
-    // Subscribe to real-time events via EventSource (GET endpoint)
-    return new Promise<void>((resolve) => {
-      let resolved = false;
-      const streamUrl = workflowEndpoint(`/workflows/executions/${executionId}/stream`);
-      console.log(`[WorkflowAPI] Opening EventSource: ${streamUrl}`);
-      const eventSource = new EventSource(streamUrl);
+    // Subscribe to real-time events via the GET NDJSON stream endpoint.
+    const streamUrl = workflowEndpoint(`/workflows/executions/${executionId}/stream`);
+    console.log(`[WorkflowAPI] Opening NDJSON stream: ${streamUrl}`);
 
-      const cleanup = () => {
-        if (!resolved) {
-          resolved = true;
-          eventSource.close();
-          resolve();
-        }
-      };
-
-      const handleEvent = (eventType: string, data: any) => {
-        onProgress!({ type: eventType, data });
-        if (eventType === 'execution_complete' || eventType === 'execution_error') {
-          cleanup();
-        }
-      };
-
-      // Named event handlers for each execution event type
-      for (const eventType of [
-        'execution_start', 'node_start', 'node_complete', 'node_error',
-        'execution_complete', 'execution_error', 'execution_paused',
-      ]) {
-        eventSource.addEventListener(eventType, (evt: any) => {
-          try {
-            const data = JSON.parse(evt.data);
-            handleEvent(eventType, data);
-          } catch { /* skip malformed */ }
-        });
-      }
-
-      // Fallback for unnamed events
-      eventSource.onmessage = (evt) => {
-        try {
-          const data = JSON.parse(evt.data);
-          handleEvent(data.type || 'unknown', data);
-        } catch { /* skip */ }
-      };
-
-      eventSource.onerror = () => {
-        console.warn('[WorkflowAPI] EventSource error/closed');
-        cleanup();
-      };
-
-      // Safety timeout: 5 minutes
-      setTimeout(cleanup, 300000);
+    const streamResponse = await fetch(streamUrl, {
+      method: 'GET',
+      headers: {
+        ...this.getAuthHeaders(),
+        'Accept': 'application/x-ndjson',
+      },
     });
+
+    // Safety timeout: abort after 5 minutes of total streaming.
+    const abortController = new AbortController();
+    const timeoutHandle = setTimeout(() => abortController.abort(), 300_000);
+
+    try {
+      for await (const event of parseNDJSONStream<{ type: string; [key: string]: unknown }>(
+        streamResponse,
+        { onParseError: (err, line) => console.warn('[WorkflowAPI] NDJSON parse error', err, line.slice(0, 80)) },
+      )) {
+        const eventType = event.type;
+        // Skip keepalive/ping/connected — they aren't user-visible events.
+        if (eventType === 'keepalive' || eventType === 'ping' || eventType === 'connected') continue;
+        onProgress({ type: eventType, data: event });
+        if (eventType === 'execution_complete' || eventType === 'execution_error' || eventType === 'timeout') {
+          break;
+        }
+      }
+    } finally {
+      clearTimeout(timeoutHandle);
+    }
   }
 
   /**
@@ -314,38 +301,15 @@ export class WorkflowApiService {
       throw new Error(details || error.error || 'Failed to test workflow');
     }
 
-    // Handle SSE streaming — buffer partial lines across chunks
+    // NDJSON streaming via shared parser.
     if (onProgress && response.body) {
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-
-        const events = buffer.split('\n\n');
-        buffer = events.pop() || '';
-
-        for (const event of events) {
-          const lines = event.split('\n');
-          let eventType = '';
-          let dataStr = '';
-          for (const line of lines) {
-            if (line.startsWith('event:')) eventType = line.substring(6).trim();
-            else if (line.startsWith('data:')) dataStr = line.substring(5).trim();
-          }
-          if (eventType && dataStr) {
-            try {
-              const data = JSON.parse(dataStr);
-              onProgress({ type: eventType, data });
-            } catch (parseErr) {
-              console.warn('[WorkflowAPI] SSE parse error:', (parseErr as Error).message?.slice(0, 100), 'data length:', dataStr.length);
-            }
-          }
-        }
+      for await (const event of parseNDJSONStream<{ type: string; [key: string]: unknown }>(
+        response,
+        { onParseError: (err, line) => console.warn('[WorkflowAPI] NDJSON parse error', err, line.slice(0, 80)) },
+      )) {
+        const eventType = event.type;
+        if (eventType === 'keepalive' || eventType === 'ping' || eventType === 'connected') continue;
+        onProgress({ type: eventType, data: event });
       }
     }
   }

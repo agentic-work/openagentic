@@ -17,6 +17,7 @@ import { Redis } from 'ioredis';
 import { BackgroundJobService } from '../services/BackgroundJobService.js';
 import { prisma } from '../utils/prisma.js';
 import { logger } from '../utils/logger.js';
+import { ndjsonHeaders, writeNDJSON } from '../infra/ndjson.js';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';
 
@@ -227,34 +228,23 @@ const backgroundJobsRoutes: FastifyPluginAsync = async (fastify) => {
 
       const userId = user.email || user.id;
 
-      // Set up SSE headers
-      reply.raw.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no' // CRITICAL: Disable NGINX buffering for SSE streaming
-      });
-
-      // Send initial connection event
-      reply.raw.write(`event: connected\ndata: ${JSON.stringify({ connected: true })}\n\n`);
+      // NDJSON streaming (v0.6.7 — Phase D.2).
+      reply.raw.writeHead(200, ndjsonHeaders());
+      writeNDJSON(reply, 'connected', { connected: true });
 
       // Poll for job updates every 2 seconds
       const pollInterval = setInterval(async () => {
         try {
-          // Get jobs from both Redis and database using the service
           const jobs = await backgroundJobService.getUserJobs(userId);
-
-          // Send update event
-          reply.raw.write(`event: update\ndata: ${JSON.stringify({ jobs })}\n\n`);
+          writeNDJSON(reply, 'update', { jobs });
         } catch (error: any) {
           logger.error({ error: error.message, userId }, 'Error polling background jobs');
         }
       }, 2000);
 
-      // Clean up on disconnect
       request.raw.on('close', () => {
         clearInterval(pollInterval);
-        logger.info({ userId }, 'Background jobs SSE stream closed');
+        logger.info({ userId }, 'Background jobs NDJSON stream closed');
       });
 
       return reply;

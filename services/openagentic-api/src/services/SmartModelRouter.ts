@@ -81,6 +81,52 @@ export interface RoutingDecision {
   reason: string;
   alternativeModels: ModelProfile[];
   analysisResults: RequestAnalysis;
+  /**
+   * True when the router overrode the normal candidate pool because the
+   * prompt contained destructive verbs (delete / terminate / drop / ...)
+   * paired with a cloud-resource noun. In that case the chosen model MUST
+   * be at Sonnet-tier or higher regardless of slider position — cheap
+   * models mis-parse destructive intent and we'd rather pay the extra
+   * tokens than risk a mis-targeted delete sneaking past HITL on a typo.
+   */
+  route_escalated_destructive?: boolean;
+  /** Matched verb + noun + chosen escalation tier, for audit log. */
+  destructive_context?: {
+    verb: string;
+    noun: string;
+    escalatedTo: string;
+  };
+}
+
+/**
+ * Destructive verbs the router should escalate on. Kept narrow — only
+ * verbs that CAN cause resource loss. We exclude soft verbs (disable,
+ * pause) because those are typically reversible.
+ */
+const DESTRUCTIVE_VERB_REGEX = /\b(?:delete|deletes|deleting|remove|removes|removing|drop|drops|dropping|destroy|destroys|destroying|terminate|terminates|terminating|purge|purges|purging|shutdown|shutting\s+down|deallocate|deallocates|deallocating|kill|kills|killing|wipe|wipes|wiping|nuke|nukes|nuking|tear\s+down|tearing\s+down|truncate|truncates|truncating)\b/i;
+
+/**
+ * Cloud-resource nouns. A prompt like "delete the report" doesn't count;
+ * a prompt like "delete the resource group" does. Kept broad — anything
+ * that maps to a cloud resource, pod, or secret.
+ */
+const CLOUD_RESOURCE_NOUN_REGEX = /\b(?:resource\s+group|resource\s+groups|subscription|subscriptions|tenant|tenants|vm|vms|virtual\s+machine|virtual\s+machines|instance|instances|bucket|buckets|blob|blobs|storage\s+account|storage\s+accounts|database|databases|db|dbs|rds|sql\s+server|table|tables|cluster|clusters|aks|eks|gke|namespace|namespaces|pod|pods|deployment|deployments|statefulset|statefulsets|vault|vaults|key\s+vault|secret\s+manager|secret|secrets|key|keys|certificate|certificates|cert|certs|role|roles|policy|policies|user|users|group|groups|service\s+account|service\s+accounts|iam|iam\s+role|function|functions|lambda|lambdas|cloud\s+function|queue|queues|topic|topics|stream|streams|workspace|workspaces|alert|alerts|rule|rules|firewall|firewall\s+rule|network|networks|vpc|vpcs|vnet|vnets|subnet|subnets|route|routes|nat\s+gateway|load\s+balancer|load\s+balancers|lb|lbs|dns|dns\s+zone|app\s+service|app\s+services|front\s+door|cdn|container\s+registry|acr|ecr|gcr|snapshot|snapshots|backup|backups|volume|volumes|disk|disks|image|images|ami|amis|container|containers|configmap|configmaps|secret\s+store)\b/i;
+
+/**
+ * Evaluate a prompt for destructive intent. Returns the matched verb +
+ * noun when both co-occur, null otherwise. Matching is case-insensitive
+ * and allows multi-word nouns ("resource group", "virtual machine").
+ */
+export function detectDestructiveIntent(prompt: string): { verb: string; noun: string } | null {
+  if (!prompt || typeof prompt !== 'string') return null;
+  const verbMatch = DESTRUCTIVE_VERB_REGEX.exec(prompt);
+  if (!verbMatch) return null;
+  const nounMatch = CLOUD_RESOURCE_NOUN_REGEX.exec(prompt);
+  if (!nounMatch) return null;
+  return {
+    verb: verbMatch[0].toLowerCase(),
+    noun: nounMatch[0].toLowerCase(),
+  };
 }
 
 // Minimum function calling accuracy — two tiers.
@@ -610,6 +656,51 @@ export class SmartModelRouter {
     // Filter and score models
     let candidates = availableModels;
     let reason = '';
+    let destructiveEscalation: RoutingDecision['destructive_context'] | null = null;
+
+    // DESTRUCTIVE-VERB ESCALATION (BLOCKER-001): When the prompt contains a
+    // destructive verb (delete/terminate/drop/...) paired with a cloud-resource
+    // noun, we MUST route to a frontier model regardless of slider setting.
+    // Cheap models misread destructive intent (wrong subscription, wrong
+    // resource name) and HITL approvers can rubber-stamp a modal on a typo.
+    // We'd rather pay the Opus tokens than lose a prod RG. This runs BEFORE
+    // every other branch so it wins over the cost-optimization branch.
+    const destructiveCheckText = (request.messages || [])
+      .filter((m: any) => m.role === 'user')
+      .map((m: any) => typeof m.content === 'string' ? m.content : '')
+      .join(' ');
+    const destructiveHit = detectDestructiveIntent(destructiveCheckText);
+    if (destructiveHit) {
+      const frontierModels = candidates.filter(m =>
+        m.capabilities.functionCalling &&
+        m.capabilities.functionCallingAccuracy >= 0.93,
+      );
+      if (frontierModels.length > 0) {
+        candidates = frontierModels;
+        reason = `Destructive intent detected (${destructiveHit.verb} + ${destructiveHit.noun}) → frontier models only (≥93% accuracy). Slider override.`;
+        destructiveEscalation = {
+          verb: destructiveHit.verb,
+          noun: destructiveHit.noun,
+          escalatedTo: 'frontier',
+        };
+        this.logger.warn({
+          verb: destructiveHit.verb,
+          noun: destructiveHit.noun,
+          frontierCount: frontierModels.length,
+          frontierModels: frontierModels.map(m => m.modelId),
+          sliderOverridden: true,
+          route_escalated_destructive: true,
+        }, '🛡️ [DESTRUCTIVE ESCALATION] Slider overridden — destructive verb + cloud-noun detected, routing to frontier');
+      } else {
+        // No frontier available — log loudly but fall through; the HITL
+        // gate remains the last line of defence.
+        this.logger.error({
+          verb: destructiveHit.verb,
+          noun: destructiveHit.noun,
+          availableModels: candidates.map(m => `${m.modelId}(${m.capabilities.functionCallingAccuracy})`),
+        }, '🚨 [DESTRUCTIVE ESCALATION] No frontier models available — falling back. HITL gate is your only safety net.');
+      }
+    }
 
     // PREMIUM ESCALATION: When slider is premium (>70) and request is complex
     // (tools, multi-step, multi-cloud), prefer frontier models (accuracy >= 0.93).
@@ -805,7 +896,9 @@ export class SmartModelRouter {
       selectedModel: selected,
       reason,
       alternativeModels: alternatives,
-      analysisResults: analysis
+      analysisResults: analysis,
+      route_escalated_destructive: destructiveEscalation !== null,
+      destructive_context: destructiveEscalation ?? undefined,
     };
   }
 

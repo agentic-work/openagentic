@@ -45,7 +45,7 @@ const VISUAL_NOUNS = [
   'bar chart',
   'line chart',
   'scatter plot',
-  'mermaid diagram',
+  'reactflow diagram',
   'd2 diagram',
   'er diagram',
   'uml diagram',

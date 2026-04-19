@@ -36,7 +36,12 @@ export const featureFlags = {
   mcp: parseFlag(import.meta.env.VITE_FEATURE_MCP, true),
 
   // Synth (Tool Synthesis) - dynamic tool synthesis
-  oat: parseFlag(import.meta.env.VITE_FEATURE_OAT, true),
+  // VITE_FEATURE_SYNTH is the current env var; VITE_FEATURE_OAT is the
+  // transitional alias read during the rename. Drop the alias next release.
+  synth: parseFlag(
+    import.meta.env.VITE_FEATURE_SYNTH ?? import.meta.env.VITE_FEATURE_OAT,
+    true,
+  ),
 } as const;
 
 // Type for feature flag keys

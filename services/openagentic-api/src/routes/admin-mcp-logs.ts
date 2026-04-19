@@ -9,6 +9,7 @@ import { adminMiddleware } from '../middleware/unifiedAuth.js';
 import { Prisma } from '@prisma/client';
 import { loggers } from '../utils/logger.js';
 import { prisma } from '../utils/prisma.js';
+import { ndjsonHeaders, writeNDJSON } from '../infra/ndjson.js';
 
 const logger = loggers.routes.child({ component: 'AdminMCPLogs' });
 
@@ -365,15 +366,10 @@ const adminMCPLogsRoutes: FastifyPluginAsync = async (fastify) => {
         return;
       }
 
-      // Set up SSE headers
-      reply.raw.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no'
-      });
+      // NDJSON stream (v0.6.7 — Phase D.4).
+      reply.raw.writeHead(200, ndjsonHeaders());
 
-      // Spawn docker logs process with follow
+      // Spawn docker logs process with follow.
       const { spawn } = await import('child_process');
       const dockerLogs = spawn('docker', ['logs', 'openagentic-mcp-proxy', '-f', '--tail', '0'], {
         stdio: ['ignore', 'pipe', 'pipe']
@@ -398,16 +394,11 @@ const adminMCPLogsRoutes: FastifyPluginAsync = async (fastify) => {
           logEntry.message = logMatch[4] || line;
         }
 
-        // Apply server filter if specified
         if (serverFilter && !logEntry.server.toLowerCase().includes(serverFilter.toLowerCase())) {
           return;
         }
 
-        try {
-          reply.raw.write(`data: ${JSON.stringify(logEntry)}\n\n`);
-        } catch {
-          // Connection closed
-        }
+        writeNDJSON(reply, 'log', logEntry);
       };
 
       // Process stdout
@@ -425,23 +416,20 @@ const adminMCPLogsRoutes: FastifyPluginAsync = async (fastify) => {
       // Handle process end
       dockerLogs.on('close', () => {
         try {
-          reply.raw.write(`data: ${JSON.stringify({ type: 'close', message: 'Log stream ended' })}\n\n`);
+          writeNDJSON(reply, 'close', { message: 'Log stream ended' });
           reply.raw.end();
         } catch {
           // Already closed
         }
       });
 
-      // Handle client disconnect
       request.raw.on('close', () => {
         dockerLogs.kill();
       });
 
-      // Keep connection alive with heartbeat
+      // Keep connection alive with heartbeat.
       const heartbeat = setInterval(() => {
-        try {
-          reply.raw.write(`: heartbeat\n\n`);
-        } catch {
+        if (!writeNDJSON(reply, 'heartbeat', { ts: Date.now() })) {
           clearInterval(heartbeat);
         }
       }, 30000);

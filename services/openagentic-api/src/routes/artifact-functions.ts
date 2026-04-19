@@ -20,10 +20,10 @@ import { createClient } from 'redis';
 
 const logger = loggers.routes?.child?.({ module: 'artifact-functions' }) || loggers.routes || loggers;
 
-const SYNTH_EXECUTOR_URL = process.env.SYNTH_EXECUTOR_URL || 'http://openagentic-openagentic-synth:8090';
+const SYNTH_EXECUTOR_URL = process.env.SYNTH_EXECUTOR_URL || 'http://openagentic-synth-executor:8090';
 
 /**
- * Capability translation map: semantic names → OAT executor capability names.
+ * Capability translation map: semantic names → Synth executor capability names.
  */
 const CAPABILITY_MAP: Record<string, string[]> = {
   'data_processing': ['file_processing'],

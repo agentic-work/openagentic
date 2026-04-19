@@ -85,10 +85,9 @@ async function testFormattingService() {
     'math-inline',
     'math-display',
     'diagram-d2',
-    'diagram-mermaid',
-    'diagram-plantuml',
-    'chart-mermaid-pie',
-    'chart-mermaid-gantt',
+    'diagram-reactflow',
+    'diagram-svg',
+    'chart-js',
     'md-tables',
     'visual-emojis'
   ];

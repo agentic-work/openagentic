@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Loader2, CheckCircle, Circle, XCircle, ChevronDown, ChevronRight, Trash2, Clock } from '@/shared/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/app/providers/AuthContext';
+import { parseNDJSONStream } from '@/utils/ndjsonStream';
 
 interface BackgroundJobTodo {
   content: string;
@@ -169,44 +170,45 @@ export const BackgroundJobsPanel: React.FC<BackgroundJobsPanelProps> = ({
     toggleResultExpansion(jobId);
   };
 
-  // Fetch jobs initially and set up SSE for real-time updates
+  // Fetch jobs initially and subscribe to the NDJSON stream for real-time updates.
   useEffect(() => {
     if (!isOpen) return;
 
     // Initial fetch
     fetchJobs();
 
-    // Set up SSE for real-time updates
+    const abort = new AbortController();
     const authHeaders = getAuthHeaders();
     const authToken = authHeaders?.['Authorization']?.replace('Bearer ', '') || '';
-    const sseUrl = authToken
+    const streamUrl = authToken
       ? `/api/background-jobs/stream?token=${authToken}`
       : '/api/background-jobs/stream';
 
-    const eventSource = new EventSource(sseUrl, {
-      withCredentials: true
-    });
+    let pollFallback: ReturnType<typeof setInterval> | null = null;
 
-    eventSource.addEventListener('update', (event) => {
+    (async () => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.jobs) {
-          setJobs(data.jobs);
+        const resp = await fetch(streamUrl, {
+          method: 'GET',
+          headers: { 'Accept': 'application/x-ndjson', ...(authHeaders || {}) },
+          credentials: 'include',
+          signal: abort.signal,
+        });
+        for await (const event of parseNDJSONStream<{ type: string; jobs?: unknown[] }>(resp)) {
+          if (event.type === 'update' && Array.isArray(event.jobs)) {
+            setJobs(event.jobs as typeof jobs);
+          }
         }
-      } catch (error) {
-        console.error('Failed to parse SSE update:', error);
+      } catch (error: any) {
+        if (error?.name === 'AbortError') return;
+        console.error('Background jobs stream error — falling back to polling:', error);
+        pollFallback = setInterval(fetchJobs, 3000);
       }
-    });
-
-    eventSource.onerror = (error) => {
-      console.error('SSE connection error:', error);
-      eventSource.close();
-      const pollInterval = setInterval(fetchJobs, 3000);
-      return () => clearInterval(pollInterval);
-    };
+    })();
 
     return () => {
-      eventSource.close();
+      abort.abort();
+      if (pollFallback) clearInterval(pollFallback);
     };
   }, [isOpen]);
 

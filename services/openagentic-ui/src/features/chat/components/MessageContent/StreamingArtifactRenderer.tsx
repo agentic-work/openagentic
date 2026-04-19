@@ -84,7 +84,7 @@ if (document.body) {
 // CSP meta tags for iframe security
 // Locked-down CSP for artifacts that don't need CDN access
 const CSP_META_STRICT = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none';">`;
-// Legacy CSP for artifacts that load from CDNs (mermaid, react, latex, etc.)
+// Legacy CSP for artifacts that load from CDNs (react, latex, etc.)
 // Cache for bundled library content (fetched once, then inlined into artifact srcdoc)
 const _streamingLibCache: Record<string, string> = {};
 let _streamingLibsReady = false;
@@ -287,25 +287,6 @@ function wrapArtifactContent(content: string, type: ArtifactType, theme: 'light'
   </style>
 </head>
 <body>${viableSvg}${SAFETY_HARNESS_JS}${OAT_BRIDGE_SCRIPT}</body>
-</html>`;
-
-    case 'mermaid':
-      return `<!DOCTYPE html>
-<html>
-<head>
-  ${CSP_META_LEGACY}
-  ${themeDefense}
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-  <style>
-    .mermaid { display: flex; justify-content: center; }
-  </style>
-</head>
-<body>
-  <div class="mermaid">${content}</div>
-  <script>mermaid.initialize({ startOnLoad: true, theme: '${isDark ? 'dark' : 'default'}' });</script>
-  ${SAFETY_HARNESS_JS}
-  ${OAT_BRIDGE_SCRIPT}
-</body>
 </html>`;
 
     case 'latex':

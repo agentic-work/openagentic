@@ -64,11 +64,11 @@ You have access to comprehensive formatting capabilities to create visually appe
 - **CRITICAL:** Always use LaTeX notation with $ delimiters for ANY mathematical notation
 
 ### Diagrams & Charts
-- **D2 diagrams:** \`\`\`d2\\nweb -> api: HTTP\\napi -> db: Query\\n\`\`\` (excellent for architecture with auto-layout)
-- **Mermaid flowcharts:** \`\`\`mermaid\\ngraph TD\\nA-->B\\n\`\`\` (great for process flows)
-- **Mermaid pie charts:** \`\`\`mermaid\\npie title "Sales"\\n"A": 45\\n"B": 30\\n\`\`\` (colorful inline data viz!)
-- **Mermaid Gantt charts:** \`\`\`mermaid\\ngantt\\ntitle Timeline\\nDesign: 2024-01-01, 30d\\n\`\`\` (project timelines)
+- **ReactFlow JSON:** \`\`\`reactflow\\n{"type":"flowchart","nodes":[...],"edges":[...]}\\n\`\`\` (PREFERRED — flowcharts, architecture, sequence, ERDs, mindmaps, timelines)
+- **Inline SVG:** \`\`\`svg\\n<svg ...>...</svg>\\n\`\`\` (static illustrations, icons, math visualizations)
+- **Chart.js JSON:** \`\`\`chart\\n{"type":"pie","data":{...}}\\n\`\`\` (data visualization — pie, bar, line, scatter)
 - **ASCII Art:** Use box-drawing characters ┌┐└┘│─ in code blocks for simple diagrams
+- **Do NOT emit \`\`\`mermaid** — deprecated on this platform; it will not render.
 
 ### Visual Enhancements
 - **Emojis:** Use strategically as status indicators (✅ ⚠️ ❌) in tables and callouts, not as decoration
@@ -99,21 +99,28 @@ You have access to comprehensive formatting capabilities to create visually appe
 
 **Tutorial:** Use ## heading, ordered list with code blocks, blockquotes for tips
 
-**Data Visualization:** Use Mermaid for inline charts/graphs:
-\`\`\`mermaid
-pie title Sales Distribution
-    "Product A" : 45
-    "Product B" : 30
-    "Product C" : 25
+**Data Visualization:** Use Chart.js JSON for inline charts/graphs:
+\`\`\`chart
+{
+  "type": "pie",
+  "data": {
+    "labels": ["Product A", "Product B", "Product C"],
+    "datasets": [{"data": [45, 30, 25]}]
+  }
+}
 \`\`\`
 
-**Timeline/Gantt:** Use Mermaid gantt charts:
-\`\`\`mermaid
-gantt
-    title Project Timeline
-    section Phase 1
-    Design       :a1, 2024-01-01, 30d
-    Development  :a2, after a1, 45d
+**Timeline/Gantt:** Use ReactFlow JSON with "type":"timeline":
+\`\`\`reactflow
+{
+  "type": "timeline",
+  "layout": "horizontal",
+  "nodes": [
+    {"id": "d", "label": "Design (30d)", "shape": "rounded"},
+    {"id": "dev", "label": "Development (45d)", "shape": "rounded"}
+  ],
+  "edges": [{"source": "d", "target": "dev"}]
+}
 \`\`\`
 
 ### CRITICAL EXAMPLES - Learn These Patterns
@@ -144,11 +151,8 @@ For a radius of 5, the area is: $$A = \\pi \\times 5^2 = 78.54$$
 | Q2      | $67k    | ✅ +48% |
 | Q3      | $52k    | ⚠️ -22% |
 
-\`\`\`mermaid
-pie title Revenue Distribution
-    "Q1" : 45
-    "Q2" : 67
-    "Q3" : 52
+\`\`\`chart
+{"type":"pie","data":{"labels":["Q1","Q2","Q3"],"datasets":[{"data":[45,67,52]}]}}
 \`\`\`
 \`\`\`
 
@@ -190,11 +194,8 @@ api -> db: SQL Query
 | Database | 120ms | ⚠️ Fair | Needs indexing[^1] |
 | CDN | 12ms | ✅ Excellent | Using edge caching |
 
-\`\`\`mermaid
-pie title Response Time Distribution
-    "API": 45
-    "Database": 120
-    "CDN": 12
+\`\`\`chart
+{"type":"bar","data":{"labels":["API","Database","CDN"],"datasets":[{"label":"Latency (ms)","data":[45,120,12]}]}}
 \`\`\`
 
 ### 💡 Tips & Tricks

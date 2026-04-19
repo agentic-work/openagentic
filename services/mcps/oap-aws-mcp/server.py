@@ -1277,6 +1277,266 @@ async def aws_list_s3(
     )
 
 # =============================================================================
+# TYPED CONVENIENCE TOOLS — 0.6.6 P6 AWS MCP parity
+# Small, focused wrappers around CLI commands so the LLM can pick specific
+# tools by name instead of hand-rolling CLI strings. Each delegates to
+# _aws_cli() (below) which handles the region suffix + OBO meta passthrough.
+# =============================================================================
+
+def _with_region(cmd: str, region: Optional[str]) -> str:
+    """Suffix an AWS CLI command with `--region <r>` when region is set."""
+    return f"{cmd} --region {region}" if region else cmd
+
+async def _aws_cli(
+    base_cmd: str,
+    *,
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Shared tool body: region-suffix + OBO-forwarding CLI invocation."""
+    return await _execute_aws_command(
+        cli_command=_with_region(base_cmd, region),
+        meta=meta,
+    )
+
+# ---------- EC2 ----------
+
+@mcp.tool()
+async def aws_describe_ec2_instance(
+    instance_id: str,
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Describe one EC2 instance in detail (state, type, IPs, tags, security groups)."""
+    return await _aws_cli(
+        f"aws ec2 describe-instances --instance-ids {instance_id}",
+        region=region, meta=meta,
+    )
+
+@mcp.tool()
+async def aws_list_security_groups(
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List all EC2 security groups in the account (or region if specified)."""
+    return await _aws_cli("aws ec2 describe-security-groups", region=region, meta=meta)
+
+@mcp.tool()
+async def aws_list_volumes(
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List all EBS volumes (state, size, attachment)."""
+    return await _aws_cli("aws ec2 describe-volumes", region=region, meta=meta)
+
+@mcp.tool()
+async def aws_list_vpcs(
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List all VPCs (CIDR blocks, state, default flag)."""
+    return await _aws_cli("aws ec2 describe-vpcs", region=region, meta=meta)
+
+@mcp.tool()
+async def aws_list_subnets(
+    vpc_id: Optional[str] = None,
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List VPC subnets. Optionally filter by vpc-id."""
+    base = "aws ec2 describe-subnets"
+    if vpc_id:
+        base += f' --filters Name=vpc-id,Values={vpc_id}'
+    return await _aws_cli(base, region=region, meta=meta)
+
+# ---------- IAM ----------
+
+@mcp.tool()
+async def aws_list_iam_users(meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """List IAM users in the account."""
+    return await _aws_cli("aws iam list-users", meta=meta)
+
+@mcp.tool()
+async def aws_list_iam_roles(meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """List IAM roles in the account."""
+    return await _aws_cli("aws iam list-roles", meta=meta)
+
+@mcp.tool()
+async def aws_list_iam_policies(
+    scope: str = "All",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List IAM managed policies. scope: All | AWS | Local (customer-managed)."""
+    return await _aws_cli(f"aws iam list-policies --scope {scope}", meta=meta)
+
+# ---------- RDS ----------
+
+@mcp.tool()
+async def aws_list_rds_instances(
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List all RDS DB instances."""
+    return await _aws_cli("aws rds describe-db-instances", region=region, meta=meta)
+
+@mcp.tool()
+async def aws_describe_rds_instance(
+    instance_identifier: str,
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Describe one RDS DB instance by identifier."""
+    return await _aws_cli(
+        f"aws rds describe-db-instances --db-instance-identifier {instance_identifier}",
+        region=region, meta=meta,
+    )
+
+# ---------- Lambda ----------
+
+@mcp.tool()
+async def aws_list_lambdas(
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List all Lambda functions."""
+    return await _aws_cli("aws lambda list-functions", region=region, meta=meta)
+
+@mcp.tool()
+async def aws_describe_lambda(
+    function_name: str,
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Get one Lambda function's configuration (handler, memory, timeout, env vars)."""
+    return await _aws_cli(
+        f"aws lambda get-function --function-name {function_name}",
+        region=region, meta=meta,
+    )
+
+# ---------- CloudWatch ----------
+
+@mcp.tool()
+async def aws_list_cw_alarms(
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List CloudWatch alarms (state, metric, threshold)."""
+    return await _aws_cli("aws cloudwatch describe-alarms", region=region, meta=meta)
+
+@mcp.tool()
+async def aws_list_cw_metrics(
+    namespace: Optional[str] = None,
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List CloudWatch metrics; optionally filter by namespace (e.g. AWS/EC2, AWS/Lambda)."""
+    base = "aws cloudwatch list-metrics"
+    if namespace:
+        base += f" --namespace {namespace}"
+    return await _aws_cli(base, region=region, meta=meta)
+
+# ---------- Bedrock (UC-A16 anchor) ----------
+
+@mcp.tool()
+async def aws_bedrock_list_foundation_models(
+    by_provider: Optional[str] = None,
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    List Bedrock foundation models. Filter by provider
+    (anthropic, amazon, meta, mistral, cohere, ai21). region defaults to
+    us-east-1 (primary Bedrock control plane).
+
+    Typed replacement for the previous `call_aws("aws bedrock
+    list-foundation-models")` round-trip that was prone to truncation/
+    backfill (UC-A16). tool-execution.helper emits _truncated:true on
+    results > 100KB so the LLM won't fabricate missing rows.
+    """
+    base = "aws bedrock list-foundation-models"
+    if by_provider:
+        base += f" --by-provider {by_provider}"
+    return await _aws_cli(base, region=region or 'us-east-1', meta=meta)
+
+# ---------- DynamoDB ----------
+
+@mcp.tool()
+async def aws_list_dynamodb_tables(
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List DynamoDB tables."""
+    return await _aws_cli("aws dynamodb list-tables", region=region, meta=meta)
+
+@mcp.tool()
+async def aws_describe_dynamodb_table(
+    table_name: str,
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Describe a DynamoDB table (schema, GSIs, throughput, stream settings)."""
+    return await _aws_cli(
+        f"aws dynamodb describe-table --table-name {table_name}",
+        region=region, meta=meta,
+    )
+
+# ---------- EKS ----------
+
+@mcp.tool()
+async def aws_list_eks_clusters(
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List EKS Kubernetes clusters in a region."""
+    return await _aws_cli("aws eks list-clusters", region=region, meta=meta)
+
+@mcp.tool()
+async def aws_describe_eks_cluster(
+    cluster_name: str,
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Describe one EKS cluster (version, endpoint, logging, OIDC)."""
+    return await _aws_cli(
+        f"aws eks describe-cluster --name {cluster_name}",
+        region=region, meta=meta,
+    )
+
+# ---------- SNS / SQS / SecretsManager / KMS ----------
+
+@mcp.tool()
+async def aws_list_sns_topics(
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List SNS topics."""
+    return await _aws_cli("aws sns list-topics", region=region, meta=meta)
+
+@mcp.tool()
+async def aws_list_sqs_queues(
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List SQS queues (URLs) in a region."""
+    return await _aws_cli("aws sqs list-queues", region=region, meta=meta)
+
+@mcp.tool()
+async def aws_list_secrets(
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List Secrets Manager secrets (names + ARNs, no values)."""
+    return await _aws_cli("aws secretsmanager list-secrets", region=region, meta=meta)
+
+@mcp.tool()
+async def aws_list_kms_keys(
+    region: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List KMS customer master keys."""
+    return await _aws_cli("aws kms list-keys", region=region, meta=meta)
+
+# =============================================================================
 # CLI COMMAND EXECUTION - Uses real AWS CLI for full compatibility
 # =============================================================================
 

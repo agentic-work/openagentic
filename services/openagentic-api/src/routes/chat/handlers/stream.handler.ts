@@ -1,7 +1,16 @@
 /**
- * Stream Handler for Chat API
+ * Stream Handler for Chat API — NDJSON wire format.
  *
- * Handles Server-Sent Events streaming for real-time chat responses
+ * Emits one typed JSON object per line on /api/chat/stream. The wire
+ * shape is `{type: "<eventName>", ...payload}\n` for every event. Clients
+ * parse with `for (const line of buffer.split("\n")) JSON.parse(line)` —
+ * no SSE `event:` / `data:` state machine, no `\n\n` delimiter.
+ *
+ * Content-Type is always `application/x-ndjson`. SSE was removed in
+ * v0.6.6 (see `docs/releases/0.6.6/blockers/BLOCKER-004-*.md`). The prior
+ * translator-based opt-in was broken by per-field .write() ordering and
+ * left every payload without its `.type` field — the UI silently dropped
+ * every delta and the user saw an empty bubble until they reloaded.
  */
 
 import { FastifyRequest, FastifyReply } from 'fastify';
@@ -10,7 +19,11 @@ import { ChatPipeline } from '../pipeline/ChatPipeline.js';
 import { ChatRequest } from '../interfaces/chat.types.js';
 import { isUserLocked, analyzeMessageScope, recordScopeViolation } from '../../../services/ScopeEnforcementService.js';
 import { EventSequencer } from '../../../infra/event-sequencer.js';
+import { writeNDJSON, ndjsonHeaders } from '../../../infra/ndjson.js';
 import { trackChatMessage, chatResponseTime } from '../../../metrics/index.js';
+
+// Re-export for any existing import site that pulled writeNDJSON from here.
+export { writeNDJSON };
 
 /**
  * Error response interface for frontend
@@ -367,13 +380,9 @@ export function broadcastJobCompletion(params: {
     completedAt: Date.now()
   };
 
-  // Broadcast to all connections
+  // Broadcast to all connections as NDJSON
   for (const reply of connections) {
-    try {
-      reply.raw.write(`event: job_completed\n`);
-      reply.raw.write(`data: ${JSON.stringify(eventData)}\n\n`);
-    } catch (err) {
-      // Connection might be closed, remove it
+    if (!writeNDJSON(reply, 'job_completed', eventData)) {
       connections.delete(reply);
     }
   }
@@ -506,21 +515,12 @@ export function streamHandler(pipeline: ChatPipeline, logger: any) {
         }
       }
 
-      // Set up Server-Sent Events
-      // CRITICAL: These headers prevent buffering at ALL levels (nginx, browsers, proxies)
-      reply.raw.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Cache-Control, X-Requested-With',
-        // CRITICAL: Disable buffering at all levels
-        'X-Accel-Buffering': 'no',           // NGINX proxy buffering
-        'X-Content-Type-Options': 'nosniff', // Prevent browser MIME sniffing delays
-        'Transfer-Encoding': 'chunked',      // Enable chunked transfer
-        'Pragma': 'no-cache',                // HTTP/1.0 cache control
-        'Expires': '0'                       // Immediately expire
-      });
+      // v0.6.6: NDJSON-only. SSE support removed (BLOCKER-004). Every
+      // internal stream endpoint shares the same headers via
+      // `ndjsonHeaders()` — see `infra/ndjson.ts`. Legacy SSE callers
+      // that hit this endpoint still receive the stream, they'll just
+      // see `{...}\n` frames instead of `data: {...}\n\n`.
+      reply.raw.writeHead(200, ndjsonHeaders());
 
       // CRITICAL: Flush headers immediately and disable Nagle's algorithm for real-time streaming
       // This ensures SSE events are sent as soon as they're written, not batched
@@ -560,13 +560,12 @@ export function streamHandler(pipeline: ChatPipeline, logger: any) {
         activeConnectionsCount: activeConnections.get(sessionId)!.size
       }, 'SSE connection registered for autonomous job notifications');
 
-      // Keep connection alive with 5-second interval to prevent browser timeout during MCP operations
-      // CRITICAL: Firefox/browsers close SSE connections when no data received for extended periods
-      // MCP tool execution can take 10-30+ seconds, so we need frequent keepalive pings
+      // Keepalive ping every 3s. Clients ignore type="ping" lines; the
+      // write itself keeps the TCP connection warm + flushes any proxy
+      // buffering. Tighter than the 7s Firefox idle-stream timeout.
       const keepAliveInterval = setInterval(() => {
-        reply.raw.write('event: ping\n');
-        reply.raw.write(`data: {"timestamp":"${new Date().toISOString()}"}\n\n`);
-      }, 3000); // 3 seconds - tighter interval for Firefox compatibility (7s timeout)
+        writeNDJSON(reply, 'ping', { timestamp: new Date().toISOString() });
+      }, 3000);
 
       // AbortController: propagates cancellation to LLM calls, tool executions,
       // and sub-agent spawns when the client disconnects.
@@ -713,9 +712,10 @@ export function streamHandler(pipeline: ChatPipeline, logger: any) {
           let eventData = event.data || {};
 
           // Handle normalized stream events (Unified Activity Stream)
-          // These bypass all legacy mapping and are written verbatim to SSE.
+          // These bypass all legacy mapping — the `normalized` envelope
+          // is written verbatim for the UnifiedActivityTree consumer.
           if (event.type === 'normalized') {
-            reply.raw.write(`event: normalized\ndata: ${JSON.stringify(eventData)}\n\n`);
+            writeNDJSON(reply, 'normalized', eventData);
             return;
           }
 
@@ -728,12 +728,11 @@ export function streamHandler(pipeline: ChatPipeline, logger: any) {
               logger.info({
                 ttftMs: ttft,
                 sessionId: request.body.sessionId
-              }, '[SSE-DEBUG] 🚀 TTFT (Time to First Token)');
+              }, '[STREAM-DEBUG] 🚀 TTFT (Time to First Token)');
             }
 
             // Send TTFT event to frontend for display
-            reply.raw.write(`event: ttft\n`);
-            reply.raw.write(`data: ${JSON.stringify({ ttftMs: ttft, timestamp: Date.now() })}\n\n`);
+            writeNDJSON(reply, 'ttft', { ttftMs: ttft, timestamp: Date.now() });
           }
 
           // Track content chunk count and length for token estimation
@@ -787,36 +786,31 @@ export function streamHandler(pipeline: ChatPipeline, logger: any) {
           // tool_executing, tool_result, tool_error - these keep SSE alive during MCP calls
 
           if (event.type === 'content_delta' && eventData.content) {
-            // Send content deltas as 'stream' events for frontend compatibility
+            // Content deltas are emitted as `stream` events for the UI.
             const seqContent = sequencer.wrap({ content: eventData.content });
-            reply.raw.write(`event: stream\n`);
-            reply.raw.write(`data: ${JSON.stringify(seqContent)}\n\n`);
-            logger.info({
+            writeNDJSON(reply, 'stream', seqContent);
+            logger.debug({
               eventType: 'stream',
               contentLength: eventData.content.length
-            }, '🔵 [SSE-DEBUG] Wrote stream event to SSE');
+            }, '[STREAM] content chunk');
           } else {
-            // Send all other events with correct frontend event names
+            // All other events use their (mapped) frontend event name.
             const seqData = sequencer.wrap(eventData);
-            reply.raw.write(`event: ${frontendEvent}\n`);
-            reply.raw.write(`data: ${JSON.stringify(seqData)}\n\n`);
+            writeNDJSON(reply, frontendEvent, seqData);
 
-            // Only log significant SSE events (tool calls, errors, completion) — NOT every content delta
             if (['tool_executing', 'tool_result', 'tool_error'].includes(event.type)) {
               logger.info({
                 eventType: frontendEvent,
                 originalType: event.type,
                 toolName: eventData.name,
-              }, '[SSE] Tool event');
+              }, '[STREAM] Tool event');
             } else if (['error', 'completion_complete', 'done', 'completion_start'].includes(event.type)) {
               logger.info({
                 eventType: frontendEvent,
                 originalType: event.type,
-              }, '[SSE] Lifecycle event');
-            }
-            // content_block_delta, stream, thinking etc. logged at debug level only
-            else {
-              logger.debug({ eventType: frontendEvent }, '[SSE] Stream chunk');
+              }, '[STREAM] Lifecycle event');
+            } else {
+              logger.debug({ eventType: frontendEvent }, '[STREAM] chunk');
             }
           }
 
@@ -1093,63 +1087,37 @@ async function generateTitleIfNeeded(chatRequest: ChatRequest, user: any, logger
 export function testStreamHandler(logger: any) {
   return async (request: StreamRequest, reply: FastifyReply): Promise<void> => {
     try {
-      // Set up Server-Sent Events
-      reply.raw.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'X-Accel-Buffering': 'no' // CRITICAL: Disable NGINX buffering for SSE streaming
-      });
+      // NDJSON stream for smoke tests — same headers as the real chat
+      // stream so proxy behaviour is consistent between dev and prod.
+      reply.raw.writeHead(200, ndjsonHeaders());
 
-      // Send test messages
       const messages = [
         'Hello! This is a test stream.',
         'I can perform basic math calculations.',
         'For example: 20 + 14 = 34',
-        'The stream is working correctly!'
+        'The stream is working correctly!',
       ];
 
       for (let i = 0; i < messages.length; i++) {
         await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const event = {
-          type: 'content_delta',
-          data: {
-            content: messages[i],
-            index: i
-          },
-          timestamp: new Date().toISOString()
-        };
-        
-        reply.raw.write(`event: ${event.type}\n`);
-        reply.raw.write(`data: ${JSON.stringify(event.data || {})}\n\n`);
-      }
-
-      // Send completion
-      const completeEvent = {
-        type: 'stream_complete',
-        data: { success: true },
-        timestamp: new Date().toISOString()
-      };
-      
-      reply.raw.write(`event: ${completeEvent.type}\n`);
-      reply.raw.write(`data: ${JSON.stringify(completeEvent.data || {})}\n\n`);
-      reply.raw.end();
-      return; // Explicit return for successful completion
-      
-    } catch (error) {
-      logger.error({ error: error.message }, 'Test stream error');
-      
-      if (!reply.sent) {
-        return reply.code(500).send({
-          error: {
-            code: 'TEST_STREAM_ERROR',
-            message: 'Test stream failed'
-          }
+        writeNDJSON(reply, 'content_delta', {
+          content: messages[i],
+          index: i,
+          timestamp: new Date().toISOString(),
         });
       }
-      return; // Explicit return for error case
+
+      writeNDJSON(reply, 'stream_complete', { success: true, timestamp: new Date().toISOString() });
+      reply.raw.end();
+      return;
+    } catch (error) {
+      logger.error({ error: error.message }, 'Test stream error');
+      if (!reply.sent) {
+        return reply.code(500).send({
+          error: { code: 'TEST_STREAM_ERROR', message: 'Test stream failed' },
+        });
+      }
+      return;
     }
   };
 }

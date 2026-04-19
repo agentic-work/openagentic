@@ -16,6 +16,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { prisma } from '../utils/prisma.js';
 import { loggers } from '../utils/logger.js';
 import type { Logger } from 'pino';
+import { ndjsonHeaders, writeNDJSON } from '../infra/ndjson.js';
 
 interface TestResult {
   category: string;
@@ -49,12 +50,8 @@ const adminTestHarnessRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/run', async (request: any, reply) => {
     const { categories = ['health', 'models', 'chat', 'workflows', 'mcp'] } = (request.body || {}) as any;
 
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    });
+    // NDJSON streaming (v0.6.7 — SSE removed from admin surfaces, Phase D.1).
+    reply.raw.writeHead(200, ndjsonHeaders());
 
     const results: TestResult[] = [];
     const startTime = Date.now();
@@ -62,13 +59,13 @@ const adminTestHarnessRoutes: FastifyPluginAsync = async (fastify) => {
     const emit = (result: TestResult) => {
       results.push(result);
       if (!reply.raw.writableEnded) {
-        reply.raw.write(`event: test_result\ndata: ${JSON.stringify(result)}\n\n`);
+        writeNDJSON(reply, 'test_result', result as unknown as Record<string, unknown>);
       }
     };
 
     const emitProgress = (msg: string) => {
       if (!reply.raw.writableEnded) {
-        reply.raw.write(`event: progress\ndata: ${JSON.stringify({ message: msg, timestamp: new Date().toISOString() })}\n\n`);
+        writeNDJSON(reply, 'progress', { message: msg, timestamp: new Date().toISOString() });
       }
     };
 
@@ -545,7 +542,7 @@ const adminTestHarnessRoutes: FastifyPluginAsync = async (fastify) => {
       };
 
       if (!reply.raw.writableEnded) {
-        reply.raw.write(`event: complete\ndata: ${JSON.stringify(summary)}\n\n`);
+        writeNDJSON(reply, 'complete', summary as unknown as Record<string, unknown>);
       }
 
       // Cache results
@@ -557,7 +554,7 @@ const adminTestHarnessRoutes: FastifyPluginAsync = async (fastify) => {
     } catch (err: any) {
       logger.error({ error: err }, 'Test harness error');
       if (!reply.raw.writableEnded) {
-        reply.raw.write(`event: error\ndata: ${JSON.stringify({ error: err.message })}\n\n`);
+        writeNDJSON(reply, 'error', { code: 'TEST_HARNESS_FAILED', message: err.message, timestamp: new Date().toISOString() });
       }
     } finally {
       if (!reply.raw.writableEnded) {

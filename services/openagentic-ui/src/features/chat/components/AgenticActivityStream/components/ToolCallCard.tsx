@@ -25,6 +25,7 @@ import {
 
 import type { ToolCallCardProps, ToolCallStatus } from '../types/activity.types';
 import { ToolResultSummary } from './ToolResultSummary';
+import { deriveResourceLink } from '../utils/portalLink';
 
 // Format tool name for display
 const formatToolName = (name: string): string => {
@@ -165,6 +166,14 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
 
   const formattedName = displayName || formatToolName(toolName);
 
+  // BLOCKER-002 fix: derive the specific resource identifier + portal URL
+  // this tool call is touching, so the card header can show it inline
+  // (e.g. "Delete Resource Group → test-rg-uc-a14-20260418") with a
+  // click-through to the Azure/AWS/GCP console. For web MCP tools we
+  // show the destination's favicon + URL. Null when args lack an
+  // identifier — we just fall through to the old name-only header.
+  const resourceLink = useMemo(() => deriveResourceLink(toolName, toolInput), [toolName, toolInput]);
+
   // Live elapsed timer when status is 'calling'
   useEffect(() => {
     if (status !== 'calling' || !startTime) {
@@ -264,6 +273,57 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
           )}
         </div>
       </button>
+
+      {/* Resource identifier + portal deep-link (BLOCKER-002). Sits under
+          the header so a user can see at a glance which RG / instance /
+          URL the model is touching, and click through to the provider
+          console. Web MCP tools render a favicon via the /api/favicon
+          proxy (shipped in 0.6.3). */}
+      {resourceLink && (
+        <div className="px-3 py-1.5 border-t border-[var(--color-border)]/10 flex items-center gap-2 min-w-0">
+          {resourceLink.provider === 'web' && resourceLink.faviconDomain && (
+            <img
+              src={`/api/favicon?domain=${encodeURIComponent(resourceLink.faviconDomain)}`}
+              alt=""
+              width={14}
+              height={14}
+              className="flex-shrink-0 rounded-sm"
+              loading="lazy"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+            />
+          )}
+          {resourceLink.provider !== 'web' && (
+            <span
+              className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded flex-shrink-0 font-medium"
+              style={{
+                backgroundColor: 'var(--color-surfaceHover)',
+                color: 'var(--color-textMuted)',
+              }}
+            >
+              {resourceLink.provider}
+            </span>
+          )}
+          {resourceLink.href ? (
+            <a
+              href={resourceLink.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-[var(--color-accent)] hover:underline truncate min-w-0"
+              onClick={(e) => e.stopPropagation()}
+              title={resourceLink.identifier}
+            >
+              {resourceLink.identifier}
+            </a>
+          ) : (
+            <span
+              className="text-xs text-[var(--color-text)] truncate min-w-0"
+              title={resourceLink.identifier}
+            >
+              {resourceLink.identifier}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Abandoned state message */}
       {status === 'abandoned' && (

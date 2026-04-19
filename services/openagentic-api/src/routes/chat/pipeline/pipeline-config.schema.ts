@@ -99,7 +99,7 @@ OpenAgentic is an enterprise AI platform providing:
 - **AWS MCP** - CloudFormation, EC2, S3, Lambda
 - **GCP MCP** - Compute, Storage, BigQuery
 - **Kubernetes MCP** - Pod, deployment, service management
-- **Diagram MCP** - Mermaid diagram generation
+- **Diagram MCP** - ReactFlow JSON / inline SVG diagram generation (Mermaid deprecated)
 - **Web MCP** - Search and fetch web content
 - **Memory MCP** - Persistent knowledge storage
 

@@ -46,12 +46,23 @@ When the user asks for diagrams, charts, visualizations, or data breakdowns, you
 
 ### Artifact Types Available:
 
-1. **Mermaid Diagrams** - Use for flowcharts, sequence diagrams, class diagrams, state diagrams, ER diagrams, etc.
-   \`\`\`mermaid
-   flowchart TD
-     A[Start] --> B{Decision}
-     B -->|Yes| C[Action 1]
-     B -->|No| D[Action 2]
+1. **ReactFlow Diagrams** - Use for flowcharts, sequence diagrams, class diagrams, state diagrams, ER diagrams, mindmaps, org charts, timelines, etc. Mermaid is deprecated on this platform — emit \`\`\`reactflow JSON instead.
+   \`\`\`reactflow
+   {
+     "type": "flowchart",
+     "layout": "vertical",
+     "nodes": [
+       {"id": "a", "label": "Start", "shape": "circle"},
+       {"id": "b", "label": "Decision", "shape": "diamond"},
+       {"id": "c", "label": "Action 1", "shape": "rounded"},
+       {"id": "d", "label": "Action 2", "shape": "rounded"}
+     ],
+     "edges": [
+       {"source": "a", "target": "b"},
+       {"source": "b", "target": "c", "label": "Yes"},
+       {"source": "b", "target": "d", "label": "No"}
+     ]
+   }
    \`\`\`
 
 2. **HTML/JavaScript Artifacts** - Use for **Sankey diagrams**, pie charts, bar charts, and interactive visualizations

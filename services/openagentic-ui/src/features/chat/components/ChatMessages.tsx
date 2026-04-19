@@ -13,10 +13,10 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { ChatMessage } from '@/types/index';
 import { normalizeMessages } from '../utils/messageNormalizer';
 import { COTStep } from './ChainOfThoughtDisplay';
-import SSEErrorBoundary from '@/shared/components/SSEErrorBoundary';
+import StreamErrorBoundary from '@/shared/components/StreamErrorBoundary';
 import MessageBubble from './MessageBubble';
 import { type AgentState } from './UnifiedAgentActivity';
-import { ContentBlock } from '../hooks/useSSEChat';
+import { ContentBlock } from '../hooks/useChatStream';
 import { StarterPrompts, type StarterPrompt } from './StarterPrompts';
 import { ThinkingSphere, type ThinkingSphereState } from '@/shared/components/ThinkingSphere';
 import type { ThinkingProgress } from './AgenticActivityStream/types/activity.types';
@@ -294,7 +294,7 @@ export default function ChatMessages({
           boxSizing: 'border-box'
         }}
       >
-        <SSEErrorBoundary>
+        <StreamErrorBoundary>
           {/* Empty state with starter prompts when no messages */}
           {normalizedMessages.length === 0 && !isLoading && onPromptSelect && (
             <div className="flex items-center justify-center min-h-[60vh] py-12">
@@ -423,7 +423,7 @@ export default function ChatMessages({
 
           {/* Scroll anchor */}
           <div ref={messagesEndRef} className="h-4" />
-        </SSEErrorBoundary>
+        </StreamErrorBoundary>
       </div>
     </div>
   );

@@ -503,11 +503,19 @@ def example():
 \`\`\`
 
 ### Architecture Diagrams
-Use D2 or Mermaid for system/architecture visualization:
-\`\`\`d2
-OnPrem: "On-Premises DC"
-Azure: "Azure Cloud"
-OnPrem -> Azure: "ExpressRoute"
+Use \`\`\`reactflow JSON for system/architecture visualization (preferred). Inline \`\`\`svg is acceptable for static illustrations. Do NOT emit \`\`\`mermaid — it is deprecated on this platform and will not render.
+\`\`\`reactflow
+{
+  "type": "architecture",
+  "layout": "horizontal",
+  "nodes": [
+    {"id": "onprem", "label": "On-Premises DC", "shape": "rectangle", "color": "muted"},
+    {"id": "azure", "label": "Azure Cloud", "shape": "cloud", "color": "primary"}
+  ],
+  "edges": [
+    {"source": "onprem", "target": "azure", "label": "ExpressRoute", "style": "solid"}
+  ]
+}
 \`\`\`
 
 ### Interactive Artifacts (CRITICAL — ALL models must use this)
@@ -517,8 +525,8 @@ When the user asks for charts, dashboards, visualizations, interactive tools, ga
 **Supported artifact types:**
 - \`\`\`artifact:react — React/JSX components (PREFERRED for interactive content)
 - \`\`\`artifact:html — Self-contained HTML pages with JS
-- \`\`\`artifact:svg — SVG graphics
-- \`\`\`artifact:mermaid — Mermaid diagrams
+- \`\`\`artifact:svg — SVG graphics (or use inline \`\`\`svg outside of artifacts)
+- \`\`\`reactflow — ReactFlow JSON (preferred for flowcharts, architecture, sequence, ERDs; Mermaid is deprecated)
 - \`\`\`artifact:chart — JSON chart data (Recharts format)
 
 **React artifacts** are the most powerful — use them for:
@@ -596,7 +604,7 @@ Artifacts MUST look like enterprise documentation from GCP, AWS, or Anthropic �
 **When to create artifacts automatically (without being asked):**
 - User asks for cost breakdown/analysis → chart or Sankey
 - User asks to compare data → interactive table or bar chart
-- User asks for architecture overview → Mermaid or React diagram
+- User asks for architecture overview → \`\`\`reactflow JSON (or inline \`\`\`svg for static)
 - User asks for monitoring/dashboard → React dashboard with metrics
 - User asks "show me" or "visualize" anything → appropriate artifact
 

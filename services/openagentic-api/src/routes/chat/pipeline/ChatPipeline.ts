@@ -25,6 +25,7 @@ import { ChatRequest, ChatUser, StreamContext, ChatErrorCode } from '../interfac
 // Fake thinking removed - now using real LLM reasoning from completion stage
 import { AuthStage } from './auth.stage.js';
 import { ValidationStage } from './validation.stage.js';
+import { DlpScanStage } from './dlp-scan.stage.js';
 import { RAGStage } from './rag.stage.js';
 import { MemoryStage } from './memory.stage.js';
 import { PromptStage } from './prompt.stage.js';
@@ -85,7 +86,13 @@ export class ChatPipeline extends EventEmitter {
         services.milvus,
         services.semanticCache,
         services.fileAttachmentService
-      )
+      ),
+      // UC-A13: Scan + redact the user message BEFORE anything writes it
+      // to storage or forwards it to the LLM. Sits at priority 25 so it
+      // runs after validation/session-ownership (15) and before prompt
+      // assembly (35) + MCP tool advertisement. Blocks on critical-severity
+      // findings, redacts on medium, no-ops on clean input.
+      new DlpScanStage(),
     ];
 
     // Add RAG stage if enabled and service available
@@ -2915,7 +2922,7 @@ export class ChatPipeline extends EventEmitter {
     if (archKeywords.test(context.request.message) && response.length > 500) {
       triggers.push({
         role: 'diagram',
-        task: `Generate a Mermaid architecture diagram based on this response. User asked: "${context.request.message.substring(0, 200)}". Response excerpt: ${response.substring(0, 2000)}`,
+        task: `Generate a ReactFlow JSON architecture diagram (\`\`\`reactflow code block) based on this response. Do NOT emit \`\`\`mermaid — it is deprecated on this platform. User asked: "${context.request.message.substring(0, 200)}". Response excerpt: ${response.substring(0, 2000)}`,
       });
     }
 

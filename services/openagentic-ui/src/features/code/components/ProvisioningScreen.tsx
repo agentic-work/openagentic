@@ -20,6 +20,7 @@ import {
 } from '@/shared/icons';
 import { apiEndpoint } from '@/utils/api';
 import { useAuth } from '@/app/providers/AuthContext';
+import { parseNDJSONStream } from '@/utils/ndjsonStream';
 
 interface ProvisioningStep {
   name: string;
@@ -85,7 +86,7 @@ export const ProvisioningScreen: React.FC<ProvisioningScreenProps> = ({
   const [progress, setProgress] = useState<ProvisioningProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Get current status message based on progress
   const currentSteps = progress?.steps || [
@@ -97,21 +98,23 @@ export const ProvisioningScreen: React.FC<ProvisioningScreenProps> = ({
   ];
   const statusMessage = getStatusMessage(currentSteps);
 
-  // Start provisioning
+  // Start provisioning — v0.6.7 NDJSON via shared parser.
   const startProvisioning = useCallback(async () => {
     setError(null);
     setIsRetrying(false);
 
-    // Close any existing EventSource
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
+    if (abortRef.current) abortRef.current.abort();
+    const abort = new AbortController();
+    abortRef.current = abort;
 
     try {
-      // Use fetch with POST to start, which returns SSE stream
       const response = await fetch(apiEndpoint('/code/provisioning/start'), {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: {
+          ...(getAuthHeaders() || {}),
+          'Accept': 'application/x-ndjson',
+        },
+        signal: abort.signal,
       });
 
       if (!response.ok) {
@@ -123,55 +126,28 @@ export const ProvisioningScreen: React.FC<ProvisioningScreenProps> = ({
         throw new Error(data.error || 'Failed to start provisioning');
       }
 
-      // Handle SSE stream
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (!reader) {
-        throw new Error('Failed to get response stream');
-      }
-
-      let buffer = '';
-
-      const processStream = async () => {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          let eventType = '';
-          for (const line of lines) {
-            if (line.startsWith('event: ')) {
-              eventType = line.slice(7);
-            } else if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                handleSSEEvent(eventType, data);
-              } catch (e) {
-                console.error('Failed to parse SSE data:', e);
-              }
-            }
+      (async () => {
+        try {
+          for await (const event of parseNDJSONStream<{ type: string; [k: string]: unknown }>(response)) {
+            handleStreamEvent(event.type, event);
           }
+        } catch (err: any) {
+          if (err?.name === 'AbortError') return;
+          console.error('Stream error:', err);
+          setError(err.message || 'Connection lost');
         }
-      };
-
-      processStream().catch((err) => {
-        console.error('Stream error:', err);
-        setError(err.message || 'Connection lost');
-      });
+      })();
 
     } catch (err: any) {
+      if (err?.name === 'AbortError') return;
       console.error('Provisioning error:', err);
       setError(err.message || 'Failed to start provisioning');
       onError?.(err.message);
     }
   }, [getAuthHeaders, onComplete, onError]);
 
-  // Handle SSE events
-  const handleSSEEvent = (eventType: string, data: any) => {
+  // Handle NDJSON stream events
+  const handleStreamEvent = (eventType: string, data: any) => {
     switch (eventType) {
       case 'start':
         console.log('[Provisioning] Started:', data);
@@ -188,7 +164,7 @@ export const ProvisioningScreen: React.FC<ProvisioningScreenProps> = ({
               ? { ...prev, status: 'ready', overallProgress: 100 }
               : null
           );
-          setTimeout(() => onComplete(), 1000); // Brief delay to show completion
+          setTimeout(() => onComplete(), 1000);
         } else {
           setError(data.error || 'Provisioning failed');
         }
@@ -201,14 +177,10 @@ export const ProvisioningScreen: React.FC<ProvisioningScreenProps> = ({
     }
   };
 
-  // Start provisioning on mount
   useEffect(() => {
     startProvisioning();
-
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
+      if (abortRef.current) abortRef.current.abort();
     };
   }, [startProvisioning]);
 

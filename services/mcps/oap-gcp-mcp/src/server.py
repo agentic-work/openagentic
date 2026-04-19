@@ -1114,6 +1114,183 @@ async def gcp_monitoring_query(
 
     return await make_gcp_request("GET", url)
 
+# =============================================================================
+# TYPED CONVENIENCE TOOLS — 0.6.6 P7 GCP MCP parity
+# Per-service typed wrappers for GKE, Cloud Run, Cloud Functions, BigQuery,
+# Pub/Sub, Cloud SQL, Secret Manager, Artifact Registry, Cloud Logging,
+# Vertex AI. Each composes the REST URL and delegates to make_gcp_request.
+# =============================================================================
+
+def _proj(project_id: Optional[str]) -> str:
+    """Resolve the project ID, defaulting to the configured GCP_PROJECT_ID."""
+    return project_id or GCP_PROJECT_ID
+
+async def _get(url: str) -> Dict[str, Any]:
+    """Shared body for GET wrappers — keeps per-tool bodies single-statement."""
+    return await make_gcp_request("GET", url)
+
+# ---------- GKE (Kubernetes Engine) ----------
+
+@mcp.tool()
+async def gcp_list_gke_clusters(
+    location: str = "-",
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """List GKE clusters. location='-' means all locations."""
+    return await _get(f"https://container.googleapis.com/v1/projects/{_proj(project_id)}/locations/{location}/clusters")
+
+@mcp.tool()
+async def gcp_describe_gke_cluster(
+    cluster_name: str,
+    location: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Describe one GKE cluster (version, nodes, endpoint, networking, logging)."""
+    return await _get(f"https://container.googleapis.com/v1/projects/{_proj(project_id)}/locations/{location}/clusters/{cluster_name}")
+
+# ---------- Cloud Run ----------
+
+@mcp.tool()
+async def gcp_list_cloud_run_services(
+    location: str = "us-central1",
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """List Cloud Run services in a region."""
+    return await _get(f"https://run.googleapis.com/v2/projects/{_proj(project_id)}/locations/{location}/services")
+
+@mcp.tool()
+async def gcp_describe_cloud_run_service(
+    service_name: str,
+    location: str = "us-central1",
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Describe one Cloud Run service."""
+    return await _get(f"https://run.googleapis.com/v2/projects/{_proj(project_id)}/locations/{location}/services/{service_name}")
+
+# ---------- Cloud Functions (v2) ----------
+
+@mcp.tool()
+async def gcp_list_cloud_functions(
+    location: str = "us-central1",
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """List Cloud Functions (v2 / gen2) in a region."""
+    return await _get(f"https://cloudfunctions.googleapis.com/v2/projects/{_proj(project_id)}/locations/{location}/functions")
+
+# ---------- BigQuery ----------
+
+@mcp.tool()
+async def gcp_list_bq_datasets(project_id: Optional[str] = None) -> Dict[str, Any]:
+    """List BigQuery datasets in the project."""
+    return await _get(f"https://bigquery.googleapis.com/bigquery/v2/projects/{_proj(project_id)}/datasets")
+
+@mcp.tool()
+async def gcp_list_bq_tables(
+    dataset_id: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """List BigQuery tables inside a dataset."""
+    return await _get(f"https://bigquery.googleapis.com/bigquery/v2/projects/{_proj(project_id)}/datasets/{dataset_id}/tables")
+
+# ---------- Pub/Sub ----------
+
+@mcp.tool()
+async def gcp_list_pubsub_topics(project_id: Optional[str] = None) -> Dict[str, Any]:
+    """List Pub/Sub topics in the project."""
+    return await _get(f"https://pubsub.googleapis.com/v1/projects/{_proj(project_id)}/topics")
+
+@mcp.tool()
+async def gcp_list_pubsub_subscriptions(project_id: Optional[str] = None) -> Dict[str, Any]:
+    """List Pub/Sub subscriptions in the project."""
+    return await _get(f"https://pubsub.googleapis.com/v1/projects/{_proj(project_id)}/subscriptions")
+
+# ---------- Cloud SQL ----------
+
+@mcp.tool()
+async def gcp_list_cloud_sql_instances(project_id: Optional[str] = None) -> Dict[str, Any]:
+    """List Cloud SQL instances (Postgres / MySQL / SQL Server)."""
+    return await _get(f"https://sqladmin.googleapis.com/v1/projects/{_proj(project_id)}/instances")
+
+@mcp.tool()
+async def gcp_describe_cloud_sql_instance(
+    instance_name: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Describe a Cloud SQL instance (tier, version, IPs, backup config)."""
+    return await _get(f"https://sqladmin.googleapis.com/v1/projects/{_proj(project_id)}/instances/{instance_name}")
+
+# ---------- Secret Manager ----------
+
+@mcp.tool()
+async def gcp_list_secrets(project_id: Optional[str] = None) -> Dict[str, Any]:
+    """List Secret Manager secrets (names + labels, not values)."""
+    return await _get(f"https://secretmanager.googleapis.com/v1/projects/{_proj(project_id)}/secrets")
+
+# ---------- Artifact Registry ----------
+
+@mcp.tool()
+async def gcp_list_artifact_repositories(
+    location: str = "us-central1",
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """List Artifact Registry repositories in a region."""
+    return await _get(f"https://artifactregistry.googleapis.com/v1/projects/{_proj(project_id)}/locations/{location}/repositories")
+
+# ---------- Vertex AI ----------
+
+@mcp.tool()
+async def gcp_list_vertex_endpoints(
+    location: str = "us-central1",
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """List Vertex AI online prediction endpoints."""
+    return await _get(f"https://{location}-aiplatform.googleapis.com/v1/projects/{_proj(project_id)}/locations/{location}/endpoints")
+
+@mcp.tool()
+async def gcp_list_vertex_models(
+    location: str = "us-central1",
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """List Vertex AI custom models registered in the Model Registry."""
+    return await _get(f"https://{location}-aiplatform.googleapis.com/v1/projects/{_proj(project_id)}/locations/{location}/models")
+
+# ---------- IAM ----------
+
+@mcp.tool()
+async def gcp_list_service_accounts(project_id: Optional[str] = None) -> Dict[str, Any]:
+    """List IAM service accounts in the project."""
+    return await _get(f"https://iam.googleapis.com/v1/projects/{_proj(project_id)}/serviceAccounts")
+
+@mcp.tool()
+async def gcp_get_iam_policy(project_id: Optional[str] = None) -> Dict[str, Any]:
+    """Get the IAM policy bound to the project (who has what role)."""
+    url = f"https://cloudresourcemanager.googleapis.com/v1/projects/{_proj(project_id)}:getIamPolicy"
+    return await make_gcp_request("POST", url, body={})
+
+# ---------- Cloud Logging ----------
+
+@mcp.tool()
+async def gcp_list_log_entries(
+    filter_expr: Optional[str] = None,
+    project_id: Optional[str] = None,
+    page_size: int = 50,
+) -> Dict[str, Any]:
+    """
+    Search Cloud Logging entries. filter_expr is Google's log-filter
+    syntax (e.g. 'severity>=ERROR AND resource.type="gce_instance"').
+    Default page_size=50 to keep results sane.
+    """
+    project = project_id or GCP_PROJECT_ID
+    body: Dict[str, Any] = {
+        "resourceNames": [f"projects/{project}"],
+        "pageSize": page_size,
+        "orderBy": "timestamp desc",
+    }
+    if filter_expr:
+        body["filter"] = filter_expr
+    url = "https://logging.googleapis.com/v2/entries:list"
+    return await make_gcp_request("POST", url, body=body)
+
 @mcp.tool()
 async def gcp_api_help() -> Dict[str, Any]:
     """

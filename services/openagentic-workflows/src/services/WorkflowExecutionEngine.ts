@@ -3297,66 +3297,69 @@ export class WorkflowExecutionEngine extends EventEmitter {
     executionId: string,
     timeout: number
   ): Promise<{ status: string; content: string; tokenUsage?: any }> {
-    return new Promise(async (resolve) => {
+    // Plain Promise executor (no async) so any throw in the inner async IIFE
+    // becomes a resolve() path instead of a silently-swallowed rejection.
+    return new Promise<{ status: string; content: string; tokenUsage?: any }>((resolve) => {
       const timer = setTimeout(() => {
         resolve({ status: 'timeout', content: 'Agent execution timed out' });
       }, timeout);
 
-      try {
-        const response = await axios.get(
-          `${this.apiUrl}/api/agents/stream/${executionId}`,
-          {
-            headers: {
-              ...this.getInternalAuthHeaders(),
-              'Accept': 'text/event-stream',
-            },
-            responseType: 'stream',
-            timeout,
-          }
-        );
+      void (async () => {
+        try {
+          const response = await axios.get(
+            `${this.apiUrl}/api/agents/stream/${executionId}`,
+            {
+              headers: {
+                ...this.getInternalAuthHeaders(),
+                'Accept': 'text/event-stream',
+              },
+              responseType: 'stream',
+              timeout,
+            }
+          );
 
-        let content = '';
-        let status = 'completed';
-        let tokenUsage: any;
+          let content = '';
+          let status = 'completed';
+          let tokenUsage: any;
 
-        response.data.on('data', (chunk: Buffer) => {
-          const text = chunk.toString();
-          // Parse SSE events
-          for (const line of text.split('\n')) {
-            if (line.startsWith('data: ')) {
-              try {
-                const event = JSON.parse(line.slice(6));
-                if (event.type === 'agent_message' || event.type === 'content') {
-                  content += event.content || event.data?.content || '';
-                } else if (event.type === 'agent_complete' || event.type === 'complete') {
-                  status = event.status || 'completed';
-                  content = event.result || event.content || content;
-                  tokenUsage = event.token_usage || event.tokenUsage;
-                } else if (event.type === 'agent_error' || event.type === 'error') {
-                  status = 'error';
-                  content = event.error || event.message || 'Agent execution failed';
+          response.data.on('data', (chunk: Buffer) => {
+            const text = chunk.toString();
+            for (const line of text.split('\n')) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const event = JSON.parse(line.slice(6));
+                  if (event.type === 'agent_message' || event.type === 'content') {
+                    content += event.content || event.data?.content || '';
+                  } else if (event.type === 'agent_complete' || event.type === 'complete') {
+                    status = event.status || 'completed';
+                    content = event.result || event.content || content;
+                    tokenUsage = event.token_usage || event.tokenUsage;
+                  } else if (event.type === 'agent_error' || event.type === 'error') {
+                    status = 'error';
+                    content = event.error || event.message || 'Agent execution failed';
+                  }
+                } catch {
+                  // Skip non-JSON lines
                 }
-              } catch {
-                // Skip non-JSON lines
               }
             }
-          }
-        });
+          });
 
-        response.data.on('end', () => {
+          response.data.on('end', () => {
+            clearTimeout(timer);
+            resolve({ status, content, tokenUsage });
+          });
+
+          response.data.on('error', () => {
+            clearTimeout(timer);
+            resolve({ status: 'error', content: content || 'SSE stream error' });
+          });
+
+        } catch (error: any) {
           clearTimeout(timer);
-          resolve({ status, content, tokenUsage });
-        });
-
-        response.data.on('error', () => {
-          clearTimeout(timer);
-          resolve({ status: 'error', content: content || 'SSE stream error' });
-        });
-
-      } catch (error: any) {
-        clearTimeout(timer);
-        resolve({ status: 'error', content: `Failed to connect to agent stream: ${error.message}` });
-      }
+          resolve({ status: 'error', content: `Failed to connect to agent stream: ${error.message}` });
+        }
+      })();
     });
   }
 

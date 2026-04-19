@@ -9,6 +9,7 @@ import { Edit2, Send, FileText, Image as ImageIcon, AlertTriangle, Copy, Check, 
 import { ChatMessage } from '@/types/index';
 import EnhancedMessageContent from './MessageContent/EnhancedMessageContent';
 import InlineModelBadge from './InlineModelBadge';
+import { CostPill } from './CostPill';
 import { ArtifactErrorBoundary } from '@/shared/components';
 // InlineStep type now in activity.types.ts
 import type { InlineStep, ThinkingProgress } from './AgenticActivityStream/types/activity.types';
@@ -896,10 +897,30 @@ const MessageBubble = memo(function MessageBubble({
           {/* Assistant message */}
           {isAssistant && (
             <div className="group space-y-2">
-              {/* Model badge — always visible for assistant messages, regardless of renderer */}
+              {/* Model badge — always visible for assistant messages, regardless of renderer.
+                  F.4: cost pill sits alongside; shows estimate during streaming, authoritative
+                  cost once tokenUsage arrives from the server. */}
               {showModelBadges && message.model && !isStreaming && (
                 <div className="flex items-center gap-2 mb-1">
                   <InlineModelBadge model={message.model} theme={theme} />
+                  <CostPill
+                    model={message.model}
+                    outputText={message.content || ''}
+                    usage={message.tokenUsage}
+                    isStreaming={false}
+                    theme={theme}
+                  />
+                </div>
+              )}
+              {showModelBadges && message.model && isStreaming && (
+                <div className="flex items-center gap-2 mb-1">
+                  <InlineModelBadge model={message.model} theme={theme} />
+                  <CostPill
+                    model={message.model}
+                    outputText={message.content || ''}
+                    isStreaming={true}
+                    theme={theme}
+                  />
                 </div>
               )}
               {/* Unified Activity Tree — enhanced thinking/tool/agent display (additive, not replacement) */}

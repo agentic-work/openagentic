@@ -224,9 +224,8 @@ export const FORMATTING_CAPABILITIES: FormattingCapability[] = [
     supportLevel: 'full',
     requiresBlock: true,
     usageRules: [
-      'Choose diagram type based on complexity and interactivity needs',
-      'Use ```diagram JSON for: complex architectures, interactive flows, ERDs, network diagrams',
-      'Use mermaid for: simple flowcharts, sequence diagrams (you know mermaid natively)',
+      'ALWAYS use ```reactflow JSON for diagrams — mermaid is deprecated on this platform',
+      'For simple static illustrations, inline ```svg is also acceptable',
       'Use ```artifact:react for: animated diagrams, custom interactive visualizations',
       'ReactFlow supports: flowchart, sequence, architecture, mindmap, orgchart, statechart, erd, network, timeline, process',
       'Node shapes: rounded (default), rectangle, diamond, circle, hexagon, cylinder, cloud, parallelogram, document',
@@ -235,7 +234,7 @@ export const FORMATTING_CAPABILITIES: FormattingCapability[] = [
       'Colors: Use semantic names (primary, secondary, success, warning, error, info, muted) - system maps to theme CSS variables'
     ],
     antiPatterns: [
-      'Using ReactFlow JSON for simple diagrams that mermaid handles fine',
+      'Emitting ```mermaid — not rendered; use ```reactflow JSON or ```svg instead',
       'Hardcoding hex colors instead of semantic color names',
       'Not specifying node colors/shapes when the diagram needs visual hierarchy'
     ]
@@ -567,6 +566,6 @@ export const LANGUAGE_SUPPORT = [
   'solidity', 'vhdl', 'verilog', 'assembly', 'asm', 'makefile', 'cmake',
   'nginx', 'apache', 'caddyfile', 'gitignore', 'diff', 'patch',
 
-  // Diagrams (ReactFlow JSON format for complex interactive diagrams)
-  'diagram', 'reactflow', 'mermaid'
+  // Diagrams (ReactFlow JSON format for complex interactive diagrams; SVG for static)
+  'diagram', 'reactflow', 'svg'
 ];

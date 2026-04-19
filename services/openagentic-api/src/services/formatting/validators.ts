@@ -60,7 +60,10 @@ function detectUsedCapabilities(
   if (/^(---|\*\*\*|___)$/m.test(content)) used.push('md-horizontal-rule');
   if (/\$[^$]+\$/.test(content)) used.push('math-inline');
   if (/\$\$/.test(content)) used.push('math-display');
-  if (/```mermaid/i.test(content)) used.push('diagram-mermaid');
+  if (/```reactflow/i.test(content) || /```diagram\b/i.test(content)) used.push('diagram-reactflow');
+  if (/```svg/i.test(content)) used.push('diagram-svg');
+  // ```mermaid is deprecated; flag for telemetry so we can steer the model toward reactflow/svg.
+  if (/```mermaid/i.test(content)) used.push('diagram-mermaid-deprecated');
   if (/```d2/i.test(content)) used.push('diagram-d2');
   if (/<details>/i.test(content)) used.push('html-details');
 

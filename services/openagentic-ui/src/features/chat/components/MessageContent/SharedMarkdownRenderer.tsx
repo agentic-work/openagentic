@@ -15,6 +15,7 @@ import ReactFlowDiagram from '@/components/diagrams/ReactFlowDiagram';
 import { VennDiagram, parseVennJson } from '@/components/diagrams/VennDiagram';
 import { DrawioDiagramViewer } from '@/components/diagrams/DrawioDiagramViewer';
 import { Code, ChevronDown, ChevronRight } from '@/shared/icons';
+import { detectCitation } from '../../utils/citations';
 
 // Custom sanitize schema that allows KaTeX elements and image:// protocol
 const sanitizeSchema = {
@@ -203,7 +204,7 @@ export interface SharedMarkdownRendererProps {
 }
 
 /**
- * Extract title from SVG or Mermaid code
+ * Extract title from SVG code
  */
 const extractTitle = (code: string): string | undefined => {
   // Try <title>...</title> tag first (most reliable for HTML artifacts)
@@ -242,7 +243,7 @@ interface ArtifactSourceToggleProps {
  * Clicking opens/closes the CanvasPanel via onExpandToCanvas callback.
  */
 const ARTIFACT_ICONS: Record<string, string> = {
-  html: '🌐', react: '⚛️', svg: '🎨', mermaid: '📐', chart: '📊',
+  html: '🌐', react: '⚛️', svg: '🎨', reactflow: '🧭', chart: '📊',
   markdown: '📝', latex: '📐', csv: '📋', canvas: '🖼️', visualization: '📊',
 };
 
@@ -598,9 +599,13 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
       // handles the rest of the typography scale). lineHeight + color
       // pulled forward from the previous duplicate style block that was
       // left in place during a merge — collapsed into one object here.
+      // F₂.1 typography rhythm: codemode / claude.ai read tighter than
+      // our old 15.5px/1.65. Dropped to 15px/1.6 so headings + body
+      // breathe less and the response feels like conversation, not
+      // a generated document.
       style={{
-        fontSize: '15.5px',
-        lineHeight: 1.65,
+        fontSize: '15px',
+        lineHeight: 1.6,
         color: 'var(--color-text)',
       }}
     >
@@ -624,18 +629,23 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
             const codeString = String(children).replace(/\n$/, '');
             const isInline = !match && !String(children).includes('\n');
 
-            // Inline code
+            // Inline code — tightened pill styling (F₂.1) to match codemode's
+            // compact mono-pill aesthetic. Was 6px radius + 6% bg; now 4px +
+            // 10% for better contrast against the message bubble, with
+            // slightly tighter horizontal padding so pills don't float
+            // away from the surrounding prose.
             if (isInline) {
               return (
                 <code
-                  className="text-sm font-mono"
+                  className="font-mono"
                   style={{
-                    background: 'rgba(255, 255, 255, 0.06)',
-                    color: 'var(--text-secondary, #b8b8c0)',
-                    padding: '1px 6px',
-                    borderRadius: '6px',
+                    fontSize: '0.875em',
+                    background: 'rgba(255, 255, 255, 0.10)',
+                    color: 'var(--color-text, #e8e8ed)',
+                    padding: '0.5px 5px',
+                    borderRadius: '4px',
                     border: 'none',
-                    fontWeight: 400,
+                    fontWeight: 500,
                   }}
                   {...props}
                 >
@@ -757,16 +767,16 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
               );
             }
 
-            // Mermaid diagrams
+            // Mermaid is deprecated — platform emits `reactflow` JSON or `svg` for diagrams.
+            // Show the source so the user can still see the model's intent, but don't render.
             if (language === 'mermaid') {
               return (
-                <ArtifactSourceToggle code={codeString} language="plaintext" theme={theme} onCopy={handleCopy}>
-                  <ArtifactRenderer
-                    code={codeString}
-                    type="mermaid"
-                    theme={theme}
-                  />
-                </ArtifactSourceToggle>
+                <div className="my-4 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-3 text-sm">
+                  <div className="mb-2 text-xs font-medium text-amber-800 dark:text-amber-300">
+                    Mermaid is deprecated on this platform — prefer <code className="px-1 rounded bg-amber-100 dark:bg-amber-900/60">reactflow</code> JSON or inline <code className="px-1 rounded bg-amber-100 dark:bg-amber-900/60">svg</code> code blocks.
+                  </div>
+                  <pre className="bg-gray-900 text-gray-100 p-3 rounded overflow-x-auto text-xs"><code>{codeString}</code></pre>
+                </div>
               );
             }
 
@@ -939,30 +949,37 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
           ),
 
           // ================================================================
-          // Professional headings with colored accents
+          // Headings (F₂.1 — match codemode's tighter rhythm).
+          //
+          // Was: big h1/h2 with heavy coloured border-b underlines — that
+          // made responses read like generated documents with divider
+          // chrome rather than conversational prose. Dropped the
+          // border-b and border-b-2 entirely, shrunk the sizes a notch,
+          // and pulled the top/bottom margins in so dense markdown
+          // doesn't feel like it's breathing past its lungs.
           // ================================================================
           h1: ({ children }) => (
-            <h1 className="text-2xl font-bold mt-6 mb-4 pb-2 border-b-2 border-[var(--color-primary)] text-[var(--color-text)]">
+            <h1 className="text-xl font-semibold mt-5 mb-3 text-[var(--color-text)]">
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="text-xl font-bold mt-5 mb-3 pb-1 border-b border-[var(--color-primary)]/50 text-[var(--color-text)]">
+            <h2 className="text-lg font-semibold mt-4 mb-2 text-[var(--color-text)]">
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-lg font-semibold mt-4 mb-2 text-[var(--color-primary)]">
+            <h3 className="text-base font-semibold mt-3 mb-2 text-[var(--color-text)]">
               {children}
             </h3>
           ),
           h4: ({ children }) => (
-            <h4 className="text-base font-semibold mt-3 mb-2 text-[var(--color-text-secondary)]">
+            <h4 className="text-sm font-semibold mt-3 mb-1.5 text-[var(--color-text-secondary)]">
               {children}
             </h4>
           ),
           h5: ({ children }) => (
-            <h5 className="text-sm font-semibold mt-2 mb-1 text-[var(--color-text-secondary)]">
+            <h5 className="text-sm font-medium mt-2 mb-1 text-[var(--color-text-secondary)]">
               {children}
             </h5>
           ),
@@ -975,27 +992,32 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
           // ================================================================
           // Enhanced list styling
           // ================================================================
+          // F₂.1: tighter list rhythm to match codemode. Was my-3 with
+          // space-y-1 per item; now my-2 with space-y-0.5 — makes dense
+          // bullet lists feel more like text and less like a checklist.
           ul: ({ children }) => (
-            <ul className="my-3 pl-5 space-y-1 list-disc marker:text-[var(--color-primary)]">
+            <ul className="my-2 pl-5 space-y-0.5 list-disc marker:text-[var(--color-primary)]/70">
               {children}
             </ul>
           ),
           ol: ({ children }) => (
-            <ol className="my-3 pl-5 space-y-1 list-decimal marker:text-[var(--color-primary)] marker:font-semibold">
+            <ol className="my-2 pl-5 space-y-0.5 list-decimal marker:text-[var(--color-primary)]/70 marker:font-medium">
               {children}
             </ol>
           ),
           li: ({ children }) => (
-            <li className="pl-1">
+            <li className="pl-1 leading-snug">
               {children}
             </li>
           ),
 
           // ================================================================
-          // Horizontal rule with gradient
+          // Horizontal rule — F₂.1 tightened. Was a decorative gradient
+          // across the full width; now a subtle neutral hairline so
+          // section dividers don't steal visual weight from headings.
           // ================================================================
           hr: () => (
-            <hr className="my-6 border-0 h-px bg-gradient-to-r from-transparent via-[var(--color-primary)]/50 to-transparent" />
+            <hr className="my-4 border-0 h-px bg-[var(--color-border)]/40" />
           ),
 
           // ================================================================
@@ -1064,18 +1086,73 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
           ),
 
           // ================================================================
-          // Links open in new tab
+          // Links open in new tab.
+          //
+          // F.5: links whose text is a bracketed-digit citation (`[1]`, `1`,
+          // `^1`) OR whose href is a GFM-footnote anchor render as a compact
+          // chip instead of an underlined URL word. Everything else keeps
+          // the existing look-and-feel.
           // ================================================================
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[var(--color-primary)] hover:underline"
-            >
-              {children}
-            </a>
-          ),
+          a: ({ href, children, title }) => {
+            const linkText = React.Children.toArray(children)
+              .map(c => (typeof c === 'string' ? c : ''))
+              .join('')
+              .trim();
+            const citation = detectCitation(linkText, href, typeof title === 'string' ? title : null);
+
+            if (citation) {
+              return (
+                <a
+                  href={citation.href || '#'}
+                  target={citation.isFootnote ? undefined : '_blank'}
+                  rel={citation.isFootnote ? undefined : 'noopener noreferrer'}
+                  title={citation.title || citation.href || `Source ${citation.label}`}
+                  aria-label={`Citation ${citation.label}${citation.href ? `, ${citation.href}` : ''}`}
+                  data-testid="citation-chip"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: 18,
+                    height: 16,
+                    padding: '0 4px',
+                    margin: '0 1px',
+                    borderRadius: 3,
+                    fontSize: '0.72em',
+                    fontWeight: 600,
+                    lineHeight: 1,
+                    color: 'var(--color-primary, #6366f1)',
+                    background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)',
+                    textDecoration: 'none',
+                    verticalAlign: 'baseline',
+                    transition: 'background 120ms ease, border-color 120ms ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.background =
+                      'color-mix(in srgb, var(--color-primary) 22%, transparent)';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.background =
+                      'color-mix(in srgb, var(--color-primary) 12%, transparent)';
+                  }}
+                >
+                  {citation.label}
+                </a>
+              );
+            }
+
+            return (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[var(--color-primary)] hover:underline"
+              >
+                {children}
+              </a>
+            );
+          },
         }}
       >
         {processedContent}

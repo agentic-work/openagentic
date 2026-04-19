@@ -2691,8 +2691,9 @@ async function executeSingleMCPProxyCall(
           processedResult = `📊 Dataset stored (ID: ${storeResult.datasetId})\n` +
             `   ${storeResult.summary}\n` +
             schemaInfo +
+            `   _truncated: true  ← DO NOT invent, infer, or backfill the missing rows from prior knowledge.\n` +
             `   Use 'query_data' tool to explore this data without re-fetching.\n` +
-            `   IMPORTANT: The full data is stored in the data layer. Do NOT ask for it again.`;
+            `   IMPORTANT: The full data is stored in the data layer. Do NOT ask for it again. Do NOT list rows/fields you have not fetched via query_data.`;
 
           logger.info({
             toolCallId: toolCall.id,

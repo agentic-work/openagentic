@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useAgentState } from './useAgentState';
-import type { MultiModelEvent } from '../../hooks/useSSEChat';
+import type { MultiModelEvent } from '../../hooks/useChatStream';
 
 interface ToolExecutionEvent {
   type: 'start' | 'executing' | 'result' | 'error' | 'complete' | 'mcp_calls_data' | 'clear_all' | 'stream_ended' | 'progress';

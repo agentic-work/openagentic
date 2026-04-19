@@ -17,7 +17,10 @@ auth:
   password: "openagentic123"
 
 master:
-  nodeSelector: {}
+  # Pin to amd64 (hal/dalek). Pi nodes had RDB/AOF format drift that crashed
+  # the replica when it re-scheduled across arches. 0.6.6 pod-placement fix.
+  nodeSelector:
+    kubernetes.io/arch: amd64
   persistence:
     enabled: true
     storageClass: nfs
@@ -32,7 +35,8 @@ master:
 
 replica:
   replicaCount: 1
-  nodeSelector: {}
+  nodeSelector:
+    kubernetes.io/arch: amd64
   persistence:
     enabled: true
     storageClass: nfs

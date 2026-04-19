@@ -62,9 +62,10 @@ The final result is $result$.`,
 {Description}
 
 **Visualization** - Choose based on complexity:
-- **Complex/Interactive**: \`\`\`diagram JSON with nodes/edges (ReactFlow)
-- **Simple flowchart**: Mermaid syntax (you know it natively)
+- **Flowcharts / architecture / sequence / ERDs**: \`\`\`reactflow JSON with nodes/edges
+- **Static illustration**: inline \`\`\`svg
 - **Rich interactive**: \`\`\`artifact:html or \`\`\`artifact:react
+- **Do NOT emit \`\`\`mermaid** — deprecated on this platform and will not render.
 
 | Component | Responsibility |
 |-----------|----------------|
@@ -214,9 +215,10 @@ The final result is $result$.`,
 {high-level description}
 
 **Visualization** - Choose based on complexity:
-- **Complex cloud architecture**: \`\`\`diagram JSON with cloud/cylinder/rectangle shapes
-- **Simple overview**: Mermaid flowchart
+- **Cloud architecture**: \`\`\`reactflow JSON with cloud/cylinder/rectangle shapes
+- **Static overview**: inline \`\`\`svg
 - **Interactive dashboard**: \`\`\`artifact:react with professional enterprise styling
+- **Do NOT emit \`\`\`mermaid** — deprecated on this platform.
 
 ### Component Details
 
@@ -287,9 +289,9 @@ The final result is $result$.`,
 ### Timeline Overview
 
 **Visualization** - Choose based on complexity:
-- **Interactive timeline**: \`\`\`diagram JSON with horizontal layout, circle milestones
-- **Simple Gantt/timeline**: Mermaid gantt chart
+- **Timelines and roadmaps**: \`\`\`reactflow JSON with horizontal layout, circle milestones, "type":"timeline"
 - **Rich interactive**: \`\`\`artifact:react for animated timeline
+- **Do NOT emit \`\`\`mermaid** — deprecated on this platform.
 
 ### Milestones
 
@@ -347,9 +349,9 @@ The final result is $result$.`,
 ### Process Flow
 
 **Visualization** - Choose based on complexity:
-- **Complex interactive flow**: \`\`\`diagram JSON with decision diamonds, Yes/No edges
-- **Simple flowchart**: Mermaid flowchart (graph TD/LR)
+- **Flowcharts and decision trees**: \`\`\`reactflow JSON with decision diamonds, Yes/No edges
 - **Animated process**: \`\`\`artifact:react for step-by-step animation
+- **Do NOT emit \`\`\`mermaid** — deprecated on this platform.
 
 ### Step-by-Step
 

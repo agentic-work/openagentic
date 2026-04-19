@@ -89,8 +89,9 @@ describe('SSE Smoke Tests', () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.headers.get('content-type')).toBe('text/event-stream');
-      expect(response.headers.get('cache-control')).toBe('no-cache');
+      // v0.6.7: chat stream is NDJSON-only (Phase E SSE cleanup).
+      expect(response.headers.get('content-type')).toBe('application/x-ndjson');
+      expect(response.headers.get('cache-control')).toContain('no-cache');
       expect(response.headers.get('connection')).toBe('keep-alive');
     });
 

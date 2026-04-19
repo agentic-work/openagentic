@@ -12,6 +12,7 @@ import { FastifyInstance, FastifyPluginAsync, FastifyRequest, FastifyReply } fro
 import { loggers } from '../utils/logger.js';
 import { prisma } from '../utils/prisma.js';
 import { getCachedMetrics, setCachedMetrics } from '../services/AdminMetricsCache.js';
+import { ndjsonHeaders, writeNDJSON } from '../infra/ndjson.js';
 
 // ==========================================
 // TYPE DEFINITIONS
@@ -233,20 +234,13 @@ export const adminUserActivityRoutes: FastifyPluginAsync = async (fastify: Fasti
     const user = (request as any).user;
     const connectionId = `${user?.id || 'anon'}-${Date.now()}`;
 
-    // Set up SSE headers
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no',
-      'X-Content-Type-Options': 'nosniff',
-    });
+    // NDJSON stream (v0.6.7 — Phase D.5).
+    reply.raw.writeHead(200, ndjsonHeaders());
 
-    // Send initial connection confirmation
-    reply.raw.write(`event: connected\ndata: ${JSON.stringify({
+    writeNDJSON(reply, 'connected', {
       connectionId,
       connectedAt: new Date().toISOString(),
-    })}\n\n`);
+    });
 
     // Register this connection
     presenceSSEClients.set(connectionId, { reply, userId: user?.id || 'anonymous' });
@@ -305,7 +299,7 @@ export const adminUserActivityRoutes: FastifyPluginAsync = async (fastify: Fasti
           timestamp: new Date().toISOString(),
         };
 
-        reply.raw.write(`event: presence_update\ndata: ${JSON.stringify(presenceData)}\n\n`);
+        writeNDJSON(reply, 'presence_update', presenceData);
       } catch (error) {
         logger.warn({ error, connectionId }, '[UserActivity] Error emitting presence update');
       }
@@ -319,11 +313,7 @@ export const adminUserActivityRoutes: FastifyPluginAsync = async (fastify: Fasti
 
     // Heartbeat every 15 seconds
     const heartbeatInterval = setInterval(() => {
-      try {
-        if (!reply.raw.writableEnded) {
-          reply.raw.write(`:heartbeat ${new Date().toISOString()}\n\n`);
-        }
-      } catch {
+      if (reply.raw.writableEnded || !writeNDJSON(reply, 'heartbeat', { ts: new Date().toISOString() })) {
         clearInterval(heartbeatInterval);
       }
     }, 15000);

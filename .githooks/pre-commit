@@ -55,8 +55,9 @@ for FILE in $STAGED_FILES; do
   fi
   [ -z "$CONTENT" ] && continue
 
-  # AWS Access Key IDs
-  if echo "$CONTENT" | grep -qP 'AKIA[A-Z0-9]{16}'; then
+  # AWS Access Key IDs (skip AWS's own documented example AKIAIOSFODNN7EXAMPLE,
+  # which appears in DLP test fixtures and docs).
+  if echo "$CONTENT" | grep -vF 'AKIAIOSFODNN7EXAMPLE' | grep -qP 'AKIA[A-Z0-9]{16}'; then
     echo -e "${RED}BLOCKED${NC}: $FILE contains AWS Access Key ID"
     BLOCKED=1
   fi

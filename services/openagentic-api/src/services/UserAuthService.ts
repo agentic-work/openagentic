@@ -19,6 +19,7 @@
 import { PrismaClient } from '@prisma/client';
 import { Logger } from 'pino';
 import { decode } from 'jsonwebtoken';
+import { randomBytes } from 'node:crypto';
 import { prisma } from '../utils/prisma.js';
 
 export interface UserAuthToken {
@@ -224,8 +225,8 @@ export class UserAuthService {
       const decoded = decode(refreshToken) as any;
       
       return {
-        accessToken: `refreshed_${Date.now()}_${Math.random().toString(36).substring(2)}`,
-        idToken: `id_token_${Date.now()}`,
+        accessToken: `refreshed_${Date.now()}_${randomBytes(24).toString('base64url')}`,
+        idToken: `id_token_${Date.now()}_${randomBytes(16).toString('base64url')}`,
         refreshToken: refreshToken, // In real scenario, might get new refresh token
         email: decoded?.email || decoded?.preferred_username || '',
         groups: decoded?.groups || [],
@@ -570,7 +571,7 @@ export class UserAuthService {
    * Generate session token
    */
   async generateSessionToken(): Promise<string> {
-    return `session_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+    return `session_${Date.now()}_${randomBytes(32).toString('base64url')}`;
   }
 
   /**

@@ -50,9 +50,12 @@ auth:
 
 # Primary node configuration
 primary:
-  # Run on k8a (control plane - dalek/hal have secret mounting issues)
+  # Pin to amd64 (hal/dalek) only. Prior hostname pin was `k8a` (ARM),
+  # which ran postgres on a Pi — too weak for this workload. 0.6.6
+  # pod-placement fix: allow any amd64 node; PVC is NFS so it's
+  # portable between hal/dalek.
   nodeSelector:
-    kubernetes.io/hostname: k8a
+    kubernetes.io/arch: amd64
 
   persistence:
     enabled: true

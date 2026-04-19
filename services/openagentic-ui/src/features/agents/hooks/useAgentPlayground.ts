@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/app/providers/AuthContext';
+import { parseNDJSONStream } from '@/utils/ndjsonStream';
 
 export interface PlaygroundAgent {
   id: string;
@@ -103,41 +104,38 @@ export function useAgentPlayground() {
       const execId = data.executionId;
       setExecutionId(execId);
 
-      // Connect to SSE stream
-      const es = new EventSource(`/api/agents/stream/${execId}`);
-
-      es.onmessage = (evt) => {
+      // NDJSON stream via shared parser (v0.6.7).
+      const abort = new AbortController();
+      const timeoutHandle = setTimeout(() => abort.abort(), 300_000);
+      (async () => {
         try {
-          const event: ExecutionStep = JSON.parse(evt.data);
-          setSteps(prev => [...prev, event]);
-
-          if (event.type === 'agent_complete') {
-            setResult(event.data?.result || JSON.stringify(event.data));
-            setExecuting(false);
-            es.close();
-          } else if (event.type === 'agent_error') {
-            setError(event.data?.error || 'Agent encountered an error');
-            setExecuting(false);
-            es.close();
+          const streamResp = await fetch(`/api/agents/stream/${execId}`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/x-ndjson', ...(getAuthHeaders() || {}) },
+            signal: abort.signal,
+          });
+          for await (const raw of parseNDJSONStream(streamResp)) {
+            const event = raw as unknown as ExecutionStep;
+            setSteps(prev => [...prev, event]);
+            if (event.type === 'agent_complete') {
+              setResult((event.data as { result?: string })?.result || JSON.stringify(event.data));
+              setExecuting(false);
+              break;
+            } else if (event.type === 'agent_error') {
+              setError((event.data as { error?: string })?.error || 'Agent encountered an error');
+              setExecuting(false);
+              break;
+            }
           }
-        } catch { /* skip malformed */ }
-      };
-
-      es.onerror = () => {
-        setExecuting(false);
-        es.close();
-      };
-
-      // Timeout after 5 minutes
-      setTimeout(() => {
-        if (es.readyState !== EventSource.CLOSED) {
-          es.close();
+        } catch (err: any) {
+          if (err?.name !== 'AbortError') {
+            setError(err?.message || 'Stream error');
+          }
           setExecuting(false);
-          if (!result && !error) {
-            setError('Execution timed out after 5 minutes');
-          }
+        } finally {
+          clearTimeout(timeoutHandle);
         }
-      }, 300000);
+      })();
     } catch (err: any) {
       setError(err.message || 'Failed to execute agent');
       setExecuting(false);

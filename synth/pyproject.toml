@@ -1,0 +1,90 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "synth"
+version = "0.6.2"
+description = "Synth — Code synthesis for LLMs with mandatory HITL approval and capability-scoped auth injection."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Trent", email = "trent@openagentic.io" }
+]
+
+dependencies = [
+    "anthropic>=0.40.0",
+    "pydantic>=2.0",
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "pyyaml>=6.0",
+    "aiofiles>=23.0.0",
+]
+
+[project.optional-dependencies]
+vertex = [
+    "google-genai>=1.0.0",
+]
+gpu = [
+    "torch>=2.0.0",
+    "sentence-transformers>=2.2.0",
+]
+embeddings = [
+    "chromadb>=0.4.0",
+    "sentence-transformers>=2.2.0",
+]
+all = [
+    "google-genai>=1.0.0",
+    "torch>=2.0.0",
+    "sentence-transformers>=2.2.0",
+    "chromadb>=0.4.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0.0",
+    "pytest-timeout>=2.3.0",
+    "pexpect>=4.9.0",
+    "mypy>=1.8.0",
+    "ruff>=0.1.0",
+    # LLM backend tests patch boto3.client / google.cloud.aiplatform at import
+    # time; these SDKs must be installable so the patches resolve.
+    "boto3>=1.34.0",
+]
+# Tier-2 e2e — headless Playwright drives the OpenClaw dashboard to
+# auto-click the approval modal for the full round-trip test.
+# Install: pip install -e '.[e2e-browser]' && playwright install chromium
+e2e-browser = [
+    "playwright>=1.40.0",
+]
+
+[project.scripts]
+synth = "synth.cli.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["synth"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v --tb=short --cov=synth --cov-config=.coveragerc --cov-report=term --cov-report=xml"
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_ignores = true
+ignore_missing_imports = true
+disable_error_code = ["import-untyped", "override", "assignment", "arg-type", "return-value", "union-attr", "call-overload", "index", "no-untyped-def"]
+
+check_untyped_defs = false
+disallow_incomplete_defs = false
+warn_redundant_casts = true
+warn_return_any = false
+no_implicit_reexport = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501", "UP042"]

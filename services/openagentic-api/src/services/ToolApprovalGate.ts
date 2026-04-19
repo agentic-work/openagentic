@@ -20,6 +20,7 @@
 import { prisma } from '../utils/prisma.js';
 import type { Logger } from 'pino';
 import { EventEmitter } from 'events';
+import { getDataAccessAuditService } from './DataAccessAuditService.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -130,13 +131,14 @@ const DEFAULT_MEDIUM_RISK_PATTERNS = [
 
 const DEFAULT_HIGH_RISK_PATTERNS = [
   /^(?:execute|run|exec|eval|shell|bash|cmd|command)_/i,
-  /^(?:write|delete|remove|drop|truncate|destroy|purge)_/i,
+  /^(?:write|delete|remove|drop|truncate|destroy|purge|terminate|shutdown)_/i,
   /^(?:file_write|file_delete|fs_write)$/i,
-  /^(?:aws_|gcp_)(?:delete|destroy|remove|purge)/i,
-  /^azure_(?:delete)/i,
-  /^k8s_(?:delete|drain|cleanup)/i,
+  /^(?:aws_|gcp_)(?:delete|destroy|remove|purge|terminate|stop|shutdown)/i,
+  /^azure_(?:delete|terminate|deallocate|stop)/i,
+  /^k8s_(?:delete|drain|cleanup|terminate)/i,
   /^credential_/i,
-  /^call_aws$/i,
+  /^call_(?:aws|gcp|azure)$/i,
+  /^suggest_aws_commands$/i,
 ];
 
 const DEFAULT_CRITICAL_RISK_PATTERNS = [
@@ -154,6 +156,27 @@ const DANGEROUS_ARG_PATTERNS: Array<{ pattern: RegExp; escalateTo: RiskLevel }> 
   { pattern: /curl\s+.*?\|\s*(?:bash|sh)/i, escalateTo: 'critical' },
   { pattern: /--force|--hard|--no-verify/i, escalateTo: 'high' },
 ];
+
+/**
+ * Generic CLI wrappers (call_aws, call_gcp, call_azure, suggest_aws_commands)
+ * are classified HIGH by default because the invoked verb is unknown until
+ * we parse the command string. If the embedded command is unambiguously
+ * read-only (list/describe/get/show/head/ls/cat plus cloud-specific synonyms)
+ * and no destructive flags are present, we can safely downgrade to LOW so
+ * the LLM doesn't block on HITL for routine discovery work.
+ */
+const GENERIC_CLI_TOOLS = new Set([
+  'call_aws',
+  'call_gcp',
+  'call_azure',
+  'suggest_aws_commands',
+]);
+
+/** Cloud CLI verbs that read without mutating. */
+const READ_ONLY_CLI_VERB = /(?:^|\s)(?:list|describe|get|show|head|ls|cat|inspect|view|read|search|query|find|status|info|check|validate|lookup|resolve|count|history|logs?|diff|tree|metadata|doctor|version|help|whoami|identity|account|budget|cost|tag|select)(?=\s|$|-)/i;
+
+/** Any destructive verb anywhere — forces HIGH even if a read-verb also appears. */
+const DESTRUCTIVE_CLI_VERB = /(?:^|\s)(?:create|update|put|patch|post|delete|remove|destroy|terminate|stop|start|restart|deploy|apply|upgrade|rollback|uninstall|install|drop|truncate|rm|mv|cp|write|reset|force|scale|cordon|uncordon|drain|taint|exec|ssh|bash|shell|run|invoke|trigger|send|publish|send|set|modify|change|rotate|revoke|grant|assume|escalate)(?=\s|$|-)/i;
 
 // ---------------------------------------------------------------------------
 // ToolApprovalGate
@@ -366,26 +389,23 @@ export class ToolApprovalGate {
   async evaluate(toolCall: ToolCallInfo, emit: (event: string, data: unknown) => void): Promise<ApprovalResult> {
     const riskLevel = this.classifyRisk(toolCall);
 
-    // Dev/test escape hatch: when DISABLE_HITL_GATE=true the gate auto-approves
-    // every tool call (bypasses the modal + 120s timeout). Useful for:
-    //   - k3s dev env where every user is the operator
-    //   - CI / UC harness runs
-    //   - Playwright tests where the auto-approver can be throttled by
-    //     backgrounded-tab setInterval limits
-    if (process.env.DISABLE_HITL_GATE === 'true') {
-      this.logger.info({
-        tool: toolCall.toolName,
-        userId: toolCall.userId,
-        riskLevel,
-      }, '[HITL] Auto-approved via DISABLE_HITL_GATE env flag');
-      return {
-        approved: true,
-        riskLevel,
-        reason: 'Auto-approved — DISABLE_HITL_GATE=true',
-        requiresHuman: false,
-        approvedBy: 'auto',
-      };
-    }
+    // HITL gate is core platform security — there is NO global kill switch.
+    //
+    // Earlier versions of this code honored DISABLE_HITL_GATE=true to
+    // auto-approve tool calls for "dev convenience" and CI/Playwright
+    // ergonomics. That was removed in 0.6.6 (UC-A14): the flag silently
+    // bypassed destructive operations, couldn't be reviewed via git (it was
+    // set via `kubectl set env` on the running deployment), and encouraged
+    // dev/prod drift where a values overlay could carry the backdoor into
+    // production.
+    //
+    // Dev and CI auto-approval now has to go through the normal approval
+    // flow — respond to the pending request via the /api/tool-approval
+    // endpoint (or a UI auto-approver), so every approval is traceable in
+    // the audit log. Trust-score auto-approval below still short-circuits
+    // MEDIUM-risk calls once a user has explicitly approved a tool enough
+    // times to earn the trust threshold, which is the principled
+    // replacement for the old env-var bypass.
 
     const userTrust = this.getUserTrust(toolCall.userId, toolCall.toolName);
     let requiresHuman = this.requiresApproval(riskLevel);
@@ -488,6 +508,22 @@ export class ToolApprovalGate {
       tool: request.toolCall.toolName,
     }, `[HITL] Approval response: ${approved ? 'APPROVED' : 'DENIED'}`);
 
+    // Audit trail: every approve/deny decision is recorded so admins
+    // can forensically answer "who approved this destructive call?".
+    // Fire-and-forget — the audit service swallows DB errors internally.
+    void getDataAccessAuditService(this.logger).record({
+      actorUserId: userId,
+      targetUserId: request.toolCall.userId,
+      action: 'approval_decision',
+      resource: `tool:${request.toolCall.toolName}`,
+      details: {
+        requestId,
+        approved,
+        riskLevel: request.riskLevel,
+        toolCallArgs: this.sanitizeArgsForDisplay(request.toolCall.arguments),
+      },
+    });
+
     return true;
   }
 
@@ -540,7 +576,43 @@ export class ToolApprovalGate {
       }
     }
 
+    // 4. Generic-CLI read-only downgrade: when a generic wrapper is invoked
+    //    with an unambiguously read-only verb, drop the risk to LOW so
+    //    routine discovery (aws bedrock list-foundation-models, gcloud
+    //    compute instances list, az aks show ...) skips HITL.
+    if (GENERIC_CLI_TOOLS.has(toolName.toLowerCase())) {
+      const cmd = this.extractCliCommand(args);
+      if (cmd && READ_ONLY_CLI_VERB.test(cmd) && !DESTRUCTIVE_CLI_VERB.test(cmd)) {
+        const before = risk;
+        risk = 'low';
+        this.logger.info({
+          tool: toolName,
+          from: before,
+          to: risk,
+          cmd: cmd.slice(0, 200),
+        }, '[HITL] Generic CLI downgraded to low (read-only verb)');
+      }
+    }
+
     return risk;
+  }
+
+  /**
+   * Pull the command text out of a generic CLI tool's arguments. The
+   * wrapper conventions vary by MCP (`cli_command`, `command`, `args`,
+   * `cmd`), so probe a small set of known keys and also accept the whole
+   * arg blob when it's just a string.
+   */
+  private extractCliCommand(args: unknown): string | null {
+    if (typeof args === 'string') return args;
+    if (!args || typeof args !== 'object') return null;
+    const record = args as Record<string, unknown>;
+    for (const key of ['cli_command', 'command', 'cmd', 'argv', 'args']) {
+      const v = record[key];
+      if (typeof v === 'string' && v.trim().length > 0) return v;
+      if (Array.isArray(v)) return v.filter(x => typeof x === 'string').join(' ');
+    }
+    return null;
   }
 
   /**

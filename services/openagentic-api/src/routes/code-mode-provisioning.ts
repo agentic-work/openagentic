@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { prisma } from '../utils/prisma.js';
+import { ndjsonHeaders, writeNDJSON } from '../infra/ndjson.js';
 import {
   getCodeModeProvisioningService,
   ProvisioningProgress
@@ -124,33 +125,19 @@ const codeModeProvisioningRoutes: FastifyPluginAsync = async (fastify) => {
         return;
       }
 
-      // Set up SSE headers
-      reply.raw.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no', // Disable nginx buffering
-      });
+      // NDJSON stream (v0.6.7 — Phase D.6).
+      reply.raw.writeHead(200, ndjsonHeaders());
 
-      const sendSSE = (event: string, data: any) => {
-        reply.raw.write(`event: ${event}\n`);
-        reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
-      };
-
-      // Progress callback for SSE updates
       const onProgress = (progress: ProvisioningProgress) => {
-        sendSSE('progress', progress);
+        writeNDJSON(reply, 'progress', progress as unknown as Record<string, unknown>);
       };
 
-      // Send initial event
-      sendSSE('start', { userId, message: 'Starting provisioning...' });
+      writeNDJSON(reply, 'start', { userId, message: 'Starting provisioning...' });
 
-      // Start provisioning
       const result = await provisioningService.startProvisioning(userId, onProgress);
 
-      // Send completion event
       if (result.success) {
-        sendSSE('complete', {
+        writeNDJSON(reply, 'complete', {
           success: true,
           message: 'Your development environment is ready!',
           provisioning: {
@@ -159,7 +146,7 @@ const codeModeProvisioningRoutes: FastifyPluginAsync = async (fastify) => {
           }
         });
       } else {
-        sendSSE('error', {
+        writeNDJSON(reply, 'error', {
           success: false,
           error: result.error
         });
@@ -171,10 +158,8 @@ const codeModeProvisioningRoutes: FastifyPluginAsync = async (fastify) => {
     } catch (error: any) {
       logger.error({ error, userId }, 'Failed to start provisioning');
 
-      // If headers already sent, try to send error via SSE
       if (reply.raw.headersSent) {
-        reply.raw.write(`event: error\n`);
-        reply.raw.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+        writeNDJSON(reply, 'error', { error: error.message });
         reply.raw.end();
       } else {
         reply.code(500).send({
@@ -192,34 +177,28 @@ const codeModeProvisioningRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/progress', async (request: any, reply) => {
     const userId = request.user.id;
 
-    // Set up SSE headers
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    });
+    // NDJSON stream (v0.6.7 — Phase D.6).
+    reply.raw.writeHead(200, ndjsonHeaders());
 
-    const sendSSE = (event: string, data: any) => {
-      reply.raw.write(`event: ${event}\n`);
-      reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
+    const sendEvent = (type: string, data: any) => {
+      writeNDJSON(reply, type, data);
     };
 
     // Check current progress
     const progress = provisioningService.getProvisioningProgress(userId);
 
     if (progress) {
-      sendSSE('progress', progress);
+      sendEvent('progress', progress);
 
       // Poll for updates every 500ms
       const interval = setInterval(async () => {
         const currentProgress = provisioningService.getProvisioningProgress(userId);
         if (currentProgress) {
-          sendSSE('progress', currentProgress);
+          sendEvent('progress', currentProgress);
 
           if (currentProgress.status === 'ready' || currentProgress.status === 'failed') {
             clearInterval(interval);
-            sendSSE('complete', {
+            sendEvent('complete', {
               success: currentProgress.status === 'ready',
               message: currentProgress.statusMessage
             });
@@ -230,7 +209,7 @@ const codeModeProvisioningRoutes: FastifyPluginAsync = async (fastify) => {
           clearInterval(interval);
 
           const provisioning = await provisioningService.checkProvisioningStatus(userId);
-          sendSSE('complete', {
+          sendEvent('complete', {
             success: provisioning?.status === 'ready',
             status: provisioning?.status || 'not_found'
           });
@@ -246,7 +225,7 @@ const codeModeProvisioningRoutes: FastifyPluginAsync = async (fastify) => {
     } else {
       // Not currently provisioning - check DB status
       const provisioning = await provisioningService.checkProvisioningStatus(userId);
-      sendSSE('status', {
+      sendEvent('status', {
         provisioning: !!provisioning,
         status: provisioning?.status || 'not_provisioned'
       });

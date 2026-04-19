@@ -6,7 +6,7 @@
  * for the complete code block (with closing backticks).
  */
 
-export type ArtifactType = 'html' | 'svg' | 'mermaid' | 'react' | 'tsx' | 'chart' | 'markdown' | 'latex' | 'csv' | 'canvas';
+export type ArtifactType = 'html' | 'svg' | 'react' | 'tsx' | 'chart' | 'markdown' | 'latex' | 'csv' | 'canvas';
 
 export interface StreamingArtifact {
   /** Whether we're currently inside an artifact code block */
@@ -31,7 +31,6 @@ export interface StreamingArtifact {
 const ARTIFACT_PATTERNS = [
   /```(artifact:html|html:artifact-type|html-artifact-type|artifact-html|html|htm)\s*\n?/i,
   /```(artifact:svg|svg:artifact-type|artifact-svg|svg)\s*\n?/i,
-  /```(artifact:mermaid|mermaid:artifact-type|artifact-mermaid|mermaid)\s*\n?/i,
   /```(artifact:react|react:artifact-type|artifact-react|jsx|tsx|react)\s*\n?/i,
   /```(artifact:chart|chart:artifact-type|artifact-chart|chart|chart-json)\s*\n?/i,
   /```(artifact:markdown|md:artifact-type|artifact-markdown|md)\s*\n?/i,
@@ -62,8 +61,6 @@ function getArtifactType(languageTag: string): ArtifactType | null {
       return 'html';
     case 'svg':
       return 'svg';
-    case 'mermaid':
-      return 'mermaid';
     case 'jsx':
     case 'tsx':
     case 'react':
@@ -162,10 +159,6 @@ export function getMinimumViableContent(artifactType: ArtifactType, content: str
       if (content.includes('<svg') && !content.includes('</svg>')) {
         return content + '</svg>';
       }
-      return content;
-
-    case 'mermaid':
-      // Mermaid needs complete statements
       return content;
 
     case 'react':

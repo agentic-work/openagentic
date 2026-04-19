@@ -1,0 +1,59 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+
+# SonarQube Code Analysis
+# Triggers: push to main, PRs to main, manual dispatch.
+# Community Edition does not support non-main branch analysis or PR
+# decoration. Develop-branch scanning + PR comments require Developer
+# Edition (paid license).
+# Runs on self-hosted ARC runners (k8s-backed, scale-to-zero).
+# Fails the build if SonarQube Quality Gate goes red.
+name: SonarQube
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  sonarqube:
+    name: SonarQube Scan
+    runs-on: arc-${{ github.event.repository.name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history — SQ needs it for blame/new-code detection
+      - name: Set up Node.js
+        # SonarQube's JS/TS analyzer shells out to `node -v` at scan start.
+        # Without it, JS/TS scans crash before uploading any report.
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install synth + test deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[dev]'
+      - name: Run tests with coverage
+        # Generates coverage.xml read by SonarQube via sonar-project.properties.
+        # Excludes the e2e tier — it requires a live OpenClaw gateway which
+        # the ARC runner doesn't have. Unit + integration + PTY tests give
+        # the real coverage signal.
+        run: |
+          pytest -q --cov=synth --cov-config=.coveragerc \
+            --cov-report=term --cov-report=xml \
+            tests/unit tests/integration tests/pty
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          args: >
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=600
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}

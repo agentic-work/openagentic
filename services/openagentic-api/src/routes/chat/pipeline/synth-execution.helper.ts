@@ -12,6 +12,11 @@
 
 import type { Logger } from 'pino';
 import { SynthService, type SynthRequest, type SynthResult } from '../../../services/SynthService.js';
+import {
+  KNOWN_SYNTH_CAPS,
+  buildCredsForCaps,
+  envNamesForCaps,
+} from '../../../services/SynthCapCredentialMap.js';
 import type { ToolExecutionResult } from './tool-execution.helper.js';
 
 // Default logger for Synth (replaced when logger is provided)
@@ -58,6 +63,43 @@ export function isSynthTool(toolName: string): boolean {
  */
 export function getSynthToolDefinitions(): any[] {
   return [
+    // synth_execute — UC-A17 (0.6.6): expose the curated SaaS capabilities
+    // (Stripe, Notion, Linear, Atlassian, etc.) as a first-class tool so the
+    // LLM can call them without going through code synthesis. The user must
+    // have linked credentials for the selected capability via Admin →
+    // Integrations; if they haven't, the sandbox surfaces a clean
+    // "<PROVIDER>_API_KEY not set" error rather than the platform inventing
+    // a response. See ADR-013.
+    {
+      type: 'function',
+      function: {
+        name: 'synth_execute',
+        description: `Execute a pre-built SaaS integration against one of the user's LINKED capabilities (Stripe, Notion, Linear, Atlassian, Kubernetes, browser, email, vector DB, external Postgres, Sentry).
+Use this tool when:
+- The user asks about Stripe customers/charges/subscriptions, Notion pages, Linear issues, Jira/Confluence content, or any other capability in the \`capability\` enum below.
+- You do NOT have an equivalent typed MCP tool (azure_*, aws_*, k8s_*) for the task.
+Failure mode: if the user has NOT linked the selected capability (no credentials in vault), the sandbox returns a clear "<ENV_NAME> not set" error. Report that to the user and suggest they link the integration — do not invent a response.`,
+        parameters: {
+          type: 'object',
+          required: ['capability', 'action'],
+          properties: {
+            capability: {
+              type: 'string',
+              enum: [...KNOWN_SYNTH_CAPS],
+              description: 'Which linked SaaS capability to call. Must be one the user has linked in Admin → Integrations.',
+            },
+            action: {
+              type: 'string',
+              description: 'Concise natural-language description of the operation. E.g. "list my first 5 Stripe customers", "create a Linear issue titled X in project Y", "query the Notion database for rows where status=open".',
+            },
+            params: {
+              type: 'object',
+              description: 'Optional structured parameters for the action. Shape is capability-specific; leave empty when the action description already conveys intent.',
+            },
+          },
+        },
+      },
+    },
     {
       type: 'function',
       function: {
@@ -168,15 +210,30 @@ export async function executeSynthToolCall(
   const synthService = getSynthService(logger);
 
   try {
+    // UC-A17: synth_execute gets expanded into a standard synthesis
+    // request with capability-scoped env vars injected. All that logic
+    // is factored into expandSynthExecuteArgs() below so this function
+    // stays under the SonarQube S3776 cognitive-complexity threshold.
+    const expansion = await expandSynthExecuteArgs(toolName, toolArgs, context, logger, toolCallId);
+    if ('earlyReturn' in expansion && expansion.earlyReturn) {
+      return { ...expansion.earlyReturn, executionTimeMs: Date.now() - startTime };
+    }
+    // TS needs the explicit narrowing — after the guard above, expansion
+    // is the non-earlyReturn branch of the discriminated union.
+    const successBranch = expansion as Extract<typeof expansion, { intent: string }>;
+    const { intent, capabilities, extraCredEnvs } = successBranch;
+
     // Build synthesis request
     const synthesisRequest: SynthRequest = {
-      intent: toolArgs.intent,
+      intent,
       userId: context.userId,
       userEmail: context.userEmail,
-      capabilities: toolArgs.capabilities,
+      capabilities,
       dryRun: toolArgs.dry_run || false,
       sessionId: context.sessionId,
-      credentials: context.cloudCredentials,
+      credentials: Object.keys(extraCredEnvs).length > 0
+        ? { ...(context.cloudCredentials || {}), envVars: extraCredEnvs } as any
+        : context.cloudCredentials,
       // File attachment support — pass uploaded file data to sandbox
       ...(toolArgs.file_data ? {
         files: [{
@@ -256,6 +313,90 @@ export async function executeSynthToolCall(
       executedOn: 'synth-sandbox',
       executionTimeMs,
     };
+  }
+}
+
+/**
+ * Expand a `synth_execute` tool call into the shape `SynthRequest`
+ * expects (intent string + capabilities array + credentials env map).
+ *
+ * Pulled out of executeSynthToolCall so that function stays under the
+ * SonarQube S3776 cognitive-complexity ceiling. Returns either:
+ *   - `{ earlyReturn: ToolExecutionResult }` when the args are invalid
+ *     (caller returns this directly to the LLM),
+ *   - `{ intent, capabilities, extraCredEnvs }` otherwise.
+ *
+ * For legacy `synth_synthesize` calls we pass the LLM-supplied intent
+ * and capabilities through unchanged.
+ */
+async function expandSynthExecuteArgs(
+  toolName: string,
+  toolArgs: any,
+  context: SynthExecutionContext,
+  logger: Logger,
+  toolCallId: string,
+): Promise<
+  | { earlyReturn: Omit<ToolExecutionResult, 'executionTimeMs'> }
+  | { earlyReturn?: undefined; intent: string; capabilities: string[] | undefined; extraCredEnvs: Record<string, string> }
+> {
+  const isExecute = toolName === 'synth_execute' || toolName === 'synthesize_tool';
+  if (!isExecute) {
+    return {
+      intent: toolArgs.intent,
+      capabilities: toolArgs.capabilities,
+      extraCredEnvs: {},
+    };
+  }
+
+  const cap = typeof toolArgs.capability === 'string' ? toolArgs.capability : undefined;
+  const action = typeof toolArgs.action === 'string' ? toolArgs.action : undefined;
+  if (!cap || !action) {
+    return {
+      earlyReturn: {
+        toolCallId,
+        toolName,
+        result: { error: 'synth_execute requires both capability and action' },
+        processedResult:
+          'synth_execute called without required arguments (capability, action). ' +
+          'Tell the user which capability they wanted and which action; do not retry without them.',
+        serverName: 'synth',
+        executedOn: 'synth-sandbox',
+      },
+    };
+  }
+
+  // Build the per-user credential map. credStore is the contract point
+  // with VaultService / CredentialScopeService — when the vault wiring
+  // lands, swap the closure for a real lookup keyed by context.userId.
+  // Until then, the sandbox hits the "<VENDOR>_API_KEY not set"
+  // clean-fail path which is the correct UX for a user who hasn't
+  // linked the integration.
+  const envsNeeded = envNamesForCaps([cap]);
+  const extraCredEnvs = await buildCredsForCaps([cap], async (envName) => {
+    const fromProcess = process.env[envName];
+    return fromProcess && fromProcess.length > 0 ? fromProcess : undefined;
+  });
+
+  const paramSummary = toolArgs.params ? ` with params ${safeJson(toolArgs.params)}` : '';
+  const intent = `Use the ${cap} capability to ${action}${paramSummary}.`;
+
+  logger.info({
+    toolCallId,
+    userId: context.userId,
+    capability: cap,
+    envsRequired: envsNeeded,
+    envsResolved: Object.keys(extraCredEnvs),
+  }, '[SYNTH] synth_execute expanded to synthesis request');
+
+  return { intent, capabilities: [cap], extraCredEnvs };
+}
+
+function safeJson(obj: unknown): string {
+  try {
+    const s = JSON.stringify(obj);
+    return s.length > 400 ? s.slice(0, 400) + '…[truncated]' : s;
+  } catch {
+    return '[unserializable]';
   }
 }
 

@@ -24,6 +24,7 @@ import {
 } from '../Shared/AdminIcons';
 import { apiRequest, apiEndpoint } from '@/utils/api';
 import { useConfirm } from '@/shared/hooks/useConfirm';
+import { parseNDJSONStream } from '@/utils/ndjsonStream';
 
 interface MCPTool {
   name: string;
@@ -1000,7 +1001,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
     const [isStreaming, setIsStreaming] = React.useState(false);
     const [logLevel, setLogLevel] = React.useState<string>('all');
     const logsEndRef = React.useRef<HTMLDivElement>(null);
-    const eventSourceRef = React.useRef<EventSource | null>(null);
+    const abortRef = React.useRef<AbortController | null>(null);
 
     // Scroll to bottom when new logs arrive
     React.useEffect(() => {
@@ -1009,49 +1010,46 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
       }
     }, [logs, autoScroll]);
 
-    // Start log streaming
+    // Start log streaming — v0.6.7 NDJSON via shared parser.
     const startStreaming = React.useCallback(async () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
+      if (abortRef.current) abortRef.current.abort();
+      const abort = new AbortController();
+      abortRef.current = abort;
 
       try {
         const token = localStorage.getItem('auth_token') || '';
-
         const url = new URL(apiEndpoint('/admin/mcp/logs/stream'));
         url.searchParams.set('token', token);
         if (selectedLogServer !== 'all') {
           url.searchParams.set('server', selectedLogServer);
         }
 
-        const eventSource = new EventSource(url.toString());
-        eventSourceRef.current = eventSource;
+        const resp = await fetch(url.toString(), {
+          method: 'GET',
+          headers: { 'Accept': 'application/x-ndjson' },
+          signal: abort.signal,
+        });
+        setIsStreaming(true);
 
-        eventSource.onopen = () => {
-          setIsStreaming(true);
-        };
-
-        eventSource.onmessage = (event) => {
-          try {
-            const logEntry = JSON.parse(event.data);
-            setLogs(prev => [...prev.slice(-500), logEntry]); // Keep last 500 logs
-          } catch (e) {
-            // Raw log line
-            setLogs(prev => [...prev.slice(-500), {
-              timestamp: new Date().toISOString(),
-              server: 'mcp-proxy',
-              level: 'info',
-              message: event.data
-            }]);
+        for await (const event of parseNDJSONStream<{ type: string; timestamp?: string; server?: string; level?: string; message?: string }>(resp)) {
+          if (event.type === 'log') {
+            const logEntry = {
+              timestamp: event.timestamp || new Date().toISOString(),
+              server: event.server || 'mcp-proxy',
+              level: event.level || 'info',
+              message: event.message || '',
+            };
+            setLogs(prev => [...prev.slice(-500), logEntry]);
+          } else if (event.type === 'close') {
+            break;
           }
-        };
-
-        eventSource.onerror = () => {
-          setIsStreaming(false);
-          eventSource.close();
-        };
-      } catch (error) {
-        console.error('Failed to start log streaming:', error);
+          // heartbeat events: ignore
+        }
+      } catch (error: any) {
+        if (error?.name !== 'AbortError') {
+          console.error('Failed to stream logs:', error);
+        }
+      } finally {
         setIsStreaming(false);
       }
     }, [selectedLogServer]);
@@ -1080,8 +1078,8 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
     // Cleanup on unmount
     React.useEffect(() => {
       return () => {
-        if (eventSourceRef.current) {
-          eventSourceRef.current.close();
+        if (abortRef.current) {
+          abortRef.current.abort();
         }
       };
     }, []);
@@ -1162,7 +1160,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
           {/* Actions */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => isStreaming ? eventSourceRef.current?.close() : startStreaming()}
+              onClick={() => isStreaming ? abortRef.current?.abort() : startStreaming()}
               className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${
                 isStreaming
                   ? 'bg-error-500 hover:bg-error-500 text-white'

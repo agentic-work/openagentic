@@ -385,37 +385,51 @@ export class VaultService {
   }
 
   /**
-   * Local encryption (AES-256-CBC)
-   * Used by CredentialEncryptionService for auth_config field encryption
+   * Local encryption (AES-256-GCM). Format: `local2:<iv-hex>:<tag-hex>:<ciphertext-hex>`.
+   * 12-byte IV + 16-byte auth tag (authenticated encryption).
+   * Used by CredentialEncryptionService for auth_config field encryption.
+   * Legacy `local:` CBC rows are still readable via decryptLocal() during migration.
    */
   encryptLocal(text: string): string {
-    const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv('aes-256-cbc', this.encryptionKey, iv);
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', this.encryptionKey, iv);
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    return `local:${iv.toString('hex')}:${encrypted}`;
+    const tag = cipher.getAuthTag();
+    return `local2:${iv.toString('hex')}:${tag.toString('hex')}:${encrypted}`;
   }
 
   /**
-   * Local decryption (AES-256-CBC)
-   * Used by CredentialEncryptionService for auth_config field decryption
+   * Local decryption. Handles both new GCM (`local2:`) and legacy CBC (`local:`)
+   * formats. New writes always produce GCM; existing CBC rows re-encrypt to GCM
+   * on next round-trip.
    */
   decryptLocal(text: string): string {
-    if (!text.startsWith('local:')) {
-      return text; // Not encrypted locally
+    // GCM (new format)
+    if (text.startsWith('local2:')) {
+      const parts = text.split(':');
+      if (parts.length !== 4) throw new Error('Invalid local2 format');
+      const iv = Buffer.from(parts[1], 'hex');
+      const tag = Buffer.from(parts[2], 'hex');
+      const encrypted = parts[3];
+      const decipher = crypto.createDecipheriv('aes-256-gcm', this.encryptionKey, iv);
+      decipher.setAuthTag(tag);
+      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
     }
-
-    const parts = text.split(':');
-    if (parts.length !== 3) {
-      throw new Error('Invalid encrypted format');
+    // Legacy CBC
+    if (text.startsWith('local:')) {
+      const parts = text.split(':');
+      if (parts.length !== 3) throw new Error('Invalid local format');
+      const iv = Buffer.from(parts[1], 'hex');
+      const encrypted = parts[2];
+      const decipher = crypto.createDecipheriv('aes-256-cbc', this.encryptionKey, iv);
+      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
     }
-
-    const iv = Buffer.from(parts[1], 'hex');
-    const encrypted = parts[2];
-    const decipher = crypto.createDecipheriv('aes-256-cbc', this.encryptionKey, iv);
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
+    return text; // Not encrypted locally.
   }
 
   /**

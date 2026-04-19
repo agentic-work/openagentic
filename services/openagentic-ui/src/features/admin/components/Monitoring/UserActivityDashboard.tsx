@@ -18,6 +18,7 @@ import {
   ResponsiveContainer, Cell
 } from 'recharts';
 import { AdminMetricCard } from '../Shared/AdminMetricCard';
+import { parseNDJSONStream } from '@/utils/ndjsonStream';
 import { AdminCard } from '../Shared/AdminCard';
 import { AdminFilterBar } from '../Shared/AdminFilterBar';
 import { InfoTooltip } from '../Shared/AdminTooltip';
@@ -130,7 +131,7 @@ const UserActivityDashboard: React.FC<{ theme?: string }> = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
 
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -164,31 +165,40 @@ const UserActivityDashboard: React.FC<{ theme?: string }> = () => {
     fetchData();
   }, [fetchData]);
 
-  // SSE connection for live updates (with token auth fallback to polling)
+  // v0.6.7: NDJSON stream via shared parser. Falls back to polling on error.
   useEffect(() => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const streamUrl = token
-        ? `/api/admin/user-activity/stream?token=${encodeURIComponent(token)}`
-        : '/api/admin/user-activity/stream';
-      const es = new EventSource(streamUrl, { withCredentials: true });
+    const abort = new AbortController();
+    abortRef.current = abort;
+    let pollFallback: ReturnType<typeof setInterval> | null = null;
 
-      es.addEventListener('presence_update', (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.users) setLiveUsers(data.users);
-        } catch { /* ignore parse errors */ }
-      });
+    (async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const streamUrl = token
+          ? `/api/admin/user-activity/stream?token=${encodeURIComponent(token)}`
+          : '/api/admin/user-activity/stream';
+        const resp = await fetch(streamUrl, {
+          method: 'GET',
+          headers: { 'Accept': 'application/x-ndjson' },
+          credentials: 'include',
+          signal: abort.signal,
+        });
+        for await (const event of parseNDJSONStream<{ type: string; users?: unknown[] }>(resp)) {
+          if (event.type === 'presence_update' && Array.isArray(event.users)) {
+            setLiveUsers(event.users as typeof liveUsers);
+          }
+        }
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+        console.warn('[UserActivity] NDJSON stream failed — falling back to polling', err);
+        pollFallback = setInterval(fetchData, 15000);
+      }
+    })();
 
-      es.onerror = () => { /* Will auto-reconnect */ };
-
-      eventSourceRef.current = es;
-      return () => es.close();
-    } catch {
-      // Fallback to polling if SSE not supported
-      const interval = setInterval(fetchData, 15000);
-      return () => clearInterval(interval);
-    }
+    return () => {
+      abort.abort();
+      if (pollFallback) clearInterval(pollFallback);
+    };
   }, [fetchData]);
 
   const handleUserClick = async (userId: string) => {

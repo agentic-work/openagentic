@@ -29,6 +29,7 @@ import { randomUUID, createHash } from 'crypto';
 import bcrypt from 'bcrypt';
 import axios from 'axios';
 import { getRedisClient } from '../utils/redis-client.js';
+import { ndjsonHeaders, writeNDJSON, createSSEToNDJSONTranslator } from '../infra/ndjson.js';
 
 const workflowCompiler = new WorkflowCompiler();
 
@@ -664,32 +665,24 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
           edgeCount: edges?.length || 0
         }, '[Workflows] Test execution started');
 
-        // Set up SSE streaming
-        reply.raw.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Connection': 'keep-alive',
-          'X-Accel-Buffering': 'no',
-          'X-Content-Type-Options': 'nosniff',
-        });
-        // Disable Nagle algorithm so SSE events stream immediately
+        // NDJSON streaming (v0.6.7 — SSE removed from flows, Phase C).
+        reply.raw.writeHead(200, ndjsonHeaders());
         reply.raw.socket?.setNoDelay(true);
-        // Send initial comment to prevent "Error in input stream"
-        reply.raw.write(': connected\n\n');
+        writeNDJSON(reply, 'connected', { executionId: testExecutionId });
 
-        // SSE keepalive ping every 15s to prevent proxy/load balancer timeout
+        // Keepalive ping every 15s to prevent proxy/load balancer timeout.
         const keepaliveInterval = setInterval(() => {
           if (!reply.raw.writableEnded) {
-            reply.raw.write(': keepalive\n\n');
+            writeNDJSON(reply, 'keepalive', { ts: new Date().toISOString() });
           } else {
             clearInterval(keepaliveInterval);
           }
         }, 15000);
 
-        const sendSSE = (event: ExecutionEvent) => {
+        const sendEvent = (event: ExecutionEvent) => {
           if (!reply.raw.writableEnded) {
-            reply.raw.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
-            // Flush immediately so UI receives node_start before node_complete
+            writeNDJSON(reply, event.type, event as unknown as Record<string, unknown>);
+            // Flush immediately so UI receives node_start before node_complete.
             if (typeof (reply.raw as any).flush === 'function') {
               (reply.raw as any).flush();
             }
@@ -698,7 +691,9 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
 
         try {
           if (WORKFLOW_SERVICE_URL) {
-            // Proxy to workflow service
+            // Proxy to workflow service. Downstream still emits SSE until
+            // its own NDJSON migration lands — bridge at our boundary so
+            // UI only ever sees NDJSON.
             const proxyResponse = await axios.post(
               `${WORKFLOW_SERVICE_URL}/execute`,
               {
@@ -711,14 +706,22 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
               },
               { responseType: 'stream', timeout: 300000, headers: { 'Accept': 'text/event-stream' } }
             );
+            const bridge = createSSEToNDJSONTranslator();
             await new Promise<void>((resolve, reject) => {
               proxyResponse.data.on('data', (chunk: Buffer) => {
                 if (!reply.raw.writableEnded) {
-                  reply.raw.write(chunk);
-                  if (typeof (reply.raw as any).flush === 'function') (reply.raw as any).flush();
+                  const ndjson = bridge.translate(chunk);
+                  if (ndjson) {
+                    reply.raw.write(ndjson);
+                    if (typeof (reply.raw as any).flush === 'function') (reply.raw as any).flush();
+                  }
                 }
               });
-              proxyResponse.data.on('end', () => resolve());
+              proxyResponse.data.on('end', () => {
+                const tail = bridge.flush();
+                if (tail && !reply.raw.writableEnded) reply.raw.write(tail);
+                resolve();
+              });
               proxyResponse.data.on('error', (err: Error) => reject(err));
             });
           } else {
@@ -731,13 +734,13 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
               input,
               userId,
               testAuthToken,
-              sendSSE
+              sendEvent
             );
           }
         } catch (execError: any) {
           logger.error({ error: execError }, '[Workflows] Test execution failed');
           if (!reply.raw.writableEnded) {
-            sendSSE({
+            sendEvent({
               type: 'execution_error',
               executionId: testExecutionId,
               data: { error: execError.message },
@@ -1170,13 +1173,15 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
 
             const execChannel = `workflow:exec:${execution.id}`;
             const redisPublisher = getRedisClient();
-            const sendSSE = (event: ExecutionEvent) => {
-              const sseString = `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
-              redisPublisher.publish(execChannel, sseString).catch(() => {});
+            // Publish one NDJSON line per event. The GET /stream handler
+            // (Redis subscriber) writes these verbatim to its clients.
+            const sendEvent = (event: ExecutionEvent) => {
+              const line = JSON.stringify({ ...(event as unknown as Record<string, unknown>), type: event.type }) + '\n';
+              redisPublisher.publish(execChannel, line).catch(() => {});
             };
 
             // Send execution_start so the frontend timeline initializes
-            sendSSE({ type: 'execution_start', executionId: execution.id, data: { workflowId: id }, timestamp: new Date().toISOString() });
+            sendEvent({ type: 'execution_start', executionId: execution.id, data: { workflowId: id }, timestamp: new Date().toISOString() });
 
             try {
               let effectiveAuthToken = request.headers.authorization
@@ -1209,17 +1214,27 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
                   },
                   { responseType: 'stream', timeout: 300000, headers: { 'Accept': 'text/event-stream' } }
                 );
+                // Bridge downstream SSE → NDJSON before publishing to Redis
+                // so both direct and pub/sub consumers see the same format.
+                const bridge = createSSEToNDJSONTranslator();
                 await new Promise<void>((resolve, reject) => {
                   proxyResponse.data.on('data', (chunk: Buffer) => {
-                    redisPublisher.publish(execChannel, chunk.toString()).catch(() => {});
+                    const ndjson = bridge.translate(chunk);
+                    if (ndjson) {
+                      redisPublisher.publish(execChannel, ndjson).catch(() => {});
+                    }
                   });
-                  proxyResponse.data.on('end', () => resolve());
+                  proxyResponse.data.on('end', () => {
+                    const tail = bridge.flush();
+                    if (tail) redisPublisher.publish(execChannel, tail).catch(() => {});
+                    resolve();
+                  });
                   proxyResponse.data.on('error', (err: Error) => reject(err));
                 });
               } else {
                 await executeWorkflow(id, execution.id,
                   { nodes: definition.nodes || [], edges: definition.edges || [] },
-                  input || {}, userId, effectiveAuthToken, sendSSE,
+                  input || {}, userId, effectiveAuthToken, sendEvent,
                   { userEmail, idToken: effectiveIdToken }
                 );
               }
@@ -1230,7 +1245,7 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
               }).catch(() => {});
             } catch (execError: any) {
               logger.error({ error: execError }, '[Workflows] Async execution failed');
-              sendSSE({ type: 'execution_error', executionId: execution.id, data: { error: execError.message }, timestamp: new Date().toISOString() });
+              sendEvent({ type: 'execution_error', executionId: execution.id, data: { error: execError.message }, timestamp: new Date().toISOString() });
               await prisma.workflow.update({
                 where: { id },
                 data: { total_executions: { increment: 1 }, failed_executions: { increment: 1 } },
@@ -1241,43 +1256,36 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
           return;
         }
 
-        // Execute via dedicated workflow service (if available) or local engine
-        reply.raw.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Connection': 'keep-alive',
-          'X-Accel-Buffering': 'no',
-          'X-Content-Type-Options': 'nosniff',
-        });
+        // NDJSON streaming (v0.6.7 — SSE removed from flows, Phase C).
+        reply.raw.writeHead(200, ndjsonHeaders());
         reply.raw.socket?.setNoDelay(true);
 
-        // SSE keepalive ping every 15s to prevent proxy/LB timeout
+        // Keepalive ping every 15s to prevent proxy/LB timeout.
         const execKeepalive = setInterval(() => {
           if (!reply.raw.writableEnded) {
-            reply.raw.write(': keepalive\n\n');
+            writeNDJSON(reply, 'keepalive', { ts: new Date().toISOString() });
           } else {
             clearInterval(execKeepalive);
           }
         }, 15000);
-        // Send initial comment to prevent "Error in input stream" on slow proxy connections
-        reply.raw.write(': connected\n\n');
+        writeNDJSON(reply, 'connected', { executionId: execution.id });
 
-        // Redis channel for EventSource subscribers
+        // Redis channel for GET /stream subscribers.
         const execChannel = `workflow:exec:${execution.id}`;
         const redisPublisher = getRedisClient();
 
-        const sendSSE = (event: ExecutionEvent) => {
-          const sseString = `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
-          // Write to direct POST response
+        const sendEvent = (event: ExecutionEvent) => {
+          const line = JSON.stringify({ ...(event as unknown as Record<string, unknown>), type: event.type }) + '\n';
+          // Write to direct POST response.
           if (!reply.raw.writableEnded) {
-            reply.raw.write(sseString);
-            // Flush immediately so UI receives node_start before node_complete
+            reply.raw.write(line);
+            // Flush immediately so UI receives node_start before node_complete.
             if (typeof (reply.raw as any).flush === 'function') {
               (reply.raw as any).flush();
             }
           }
-          // Publish to Redis for GET /stream subscribers
-          redisPublisher.publish(execChannel, sseString).catch(() => {});
+          // Publish to Redis for GET /stream subscribers.
+          redisPublisher.publish(execChannel, line).catch(() => {});
         };
 
         try {
@@ -1373,22 +1381,32 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
               }
             );
 
-            // Pipe the SSE stream from the workflow service back to the client
-            // CRITICAL: flush after every chunk so events reach the browser immediately
-            // Without flush, Node's response stream buffers SSE events and the UI shows no progress
+            // Bridge downstream SSE → NDJSON at the proxy boundary so both
+            // the direct-POST consumer and the Redis subscribers see the
+            // same line-delimited JSON. Flush after every chunk so events
+            // reach the browser immediately — Node's response stream
+            // buffers otherwise and the UI shows no progress.
+            const bridge = createSSEToNDJSONTranslator();
             await new Promise<void>((resolve, reject) => {
               proxyResponse.data.on('data', (chunk: Buffer) => {
+                const ndjson = bridge.translate(chunk);
+                if (!ndjson) return;
                 if (!reply.raw.writableEnded) {
-                  reply.raw.write(chunk);
-                  // Force flush — this is what makes SSE work through proxies
+                  reply.raw.write(ndjson);
                   if (typeof (reply.raw as any).flush === 'function') {
                     (reply.raw as any).flush();
                   }
                 }
-                // Publish raw SSE chunk to Redis for EventSource subscribers
-                redisPublisher.publish(execChannel, chunk.toString()).catch(() => {});
+                redisPublisher.publish(execChannel, ndjson).catch(() => {});
               });
-              proxyResponse.data.on('end', () => resolve());
+              proxyResponse.data.on('end', () => {
+                const tail = bridge.flush();
+                if (tail) {
+                  if (!reply.raw.writableEnded) reply.raw.write(tail);
+                  redisPublisher.publish(execChannel, tail).catch(() => {});
+                }
+                resolve();
+              });
               proxyResponse.data.on('error', (err: Error) => reject(err));
             });
 
@@ -1410,7 +1428,7 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
               input || {},
               userId,
               effectiveAuthToken,
-              sendSSE,
+              sendEvent,
               { userEmail, idToken: effectiveIdToken }
             );
 
@@ -1443,7 +1461,7 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
 
           // Send error event if stream still writable
           if (!reply.raw.writableEnded) {
-            sendSSE({
+            sendEvent({
               type: 'execution_error',
               executionId: execution.id,
               data: { error: execError.message },
@@ -1487,25 +1505,20 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
         return reply.code(404).send({ error: 'Execution not found' });
       }
 
-      reply.raw.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      });
+      reply.raw.writeHead(200, ndjsonHeaders());
       reply.raw.socket?.setNoDelay(true);
-      reply.raw.write(': connected\n\n');
+      writeNDJSON(reply, 'connected', { executionId });
 
-      // If already completed, send final state and close
+      // If already completed, send final state and close.
       if (['completed', 'failed', 'completed_with_errors'].includes(execution.status)) {
-        reply.raw.write(`event: execution_complete\ndata: ${JSON.stringify({
-          type: 'execution_complete', executionId, status: execution.status,
-        })}\n\n`);
+        writeNDJSON(reply, 'execution_complete', { executionId, status: execution.status });
         reply.raw.end();
         return;
       }
 
-      // Subscribe to Redis pub/sub for live events
+      // Subscribe to Redis pub/sub for live events. The publisher side
+      // (POST /execute + POST /test) writes NDJSON lines directly to the
+      // channel, so we pipe them verbatim — zero translation here.
       try {
         const redis = getRedisClient();
         const subscriber = await redis.duplicate();
@@ -1520,16 +1533,14 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
           }
         });
 
-        // Cleanup on client disconnect
         request.raw.on('close', () => {
           subscriber.unsubscribe(channel).catch(() => {});
           subscriber.disconnect().catch(() => {});
         });
 
-        // Timeout after 5 minutes
         const timeout = setTimeout(() => {
           if (!reply.raw.writableEnded) {
-            reply.raw.write(`event: timeout\ndata: ${JSON.stringify({ type: 'timeout' })}\n\n`);
+            writeNDJSON(reply, 'timeout', { executionId });
             reply.raw.end();
           }
           subscriber.unsubscribe(channel).catch(() => {});
@@ -1538,8 +1549,8 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
 
         request.raw.on('close', () => clearTimeout(timeout));
       } catch (err: any) {
-        logger.warn({ error: err.message }, '[Workflows] Redis subscription failed for SSE stream');
-        reply.raw.write(`event: error\ndata: ${JSON.stringify({ error: 'Streaming unavailable' })}\n\n`);
+        logger.warn({ error: err.message }, '[Workflows] Redis subscription failed for NDJSON stream');
+        writeNDJSON(reply, 'error', { code: 'STREAM_UNAVAILABLE', message: 'Streaming unavailable' });
         reply.raw.end();
       }
     }

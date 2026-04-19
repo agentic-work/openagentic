@@ -443,7 +443,6 @@ const MessageContent: React.FC<MessageContentProps> = ({ message, theme }) => {
   };
   
   const extractTitle = (code: string): string | undefined => {
-    // Try to extract title from Mermaid code
     const titleMatch = code.match(/title\s+(.+)/);
     return titleMatch ? titleMatch[1] : undefined;
   };

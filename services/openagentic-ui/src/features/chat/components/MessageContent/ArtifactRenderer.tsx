@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   Play, Maximize2, Minimize2, RefreshCw, Code, Eye, Copy, Check,
   ExternalLink, Download, Printer, Share2, FileText, Image, Database,
-  BarChart2, GitBranch, FileCode
+  BarChart2, FileCode
 } from '@/shared/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import ShikiCodeBlock from './ShikiCodeBlock';
 
 // All supported artifact types
-type ArtifactType = 'html' | 'react' | 'tsx' | 'svg' | 'mermaid' | 'chart' | 'markdown' | 'latex' | 'csv' | 'canvas';
+type ArtifactType = 'html' | 'react' | 'tsx' | 'svg' | 'chart' | 'markdown' | 'latex' | 'csv' | 'canvas';
 
 // Cached bundled library contents — fetched once, inlined into artifact iframes.
 // This is required because blob: URLs and srcdoc can't resolve relative <script src> paths.
@@ -447,81 +447,6 @@ const SVG_TEMPLATE = (code: string, theme: string) => `
 </head>
 <body>
   ${code}
-  ${ARTIFACT_SAFETY_HARNESS}
-  ${OAT_BRIDGE_SCRIPT}
-</body>
-</html>
-`;
-
-// Mermaid diagram template with CSP and safety harness
-const MERMAID_TEMPLATE = (code: string, theme: string) => `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  ${ARTIFACT_CSP_META_LEGACY}
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      padding: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100%;
-      background: ${theme === 'dark' ? '#1a1a2e' : '#ffffff'};
-      color: ${theme === 'dark' ? '#e0e0e0' : '#1a1a1a'};
-    }
-    #mermaid-container {
-      width: 100%;
-      display: flex;
-      justify-content: center;
-    }
-    .mermaid {
-      max-width: 100%;
-    }
-    .error {
-      color: #ef4444;
-      padding: 16px;
-      background: ${theme === 'dark' ? '#3d1f1f' : '#fef2f2'};
-      border-radius: 8px;
-      font-family: monospace;
-      white-space: pre-wrap;
-    }
-  </style>
-</head>
-<body>
-  <div id="mermaid-container">
-    <pre class="mermaid">
-${code}
-    </pre>
-  </div>
-  <script>
-    mermaid.initialize({
-      startOnLoad: true,
-      theme: '${theme === 'dark' ? 'dark' : 'default'}',
-      securityLevel: 'loose',
-      flowchart: {
-        useMaxWidth: true,
-        htmlLabels: true,
-        curve: 'basis'
-      },
-      sequence: {
-        useMaxWidth: true
-      },
-      gantt: {
-        useMaxWidth: true
-      }
-    });
-
-    // Handle errors
-    mermaid.parseError = function(err, hash) {
-      document.getElementById('mermaid-container').innerHTML =
-        '<div class="error">Mermaid Error: ' + err + '</div>';
-    };
-  </script>
   ${ARTIFACT_SAFETY_HARNESS}
   ${OAT_BRIDGE_SCRIPT}
 </body>
@@ -1198,9 +1123,6 @@ const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({
         case 'svg':
           html = SVG_TEMPLATE(code, theme);
           break;
-        case 'mermaid':
-          html = MERMAID_TEMPLATE(code, theme);
-          break;
         case 'chart':
           html = CHART_TEMPLATE(code, theme);
           break;
@@ -1277,11 +1199,6 @@ const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({
         content = code;
         mimeType = 'image/svg+xml';
         break;
-      case 'mermaid':
-        filename = `${title || 'diagram'}.mmd`;
-        content = code;
-        mimeType = 'text/plain';
-        break;
       case 'chart':
         filename = `${title || 'chart'}.json`;
         content = code;
@@ -1356,7 +1273,6 @@ const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({
       case 'react': return 'React Component';
       case 'svg': return 'SVG Graphic';
       case 'html': return 'HTML';
-      case 'mermaid': return 'Mermaid Diagram';
       case 'chart': return 'Chart';
       case 'markdown': return 'Markdown';
       case 'latex': return 'LaTeX Math';
@@ -1371,7 +1287,6 @@ const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({
       case 'react': return 'text-cyan-400 bg-cyan-500/10';
       case 'svg': return 'text-amber-400 bg-amber-500/10';
       case 'html': return 'text-orange-400 bg-orange-500/10';
-      case 'mermaid': return 'text-indigo-400 bg-indigo-500/10';
       case 'chart': return 'text-green-400 bg-green-500/10';
       case 'markdown': return 'text-blue-400 bg-blue-500/10';
       case 'latex': return 'text-red-400 bg-red-500/10';
@@ -1385,7 +1300,6 @@ const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({
     switch (type) {
       case 'react': return <FileCode size={14} />;
       case 'svg': return <Image size={14} />;
-      case 'mermaid': return <GitBranch size={14} />;
       case 'chart': return <BarChart2 size={14} />;
       case 'markdown': return <FileText size={14} />;
       case 'csv': return <Database size={14} />;
@@ -1399,7 +1313,6 @@ const ArtifactRenderer: React.FC<ArtifactRendererProps> = ({
       case 'react': return 'tsx';
       case 'svg': return 'xml';
       case 'html': return 'html';
-      case 'mermaid': return 'plaintext';
       case 'chart': return 'json';
       case 'markdown': return 'markdown';
       case 'latex': return 'latex';

@@ -11,6 +11,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { authMiddleware } from '../middleware/unifiedAuth.js';
 import { loggers } from '../utils/logger.js';
 import { prisma } from '../utils/prisma.js';
+import { ndjsonHeaders, createSSEToNDJSONTranslator } from '../infra/ndjson.js';
 
 export const agentRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   const logger = loggers.routes || loggers;
@@ -157,15 +158,14 @@ export const agentRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
           return;
         }
 
-        reply.raw.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'X-Accel-Buffering': 'no',
-        });
+        reply.raw.writeHead(200, ndjsonHeaders());
 
+        // Agent-proxy still emits SSE upstream. Bridge at this boundary
+        // so the UI only ever sees NDJSON. When openagentic-proxy migrates
+        // natively, drop the bridge and pipe chunks verbatim.
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
+        const bridge = createSSEToNDJSONTranslator();
 
         const pump = async () => {
           try {
@@ -173,11 +173,14 @@ export const agentRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
               const { done, value } = await reader.read();
               if (done) break;
               const chunk = decoder.decode(value, { stream: true });
-              reply.raw.write(chunk);
+              const ndjson = bridge.translate(chunk);
+              if (ndjson) reply.raw.write(ndjson);
             }
           } catch {
             // Client disconnected or stream ended
           } finally {
+            const tail = bridge.flush();
+            if (tail) reply.raw.write(tail);
             reply.raw.end();
           }
         };

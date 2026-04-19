@@ -17,6 +17,7 @@
  */
 
 import { MilvusClient, DataType, ConsistencyLevelEnum } from '@zilliz/milvus2-sdk-node';
+import { assertUserIdOrThrow } from './MilvusAuditGuard.js';
 
 export interface MilvusConfig {
   address?: string;
@@ -175,6 +176,11 @@ export class MilvusService {
   }
 
   async storeMemory(userId: string, memory: MemoryEntry): Promise<number> {
+    // 0.6.6 P5: reject empty / sentinel / wildcard userIds before they
+    // map to a shared collection. Per-user collection naming is the
+    // structural guarantee; this invariant is the defence-in-depth.
+    assertUserIdOrThrow(userId);
+
     if (!this.connected) {
       throw new Error('Not connected to Milvus');
     }
@@ -221,6 +227,8 @@ export class MilvusService {
   }
 
   async searchMemories(userId: string, queryEmbedding: number[], topK: number = 5): Promise<MemorySearchResult[]> {
+    assertUserIdOrThrow(userId);
+
     if (!this.connected) {
       throw new Error('Not connected to Milvus');
     }
@@ -258,6 +266,8 @@ export class MilvusService {
   }
 
   async queryMemories(userId: string, filter: string): Promise<MemorySearchResult[]> {
+    assertUserIdOrThrow(userId);
+
     if (!this.connected) {
       throw new Error('Not connected to Milvus');
     }
@@ -290,6 +300,8 @@ export class MilvusService {
   }
 
   async deleteMemory(userId: string, memoryId: number): Promise<void> {
+    assertUserIdOrThrow(userId);
+
     if (!this.connected) {
       throw new Error('Not connected to Milvus');
     }
@@ -342,6 +354,10 @@ export class MilvusService {
   }
 
   async deleteUserCollection(userId: string): Promise<void> {
+    // Guard explicitly — a sentinel / empty userId here would drop a
+    // wildcard-named collection, e.g. "memories_" or "memories_*".
+    assertUserIdOrThrow(userId);
+
     if (!this.connected) {
       throw new Error('Not connected to Milvus');
     }

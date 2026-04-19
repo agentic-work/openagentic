@@ -4,6 +4,7 @@
  */
 import { useState, useRef, useCallback } from 'react';
 import { apiEndpoint } from '@/utils/api';
+import { parseNDJSONStream } from '@/utils/ndjsonStream';
 
 export interface TestResult {
   category: string;
@@ -60,7 +61,7 @@ export function useTestHarness() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-          'Accept': 'text/event-stream',
+          'Accept': 'application/x-ndjson',
           'Cache-Control': 'no-cache',
         },
         body: JSON.stringify({ categories }),
@@ -74,60 +75,22 @@ export function useTestHarness() {
         return;
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        addLog('fail', 'No response body');
-        setRunning(false);
-        return;
-      }
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const eventStrings = buffer.split('\n\n');
-        buffer = eventStrings.pop() || '';
-
-        for (const eventString of eventStrings) {
-          if (!eventString.trim()) continue;
-
-          const lines = eventString.split('\n');
-          let eventType: string | null = null;
-          let eventData = '';
-
-          for (const line of lines) {
-            if (line.startsWith('event: ')) eventType = line.slice(7).trim();
-            else if (line.startsWith('data: ')) eventData += line.slice(6);
-          }
-
-          if (!eventData) continue;
-
-          try {
-            const payload = JSON.parse(eventData);
-
-            if (eventType === 'test_result') {
-              const result = payload as TestResult;
-              setResults(prev => [...prev, result]);
-
-              const icon = result.status === 'pass' ? '✅' : result.status === 'fail' ? '❌' : result.status === 'skip' ? '⚠️' : '⏳';
-              const duration = result.durationMs != null ? ` ${result.durationMs}ms` : '';
-              const ttft = result.details?.ttft != null ? ` TTFT: ${result.details.ttft}ms` : '';
-              addLog(result.status, `${icon} ${result.test}${duration}${ttft}`);
-            } else if (eventType === 'progress') {
-              addLog('info', payload.message);
-            } else if (eventType === 'complete') {
-              setSummary(payload as Summary);
-              addLog('info', `✨ Complete: ${payload.passed} passed, ${payload.failed} failed, ${payload.skipped} skipped in ${payload.totalTimeMs}ms`);
-            } else if (eventType === 'error') {
-              addLog('fail', `Error: ${payload.error}`);
-            }
-          } catch {
-            // Skip unparseable events
-          }
+      // v0.6.7: NDJSON stream via shared parser.
+      for await (const payload of parseNDJSONStream<{ type: string; [k: string]: unknown }>(response)) {
+        if (payload.type === 'test_result') {
+          const result = payload as unknown as TestResult;
+          setResults(prev => [...prev, result]);
+          const icon = result.status === 'pass' ? '✅' : result.status === 'fail' ? '❌' : result.status === 'skip' ? '⚠️' : '⏳';
+          const duration = result.durationMs != null ? ` ${result.durationMs}ms` : '';
+          const ttft = (result.details as { ttft?: number })?.ttft != null ? ` TTFT: ${(result.details as { ttft: number }).ttft}ms` : '';
+          addLog(result.status, `${icon} ${result.test}${duration}${ttft}`);
+        } else if (payload.type === 'progress') {
+          addLog('info', String(payload.message ?? ''));
+        } else if (payload.type === 'complete') {
+          setSummary(payload as unknown as Summary);
+          addLog('info', `✨ Complete: ${payload.passed} passed, ${payload.failed} failed, ${payload.skipped} skipped in ${payload.totalTimeMs}ms`);
+        } else if (payload.type === 'error') {
+          addLog('fail', `Error: ${payload.message ?? payload.error ?? 'unknown'}`);
         }
       }
     } catch (err: any) {
