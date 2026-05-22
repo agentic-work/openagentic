@@ -150,8 +150,8 @@ docker build -t synth-executor:latest .
 docker build -f Dockerfile.slim -t synth-executor:latest .
 
 # Push to registry
-docker tag synth-executor:latest us-east4-docker.pkg.dev/openagentic-dev/openagentic/synth-executor:latest
-docker push us-east4-docker.pkg.dev/openagentic-dev/openagentic/synth-executor:latest
+docker tag synth-executor:latest harbor.agenticwork.io/openagentic/synth-executor:latest
+docker push harbor.agenticwork.io/openagentic/synth-executor:latest
 ```
 
 ## Deploying

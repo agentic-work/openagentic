@@ -150,8 +150,8 @@ docker build -t openagentic-synth:latest .
 docker build -f Dockerfile.slim -t openagentic-synth:latest .
 
 # Push to registry
-docker tag openagentic-synth:latest us-east4-docker.pkg.dev/openagentic-dev/openagentic/openagentic-synth:latest
-docker push us-east4-docker.pkg.dev/openagentic-dev/openagentic/openagentic-synth:latest
+docker tag openagentic-synth:latest harbor.agenticwork.io/openagentic/openagentic-synth:latest
+docker push harbor.agenticwork.io/openagentic/openagentic-synth:latest
 ```
 
 ## Deploying

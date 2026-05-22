@@ -9,7 +9,7 @@ oatExecutor:
   replicaCount: 2
 
   image:
-    repository: us-east4-docker.pkg.dev/openagentic-dev/openagentic/openagentic-synth
+    repository: harbor.agenticwork.io/openagentic/openagentic-synth
     tag: latest
     pullPolicy: Always
 

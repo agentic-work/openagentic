@@ -40,7 +40,7 @@ spec:
 
       containers:
       - name: synth-executor
-        image: us-east4-docker.pkg.dev/openagentic-dev/openagentic/synth-executor:latest
+        image: harbor.agenticwork.io/openagentic/synth-executor:latest
         imagePullPolicy: Always
 
         ports:

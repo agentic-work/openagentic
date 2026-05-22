@@ -95,7 +95,7 @@
 - [x] Fixed ChatContainer.tsx - Code Mode WebSocket was imported but not used
 - [x] Added proper useCodeModeWebSocket hook connection when in code mode
 - [x] Passed sendMessage callback to CodeModeLayoutV2 component
-- [ ] Rebuild and test: `./scripts/build-fixed-v2.sh --buildpush --registry us-east4-docker.pkg.dev/openagentic-dev/openagentic --no-cache && docker compose up -d`
+- [ ] Rebuild and test: `./scripts/build-fixed-v2.sh --buildpush --registry harbor.agenticwork.io/openagentic --no-cache && docker compose up -d`
 - [ ] Verify fix with Playwright test
 
 ### Fix Details (2026-01-01)
@@ -109,7 +109,7 @@ File changed: `src/features/chat/components/ChatContainer.tsx`
 
 ### Build Command
 ```bash
-./scripts/build-fixed-v2.sh --buildpush --registry us-east4-docker.pkg.dev/openagentic-dev/openagentic --no-cache && docker compose up -d
+./scripts/build-fixed-v2.sh --buildpush --registry harbor.agenticwork.io/openagentic --no-cache && docker compose up -d
 ```
 
 ### Test Command

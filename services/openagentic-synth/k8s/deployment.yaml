@@ -40,7 +40,7 @@ spec:
 
       containers:
       - name: openagentic-synth
-        image: us-east4-docker.pkg.dev/openagentic-dev/openagentic/openagentic-synth:latest
+        image: harbor.agenticwork.io/openagentic/openagentic-synth:latest
         imagePullPolicy: Always
 
         ports:

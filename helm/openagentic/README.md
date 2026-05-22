@@ -124,11 +124,11 @@ kubectl create secret tls openagentic-wildcard-tls \
   --key=certs/wildcard.key \
   -n openagentic
 
-# Create image pull secret for GCR
-kubectl create secret docker-registry gcr-secret \
-  --docker-server=us-east4-docker.pkg.dev \
-  --docker-username=_json_key \
-  --docker-password="$(cat path/to/service-account.json)" \
+# Create image pull secret for the openagentic Harbor registry
+kubectl create secret docker-registry harbor-secret \
+  --docker-server=harbor.agenticwork.io \
+  --docker-username='<your-harbor-user>' \
+  --docker-password='<your-harbor-token>' \
   -n openagentic
 ```
 

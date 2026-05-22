@@ -86,7 +86,7 @@ describe('k8s-deployment-rollout-status-report template', () => {
     const { handler: llmHandler } = mockChatCompletions({
       content:
         'The user wants me to summarize the most concerning rollout situations. Let me think:\n' +
-        '- oap-openagentic-azure-mcp (stuck) — replicas=2 but ready=0 and available=0; pods likely failing to schedule or the image pull is failing. Check pod events with kubectl describe and verify the harbor.openagentic.io image tag exists.\n' +
+        '- oap-openagentic-azure-mcp (stuck) — replicas=2 but ready=0 and available=0; pods likely failing to schedule or the image pull is failing. Check pod events with kubectl describe and verify the harbor.agenticwork.io image tag exists.\n' +
         '- openagentic-workflows (rolling-out) — replicas=3 but only 1 ready/available; rollout in progress or a new revision is partially healthy. Watch for the remaining 2 pods over the next few minutes; if they stay unready, suspect a regression in the new image.',
       model: 'gpt-oss:20b',
       usage: { prompt_tokens: 240, completion_tokens: 130 },

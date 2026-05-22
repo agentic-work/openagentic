@@ -147,6 +147,7 @@ services:
 
   api:
     <<: *defaults
+    image: ${OPENAGENTIC_REGISTRY:-harbor.agenticwork.io/openagentic}/openagentic-api:${OPENAGENTIC_TAG:-latest}
     build:
       context: .
       dockerfile: services/openagentic-api/Dockerfile
@@ -218,6 +219,7 @@ services:
 
   ui:
     <<: *defaults
+    image: ${OPENAGENTIC_REGISTRY:-harbor.agenticwork.io/openagentic}/openagentic-ui:${OPENAGENTIC_TAG:-latest}
     build:
       context: .
       dockerfile: services/openagentic-ui/Dockerfile
@@ -243,6 +245,7 @@ services:
 
   workflows:
     <<: *defaults
+    image: ${OPENAGENTIC_REGISTRY:-harbor.agenticwork.io/openagentic}/openagentic-workflows:${OPENAGENTIC_TAG:-latest}
     build:
       context: .
       dockerfile: services/openagentic-workflows/Dockerfile
@@ -256,6 +259,7 @@ services:
 
   mcp-proxy:
     <<: *defaults
+    image: ${OPENAGENTIC_REGISTRY:-harbor.agenticwork.io/openagentic}/openagentic-mcp-proxy:${OPENAGENTIC_TAG:-latest}
     build:
       context: .
       dockerfile: services/openagentic-mcp-proxy/Dockerfile
@@ -304,6 +308,7 @@ services:
 
   proxy:
     <<: *defaults
+    image: ${OPENAGENTIC_REGISTRY:-harbor.agenticwork.io/openagentic}/openagentic-proxy:${OPENAGENTIC_TAG:-latest}
     build:
       context: .
       dockerfile: services/openagentic-proxy/Dockerfile
@@ -315,6 +320,7 @@ services:
 
   synth:
     <<: *defaults
+    image: ${OPENAGENTIC_REGISTRY:-harbor.agenticwork.io/openagentic}/openagentic-synth:${OPENAGENTIC_TAG:-latest}
     build:
       context: ./services/openagentic-synth
     environment:

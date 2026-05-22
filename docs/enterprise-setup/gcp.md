@@ -1,12 +1,12 @@
 # GCP — service account for the GCP MCP
 
-Read-only service account in whatever project you want the GCP MCP to introspect. For the reference instance we targeted `agenticwork-dev`.
+Read-only service account in whatever project you want the GCP MCP to introspect. For the reference instance point this at the project you want introspected.
 
 ## Preconditions
 
 ```bash
 gcloud auth login                       # if reauth is needed (non-interactive runs will fail)
-gcloud config set project agenticwork-dev
+gcloud config set project <YOUR_GCP_PROJECT>
 gcloud config list --format="value(core.account,core.project)"
 ```
 
@@ -15,16 +15,16 @@ gcloud config list --format="value(core.account,core.project)"
 ```bash
 gcloud iam service-accounts create openagentic-mcp-gcp \
   --display-name="OpenAgentic MCP GCP" \
-  --project=agenticwork-dev
-# → SA email: openagentic-mcp-gcp@agenticwork-dev.iam.gserviceaccount.com
+  --project=<YOUR_GCP_PROJECT>
+# → SA email: openagentic-mcp-gcp@<YOUR_GCP_PROJECT>.iam.gserviceaccount.com
 ```
 
 ## 2. Grant read-only roles
 
 ```bash
-SA=openagentic-mcp-gcp@agenticwork-dev.iam.gserviceaccount.com
+SA=openagentic-mcp-gcp@<YOUR_GCP_PROJECT>.iam.gserviceaccount.com
 for role in viewer logging.viewer monitoring.viewer cloudasset.viewer; do
-  gcloud projects add-iam-policy-binding agenticwork-dev \
+  gcloud projects add-iam-policy-binding <YOUR_GCP_PROJECT> \
     --member="serviceAccount:$SA" \
     --role="roles/$role" \
     --condition=None --quiet
@@ -52,7 +52,7 @@ chmod 600 ~/.openagentic/cloud-secrets/gcp-sa.json
 ```bash
 cat > ~/.openagentic/cloud-secrets/gcp.env <<EOF
 GOOGLE_APPLICATION_CREDENTIALS=/home/trent/.openagentic/cloud-secrets/gcp-sa.json
-GCP_PROJECT=agenticwork-dev
+GCP_PROJECT=<YOUR_GCP_PROJECT>
 GCP_SERVICE_ACCOUNT=$SA
 EOF
 chmod 600 ~/.openagentic/cloud-secrets/gcp.env
@@ -70,11 +70,11 @@ GOOGLE_APPLICATION_CREDENTIALS=~/.openagentic/cloud-secrets/gcp-sa.json \
 
 | Key | Value |
 |---|---|
-| Project | `agenticwork-dev` (project number `500133920558`) |
-| Service account | `openagentic-mcp-gcp@agenticwork-dev.iam.gserviceaccount.com` |
+| Project | the GCP project you want introspected |
+| Service account | `openagentic-mcp-gcp@<YOUR_GCP_PROJECT>.iam.gserviceaccount.com` |
 | Roles | viewer / logging.viewer / monitoring.viewer / cloudasset.viewer |
-| Key id | `1b14f86488bd…` (JSON key at `~/.openagentic/cloud-secrets/gcp-sa.json`) |
-| Verified | SA activated, `gcloud projects describe agenticwork-dev` returned name + project number |
+| Key id | `<YOUR_KEY_ID>` (JSON key at `~/.openagentic/cloud-secrets/gcp-sa.json`) |
+| Verified | `gcloud projects describe <YOUR_GCP_PROJECT>` returns name + project number |
 
 ## Workload Identity Federation (no keys, recommended long-term)
 
@@ -83,9 +83,9 @@ If this instance runs in k8s with Workload Identity enabled, you can drop the JS
 ## Teardown
 
 ```bash
-SA=openagentic-mcp-gcp@agenticwork-dev.iam.gserviceaccount.com
+SA=openagentic-mcp-gcp@<YOUR_GCP_PROJECT>.iam.gserviceaccount.com
 for role in viewer logging.viewer monitoring.viewer cloudasset.viewer; do
-  gcloud projects remove-iam-policy-binding agenticwork-dev \
+  gcloud projects remove-iam-policy-binding <YOUR_GCP_PROJECT> \
     --member="serviceAccount:$SA" --role="roles/$role" --quiet
 done
 # Delete all keys before deleting the SA

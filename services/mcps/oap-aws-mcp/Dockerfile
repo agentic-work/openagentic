@@ -2,7 +2,7 @@
 #
 # Migrated from `python:3.11-slim` (157 HIGH / 19 CRITICAL per Harbor Trivy)
 # to cgr.dev/chainguard/python — distroless, non-root by default, daily CVE
-# rebuilds, SBOM attached. See harbor.openagentic.io for the before/after
+# rebuilds, SBOM attached. See harbor.agenticwork.io for the before/after
 # scan delta.
 #
 # Two stages:
