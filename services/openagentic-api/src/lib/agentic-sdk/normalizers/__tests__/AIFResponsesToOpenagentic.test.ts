@@ -60,7 +60,7 @@ describe('AIFResponsesToOpenagenticNormalizer', () => {
           id: 'fc_xxx',
           call_id: 'call_xxx',
           name: 'azure_list_subscriptions',
-          arguments: '{"tenantId":"openagentic-test"}',
+          arguments: '{"tenantId":"phatoldsun"}',
         },
       ],
       status: 'completed',
@@ -78,7 +78,7 @@ describe('AIFResponsesToOpenagenticNormalizer', () => {
     );
     expect(delta).toBeDefined();
     if (delta && delta.type === 'content_block_delta' && delta.delta.type === 'input_json_delta') {
-      expect(JSON.parse(delta.delta.partial_json)).toEqual({ tenantId: 'openagentic-test' });
+      expect(JSON.parse(delta.delta.partial_json)).toEqual({ tenantId: 'phatoldsun' });
     }
 
     const md = events.find((e) => e.type === 'message_delta');
