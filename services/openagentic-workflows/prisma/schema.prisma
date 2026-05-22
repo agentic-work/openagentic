@@ -4940,3 +4940,15 @@ model MCPToolAccessPolicy {
   @@schema("public")
 }
 
+
+model IdempotencyKey {
+  idempotency_key String   @id
+  execution_id    String
+  result          Json
+  expires_at      DateTime
+  created_at      DateTime @default(now())
+
+  @@index([expires_at])
+  @@map("idempotency_keys")
+  @@schema("public")
+}

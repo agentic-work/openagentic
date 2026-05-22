@@ -43,25 +43,28 @@ COPY services/shared/workflow-engine/package.json     /shared/workflow-engine/pa
 COPY services/shared/workflow-engine/tsconfig.json    /shared/workflow-engine/tsconfig.json
 COPY services/shared/workflow-engine/src              /shared/workflow-engine/src
 
-# Tier A (2026-05-13): both packages declare
-#   "@agentic-work/llm-sdk": "file:.../openagentic-sdk"
-# which from /app and /shared/workflow-engine both normalize to
-# /openagentic-sdk inside the container. Stage the SDK's prebuilt dist/ +
-# package.json so the file: dep resolves at install time. The SDK ships
-# with dist/ pre-built (npm prepare hook); we only need dist + package.json
-# at runtime for the canonical event builders. build.sh rsyncs the sibling
-# SDK into `<context>/sdk/` (see scripts/build.sh §1).
-#
-# Strip the `prepare` script from the staged SDK package.json so npm's
-# file: dep handling doesn't try to rebuild the SDK inside this image
-# (which lacks the SDK's devDependencies: tsc, etc.). dist/ is already
-# baked from the host build.
-COPY openagentic-sdk/package.json    /openagentic-sdk/package.json.orig
-COPY openagentic-sdk/dist            /openagentic-sdk/dist
-RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('/openagentic-sdk/package.json.orig','utf8'));if(p.scripts){delete p.scripts.prepare;delete p.scripts.prepublishOnly;}fs.writeFileSync('/openagentic-sdk/package.json',JSON.stringify(p,null,2));"
+# Stage the vendored llm-sdk as a workspace sibling and rewrite the
+# workspace:* spec in workflow-engine to a file: dep that resolves inside
+# the container (no sibling openagentic-sdk dir is shipped in OSS).
+COPY services/shared/llm-sdk/package.json   /shared/llm-sdk/package.json
+COPY services/shared/llm-sdk/tsconfig.json  /shared/llm-sdk/tsconfig.json
+COPY services/shared/llm-sdk/src            /shared/llm-sdk/src
+COPY services/shared/llm-sdk/scripts        /shared/llm-sdk/scripts
+# Strip the `prepare` script from the SDK so consumers' npm install
+# doesn't try to build it before tsc is available.
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('/shared/llm-sdk/package.json','utf8'));if(p.scripts){delete p.scripts.prepare;delete p.scripts.prepublishOnly;}fs.writeFileSync('/shared/llm-sdk/package.json',JSON.stringify(p,null,2));"
+# Build the SDK explicitly using a transient install of devDeps.
+RUN cd /shared/llm-sdk && npm install --ignore-scripts --no-save && \
+    /shared/llm-sdk/node_modules/.bin/tsc -p tsconfig.json && \
+    node scripts/fix-esm-imports.js
+# Rewrite workflow-engine's workspace spec to a file path inside the image.
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('/shared/workflow-engine/package.json','utf8'));if(p.dependencies&&p.dependencies['@agentic-work/llm-sdk']==='workspace:*'){p.dependencies['@agentic-work/llm-sdk']='file:/shared/llm-sdk';fs.writeFileSync('/shared/workflow-engine/package.json',JSON.stringify(p,null,2));}"
 
 COPY services/openagentic-workflows/package.json ./
-RUN npm install
+# Workflows declares @agentic-work/llm-sdk as workspace:* — rewrite to a
+# file: spec resolvable inside the standalone image.
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));if(p.dependencies&&p.dependencies['@agentic-work/llm-sdk']==='workspace:*'){p.dependencies['@agentic-work/llm-sdk']='file:/shared/llm-sdk';fs.writeFileSync('package.json',JSON.stringify(p,null,2));}"
+RUN npm install --legacy-peer-deps
 # Force rebuild of native deps (isolated-vm) from source — prebuild-install
 # silently exits 0 when no prebuild matches; explicit rebuild guarantees the
 # .node binary is present.
@@ -118,10 +121,10 @@ COPY --from=builder /app/templates              ./templates
 # src/ stays out for image-size hygiene.
 COPY --from=builder /shared/workflow-engine/dist          /shared/workflow-engine/dist
 COPY --from=builder /shared/workflow-engine/package.json  /shared/workflow-engine/package.json
-# Tier A — bring openagentic-sdk dist/ + package.json so the
+# Vendored llm-sdk — bring its dist/ + package.json so the
 # node_modules/@agentic-work/llm-sdk symlink resolves at runtime.
-COPY --from=builder /openagentic-sdk/dist                 /openagentic-sdk/dist
-COPY --from=builder /openagentic-sdk/package.json         /openagentic-sdk/package.json
+COPY --from=builder /shared/llm-sdk/dist                  /shared/llm-sdk/dist
+COPY --from=builder /shared/llm-sdk/package.json          /shared/llm-sdk/package.json
 # Re-create the node_modules symlink so the shared dist/'s bare imports
 # (isolated-vm, axios) resolve at runtime via standard Node walk-up.
 # Node uses realpath when resolving through symlinks, so the .js files

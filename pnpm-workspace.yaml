@@ -1,6 +1,7 @@
 packages:
   - services/openagentic-ui
   - services/openagentic-api
+  - services/openagentic-workflows
   - services/shared/workflow-engine
   - services/shared/llm-sdk
 

@@ -185,9 +185,17 @@ COPY ${SRC_PATH}/prisma ./prisma
 # Only dist/ + package.json are needed; src/ is omitted for image-size hygiene.
 COPY --from=api-builder /shared/workflow-engine/dist          /shared/workflow-engine/dist
 COPY --from=api-builder /shared/workflow-engine/package.json  /shared/workflow-engine/package.json
-# Re-create the node_modules symlink so the shared dist/'s bare imports
+# Vendored llm-sdk — runtime needs dist/ + package.json so the
+# node_modules/@agentic-work/llm-sdk symlink resolves.
+COPY --from=api-builder /shared/llm-sdk/dist                  /shared/llm-sdk/dist
+COPY --from=api-builder /shared/llm-sdk/package.json          /shared/llm-sdk/package.json
+# Re-create the node_modules symlinks so the shared dist/'s bare imports
 # (isolated-vm, axios) resolve at runtime via standard Node walk-up.
-RUN ln -sfn /app/node_modules /shared/workflow-engine/node_modules
+RUN ln -sfn /app/node_modules /shared/workflow-engine/node_modules && \
+    ln -sfn /app/node_modules /shared/llm-sdk/node_modules && \
+    rm -rf /app/node_modules/@agentic-work/llm-sdk && \
+    mkdir -p /app/node_modules/@agentic-work && \
+    ln -sfn /shared/llm-sdk /app/node_modules/@agentic-work/llm-sdk
 
 # Copy RBAC system prompts (rev-2 chatmode plan §Layer-1).
 # Loaded by RoleKeyedSystemPrompt.ts at runtime via fileURLToPath

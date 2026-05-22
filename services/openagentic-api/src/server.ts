@@ -369,14 +369,27 @@ async function initializeServices() {
       throw new Error(`Admin user not properly configured: ${userValidation.adminEmail}`);
     }
 
-    // Validate system prompts exist
-    const promptValidation = await promptService.validateSystemPrompts();
+    // Validate system prompts exist. Seed defaults on first boot if the
+    // table is empty so a fresh install doesn't require a separate
+    // `npm run db:seed:prompts` step.
+    let promptValidation = await promptService.validateSystemPrompts();
     if (!promptValidation.healthy) {
-      loggers.services.error({
-        missing: promptValidation.missing,
-        details: promptValidation.details
-      }, '❌ CRITICAL: System prompt templates validation FAILED after initialization');
-      throw new Error(`Missing system prompts: ${promptValidation.missing.join(', ')}`);
+      loggers.services.warn({
+        missing: promptValidation.missing
+      }, '⚠️ System prompt templates missing — seeding defaults from PROMPT_TEMPLATES');
+      try {
+        await promptService.ensureDefaultTemplates();
+        promptValidation = await promptService.validateSystemPrompts();
+      } catch (seedErr: any) {
+        loggers.services.error({ err: seedErr?.message }, '❌ Seeding default prompt templates failed');
+      }
+      if (!promptValidation.healthy) {
+        loggers.services.error({
+          missing: promptValidation.missing,
+          details: promptValidation.details
+        }, '❌ CRITICAL: System prompt templates validation FAILED after seed attempt');
+        throw new Error(`Missing system prompts: ${promptValidation.missing.join(', ')}`);
+      }
     }
     
     // Embedding models are discovered dynamically from providers
@@ -408,8 +421,15 @@ async function initializeServices() {
     ragService = new RAGService(milvusClient, loggers.services);
     const initResult = await ragService.initializeCollection();
     if (initResult.success) {
-      const syncResult = await ragService.syncAllTemplates();
-      loggers.services.info(`✅ RAG collection initialized, ${syncResult.synced || 0} templates synced`);
+      // syncAllTemplates was removed in the OSS edition — templates index
+      // via the per-template upsert path on first read instead.
+      const syncFn = (ragService as any).syncAllTemplates;
+      if (typeof syncFn === 'function') {
+        const syncResult = await syncFn.call(ragService);
+        loggers.services.info(`✅ RAG collection initialized, ${syncResult.synced || 0} templates synced`);
+      } else {
+        loggers.services.info('✅ RAG collection initialized (lazy template sync)');
+      }
     }
 
     // Initialize MilvusVectorService for user artifacts and embeddings
@@ -1607,17 +1627,9 @@ async function registerAllRoutes() {
     loggers.routes.error({ err: error }, 'Failed to register admin DLP routes');
   }
 
-  // Register Admin Prompt Modules routes (Composable Prompt System)
-  try {
-    const { default: promptModuleRoutes } = await import('./routes/admin/prompt-modules.js');
-    await server.register(async (instance) => {
-      instance.addHook('preHandler', adminMiddleware);
-      await instance.register(promptModuleRoutes);
-    }, { prefix: '/api/admin/prompts' });
-    loggers.routes.info('Admin Prompt Modules routes registered at /api/admin/prompts/* with admin middleware');
-  } catch (error) {
-    loggers.routes.error({ err: error }, 'Failed to register admin prompt modules routes');
-  }
+  // Admin Prompt Modules routes are now registered by admin.plugin.ts +
+  // memory-ai.plugin.ts (Phase E12 cleanup). Re-registering here would
+  // collide on /api/admin/prompts/effectiveness.
 
   // Shared Knowledge Base admin API (sources, documents, ingest, search)
   try {

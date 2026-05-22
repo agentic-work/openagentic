@@ -13,7 +13,7 @@
     "test:harness": "vitest run --config vitest.harness.config.ts"
   },
   "dependencies": {
-    "@agentic-work/llm-sdk": "file:../../../openagentic-sdk",
+    "@agentic-work/llm-sdk": "workspace:*",
     "@openagentic/workflow-engine": "file:../shared/workflow-engine",
     "@fastify/cors": "^11.2.0",
     "@prisma/client": "^6.4.1",
@@ -38,5 +38,5 @@
     "typescript": "^5.3.0",
     "vitest": "^3.2.4"
   },
-  "description": "OpenAgentic Workflow Execution Service — scalable workflow engine"
+  "description": "OpenAgentic Workflow Execution Service \u2014 scalable workflow engine"
 }
