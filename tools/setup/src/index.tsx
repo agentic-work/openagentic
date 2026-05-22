@@ -8,14 +8,13 @@ import { OllamaStep } from './steps/Ollama.tsx';
 import { ProvidersStep } from './steps/Providers.tsx';
 import { McpSelectionStep } from './steps/McpSelection.tsx';
 import { McpAuthStep } from './steps/McpAuth.tsx';
-import { CodingCliStep } from './steps/CodingCli.tsx';
 import { ReviewStep } from './steps/Review.tsx';
 import { LaunchStep } from './steps/Launch.tsx';
-import { DEFAULT_CONFIG, type WizardConfig, type DeployTarget, type CodingAdapterId } from './lib/types.ts';
+import { DEFAULT_CONFIG, type WizardConfig, type DeployTarget } from './lib/types.ts';
 import { defaultEnabledMcps } from './lib/mcps.ts';
 import { readCurrent } from './lib/env.ts';
 
-type Screen = 'target' | 'helm-preflight' | 'admin' | 'ollama' | 'providers' | 'mcps' | 'mcp-auth' | 'coding' | 'review' | 'launch' | 'done';
+type Screen = 'target' | 'helm-preflight' | 'admin' | 'ollama' | 'providers' | 'mcps' | 'mcp-auth' | 'review' | 'launch' | 'done';
 
 const App: React.FC = () => {
   // Seed from any existing .env so re-running the wizard is non-destructive.
@@ -39,16 +38,15 @@ const App: React.FC = () => {
       azureOpenAIEndpoint: existing.AZURE_OPENAI_ENDPOINT || undefined,
       azureOpenAIKey: existing.AZURE_OPENAI_API_KEY || undefined,
     },
-    codingAdapter: ((existing.CODING_ADAPTER as CodingAdapterId | undefined) || DEFAULT_CONFIG.codingAdapter),
     mcps: existing.MCPS_ENABLED ? existing.MCPS_ENABLED.split(',').map((s: string) => s.trim()).filter(Boolean) : defaultEnabledMcps(),
     mcpAuth: {},
     uiPort: existing.UI_HOST_PORT ? Number(existing.UI_HOST_PORT) : DEFAULT_CONFIG.uiPort,
   }));
   const [screen, setScreen] = useState<Screen>('target');
 
-  // Step numbering — Docker path = 9 screens total, Helm path inserts a
-  // preflight as step 2/10 so downstream steps bump by 1.
-  const total = config.target === 'helm' ? 10 : 9;
+  // Step numbering — Docker path = 8 screens total, Helm path inserts a
+  // preflight as step 2/9 so downstream steps bump by 1.
+  const total = config.target === 'helm' ? 9 : 8;
   const stepOffset = config.target === 'helm' ? 1 : 0;  // admin onwards shift +1 on Helm
   const stepNum = {
     target: 1,
@@ -58,9 +56,8 @@ const App: React.FC = () => {
     providers: 4 + stepOffset,
     mcps: 5 + stepOffset,
     mcpAuth: 6 + stepOffset,
-    coding: 7 + stepOffset,
-    review: 8 + stepOffset,
-    launch: 9 + stepOffset,
+    review: 7 + stepOffset,
+    launch: 8 + stepOffset,
   };
 
   if (screen === 'target') {
@@ -156,19 +153,6 @@ const App: React.FC = () => {
             mcps: config.mcps.filter((id) => !skipped.includes(id)),
             mcpAuth: cleanAuth,
           });
-          setScreen('coding');
-        }}
-      />
-    );
-  }
-  if (screen === 'coding') {
-    return (
-      <CodingCliStep
-        initial={config.codingAdapter}
-        step={stepNum.coding}
-        total={total}
-        onPick={(id) => {
-          setConfig({ ...config, codingAdapter: id });
           setScreen('review');
         }}
       />

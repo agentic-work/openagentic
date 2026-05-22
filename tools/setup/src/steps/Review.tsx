@@ -50,7 +50,6 @@ export const ReviewStep: React.FC<Props> = ({ config, step, total, onLaunch, onC
         {row('ollama host', config.ollama.host)}
         {row('embedding model', config.ollama.embedModel)}
         {row('LLM providers', providerCount > 0 ? `${providerCount} configured` : 'Ollama only')}
-        {row('coding CLI', config.codingAdapter)}
         {row('MCPs', mcpSummary)}
         {row('UI port', String(config.uiPort))}
         {missingCreds.length > 0 && (

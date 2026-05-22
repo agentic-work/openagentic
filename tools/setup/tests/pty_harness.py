@@ -136,8 +136,6 @@ def script_minimal(child: pexpect.spawn) -> None:
     send(child, SPACE)                        # web on (cursor starts at 0 = web)
     send(child, ENTER)
 
-    expect_screen(child, "Which coding CLI should Code Mode use?")
-    send(child, ENTER)                        # claude-code default
 
     expect_screen(child, "Review & launch")
     send(child, ENTER)                        # Launch
@@ -151,8 +149,6 @@ def assert_minimal(env: dict[str, str]) -> list[str]:
         fails.append(f"ADMIN_SEED_PASSWORD expected 'hunter2!!' got {env.get('ADMIN_SEED_PASSWORD')!r}")
     if env.get("ANTHROPIC_API_KEY") != "sk-ant-test":
         fails.append(f"ANTHROPIC_API_KEY missing or wrong: {env.get('ANTHROPIC_API_KEY')!r}")
-    if env.get("CODING_ADAPTER") != "claude-code":
-        fails.append(f"CODING_ADAPTER expected claude-code got {env.get('CODING_ADAPTER')!r}")
     if env.get("MCPS_ENABLED") != "web":
         fails.append(f"MCPS_ENABLED expected 'web' got {env.get('MCPS_ENABLED')!r}")
     if env.get("OpenAgentic_AWS_MCP_DISABLED") != "true":
@@ -227,9 +223,6 @@ def script_all_mcps_inline(child: pexpect.spawn) -> None:
     expect_screen(child, "Alertmanager: credentials")
     type_and_enter(child, "https://am.test")
 
-    expect_screen(child, "Which coding CLI should Code Mode use?")
-    send(child, DOWN)                         # gemini-cli
-    send(child, ENTER)
 
     expect_screen(child, "Review & launch")
     send(child, ENTER)
@@ -267,8 +260,6 @@ def assert_all_mcps_inline(env: dict[str, str]) -> list[str]:
         got = env.get(k)
         if got != want:
             fails.append(f"{k} expected {want!r} got {got!r}")
-    if env.get("CODING_ADAPTER") != "gemini-cli":
-        fails.append(f"CODING_ADAPTER expected gemini-cli got {env.get('CODING_ADAPTER')!r}")
     for mcp_env in ("OpenAgentic_AWS_MCP_DISABLED", "OpenAgentic_AZURE_MCP_DISABLED",
                     "OpenAgentic_GCP_MCP_DISABLED", "OpenAgentic_KUBERNETES_MCP_DISABLED",
                     "OpenAgentic_GITHUB_MCP_DISABLED"):
@@ -321,9 +312,6 @@ def script_skip_all_cloud(child: pexpect.spawn) -> None:
     expect_screen(child, "Alertmanager: credentials")
     send(child, ENTER)
 
-    expect_screen(child, "Which coding CLI should Code Mode use?")
-    send(child, DOWN); send(child, DOWN)      # none
-    send(child, ENTER)
 
     expect_screen(child, "Review & launch")
     send(child, ENTER)
@@ -343,8 +331,6 @@ def assert_skip_all_cloud(env: dict[str, str]) -> list[str]:
                 "gcp": "OpenAgentic_GCP_MCP_DISABLED"}[skipped]
         if env.get(evar) != "true":
             fails.append(f"{evar} should be true after skip, got {env.get(evar)!r}")
-    if env.get("CODING_ADAPTER") != "none":
-        fails.append(f"CODING_ADAPTER expected none got {env.get('CODING_ADAPTER')!r}")
     # Fields-type MCPs with empty values are still "enabled" (user said yes to the MCP),
     # so github/kubernetes/prometheus/loki/alertmanager must remain in MCPS_ENABLED.
     for still_on in ("kubernetes", "github", "prometheus", "loki", "alertmanager"):
@@ -362,7 +348,7 @@ VARIATIONS: list[Variation] = [
     ),
     Variation(
         name="all-mcps-inline",
-        description="Enable every MCP, paste creds inline, pick gemini-cli",
+        description="Enable every MCP, paste creds inline",
         script=script_all_mcps_inline,
         assertions=assert_all_mcps_inline,
     ),

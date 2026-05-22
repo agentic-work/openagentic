@@ -120,7 +120,6 @@ function toEnv(c: WizardConfig): Record<string, string> {
     LOCAL_ADMIN_USERNAME: c.admin.name,
     OLLAMA_HOST: c.ollama.host,
     OLLAMA_EMBED_MODEL: c.ollama.embedModel,
-    CODING_ADAPTER: c.codingAdapter,
     UI_HOST_PORT: String(c.uiPort),
     MCPS_ENABLED: c.mcps.join(','),
   };

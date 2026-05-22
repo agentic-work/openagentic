@@ -13,10 +13,9 @@ The OSS upstream of the OpenAgentic platform — services for building, orchestr
 | Service | Purpose |
 |---|---|
 | `services/openagentic-api` | Platform API: chat, flows, providers, RAG, admin |
-| `services/openagentic-ui` | React UI (chat, flows, admin, code mode) |
+| `services/openagentic-ui` | React UI (chat, flows, admin) |
 | `services/openagentic-workflows` | Workflow engine (Flowise-derived) |
 | `services/openagentic-mcp-proxy` | MCP server proxy (spawns built-in MCPs as subprocesses) |
-| `services/openagentic-exec` | Per-user exec container; spawns the Code Mode CLI (claude / gemini / etc.) |
 | `services/openagentic-server` | Openagentic CLI bridge |
 | `services/openagentic-proxy` | Egress proxy for agent tool calls |
 | `services/openagentic-synth` | OAT tool-synthesis framework runner |
@@ -69,23 +68,7 @@ These all tripped the first install and are fixed in commits `7266813` and `f7c6
 3. **`FATAL: Post-indexing verification failed — semantic search returns 0 results`** — boot was `process.exit(1)`-ing when MCP tool index was empty (always true on first boot). Fix: downgraded those paths in `server.ts` to warn-then-continue; first chat request re-triggers indexing.
 4. **`fetch failed: Connect Timeout Error (attempted address: hal:11434, timeout: 10000ms)`** — undici pool starved when chat + embedding calls run concurrently. Fix: `services/openagentic-api/src/utils/ollama-agent.ts` exports a shared `Agent` with 64 connections and 30s connect timeout, wired per-call via the `dispatcher` option in `OllamaProvider.ts` and `UniversalEmbeddingService.ts`. `setGlobalDispatcher()` from the npm undici package does NOT affect Node's built-in fetch; only the per-call dispatcher does.
 5. **mcp-proxy returning 401 on tool calls** — api signed internal JWTs with `JWT_SECRET`, mcp-proxy didn't have it. Fix: compose now passes `JWT_SECRET` + `SIGNING_SECRET` to both sides.
-6. **exec rejecting session creation with "INTERNAL_API_KEY required"** — compose now passes a shared `INTERNAL_API_KEY` to both `api` and `exec`.
-
-## Code Mode
-
-The ptyManager in `services/openagentic-exec/src/ptyManager.ts` spawns a CLI per session based on `CODING_ADAPTER`:
-
-| adapter | binary | bundled in exec image |
-|---|---|---|
-| `claude-code` (default) | `claude` | yes |
-| `gemini-cli` | `gemini` | yes |
-| `aider` | `aider` | no — `pip install aider-chat` |
-| `opencode` | `opencode` | no |
-| `open-interpreter` | `interpreter` | no |
-| `cursor-cli` | `cursor` | no |
-| `none` | `/bin/bash` | yes |
-
-Switching adapter: either re-run the wizard, flip `CODING_ADAPTER=...` in `.env` and `docker compose up -d --force-recreate exec`, or update in the admin UI (persists to `SystemConfiguration` and overrides the env on next session spawn). The selected adapter's API key comes from the LLM-provider step in the wizard (`ANTHROPIC_API_KEY` for claude-code, `GEMINI_API_KEY`/`GOOGLE_GENERATIVE_AI_API_KEY` for gemini-cli).
+6. **Internal service auth** — `JWT_SECRET`, `SIGNING_SECRET`, and `INTERNAL_API_KEY` must agree across api, ui, and mcp-proxy. Compose passes them all from `.env`.
 
 ## Upstream sync
 

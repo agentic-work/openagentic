@@ -1,6 +1,6 @@
 # openagentic
 
-**The open-source agentic platform for IT.** Build, operate, and automate your entire stack with AI agents — chat, visual flows, and sandboxed code, all with your own models and clouds.
+**The open-source agentic platform for IT.** Build, operate, and automate your entire stack with AI agents — chat and visual flows, with your own models, MCP servers, and clouds.
 
 > 🛠️ **Early access** — interfaces move fast. Star the repo to follow along.
 
@@ -25,7 +25,6 @@ Then it spins up the stack and opens `http://localhost:8080` in your browser.
 |---|---|
 | **Chat** — multi-provider, persistent history, semantic search | CIOs, managers, anyone who wants AI with context |
 | **Flows** — visual agent runbooks with 16 bundled ops MCPs | Architects, SREs, platform engineers |
-| **Code Mode** — sandboxed IDE with your choice of CLI (Claude Code / Gemini CLI / Aider / OpenCode / …) | Developers |
 
 Everything runs on your infrastructure, against your providers. No data leaves your box unless you point it at a cloud model.
 
@@ -62,7 +61,7 @@ For Kubernetes, point `helm/openagentic` at your cluster once the chart cleanup 
 ```
 install.sh               ← the one-liner entry
 tools/setup/             ← Ink TUI wizard
-services/                ← openagentic-{api,ui,workflows,mcp-proxy,proxy,exec,synth}
+services/                ← openagentic-{api,ui,workflows,mcp-proxy,proxy,synth,server}
 services/mcps/oap-*-mcp  ← the 16 bundled MCP servers
 helm/openagentic/        ← Helm chart
 docker-compose.yml       ← single-node stack

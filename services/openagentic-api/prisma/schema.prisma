@@ -14,185 +14,6 @@ datasource db {
 }
 
 // ============================================================================
-// OPENAGENTICCODE - Code Sessions (public schema)
-// ============================================================================
-
-model CodeSession {
-  id             String  @id @default(uuid())
-  user_id        String
-  container_id   String? // Container ID (for container-per-user mode)
-  slice_id       String? // Landlock slice ID (for shared compute mode)
-  model          String
-  workspace_path String
-  status         String  @default("active") // 'active', 'idle', 'suspended', 'deleted'
-
-  // Resource allocation
-  cpu_limit        Float? @default(1.0) // CPU cores
-  memory_limit_mb  Int?   @default(2048) // Memory in MB
-  storage_limit_mb Int?   @default(5120) // Storage in MB
-
-  // Security context
-  security_level  String  @default("permissive") // 'strict', 'permissive', 'minimal'
-  network_enabled Boolean @default(false) // Network access within sandbox
-
-  // Session metadata
-  shell              String @default("/bin/bash")
-  env_vars           Json?  @default("{}") // Custom environment variables
-  installed_packages Json?  @default("[]") // Track user-installed packages
-
-  // Metrics
-  total_executions Int     @default(0)
-  total_tokens     Int     @default(0)
-  total_cost       Decimal @default(0) @db.Decimal(10, 6)
-
-  created_at    DateTime @default(now())
-  last_activity DateTime @default(now())
-  updated_at    DateTime @updatedAt
-
-  // Relations
-  executions CodeExecution[]
-  snapshots  WorkspaceSnapshot[]
-
-  @@index([user_id])
-  @@index([status])
-  @@index([slice_id])
-  @@map("code_sessions")
-  @@schema("public")
-}
-
-model CodeExecution {
-  id         String  @id @default(uuid())
-  session_id String
-  prompt     String  @db.Text
-  result     String? @db.Text
-  status     String  @default("running") // 'running', 'completed', 'error', 'cancelled'
-
-  // Execution type and details
-  exec_type String  @default("chat") // 'chat', 'shell', 'file_edit', 'file_read'
-  command   String? @db.Text // Shell command if exec_type='shell'
-  exit_code Int? // Exit code for shell executions
-  stdout    String? @db.Text
-  stderr    String? @db.Text
-
-  // Tool calls and results
-  tool_calls     Json?
-  tool_results   Json?
-  files_modified String[] @default([]) // List of modified files
-
-  // Token usage
-  tokens_input  Int?     @default(0)
-  tokens_output Int?     @default(0)
-  tokens_used   Int?
-  cost          Decimal? @default(0) @db.Decimal(10, 6)
-
-  // Performance metrics
-  execution_time Int? // milliseconds
-  model_used     String?
-  provider_used  String?
-
-  created_at   DateTime  @default(now())
-  completed_at DateTime?
-
-  // Relations
-  session CodeSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
-
-  @@index([session_id])
-  @@index([status])
-  @@index([exec_type])
-  @@map("code_executions")
-  @@schema("public")
-}
-
-model WorkspaceSnapshot {
-  id         String @id @default(uuid())
-  session_id String
-
-  // Storage backend configuration
-  storage_backend String  @default("minio") // 'minio', 's3', 'azure-blob', 'gcs'
-  storage_bucket  String? // Bucket/container name
-  storage_path    String // Path within bucket (e.g., "snapshots/{user_id}/{session_id}/{timestamp}.tar.gz")
-  storage_region  String? // Cloud region (for S3, Azure, GCS)
-
-  // Snapshot metadata
-  snapshot_type      String  @default("full") // 'full', 'incremental', 'diff'
-  parent_snapshot_id String? // For incremental snapshots
-  size_bytes         BigInt?
-  compressed_size    BigInt? // Compressed size if compression enabled
-  file_count         Int?
-  checksum           String? // SHA256 checksum for integrity verification
-
-  // Compression and encryption
-  compression       String? @default("gzip") // 'none', 'gzip', 'zstd', 'lz4'
-  encrypted         Boolean @default(false)
-  encryption_key_id String? // Reference to key in key management service
-
-  // Status tracking
-  status        String  @default("pending") // 'pending', 'uploading', 'completed', 'failed', 'deleted'
-  error_message String? @db.Text
-
-  // Retention
-  expires_at DateTime? // Auto-delete after this time
-  is_pinned  Boolean   @default(false) // Don't auto-delete if pinned
-
-  created_at  DateTime  @default(now())
-  uploaded_at DateTime?
-
-  // Relations
-  session CodeSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
-
-  @@index([session_id])
-  @@index([storage_backend])
-  @@index([status])
-  @@index([expires_at])
-  @@map("workspace_snapshots")
-  @@schema("public")
-}
-
-// ============================================================================
-// OPENAGENTICCODE - Storage Backend Configuration (admin schema)
-// ============================================================================
-
-model CodeStorageBackend {
-  id           String  @id @default(uuid())
-  name         String  @unique // e.g., "minio-local", "azure-prod", "s3-dev"
-  display_name String
-  backend_type String // 'minio', 's3', 'azure-blob', 'gcs'
-  is_default   Boolean @default(false)
-  is_enabled   Boolean @default(true)
-
-  // Connection configuration (encrypted JSON)
-  // MinIO: { endpoint, accessKey, secretKey, bucket, useSSL }
-  // S3: { region, accessKeyId, secretAccessKey, bucket, roleArn? }
-  // Azure: { accountName, accountKey, containerName, connectionString? }
-  // GCS: { projectId, bucket, credentials (base64 service account JSON) }
-  connection_config Json
-
-  // Default bucket/container for this backend
-  default_bucket String?
-  default_region String?
-
-  // Quotas and limits
-  max_snapshot_size_mb    Int? @default(10240) // 10GB default
-  max_storage_per_user_mb Int? @default(51200) // 50GB default
-  retention_days          Int? @default(30)
-
-  // Health tracking
-  last_health_check DateTime?
-  health_status     String?   @default("unknown") // 'healthy', 'degraded', 'unhealthy', 'unknown'
-  health_message    String?   @db.Text
-
-  created_by String?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  @@index([backend_type])
-  @@index([is_default])
-  @@index([is_enabled])
-  @@map("code_storage_backends")
-  @@schema("admin")
-}
-
-// ============================================================================
 // USERS & AUTH (public schema)
 // ============================================================================
 
@@ -256,10 +77,8 @@ model User {
   updated_llm_providers  LLMProvider[]          @relation("LLMProviderUpdater")
   user_roles             UserRole[]
   llm_requests           LLMRequestLog[]
-  awcode_sessions        AWCodeSession[]
   model_role_assignments ModelRoleAssignment[]
   multi_model_metrics    MultiModelMetrics[]
-  code_mode_provisioning CodeModeProvisioning?
   response_feedback      ResponseFeedback[]    // User's feedback on responses
   github_credential      UserGitHubCredential? // GitHub OAuth credentials for GitHub MCP
   memory_entries         UserMemoryEntry[]     @relation("UserMemoryEntries")
@@ -424,58 +243,6 @@ model UserGitHubCredential {
   @@schema("public")
 }
 
-/// Code Mode environment provisioning status per user
-/// Tracks the setup state of a user's sandboxed dev environment
-model CodeModeProvisioning {
-  id      String @id @default(uuid())
-  user_id String @unique
-
-  // Provisioning status
-  status         String  @default("pending") // pending, provisioning, ready, failed, suspended
-  status_message String? // Human-readable status message
-
-  // Provisioning steps tracking
-  storage_provisioned Boolean @default(false)
-  storage_bucket      String? // MinIO/S3 bucket name or path
-  storage_quota_mb    Int     @default(1024) // 1GB default quota
-  storage_used_mb     Int     @default(0)
-
-  sandbox_provisioned Boolean @default(false)
-  sandbox_user_id     String? // OS-level sandbox user ID
-  sandbox_username    String? // OS-level sandbox username
-
-  vscode_provisioned Boolean @default(false)
-  vscode_settings    Json    @default("{}") // User's VSCode settings
-
-  openagentic_provisioned Boolean @default(false)
-  openagentic_model       String? // Default model for this user
-
-  // Environment details
-  environment_type String  @default("docker") // docker, kubernetes
-  node_name        String? // K8s node or Docker host
-  pod_name         String? // K8s pod name if applicable
-
-  // Lifecycle
-  provisioned_at   DateTime?
-  last_accessed_at DateTime?
-  suspended_at     DateTime?
-  suspended_reason String?
-
-  // Error tracking
-  last_error  String?
-  error_count Int     @default(0)
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@index([status])
-  @@index([user_id])
-  @@map("code_mode_provisioning")
-  @@schema("public")
-}
-
 model UserSession {
   id               String   @id @default(uuid())
   user_id          String
@@ -594,12 +361,10 @@ model UserPermissions {
   can_use_file_upload      Boolean @default(true)
   can_use_memory           Boolean @default(true)
   can_use_rag              Boolean @default(true)
-  can_use_awcode           Boolean @default(false) // OpenAgenticCode feature access
 
   // Code Mode CLI Preference
   // null = use global default, 'openagentic' = OpenAgentic AI, 'claude-code' = Claude Code CLI
   // All CLI tools connect exclusively through openagentic-api via SDK - no direct provider keys
-  code_mode_cli            String?
 
   // Intelligence Slider (0-100, null = use global default)
   // Controls cost/quality tradeoff for model routing
@@ -663,7 +428,6 @@ model PermissionTemplate {
   can_use_file_upload      Boolean @default(true)
   can_use_memory           Boolean @default(true)
   can_use_rag              Boolean @default(true)
-  can_use_awcode           Boolean @default(false) // OpenAgenticCode feature access
 
   is_default Boolean  @default(false)
   created_by String?
@@ -699,7 +463,6 @@ model GroupPermissions {
   can_use_file_upload      Boolean  @default(true)
   can_use_memory           Boolean  @default(true)
   can_use_rag              Boolean  @default(true)
-  can_use_awcode           Boolean  @default(false) // OpenAgenticCode feature access
 
   priority    Int      @default(1000) // Lower = higher priority
   admin_notes String?  @db.Text
@@ -3151,72 +2914,6 @@ model MultiModelMetrics {
   @@index([created_at])
   @@map("multi_model_metrics")
   @@schema("admin")
-}
-
-// ============================================================================
-// AWCODE SESSIONS & MESSAGES (public schema)
-// For storing agentic-cli coding session logs
-// ============================================================================
-
-model AWCodeSession {
-  id               String    @id
-  user_id          String
-  workspace_path   String?
-  model            String?
-  pid              Int?
-  status           String    @default("running") // 'running' | 'stopped' | 'error'
-  title            String?
-  summary          String?   @db.Text
-  metadata         Json?     @default("{}")
-  message_count    Int       @default(0)
-  total_tokens     Int       @default(0)
-  total_cost       Decimal   @default(0) @db.Decimal(10, 6)
-  tool_calls_count Int       @default(0)
-  files_modified   String[]
-  started_at       DateTime  @default(now())
-  stopped_at       DateTime?
-  last_activity    DateTime  @default(now())
-  created_at       DateTime  @default(now())
-  updated_at       DateTime  @updatedAt
-
-  user     User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  messages AWCodeMessage[]
-
-  @@index([user_id])
-  @@index([status])
-  @@index([started_at])
-  @@map("awcode_sessions")
-  @@schema("public")
-}
-
-model AWCodeMessage {
-  id            String   @id @default(uuid())
-  session_id    String
-  role          String // 'user' | 'assistant' | 'system' | 'tool'
-  content       String?  @db.Text
-  raw_output    String?  @db.Text // Raw PTY output with ANSI codes
-  model         String?
-  tokens        Int?     @default(0)
-  tokens_input  Int?     @default(0)
-  tokens_output Int?     @default(0)
-  cost          Decimal? @default(0) @db.Decimal(10, 6)
-  metadata      Json?    @default("{}")
-  tool_calls    Json? // Tool calls initiated by this message
-  tool_results  Json? // Results from tool execution
-  tool_name     String? // For tool role messages
-  files_read    String[]
-  files_written String[]
-  thinking      String?  @db.Text // Chain of thought reasoning
-  duration_ms   Int? // Time to generate response
-  created_at    DateTime @default(now())
-
-  session AWCodeSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
-
-  @@index([session_id])
-  @@index([role])
-  @@index([created_at])
-  @@map("awcode_messages")
-  @@schema("public")
 }
 
 // ============================================================================
