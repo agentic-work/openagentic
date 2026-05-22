@@ -10,6 +10,7 @@
 
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { loggers } from '../utils/logger.js';
+import { prisma } from '../utils/prisma.js';
 
 interface FeedbackQueryParams {
   limit?: number;
@@ -22,7 +23,6 @@ interface FeedbackQueryParams {
 
 export const adminFeedbackRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   const logger = loggers.routes.child({ module: 'admin-feedback' });
-  const prisma = fastify.prisma;
 
   /**
    * GET /stats - Overall feedback statistics

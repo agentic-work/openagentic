@@ -588,6 +588,7 @@ model ResponseFeedback {
   message_id    String   // Reference to ChatMessage
   user_id       String   // User who gave the feedback
   session_id    String   // Session context
+  intent        String?  // Optional intent classification at time of feedback
 
   // Feedback data
   feedback_type String   // 'thumbs_up', 'thumbs_down', 'copy', 'regenerate', 'share', 'report'
@@ -1391,6 +1392,8 @@ model SystemConfiguration {
   value       Json?
   description String?  @db.Text
   is_active   Boolean  @default(true)
+  version     Int      @default(1)
+  updated_by  String?
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
@@ -2085,6 +2088,7 @@ model LLMProvider {
   provider_type String // "azure-openai" | "vertex-ai" | "aws-bedrock"
   enabled       Boolean @default(true)
   priority      Int     @default(1) // Lower = higher priority
+  version       Int     @default(1) // Bumped when seeder reapplies
 
   // Authentication configuration (stored as JSON for flexibility)
   // For Azure: { type: "api-key", key: "..." } OR { type: "entra-id", tenantId: "...", clientId: "...", clientSecret: "..." }
@@ -2859,6 +2863,9 @@ model ModelRoleAssignment {
   thinking_budget     Int? // Token budget for extended thinking (reasoning role)
   options             Json?    @default("{}") // Role-specific options
   description         String?
+  capabilities        Json?    @default("{}") // Optional model capabilities flags
+  pricing_source      String?  // Where the pricing came from (e.g. "bedrock", "manual")
+  pricing_fetched_at  DateTime?
   created_by          String
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
@@ -3753,6 +3760,9 @@ model Workflow {
   is_active   Boolean @default(true)
   is_template Boolean @default(false)
   is_public   Boolean @default(false)
+
+  // Multi-tenant marker (nullable in OSS single-tenant; populated only in enterprise)
+  tenant_id   String?
 
   // Metadata
   tags     String[] @default([])

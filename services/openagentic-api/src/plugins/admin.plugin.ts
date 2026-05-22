@@ -55,7 +55,6 @@ import { adminWebhookSecurityRoutes } from '../routes/admin-webhook-security.js'
 import { adminWorkflowSecretsRoutes } from '../routes/admin-workflow-secrets.js';
 import { adminUserActivityRoutes } from '../routes/admin-user-activity.js';
 import adminUserContextRoutes from '../routes/admin-user-context.js';
-import registryTombstonesRoutes from '../routes/admin/registry-tombstones.js';
 import adminV3ExtrasRoutes from '../routes/admin/v3-extras.js';
 import adminV3ExtrasMutationsRoutes from '../routes/admin/v3-extras-mutations.js';
 import adminV3ExtrasMiscRoutes from '../routes/admin/v3-extras-misc.js';
@@ -470,20 +469,7 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
     failCount++;
   }
 
-  // Register Registry Tombstone routes — F2.6 Registry SoT v1
-  // GET  /api/admin/registry/tombstones       — list current tombstones
-  // POST /api/admin/registry/tombstones/reset — destructive wipe + audit trail
-  try {
-    await fastify.register(async (instance) => {
-      instance.addHook('preHandler', adminMiddleware);
-      await instance.register(registryTombstonesRoutes);
-    }, { prefix: '/api/admin' });
-    loggers.routes.info('Registry Tombstone routes registered at /api/admin/registry/tombstones/* with admin middleware');
-    successCount++;
-  } catch (error) {
-    loggers.routes.error({ err: error }, 'Failed to register registry tombstone routes');
-    failCount++;
-  }
+  // Registry Tombstone routes (F2.6) — enterprise audit feature, not shipped in OSS.
 
   // Register Admin V3 Extras routes — 14 read-only endpoints the v3 admin
   // pages reference but which previously didn't exist (router decisions,

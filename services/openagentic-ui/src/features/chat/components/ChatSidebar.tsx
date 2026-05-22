@@ -141,7 +141,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const confirm = useConfirm();
   const userId = user?.id || '';
 
-
   // Use the new theme context
   const { resolvedTheme, changeTheme } = useTheme();
 

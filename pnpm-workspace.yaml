@@ -1,9 +1,8 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
-
 packages:
   - services/openagentic-ui
   - services/openagentic-api
   - services/shared/workflow-engine
+  - services/shared/llm-sdk
 
 ignoredBuiltDependencies:
   - '@parcel/watcher'

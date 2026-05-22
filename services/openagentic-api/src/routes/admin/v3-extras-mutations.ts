@@ -713,7 +713,6 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
-
   // ─────────────────────────────────────────────────────────────────────────
   // 6. POST /llm-providers/registry/refresh-all
   //    Walks every enabled provider and calls discoverModels() server-side,

@@ -308,7 +308,6 @@ function AppContent(): React.ReactElement {
                       there via api github.ts:DEFAULT_LANDING. Any direct
                       /settings link 404s, which is correct now. */}
 
-
                   {/* OpenAgentic Flows is reached via the in-app sidebar Flows
                       tab (rendered embedded inside ChatContainer), not as a
                       public URL. Direct /workflows navigation is intentionally

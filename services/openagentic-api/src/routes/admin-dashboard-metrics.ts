@@ -165,19 +165,8 @@ const adminDashboardMetricsRoutes: FastifyPluginAsync = async (fastify) => {
           take: 10000
         }),
 
-        // NEW: Code Mode messages with token data
-        prisma.aWCodeMessage.findMany({
-          where: { created_at: { gte: startDate } },
-          select: {
-            id: true,
-            tokens_input: true,
-            tokens_output: true,
-            tokens: true,
-            cost: true,
-            created_at: true,
-            session_id: true
-          }
-        })
+        // Code Mode is removed in the OSS edition — message metrics return [].
+        Promise.resolve([] as any[])
       ]);
 
       // Fetch workflow and agent execution data (parallel, non-blocking)
@@ -234,16 +223,8 @@ const adminDashboardMetricsRoutes: FastifyPluginAsync = async (fastify) => {
           }
         }).catch(() => []),
 
-        // Code mode sessions
-        prisma.aWCodeSession.findMany({
-          where: { created_at: { gte: startDate } },
-          select: {
-            id: true,
-            status: true,
-            created_at: true,
-            user_id: true
-          }
-        }).catch(() => [])
+        // Code Mode is removed in the OSS edition — session metrics return [].
+        Promise.resolve([] as any[])
       ]);
 
       // Also get previous period data for change calculation

@@ -22,7 +22,6 @@ import adminAuditRoutes from '../routes/admin-audit.js';
 import adminAuditLogsRoutes from '../routes/admin-audit-logs.js';
 import adminCredentialAuditRoutes from '../routes/admin-credential-audit.js';
 import adminDashboardMetricsRoutes from '../routes/admin-dashboard-metrics.js';
-import adminFlowAuditRoutes from '../routes/admin-flow-audit.js';
 import adminKpisRoutes from '../routes/admin-kpis.js';
 
 export interface AdminAuditRoutesPluginOptions {
@@ -74,14 +73,7 @@ const adminAuditRoutesPluginImpl: FastifyPluginAsync<AdminAuditRoutesPluginOptio
     loggers.routes.error({ err: error }, 'Failed to register admin dashboard metrics routes');
   }
 
-  // ── 5. Flow Audit Log routes ─────────────────────────────────────────────
-  // SOC 2 CC6/CC7 append-only governance event trail (Tasks #32+#33).
-  try {
-    await fastify.register(adminFlowAuditRoutes);
-    loggers.routes.info('Admin Flow Audit routes registered at /api/admin/flows/audit-logs');
-  } catch (error) {
-    loggers.routes.error({ err: error }, 'Failed to register admin flow audit routes');
-  }
+  // Flow Audit Log routes are an enterprise feature — not registered in OSS.
 
   // ── 6. Admin KPI routes ───────────────────────────────────────────────────
   // Execution KPI aggregation for flow dashboard (Task #33).

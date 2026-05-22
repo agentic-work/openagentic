@@ -1701,7 +1701,6 @@ async function registerAllRoutes() {
 
   // Note: metrics.js was skipped - conflicts with existing metrics system in server.ts
 
-
   // Register Agent Admin routes (agent registry, dashboard, execution history)
   try {
     const agentAdminRoutes = (await import('./routes/admin/agentic-loops.js')).default;
