@@ -42,7 +42,8 @@
     "ollama-harness:watch": "tsx src/test/ollama-harness.ts --watch",
     "hal": "tsx src/test/agentic-loop/hal-client.ts",
     "hal:validate": "tsx src/test/agentic-loop/hal-client.ts validate",
-    "hal:review": "tsx src/test/agentic-loop/hal-client.ts review"
+    "hal:review": "tsx src/test/agentic-loop/hal-client.ts review",
+    "postbuild:assets": "mkdir -p dist/agents/built-in && cp src/agents/built-in/*.md dist/agents/built-in/ 2>/dev/null || true"
   },
   "dependencies": {
     "@agentic-work/llm-sdk": "workspace:*",

@@ -14,7 +14,9 @@ WORKDIR /repo
 COPY services ./services
 COPY version.json ./version.json
 
-# Install UI deps (generators import from node_modules via tsx)
+# Install UI deps (generators import from node_modules via tsx).
+# Switch package.json to a file: spec so npm doesn't choke on workspace:*.
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('services/openagentic-ui/package.json','utf8'));if(p.dependencies&&p.dependencies['@agentic-work/llm-sdk']==='workspace:*'){p.dependencies['@agentic-work/llm-sdk']='file:../shared/llm-sdk';fs.writeFileSync('services/openagentic-ui/package.json',JSON.stringify(p,null,2));}"
 WORKDIR /repo/services/openagentic-ui
 RUN npm install --ignore-scripts || echo "WARN: npm install failed, docs generation may be incomplete"
 
@@ -26,19 +28,44 @@ RUN npx tsx scripts/generate-docs.ts || echo "WARN: docs generation failed, usin
 # =============================================================================
 FROM node:20-slim AS ui-builder
 
+# Install pnpm + build tools (some native deps require python/make/g++).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3 make g++ ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install -g pnpm
+
 # Install dependencies
 WORKDIR /app
 
 ARG SRC_PATH
+
+# Stage the vendored llm-sdk so the workspace:* dep can be rewritten to a
+# file: ref that resolves inside the standalone image.
+COPY services/shared/llm-sdk/package.json   /shared/llm-sdk/package.json
+COPY services/shared/llm-sdk/tsconfig.json  /shared/llm-sdk/tsconfig.json
+COPY services/shared/llm-sdk/src            /shared/llm-sdk/src
+COPY services/shared/llm-sdk/scripts        /shared/llm-sdk/scripts
+
+# Build the SDK to dist/ so its package.json `main`/`exports` resolve.
+RUN ln -sfn /app/node_modules /shared/llm-sdk/node_modules || true
 
 # Copy package files
 COPY ${SRC_PATH}/package*.json ./
 COPY ${SRC_PATH}/tsconfig*.json ./
 COPY ${SRC_PATH}/tailwind.config.js ./
 COPY ${SRC_PATH}/postcss.config.js ./
+COPY ${SRC_PATH}/.npmrc* ./
+COPY ${SRC_PATH}/eslint-plugin-admin-tokens ./eslint-plugin-admin-tokens
 
-# Install dependencies
-RUN npm install
+# Rewrite workspace:* to file: spec so install works in the standalone image.
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));let touched=false;if(p.dependencies&&p.dependencies['@agentic-work/llm-sdk']==='workspace:*'){p.dependencies['@agentic-work/llm-sdk']='file:/shared/llm-sdk';touched=true;}if(touched){fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('rewrote llm-sdk dep');}"
+
+# Strip the root-level lockfile spec — re-resolve from package.json inside the image.
+RUN rm -f pnpm-lock.yaml
+RUN echo "shamefully-hoist=true" > .npmrc
+
+# Install dependencies (this also runs the llm-sdk's `prepare` hook → builds dist/).
+RUN pnpm install --no-frozen-lockfile
 
 # Add cache-busting ARG
 ARG CACHEBUST=1
@@ -56,6 +83,7 @@ COPY ${SRC_PATH}/src ./src
 COPY ${SRC_PATH}/public ./public
 COPY ${SRC_PATH}/index.html ./
 COPY ${SRC_PATH}/vite.config.ts ./
+COPY ${SRC_PATH}/scripts ./scripts
 
 # Clean build artifacts
 RUN rm -rf dist node_modules/.cache .vite
@@ -83,8 +111,10 @@ ENV VITE_GIT_SHORT_COMMIT=${GIT_SHORT_COMMIT}
 ENV VITE_GIT_BRANCH=${GIT_BRANCH}
 ENV VITE_BUILD_TIME=${BUILD_TIME}
 
-# Build the application
-RUN npm run build
+# Build the application — the docs-generator stage already produced the
+# manifests, so the in-builder docs generation is suppressed.
+ENV SKIP_DOCS_GENERATE=1
+RUN pnpm run build
 
 # Production stage
 FROM nginx:alpine
