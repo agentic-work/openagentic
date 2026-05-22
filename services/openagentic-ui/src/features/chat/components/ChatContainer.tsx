@@ -63,7 +63,6 @@ const AdminPortal = lazy(() => import('@/features/admin/components/Shell/AdminPo
 // ScrollToBottomButton removed - auto-scroll handles this now
 import BackgroundJobsPanel from './BackgroundJobsPanel';
 // ExportButton removed - not working
-import { CodeModeLayoutV2 } from '@/features/code/components';
 import { WorkflowsPage } from '@/features/workflows';
 import ErrorBoundary from '@/shared/components/ErrorBoundary';
 import { OnboardingTour } from './OnboardingTour';
@@ -72,10 +71,8 @@ import ToolApprovalDialog from '@/shared/components/Dialogs/ToolApprovalDialog';
 import AdminToolInspector from './AdminToolInspector';
 import type { McpApprovalRequest } from '../hooks/useSSEChat';
 
-// App mode type for chat/code/flows toggle
-type AppMode = 'chat' | 'code' | 'flows';
-import { useCodeModeWebSocket } from '@/features/code/hooks/useCodeModeWebSocket';
-import { useActiveSessionId as useCodeModeSessionId, useCodeModeStore } from '@/stores/useCodeModeStore';
+// App mode type — Code Mode was removed in the OSS edition.
+type AppMode = 'chat' | 'flows';
 
 // Personality type for AI response styling
 interface Personality {
@@ -385,45 +382,6 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   const currentWorkflowRef = useRef<{ workflowId: string; workflowName: string; nodes: any[]; edges: any[] } | null>(null);
 
   // Skills are now configured in Admin Portal > Pipeline Settings (not user-facing)
-
-  // Code mode session ID for file browser integration
-  // Get from the code mode store - this is set when WebSocket connects to openagentic-manager
-  const codeSessionId = useCodeModeSessionId();
-
-  // Get auth token for Code Mode API access (allows using platform LLM providers)
-  const codeModeAuthToken = localStorage.getItem('auth_token') || undefined;
-
-  // Code Mode WebSocket connection (only active when in code mode)
-  const { sendMessage: sendCodeModeMessage, reconnect: reconnectCodeMode } = useCodeModeWebSocket({
-    userId: user?.id || 'anonymous',
-    workspacePath: '~',
-    authToken: codeModeAuthToken,
-    enabled: appMode === 'code' && userPermissions.canUseAwcode,
-  });
-
-  // Handle code mode session selection - load session and reconnect
-  const handleCodeSessionSelect = useCallback((session: { id: string; model?: string | null; workspacePath?: string | null }) => {
-    const store = useCodeModeStore.getState();
-    // Set the new session in store
-    store.setActiveSession(session.id, {
-      sessionId: session.id,
-      userId: user?.id || 'anonymous',
-      workspacePath: session.workspacePath || '~',
-      model: session.model || undefined,
-      createdAt: Date.now(),
-      lastActiveAt: Date.now(),
-    });
-    // Clear old messages and reconnect
-    store.clearMessages();
-    reconnectCodeMode();
-  }, [user?.id, reconnectCodeMode]);
-
-  // Handle new code mode session
-  const handleCodeNewSession = useCallback(() => {
-    const store = useCodeModeStore.getState();
-    store.clearSession();
-    reconnectCodeMode();
-  }, [reconnectCodeMode]);
 
   // Comprehensive cleanup for memory leaks when component unmounts
   useEffect(() => {
@@ -2060,16 +2018,10 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
           // Open documentation as overlay modal
           openUI('showDocsViewer');
         }}
-        // App Mode toggle (Chat/Code/Flows)
+        // App Mode toggle (Chat/Flows)
         appMode={appMode}
         onAppModeChange={setAppMode}
-        canUseCodeMode={userPermissions.canUseAwcode}
         canUseFlows={true}
-        // Code mode session ID for file browser
-        codeSessionId={codeSessionId}
-        // Code mode session handlers
-        onCodeSessionSelect={handleCodeSessionSelect}
-        onCodeNewSession={handleCodeNewSession}
       />
       )}
       {/* Full-screen Admin Portal - renders over everything including sidebar (lazy loaded) */}
@@ -2117,18 +2069,8 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
         }}
       >
         <div className="flex flex-col h-full w-full">
-          {/* Conditional rendering: Chat Mode vs Code Mode vs Flows Mode */}
-          {appMode === 'code' && userPermissions.canUseAwcode ? (
-            /* Code Mode - OpenAgentic UI (V2) */
-            <CodeModeLayoutV2
-              userId={user?.id || 'anonymous'}
-              workspacePath="~"
-              onExit={() => setAppMode('chat')}
-              theme={(settings.theme || 'dark') as 'light' | 'dark'}
-              inline={true}
-              onSendMessage={sendCodeModeMessage}
-            />
-          ) : appMode === 'flows' ? (
+          {/* Conditional rendering: Chat Mode vs Flows Mode */}
+          {appMode === 'flows' ? (
             /* Flows Mode - OpenAgenticflow Builder (embedded=true: sidebar managed by ChatSidebar) */
             <ErrorBoundary>
               <WorkflowsPage embedded onWorkflowStateChange={(ws) => { currentWorkflowRef.current = ws; }} />
@@ -2370,10 +2312,6 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
                   // Model Badges display toggle
                   showModelBadges={showModelBadges}
                   onToggleModelBadges={() => toggleUI('showModelBadges')}
-                  // App Mode toggle (Chat/Code)
-                  isCodeMode={appMode === 'code'}
-                  onCodeModeToggle={() => setAppMode(prev => prev === 'chat' ? 'code' : 'chat')}
-                  canUseAwcode={userPermissions.canUseAwcode}
                   // Thinking mode toggle - only show for models that support it
                   isThinkingEnabled={showThinkingInline}
                   onThinkingToggle={() => toggleUI('showThinkingInline')}

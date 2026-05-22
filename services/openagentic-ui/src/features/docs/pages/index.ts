@@ -32,7 +32,6 @@ const ChatModePage = React.lazy(() => import('./ChatModePage'));
 // 2026-04-19 — IntelligenceSliderPage deleted (task #144, slider rip).
 const AgentDelegationPage = React.lazy(() => import('./AgentDelegationPage'));
 const ArtifactsPage = React.lazy(() => import('./ArtifactsPage'));
-const CodeModePage = React.lazy(() => import('./CodeModePage'));
 const SandboxSecurityPage = React.lazy(() => import('./SandboxSecurityPage'));
 const FlowBuilderPage = React.lazy(() => import('./FlowBuilderPage'));
 const NodeTypesPage = React.lazy(() => import('./NodeTypesPage'));
@@ -120,29 +119,6 @@ export const docsNavigation: DocsCategory[] = [
         category: 'chat-mode',
         icon: 'code',
         component: ArtifactsPage,
-      },
-    ],
-  },
-  {
-    id: 'code-mode',
-    title: 'Code Mode',
-    icon: 'code',
-    pages: [
-      {
-        id: 'ide-interface',
-        title: 'IDE Interface',
-        description: 'The three-panel code environment',
-        category: 'code-mode',
-        icon: 'code',
-        component: CodeModePage,
-      },
-      {
-        id: 'sandbox-security',
-        title: 'Sandbox Security',
-        description: 'Kubernetes isolation model',
-        category: 'code-mode',
-        icon: 'shield',
-        component: SandboxSecurityPage,
       },
     ],
   },

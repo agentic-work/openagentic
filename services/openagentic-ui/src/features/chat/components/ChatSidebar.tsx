@@ -9,7 +9,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, Edit3, MoreHorizontal, Trash2, Settings, User, LogOut, HelpCircle, Shield, PanelLeft, PanelRight, Search, Sun, Moon, Terminal, MessageSquare, Workflow } from '@/shared/icons';
+import { Menu, Edit3, MoreHorizontal, Trash2, Settings, User, LogOut, HelpCircle, Shield, PanelLeft, PanelRight, Search, Sun, Moon, MessageSquare, Workflow } from '@/shared/icons';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/app/providers/AuthContext';
@@ -21,10 +21,7 @@ import { CompanyLogo } from '@/components/CompanyLogo';
 import { VersionBadge } from '@/components/VersionBadge';
 import { FlowsSidebar } from '@/features/workflows/components/FlowsSidebar';
 import type { WorkflowTemplateItem } from '@/features/workflows/utils/workflowTemplates';
-import { CodeSessionsPanel } from './CodeSessionsPanel';
 import type { AgentTreeNode } from './v2/AgentTree';
-import { FileTreeSection } from '@/codemode/components/FileTreeSection';
-import { CollectionsSection } from '@/codemode/components/CollectionsSection';
 
 /**
  * Format timestamp for display with relative time for recent updates
@@ -84,17 +81,10 @@ interface ChatSidebarProps {
   onHelpClick?: () => void;
   onThemeChange?: (theme: 'light' | 'dark') => void;
   onThemeToggle?: () => void;
-  // App mode toggle (Chat/Code/Flows)
+  // App mode toggle (Chat/Flows)
   appMode?: AppMode;
   onAppModeChange?: (mode: AppMode) => void;
-  canUseCodeMode?: boolean;
   canUseFlows?: boolean;
-  // Code mode session ID for file browser
-  codeSessionId?: string | null;
-  // Code mode session select callback
-  onCodeSessionSelect?: (session: { id: string; model?: string | null; workspacePath?: string | null }) => void;
-  // Code mode new session callback
-  onCodeNewSession?: () => void;
   /** Pixels to push the sidebar in from the left edge — used when the
    *  Flows workspace nav rail is mounted to its left. */
   leftOffsetPx?: number;
@@ -128,13 +118,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   // App mode props
   appMode = 'chat',
   onAppModeChange,
-  canUseCodeMode = false,
   canUseFlows = false,
-  // Code mode session ID for file browser
-  codeSessionId,
-  // Code mode session callbacks
-  onCodeSessionSelect,
-  onCodeNewSession,
   leftOffsetPx = 0,
   agentTreeNodes,
 }) => {
@@ -157,7 +141,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const confirm = useConfirm();
   const userId = user?.id || '';
 
-  // (Workspace files sidebar removed — CodeMode uses VS Code editor panel directly)
 
   // Use the new theme context
   const { resolvedTheme, changeTheme } = useTheme();
@@ -314,11 +297,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           )}
         </AnimatePresence>
 
-        {/* Mode Toggle (Chat/Code/Flows) - Show if user can use code mode or flows */}
-        {(canUseCodeMode || canUseFlows) && onAppModeChange && (() => {
+        {/* Mode Toggle (Chat/Flows) - Show if user can use flows */}
+        {canUseFlows && onAppModeChange && (() => {
           // Calculate available modes for dynamic slider positioning
           const modes: AppMode[] = ['chat'];
-          if (canUseCodeMode) modes.push('code');
           if (canUseFlows) modes.push('flows');
           const modeCount = modes.length;
           const activeIndex = modes.indexOf(appMode);
@@ -370,25 +352,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   {isExpanded && <span className="text-sm font-medium">Chat</span>}
                 </button>
 
-                {/* Code mode button - shown if canUseCodeMode */}
-                {canUseCodeMode && (
-                  <button
-                    onClick={() => onAppModeChange('code')}
-                    className={`
-                      relative z-10 flex items-center gap-1.5 rounded-md transition-colors duration-200
-                      ${isExpanded ? 'flex-1 px-3 py-1.5 justify-center' : 'p-2'}
-                      ${appMode === 'code'
-                        ? 'text-white'
-                        : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-                      }
-                    `}
-                    title="Code Mode"
-                  >
-                    <Terminal size={isExpanded ? 14 : 16} />
-                    {isExpanded && <span className="text-sm font-medium">Code</span>}
-                  </button>
-                )}
-
                 {/* Flows mode button - shown if canUseFlows */}
                 {canUseFlows && (
                   <button
@@ -413,17 +376,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         })()}
 
         {/* Content Area - Different based on mode */}
-        {appMode === 'code' && canUseCodeMode ? (
-          /* CODE MODE: file tree in sidebar (A.13). FileTreeSection owns
-             the workspace explorer; FilePanel (sibling in ChatContainer)
-             owns the editor pane. CollectionsSection sits below the file
-             tree and surfaces the user's per-user Milvus collection +
-             indexed files. */
-          <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
-            <FileTreeSection rootPath="/workspaces" />
-            <CollectionsSection />
-          </div>
-        ) : appMode === 'flows' && canUseFlows ? (
+        {appMode === 'flows' && canUseFlows ? (
           /* FLOWS MODE: Show workflow sidebar with agents, workflows, templates
              Wrapped in flex-1 min-h-0 to constrain height so Settings stays at bottom */
           <div className="flex-1 min-h-0 overflow-hidden">

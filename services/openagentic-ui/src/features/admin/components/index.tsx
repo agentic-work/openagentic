@@ -67,17 +67,10 @@ export {
   PerformanceMetrics,
   FeedbackAnalyticsView,
   AuditLogsView,
-  CodeModeMetricsDashboard
 } from './Monitoring';
 
 // Security - Rate limits, API tokens
 export { RateLimitsView, DeveloperAPIView } from './Security';
-
-// Code - Code mode management (legacy)
-export { AWCodeSessionsView, AWCodeSettingsView } from './Code';
-
-// CodeMode - New admin section (replaces Openagentic)
-export { CodeModeSettingsView, CodeModeMcpView, CodeModeSkillsView, CodeModeUsersView } from './CodeMode';
 
 // Prompts - Composable prompt modules
 export { PromptModulesView } from './Prompts/PromptModulesView';

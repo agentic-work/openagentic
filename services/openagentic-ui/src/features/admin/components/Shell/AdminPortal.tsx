@@ -103,14 +103,8 @@ const MonitoringView = React.lazy(() => import('../Monitoring/MonitoringView').t
 const UserPermissionsView = React.lazy(() => import('../System/UserPermissionsView'));
 const DashboardOverview = React.lazy(() => import('../Overview/DashboardOverview').then(m => ({ default: m.DashboardOverview })));
 const PromptTemplateManager = React.lazy(() => import('../Content/PromptTemplateManager').then(m => ({ default: m.PromptTemplateManager })));
-// New CodeMode admin views (replacing old Openagentic section)
-const CodeModeSettingsView = React.lazy(() => import('../CodeMode/CodeModeSettingsView'));
-const CodeModeMcpView = React.lazy(() => import('../CodeMode/CodeModeMcpView'));
-const CodeModeSkillsView = React.lazy(() => import('../CodeMode/CodeModeSkillsView'));
-const CodeModeUsersView = React.lazy(() => import('../CodeMode/CodeModeUsersView'));
 const OllamaManagementView = React.lazy(() => import('../LLM/OllamaManagementView').then(m => ({ default: m.OllamaManagementView })));
 const SystemSettingsView = React.lazy(() => import('../System/SystemSettingsView'));
-const CodeModeMetricsDashboard = React.lazy(() => import('../Monitoring/CodeModeMetricsDashboard').then(m => ({ default: m.CodeModeMetricsDashboard })));
 const PipelineSettingsView = React.lazy(() => import('../Content/PipelineSettingsView').then(m => ({ default: m.PipelineSettingsView })));
 const SharedKBView = React.lazy(() => import('../Content/SharedKBView').then(m => ({ default: m.SharedKBView })));
 const AuthAccessControlView = React.lazy(() => import('../System/AuthAccessControlView').then(m => ({ default: m.AuthAccessControlView })));
@@ -884,20 +878,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ theme, embedded, onClose }) =
         { id: 'native-workflow-settings', label: 'Governance', icon: CogIcon },
       ]
     },
-    // CodeMode - build-time feature flag (replaces old Openagentic section)
-    ...(featureFlags.openagentic ? [{
-      id: 'codemode',
-      label: 'Code Mode',
-      icon: TerminalCodeIcon,
-      children: [
-        { id: 'codemode-settings', label: 'Settings', icon: CodeSettingsIcon },
-        { id: 'codemode-mcp', label: 'MCP Servers', icon: ServerRackIcon },
-        { id: 'codemode-skills', label: 'Skills & Plugins', icon: SparkleIcon },
-        { id: 'codemode-users', label: 'Users & Sessions', icon: UsersIcon },
-        { id: 'openagentic-metrics', label: 'Metrics', icon: AnalyticsIcon }
-      ]
-    }] : []),
-
     // Agent Management - Registry, Skills, Executions
     {
       id: 'agent-management',
@@ -1189,24 +1169,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ theme, embedded, onClose }) =
         return <AdminWorkflowSettingsView />;
       case 'native-workflow-costs':
         return <FlowCostsView theme={theme} />;
-
-      // New CodeMode section
-      case 'codemode-settings':
-        return <CodeModeSettingsView theme={theme} />;
-      case 'codemode-mcp':
-        return <CodeModeMcpView theme={theme} />;
-      case 'codemode-skills':
-        return <CodeModeSkillsView theme={theme} />;
-      case 'codemode-users':
-        return <CodeModeUsersView theme={theme} />;
-
-      // Legacy (kept for backward compat, redirects to new views)
-      case 'openagentic-sessions':
-        return <CodeModeUsersView theme={theme} />;
-      case 'openagentic-settings':
-        return <CodeModeSettingsView theme={theme} />;
-      case 'openagentic-metrics':
-        return <CodeModeMetricsDashboard theme={theme} />;
 
       // Agent Management
       case 'agent-registry':

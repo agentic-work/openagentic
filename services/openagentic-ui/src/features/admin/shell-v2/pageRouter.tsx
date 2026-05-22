@@ -61,18 +61,6 @@ const FlowCostsView = lazy(() =>
   import('../components/Workflows/FlowCostsView').then(m => ({ default: m.FlowCostsView })),
 )
 
-// Code Mode
-const CodeModeSettingsView = lazy(() => import('../components/CodeMode/CodeModeSettingsView'))
-const CodeModeGlobalSettingsView = lazy(() => import('../components/CodeMode/CodeModeGlobalSettingsView'))
-const CodeModeMcpView = lazy(() => import('../components/CodeMode/CodeModeMcpView'))
-const CodeModeSkillsView = lazy(() => import('../components/CodeMode/CodeModeSkillsView'))
-const CodeModeUsersView = lazy(() => import('../components/CodeMode/CodeModeUsersView'))
-const CodeModeMetricsDashboard = lazy(() =>
-  import('../components/Monitoring/CodeModeMetricsDashboard').then(m => ({
-    default: m.CodeModeMetricsDashboard,
-  })),
-)
-
 // Agents
 const AgentManagementView = lazy(() =>
   import('../components/Agents').then(m => ({ default: m.AgentManagementView })),
@@ -269,20 +257,6 @@ function renderSection(id: string, theme: 'dark' | 'light'): React.ReactNode {
       return <AdminWorkflowSettingsView />
     case 'native-workflow-costs':
       return <FlowCostsView theme={theme} />
-
-    // Code Mode
-    case 'codemode-settings':
-      return <CodeModeSettingsView theme={theme} />
-    case 'codemode-global':
-      return <CodeModeGlobalSettingsView theme={theme} />
-    case 'codemode-mcp':
-      return <CodeModeMcpView theme={theme} />
-    case 'codemode-skills':
-      return <CodeModeSkillsView theme={theme} />
-    case 'codemode-users':
-      return <CodeModeUsersView theme={theme} />
-    case 'openagentic-metrics':
-      return <CodeModeMetricsDashboard theme={theme} />
 
     // Agents
     case 'agent-registry':

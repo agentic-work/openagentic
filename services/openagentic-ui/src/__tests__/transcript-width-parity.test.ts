@@ -37,17 +37,11 @@ const TRANSCRIPT_CONSUMERS = [
   'features/chat/components/ChatMessages.tsx',
   'features/chat/components/MessageBubble.tsx',
   'features/chat/components/MessageContent/SharedMarkdownRenderer.tsx',
-  'features/code/components/CodeModeChatView.tsx',
 ];
 
 // Files that legitimately use a hardcoded px value adjacent to the
-// transcript width range but are NOT the inline transcript itself
-// (so changing them does not affect chat<->code parity). Grep guard
-// below skips these.
-const HARDCODED_WIDTH_ALLOWLIST = new Set<string>([
-  // Boot animation card — self-contained, never rendered in chat.
-  'features/code/components/InlineBootStream.tsx',
-]);
+// transcript width range but are NOT the inline transcript itself.
+const HARDCODED_WIDTH_ALLOWLIST = new Set<string>([]);
 
 describe('transcript width parity (chat <-> code)', () => {
   it('defines --transcript-max-width exactly once, in design-tokens.css', () => {
