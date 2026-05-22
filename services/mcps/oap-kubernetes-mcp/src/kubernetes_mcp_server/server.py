@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 Kubernetes MCP Server - FastMCP Implementation for K8s Administration

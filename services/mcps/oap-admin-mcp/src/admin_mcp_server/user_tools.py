@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 User Management Tools for Admin MCP Server

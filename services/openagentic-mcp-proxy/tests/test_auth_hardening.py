@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 """
 Substrate fix S1 — boot-time JWT key validation, no-credentials-401 path,
 and OBO failure-closed behavior in mcp-proxy.

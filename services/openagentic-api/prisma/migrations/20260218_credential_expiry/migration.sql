@@ -1,5 +1,4 @@
 -- Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
--- Proprietary and confidential. Unauthorized copying prohibited.
 
 -- Add credential expiry tracking to LLM providers
 -- Date: 2026-02-18

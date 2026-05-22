@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.grafana.enabled .Values.grafana.dashboards.enabled }}
 # Grafana dashboard provisioning via sidecar ConfigMaps.

@@ -1,13 +1,3 @@
-/**
- * Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
- *
- * Admin v3 — shell stylesheet
- *
- * Layout grid + topbar + ribbon + sidebar + side-panel + cmdk.
- * All sizes pull from --v3-* layout vars in admin-v2-accents.css so
- * a single CSS-var change resizes the whole shell.
- */
-
 /* ============================================================
    Shell grid — topbar + ribbon + (sidebar | main)
    ============================================================ */

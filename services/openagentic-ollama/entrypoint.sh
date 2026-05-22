@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 # OpenAgentic Ollama Entrypoint
 # Models are pre-baked into the image at build time - just start serving

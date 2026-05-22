@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 C0 — synth-executor pod owns the CDN.

@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if .Values.ollama.enabled }}
 {{- $gpuEnabled := and .Values.gpu.enabled .Values.ollama.gpu.enabled }}

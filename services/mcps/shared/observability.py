@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 Shared observability module for all OpenAgentic MCP services.

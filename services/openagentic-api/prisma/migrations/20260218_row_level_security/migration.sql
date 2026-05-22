@@ -1,5 +1,4 @@
 -- Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
--- Proprietary and confidential. Unauthorized copying prohibited.
 
 -- FedRAMP AC-4: Row-Level Security for multi-tenant data isolation
 -- Ensures users can only access their own data even if application-level checks are bypassed.

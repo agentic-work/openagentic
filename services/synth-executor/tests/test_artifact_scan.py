@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 AC-D3 — synth-executor scans /tmp/synth-output/ after code execution

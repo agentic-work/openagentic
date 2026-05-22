@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 OpenAgentic Azure MCP Server - Full Azure SDK for az cli Parity
@@ -7700,7 +7700,7 @@ async def azure_resource_graph_query(
       - "Find every VM tagged env=prod in the tenant"
       - "Which storage accounts have public network access enabled?"
       - "Count resources per type per subscription"
-      - "Find all resources in resource groups matching ocio-omcp-*"
+      - "Find all resources in resource groups matching your-org-*"
 
     Args:
         query: KQL query string. Examples:

@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.awpAdminMcp.enabled (or (.Values.awpAdminMcp.podDisruptionBudget).enabled (.Values.awpAdminMcp.autoscaling).enabled) }}
 apiVersion: policy/v1

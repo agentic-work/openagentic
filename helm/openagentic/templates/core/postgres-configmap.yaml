@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if or (and .Values.postgres .Values.postgres.enabled) .Values.postgresql.enabled }}
 apiVersion: v1

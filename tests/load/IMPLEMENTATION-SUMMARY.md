@@ -35,8 +35,8 @@
 ### Core Settings
 ```javascript
 apiUrl: 'http://localhost:8000'
-apiKey: 'awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79'
-testUser: 'phatoldsun@gmail.com'
+apiKey: 'awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79'
+testUser: 'admin@openagentic.local'
 numSessions: 100
 messagesPerSession: 20
 totalMessages: 2000
@@ -165,7 +165,7 @@ node concurrent-chat-sessions.test.js
 
 # Custom configuration via environment
 API_URL=http://localhost:8000 \
-API_KEY=awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79 \
+API_KEY=awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79 \
 NUM_SESSIONS=100 \
 MESSAGES_PER_SESSION=20 \
 node concurrent-chat-sessions.test.js

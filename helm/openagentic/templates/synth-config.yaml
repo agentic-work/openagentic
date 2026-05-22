@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if .Values.synth.enabled }}
 # Synth Configuration (LLM tool-synthesis; formerly "OAT / On-demand Agent Tooling")

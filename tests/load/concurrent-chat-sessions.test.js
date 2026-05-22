@@ -29,8 +29,8 @@ const path = require('path');
 // Configuration
 const CONFIG = {
   apiUrl: process.env.API_URL || 'http://localhost:8000',
-  apiKey: process.env.API_KEY || 'awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79',
-  testUser: 'phatoldsun@gmail.com',
+  apiKey: process.env.API_KEY || 'awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79',
+  testUser: 'admin@openagentic.local',
   numSessions: parseInt(process.env.NUM_SESSIONS, 10) || 100,
   messagesPerSession: parseInt(process.env.MESSAGES_PER_SESSION, 10) || 20,
   defaultModel: process.env.DEFAULT_MODEL || 'gemini-2.0-flash-001',

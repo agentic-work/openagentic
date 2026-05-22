@@ -1,5 +1,4 @@
 #!/bin/sh
-# Proprietary and confidential. Unauthorized copying prohibited.
 
 echo "========================================="
 echo "Dependencies Health Check"

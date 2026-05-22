@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 OpenAgentic Runbook MCP Server - FastMCP Entry Point

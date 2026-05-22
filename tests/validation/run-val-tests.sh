@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 # v0.5.0 Interactive Multi-Turn Validation Tests
 # These tests INTERACT with the platform like a real user would:

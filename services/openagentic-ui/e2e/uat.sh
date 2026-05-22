@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 # UAT Interactive Driver wrapper
 # Usage: ./e2e/uat.sh <command> [args...]

@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 # Test SSE streaming behavior
 # This tests the API directly to verify content_block events are working

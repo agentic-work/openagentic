@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.awpAdminMcp.enabled (.Values.awpAdminMcp.networkPolicy).enabled }}
 # ===================================================================================================

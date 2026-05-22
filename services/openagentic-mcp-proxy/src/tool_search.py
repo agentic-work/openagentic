@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 """
 Tool Search synthetic MCP tool — openagentic-mcp-proxy surface.
 

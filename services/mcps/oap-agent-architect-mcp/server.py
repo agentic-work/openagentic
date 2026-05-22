@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 Agent Architect MCP Server - Natural language agent/workflow creation

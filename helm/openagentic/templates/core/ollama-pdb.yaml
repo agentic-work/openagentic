@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.ollama.enabled (or (.Values.ollama.podDisruptionBudget).enabled (.Values.ollama.autoscaling).enabled) }}
 apiVersion: policy/v1

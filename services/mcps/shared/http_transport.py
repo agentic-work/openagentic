@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 Shared HTTP Transport for MCP Servers with Full Observability

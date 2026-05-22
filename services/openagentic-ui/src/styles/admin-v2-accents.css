@@ -1,29 +1,3 @@
-/**
- * Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
- *
- * Admin v3 — runtime accent palette + density
- *
- * Loaded AFTER mockup-v067.css so any selected accent overrides the
- * mockup's violet default. The accent picker (ThemePanel) writes
- * data-accent="<token>" on <html>; these selectors paint --accent +
- * its derived alpha shades for the chosen palette.
- *
- * Each palette declares the SAME 5 vars in BOTH dark + light contexts:
- *   --accent       full saturation, used for: borders, dots, active
- *                  rail, primary CTA bg, link, chart line stroke
- *   --accent-dim   16% alpha, used for: hover surfaces, soft hovers
- *   --accent-glow  45% alpha, used for: dot box-shadow halos
- *   --accent-line  32% alpha, used for: outline borders on selected
- *                  cards, accent rule lines
- *   --accent-soft  ~10% alpha, used for: tinted backgrounds (banner,
- *                  inline-code chips, scoring-strip selection)
- *
- * Light-mode reduces all alphas by ~30% so accent tints don't muddy
- * the white background. Status colors (--ok/--warn/--err/--info) and
- * agent-hash colors are NOT changed here — those are picked from
- * mockup-v067 and shouldn't shift with accent.
- */
-
 /* ============================================================
    Default accent (gcp / cyan) — applied when no data-accent set
    ============================================================ */

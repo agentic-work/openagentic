@@ -104,7 +104,7 @@ describe('OBO auth-header end-to-end — new chatmode wire-in (2026-05-11)', () 
       const ctx = {
         user: {
           id: 'azure_abc123',
-          email: 'mcp-tester@phatoldsungmail.onmicrosoft.com',
+          email: 'mcp-tester@openagentic.local',
           name: 'MCP Tester',
           isAdmin: false,
           groups: [],
@@ -134,7 +134,7 @@ describe('OBO auth-header end-to-end — new chatmode wire-in (2026-05-11)', () 
 
       // Workspace isolation hints
       expect(headers['X-User-Id']).toBe('azure_abc123');
-      expect(headers['X-User-Email']).toBe('mcp-tester@phatoldsungmail.onmicrosoft.com');
+      expect(headers['X-User-Email']).toBe('mcp-tester@openagentic.local');
 
       // POST shape: mcp-proxy infers server from tool name (no explicit `server` field).
       const body = JSON.parse(calls[0].init.body as string);

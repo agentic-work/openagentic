@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.minio.enabled (.Values.minio.networkPolicy).enabled }}
 # ===================================================================================================

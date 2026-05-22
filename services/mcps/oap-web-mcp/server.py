@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 OpenAgentic Web MCP Server - Intelligent Web Browsing and Research

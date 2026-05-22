@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 Admin MCP Server - FastMCP Implementation with RBAC Auth Integration

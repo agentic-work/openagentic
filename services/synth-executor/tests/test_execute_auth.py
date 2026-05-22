@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 Substrate fix S2 — synth-executor `/execute` endpoint must require a

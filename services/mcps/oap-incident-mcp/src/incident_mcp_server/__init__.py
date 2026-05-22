@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """Incident MCP Server package"""
 from .server import mcp

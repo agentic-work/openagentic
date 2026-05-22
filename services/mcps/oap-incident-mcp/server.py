@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 OpenAgentic Incident MCP Server - FastMCP Entry Point

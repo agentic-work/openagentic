@@ -1,4 +1,3 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
 
 
 ###############################################################################

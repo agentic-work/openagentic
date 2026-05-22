@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.attu.enabled (or (.Values.attu.podDisruptionBudget).enabled (.Values.attu.autoscaling).enabled) }}
 apiVersion: policy/v1

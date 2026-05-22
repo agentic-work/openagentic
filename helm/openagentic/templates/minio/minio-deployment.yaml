@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if .Values.minio.enabled }}
 # Unified MinIO - Single object storage for all platform needs

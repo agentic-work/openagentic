@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if .Values.ollama.enabled }}
 apiVersion: v1

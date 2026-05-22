@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 # Comprehensive Chat Mode Stress Test
 # Tests all tools, tracks metrics, monitors compaction

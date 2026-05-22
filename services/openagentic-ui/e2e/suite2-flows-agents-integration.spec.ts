@@ -5,13 +5,13 @@
  * These tests send real prompts to the streaming chat API, parse SSE responses,
  * verify tool calls ACTUALLY EXECUTED and returned REAL DATA.
  *
- * Login: Azure AD (mcp-tester@phatoldsungmail.onmicrosoft.com, no MFA)
+ * Login: Azure AD (mcp-tester@openagentic.local, no MFA)
  */
 
 import { test, expect, Page } from '@playwright/test';
 
 const BASE_URL = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'mcp-tester@phatoldsungmail.onmicrosoft.com';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'mcp-tester@openagentic.local';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'TestMcp@2026';
 
 test.use({ ignoreHTTPSErrors: true });

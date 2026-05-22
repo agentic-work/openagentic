@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 C0.2 — synth-executor pod serves the CDN libs at `/lib/*`.

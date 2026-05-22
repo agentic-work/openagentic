@@ -16,7 +16,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DRY = '--dry-run' in sys.argv
 ARGS = [a for a in sys.argv[1:] if not a.startswith('--')]
 
-DEFAULT_ROOTS = ['services', 'scripts', 'helm', 'docker-compose.yml']
+DEFAULT_ROOTS = ['services', 'scripts', 'helm', '.github', '.prompts', 'tests', 'docker-compose.yml']
 
 # Single-line markers we drop wherever they appear (comments of any flavour).
 LINE_PATTERNS = [
@@ -28,6 +28,12 @@ LINE_PATTERNS = [
     re.compile(r'^\s*#\s*For all inquiries.*$', re.MULTILINE | re.IGNORECASE),
     re.compile(r'^\s*#\s*Openagentic LLC\s*$',  re.MULTILINE),
     re.compile(r'^\s*#\s*hello@openagentic\.io\s*$', re.MULTILINE | re.IGNORECASE),
+    # "Proprietary and confidential. Unauthorized copying prohibited."
+    # (legacy upstream banner — drop in #, --, //, * (CSS), and HTML comment styles.)
+    re.compile(r'^\s*(#|--|//|\*)\s*Proprietary and confidential\..*$', re.MULTILINE | re.IGNORECASE),
+    re.compile(r'^\s*Proprietary and confidential\..*$', re.MULTILINE | re.IGNORECASE),
+    # HTML comments wrapping the same line
+    re.compile(r'<!--\s*\n?\s*Proprietary and confidential\..*?-->', re.MULTILINE | re.IGNORECASE | re.DOTALL),
     # Dockerfile LABEL lines for proprietary metadata
     re.compile(r'^\s*LABEL\s+com\.openagentic\.copyright=.*$', re.MULTILINE),
     re.compile(r'^\s*LABEL\s+org\.opencontainers\.image\.vendor=.*$', re.MULTILINE),
@@ -57,7 +63,7 @@ TEXT_EXTS = {
     '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
     '.py', '.sh', '.bash',
     '.yml', '.yaml', '.toml', '.json',
-    '.md',
+    '.md', '.sql', '.html', '.css',
     '',  # Dockerfile and similar
 }
 

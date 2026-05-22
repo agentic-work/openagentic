@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.openagenticProxy.enabled (or (.Values.openagenticProxy.podDisruptionBudget).enabled (.Values.openagenticProxy.hpa).enabled) }}
 apiVersion: policy/v1

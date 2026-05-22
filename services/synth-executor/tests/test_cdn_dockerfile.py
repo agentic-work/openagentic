@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 C0.3 — Dockerfile bakes the CDN lib payload into the synth-executor

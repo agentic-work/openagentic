@@ -34,8 +34,8 @@
   - Supervisor Agent: 10
 
 ✅ **API Configuration:**
-- API Key: `awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79`
-- Test User: phatoldsun@gmail.com
+- API Key: `awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79`
+- Test User: admin@openagentic.local
 - Target: Uses config.apiUrl (default: http://localhost:8000)
 - Model: Uses config.defaultModel (default: gemini-2.0-flash-001)
 
@@ -89,8 +89,8 @@ node flowise-workflow-tests.test.js
 ║  Creating 50 Chatflows + 50 Agentflows via MCP          ║
 ╚═══════════════════════════════════════════════════════════╝
 
-INFO Test User: phatoldsun@gmail.com
-INFO API Key: awc_test_phatoldsun_16bdbaf28...
+INFO Test User: admin@openagentic.local
+INFO API Key: awc_test_openagentic-test_16bdbaf28...
 INFO Target: http://localhost:8000
 
 === Creating 50 Chatflows ===

@@ -64,8 +64,14 @@ SKIP_PREFIXES = (
     '.github/workflows/dependency-review', '.github/workflows/helm-publish',
     '.github/workflows/e2e-int-test', '.github/workflows/flows-harness',
     '.github/arc/', '.github/install-arc', '.github/arc-runner-',
-    '.github/SETUP.md', '.github/setup-arc-aks',
+    '.github/SETUP.md', '.github/setup-arc-aks', '.github/arc-setup.md',
     'gitops/', 'helm/values/',
+    # Runtime artifacts + leaked tokens from harness runs
+    '.a2a-queue/', '.auth/', '.uc-harness-token',
+    # Internal-only helm: per-tenant Kong + Milvus configs, SonarQube,
+    # internal todo, customer-specific AKS prereq doc
+    'helm/kong-', 'helm/milvus-', 'helm/sonarqube/',
+    'helm/todo.md', 'helm/openagentic/DEPLOYMENT-PREREQS-AKS.md',
     # Companion repos / customer-specific / internal worktrees — never OSS
     'agenticode-cli/', 'ghostpilot/', 'sdk/', 'oat/',
     'brainbow/', 'peraton/', 'mocks/', 'infra/',

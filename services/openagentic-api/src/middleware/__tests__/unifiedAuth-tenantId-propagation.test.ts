@@ -31,7 +31,7 @@ describe('unifiedAuth — tenantId propagation (SEV-0 Flows-fix-A1)', () => {
   it('Azure AD token: request.user.tenantId equals decoded.tid', () => {
     const validatedUser = {
       userId: 'azure_oid-1234',
-      email: 'mcp-tester@phatoldsungmail.onmicrosoft.com',
+      email: 'mcp-tester@openagentic.local',
       name: 'MCP Tester',
       isAdmin: false,
       groups: [],
@@ -119,7 +119,7 @@ describe('unifiedAuth + tenantContext integration (SEV-0 Flows-fix-A1)', () => {
   it('defaultTenantExtractor reads tenantId stamped by unifiedAuth (Azure AD)', () => {
     const validatedUser = {
       userId: 'azure_oid-9999',
-      email: 'mcp-tester@phatoldsungmail.onmicrosoft.com',
+      email: 'mcp-tester@openagentic.local',
       name: 'MCP Tester',
       isAdmin: false,
       groups: [],

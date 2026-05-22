@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 export BASE_URL="https://ai.openagentic.io"
 export ADMIN_EMAIL="admin@openagentic.io"

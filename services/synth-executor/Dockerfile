@@ -1,5 +1,4 @@
 
-# Proprietary and confidential. Unauthorized copying prohibited.
 
 # Synth Executor - Minimal Secure Python Execution Environment
 # Multi-stage build for smallest possible attack surface

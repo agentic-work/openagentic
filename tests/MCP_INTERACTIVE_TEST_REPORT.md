@@ -62,7 +62,7 @@
 | 5 | "Last 20 API logs from Loki" | loki_tail | 20 log entries returned | ✓ CORRECT + BUG FIX VERIFIED |
 | 6 | "Prometheus CPU usage" | list_available_tools | Discovery step | ✓ APPROPRIATE |
 | 7 | "PromQL sum(rate(...))" | prometheus_query, prometheus_metrics_list, prometheus_targets | Metrics + 60 targets | ✓ CORRECT + PROACTIVE |
-| 8 | "AWS identity" | aws_identity | obo-phatoldsun-at-gmail-com | ✓ CORRECT + OBO VERIFIED |
+| 8 | "AWS identity" | aws_identity | obo-openagentic-test-at-gmail-com | ✓ CORRECT + OBO VERIFIED |
 | 9 | "List GitHub repos" | list_repos | success=true | ✓ CORRECT |
 | 10 | "List all users (admin)" | admin_system_users_list_all + health checks | Users + health | ✓ CORRECT + PROACTIVE |
 
@@ -132,12 +132,12 @@ def format_log_entry(entry, stream: Dict[str, str]) -> str:
 ## OBO Token Exchange Verification
 
 ### Azure OBO
-- **User:** Trenton White (phatoldsun@gmail.com)
+- **User:** Trenton White (admin@openagentic.local)
 - **Tokens Acquired:** userAccessToken, graphAccessToken, keyvaultAccessToken, storageAccessToken, logAnalyticsAccessToken
 - **Status:** ✓ WORKING
 
 ### AWS OBO
-- **User:** obo-phatoldsun-at-gmail-com
+- **User:** obo-openagentic-test-at-gmail-com
 - **Role:** OpenAgenticOBORole (assumed role)
 - **Account:** 312347353495
 - **Status:** ✓ WORKING

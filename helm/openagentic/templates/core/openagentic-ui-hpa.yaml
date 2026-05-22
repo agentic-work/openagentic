@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.ui.autoscaling (eq (.Values.ui.autoscaling.enabled | toString) "true") }}
 apiVersion: autoscaling/v2

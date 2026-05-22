@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 # 100-Message Cloud Resource Test
 # Tests progressively harder cloud resource queries to trigger MCP tools

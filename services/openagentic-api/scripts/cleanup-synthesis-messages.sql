@@ -1,5 +1,4 @@
 -- Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
--- Proprietary and confidential. Unauthorized copying prohibited.
 
 -- Cleanup script to remove synthesis instruction messages that were incorrectly saved
 -- Run this against the OpenAgentic PostgreSQL database

@@ -1,4 +1,3 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
 
 
 # Chat API Stress Test - Test concurrent chat sessions with MCP tools and diagrams

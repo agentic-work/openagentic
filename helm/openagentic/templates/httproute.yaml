@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if .Values.gateway.enabled -}}
 {{- $gatewayName := ternary .Values.gateway.externalGateway.name (printf "%s-gateway" (include "openagentic.fullname" .)) .Values.gateway.useExternalGateway -}}

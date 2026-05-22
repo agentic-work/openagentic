@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.mcpProxy.enabled (or (.Values.mcpProxy.podDisruptionBudget).enabled (.Values.mcpProxy.autoscaling).enabled) }}
 apiVersion: policy/v1

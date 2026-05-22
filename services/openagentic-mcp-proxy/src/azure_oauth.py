@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 Azure AD OAuth2 Authentication for MCP Proxy

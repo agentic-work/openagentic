@@ -15,7 +15,7 @@ if (!process.env.DATABASE_URL) {
 const prisma = new PrismaClient();
 
 async function main() {
-  const userEmail = 'phatoldsun@gmail.com';
+  const userEmail = 'admin@openagentic.local';
 
   try {
     // Find user

@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 MCP Proxy Service - Centralized MCP Server Management with OBO Authentication

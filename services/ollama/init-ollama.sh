@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 # Ollama initialization script
 # Starts Ollama server and pulls required models

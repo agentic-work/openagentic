@@ -1,5 +1,4 @@
 -- Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
--- Proprietary and confidential. Unauthorized copying prohibited.
 
 -- FedRAMP AU-9: Prevent modifications to audit log records
 -- Audit records must be immutable once written to satisfy AU-9 (Protection of Audit Information)

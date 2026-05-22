@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 Sev-1 #795 — subprocess block must not break legitimate reportlab PDF flow.

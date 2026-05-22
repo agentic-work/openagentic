@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 A6 — synth-cdn pod decommissioned. The synth-executor pod owns the CDN

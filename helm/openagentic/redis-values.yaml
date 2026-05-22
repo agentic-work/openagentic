@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 # Redis values for OpenAgentic K3s cluster
 # Install: helm install redis bitnami/redis -n openagentic -f redis-values.yaml

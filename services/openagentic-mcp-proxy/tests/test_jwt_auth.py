@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 """
 Substrate fix S1 — JWT auth + system-token HMAC verification (Tasks 1.10/1.11).
 

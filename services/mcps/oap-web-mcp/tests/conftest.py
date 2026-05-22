@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """Stub heavy/network-bound imports so server.py is importable in unit tests.
 

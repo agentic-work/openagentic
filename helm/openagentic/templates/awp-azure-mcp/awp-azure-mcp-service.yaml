@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if .Values.awpAzureMcp.enabled }}
 apiVersion: v1

@@ -1,28 +1,3 @@
-/**
- * Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
- *
- * Task #166 — v0.6.7 chat UX mockup application.
- *
- * This stylesheet applies the mockup palette + component visuals from
- * `docs/release-plans/v0.6.7-ux-mockups/01-cloud-ops.html` to the live
- * chat surface WITHOUT rewriting component event-wiring. It:
- *
- *   1. Declares the mockup token set (--bg-0..4, --fg-0..3, --line-*,
- *      --accent-*, --agent-*) as root vars.
- *   2. Overrides the existing --color-* token surface to align with
- *      the mockup palette, so every component that reads those vars
- *      (ToolCallCard, ExpandableToolItem, UnifiedActivityTree, etc.)
- *      inherits the new visual language by default.
- *   3. Targets specific component selectors / data-attributes to
- *      apply shape + spacing rules that can't be reached via tokens
- *      alone (terminal-style tool headers, 760px chat column, 22×22
- *      violet avatar, etc.).
- *
- * Load order: imported from index.css AFTER design-tokens.css so
- * mockup values take precedence on the dark theme. Light theme keeps
- * its existing overrides.
- */
-
 /* ============================================================
    A. Mockup token set — full dark palette from 01-cloud-ops.html
    ============================================================ */

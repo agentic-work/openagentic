@@ -8,7 +8,7 @@
  *
  * Prerequisites:
  *   - GhostPilot running at localhost:4444
- *   - Logged in to https://chat-dev.openagentic.io as admin (mcp-tester@phatoldsungmail.onmicrosoft.com)
+ *   - Logged in to https://chat-dev.openagentic.io as admin (mcp-tester@openagentic.local)
  *   - Bedrock provider configured with valid AWS credentials
  *   - Ollama provider configured with local models loaded
  */

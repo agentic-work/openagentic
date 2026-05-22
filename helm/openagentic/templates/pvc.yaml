@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.vault.enabled .Values.vault.persistence.enabled }}
 apiVersion: v1

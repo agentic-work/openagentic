@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """SSRF guard for oap-web-mcp (substrate fix S3 of V3 Enterprise Chatmode plan).
 

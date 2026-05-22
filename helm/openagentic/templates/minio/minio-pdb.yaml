@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.minio.enabled (or (.Values.minio.podDisruptionBudget).enabled) }}
 apiVersion: policy/v1

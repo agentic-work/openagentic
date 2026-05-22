@@ -373,3 +373,8 @@ services/*/.pnpm-store/
 .playwright-mcp/
 test-results/
 playwright-report/
+
+# Runtime artifacts that should never be committed
+.uc-harness-token
+.a2a-queue/
+.auth/

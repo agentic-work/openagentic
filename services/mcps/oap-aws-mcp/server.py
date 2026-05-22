@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 OpenAgentic AWS MCP Server - Forked from awslabs/mcp aws-api-mcp-server

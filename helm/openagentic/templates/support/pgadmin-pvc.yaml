@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.pgadmin.enabled .Values.pgadmin.persistence.enabled }}
 apiVersion: v1

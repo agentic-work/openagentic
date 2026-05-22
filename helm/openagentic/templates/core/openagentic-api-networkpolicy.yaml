@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.api.enabled (.Values.api.networkPolicy).enabled }}
 apiVersion: networking.k8s.io/v1

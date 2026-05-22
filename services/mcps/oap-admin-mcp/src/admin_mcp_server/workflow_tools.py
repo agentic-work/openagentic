@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """
 Workflow MCP Tools - Manage workflows from chat/code mode via MCP

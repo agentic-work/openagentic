@@ -1,29 +1,3 @@
-/**
- * Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
- *
- * Admin v3 — global override layer for v2-delegated leaves
- *
- * Scope: every selector below is rooted at `.aw-shell` so it applies
- * ONLY when a v2 page body is rendering inside the v3 industrial-
- * telemetry chrome via PageRouter delegation. The v2 fallback (when
- * the user opts out via ?v3=0) is unaffected.
- *
- * Goal: fix the 6 P0 + 36 P1 UX inconsistencies catalogued by the
- * 2026-05-06 admin-walk audit without rewriting 60 individual v2
- * components. Each rule below targets one of the recurring v2 styling
- * hooks (`.glass-card`, `.admin-table-excel`, `.status-badge`,
- * `.ap-btn-primary`, `.ap-text-*`, raw `text-white` / `bg-white`,
- * etc.) and restyles it to match the v3 aesthetic:
- *   - flat surfaces (no glassmorphism), 1px hairlines
- *   - JetBrains Mono for tabular/figure text
- *   - neutral-first KPIs (large fg-0, small fg-3 unit)
- *   - status colors via tokens (--ok/--warn/--err) only
- *   - 26-28px control heights, dense padding
- *
- * Pattern: each block ends with a `/* WHY:` comment naming the
- * audit punch-list item it closes.
- */
-
 /* ============================================================
    Reset Tailwind hard-coded colors that break light-mode
    (audit P0/P1 across ~47 files: text-white, bg-white, bg-black)

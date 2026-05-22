@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 """Tests for ssrf_guard.py (substrate fix S3 of V3 Enterprise Chatmode plan).
 

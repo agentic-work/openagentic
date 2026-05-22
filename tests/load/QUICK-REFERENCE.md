@@ -37,7 +37,7 @@ cd /mnt/synology/Code/company/cdc/agentic/tests/load && ./run-load-test.sh --smo
 ```bash
 # Environment Variables
 export API_URL=http://localhost:8000
-export API_KEY=awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79
+export API_KEY=awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79
 export NUM_SESSIONS=100
 export MESSAGES_PER_SESSION=20
 export DEFAULT_MODEL=gemini-2.0-flash-001
@@ -90,7 +90,7 @@ cat ../test-results/concurrent-chat-sessions-results.json | jq '.summary.toolCal
 curl http://localhost:8000/health
 
 # Check MCP status
-curl -H "X-API-Key: awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79" \
+curl -H "X-API-Key: awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79" \
   http://localhost:8000/api/chat/mcp/status
 
 # Test single session

@@ -1,5 +1,4 @@
 
-# Proprietary and confidential. Unauthorized copying prohibited.
 
 # OpenAgentic Custom Ollama Image
 # Supports pre-pulled models and dynamic model loading from ConfigMap

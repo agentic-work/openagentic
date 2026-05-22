@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.uatDashboard.enabled .Values.uatDashboard.ingress.enabled }}
 apiVersion: networking.k8s.io/v1

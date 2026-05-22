@@ -1,18 +1,3 @@
-/**
- * Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
- *
- * Admin v3 — primitives stylesheet
- *
- * Single source of presentational rules for every primitives-v3
- * component. All colors / sizes / typography reference CSS variables
- * declared in admin-v2-accents.css + mockup-v067.css, so light/dark/
- * accent/density switching is automatic — no JS-driven re-renders.
- *
- * Class naming: `aw-*` prefix to avoid collision with Tailwind, with
- * existing v2 `cm-*`, and with chat shell classes. Mirror the prototype
- * vocabulary 1:1 so anyone reading the CSS can find the matching mock.
- */
-
 /* ============================================================
    PageHead — sticky title row
    ============================================================ */

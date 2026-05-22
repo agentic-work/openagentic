@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.ollama.enabled .Values.ollama.persistence.enabled (not .Values.ollama.persistence.existingClaim) .Values.ollama.persistence.standalone }}
 # Standalone PVC for Ollama models - survives helm uninstall

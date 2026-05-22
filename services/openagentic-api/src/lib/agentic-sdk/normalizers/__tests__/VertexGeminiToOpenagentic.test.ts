@@ -75,7 +75,7 @@ describe('VertexGeminiToOpenagenticNormalizer', () => {
                 {
                   functionCall: {
                     name: 'azure_list_subscriptions',
-                    args: { tenantId: 'phatoldsun' },
+                    args: { tenantId: 'openagentic-test' },
                   },
                 },
               ],
@@ -100,7 +100,7 @@ describe('VertexGeminiToOpenagenticNormalizer', () => {
     );
     expect(inputDelta).toBeDefined();
     if (inputDelta && inputDelta.type === 'content_block_delta' && inputDelta.delta.type === 'input_json_delta') {
-      expect(JSON.parse(inputDelta.delta.partial_json)).toEqual({ tenantId: 'phatoldsun' });
+      expect(JSON.parse(inputDelta.delta.partial_json)).toEqual({ tenantId: 'openagentic-test' });
     }
   });
 

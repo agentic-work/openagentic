@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.workflows.enabled .Values.workflows.autoscaling.enabled }}
 apiVersion: autoscaling/v2

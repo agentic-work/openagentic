@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 # =====================================================
 # OpenAgentic v0.4.0 UAT Test Suite

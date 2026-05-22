@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if and .Values.ingress.enabled .Values.certManager.enabled }}
 apiVersion: cert-manager.io/v1

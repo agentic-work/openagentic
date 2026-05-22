@@ -1,4 +1,4 @@
-# Proprietary and confidential. Unauthorized copying prohibited.
+
 
 {{- if .Values.grafana.enabled }}
 # ExternalName service to proxy requests to Grafana in another namespace.

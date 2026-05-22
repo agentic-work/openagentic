@@ -61,10 +61,10 @@ describe('ProviderDiscriminatorSchema', () => {
       expect(
         buildAutoDisplayName('azure-ai-foundry', {
           env: 'prod',
-          tenant: 'phatoldsun',
+          tenant: 'openagentic-test',
           resource: 'awf-aif-20902',
         }),
-      ).toBe('aif-prod-phatoldsun-awf-aif-20902');
+      ).toBe('aif-prod-openagentic-test-awf-aif-20902');
     });
     it('unknown type returns the type itself (no template)', () => {
       expect(buildAutoDisplayName('unknown-type', {})).toBe('unknown-type');

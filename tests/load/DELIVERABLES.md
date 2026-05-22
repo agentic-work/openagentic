@@ -18,8 +18,8 @@
 - ✅ Detailed error reporting and logging
 - ✅ JSON results output with full test data
 - ✅ Uses chat API to invoke MCP tools naturally
-- ✅ Test user: phatoldsun@gmail.com
-- ✅ API Key: awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79
+- ✅ Test user: admin@openagentic.local
+- ✅ API Key: awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79
 
 #### Technical Implementation:
 - **7 async functions** for modular workflow creation and metrics
@@ -72,8 +72,8 @@
 |-------------|--------|---------|
 | Create 50 chatflows | ✅ | 5 types × 10 each |
 | Create 50 agentflows | ✅ | 5 types × 10 each |
-| Use API key | ✅ | `awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79` |
-| Test user | ✅ | phatoldsun@gmail.com |
+| Use API key | ✅ | `awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79` |
+| Test user | ✅ | admin@openagentic.local |
 | Use oap-flowise-mcp | ✅ | Via chat API |
 | Read Flowise docs | ✅ | Referenced in implementation |
 | RAG flows | ✅ | 10 RAG chatflows |
@@ -199,8 +199,8 @@
 ```json
 {
   "testSuite": "Test Suite #7B - 100 Flowise Workflows",
-  "testUser": "phatoldsun@gmail.com",
-  "apiKey": "awc_test_phatoldsun_...",
+  "testUser": "admin@openagentic.local",
+  "apiKey": "awc_test_openagentic-test_...",
   "timestamp": "ISO-8601",
   "metrics": {
     "total": 100,
