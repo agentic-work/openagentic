@@ -1,200 +1,49 @@
 {
   "domain": "hitl-approvals",
   "title": "HITL Approvals",
-  "description": "Human-in-the-loop approval store for tool call gating with timeout, resolve, and cleanup lifecycle.",
+  "description": "Pending approval store + workflows",
   "icon": "shield",
-  "category": "core",
-  "generatedAt": "2026-04-06T02:45:19.338Z",
+  "category": "security",
+  "generatedAt": "2026-05-13T20:48:20.634Z",
   "sourceFiles": [
     "services/openagentic-api/src/services/PendingApprovalStore.ts"
   ],
   "sections": [
     {
-      "id": "approval-result",
-      "title": "Approval Result",
-      "description": "The ApprovalResult interface returned when an approval is resolved or times out.",
+      "id": "ApprovalResult",
+      "title": "ApprovalResult",
+      "description": "Interface ApprovalResult",
       "adminOnly": false,
       "items": [
         {
-          "id": "result-approved",
+          "id": "ApprovalResult.approved",
           "name": "approved",
-          "description": "boolean field",
-          "type": "interface-field",
+          "description": "boolean",
+          "type": "ts-field",
           "properties": {
-            "type": "boolean",
-            "optional": false
-          }
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/PendingApprovalStore.ts"
         },
         {
-          "id": "result-timedOut",
+          "id": "ApprovalResult.timedOut",
           "name": "timedOut",
-          "description": "boolean field",
-          "type": "interface-field",
+          "description": "boolean",
+          "type": "ts-field",
           "properties": {
-            "type": "boolean",
-            "optional": false
-          }
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/PendingApprovalStore.ts"
         },
         {
-          "id": "result-waitMs",
+          "id": "ApprovalResult.waitMs",
           "name": "waitMs",
-          "description": "number field",
-          "type": "interface-field",
+          "description": "number",
+          "type": "ts-field",
           "properties": {
-            "type": "number",
-            "optional": false
-          }
-        }
-      ]
-    },
-    {
-      "id": "approval-flow",
-      "title": "Approval Flow",
-      "description": "The lifecycle of a human-in-the-loop approval: create, wait, resolve or timeout.",
-      "adminOnly": false,
-      "items": [
-        {
-          "id": "flow-create",
-          "name": "Create Approval",
-          "description": "Create a pending approval with a configurable timeout (default: 300s / 5 minutes)",
-          "type": "flow-step",
-          "properties": {
-            "defaultTimeoutMs": 300000,
-            "step": 1
-          }
-        },
-        {
-          "id": "flow-id-format",
-          "name": "Approval ID Format",
-          "description": "Generated ID format: hitl-<dynamic>-<dynamic>",
-          "type": "flow-detail",
-          "properties": {
-            "format": "hitl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}"
-          }
-        },
-        {
-          "id": "flow-resolve",
-          "name": "Resolve Approval",
-          "description": "Resolve a pending approval as approved or denied. Returns false if already resolved or timed out.",
-          "type": "flow-step",
-          "properties": {
-            "step": 2
-          }
-        },
-        {
-          "id": "flow-timeout",
-          "name": "Timeout Handling",
-          "description": "When an approval times out, it auto-resolves as not approved with timedOut=true.",
-          "type": "flow-step",
-          "properties": {
-            "step": 3
-          }
-        }
-      ]
-    },
-    {
-      "id": "store-methods",
-      "title": "Store API",
-      "description": "Methods on the PendingApprovalStore class.",
-      "adminOnly": false,
-      "items": [
-        {
-          "id": "method-create",
-          "name": "create",
-          "description": "Create a new pending approval. Returns a promise that resolves when approve/deny is called, or rejects after timeout.",
-          "type": "method",
-          "properties": {
-            "params": "toolCallId: string, timeoutMs: number = 300000",
-            "returns": "void"
+            "tsType": "number"
           },
-          "sourceLine": 9,
           "sourceFile": "services/openagentic-api/src/services/PendingApprovalStore.ts"
-        },
-        {
-          "id": "method-resolve",
-          "name": "resolve",
-          "description": "Resolve a pending approval. Returns false if the ID doesn't exist (already resolved or timed out).",
-          "type": "method",
-          "properties": {
-            "params": "id: string, approved: boolean",
-            "returns": "boolean"
-          },
-          "sourceLine": 24,
-          "sourceFile": "services/openagentic-api/src/services/PendingApprovalStore.ts"
-        },
-        {
-          "id": "method-has",
-          "name": "has",
-          "description": "Check if an approval is pending.",
-          "type": "method",
-          "properties": {
-            "params": "id: string",
-            "returns": "boolean"
-          },
-          "sourceLine": 38,
-          "sourceFile": "services/openagentic-api/src/services/PendingApprovalStore.ts"
-        },
-        {
-          "id": "method-clear",
-          "name": "clear",
-          "description": "Get count of pending approvals. /\n  get size(): number {\n    return this.pending.size;\n  }\n\n  /   Clean up all pending approvals (e.g., on shutdown).",
-          "type": "method",
-          "properties": {
-            "params": "none",
-            "returns": "void"
-          },
-          "sourceLine": 44,
-          "sourceFile": "services/openagentic-api/src/services/PendingApprovalStore.ts"
-        },
-        {
-          "id": "method-for",
-          "name": "for",
-          "description": "Store method",
-          "type": "method",
-          "properties": {
-            "params": "const [id, entry] of this.pending",
-            "returns": "void"
-          },
-          "sourceLine": 54,
-          "sourceFile": "services/openagentic-api/src/services/PendingApprovalStore.ts"
-        },
-        {
-          "id": "method-getPendingApprovalStore",
-          "name": "getPendingApprovalStore",
-          "description": "Store method",
-          "type": "method",
-          "properties": {
-            "params": "none",
-            "returns": "PendingApprovalStore"
-          },
-          "sourceLine": 65,
-          "sourceFile": "services/openagentic-api/src/services/PendingApprovalStore.ts"
-        },
-        {
-          "id": "getter-size",
-          "name": "size",
-          "description": "Getter returning number",
-          "type": "getter",
-          "properties": {
-            "returns": "number"
-          }
-        }
-      ]
-    },
-    {
-      "id": "singleton-access",
-      "title": "Singleton Access",
-      "description": "The PendingApprovalStore is a singleton, shared across all pipeline stages.",
-      "adminOnly": false,
-      "items": [
-        {
-          "id": "singleton-getter",
-          "name": "getPendingApprovalStore",
-          "description": "Returns the singleton PendingApprovalStore instance. Creates one on first call.",
-          "type": "function",
-          "properties": {
-            "returns": "PendingApprovalStore"
-          }
         }
       ]
     }

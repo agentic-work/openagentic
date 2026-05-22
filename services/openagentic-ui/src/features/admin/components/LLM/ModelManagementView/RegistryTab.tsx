@@ -13,6 +13,8 @@ import { getProviderIcon } from '../../Shared/ProviderIcons';
 import { AdminToast, useAdminToast } from '../../Shared/AdminToast';
 import { AdminButton } from '../../Shared/AdminButton';
 import { AddModelDialog } from './AddModelDialog';
+// DefaultModelsCard removed — tenant defaults are now managed in Admin → System Configuration → Default Models
+import { StateMachineToggle } from '../../../primitives-v2';
 import {
   ModelInfo, ModelConfig, DbProvider,
   CAPABILITY_BADGES, TIER_COLORS, MODEL_ROLES,
@@ -81,6 +83,32 @@ export const RegistryTab: React.FC<{
     }
   }, [showToast]);
 
+  // #650 U7 — Per-model "Refresh from provider": re-runs live discovery
+  // and updates capabilities + limits + pricing in place. Useful when the
+  // upstream provider bumps prices or fixes context-window metadata.
+  const [refreshingModel, setRefreshingModel] = useState<string | null>(null);
+  const handleRefreshModel = useCallback(async (model: ModelInfo) => {
+    setRefreshingModel(model.id);
+    try {
+      const res = await apiRequest(
+        `/admin/llm-providers/${encodeURIComponent(model.providerName)}/models/${encodeURIComponent(model.name)}/refresh`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }
+      );
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        showToast('error', `Refresh failed for ${model.name}: ${(data?.message || data?.error || res.statusText).slice(0, 120)}`);
+        return;
+      }
+      showToast('success', `Refreshed ${model.name} from ${data?.pricing_source ?? 'provider'}`);
+      emitModelsChanged('refresh');
+      onRefresh();
+    } catch (err: any) {
+      showToast('error', `Refresh failed: ${err.message}`);
+    } finally {
+      setRefreshingModel(null);
+    }
+  }, [onRefresh, showToast]);
+
   const handleDeleteModel = useCallback(async (model: ModelInfo) => {
     if (isAnthropicOnAIF(model)) {
       showAnthropicAifBlockedMessage('remove');
@@ -121,29 +149,65 @@ export const RegistryTab: React.FC<{
     }
   }, [onRefresh, showToast, isAnthropicOnAIF, showAnthropicAifBlockedMessage]);
 
-  const handleToggleModel = useCallback(async (model: ModelInfo) => {
+  // Task #5 (Registry SoT): when the parent fetches models from the Registry
+  // endpoint, `model.id` is the Registry row UUID. Toggles go through
+  // PATCH /admin/llm-providers/registry/:id so the change lands on the SAME
+  // table the toolbar + Smart Router read from. The legacy per-model PUT
+  // only updates provider_config.models[] — which is NOT the Registry.
+  const isRegistryRowId = useCallback((id: string): boolean =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id), []);
+
+  // MC-H: handleToggleModel now takes the *desired* next state from the caller
+  // (StateMachineToggle is the source of truth for what was clicked) and
+  // returns Promise<boolean> so the toggle can drive its confirmed|rollback flow.
+  //
+  // optimisticToggles is kept because the row-level badge ("Active"/"Off") and
+  // the expanded-detail CheckCircle/XCircle at lines ~419 and ~713 still read
+  // `effectiveEnabled`. We keep the Set and flip it here so those indicators
+  // stay in sync while the StateMachineToggle's internal optimistic state
+  // drives the actual toggle knob. The Set is set on entry and cleared on
+  // resolution — same lifetime as before, just driven from a different call site.
+  const handleToggleModel = useCallback(async (model: ModelInfo, next: boolean): Promise<boolean> => {
     if (isAnthropicOnAIF(model)) {
-      showAnthropicAifBlockedMessage(model.enabled ? 'disable' : 'enable');
-      return;
+      showAnthropicAifBlockedMessage(next ? 'enable' : 'disable');
+      return false;
     }
-    // Optimistic: flip state immediately in the UI
-    setOptimisticToggles(prev => { const next = new Set(prev); next.add(model.id); return next; });
+    // Mirror the optimistic flip in the row badge / detail status indicator.
+    setOptimisticToggles(prev => { const s = new Set(prev); s.add(model.id); return s; });
     try {
-      const res = await apiRequest(
-        `/admin/llm-providers/${encodeURIComponent(model.providerName)}/models/${encodeURIComponent(model.name)}`,
-        { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ config: { enabled: !model.enabled } }) }
-      );
-      if (!res.ok) throw new Error(await res.text());
-      showToast('success', `${model.name} ${model.enabled ? 'disabled' : 'enabled'}`);
+      // Deduped rows: when one ModelInfo represents multiple registry rows
+      // (same provider+model registered for both 'chat' and 'code' roles),
+      // fan out the PATCH so all per-role rows stay in sync. Without this,
+      // toggling the merged row only flips one underlying registry row.
+      const secondaryIds = (model as any).__secondaryRegistryIds as string[] | undefined;
+      const allIds = [model.id, ...(secondaryIds ?? [])];
+      const res = isRegistryRowId(model.id)
+        ? await Promise.all(
+            allIds.map(id =>
+              apiRequest(
+                `/admin/llm-providers/registry/${encodeURIComponent(id)}`,
+                { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: next }) }
+              ),
+            ),
+          ).then(rs => rs.find(r => !r.ok) ?? rs[0])
+        : await apiRequest(
+            `/admin/llm-providers/${encodeURIComponent(model.providerName)}/models/${encodeURIComponent(model.name)}`,
+            { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ config: { enabled: next } }) }
+          );
+      if (!res.ok) { showToast('error', `Failed to toggle: ${await res.text()}`); return false; }
+      showToast('success', `${model.name} ${next ? 'enabled' : 'disabled'}`);
       emitModelsChanged('toggle');
       onRefresh();
+      return true;
     } catch (err: any) {
       showToast('error', `Failed to toggle: ${err.message}`);
+      return false;
     } finally {
-      // Clear optimistic state after server responds (success or error triggers refresh)
-      setOptimisticToggles(prev => { const next = new Set(prev); next.delete(model.id); return next; });
+      // Clear optimistic override — StateMachineToggle handles the knob state;
+      // the row badge will re-sync from the refreshed model list.
+      setOptimisticToggles(prev => { const s = new Set(prev); s.delete(model.id); return s; });
     }
-  }, [onRefresh, showToast, isAnthropicOnAIF, showAnthropicAifBlockedMessage]);
+  }, [onRefresh, showToast, isAnthropicOnAIF, showAnthropicAifBlockedMessage, isRegistryRowId]);
 
   const startEditing = useCallback((model: ModelInfo) => {
     setEditingModel(model.id);
@@ -218,14 +282,28 @@ export const RegistryTab: React.FC<{
   const saveModelConfig = useCallback(async (model: ModelInfo) => {
     setSaving(true);
     try {
-      const res = await apiRequest(
-        `/admin/llm-providers/${encodeURIComponent(model.providerName)}/models/${encodeURIComponent(model.name)}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ config: editConfig }),
-        }
-      );
+      const res = isRegistryRowId(model.id)
+        ? await apiRequest(
+            `/admin/llm-providers/registry/${encodeURIComponent(model.id)}`,
+            {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                enabled: editConfig.enabled,
+                role: editConfig.roles?.[0],
+                temperature: editConfig.temperature ?? null,
+                max_tokens: editConfig.maxOutputTokens ?? null,
+              }),
+            }
+          )
+        : await apiRequest(
+            `/admin/llm-providers/${encodeURIComponent(model.providerName)}/models/${encodeURIComponent(model.name)}`,
+            {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ config: editConfig }),
+            }
+          );
       if (!res.ok) throw new Error(await res.text());
       showToast('success', `Updated ${model.name} config`);
       setEditingModel(null);
@@ -236,7 +314,7 @@ export const RegistryTab: React.FC<{
     } finally {
       setSaving(false);
     }
-  }, [editConfig, onRefresh, showToast]);
+  }, [editConfig, onRefresh, showToast, isRegistryRowId]);
 
   const [search, setSearch] = useState('');
   const [filterProvider, setFilterProvider] = useState('all');
@@ -280,6 +358,16 @@ export const RegistryTab: React.FC<{
     <div className="space-y-4">
       {/* Toast */}
       <AdminToast toast={toast} onDismiss={dismissToast} />
+
+      {/* Tenant default models now managed in System Configuration → Default Models */}
+      <div style={{
+        background: 'rgba(88,166,255,0.06)', border: '1px solid rgba(88,166,255,0.25)',
+        borderRadius: 8, padding: '10px 14px', fontSize: 13,
+        color: 'var(--text-muted)',
+      }}>
+        Tenant-wide default models (chat, code, embeddings, vision, image gen) are now managed in{' '}
+        <strong>Admin → System Configuration → Default Models</strong>.
+      </div>
 
       {/* Sub-header */}
       <div className="flex items-center justify-between">
@@ -333,7 +421,7 @@ export const RegistryTab: React.FC<{
           className="grid grid-cols-[2fr_1.2fr_80px_1fr_55px_65px_180px] gap-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider"
           style={{ background: 'var(--color-surfaceSecondary)', color: 'var(--text-muted)' }}
         >
-          <span className="pl-5">Model</span><span>Provider</span><span>Tier</span><span>Capabilities</span><span>Tokens</span><span>Status</span><span>Actions</span>
+          <span className="pl-5">Model</span><span>Provider</span><span>Tier</span><span>Capabilities</span><span title="Max output tokens per response (NOT context window — see expanded row for context)">Max Out</span><span>Status</span><span>Actions</span>
         </div>
         {filteredModels.length === 0 ? (
           <div className="px-4 py-8 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -403,17 +491,25 @@ export const RegistryTab: React.FC<{
                   title={`Probe ${model.name} with a tiny request and verify it responds`}>
                   {testingModel === model.id ? 'Testing…' : 'Test'}
                 </button>
+                {/* Refresh from provider — re-runs live discovery (#650 U7) */}
+                <button onClick={() => handleRefreshModel(model)} disabled={refreshingModel === model.id}
+                  className="p-1 rounded hover:bg-purple-500/20 transition-colors disabled:opacity-50 flex-shrink-0"
+                  title={`Refresh capabilities, limits, and pricing for ${model.name} from the upstream provider`}>
+                  <RefreshCw size={13} className={`${refreshingModel === model.id ? 'animate-spin text-purple-300' : 'text-purple-400 hover:text-purple-300'}`} />
+                </button>
                 {/* Edit config */}
                 <button onClick={() => { startEditing(model); setExpandedModel(model.id); }}
                   className="p-1 rounded hover:bg-blue-500/20 transition-colors flex-shrink-0" title={`Edit ${model.name} config`}>
                   <Edit3 size={13} className="text-blue-400 hover:text-blue-300" />
                 </button>
-                {/* Enable/disable toggle */}
-                <button onClick={() => handleToggleModel(model)}
-                  className={`relative w-8 h-4 rounded-full transition-colors flex-shrink-0 ${effectiveEnabled ? 'bg-emerald-500' : 'bg-gray-600'}`}
-                  title={effectiveEnabled ? 'Disable model' : 'Enable model'}>
-                  <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${effectiveEnabled ? 'left-[17px]' : 'left-0.5'}`} />
-                </button>
+                {/* Enable/disable toggle — MC-H: replaced bespoke button with StateMachineToggle */}
+                <StateMachineToggle
+                  checked={effectiveEnabled}
+                  onCommit={(next) => handleToggleModel(model, next)}
+                  label={`${effectiveEnabled ? 'Disable' : 'Enable'} ${model.name}`}
+                  size="sm"
+                  disabled={isAnthropicOnAIF(model)}
+                />
                 {/* Delete */}
                 <button onClick={() => handleDeleteModel(model)} disabled={deletingModel === model.id}
                   className="p-1 rounded hover:bg-red-500/20 transition-colors flex-shrink-0" title={`Remove ${model.name}`}>
@@ -571,7 +667,7 @@ export const RegistryTab: React.FC<{
                               style={{
                                 background: active ? 'rgba(59,130,246,0.15)' : 'transparent',
                                 borderColor: active ? 'rgba(59,130,246,0.4)' : 'var(--color-border)',
-                                color: active ? '#60a5fa' : 'var(--text-muted)',
+                                color: active ? 'var(--ap-accent)' : 'var(--text-muted)',
                               }}
                             >
                               {cap}
@@ -687,7 +783,7 @@ export const RegistryTab: React.FC<{
                         <div className="font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Status</div>
                         <div className="flex items-center gap-1">
                           {effectiveEnabled ? <CheckCircle size={12} className="text-emerald-400" /> : <XCircle size={12} className="text-gray-500" />}
-                          <span style={{ color: effectiveEnabled ? '#34d399' : 'var(--text-muted)' }}>{effectiveEnabled ? 'Active' : 'Disabled'}</span>
+                          <span style={{ color: effectiveEnabled ? 'var(--ap-ok)' : 'var(--text-muted)' }}>{effectiveEnabled ? 'Active' : 'Disabled'}</span>
                         </div>
                       </div>
                     </div>
@@ -762,6 +858,8 @@ export const RegistryTab: React.FC<{
           >
             <div className="px-5 py-4 border-b flex items-start gap-3" style={{ borderColor: 'var(--color-border)' }}>
               <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(212, 165, 116, 0.15)' }}>
+                {/* Anthropic brand orange #D4A574 — non-themeable brand identity color. */}
+                {/* eslint-disable-next-line admin-tokens/no-hardcoded-admin-color */}
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4A574" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10"/>
                   <line x1="12" y1="8" x2="12" y2="12"/>

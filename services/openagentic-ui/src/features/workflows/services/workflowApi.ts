@@ -579,7 +579,20 @@ export class WorkflowApiService {
       throw new Error(error.error || 'Failed to load versions');
     }
     const data = await response.json();
-    return data.versions || [];
+    // QA-2026-05-05 (#15/#16): Postgres backend returns snake_case
+    // (created_at, is_active, workflow_id, created_by); UI components
+    // read camelCase. Normalize at this single boundary so callers
+    // see a uniform shape (and "Invalid Date" / "Version 1 → Version 1"
+    // bugs disappear).
+    const versions = data.versions || [];
+    return versions.map((v: any) => ({
+      ...v,
+      createdAt: v.createdAt ?? v.created_at,
+      isActive: v.isActive ?? v.is_active,
+      workflowId: v.workflowId ?? v.workflow_id,
+      createdBy: v.createdBy ?? v.created_by,
+      tenantId: v.tenantId ?? v.tenant_id,
+    }));
   }
 
   /**
@@ -640,6 +653,80 @@ export class WorkflowApiService {
       headers: this.getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to seed templates');
+    return response.json();
+  }
+
+  // =========================================================================
+  // Execution Control: Pause / Resume / Cancel / Retry-Node
+  // =========================================================================
+
+  /**
+   * Pause a running workflow execution.
+   * Marks the execution as `paused` in the database.
+   */
+  async pauseExecution(executionId: string): Promise<{ success: boolean; status: string }> {
+    const response = await fetch(workflowEndpoint(`/workflows/executions/${executionId}/pause`), {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Failed to pause execution' }));
+      throw new Error(error.error || 'Failed to pause execution');
+    }
+    return response.json();
+  }
+
+  /**
+   * Resume a paused workflow execution.
+   */
+  async resumeExecution(executionId: string): Promise<{ success: boolean; status: string }> {
+    const response = await fetch(workflowEndpoint(`/workflows/executions/${executionId}/resume`), {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Failed to resume execution' }));
+      throw new Error(error.error || 'Failed to resume execution');
+    }
+    return response.json();
+  }
+
+  /**
+   * Cancel a running or paused workflow execution.
+   * Calls the engine's abort method and marks the execution as `cancelled`.
+   */
+  async cancelExecution(executionId: string): Promise<{ success: boolean; status: string }> {
+    const response = await fetch(workflowEndpoint(`/workflows/executions/${executionId}/cancel`), {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Failed to cancel execution' }));
+      throw new Error(error.error || 'Failed to cancel execution');
+    }
+    return response.json();
+  }
+
+  /**
+   * Retry a specific failed node from a completed execution.
+   * Creates a new partial execution starting from the failed node,
+   * reusing upstream node outputs from the original run.
+   *
+   * @returns { newExecutionId } — the ID of the newly created execution
+   */
+  async retryNode(workflowId: string, executionId: string, nodeId: string): Promise<{ newExecutionId: string }> {
+    const response = await fetch(workflowEndpoint(`/workflows/${workflowId}/retry-node`), {
+      method: 'POST',
+      headers: {
+        ...this.getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ executionId, nodeId }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Failed to retry node' }));
+      throw new Error(error.error || 'Failed to retry node');
+    }
     return response.json();
   }
 

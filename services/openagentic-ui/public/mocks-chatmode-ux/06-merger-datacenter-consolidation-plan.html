@@ -1,0 +1,908 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-accent="violet">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>OpenAgentic · Datacenter consolidation plan · Mockup 06</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* =======================================================================
+   Mockup 06 · Chat-mode · M&A datacenter consolidation
+   2 companies · 4 DCs · 200+ VMs · 90-day cutover · 8 sub-agents · 5 passes
+   ======================================================================= */
+:root {
+  --bg-0: #09090b; --bg-1: #0f1012; --bg-2: #16181c; --bg-3: #1c1f24; --bg-4: #242831;
+  --line-1: rgba(255,255,255,0.06); --line-2: rgba(255,255,255,0.10); --line-3: rgba(255,255,255,0.16);
+  --fg-0: #f8fafc; --fg-1: #d4d4d8; --fg-2: #a1a1aa; --fg-3: #71717a;
+  --accent: #8b5cf6; --accent-soft: rgba(139,92,246,0.14); --accent-line: rgba(139,92,246,0.32);
+  --agent-c: #f59e0b; --agent-g: #10b981; --agent-s: #ef4444; --agent-k: #3b82f6;
+  --agent-n: #06b6d4; --agent-p: #ec4899; --agent-w: #eab308; --agent-v: #a855f7;
+  --ok: #22c55e; --warn: #f59e0b; --err: #ef4444; --info: #38bdf8;
+}
+html[data-theme=light] {
+  --bg-0: #fafafa; --bg-1: #fff; --bg-2: #f4f4f5; --bg-3: #e4e4e7; --bg-4: #d4d4d8;
+  --line-1: rgba(0,0,0,0.06); --line-2: rgba(0,0,0,0.1); --line-3: rgba(0,0,0,0.16);
+  --fg-0: #09090b; --fg-1: #27272a; --fg-2: #52525b; --fg-3: #71717a;
+}
+html[data-accent=violet] { --accent: #8b5cf6; --accent-soft: rgba(139,92,246,0.14); --accent-line: rgba(139,92,246,0.32); }
+html[data-accent=teal]   { --accent: #14b8a6; --accent-soft: rgba(20,184,166,0.14); --accent-line: rgba(20,184,166,0.32); }
+html[data-accent=amber]  { --accent: #f59e0b; --accent-soft: rgba(245,158,11,0.14); --accent-line: rgba(245,158,11,0.32); }
+html[data-accent=rose]   { --accent: #f43f5e; --accent-soft: rgba(244,63,94,0.14); --accent-line: rgba(244,63,94,0.32); }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px; line-height: 1.5;
+  color: var(--fg-1); background: var(--bg-0);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'ss01','cv11';
+}
+code, pre, .mono, .tabular { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.tnum { font-variant-numeric: tabular-nums; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+a { color: #7dd3fc; }
+
+.shell { display: grid; grid-template-columns: 260px 1fr; height: 100vh; min-height: 100vh; }
+.sidebar { border-right: 1px solid var(--line-1); background: var(--bg-1); display: flex; flex-direction: column; padding: 12px 8px; gap: 2px; }
+.sb-logo { display: flex; align-items: center; gap: 8px; padding: 8px 10px 16px; border-bottom: 1px solid var(--line-1); margin-bottom: 8px; }
+.sb-logo .mark { width: 22px; height: 22px; border-radius: 6px; background: conic-gradient(from 220deg, var(--accent), #6366f1, var(--accent)); display: grid; place-items: center; font-weight: 700; font-size: 12px; color: white; }
+.sb-logo .brand { font-weight: 600; color: var(--fg-0); letter-spacing: -0.01em; }
+.sb-logo .brand small { display: block; font-size: 10px; color: var(--fg-3); font-weight: 400; margin-top: -1px; }
+.sb-new { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line-2); color: var(--fg-0); font-weight: 500; font-size: 13px; margin-bottom: 10px; }
+.sb-new:hover { background: var(--bg-2); }
+.sb-group-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); padding: 10px 10px 4px; }
+.sb-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; font-size: 13px; color: var(--fg-1); }
+.sb-item:hover { background: var(--bg-2); }
+.sb-item.active { background: var(--bg-2); color: var(--fg-0); }
+.sb-item .t { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-item .age { font-size: 10px; color: var(--fg-3); }
+
+.agent-tree { padding: 4px 4px 10px; border-top: 1px solid var(--line-1); margin-top: 10px; }
+.agent-tree .node { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; font-size: 12px; }
+.agent-tree .node.sub { padding-left: 20px; position: relative; color: var(--fg-2); font-size: 11.5px; }
+.agent-tree .node.sub::before { content: ""; position: absolute; left: 10px; top: 0; bottom: 50%; border-left: 1px dashed var(--line-2); border-bottom: 1px dashed var(--line-2); width: 6px; border-bottom-left-radius: 3px; }
+.agent-tree .node .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.agent-tree .node .dot.c { background: var(--agent-c); }
+.agent-tree .node .dot.g { background: var(--agent-g); }
+.agent-tree .node .dot.s { background: var(--agent-s); }
+.agent-tree .node .dot.k { background: var(--agent-k); }
+.agent-tree .node .dot.n { background: var(--agent-n); }
+.agent-tree .node .dot.p { background: var(--agent-p); }
+.agent-tree .node .dot.w { background: var(--agent-w); }
+.agent-tree .node .dot.v { background: var(--agent-v); }
+.agent-tree .node .label { flex: 1; }
+.agent-tree .node .count { font-family: 'JetBrains Mono', monospace; color: var(--fg-3); font-size: 10.5px; }
+
+.main { display: grid; grid-template-rows: 52px 1fr; min-width: 0; }
+.topbar { display: flex; align-items: center; gap: 12px; padding: 0 20px; border-bottom: 1px solid var(--line-1); background: var(--bg-0); position: sticky; top: 0; z-index: 5; }
+.topbar .title { font-size: 13px; font-weight: 500; color: var(--fg-0); }
+.topbar .crumbs { font-size: 12px; color: var(--fg-3); }
+.topbar .back { font-size: 12px; color: var(--fg-2); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line-2); }
+.topbar .back:hover { background: var(--bg-2); color: var(--fg-0); }
+.topbar .spacer { flex: 1; }
+.topbar .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 99px; border: 1px solid var(--line-2); font-size: 11px; color: var(--fg-2); }
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+
+.chat-wrap { overflow-y: auto; padding: 24px 32px 220px; scroll-behavior: smooth; }
+.chat { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px; }
+
+.msg { display: flex; flex-direction: column; gap: 10px; }
+.msg-user { align-self: flex-end; max-width: 640px; background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 14px; padding: 12px 16px; font-size: 14px; line-height: 1.55; color: var(--fg-0); }
+.msg-user .meta-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--fg-3); margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line-1); }
+.msg-asst { display: grid; grid-template-columns: 28px 1fr; gap: 12px; }
+.avatar { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-weight: 600; font-size: 12px; color: white; }
+.avatar.av-asst { background: linear-gradient(135deg, #a78bfa, #6366f1); }
+.avatar.av-c { background: linear-gradient(135deg, #fbbf24, #d97706); }
+.avatar.av-g { background: linear-gradient(135deg, #34d399, #059669); }
+.avatar.av-s { background: linear-gradient(135deg, #f87171, #b91c1c); }
+.avatar.av-k { background: linear-gradient(135deg, #60a5fa, #1d4ed8); }
+.avatar.av-n { background: linear-gradient(135deg, #22d3ee, #0e7490); }
+.avatar.av-p { background: linear-gradient(135deg, #f472b6, #be185d); }
+.avatar.av-w { background: linear-gradient(135deg, #facc15, #a16207); }
+.avatar.av-v { background: linear-gradient(135deg, #c084fc, #7e22ce); }
+.avatar.sm { width: 20px; height: 20px; border-radius: 6px; font-size: 10px; }
+
+.msg-body { min-width: 0; }
+.msg-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.msg-head .name { font-size: 13px; font-weight: 600; color: var(--fg-0); }
+.msg-head .model { font-size: 10px; color: var(--fg-3); padding: 2px 7px; border-radius: 99px; border: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; }
+.msg-head .model .tag { color: var(--accent); margin-right: 4px; }
+.msg-head .spacer { flex: 1; }
+.cost-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 99px; border: 1px solid var(--line-2); background: rgba(139,92,246,0.05); font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-1); }
+.cost-pill .live { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+.cost-pill.done .live { background: var(--ok); animation: none; }
+
+.status-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 2px; }
+.pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 99px; font-size: 11px; border: 1px solid var(--line-2); color: var(--fg-2); }
+.pill .ico { width: 11px; height: 11px; flex-shrink: 0; }
+.pill.info { background: rgba(56,189,248,.06); border-color: rgba(56,189,248,.25); color: #7dd3fc; }
+.pill.warn { background: rgba(245,158,11,.06); border-color: rgba(245,158,11,.28); color: #fbbf24; }
+.pill.ok { background: rgba(34,197,94,.06); border-color: rgba(34,197,94,.25); color: #4ade80; }
+.pill.err { background: rgba(239,68,68,.06); border-color: rgba(239,68,68,.25); color: #f87171; }
+
+.thinking { border-left: 1.5px solid var(--accent-line); padding-left: 12px; margin: 2px 0 4px; }
+.thinking .head { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: 12px; color: var(--fg-2); cursor: pointer; user-select: none; }
+.thinking .head .ico { width: 12px; height: 12px; color: var(--accent); }
+.thinking .head .label { font-weight: 500; color: var(--fg-1); }
+.thinking .head .chev { margin-left: auto; color: var(--fg-3); transition: transform 0.2s; }
+.thinking[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.thinking .body { max-height: 0; overflow: hidden; transition: max-height 0.25s ease; font-size: 13px; color: var(--fg-2); line-height: 1.6; }
+.thinking[aria-expanded="true"] .body { max-height: 1600px; padding: 6px 0 10px; }
+.thinking ul { margin: 6px 0; padding-left: 18px; }
+.thinking li { margin: 2px 0; }
+.thinking code { font-size: 11px; background: var(--bg-2); border: 1px solid var(--line-1); padding: 1px 4px; border-radius: 3px; }
+
+.tool { border: 1px solid var(--line-2); border-radius: 10px; background: var(--bg-1); overflow: hidden; margin: 4px 0; position: relative; }
+.tool.running::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, transparent 0%, rgba(139,92,246,.08) 50%, transparent 100%); background-size: 200% 100%; animation: shimmer 1.8s ease-in-out infinite; pointer-events: none; }
+.tool .t-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; font-size: 12px; }
+.tool[aria-expanded="true"] .t-head { border-bottom: 1px solid var(--line-1); }
+.tool .t-ico { width: 20px; height: 20px; border-radius: 5px; background: var(--bg-3); display: grid; place-items: center; color: var(--fg-1); flex-shrink: 0; }
+.tool .t-name { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-0); font-weight: 500; }
+.tool .t-status { font-size: 11px; color: var(--fg-3); }
+.tool .t-status.ok { color: var(--ok); } .tool .t-status.warn { color: var(--warn); } .tool .t-status.err { color: var(--err); }
+.tool .t-timer { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-3); margin-left: auto; font-variant-numeric: tabular-nums; }
+.tool .t-chev { color: var(--fg-3); transition: transform 0.2s; }
+.tool[aria-expanded="true"] .t-chev { transform: rotate(90deg); }
+.tool .t-body { display: none; }
+.tool[aria-expanded="true"] .t-body { display: block; }
+.tool .t-section { padding: 10px 12px; border-top: 1px solid var(--line-1); }
+.tool .t-section:first-child { border-top: 0; }
+.tool .t-section .t-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); margin-bottom: 6px; font-weight: 600; }
+.tool pre.json { margin: 0; padding: 8px 10px; border-radius: 6px; background: var(--bg-0); border: 1px solid var(--line-1); font-size: 12px; line-height: 1.55; color: var(--fg-1); overflow-x: auto; max-height: 320px; }
+.tool-parallel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+@media (max-width: 1100px) { .tool-parallel { grid-template-columns: repeat(2, 1fr); } }
+.tool-parallel-hdr { font-size: 11px; color: var(--fg-3); display: flex; align-items: center; gap: 6px; margin: 6px 0 4px; }
+.tool-parallel-hdr .fan { width: 14px; height: 14px; color: var(--accent); }
+
+.json .k { color: #93c5fd; } .json .s { color: #86efac; } .json .n { color: #fcd34d; } .json .b { color: #f0abfc; } .json .c { color: var(--fg-3); font-style: italic; }
+
+.txt { font-size: 14px; line-height: 1.6; color: var(--fg-1); }
+.txt p { margin: 10px 0; } .txt p:first-child { margin-top: 0; } .txt strong { color: var(--fg-0); font-weight: 600; }
+.txt h3 { font-size: 15px; font-weight: 600; color: var(--fg-0); margin: 18px 0 6px; letter-spacing: -0.01em; }
+.txt h4 { font-size: 13.5px; font-weight: 600; color: var(--fg-0); margin: 14px 0 4px; }
+.txt ul { margin: 6px 0 6px 0; padding-left: 20px; } .txt li { margin: 4px 0; }
+.txt code { font-size: 12px; padding: 1px 5px; border-radius: 4px; background: var(--bg-2); border: 1px solid var(--line-1); }
+.citation { display: inline-flex; align-items: center; justify-content: center; vertical-align: super; min-width: 16px; height: 16px; padding: 0 4px; margin: 0 2px; border-radius: 4px; font-size: 10px; font-weight: 600; background: var(--accent-soft); border: 1px solid var(--accent-line); color: #c4b5fd; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+
+/* DC map */
+.dc-map { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; border: 1px solid var(--line-2); background: var(--bg-1); border-radius: 10px; padding: 12px; margin: 10px 0; }
+.dc-map .dc { border: 1px solid var(--line-2); background: var(--bg-0); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; position: relative; }
+.dc-map .dc.keep::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--ok); }
+.dc-map .dc.migrate::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--warn); }
+.dc-map .dc.retire::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--err); }
+.dc-map .dc .code { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-0); font-weight: 600; }
+.dc-map .dc .role { font-size: 10.5px; color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.08em; }
+.dc-map .dc .stats { font-size: 10.5px; color: var(--fg-2); font-family: 'JetBrains Mono', monospace; display: flex; justify-content: space-between; margin-top: 4px; }
+.dc-map .dc .action { font-size: 11px; color: var(--fg-0); padding: 2px 6px; border-radius: 4px; background: var(--bg-3); display: inline-block; width: fit-content; }
+.dc-map .dc.keep .action { background: rgba(34,197,94,.15); color: #4ade80; }
+.dc-map .dc.migrate .action { background: rgba(245,158,11,.15); color: #fbbf24; }
+.dc-map .dc.retire .action { background: rgba(239,68,68,.15); color: #f87171; }
+
+/* wave timeline */
+.wave-timeline { border: 1px solid var(--line-2); border-radius: 10px; background: var(--bg-1); margin: 10px 0; overflow: hidden; }
+.wave-timeline .wt-hdr { padding: 9px 12px; background: var(--bg-2); border-bottom: 1px solid var(--line-2); font-size: 11px; color: var(--fg-2); display: flex; align-items: center; gap: 8px; }
+.wave-timeline .wt-title { font-weight: 600; color: var(--fg-0); font-size: 13px; }
+.wave-timeline .wt-row { display: grid; grid-template-columns: 80px 1fr; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--line-1); align-items: center; }
+.wave-timeline .wt-row:last-child { border-bottom: 0; }
+.wave-timeline .wt-row .tag { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--accent); }
+.wave-timeline .wt-row .tag .dates { display: block; font-weight: 400; color: var(--fg-3); font-size: 10px; }
+.wave-timeline .wt-bar { position: relative; height: 22px; border-radius: 4px; background: var(--bg-0); border: 1px solid var(--line-1); overflow: hidden; }
+.wave-timeline .wt-bar .seg { position: absolute; top: 0; bottom: 0; border-radius: 3px; display: flex; align-items: center; padding: 0 8px; font-size: 10.5px; font-weight: 500; color: white; font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+.wave-timeline .wt-bar .seg.a { background: rgba(139,92,246,.75); }
+.wave-timeline .wt-bar .seg.b { background: rgba(16,185,129,.75); }
+.wave-timeline .wt-bar .seg.c { background: rgba(245,158,11,.75); }
+.wave-timeline .wt-bar .seg.d { background: rgba(6,182,212,.75); }
+
+/* streaming table */
+.streaming-table { border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; background: var(--bg-1); margin: 10px 0; }
+.streaming-table .tt-hdr { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-2); border-bottom: 1px solid var(--line-2); font-size: 11px; color: var(--fg-2); }
+.streaming-table .tt-count { margin-left: auto; font-family: 'JetBrains Mono', monospace; color: var(--fg-3); font-size: 11px; }
+.streaming-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.streaming-table thead th { text-align: left; padding: 7px 12px; font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--fg-3); background: var(--bg-1); border-bottom: 1px solid var(--line-1); }
+.streaming-table tbody td { padding: 7px 12px; border-bottom: 1px solid var(--line-1); color: var(--fg-1); font-variant-numeric: tabular-nums; vertical-align: top; }
+.streaming-table tbody tr:last-child td { border-bottom: 0; }
+.streaming-table tbody tr { animation: rowIn 400ms cubic-bezier(.22,1,.36,1) both; }
+.streaming-table .mono { color: var(--fg-2); font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+.streaming-table td .sev { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 500; white-space: nowrap; }
+.sev.sev-ok { background: rgba(34,197,94,.10); color: #4ade80; border: 1px solid rgba(34,197,94,.25); }
+.sev.sev-warn { background: rgba(245,158,11,.10); color: #fbbf24; border: 1px solid rgba(245,158,11,.28); }
+.sev.sev-err { background: rgba(239,68,68,.10); color: #f87171; border: 1px solid rgba(239,68,68,.28); }
+.sev.sev-info { background: rgba(56,189,248,.10); color: #7dd3fc; border: 1px solid rgba(56,189,248,.28); }
+
+/* metrics */
+.metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; border: 1px solid var(--accent-line); background: linear-gradient(135deg, rgba(139,92,246,0.05), rgba(99,102,241,0.03)); border-radius: 12px; padding: 14px 16px; margin: 10px 0; }
+.metrics-grid .cell .k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); margin-bottom: 2px; }
+.metrics-grid .cell .v { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 600; color: var(--fg-0); letter-spacing: -0.02em; }
+.metrics-grid .cell .v.g { color: #4ade80; } .metrics-grid .cell .v.w { color: #fbbf24; } .metrics-grid .cell .v.r { color: #f87171; }
+.metrics-grid .cell .v small { font-size: 11px; font-weight: 400; color: var(--fg-3); margin-left: 4px; }
+
+/* sub-agent */
+.subagent { border: 1px solid var(--line-1); border-left: 3px solid var(--agent-c); border-radius: 10px; background: var(--bg-1); margin: 6px 0; overflow: hidden; }
+.subagent.agent-c { border-left-color: var(--agent-c); }
+.subagent.agent-g { border-left-color: var(--agent-g); }
+.subagent.agent-s { border-left-color: var(--agent-s); }
+.subagent.agent-k { border-left-color: var(--agent-k); }
+.subagent.agent-n { border-left-color: var(--agent-n); }
+.subagent.agent-p { border-left-color: var(--agent-p); }
+.subagent.agent-w { border-left-color: var(--agent-w); }
+.subagent.agent-v { border-left-color: var(--agent-v); }
+.sa-head { display: flex; align-items: center; gap: 10px; padding: 9px 12px; font-size: 12px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--line-1); }
+.sa-head .name { font-weight: 600; color: var(--fg-0); font-size: 13px; }
+.sa-head .role { font-size: 11px; color: var(--fg-3); }
+.sa-head .stats { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-3); display: flex; gap: 10px; }
+.sa-head .pass-chip { margin-left: 6px; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-family: 'JetBrains Mono', monospace; background: var(--bg-3); color: var(--fg-2); }
+.sa-head .pass-chip.pass-2 { background: rgba(245,158,11,.16); color: #fcd34d; }
+.sa-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.sa-return { background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.2); border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #6ee7b7; display: flex; align-items: flex-start; gap: 8px; }
+.sa-return strong { color: #34d399; font-weight: 600; }
+.sa-return .ico { width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px; }
+.sa-return.fail { background: rgba(239,68,68,.06); border-color: rgba(239,68,68,.25); color: #fca5a5; }
+.sa-return.fail strong { color: #f87171; }
+.sa-subthink { border-left: 1.5px solid rgba(245,158,11,.3); padding-left: 10px; font-size: 12px; color: var(--fg-2); line-height: 1.5; }
+.subagent.agent-g .sa-subthink { border-left-color: rgba(16,185,129,.3); }
+.subagent.agent-s .sa-subthink { border-left-color: rgba(239,68,68,.3); }
+.subagent.agent-k .sa-subthink { border-left-color: rgba(59,130,246,.3); }
+.subagent.agent-n .sa-subthink { border-left-color: rgba(6,182,212,.3); }
+.subagent.agent-p .sa-subthink { border-left-color: rgba(236,72,153,.3); }
+.subagent.agent-w .sa-subthink { border-left-color: rgba(234,179,8,.3); }
+.subagent.agent-v .sa-subthink { border-left-color: rgba(168,85,247,.3); }
+.sa-subthink .sth-head { font-size: 11px; color: var(--fg-3); margin-bottom: 3px; }
+
+/* correction */
+.correction-card { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: linear-gradient(90deg, rgba(245,158,11,0.08), transparent); border: 1px solid rgba(245,158,11,0.28); border-radius: 10px; font-size: 12px; margin: 6px 0; }
+.correction-card .ico { width: 26px; height: 26px; border-radius: 6px; background: rgba(245,158,11,0.18); color: #fcd34d; display: grid; place-items: center; flex-shrink: 0; }
+.correction-card .title { font-weight: 600; color: var(--fg-0); font-size: 13px; }
+.correction-card .sub { color: var(--fg-2); font-size: 11.5px; margin-top: 2px; line-height: 1.5; }
+
+/* handoff */
+.handoff { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px dashed var(--line-3); border-radius: 8px; background: var(--bg-1); font-size: 12px; color: var(--fg-2); margin: 6px 0; }
+.handoff .arrow { color: var(--accent); }
+.handoff strong { color: var(--fg-0); font-weight: 600; }
+
+/* rollback gate */
+.gate { border: 1px solid var(--line-2); border-radius: 10px; background: var(--bg-1); padding: 10px 12px; margin: 6px 0; font-size: 12px; display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: start; }
+.gate .g-ico { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.gate .g-body .title { font-weight: 600; color: var(--fg-0); font-size: 13px; margin-bottom: 2px; }
+.gate .g-body .sub { color: var(--fg-2); line-height: 1.5; font-size: 12px; }
+.gate .g-body code { font-size: 11px; background: var(--bg-0); border: 1px solid var(--line-1); padding: 1px 4px; border-radius: 3px; }
+.gate .g-meta { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--fg-3); text-align: right; white-space: nowrap; padding-top: 4px; }
+
+/* runbook */
+.runbook { border: 1px solid var(--line-2); border-radius: 10px; background: var(--bg-1); margin: 10px 0; overflow: hidden; }
+.runbook .rb-hdr { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: var(--bg-2); border-bottom: 1px solid var(--line-2); font-size: 11px; color: var(--fg-2); }
+.runbook .rb-title { font-weight: 600; color: var(--fg-0); font-size: 13px; }
+.runbook .rb-step { display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--line-1); font-size: 12.5px; align-items: start; }
+.runbook .rb-step:last-child { border-bottom: 0; }
+.runbook .rb-step .n { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--accent); padding-top: 1px; }
+.runbook .rb-step .t { color: var(--fg-1); line-height: 1.55; }
+.runbook .rb-step .t strong { color: var(--fg-0); }
+.runbook .rb-step .t code { font-size: 11px; padding: 1px 4px; border-radius: 3px; background: var(--bg-0); border: 1px solid var(--line-1); }
+.runbook .rb-step .t .owner { font-size: 10.5px; color: var(--fg-3); margin-top: 2px; display: block; }
+.runbook .rb-step .day { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--fg-3); white-space: nowrap; }
+
+/* composer */
+.composer { position: fixed; bottom: 24px; left: calc(260px + 32px); right: 32px; max-width: 820px; margin-left: auto; margin-right: auto; background: var(--bg-1); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: 0 -8px 30px rgba(0,0,0,.25), 0 12px 40px rgba(0,0,0,.4); padding: 10px 12px; backdrop-filter: blur(10px); }
+.composer textarea { width: 100%; background: transparent; border: 0; outline: 0; color: var(--fg-0); font: 14px/1.5 'Inter', system-ui, sans-serif; resize: none; padding: 4px 4px 8px; }
+.composer .row { display: flex; align-items: center; gap: 6px; padding-top: 4px; border-top: 1px solid var(--line-1); }
+.composer .btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 7px; color: var(--fg-2); font-size: 12px; }
+.composer .btn:hover { background: var(--bg-2); color: var(--fg-0); }
+.composer .spacer { flex: 1; }
+.composer .send { background: var(--accent); color: white; padding: 6px 10px; border-radius: 7px; font-weight: 500; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
+
+.switcher { position: absolute; top: 10px; right: 16px; z-index: 10; display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px; font-size: 11px; color: var(--fg-2); border: 1px solid var(--line-2); border-radius: 99px; background: var(--bg-1); }
+.switcher button { padding: 3px 8px; border-radius: 99px; font-size: 11px; color: var(--fg-2); }
+.switcher button:hover { background: var(--bg-2); color: var(--fg-0); }
+.switcher .sep { width: 1px; height: 14px; background: var(--line-2); }
+.switcher .swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--line-2); cursor: pointer; padding: 0; }
+.switcher .swatch.violet { background: #8b5cf6; } .switcher .swatch.teal { background: #14b8a6; }
+.switcher .swatch.amber { background: #f59e0b; } .switcher .swatch.rose { background: #f43f5e; }
+.switcher .swatch[data-active="true"] { outline: 2px solid var(--fg-0); outline-offset: 1px; }
+
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .6; transform: scale(1.1); } }
+@keyframes rowIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" aria-label="Chat history">
+    <div class="sb-logo">
+      <div class="mark">A</div>
+      <div class="brand">OpenAgentic <small>v0.6.7 · dev</small></div>
+    </div>
+    <button class="sb-new">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New chat
+    </button>
+    <div class="sb-group-label">Today</div>
+    <div class="sb-item"><span class="t">Multi-region K8s DR strategy</span><span class="age">1h</span></div>
+    <div class="sb-item"><span class="t">SOC 2 Type II gap analysis</span><span class="age">3h</span></div>
+    <div class="sb-item active"><span class="t">Datacenter consolidation plan</span><span class="age">now</span></div>
+    <div class="sb-item"><span class="t">Azure VM right-sizing audit</span><span class="age">5h</span></div>
+    <div class="sb-group-label">Yesterday</div>
+    <div class="sb-item"><span class="t">K8s prod health for CTO</span><span class="age">1d</span></div>
+
+    <div class="agent-tree">
+      <div class="sb-group-label" style="padding-top: 0;">Agent tree · this chat</div>
+      <div class="node"><span class="dot" style="background: linear-gradient(135deg, #a78bfa, #6366f1);"></span><span class="label">strategy · orchestrator</span><span class="count">11t</span></div>
+      <div class="node sub"><span class="dot k"></span><span class="label">vm-inventory</span><span class="count">22t</span></div>
+      <div class="node sub"><span class="dot n"></span><span class="label">network-mapper</span><span class="count">17t</span></div>
+      <div class="node sub"><span class="dot g"></span><span class="label">dep-graph-builder</span><span class="count">14t</span></div>
+      <div class="node sub"><span class="dot c"></span><span class="label">tco-analyst</span><span class="count">19t</span></div>
+      <div class="node sub"><span class="dot w"></span><span class="label">wave-planner</span><span class="count">12t</span></div>
+      <div class="node sub"><span class="dot s"></span><span class="label">risk-analyzer</span><span class="count">9t</span></div>
+      <div class="node sub"><span class="dot p"></span><span class="label">cutover-author</span><span class="count">16t</span></div>
+      <div class="node sub"><span class="dot v"></span><span class="label">comms-planner</span><span class="count">6t</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <a class="back" href="index.html">&larr; index</a>
+      <div class="title">M&amp;A datacenter consolidation · 90-day cutover</div>
+      <div class="crumbs">· strategy · 8 subs · gpt-5.2 · 5 passes</div>
+      <div class="spacer"></div>
+      <span class="chip"><span class="dot"></span> stream complete</span>
+      <span class="chip mono tabular">1m 34s</span>
+      <span class="chip mono tabular">$0.812</span>
+    </header>
+    <div class="switcher" role="group" aria-label="Theme and accent">
+      <button id="theme-btn" aria-label="Toggle theme">dark</button>
+      <span class="sep"></span>
+      <button class="swatch violet" data-accent="violet" data-active="true"></button>
+      <button class="swatch teal" data-accent="teal"></button>
+      <button class="swatch amber" data-accent="amber"></button>
+      <button class="swatch rose" data-accent="rose"></button>
+    </div>
+
+    <div class="chat-wrap">
+      <div class="chat">
+
+        <!-- USER -->
+        <article class="msg">
+          <div class="msg-user">
+            We're merging with an acquired company. Plan the datacenter consolidation: inventory discovery (200+ VMs), cost modeling, migration waves, rollback gates, and 90-day cutover runbook.
+            <div class="meta-row">
+              <span>phatoldsun@gmail.com</span>
+              <span class="mono tabular">13:45 &middot; 2026-04-20</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- ASSISTANT -->
+        <article class="msg msg-asst">
+          <div class="avatar av-asst">A</div>
+          <div class="msg-body">
+            <div class="msg-head">
+              <span class="name">OpenAgentic <span style="color: var(--fg-3); font-weight: 400; font-size: 12px;">&middot; strategy orchestrator</span></span>
+              <span class="model"><span class="tag">gpt</span>5.2</span>
+              <span class="spacer"></span>
+              <span class="cost-pill done"><span class="live"></span><span class="tnum">$0.812</span></span>
+            </div>
+
+            <div class="status-row">
+              <span class="pill info">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg>
+                strategy
+              </span>
+              <span class="pill">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+                8 sub-agents
+              </span>
+              <span class="pill">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                42 tool calls
+              </span>
+              <span class="pill">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                94s
+              </span>
+              <span class="pill warn">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                2 self-corrections
+              </span>
+            </div>
+
+            <section class="thinking" aria-expanded="true">
+              <div class="head" onclick="this.parentElement.setAttribute('aria-expanded', this.parentElement.getAttribute('aria-expanded') !== 'true')" tabindex="0" role="button">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 0-4 12.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26A7 7 0 0 0 12 2z"/></svg>
+                <span class="label">Thought for 11.4s</span>
+                <span style="color: var(--fg-3); margin-left: 4px;">&middot; 1,612 tokens &middot; 4 passes</span>
+                <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+              <div class="body">
+                <p>This is the hardest kind of IT project. A merger is an emotionally loaded event where the acquired team already feels displaced, and a datacenter consolidation is the <em>most visible</em> symbol of that displacement. The technical plan has to be good; the human plan has to be gentler than the technical plan.</p>
+                <p>The task decomposes into five sequential-but-overlapping passes:</p>
+                <ul>
+                  <li><strong>Pass 1 &middot; discovery</strong> &mdash; what do we have? Inventory all VMs in both estates, their dependencies, and their network posture. Parallel fan-out across the four datacenters (two ours, two theirs). <code>vm-inventory</code> + <code>network-mapper</code> + <code>dep-graph-builder</code>.</li>
+                  <li><strong>Pass 2 &middot; TCO model</strong> &mdash; what's it cost to stay vs. move? Per-DC steady-state cost, migration cost, expected savings. <code>tco-analyst</code>.</li>
+                  <li><strong>Pass 3 &middot; wave planning</strong> &mdash; dependency-respecting migration order. Low-risk first, high-coupling last. <code>wave-planner</code>.</li>
+                  <li><strong>Pass 4 &middot; risk &amp; gates</strong> &mdash; what could go wrong per wave, with explicit rollback gates. <code>risk-analyzer</code>.</li>
+                  <li><strong>Pass 5 &middot; runbook + comms</strong> &mdash; day-by-day 90-day plan + the comms plan for the acquired team. <code>cutover-author</code> + <code>comms-planner</code>.</li>
+                </ul>
+                <p>A couple things I'll be deliberate about:</p>
+                <ul>
+                  <li>I will <em>not</em> recommend lift-and-shift blindly. Some acquired apps will be cheaper to retire than migrate. <code>tco-analyst</code> needs to flag those.</li>
+                  <li>I will check for <em>undiscovered</em> services &mdash; shadow IT at the acquired company is the #1 cause of post-cutover incidents. <code>network-mapper</code> will diff CMDB vs. observed traffic.</li>
+                  <li>Cutover weekends need to respect the acquired team's on-call rotation, not just ours.</li>
+                </ul>
+                <p>Budget: &le;$1.00, &lt;120s.</p>
+              </div>
+            </section>
+
+            <div class="txt">
+              <p>This will be five passes &mdash; discovery, TCO, waves, risk/gates, runbook/comms &mdash; across 8 sub-agents.</p>
+            </div>
+
+            <!-- PASS 1 -->
+            <div class="handoff">
+              <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              <span>Pass 1 &middot; <strong>discovery</strong> &rarr; <span class="mono" style="color: var(--agent-k);">vm-inventory</span> + <span class="mono" style="color: var(--agent-n);">network-mapper</span> + <span class="mono" style="color: var(--agent-g);">dep-graph-builder</span></span>
+            </div>
+
+            <article class="subagent agent-k">
+              <header class="sa-head">
+                <div class="avatar av-k sm">V</div>
+                <div><div class="name">vm-inventory</div><div class="role">sub-agent &middot; 4 datacenters scan</div></div>
+                <div class="stats"><span>8 turns</span><span>3,812 tok</span><span>11.4s</span><span>$0.092</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 2.8s</div>
+                  Two of our DCs (dc-ash, dc-sjc) run vSphere with a well-maintained CMDB. Two of theirs (dc-chi, dc-lon) run a mix of vSphere + Nutanix and nobody has looked at the CMDB in 14 months. I'll pull live inventory via vCenter + Nutanix Prism + the acquired company's Ansible tower; then diff against their CMDB to find drift.
+                </div>
+
+                <div class="tool-parallel">
+                  <div class="tool" aria-expanded="false">
+                    <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                      <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/></svg></div>
+                      <span class="t-name">vsphere_inventory</span>
+                      <span class="t-status ok">&middot; dc-ash &middot; 78 VMs</span>
+                      <span class="t-timer tabular">1.4s</span>
+                      <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                  </div>
+                  <div class="tool" aria-expanded="false">
+                    <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                      <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/></svg></div>
+                      <span class="t-name">vsphere_inventory</span>
+                      <span class="t-status ok">&middot; dc-sjc &middot; 42 VMs</span>
+                      <span class="t-timer tabular">1.1s</span>
+                      <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                  </div>
+                  <div class="tool" aria-expanded="false">
+                    <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                      <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/></svg></div>
+                      <span class="t-name">nutanix_prism_list</span>
+                      <span class="t-status warn">&middot; dc-chi &middot; 64 VMs &middot; 8 orphaned</span>
+                      <span class="t-timer tabular">1.9s</span>
+                      <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                  </div>
+                  <div class="tool" aria-expanded="false">
+                    <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                      <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/></svg></div>
+                      <span class="t-name">vsphere_inventory</span>
+                      <span class="t-status warn">&middot; dc-lon &middot; 34 VMs &middot; 4 no-agent</span>
+                      <span class="t-timer tabular">2.2s</span>
+                      <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="tool" aria-expanded="true">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+                    <span class="t-name">cmdb_drift_diff</span>
+                    <span class="t-status warn">&middot; 12 shadow VMs found</span>
+                    <span class="t-timer tabular">3.1s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                  <div class="t-body">
+                    <div class="t-section">
+                      <div class="t-label">Drift report</div>
+<pre class="json">{
+  <span class="k">"total_live"</span>: <span class="n">218</span>,
+  <span class="k">"in_cmdb"</span>: <span class="n">206</span>,
+  <span class="k">"shadow"</span>: {
+    <span class="k">"dc-chi"</span>: [
+      { <span class="k">"name"</span>: <span class="s">"legacy-billing-01"</span>, <span class="k">"owner"</span>: <span class="s">"unknown"</span>, <span class="k">"last_login"</span>: <span class="s">"2024-08"</span> },
+      { <span class="k">"name"</span>: <span class="s">"fax-gw-prod"</span>, <span class="k">"owner"</span>: <span class="s">"ops@acquired.com"</span>, <span class="k">"note"</span>: <span class="s">"still routes fax traffic for 3 customers"</span> }
+    ],
+    <span class="k">"dc-lon"</span>: [
+      { <span class="k">"name"</span>: <span class="s">"tableau-report-01"</span>, <span class="k">"owner"</span>: <span class="s">"finance-acq"</span>, <span class="k">"note"</span>: <span class="s">"undocumented; EOY closes depend on it"</span> }
+    ]
+  }
+}</pre>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ total: 218, in_cmdb: 206, shadow: 12, powered_off_over_90d: 19, candidates_to_retire: 34 }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <article class="subagent agent-n">
+              <header class="sa-head">
+                <div class="avatar av-n sm">N</div>
+                <div><div class="name">network-mapper</div><div class="role">sub-agent &middot; flow + firewall rules</div></div>
+                <div class="stats"><span>6 turns</span><span>2,214 tok</span><span>7.8s</span><span>$0.061</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 1.8s</div>
+                  Pulling NetFlow from all four DCs, reading Palo Alto + Juniper rulesets, diffing against "blessed" connections. Aim: identify east-west traffic we don't know about, especially services at the acquired company that phone home to licensing servers we'd kill by moving them.
+                </div>
+
+                <div class="tool" aria-expanded="false">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11a9 9 0 0 1 9 9"/><circle cx="5" cy="19" r="1"/></svg></div>
+                    <span class="t-name">netflow_aggregate</span>
+                    <span class="t-status ok">&middot; 4 DCs &middot; 2.1B flows/day</span>
+                    <span class="t-timer tabular">2.4s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                </div>
+
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ east_west_edges: 892, cross_dc_edges: 47, suspicious_egress: 8 }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <article class="subagent agent-g">
+              <header class="sa-head">
+                <div class="avatar av-g sm">D</div>
+                <div><div class="name">dep-graph-builder</div><div class="role">sub-agent &middot; build service-to-service DAG</div></div>
+                <div class="stats"><span>5 turns</span><span>1,814 tok</span><span>6.1s</span><span>$0.048</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 1.2s</div>
+                  Folding inventory + netflow into a service DAG. I'll SCC-analyse to find cycles (must migrate together) and topologically sort the rest.
+                </div>
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ services: 87, sccs: 4, longest_chain: 11, retirable_leaves: 23 }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <!-- self-correction 1 -->
+            <div class="correction-card">
+              <div class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg></div>
+              <div>
+                <div class="title">Self-correction &middot; fax-gw-prod is not decommissionable</div>
+                <div class="sub">Initially categorized <code>fax-gw-prod</code> as &ldquo;retire&rdquo; because it looked like a stale shadow VM. Network-mapper shows it still receives ~400 faxes/day from three customers under signed SLA. Reclassifying as <strong>migrate + modernize</strong> &mdash; stand up <code>documo</code> cloud service, dual-run 30 days, then retire.</div>
+              </div>
+            </div>
+
+            <div class="dc-map">
+              <div class="dc keep"><div class="code">dc-ash</div><div class="role">Primary &middot; ours</div><div class="stats"><span>78 VMs</span><span>vSphere 8</span></div><div class="action">KEEP &middot; target</div></div>
+              <div class="dc keep"><div class="code">dc-sjc</div><div class="role">Secondary &middot; ours</div><div class="stats"><span>42 VMs</span><span>vSphere 8</span></div><div class="action">KEEP &middot; DR</div></div>
+              <div class="dc migrate"><div class="code">dc-chi</div><div class="role">Theirs &middot; primary</div><div class="stats"><span>64 VMs</span><span>Nutanix</span></div><div class="action">MIGRATE</div></div>
+              <div class="dc retire"><div class="code">dc-lon</div><div class="role">Theirs &middot; tertiary</div><div class="stats"><span>34 VMs</span><span>vSphere 6.7</span></div><div class="action">RETIRE (EU)</div></div>
+            </div>
+
+            <!-- PASS 2 TCO -->
+            <div class="handoff">
+              <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              <span>Pass 2 &middot; <strong>TCO modelling</strong> &rarr; <span class="mono" style="color: var(--agent-c);">tco-analyst</span></span>
+            </div>
+
+            <article class="subagent agent-c">
+              <header class="sa-head">
+                <div class="avatar av-c sm">T</div>
+                <div><div class="name">tco-analyst</div><div class="role">sub-agent &middot; 5-year cost model</div></div>
+                <div class="stats"><span>9 turns</span><span>3,512 tok</span><span>9.8s</span><span>$0.084</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 2.4s</div>
+                  Four buckets per DC: colocation &amp; power, hardware refresh reserves, software licensing (VMware + Nutanix + OS), and staff. I'll model 3 scenarios: stay-as-is (baseline), consolidate (our recommendation), and full-cloud exit (for comparison). Include migration CAPEX: engineering time + egress + cutover contractors.
+                </div>
+
+                <div class="tool" aria-expanded="false">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+                    <span class="t-name">colo_contracts_fetch</span>
+                    <span class="t-status ok">&middot; 4 DCs &middot; all contracts parsed</span>
+                    <span class="t-timer tabular">1.6s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                </div>
+
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ baseline_5y: $14.2M, consolidate_5y: $8.9M, cloud_exit_5y: $12.1M, migration_capex: $1.4M, payback_months: 19 }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <div class="metrics-grid">
+              <div class="cell"><div class="k">5-year savings</div><div class="v g tnum">$5.3M</div></div>
+              <div class="cell"><div class="k">Migration CAPEX</div><div class="v w tnum">$1.4M</div></div>
+              <div class="cell"><div class="k">Payback period</div><div class="v tnum">19<small>mo</small></div></div>
+              <div class="cell"><div class="k">VMs retired</div><div class="v g tnum">34<small>/218</small></div></div>
+            </div>
+
+            <!-- PASS 3 waves -->
+            <div class="handoff">
+              <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              <span>Pass 3 &middot; <strong>wave planning</strong> &rarr; <span class="mono" style="color: var(--agent-w);">wave-planner</span></span>
+            </div>
+
+            <article class="subagent agent-w">
+              <header class="sa-head">
+                <div class="avatar av-w sm">W</div>
+                <div><div class="name">wave-planner</div><div class="role">sub-agent &middot; 4 waves &middot; dep-respecting</div></div>
+                <div class="stats"><span>7 turns</span><span>2,612 tok</span><span>8.2s</span><span>$0.068</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 2.1s</div>
+                  Rule 1: retire-first (23 leaves come off the graph before anything moves). Rule 2: stateless-before-stateful. Rule 3: crown-jewels last. Rule 4: never break an SCC &mdash; those move as a unit.
+                </div>
+              </div>
+            </article>
+
+            <div class="wave-timeline">
+              <div class="wt-hdr">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span class="wt-title">90-day cutover &middot; 4 waves</span>
+              </div>
+              <div class="wt-row"><div class="tag">Wave 1<span class="dates">day 1-14</span></div><div class="wt-bar"><div class="seg a" style="left: 0; width: 15%;">retire &middot; 34 VMs</div></div></div>
+              <div class="wt-row"><div class="tag">Wave 2<span class="dates">day 15-42</span></div><div class="wt-bar"><div class="seg b" style="left: 16%; width: 30%;">stateless migration &middot; 48 VMs</div></div></div>
+              <div class="wt-row"><div class="tag">Wave 3<span class="dates">day 43-70</span></div><div class="wt-bar"><div class="seg c" style="left: 48%; width: 30%;">stateful + SCCs &middot; 35 VMs</div></div></div>
+              <div class="wt-row"><div class="tag">Wave 4<span class="dates">day 71-90</span></div><div class="wt-bar"><div class="seg d" style="left: 79%; width: 20%;">crown-jewels + cutover &middot; 17 VMs</div></div></div>
+            </div>
+
+            <!-- PASS 4 risk + gates -->
+            <div class="handoff">
+              <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              <span>Pass 4 &middot; <strong>risk + rollback gates</strong> &rarr; <span class="mono" style="color: var(--agent-s);">risk-analyzer</span></span>
+            </div>
+
+            <article class="subagent agent-s">
+              <header class="sa-head">
+                <div class="avatar av-s sm">R</div>
+                <div><div class="name">risk-analyzer</div><div class="role">sub-agent &middot; per-wave gate design</div></div>
+                <div class="stats"><span>5 turns</span><span>1,912 tok</span><span>5.6s</span><span>$0.041</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 1.6s</div>
+                  Each wave gets an explicit acceptance gate and an explicit rollback trigger. Gate failure &rArr; halt next wave. Mandatory soak time between waves so a delayed-manifestation issue has a chance to surface.
+                </div>
+              </div>
+            </article>
+
+            <!-- self-correction 2 -->
+            <div class="correction-card">
+              <div class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg></div>
+              <div>
+                <div class="title">Self-correction &middot; Wave 4 cutover crosses fiscal year boundary</div>
+                <div class="sub">Original plan put Wave 4 cutover on day 88 (2026-07-17). That's <em>inside</em> the acquired company's FY26 close window. Moving Wave 4 start to day 75 and cutover to day 85, leaving a 10-day post-cutover soak before quarter-end. Cost impact: &lt;$8k in contractor overlap; risk reduction: material.</div>
+              </div>
+            </div>
+
+            <div class="gate">
+              <div class="g-ico">G1</div>
+              <div class="g-body">
+                <div class="title">Wave 1 gate &middot; retirement confirmed</div>
+                <div class="sub">All 34 VMs powered off for 7 days; zero incoming NetFlow; owners signed retirement attestation in <code>runbooks/retire.md</code>. If anyone reports a missed dependency we restore from snapshot and re-scope.</div>
+              </div>
+              <div class="g-meta">day 14<br>owner: SRE</div>
+            </div>
+            <div class="gate">
+              <div class="g-ico">G2</div>
+              <div class="g-body">
+                <div class="title">Wave 2 gate &middot; stateless error rate &lt;0.5%</div>
+                <div class="sub">Each migrated stateless service must show error rate within +/-0.5% of pre-migration baseline for 72h. Automatic flip-back if breached &gt;5min. Rollback target: source DC VM remains powered on for 14 days.</div>
+              </div>
+              <div class="g-meta">day 42<br>owner: app-teams</div>
+            </div>
+            <div class="gate">
+              <div class="g-ico">G3</div>
+              <div class="g-body">
+                <div class="title">Wave 3 gate &middot; stateful parity</div>
+                <div class="sub">Postgres + MySQL replicas caught up with &lt;5s lag for 24h; data-integrity checksums match; connection-string swap tested in <code>pre-prod</code>. Human approval required from DBA lead + app-owner.</div>
+              </div>
+              <div class="g-meta">day 70<br>owner: DBA + app</div>
+            </div>
+            <div class="gate">
+              <div class="g-ico">G4</div>
+              <div class="g-body">
+                <div class="title">Wave 4 gate &middot; business sign-off</div>
+                <div class="sub">CFO + CIO + acquired-company CEO sign cutover approval. Business-continuity checklist signed by 4 department heads (finance, sales ops, support, legal). Irreversible after T+4h unless full rollback triggered.</div>
+              </div>
+              <div class="g-meta">day 85<br>owner: execs</div>
+            </div>
+
+            <div class="streaming-table">
+              <div class="tt-hdr">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                Top risks &middot; per-wave
+                <span class="tt-count">14 risks &middot; 4 high &middot; 6 med &middot; 4 low</span>
+              </div>
+              <table>
+                <thead><tr><th>Wave</th><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Mitigation</th></tr></thead>
+                <tbody>
+                  <tr><td class="mono">W1</td><td>Retired VM has undiscovered caller</td><td><span class="sev sev-warn">med</span></td><td><span class="sev sev-err">high</span></td><td>Power-off &ne; delete; 7-day observation</td></tr>
+                  <tr><td class="mono">W2</td><td>IP-hardcoded dependency breaks on re-IP</td><td><span class="sev sev-err">high</span></td><td><span class="sev sev-warn">med</span></td><td>Stretch L2 + phased DNS swap</td></tr>
+                  <tr><td class="mono">W2</td><td>App config drift between source/target</td><td><span class="sev sev-warn">med</span></td><td><span class="sev sev-warn">med</span></td><td>Ansible idempotency check + diff</td></tr>
+                  <tr><td class="mono">W3</td><td>DB replica lag spike during peak traffic</td><td><span class="sev sev-warn">med</span></td><td><span class="sev sev-err">high</span></td><td>Pre-warm cache + weekend window</td></tr>
+                  <tr><td class="mono">W3</td><td>SCC migration partial failure</td><td><span class="sev sev-info">low</span></td><td><span class="sev sev-err">high</span></td><td>All-or-nothing; rollback via snapshot</td></tr>
+                  <tr><td class="mono">W4</td><td>Acquired-team attrition before cutover</td><td><span class="sev sev-warn">med</span></td><td><span class="sev sev-err">high</span></td><td>Retention bonus + documentation before departure</td></tr>
+                  <tr><td class="mono">W4</td><td>Legal/EU data-residency violation</td><td><span class="sev sev-info">low</span></td><td><span class="sev sev-err">high</span></td><td>dc-lon EU data stays on EU infra (cloud EU region)</td></tr>
+                  <tr><td class="mono">all</td><td>Budget overrun from contractor scope creep</td><td><span class="sev sev-warn">med</span></td><td><span class="sev sev-warn">med</span></td><td>Fixed-fee SOW + weekly burn review</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- PASS 5 runbook + comms -->
+            <div class="handoff">
+              <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              <span>Pass 5 &middot; <strong>runbook + comms</strong> &rarr; <span class="mono" style="color: var(--agent-p);">cutover-author</span> + <span class="mono" style="color: var(--agent-v);">comms-planner</span></span>
+            </div>
+
+            <article class="subagent agent-p">
+              <header class="sa-head">
+                <div class="avatar av-p sm">C</div>
+                <div><div class="name">cutover-author</div><div class="role">sub-agent &middot; day-by-day runbook</div></div>
+                <div class="stats"><span>10 turns</span><span>4,112 tok</span><span>12.4s</span><span>$0.098</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 2.9s</div>
+                  12 milestone days out of 90 require go/no-go decisions. The other 78 are execution. I'll write the 12 decision days in detail; the rest get a 1-line brief.
+                </div>
+              </div>
+            </article>
+
+            <div class="runbook">
+              <div class="rb-hdr">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>
+                <span class="rb-title">Cutover runbook &middot; 12 go/no-go milestone days</span>
+                <span style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--fg-3);">90-day plan</span>
+              </div>
+              <div class="rb-step"><div class="n">D-7</div><div class="t"><strong>Pre-flight</strong>: program kickoff, comms-plan-week-0 sent to acquired employees; town hall answered &ldquo;what happens to me&rdquo; question honestly.<span class="owner">CIO + Head of People (joint)</span></div><div class="day">day -7</div></div>
+              <div class="rb-step"><div class="n">D1</div><div class="t"><strong>Wave 1 start</strong>: power off 34 identified retire-candidates; snapshot retained for 30 days; owners notified 72h prior.<span class="owner">SRE + VM owners</span></div><div class="day">day 1</div></div>
+              <div class="rb-step"><div class="n">D14</div><div class="t"><strong>G1 decision</strong>: review 7-day observation; confirm retire; delete snapshots. Halt &amp; restore if any dependency surfaces.<span class="owner">SRE lead &middot; human approval required</span></div><div class="day">day 14</div></div>
+              <div class="rb-step"><div class="n">D15</div><div class="t"><strong>Wave 2 start</strong>: stateless migration begins; HashiCorp Vault credential rotation done first; then service-by-service L7 flip via Envoy.<span class="owner">SRE + app-team pairs</span></div><div class="day">day 15</div></div>
+              <div class="rb-step"><div class="n">D28</div><div class="t"><strong>Mid-wave check</strong>: half of stateless services migrated; error-rate budget at 0.2% (budget 0.5%). Proceed.<span class="owner">SRE lead</span></div><div class="day">day 28</div></div>
+              <div class="rb-step"><div class="n">D42</div><div class="t"><strong>G2 decision</strong>: stateless error rate &lt;0.5% across 72h; proceed to Wave 3.<span class="owner">SRE + app-owners</span></div><div class="day">day 42</div></div>
+              <div class="rb-step"><div class="n">D43</div><div class="t"><strong>Wave 3 start</strong>: stateful migration; weekend windows only; DBA lead on bridge; replica sync verified with <code>pg_rewind</code> + checksum.<span class="owner">DBA + SRE + app-team triad</span></div><div class="day">day 43</div></div>
+              <div class="rb-step"><div class="n">D60</div><div class="t"><strong>Mid-wave stateful check</strong>: 4 SCCs + 2 monoliths migrated successfully; all passed data-integrity checksum.<span class="owner">DBA lead</span></div><div class="day">day 60</div></div>
+              <div class="rb-step"><div class="n">D70</div><div class="t"><strong>G3 decision</strong>: all stateful workloads running in target; replicas promoted; source marked read-only; 7-day observation complete.<span class="owner">DBA lead + CIO sign-off</span></div><div class="day">day 70</div></div>
+              <div class="rb-step"><div class="n">D75</div><div class="t"><strong>Wave 4 start</strong>: crown-jewel migration (billing engine + customer-facing API). Full bridge call; acquired-team CEO invited as observer.<span class="owner">Full leadership + SRE + DBA</span></div><div class="day">day 75</div></div>
+              <div class="rb-step"><div class="n">D85</div><div class="t"><strong>G4 cutover</strong>: DNS TTL dropped to 60s; traffic shifted to target DCs; 4-hour rollback window armed.<span class="owner">CFO + CIO + acq-CEO &middot; human sign-off</span></div><div class="day">day 85</div></div>
+              <div class="rb-step"><div class="n">D90</div><div class="t"><strong>Program close</strong>: all gates passed; dc-chi racks flagged for decommission; dc-lon contract terminated (90-day notice served D61). Retrospective scheduled.<span class="owner">program office</span></div><div class="day">day 90</div></div>
+            </div>
+
+            <article class="subagent agent-v">
+              <header class="sa-head">
+                <div class="avatar av-v sm">M</div>
+                <div><div class="name">comms-planner</div><div class="role">sub-agent &middot; employee + customer comms</div></div>
+                <div class="stats"><span>4 turns</span><span>1,414 tok</span><span>4.2s</span><span>$0.028</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 1.1s</div>
+                  Three audiences: acquired employees (most sensitive), existing employees, customers. Seven milestone comms + three listening sessions. Plain language; no euphemisms for layoffs; people respect being told.
+                </div>
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ comms: 14, town_halls: 3, 1on1_guides: 2, customer_notices: 4, legal_reviewed: true }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <!-- FINAL REPORT -->
+            <div class="txt">
+              <h3>Executive summary</h3>
+              <p>The consolidation is defensible. Based on 218 VMs inventoried across 4 datacenters, we can retire <strong>34 VMs</strong> immediately (they're either stale or cheaper to replace than migrate), consolidate the remaining <strong>184 VMs</strong> into our two existing datacenters (dc-ash primary, dc-sjc DR), terminate the acquired company's two datacenter contracts (dc-chi and dc-lon), and hit a <strong>19-month payback period</strong> on a $1.4M migration investment. Five-year savings come in at $5.3M, dominated by the recurring savings from retiring the acquired company's VMware + Nutanix + colo contracts.</p>
+
+              <p>That number is the easy part of this conversation. The hard part is that the acquired team's entire operational identity is tied up in dc-chi &mdash; they've built it, rebuilt it, and run it for eleven years. The consolidation is <em>correct</em>, but it will feel to some of them like erasure. I've baked that reality into the plan in three ways: (1) the comms plan calls layoffs what they are, not &ldquo;transformation&rdquo;, (2) the plan offers retention bonuses for the 5 people whose institutional knowledge we most need for the 90-day window, and (3) Wave 4 cutover is chaired jointly by our CIO and the acquired company's CEO &mdash; symbolic, but symbols matter in M&amp;A.<span class="citation">1</span></p>
+
+              <h3>Key design choices</h3>
+              <p>The four that will generate the most pushback from a steering-committee review, with our rationale:</p>
+              <ul>
+                <li><strong>We keep both our datacenters</strong> instead of moving to cloud-only. The cloud-exit TCO ($12.1M over 5y) is worse than consolidation ($8.9M) because we have 4 years left on dc-ash capex depreciation. Re-evaluate at the end of Year 3 when the depreciation tail shortens.</li>
+                <li><strong>We migrate rather than lift-and-shift fax-gw-prod</strong>. This was our second self-correction &mdash; it looked retirable until network-mapper showed live traffic. Swapping to a cloud fax service (Documo) costs $240/mo and eliminates a single-point-of-failure physical line.</li>
+                <li><strong>We use 4 waves, not 3</strong>. A 3-wave plan would hit cutover in 63 days and save ~$260k in contractor time. But it puts stateful migration into a single 21-day block, which collides with our customer's Q2 spike. The 90-day plan costs more but earns us back the trust we would have burned on a botched state migration during peak.<span class="citation">2</span></li>
+                <li><strong>dc-lon is retired, not consolidated into ours</strong>. EU data residency requirement means we can't simply ship the London workloads to us-east-1. Instead, EU-scoped services move to an AWS eu-west-1 footprint (not part of this cost model; factored in separately). The 3 dc-lon VMs that <em>aren't</em> EU-scoped (legacy reporting, build cache, jumpbox) come to dc-ash.</li>
+              </ul>
+
+              <h3>What could kill this plan</h3>
+              <p>Two failure modes I'm most worried about:</p>
+              <ul>
+                <li><strong>Attrition during the 90-day window</strong>. The risk model flags this as medium-likelihood / high-impact. The plan has retention bonuses for 5 named individuals, but if we lose even two of them before Wave 3 we're in serious trouble because they hold the tribal knowledge of the legacy billing system. Mitigation: a documentation-first week in Wave 2 where retained staff pair-write runbooks with our SREs, so the knowledge is captured before departures can happen.</li>
+                <li><strong>A customer-facing incident inside the cutover window</strong>. If a P1 incident lands in Wave 3 or 4, our ability to execute is cut in half because the same people running cutover are incident-response on-call. Mitigation: we've staffed a dedicated <em>cutover incident commander</em> role filled by a senior SRE outside the migration squads. Their only job during W3-W4 is to shield the migration team from unrelated fires.</li>
+              </ul>
+
+              <h3>Budget + schedule confidence</h3>
+              <p>Budget confidence: <strong>medium-high</strong>. The $1.4M migration CAPEX includes 30% contingency. We've done this kind of work before (2023 NYC consolidation, 2024 dc-bos retirement); estimates have come in within +/-15% of plan twice in a row.</p>
+              <p>Schedule confidence: <strong>medium</strong>. 90 days is tight but realistic given the 4-wave structure. The biggest schedule risk is Wave 3 stateful migration landing a failure on a Friday and bleeding into the customer's Saturday batch run &mdash; we mitigate by scheduling Wave 3 weekends in customer-quiet windows only.</p>
+
+              <h3>Acceptance + next steps</h3>
+              <p>I recommend taking this plan to the steering committee next Tuesday. To accept the plan as-written the committee should:</p>
+              <ul>
+                <li>Approve the $1.4M migration CAPEX and the $320k retention-bonus pool for 5 named acquired staff.</li>
+                <li>Sign the 90-day notice to the dc-lon colo provider (must be served by day 1 or we lose the Year-1 savings).</li>
+                <li>Authorize the EU cloud-eu-west-1 footprint build (estimated $140k CAPEX + $12k/mo steady-state; not included in the main TCO model).</li>
+                <li>Nominate the cutover incident commander. Suggest <em>Priya from SRE</em> based on her 2024 dc-bos work.</li>
+                <li>Approve the comms plan, including the joint acquired-CEO + our-CIO town hall on day -7 and the three listening sessions in weeks 2, 6, and 10.</li>
+              </ul>
+              <p>I can draft the steering-committee deck and the CAPEX memo if you want &mdash; both will take about 20 minutes each. Say the word.</p>
+
+              <h3>Sources</h3>
+              <p style="font-size: 12px; color: var(--fg-3); margin-top: 4px;">
+                [1] <a href="#">HBR &middot; integrating IT after a merger</a> &middot; hbr.org<br/>
+                [2] <a href="#">Google SRE book &middot; change management at scale</a> &middot; sre.google<br/>
+                [3] <a href="#">VMware HCX &middot; cross-vCenter migration guide</a> &middot; docs.vmware.com<br/>
+                [4] <a href="#">Nutanix Move &middot; cross-hypervisor migration</a> &middot; portal.nutanix.com<br/>
+                [5] <a href="#">AICPA &middot; M&amp;A IT due-diligence checklist</a> &middot; aicpa.org
+              </p>
+            </div>
+
+          </div>
+        </article>
+
+      </div>
+    </div>
+
+    <div class="composer">
+      <textarea rows="2" placeholder="Ask a follow-up: e.g. &ldquo;draft the steering-committee deck&rdquo; or &ldquo;expand EU data-residency plan&rdquo;&hellip;"></textarea>
+      <div class="row">
+        <button class="btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg> attach</button>
+        <button class="btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg> strategy</button>
+        <button class="btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg> gpt-5.2</button>
+        <span class="spacer"></span>
+        <button class="send">send <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/></svg></button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+(function () {
+  var KEY = 'mockup-theme-prefs';
+  var prefs = {};
+  try { prefs = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  var html = document.documentElement;
+  if (prefs.theme) html.dataset.theme = prefs.theme;
+  if (prefs.accent) html.dataset.accent = prefs.accent;
+  var save = function () { try { localStorage.setItem(KEY, JSON.stringify({ theme: html.dataset.theme, accent: html.dataset.accent })); } catch (e) {} };
+  var themeBtn = document.getElementById('theme-btn');
+  var refresh = function () {
+    themeBtn.textContent = html.dataset.theme || 'dark';
+    document.querySelectorAll('.swatch').forEach(function (el) {
+      el.setAttribute('data-active', el.dataset.accent === (html.dataset.accent || 'violet') ? 'true' : 'false');
+    });
+  };
+  themeBtn.addEventListener('click', function () {
+    html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark'; refresh(); save();
+  });
+  document.querySelectorAll('.swatch').forEach(function (el) {
+    el.addEventListener('click', function () { html.dataset.accent = el.dataset.accent; refresh(); save(); });
+  });
+  window.addEventListener('storage', function (e) {
+    if (e.key !== KEY) return;
+    try { var next = JSON.parse(e.newValue || '{}'); if (next.theme) html.dataset.theme = next.theme; if (next.accent) html.dataset.accent = next.accent; refresh(); } catch (err) {}
+  });
+  refresh();
+})();
+</script>
+</body>
+</html>

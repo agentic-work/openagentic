@@ -10,146 +10,72 @@
  * LLMs to use artifacts appropriately.
  *
  * NOTE (openagentic-omhs#327): the canonical user-intent gate now lives in
- * `services/prompt/ArtifactIntentGate.ts` and is consumed by PromptComposer.
+ * `services/prompt/ArtifactIntentGate.ts` and was consumed by the legacy
+ * dynamic prompt composer (ripped Phase E.3).
  * `isDiagramRequest` here is retained only as a defence-in-depth check for
  * the legacy non-composable prompt path (see prompt.stage.ts fallback when
  * USE_COMPOSABLE_PROMPTS=false). It delegates to the same gate so the two
  * code paths cannot disagree.
  */
 
-import { evaluateUserIntent } from '../prompt/ArtifactIntentGate.js';
+import {
+  BROWSER_EXEC_SYSTEM_PROMPT,
+  BROWSER_EXEC_TOOL_DEFINITION,
+  suggestsBrowserExec,
+} from './browser-exec.js';
 
 // All registered system MCPs
 export const SYSTEM_MCPS = {} as const;
 
 /**
- * Returns true when the user's message expresses an explicit visualization
- * intent. Delegates to the canonical ArtifactIntentGate so the legacy and
- * composable prompt paths share one definition of "this user wants a chart".
- *
- * Earlier behaviour fired on ≥1 broad keyword (`'show me'`, `'breakdown'`,
- * `'costs'`) OR ≥2 cloud-related keywords, which routed almost every cloud
- * / cost question into the artifact-creation guidance pile. That's the
- * regression #327 was filed against.
+ * V2: returns false unconditionally. Visual artifacts emit via the
+ * structured `render_artifact` tool — the model picks. No keyword gate.
+ * Plan: docs/chatmode-ux-mock-parity/02-plan-canonical.md
  */
-export function isDiagramRequest(message: string): boolean {
-  return evaluateUserIntent(message).intent === 'visualization';
+export function isDiagramRequest(_message: string): boolean {
+  return false;
 }
 
-/**
- * Artifact guidance system prompt for visualization requests
- */
-const ARTIFACT_GUIDANCE_PROMPT = `
-## 🎨 ARTIFACT & VISUALIZATION GUIDANCE
-
-When the user asks for diagrams, charts, visualizations, or data breakdowns, you should **CREATE ARTIFACTS** rather than just describing them.
-
-### Artifact Types Available:
-
-1. **ReactFlow Diagrams** - Use for flowcharts, sequence diagrams, class diagrams, state diagrams, ER diagrams, mindmaps, org charts, timelines, etc. Mermaid is deprecated on this platform — emit \`\`\`reactflow JSON instead.
-   \`\`\`reactflow
-   {
-     "type": "flowchart",
-     "layout": "vertical",
-     "nodes": [
-       {"id": "a", "label": "Start", "shape": "circle"},
-       {"id": "b", "label": "Decision", "shape": "diamond"},
-       {"id": "c", "label": "Action 1", "shape": "rounded"},
-       {"id": "d", "label": "Action 2", "shape": "rounded"}
-     ],
-     "edges": [
-       {"source": "a", "target": "b"},
-       {"source": "b", "target": "c", "label": "Yes"},
-       {"source": "b", "target": "d", "label": "No"}
-     ]
-   }
-   \`\`\`
-
-2. **HTML/JavaScript Artifacts** - Use for **Sankey diagrams**, pie charts, bar charts, and interactive visualizations
-   - For **Sankey diagrams** (cost breakdowns, flow analysis), use **Plotly.js** or **D3.js**
-   - Wrap in an HTML artifact block
-
-3. **D2 Diagrams** - Use for architecture diagrams with a clean aesthetic
-   \`\`\`d2
-   Cloud: {
-     Azure: "Azure Services"
-     AWS: "AWS Services"
-   }
-   Cloud.Azure -> Cloud.AWS: "Hybrid"
-   \`\`\`
-
-### CRITICAL: When Users Ask About Cloud Costs
-
-When users ask "show me my costs" or request cost breakdowns:
-
-1. **First**: Use the appropriate MCP tools to GET THE REAL DATA (azure, aws, gcp tools)
-2. **Then**: Create a **Sankey diagram artifact** showing the cost flow:
-   - Service categories → Individual services → Costs
-   - Use HTML with Plotly.js for interactive Sankey
-
-Example Sankey for costs (HTML artifact):
-\`\`\`html
-<!DOCTYPE html>
-<html>
-<head>
-  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-</head>
-<body>
-  <div id="sankey" style="width:100%;height:600px;"></div>
-  <script>
-    var data = [{
-      type: "sankey",
-      orientation: "h",
-      node: {
-        pad: 15,
-        thickness: 20,
-        line: { color: "black", width: 0.5 },
-        label: ["Compute", "Storage", "Network", "VMs", "Disks", "Blob", "VNet", "Total: $X"],
-        color: ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f"]
-      },
-      link: {
-        source: [0, 0, 1, 1, 2],
-        target: [3, 4, 5, 4, 6],
-        value: [100, 50, 75, 25, 30]
-      }
-    }];
-    var layout = { title: "Cloud Cost Breakdown", font: { size: 12 } };
-    Plotly.newPlot('sankey', data, layout);
-  </script>
-</body>
-</html>
-\`\`\`
-
-### Best Practices:
-
-- **DO** create visual artifacts when users ask for diagrams or visualizations
-- **DO** use real data from MCP tools when available
-- **DO** prefer Mermaid for simple diagrams, HTML/Plotly for interactive charts
-- **DON'T** just describe what a diagram would look like - actually create it
-- **DON'T** use fake/placeholder data - call the tools to get real data first
-`;
-
-// Get system prompts for active MCPs based on user message context
+// Visualization / artifact guidance USED to live here as a hardcoded
+// `ARTIFACT_GUIDANCE_PROMPT` constant. It briefly lived in the composable
+// prompt-module system (RIPPED Phase E.3-E.6, 2026-05-10). It is now
+// folded into the RBAC `chat-system-{admin,member}.md` static prompts.
+// The legacy hardcoded path also pushed cost-specific verbiage
+// ("when users ask about costs, build a Sankey diagram") that hijacked
+// plain Azure resource asks into unwanted cost+artifact workflows.
+// Also pre-mermaid-rip: the old prompt told the model to "prefer Mermaid for
+// simple diagrams" + emit Plotly via `https://cdn.plot.ly/...` (banned by
+// CdnAllowList). Both wrong. Removed entirely — the constant is gone, not
+// merely unreferenced, so it can never accidentally re-enter the prompt
+// surface via grep-and-paste.
 export function getSystemMcpPrompts(userMessage: string): string[] {
   const prompts: string[] = [];
 
-  // If user is asking for visualizations/diagrams/costs, add artifact guidance
-  if (isDiagramRequest(userMessage)) {
-    prompts.push(ARTIFACT_GUIDANCE_PROMPT);
+  // Task #158 — offer the browser_exec analysis tool when the user's
+  // prompt hints at computation (prime sieve, CSV parse, quick plot).
+  if (suggestsBrowserExec(userMessage)) {
+    prompts.push(BROWSER_EXEC_SYSTEM_PROMPT);
   }
 
   return prompts;
 }
 
 // Get tool definitions for active MCPs
-export function getSystemMcpTools(_userMessage: string): any[] {
-  // No additional tools - artifacts are created via markdown blocks
-  return [];
+export function getSystemMcpTools(userMessage: string): any[] {
+  const tools: any[] = [];
+  // Task #158 — expose `browser_exec` in the model's tool manifest so
+  // it can request Python/JS sandbox execution. The pipeline intercepts
+  // the tool-call JSON and emits a `browser_exec_request` NDJSON frame
+  // instead of routing it through the MCP bridge.
+  if (suggestsBrowserExec(userMessage)) {
+    tools.push(BROWSER_EXEC_TOOL_DEFINITION);
+  }
+  return tools;
 }
 
 // Check if a tool call is for a system MCP
-export function isSystemMcpTool(_toolName: string): boolean {
-  return false;
+export function isSystemMcpTool(toolName: string): boolean {
+  return toolName === 'browser_exec';
 }
 
 // Process a system MCP tool call
@@ -163,9 +89,11 @@ export async function processSystemMcpToolCall(
   };
 }
 
-// Legacy exports for backwards compatibility
+// Legacy exports for backwards compatibility. `DIAGRAM_SYSTEM_PROMPT` used
+// to point at the deleted `ARTIFACT_GUIDANCE_PROMPT` constant (Plotly + Mermaid
+// guidance — both removed); zero external callers verified before deletion.
+// The fully-realized deprecated diagram MCP lives in ./diagram-mcp.ts.
 export const DIAGRAM_MCP_NAME = 'artifact-system';
-export const DIAGRAM_SYSTEM_PROMPT = ARTIFACT_GUIDANCE_PROMPT;
 export const DIAGRAM_TOOL_DEFINITION = null;
 export function validateDiagram(_diagram: unknown): { valid: boolean; errors: string[] } {
   return { valid: true, errors: [] };

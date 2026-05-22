@@ -1,7 +1,7 @@
 import React from 'react';
 
 export interface AdminBadgeProps {
-  /** CSS color value or CSS variable, e.g. 'var(--cap-chat)' or '#3b82f6' */
+  /** CSS color value or CSS variable, e.g. 'var(--cap-chat)' or 'var(--ap-accent)' */
   color: string;
   label: string;
   icon?: React.ReactNode;

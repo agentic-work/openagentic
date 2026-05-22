@@ -1,14 +1,16 @@
 /**
  * CodeModePage - Main entry point for Code Mode
  *
- * Renders the Openagentic-style Code Mode interface (CodeModeLayoutV2).
- * Handles authentication, session management, provisioning check, and WebSocket connection.
+ * Renders the Openagentic-style Code Mode interface (CodeModeLayout).
+ * Handles authentication, Code Mode access check, and WebSocket connection.
  *
  * Flow:
- * 1. Check if user has Code Mode access
- * 2. Check if environment is provisioned
- * 3. If not provisioned, show ProvisioningScreen
- * 4. Once provisioned, show CodeModeLayoutV2
+ * 1. Check if user has Code Mode access (`/api/code/provisioning/status`
+ *    with `hasAccess` flag).
+ * 2. If no access → friendly error screen.
+ * 3. Otherwise render CodeModeLayout. The unified boot gate
+ *    (InlineBootStream) inside that layout drives the real pod health
+ *    checks — no secondary provisioning overlay is mounted here.
  */
 
 import React, { useEffect, useCallback, useState } from 'react';
@@ -17,13 +19,28 @@ import { useAuth } from '@/app/providers/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { apiEndpoint } from '@/utils/api';
 
-import { CodeModeLayoutV2 } from './CodeModeLayoutV2';
-import { ProvisioningScreen } from './ProvisioningScreen';
+import { CodeModeLayout } from './CodeModeLayout';
 import { useCodeModeWebSocket } from '../hooks/useCodeModeWebSocket';
 import { useCodeModeSession } from '../hooks/useCodeModeSession';
 import { useCodeModeStore, useSession } from '@/stores/useCodeModeStore';
+import ErrorBoundary from '@/shared/components/ErrorBoundary';
+import { FilePanel } from '../../../codemode/components/FilePanel';
 
-type ProvisioningStatus = 'checking' | 'not_provisioned' | 'provisioning' | 'ready' | 'no_access' | 'error';
+// Feature flag — localStorage opt-in for staged rollout.
+// Default ON; set cm-file-panel=0 or cm-file-panel=false to disable.
+// IMPORTANT: read via a function INSIDE render, not a module-level IIFE.
+// Vite's static-analysis treated the IIFE as constant-foldable in some
+// builds and tree-shook the FilePanel branch out of the bundle entirely.
+// Reading inside render forces runtime evaluation and prevents pruning.
+function isFilePanelEnabled(): boolean {
+  if (typeof window === 'undefined') return true;
+  const v = window.localStorage.getItem('cm-file-panel');
+  return v !== '0' && v !== 'false';
+}
+
+/** Thin access-gate state. Any non-`no_access` value falls through to the
+ * unified boot modal inside CodeModeLayout, which owns real pod health. */
+type AccessStatus = 'checking' | 'ready' | 'no_access' | 'error';
 
 export const CodeModePage: React.FC = () => {
   const { user, getAuthHeaders } = useAuth();
@@ -32,15 +49,15 @@ export const CodeModePage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const session = useSession();
 
-  const [provisioningStatus, setProvisioningStatus] = useState<ProvisioningStatus>('checking');
+  const [accessStatus, setAccessStatus] = useState<AccessStatus>('checking');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // NOTE: Do NOT use selector for action - use getState() to avoid subscription that causes re-renders
-  // This is critical to prevent React error #185 (infinite re-render loop)
-
-  // Check provisioning status on mount
+  // Access gate: one `/code/provisioning/status` call on mount tells us
+  // whether this user is entitled to Code Mode. If yes, we fall through
+  // to the layout regardless of pod state — the boot modal takes over
+  // from there and runs the real health checks against the per-user pod.
   useEffect(() => {
-    const checkProvisioning = async () => {
+    const checkAccess = async () => {
       try {
         const response = await fetch(apiEndpoint('/code/provisioning/status'), {
           headers: getAuthHeaders(),
@@ -51,45 +68,30 @@ export const CodeModePage: React.FC = () => {
             navigate('/login');
             return;
           }
-          throw new Error('Failed to check provisioning status');
+          throw new Error('Failed to check Code Mode access');
         }
 
         const data = await response.json();
-
         if (!data.success) {
           throw new Error(data.error || 'Failed to check status');
         }
 
         if (!data.hasAccess) {
-          setProvisioningStatus('no_access');
+          setAccessStatus('no_access');
           setErrorMessage('Code Mode is not enabled for your account. Please contact your administrator.');
           return;
         }
 
-        // Check status
-        switch (data.status) {
-          case 'ready':
-            setProvisioningStatus('ready');
-            useCodeModeStore.getState().activateCodeMode();
-            break;
-          case 'provisioning':
-            setProvisioningStatus('provisioning');
-            break;
-          case 'failed':
-          case 'not_provisioned':
-          default:
-            setProvisioningStatus('not_provisioned');
-            break;
-        }
+        setAccessStatus('ready');
+        useCodeModeStore.getState().activateCodeMode();
       } catch (err: any) {
-        console.error('Failed to check provisioning:', err);
-        setProvisioningStatus('error');
-        setErrorMessage(err.message || 'Failed to check environment status');
+        console.error('Failed to check Code Mode access:', err);
+        setAccessStatus('error');
+        setErrorMessage(err.message || 'Failed to check Code Mode access');
       }
     };
-
-    checkProvisioning();
-  }, [getAuthHeaders, navigate]); // Removed activateCodeMode - accessed via getState()
+    checkAccess();
+  }, [getAuthHeaders, navigate]);
 
   // Get session params from URL (if coming from admin panel)
   const sessionId = searchParams.get('sessionId');
@@ -101,10 +103,10 @@ export const CodeModePage: React.FC = () => {
 
   // Reset init steps when entering code mode so stale state from previous sessions is cleared
   useEffect(() => {
-    if (provisioningStatus === 'ready') {
+    if (accessStatus === 'ready') {
       useCodeModeStore.getState().resetInitSteps();
     }
-  }, [provisioningStatus]);
+  }, [accessStatus]);
 
   // Hydrate prior session transcript on mount.
   //
@@ -133,7 +135,7 @@ export const CodeModePage: React.FC = () => {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    if (provisioningStatus !== 'ready') return;
+    if (accessStatus !== 'ready') return;
     if (hydrated) return;
 
     // No prior session — nothing to resume; release the WS gate immediately.
@@ -169,7 +171,7 @@ export const CodeModePage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [provisioningStatus, storedSessionId, authToken, resumeSession, hydrated]);
+  }, [accessStatus, storedSessionId, authToken, resumeSession, hydrated]);
 
   // Connect WebSocket (only when provisioned AND hydration finished).
   // The hydrated gate prevents a race where the WS spins up a new session
@@ -179,7 +181,7 @@ export const CodeModePage: React.FC = () => {
     initialSessionId: sessionId || undefined,
     workspacePath: workspacePath || '~',
     authToken,
-    enabled: provisioningStatus === 'ready' && hydrated,
+    enabled: accessStatus === 'ready' && hydrated,
   });
 
   // Handle exit - navigate back
@@ -187,20 +189,8 @@ export const CodeModePage: React.FC = () => {
     navigate(-1);
   }, [navigate]);
 
-  // Handle provisioning complete
-  const handleProvisioningComplete = useCallback(() => {
-    setProvisioningStatus('ready');
-    useCodeModeStore.getState().activateCodeMode();
-  }, []); // No deps - uses getState()
-
-  // Handle provisioning error
-  const handleProvisioningError = useCallback((error: string) => {
-    console.error('Provisioning error:', error);
-    // Error handling is done in ProvisioningScreen
-  }, []);
-
   // Loading/Checking state
-  if (provisioningStatus === 'checking') {
+  if (accessStatus === 'checking') {
     return (
       <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-[var(--color-background)]">
         <div className="text-center">
@@ -212,7 +202,7 @@ export const CodeModePage: React.FC = () => {
   }
 
   // No access state
-  if (provisioningStatus === 'no_access') {
+  if (accessStatus === 'no_access') {
     return (
       <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-[var(--color-background)]">
         <div className="text-center max-w-md mx-4">
@@ -233,7 +223,7 @@ export const CodeModePage: React.FC = () => {
   }
 
   // Error state
-  if (provisioningStatus === 'error') {
+  if (accessStatus === 'error') {
     return (
       <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-[var(--color-background)]">
         <div className="text-center max-w-md mx-4">
@@ -261,19 +251,16 @@ export const CodeModePage: React.FC = () => {
     );
   }
 
-  // Provisioning needed
-  if (provisioningStatus === 'not_provisioned' || provisioningStatus === 'provisioning') {
-    return (
-      <ProvisioningScreen
-        onComplete={handleProvisioningComplete}
-        onError={handleProvisioningError}
-      />
-    );
-  }
-
-  // Ready - show Code Mode
-  return (
-    <CodeModeLayoutV2
+  // Ready — the unified boot modal inside CodeModeLayout owns all
+  // remaining gate logic from this point. CodeModePage no longer
+  // switches on pod state.
+  //
+  // Wrapped in a codemode-scoped ErrorBoundary so a render crash deep
+  // inside the layout (e.g. InlineBootStream stream error on fetch, a
+  // prop-shape drift, a new hook throwing) does not white-page the
+  // whole app. The boundary shows the error + reload button in-place.
+  const layout = (
+    <CodeModeLayout
       userId={user?.id || 'anonymous'}
       workspacePath={workspacePath || session?.workspacePath || '~'}
       onExit={handleExit}
@@ -285,6 +272,22 @@ export const CodeModePage: React.FC = () => {
       storageBucket={session?.storageBucket}
       storageType={session?.storageType}
     />
+  );
+
+  // BISECT-SENTINEL-7B41A2 — if this string isn't in the prod bundle,
+  // the main render path is being eliminated entirely.
+  console.log('CODEMODEPAGE_RENDER_BISECT_7B41A2');
+
+  return (
+    <ErrorBoundary>
+      {isFilePanelEnabled() ? (
+        <FilePanel rootPath={workspacePath || session?.workspacePath || '/workspaces'}>
+          {layout}
+        </FilePanel>
+      ) : (
+        layout
+      )}
+    </ErrorBoundary>
   );
 };
 

@@ -1,727 +1,397 @@
 {
   "domain": "agent-orchestration",
   "title": "Agent Orchestration",
-  "description": "Multi-agent orchestration with 4 execution patterns, 4 aggregation strategies, and adaptive turn limits per role.",
+  "description": "AgentOrchestrator types",
   "icon": "agent",
   "category": "agents",
-  "generatedAt": "2026-04-06T02:45:19.338Z",
+  "generatedAt": "2026-05-13T20:48:20.630Z",
   "sourceFiles": [
     "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
   ],
   "sections": [
     {
-      "id": "orchestration-patterns",
-      "title": "Orchestration Patterns",
-      "description": "Multi-agent execution patterns supported by the AgentOrchestrator.",
+      "id": "ExecuteRequest",
+      "title": "ExecuteRequest",
+      "description": "Interface ExecuteRequest",
       "adminOnly": false,
       "items": [
         {
-          "id": "orch-parallel",
-          "name": "parallel",
-          "description": "All agents run concurrently, results aggregated after all complete",
-          "type": "orchestration-pattern"
-        },
-        {
-          "id": "orch-sequential",
-          "name": "sequential",
-          "description": "Agents run one after another, each receiving prior results",
-          "type": "orchestration-pattern"
-        },
-        {
-          "id": "orch-supervisor",
-          "name": "supervisor",
-          "description": "A supervisor agent dynamically selects and delegates to worker agents",
-          "type": "orchestration-pattern"
-        },
-        {
-          "id": "orch-hierarchical",
-          "name": "hierarchical",
-          "description": "Multi-level agent tree with planning, execution, and validation layers",
-          "type": "orchestration-pattern"
-        }
-      ]
-    },
-    {
-      "id": "aggregation-strategies",
-      "title": "Aggregation Strategies",
-      "description": "How multi-agent results are combined into a final output.",
-      "adminOnly": false,
-      "items": [
-        {
-          "id": "agg-merge",
-          "name": "merge",
-          "description": "Concatenate all agent outputs into a single response",
-          "type": "aggregation-strategy"
-        },
-        {
-          "id": "agg-synthesize",
-          "name": "synthesize",
-          "description": "Use an LLM to synthesize a unified response from all outputs",
-          "type": "aggregation-strategy"
-        },
-        {
-          "id": "agg-first",
-          "name": "first",
-          "description": "Return the first successful agent result",
-          "type": "aggregation-strategy"
-        },
-        {
-          "id": "agg-vote",
-          "name": "vote",
-          "description": "Use consensus voting across agent outputs",
-          "type": "aggregation-strategy"
-        }
-      ]
-    },
-    {
-      "id": "execute-request",
-      "title": "Execute Request Schema",
-      "description": "The ExecuteRequest interface for triggering multi-agent execution.",
-      "adminOnly": false,
-      "items": [
-        {
-          "id": "req-agents",
+          "id": "ExecuteRequest.agents",
           "name": "agents",
-          "description": "AgentSpec[] field",
-          "type": "interface-field",
+          "description": "AgentSpec[]",
+          "type": "ts-field",
           "properties": {
-            "type": "AgentSpec[]",
-            "optional": false
-          }
+            "tsType": "AgentSpec[]"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "req-orchestration",
+          "id": "ExecuteRequest.orchestration",
           "name": "orchestration",
-          "description": "'parallel' | 'sequential' | 'supervisor' | 'hierarchical' field",
-          "type": "interface-field",
+          "description": "'parallel' | 'sequential' | 'supervisor' | 'hierarchical'",
+          "type": "ts-field",
           "properties": {
-            "type": "'parallel' | 'sequential' | 'supervisor' | 'hierarchical'",
-            "optional": false
-          }
+            "tsType": "'parallel' | 'sequential' | 'supervisor' | 'hierarchical'"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "req-aggregation",
+          "id": "ExecuteRequest.aggregation",
           "name": "aggregation",
-          "description": "'merge' | 'synthesize' | 'first' | 'vote' field",
-          "type": "interface-field",
+          "description": "'merge' | 'synthesize' | 'first' | 'vote'",
+          "type": "ts-field",
           "properties": {
-            "type": "'merge' | 'synthesize' | 'first' | 'vote'",
-            "optional": false
-          }
+            "tsType": "'merge' | 'synthesize' | 'first' | 'vote'"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "req-sessionId",
+          "id": "ExecuteRequest.sessionId",
           "name": "sessionId",
-          "description": "string field",
-          "type": "interface-field",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "type": "string",
-            "optional": true
-          }
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "req-executionId",
+          "id": "ExecuteRequest.executionId",
           "name": "executionId",
-          "description": "string field",
-          "type": "interface-field",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "type": "string",
-            "optional": true
-          }
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "req-userId",
+          "id": "ExecuteRequest.userId",
           "name": "userId",
-          "description": "string field",
-          "type": "interface-field",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "type": "string",
-            "optional": false
-          }
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "req-userMessage",
+          "id": "ExecuteRequest.userMessage",
           "name": "userMessage",
-          "description": "string field",
-          "type": "interface-field",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "type": "string",
-            "optional": false
-          }
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "req-userToken",
+          "id": "ExecuteRequest.2",
+          "name": "2",
+          "description": "full session conversation history so sub-agents have context.",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "full session conversation history so sub-agents have context."
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
+        },
+        {
+          "id": "ExecuteRequest.sessionMessages",
+          "name": "sessionMessages",
+          "description": "Array<{ role: string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "Array<{ role: string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
+        },
+        {
+          "id": "ExecuteRequest.content",
+          "name": "content",
+          "description": "string }>",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string }>"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
+        },
+        {
+          "id": "ExecuteRequest.userDisplayName",
+          "name": "userDisplayName",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
+        },
+        {
+          "id": "ExecuteRequest.userEmail",
+          "name": "userEmail",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
+        },
+        {
+          "id": "ExecuteRequest.userToken",
           "name": "userToken",
-          "description": "string field",
-          "type": "interface-field",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "type": "string",
-            "optional": true
-          }
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "req-authMethod",
+          "id": "ExecuteRequest.277",
+          "name": "277",
+          "description": "Azure AD ID token (separate audience from userToken).",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "Azure AD ID token (separate audience from userToken)."
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
+        },
+        {
+          "id": "ExecuteRequest.userIdToken",
+          "name": "userIdToken",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
+        },
+        {
+          "id": "ExecuteRequest.authMethod",
           "name": "authMethod",
-          "description": "string field",
-          "type": "interface-field",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "type": "string",
-            "optional": false
-          }
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "req-userGroups",
+          "id": "ExecuteRequest.userGroups",
           "name": "userGroups",
-          "description": "string[] field",
-          "type": "interface-field",
+          "description": "string[]",
+          "type": "ts-field",
           "properties": {
-            "type": "string[]",
-            "optional": false
-          }
+            "tsType": "string[]"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "req-isAdmin",
+          "id": "ExecuteRequest.isAdmin",
           "name": "isAdmin",
-          "description": "boolean field",
-          "type": "interface-field",
+          "description": "boolean",
+          "type": "ts-field",
           "properties": {
-            "type": "boolean",
-            "optional": false
-          }
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "req-totalBudgetCents",
+          "id": "ExecuteRequest.totalBudgetCents",
           "name": "totalBudgetCents",
-          "description": "number field",
-          "type": "interface-field",
+          "description": "number",
+          "type": "ts-field",
           "properties": {
-            "type": "number",
-            "optional": true
-          }
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "req-timeoutMs",
+          "id": "ExecuteRequest.timeoutMs",
           "name": "timeoutMs",
-          "description": "number field",
-          "type": "interface-field",
+          "description": "number",
+          "type": "ts-field",
           "properties": {
-            "type": "number",
-            "optional": true
-          }
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "req-maxConcurrency",
+          "id": "ExecuteRequest.maxConcurrency",
           "name": "maxConcurrency",
-          "description": "number field",
-          "type": "interface-field",
+          "description": "number",
+          "type": "ts-field",
           "properties": {
-            "type": "number",
-            "optional": true
-          }
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "req-flowContext",
+          "id": "ExecuteRequest.flowContext",
           "name": "flowContext",
-          "description": "any field",
-          "type": "interface-field",
+          "description": "any",
+          "type": "ts-field",
           "properties": {
-            "type": "any",
-            "optional": true
-          }
+            "tsType": "any"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
+        },
+        {
+          "id": "ExecuteRequest.parentMemoryContext",
+          "name": "parentMemoryContext",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
+        },
+        {
+          "id": "ExecuteRequest.parentRagContext",
+          "name": "parentRagContext",
+          "description": "Array<{ content?: string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "Array<{ content?: string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
+        },
+        {
+          "id": "ExecuteRequest.text",
+          "name": "text",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
+        },
+        {
+          "id": "ExecuteRequest.source",
+          "name": "source",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
+        },
+        {
+          "id": "ExecuteRequest.score",
+          "name": "score",
+          "description": "number }>",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number }>"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
+        },
+        {
+          "id": "ExecuteRequest.parentBehaviorRules",
+          "name": "parentBehaviorRules",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
+        },
+        {
+          "id": "ExecuteRequest.turnId",
+          "name": "turnId",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         }
       ]
     },
     {
-      "id": "execution-state",
-      "title": "Execution State",
-      "description": "Runtime state tracked for each multi-agent execution.",
+      "id": "ExecutionState",
+      "title": "ExecutionState",
+      "description": "Interface ExecutionState",
       "adminOnly": false,
       "items": [
         {
-          "id": "state-executionId",
+          "id": "ExecutionState.executionId",
           "name": "executionId",
           "description": "string",
-          "type": "interface-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "state-userId",
+          "id": "ExecutionState.userId",
           "name": "userId",
           "description": "string",
-          "type": "interface-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "state-status",
+          "id": "ExecutionState.status",
           "name": "status",
           "description": "'pending' | 'running' | 'completed' | 'failed' | 'cancelled'",
-          "type": "interface-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "'pending' | 'running' | 'completed' | 'failed' | 'cancelled'"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "state-results",
+          "id": "ExecutionState.results",
           "name": "results",
           "description": "AgentResult[]",
-          "type": "interface-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "AgentResult[]"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "state-output",
+          "id": "ExecutionState.output",
           "name": "output",
           "description": "string",
-          "type": "interface-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "state-error",
+          "id": "ExecutionState.error",
           "name": "error",
           "description": "string",
-          "type": "interface-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "state-startedAt",
+          "id": "ExecutionState.startedAt",
           "name": "startedAt",
           "description": "number",
-          "type": "interface-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
         },
         {
-          "id": "state-completedAt",
+          "id": "ExecutionState.completedAt",
           "name": "completedAt",
           "description": "number",
-          "type": "interface-field"
-        }
-      ]
-    },
-    {
-      "id": "default-models",
-      "title": "Default Models per Role",
-      "description": "Model assignments for each agent role, configurable via AGENT_DEFAULT_MODEL env var.",
-      "adminOnly": true,
-      "items": [
-        {
-          "id": "model-reasoning",
-          "name": "reasoning",
-          "description": "Default model variable: DEFAULT_MODEL",
-          "type": "role-model",
+          "type": "ts-field",
           "properties": {
-            "variable": "DEFAULT_MODEL"
-          }
-        },
-        {
-          "id": "model-data_query",
-          "name": "data_query",
-          "description": "Default model variable: DEFAULT_MODEL",
-          "type": "role-model",
-          "properties": {
-            "variable": "DEFAULT_MODEL"
-          }
-        },
-        {
-          "id": "model-tool_orchestration",
-          "name": "tool_orchestration",
-          "description": "Default model variable: DEFAULT_MODEL",
-          "type": "role-model",
-          "properties": {
-            "variable": "DEFAULT_MODEL"
-          }
-        },
-        {
-          "id": "model-summarization",
-          "name": "summarization",
-          "description": "Default model variable: DEFAULT_MODEL",
-          "type": "role-model",
-          "properties": {
-            "variable": "DEFAULT_MODEL"
-          }
-        },
-        {
-          "id": "model-code_execution",
-          "name": "code_execution",
-          "description": "Default model variable: DEFAULT_MODEL",
-          "type": "role-model",
-          "properties": {
-            "variable": "DEFAULT_MODEL"
-          }
-        },
-        {
-          "id": "model-planning",
-          "name": "planning",
-          "description": "Default model variable: DEFAULT_MODEL",
-          "type": "role-model",
-          "properties": {
-            "variable": "DEFAULT_MODEL"
-          }
-        },
-        {
-          "id": "model-validation",
-          "name": "validation",
-          "description": "Default model variable: DEFAULT_MODEL",
-          "type": "role-model",
-          "properties": {
-            "variable": "DEFAULT_MODEL"
-          }
-        },
-        {
-          "id": "model-synthesis",
-          "name": "synthesis",
-          "description": "Default model variable: DEFAULT_MODEL",
-          "type": "role-model",
-          "properties": {
-            "variable": "DEFAULT_MODEL"
-          }
-        },
-        {
-          "id": "model-artifact_creation",
-          "name": "artifact_creation",
-          "description": "Default model variable: DEFAULT_MODEL",
-          "type": "role-model",
-          "properties": {
-            "variable": "DEFAULT_MODEL"
-          }
-        },
-        {
-          "id": "model-oat_function_builder",
-          "name": "oat_function_builder",
-          "description": "Default model variable: DEFAULT_MODEL",
-          "type": "role-model",
-          "properties": {
-            "variable": "DEFAULT_MODEL"
-          }
-        },
-        {
-          "id": "model-custom",
-          "name": "custom",
-          "description": "Default model variable: DEFAULT_MODEL",
-          "type": "role-model",
-          "properties": {
-            "variable": "DEFAULT_MODEL"
-          }
-        }
-      ]
-    },
-    {
-      "id": "default-prompts",
-      "title": "Default System Prompts",
-      "description": "Built-in system prompts for each agent role, used when no custom prompt is configured.",
-      "adminOnly": true,
-      "items": [
-        {
-          "id": "prompt-reasoning",
-          "name": "reasoning",
-          "description": "System prompt template for reasoning role",
-          "type": "system-prompt",
-          "sourceLine": 1,
+            "tsType": "number"
+          },
           "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
-        },
-        {
-          "id": "prompt-data_query",
-          "name": "data_query",
-          "description": "System prompt template for data query role",
-          "type": "system-prompt",
-          "sourceLine": 3,
-          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
-        },
-        {
-          "id": "prompt-tool_orchestration",
-          "name": "tool_orchestration",
-          "description": "System prompt template for tool orchestration role",
-          "type": "system-prompt",
-          "sourceLine": 6,
-          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
-        },
-        {
-          "id": "prompt-summarization",
-          "name": "summarization",
-          "description": "System prompt template for summarization role",
-          "type": "system-prompt",
-          "sourceLine": 17,
-          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
-        },
-        {
-          "id": "prompt-code_execution",
-          "name": "code_execution",
-          "description": "System prompt template for code execution role",
-          "type": "system-prompt",
-          "sourceLine": 22,
-          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
-        },
-        {
-          "id": "prompt-planning",
-          "name": "planning",
-          "description": "System prompt template for planning role",
-          "type": "system-prompt",
-          "sourceLine": 24,
-          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
-        },
-        {
-          "id": "prompt-validation",
-          "name": "validation",
-          "description": "System prompt template for validation role",
-          "type": "system-prompt",
-          "sourceLine": 30,
-          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
-        },
-        {
-          "id": "prompt-synthesis",
-          "name": "synthesis",
-          "description": "System prompt template for synthesis role",
-          "type": "system-prompt",
-          "sourceLine": 35,
-          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
-        },
-        {
-          "id": "prompt-oat_function_builder",
-          "name": "oat_function_builder",
-          "description": "System prompt template for oat function builder role",
-          "type": "system-prompt",
-          "sourceLine": 42,
-          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
-        },
-        {
-          "id": "prompt-artifact_creation",
-          "name": "artifact_creation",
-          "description": "System prompt template for artifact creation role",
-          "type": "system-prompt",
-          "sourceLine": 67,
-          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
-        },
-        {
-          "id": "prompt-custom",
-          "name": "custom",
-          "description": "System prompt template for custom role",
-          "type": "system-prompt",
-          "sourceLine": 90,
-          "sourceFile": "services/openagentic-proxy/src/services/AgentOrchestrator.ts"
-        }
-      ]
-    },
-    {
-      "id": "adaptive-turns",
-      "title": "Adaptive Turn Limits",
-      "description": "Per-role maximum tool call rounds before forcing synthesis.",
-      "adminOnly": true,
-      "items": [
-        {
-          "id": "turns-reasoning",
-          "name": "reasoning",
-          "description": "Minimal tool use, mostly thinking",
-          "type": "turn-limit",
-          "properties": {
-            "maxTurns": 3
-          }
-        },
-        {
-          "id": "turns-data_query",
-          "name": "data_query",
-          "description": "May need several queries",
-          "type": "turn-limit",
-          "properties": {
-            "maxTurns": 8
-          }
-        },
-        {
-          "id": "turns-tool_orchestration",
-          "name": "tool_orchestration",
-          "description": "Multi-step tool chains (Azure VM lifecycle can need 15-20 turns)",
-          "type": "turn-limit",
-          "properties": {
-            "maxTurns": 20
-          }
-        },
-        {
-          "id": "turns-summarization",
-          "name": "summarization",
-          "description": "Minimal tool use",
-          "type": "turn-limit",
-          "properties": {
-            "maxTurns": 3
-          }
-        },
-        {
-          "id": "turns-code_execution",
-          "name": "code_execution",
-          "description": "Write, run, debug cycles",
-          "type": "turn-limit",
-          "properties": {
-            "maxTurns": 12
-          }
-        },
-        {
-          "id": "turns-planning",
-          "name": "planning",
-          "description": "Max 5 turns",
-          "type": "turn-limit",
-          "properties": {
-            "maxTurns": 5
-          }
-        },
-        {
-          "id": "turns-validation",
-          "name": "validation",
-          "description": "Max 6 turns",
-          "type": "turn-limit",
-          "properties": {
-            "maxTurns": 6
-          }
-        },
-        {
-          "id": "turns-synthesis",
-          "name": "synthesis",
-          "description": "Max 3 turns",
-          "type": "turn-limit",
-          "properties": {
-            "maxTurns": 3
-          }
-        },
-        {
-          "id": "turns-artifact_creation",
-          "name": "artifact_creation",
-          "description": "Max 8 turns",
-          "type": "turn-limit",
-          "properties": {
-            "maxTurns": 8
-          }
-        },
-        {
-          "id": "turns-oat_function_builder",
-          "name": "oat_function_builder",
-          "description": "Max 5 turns",
-          "type": "turn-limit",
-          "properties": {
-            "maxTurns": 5
-          }
-        },
-        {
-          "id": "turns-custom",
-          "name": "custom",
-          "description": "Max 5 turns",
-          "type": "turn-limit",
-          "properties": {
-            "maxTurns": 5
-          }
-        }
-      ]
-    },
-    {
-      "id": "orchestrator-methods",
-      "title": "Orchestrator Methods",
-      "description": "Public and private methods on the AgentOrchestrator class.",
-      "adminOnly": true,
-      "items": [
-        {
-          "id": "method-cleanupExecutions",
-          "name": "cleanupExecutions",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-for",
-          "name": "for",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-if",
-          "name": "if",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-resolveAgentFromAPI",
-          "name": "resolveAgentFromAPI",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-catch",
-          "name": "catch",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-execute",
-          "name": "execute",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-executeSync",
-          "name": "executeSync",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-getExecution",
-          "name": "getExecution",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-getExecutionAsync",
-          "name": "getExecutionAsync",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-getLiveExecutions",
-          "name": "getLiveExecutions",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-getStats",
-          "name": "getStats",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-cancelExecution",
-          "name": "cancelExecution",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-runExecution",
-          "name": "runExecution",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-switch",
-          "name": "switch",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-map",
-          "name": "map",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-filter",
-          "name": "filter",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-allSettled",
-          "name": "allSettled",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-aggregateResults",
-          "name": "aggregateResults",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-llmSynthesize",
-          "name": "llmSynthesize",
-          "description": "AgentOrchestrator method",
-          "type": "method"
-        },
-        {
-          "id": "method-getExecutionMetrics",
-          "name": "getExecutionMetrics",
-          "description": "AgentOrchestrator method",
-          "type": "method"
         }
       ]
     }

@@ -146,10 +146,13 @@ const COMMANDS: CodeModeCommand[] = [
     category: 'git',
   },
 
-  // Settings
+  // Cycle 4 of model-switch redesign — /model is restored. The daemon
+  // (Cycle 3) validates the id against Registry and mutates in-memory
+  // currentModel; next turn picks it up. /model with no arg lists the
+  // available models with the current marked.
   {
     command: '/model',
-    description: 'Change the AI model',
+    description: 'List available code models / switch session',
     category: 'settings',
   },
 ];
@@ -267,10 +270,15 @@ export function useCodeModeCommands(): CodeModeCommandsReturn {
         handlers.showDiff?.();
         return true;
 
-      case '/model':
-        // This would open a model selector
-        handlers.sendSystemMessage?.('Use the model selector in the toolbar to change models.');
-        return true;
+      // Cycle 4 of codemode model-switch redesign — /model is no longer
+      // intercepted in the browser. Letting `/model` and `/model <id>`
+      // flow through to the daemon hands them to runModelCommand in
+      // src/commands/model-switch/model-switch.ts, which validates against
+      // the Registry (GET /v1/models) and mutates setMainLoopModelOverride
+      // in-memory (Cycle 3). The next assistant turn picks up the new model
+      // automatically. Any UX adornment (pill update / toast) is layered on
+      // top of the daemon's text response — we no longer block the command.
+      // Spec: openagentic:docs/superpowers/specs/2026-04-25-codemode-model-switch-redesign.md
 
       default:
         // Handle partial git commands

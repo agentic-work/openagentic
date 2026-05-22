@@ -17,6 +17,11 @@ process.env.REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 process.env.MILVUS_HOST = process.env.MILVUS_HOST || 'localhost';
 process.env.MILVUS_PORT = process.env.MILVUS_PORT || '19530';
 
+// K8s namespace for tests — featureFlags.k8sNamespace requires this. Helm
+// sets it from `{{ .Release.Namespace }}` in production; tests use a fixed
+// 'agentic-test' so we never silently default to a real-cluster namespace.
+process.env.K8S_NAMESPACE = process.env.K8S_NAMESPACE || 'agentic-test';
+
 // Ollama testing configuration - can be overridden by TEST_OLLAMA_BASE_URL
 process.env.OLLAMA_BASE_URL = process.env.TEST_OLLAMA_BASE_URL || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
 process.env.OLLAMA_MODEL = process.env.TEST_OLLAMA_MODEL || process.env.OLLAMA_MODEL || 'gpt-oss';

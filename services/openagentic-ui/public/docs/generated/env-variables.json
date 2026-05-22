@@ -1,827 +1,248 @@
 {
   "domain": "env-variables",
-  "title": "Environment & Secrets",
-  "description": "Helm values configuration and application secret definitions.",
-  "icon": "infra",
+  "title": "Environment Variables",
+  "description": "Required and optional env vars",
+  "icon": "gear",
   "category": "infrastructure",
-  "generatedAt": "2026-04-06T02:45:19.361Z",
+  "generatedAt": "2026-05-13T20:48:20.626Z",
   "sourceFiles": [
-    "helm/openagentic/values.yaml",
     "services/openagentic-api/src/config/secrets.config.ts"
   ],
   "sections": [
     {
-      "id": "helm-values",
-      "title": "Helm Values Configuration",
-      "description": "51 top-level configuration sections in values.yaml.",
-      "adminOnly": true,
+      "id": "SecretsConfig",
+      "title": "SecretsConfig",
+      "description": "Interface SecretsConfig",
+      "adminOnly": false,
       "items": [
         {
-          "id": "helm-global",
-          "name": "global",
-          "description": "This file contains all default values for the OpenAgentic Helm chart.",
-          "type": "helm-value",
+          "id": "SecretsConfig.database",
+          "name": "database",
+          "description": "{",
+          "type": "ts-field",
           "properties": {
-            "nestedKeys": 6
+            "tsType": "{"
           },
-          "sourceLine": 8,
-          "sourceFile": "helm/openagentic/values.yaml"
+          "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "helm-imagePullSecrets",
-          "name": "imagePullSecrets",
-          "description": "Value: []",
-          "type": "helm-value",
+          "id": "SecretsConfig.url",
+          "name": "url",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "inlineValue": "[]",
-            "nestedKeys": 0
+            "tsType": "string"
           },
-          "sourceLine": 16,
-          "sourceFile": "helm/openagentic/values.yaml"
+          "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "helm-nameOverride",
-          "name": "nameOverride",
-          "description": "Value: \"\"",
-          "type": "helm-value",
+          "id": "SecretsConfig.password",
+          "name": "password",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "inlineValue": "\"\"",
-            "nestedKeys": 0
+            "tsType": "string"
           },
-          "sourceLine": 17,
-          "sourceFile": "helm/openagentic/values.yaml"
+          "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "helm-fullnameOverride",
-          "name": "fullnameOverride",
-          "description": "Value: \"\"",
-          "type": "helm-value",
+          "id": "SecretsConfig.poolSize",
+          "name": "poolSize",
+          "description": "number",
+          "type": "ts-field",
           "properties": {
-            "inlineValue": "\"\"",
-            "nestedKeys": 0
+            "tsType": "number"
           },
-          "sourceLine": 18,
-          "sourceFile": "helm/openagentic/values.yaml"
+          "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "helm-initContainer",
-          "name": "initContainer",
-          "description": "Configuration section with 1 nested keys",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 1
-          },
-          "sourceLine": 20,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-serviceAccount",
-          "name": "serviceAccount",
-          "description": "Configuration section with 3 nested keys",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 3
-          },
-          "sourceLine": 24,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-networkAdmin",
-          "name": "networkAdmin",
-          "description": "Configuration section with 1 nested keys",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 1
-          },
-          "sourceLine": 30,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-auth",
-          "name": "auth",
-          "description": "AUTHENTICATION CONFIGURATION",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 28
-          },
-          "sourceLine": 36,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-ai",
-          "name": "ai",
-          "description": "AI PROVIDER CONFIGURATION",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 24
-          },
-          "sourceLine": 71,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-aws",
-          "name": "aws",
-          "description": "AWS CONFIGURATION",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 21
-          },
-          "sourceLine": 100,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-azureKeyVault",
-          "name": "azureKeyVault",
-          "description": "AZURE KEY VAULT CONFIGURATION",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 4
-          },
-          "sourceLine": 126,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-externalSecrets",
-          "name": "externalSecrets",
-          "description": "EXTERNAL SECRETS CONFIGURATION",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 1
-          },
-          "sourceLine": 135,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-api",
-          "name": "api",
-          "description": "API SERVICE",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 46
-          },
-          "sourceLine": 141,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-ui",
-          "name": "ui",
-          "description": "UI SERVICE",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 25
-          },
-          "sourceLine": 193,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-mcpProxy",
-          "name": "mcpProxy",
-          "description": "MCP PROXY SERVICE",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 37
-          },
-          "sourceLine": 223,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-agenticFrameworks",
-          "name": "agenticFrameworks",
-          "description": "Controls orchestration frameworks and their runtime configuration",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 22
-          },
-          "sourceLine": 266,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-graph",
-          "name": "graph",
-          "description": "GRAPH SERVICE (Dedicated Graph Processing - Optional)",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 45
-          },
-          "sourceLine": 307,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-langgraph",
-          "name": "langgraph",
-          "description": "LANGGRAPH SERVICE (Primary Orchestration Engine)",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 82
-          },
-          "sourceLine": 368,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-crewai",
-          "name": "crewai",
-          "description": "CREWAI SERVICE (Multi-Agent Orchestration)",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 76
-          },
-          "sourceLine": 480,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-oat",
-          "name": "oat",
-          "description": "CRITICAL SECURITY: OAT ONLY runs as the authenticated user - NO service accounts",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 76
-          },
-          "sourceLine": 584,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-agentArchitect",
-          "name": "agentArchitect",
-          "description": "AGENT ARCHITECT (Meta-Agent MCP Server for building agents)",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 1
-          },
-          "sourceLine": 722,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-openagenticProxy",
-          "name": "openagenticProxy",
-          "description": "AGENT-PROXY SERVICE (Agent Orchestration)",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 21
-          },
-          "sourceLine": 730,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-workflows",
-          "name": "workflows",
-          "description": "WORKFLOW EXECUTION SERVICE",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 24
-          },
-          "sourceLine": 756,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-codeManager",
-          "name": "codeManager",
-          "description": "CODE MANAGER SERVICE",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 75
-          },
-          "sourceLine": 785,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-uatDashboard",
-          "name": "uatDashboard",
-          "description": "UAT DASHBOARD",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 12
-          },
-          "sourceLine": 865,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-attu",
-          "name": "attu",
-          "description": "ATTU (Milvus Admin UI)",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 16
-          },
-          "sourceLine": 882,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-awpAdminMcp",
-          "name": "awpAdminMcp",
-          "description": "MCP SERVER: OpenAgentic-ADMIN-MCP",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 28
-          },
-          "sourceLine": 903,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-awpAwsMcp",
-          "name": "awpAwsMcp",
-          "description": "MCP SERVER: OpenAgentic-AWS-MCP",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 28
-          },
-          "sourceLine": 936,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-awpAzureMcp",
-          "name": "awpAzureMcp",
-          "description": "MCP SERVER: OpenAgentic-AZURE-MCP",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 28
-          },
-          "sourceLine": 969,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-milvus",
-          "name": "milvus",
-          "description": "MILVUS VECTOR DATABASE",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 5
-          },
-          "sourceLine": 1002,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-postgresql",
-          "name": "postgresql",
-          "description": "Uses Bitnami PostgreSQL chart with pgvector extension",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 3
-          },
-          "sourceLine": 1014,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-postgres",
-          "name": "postgres",
-          "description": "Configuration section with 15 nested keys",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 15
-          },
-          "sourceLine": 1021,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-redis",
+          "id": "SecretsConfig.redis",
           "name": "redis",
-          "description": "REDIS",
-          "type": "helm-value",
+          "description": "{",
+          "type": "ts-field",
           "properties": {
-            "nestedKeys": 4
+            "tsType": "{"
           },
-          "sourceLine": 1042,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-ollama",
-          "name": "ollama",
-          "description": "OLLAMA",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 11
-          },
-          "sourceLine": 1051,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-ollamaCode",
-          "name": "ollamaCode",
-          "description": "Configuration section with 3 nested keys",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 3
-          },
-          "sourceLine": 1065,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-ollama2",
-          "name": "ollama2",
-          "description": "Configuration section with 4 nested keys",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 4
-          },
-          "sourceLine": 1070,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-embedding",
-          "name": "embedding",
-          "description": "EMBEDDING CONFIGURATION",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 5
-          },
-          "sourceLine": 1079,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-minio",
-          "name": "minio",
-          "description": "MINIO (Object Storage)",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 8
-          },
-          "sourceLine": 1089,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-grafana",
-          "name": "grafana",
-          "description": "GRAFANA INTEGRATION (works with any existing cluster Grafana)",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 8
-          },
-          "sourceLine": 1102,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-observability",
-          "name": "observability",
-          "description": "OBSERVABILITY (full stack - deploys Prometheus/Grafana/Loki into this namespace)",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 54
-          },
-          "sourceLine": 1123,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-pgadmin",
-          "name": "pgadmin",
-          "description": "SUPPORT TOOLS",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 8
-          },
-          "sourceLine": 1191,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-redisCommander",
-          "name": "redisCommander",
-          "description": "Configuration section with 4 nested keys",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 4
-          },
-          "sourceLine": 1201,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-vault",
-          "name": "vault",
-          "description": "Configuration section with 4 nested keys",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 4
-          },
-          "sourceLine": 1207,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-gpu",
-          "name": "gpu",
-          "description": "FEATURE FLAGS",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 1
-          },
-          "sourceLine": 1216,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-cdcRootCert",
-          "name": "cdcRootCert",
-          "description": "Configuration section with 1 nested keys",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 1
-          },
-          "sourceLine": 1219,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-certManager",
-          "name": "certManager",
-          "description": "Configuration section with 1 nested keys",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 1
-          },
-          "sourceLine": 1222,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-gateway",
-          "name": "gateway",
-          "description": "Uses Envoy Gateway as the recommended Gateway API implementation.",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 19
-          },
-          "sourceLine": 1236,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-ingress",
-          "name": "ingress",
-          "description": "nginx-ingress will be removed in a future release.",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 5
-          },
-          "sourceLine": 1281,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-tests",
-          "name": "tests",
-          "description": "TESTS",
-          "type": "helm-value",
-          "properties": {
-            "nestedKeys": 1
-          },
-          "sourceLine": 1291,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-env",
-          "name": "env",
-          "description": "ENVIRONMENT VARIABLES",
-          "type": "helm-value",
-          "properties": {
-            "inlineValue": "{}",
-            "nestedKeys": 0
-          },
-          "sourceLine": 1297,
-          "sourceFile": "helm/openagentic/values.yaml"
-        },
-        {
-          "id": "helm-secrets",
-          "name": "secrets",
-          "description": "SECRETS",
-          "type": "helm-value",
-          "properties": {
-            "inlineValue": "{}",
-            "nestedKeys": 0
-          },
-          "sourceLine": 1302,
-          "sourceFile": "helm/openagentic/values.yaml"
-        }
-      ]
-    },
-    {
-      "id": "secrets-config",
-      "title": "Application Secrets",
-      "description": "18 secrets defined in SecretsConfig, organized by service area.",
-      "adminOnly": true,
-      "items": [
-        {
-          "id": "secret-database-url",
-          "name": "database.url",
-          "description": "Database - string (required)",
-          "type": "secret",
-          "properties": {
-            "section": "database",
-            "tsType": "string",
-            "optional": false
-          },
-          "sourceLine": 1,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-database-password",
-          "name": "database.password",
-          "description": "Database - string (required)",
-          "type": "secret",
+          "id": "SecretsConfig.url",
+          "name": "url",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "database",
-            "tsType": "string",
-            "optional": false
+            "tsType": "string"
           },
-          "sourceLine": 1,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-database-poolSize",
-          "name": "database.poolSize",
-          "description": "Database - number (required)",
-          "type": "secret",
+          "id": "SecretsConfig.password",
+          "name": "password",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "database",
-            "tsType": "number",
-            "optional": false
+            "tsType": "string"
           },
-          "sourceLine": 1,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-redis-url",
-          "name": "redis.url",
-          "description": "Redis - string (required)",
-          "type": "secret",
+          "id": "SecretsConfig.auth",
+          "name": "auth",
+          "description": "{",
+          "type": "ts-field",
           "properties": {
-            "section": "redis",
-            "tsType": "string",
-            "optional": false
+            "tsType": "{"
           },
-          "sourceLine": 4,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-redis-password",
-          "name": "redis.password",
-          "description": "Redis - string (optional)",
-          "type": "secret",
+          "id": "SecretsConfig.jwtSecret",
+          "name": "jwtSecret",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "redis",
-            "tsType": "string",
-            "optional": true
+            "tsType": "string"
           },
-          "sourceLine": 4,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-auth-jwtSecret",
-          "name": "auth.jwtSecret",
-          "description": "Authentication - string (required)",
-          "type": "secret",
+          "id": "SecretsConfig.azureClientId",
+          "name": "azureClientId",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "auth",
-            "tsType": "string",
-            "optional": false
+            "tsType": "string"
           },
-          "sourceLine": 5,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-auth-azureClientId",
-          "name": "auth.azureClientId",
-          "description": "Authentication - string (required)",
-          "type": "secret",
+          "id": "SecretsConfig.azureClientSecret",
+          "name": "azureClientSecret",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "auth",
-            "tsType": "string",
-            "optional": false
+            "tsType": "string"
           },
-          "sourceLine": 5,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-auth-azureClientSecret",
-          "name": "auth.azureClientSecret",
-          "description": "Authentication - string (required)",
-          "type": "secret",
+          "id": "SecretsConfig.azureTenantId",
+          "name": "azureTenantId",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "auth",
-            "tsType": "string",
-            "optional": false
+            "tsType": "string"
           },
-          "sourceLine": 5,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-auth-azureTenantId",
-          "name": "auth.azureTenantId",
-          "description": "Authentication - string (required)",
-          "type": "secret",
+          "id": "SecretsConfig.apiKey",
+          "name": "apiKey",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "auth",
-            "tsType": "string",
-            "optional": false
+            "tsType": "string"
           },
-          "sourceLine": 5,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-auth-apiKey",
-          "name": "auth.apiKey",
-          "description": "Authentication - string (required)",
-          "type": "secret",
+          "id": "SecretsConfig.services",
+          "name": "services",
+          "description": "{",
+          "type": "ts-field",
           "properties": {
-            "section": "auth",
-            "tsType": "string",
-            "optional": false
+            "tsType": "{"
           },
-          "sourceLine": 5,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-services-mcpProxyUrl",
-          "name": "services.mcpProxyUrl",
-          "description": "External Services - string (required)",
-          "type": "secret",
+          "id": "SecretsConfig.mcpProxyUrl",
+          "name": "mcpProxyUrl",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "services",
-            "tsType": "string",
-            "optional": false
+            "tsType": "string"
           },
-          "sourceLine": 13,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-services-vaultToken",
-          "name": "services.vaultToken",
-          "description": "External Services - string (required)",
-          "type": "secret",
+          "id": "SecretsConfig.vaultToken",
+          "name": "vaultToken",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "services",
-            "tsType": "string",
-            "optional": false
+            "tsType": "string"
           },
-          "sourceLine": 13,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-services-vaultAddress",
-          "name": "services.vaultAddress",
-          "description": "External Services - string (required)",
-          "type": "secret",
+          "id": "SecretsConfig.vaultAddress",
+          "name": "vaultAddress",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "services",
-            "tsType": "string",
-            "optional": false
+            "tsType": "string"
           },
-          "sourceLine": 13,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-services-milvusPassword",
-          "name": "services.milvusPassword",
-          "description": "External Services - string (required)",
-          "type": "secret",
+          "id": "SecretsConfig.milvusPassword",
+          "name": "milvusPassword",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "services",
-            "tsType": "string",
-            "optional": false
+            "tsType": "string"
           },
-          "sourceLine": 13,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-services-minioAccessKey",
-          "name": "services.minioAccessKey",
-          "description": "External Services - string (required)",
-          "type": "secret",
+          "id": "SecretsConfig.minioAccessKey",
+          "name": "minioAccessKey",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "services",
-            "tsType": "string",
-            "optional": false
+            "tsType": "string"
           },
-          "sourceLine": 13,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-services-minioSecretKey",
-          "name": "services.minioSecretKey",
-          "description": "External Services - string (required)",
-          "type": "secret",
+          "id": "SecretsConfig.minioSecretKey",
+          "name": "minioSecretKey",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "services",
-            "tsType": "string",
-            "optional": false
+            "tsType": "string"
           },
-          "sourceLine": 13,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-monitoring-sentryDsn",
-          "name": "monitoring.sentryDsn",
-          "description": "Monitoring - string (optional)",
-          "type": "secret",
+          "id": "SecretsConfig.monitoring",
+          "name": "monitoring",
+          "description": "{",
+          "type": "ts-field",
           "properties": {
-            "section": "monitoring",
-            "tsType": "string",
-            "optional": true
+            "tsType": "{"
           },
-          "sourceLine": 27,
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         },
         {
-          "id": "secret-monitoring-datadogApiKey",
-          "name": "monitoring.datadogApiKey",
-          "description": "Monitoring - string (optional)",
-          "type": "secret",
+          "id": "SecretsConfig.sentryDsn",
+          "name": "sentryDsn",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "monitoring",
-            "tsType": "string",
-            "optional": true
+            "tsType": "string"
           },
-          "sourceLine": 27,
+          "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
+        },
+        {
+          "id": "SecretsConfig.datadogApiKey",
+          "name": "datadogApiKey",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
           "sourceFile": "services/openagentic-api/src/config/secrets.config.ts"
         }
       ]

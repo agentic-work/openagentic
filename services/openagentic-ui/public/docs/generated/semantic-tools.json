@@ -1,190 +1,87 @@
 {
   "domain": "semantic-tools",
-  "title": "Semantic Tool Selection",
-  "description": "Intelligent tool selection with 3-tier search, intent-priority routing, and score-gap cutoff (max 15 tools per request).",
+  "title": "Semantic Tools",
+  "description": "MCP semantic search + tool ranking",
   "icon": "tool",
   "category": "tools",
-  "generatedAt": "2026-04-06T02:45:19.337Z",
+  "generatedAt": "2026-05-13T20:48:20.640Z",
   "sourceFiles": [
-    "services/openagentic-api/src/routes/chat/pipeline/mcp.stage.ts"
+    "services/openagentic-api/src/services/ToolSearchTool.ts"
   ],
   "sections": [
     {
-      "id": "tool-selection-constants",
-      "title": "Tool Selection Constants",
-      "description": "Hard limits and retrieval parameters for semantic tool selection.",
-      "adminOnly": true,
+      "id": "ToolSearchInput",
+      "title": "ToolSearchInput",
+      "description": "Interface ToolSearchInput",
+      "adminOnly": false,
       "items": [
         {
-          "id": "max-tools",
-          "name": "MAX_TOOLS",
-          "description": "Hard ceiling — LLMs perform BETTER with fewer, more relevant tools",
-          "type": "constant",
+          "id": "ToolSearchInput.query",
+          "name": "query",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "value": 15
+            "tsType": "string"
           },
-          "sourceLine": 93,
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/mcp.stage.ts"
+          "sourceFile": "services/openagentic-api/src/services/ToolSearchTool.ts"
         },
         {
-          "id": "const-RETRIEVAL_K",
-          "name": "RETRIEVAL_K",
-          "description": "Retrieval constant: 25/40",
-          "type": "constant",
+          "id": "ToolSearchInput.k",
+          "name": "k",
+          "description": "number",
+          "type": "ts-field",
           "properties": {
-            "withFilter": 25,
-            "withoutFilter": 40
-          }
-        },
-        {
-          "id": "const-MIN_PER_SERVER",
-          "name": "MIN_PER_SERVER",
-          "description": "Retrieval constant: 2",
-          "type": "constant",
-          "properties": {
-            "value": 2
-          }
-        },
-        {
-          "id": "const-MAX_TOTAL_TOOLS",
-          "name": "MAX_TOTAL_TOOLS",
-          "description": "Retrieval constant: 25",
-          "type": "constant",
-          "properties": {
-            "value": 25
-          }
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/ToolSearchTool.ts"
         }
       ]
     },
     {
-      "id": "search-tiers",
-      "title": "Search Tiers",
-      "description": "Tiered semantic search with automatic fallback between vector stores.",
+      "id": "ToolSearchResult",
+      "title": "ToolSearchResult",
+      "description": "Interface ToolSearchResult",
       "adminOnly": false,
       "items": [
         {
-          "id": "tier-pgvector",
-          "name": "pgvector (Primary)",
-          "description": "PostgreSQL pgvector with HNSW index — ACID-consistent tool embeddings, intent-priority routing, score-gap cutoff",
-          "type": "search-tier",
+          "id": "ToolSearchResult.ok",
+          "name": "ok",
+          "description": "boolean",
+          "type": "ts-field",
           "properties": {
-            "priority": 1,
-            "store": "PostgreSQL pgvector"
-          }
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/ToolSearchTool.ts"
         },
         {
-          "id": "tier-milvus",
-          "name": "Milvus (Fallback)",
-          "description": "GPU-accelerated vector search — used only if pgvector is DOWN",
-          "type": "search-tier",
+          "id": "ToolSearchResult.output",
+          "name": "output",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "priority": 2,
-            "store": "Milvus"
-          }
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/ToolSearchTool.ts"
         },
         {
-          "id": "tier-redis",
-          "name": "Redis (Emergency)",
-          "description": "Emergency all-tools dump — used only if BOTH vector stores are DOWN",
-          "type": "search-tier",
+          "id": "ToolSearchResult.error",
+          "name": "error",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "priority": 3,
-            "store": "Redis"
-          }
-        }
-      ]
-    },
-    {
-      "id": "intent-routing",
-      "title": "Intent Routing",
-      "description": "Server-first routing with intent classification distinguishes ACTION verbs from CONTENT queries.",
-      "adminOnly": false,
-      "items": [
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/ToolSearchTool.ts"
+        },
         {
-          "id": "intent-action",
-          "name": "ACTION intent",
-          "description": "Action verbs (create, deploy, delete, scale) route to primary servers with 2x similarity boost",
-          "type": "intent-type",
+          "id": "ToolSearchResult.discoveredTools",
+          "name": "discoveredTools",
+          "description": "ReadonlyArray<any>",
+          "type": "ts-field",
           "properties": {
-            "boostFactor": 2
-          }
-        },
-        {
-          "id": "intent-content",
-          "name": "CONTENT intent",
-          "description": "Informational queries (list, describe, get, show) route to context servers as supplementary results",
-          "type": "intent-type"
-        },
-        {
-          "id": "layer-1",
-          "name": "Layer 1",
-          "description": "Classify query → target servers (reduces 163 → 8-30 candidates)",
-          "type": "routing-layer",
-          "properties": {
-            "layer": 1
-          }
-        },
-        {
-          "id": "layer-2",
-          "name": "Layer 2",
-          "description": "pgvector semantic search with server filter + score-gap cutoff",
-          "type": "routing-layer",
-          "properties": {
-            "layer": 2
-          }
-        },
-        {
-          "id": "layer-3",
-          "name": "Layer 3",
-          "description": "Hard ceiling (never send > MAX_TOOLS to LLM)",
-          "type": "routing-layer",
-          "properties": {
-            "layer": 3
-          }
-        },
-        {
-          "id": "layer-1",
-          "name": "Layer 1",
-          "description": "Intent-priority routing — distinguish ACTION from CONTENT",
-          "type": "routing-layer",
-          "properties": {
-            "layer": 1
-          }
-        },
-        {
-          "id": "layer-3",
-          "name": "Layer 3",
-          "description": "Hard ceiling — never exceed MAX_TOOLS from semantic search",
-          "type": "routing-layer",
-          "properties": {
-            "layer": 3
-          }
-        }
-      ]
-    },
-    {
-      "id": "additional-tool-sources",
-      "title": "Additional Tool Sources",
-      "description": "Non-MCP tools injected into the LLM context alongside semantically selected MCP tools.",
-      "adminOnly": false,
-      "items": [
-        {
-          "id": "source-data-layer",
-          "name": "Data Layer Tools",
-          "description": "query_data and list_datasets tools for drilling into large tool results (>16KB auto-stored)",
-          "type": "tool-source"
-        },
-        {
-          "id": "source-synth",
-          "name": "Synth Tools",
-          "description": "Dynamic tool synthesis definitions, conditionally visible to LLM",
-          "type": "tool-source"
-        },
-        {
-          "id": "source-memory",
-          "name": "Memory Tools",
-          "description": "Agent memory retrieval and storage tools",
-          "type": "tool-source"
+            "tsType": "ReadonlyArray<any>"
+          },
+          "sourceFile": "services/openagentic-api/src/services/ToolSearchTool.ts"
         }
       ]
     }

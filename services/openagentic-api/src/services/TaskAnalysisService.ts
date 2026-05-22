@@ -1,15 +1,14 @@
 /**
- * Task Analysis Service - Intelligent Model Routing
+ * Task Analysis Service — Intelligent Model Routing
  *
- * Analyzes user requests to determine optimal model routing based on complexity.
+ * 2026-04-19 — slider-ripped (task #144). The intelligence slider was removed.
+ * Complexity detection stays here (classifies simple/moderate/complex/expert)
+ * but picks from ModelConfigurationService.defaultModel. SmartModelRouter
+ * applies the FCA floor / destructive / infra-ops escalation on top.
+ * Per-user spend caps live in UserModelBudgetService and are enforced at
+ * LLM dispatch time.
  *
- * CRITICAL: NO hardcoded providers or models!
- * Uses ModelConfigurationService to get configured models from database/env.
- * Provider routing is delegated to ProviderManager which maintains the actual
- * model-to-provider mappings from provider configuration.
- *
- * This service ONLY analyzes task complexity and returns analysis.
- * Model selection uses the centralized ModelConfigurationService.
+ * NO slider position. NO tier branching by position. NO sliderConfig field.
  */
 
 import type { Logger } from 'pino';
@@ -42,18 +41,9 @@ export interface TaskRequirements {
   hasImages?: boolean;
   tools?: any[];
   requestedModel?: string;  // Model explicitly requested by user/system
-  sliderConfig?: {
-    position: number;       // 0-100
-    costWeight: number;     // Higher = prefer cheaper models
-    qualityWeight: number;  // Higher = prefer quality models
-    enableThinking: boolean;
-    source: 'user' | 'global' | 'default' | 'budget-auto-adjust';
-  };
-  // Caller-supplied metadata that lets specific frontends opt out of slider-driven
-  // routing. Used by the workflow AI builder which has a huge system prompt
-  // (full canvas state + workflow JSON + MCP tool list) and a tiny user message —
-  // the slider-based heuristic would route it to a cheap small-context model that
-  // silently truncates the system prompt and "doesn't see the flow context".
+  // Caller-supplied metadata. AI Builder requests carry a huge system prompt
+  // (full canvas state + flow JSON + MCP tool list = 10k+ chars) but a short
+  // user message; set `source: 'ai-builder'` to force premium-tier routing.
   metadata?: {
     source?: string;          // e.g. 'ai-builder', 'chat', 'agent-loop'
     requiresJSON?: boolean;   // structured output requirement
@@ -66,7 +56,7 @@ export class TaskAnalysisService {
   private modelConfig: ModelConfiguration | null = null;
 
   constructor(private logger: Logger) {
-    this.logger.info('[TaskAnalysis] Initialized - using ModelConfigurationService for model selection');
+    this.logger.info('[TaskAnalysis] Initialized — slider removed; model selection via ModelConfigurationService + SmartModelRouter');
   }
 
   /**
@@ -80,76 +70,32 @@ export class TaskAnalysisService {
   }
 
   /**
-   * Get the appropriate model based on slider position and task complexity
-   * Uses ModelConfigurationService tiers with robust fallback
+   * Pick the default chat model. Routing refinement (function-calling floor,
+   * destructive escalation, infra-ops escalation) happens inside
+   * SmartModelRouter at dispatch time. Per-user budget caps are enforced by
+   * UserModelBudgetService at dispatch time.
    */
-  private async getModelForSliderPosition(position: number, complexity: 'simple' | 'moderate' | 'complex' | 'expert'): Promise<string> {
-    try {
-      const config = await this.getModelConfig();
-      const tiers = config?.sliderConfig?.tiers;
-
-      // PREMIUM OVERRIDE: complex/expert tasks ALWAYS use premium model (regardless of slider)
-      // gpt-oss/economy models cannot handle artifact creation, multi-cloud ops, security audits, etc.
-      if ((complexity === 'expert' || complexity === 'complex') && tiers?.premium?.modelId) {
-        return tiers.premium.modelId;
-      }
-
-      // SIMPLE tasks ALWAYS use economical (gpt-oss is free — no reason to waste cloud tokens)
-      if (complexity === 'simple' && tiers?.economical?.modelId) {
-        return tiers.economical.modelId;
-      }
-
-      // ECONOMICAL MODE (slider 0-40): Use economical for moderate tasks too
-      if (position <= 40 && tiers?.economical?.modelId) {
-        return tiers.economical.modelId;
-      }
-
-      // PREMIUM MODE (slider 61-100): Use premium for moderate+ tasks
-      if (position > 60 && tiers?.premium?.modelId) {
-        return tiers.premium.modelId;
-      }
-
-      // BALANCED MODE (slider 41-60, moderate tasks): Use balanced tier
-      if (tiers?.balanced?.modelId) {
-        return tiers.balanced.modelId;
-      }
-
-      // Fallback to default model from config
-      if (config?.defaultModel?.modelId) {
-        return config.defaultModel.modelId;
-      }
-    } catch (err) {
-      this.logger.error({ err }, '[TaskAnalysis] Failed to get model config');
-    }
-
-    // Ultimate fallback - use environment DEFAULT_MODEL
-    // CRITICAL: Do NOT hardcode any model IDs! If nothing is configured, return undefined
-    // and let the calling code handle it (completion stage has its own fallback logic)
-    const fallback = process.env.DEFAULT_MODEL || process.env.DEFAULT_CHAT_MODEL;
-    if (fallback) {
-      this.logger.warn({ fallback }, '[TaskAnalysis] Using environment fallback model');
-      return fallback;
-    }
-    this.logger.error('[TaskAnalysis] No fallback model configured - DEFAULT_MODEL or DEFAULT_CHAT_MODEL env var required');
-    throw new Error('No model configured. Set DEFAULT_MODEL or configure LLM providers in admin.');
+  private async getDefaultModel(): Promise<string> {
+    // Registry SoT: delegate to ModelConfigurationService which queries
+    // admin.model_role_assignments where role='chat' + enabled=true ordered
+    // by priority ASC. No env-var fallback — kills DEFAULT_MODEL /
+    // DEFAULT_CHAT_MODEL overrides per 2026-04-23 user directive (Registry
+    // must be the sole SoT; env vars leaked wrong defaults through the
+    // chat pipeline's stage-2 summarizer).
+    return ModelConfigurationService.getDefaultChatModel();
   }
 
   /**
-   * Analyze the task requirements and suggest a model
+   * Analyze the task requirements and suggest a model.
    *
-   * NOTE: This method analyzes complexity and uses ModelConfigurationService for model selection.
-   * NO hardcoded provider names or model IDs - everything comes from centralized config.
-   * Provider selection is handled by ProviderManager based on its model-to-provider mapping.
-   *
-   * SLIDER INTEGRATION (uses ModelConfigurationService tiers):
-   * - Position 0-40: ECONOMICAL tier model
-   * - Position 41-60: BALANCED tier model
-   * - Position 61-100: PREMIUM tier model
+   * NOTE: model selection is delegated to ModelConfigurationService.defaultModel
+   * plus SmartModelRouter capability scoring. NO slider position influences
+   * the choice here — per-user per-model budget caps
+   * (UserModelBudgetService) gate specific models at dispatch time.
    */
   async analyzeTask(requirements: TaskRequirements): Promise<TaskAnalysis> {
     const lastMessage = this.getLastUserMessage(requirements.messages);
     const toolsAvailable = requirements.tools && requirements.tools.length > 0;
-    const slider = requirements.sliderConfig;
     const config = await this.getModelConfig();
 
     if (toolsAvailable) {
@@ -157,17 +103,7 @@ export class TaskAnalysisService {
         toolsAvailable,
         toolCount: requirements.tools?.length,
         messagePreview: lastMessage.substring(0, 80)
-      }, '🔧 [TaskAnalysis] Tools available - LLM will decide if needed');
-    }
-
-    // Log slider config for debugging
-    if (slider) {
-      this.logger.info({
-        sliderPosition: slider.position,
-        costWeight: slider.costWeight,
-        qualityWeight: slider.qualityWeight,
-        source: slider.source
-      }, '🎚️ [TaskAnalysis] Slider config received');
+      }, '[TaskAnalysis] Tools available - LLM will decide if needed');
     }
 
     // If model is explicitly requested, use it (honor user's choice)
@@ -186,16 +122,15 @@ export class TaskAnalysisService {
 
     // FLOWS AI BUILDER OVERRIDE: workflow builder requests have a huge system
     // prompt (full canvas state + flow definition + MCP tool list = 10k+ chars)
-    // but a short user message. The slider-driven heuristic routes them to a
-    // cheap small-context model that truncates the system prompt and loses the
-    // flow context. Force premium-tier classification regardless of message text.
+    // but a short user message. Force premium-tier classification regardless
+    // of message text so the structured JSON generation gets the model it needs.
     if (requirements.metadata?.source === 'ai-builder' || requirements.metadata?.requiresJSON === true) {
-      const premiumModel = config.sliderConfig?.tiers?.premium?.modelId || config.defaultModel.modelId;
+      const premiumModel = config.defaultModel.modelId;
       this.logger.info({
         source: requirements.metadata?.source,
         contextSize: requirements.metadata?.contextSize,
         selectedModel: premiumModel,
-      }, '🎨 [TaskAnalysis] AI Builder request detected → forcing premium tier');
+      }, '[TaskAnalysis] AI Builder request detected → forcing default/premium tier');
       return {
         taskType: 'standard',
         confidence: 0.95,
@@ -238,38 +173,38 @@ export class TaskAnalysisService {
       };
     }
 
-    // Analyze complexity for routing
+    // Analyze complexity for routing hint — SmartModelRouter applies the
+    // actual candidate floor (FCA ≥ 0.83 simple / 0.90 complex). The
+    // suggested model returned here is the default; the router can swap
+    // it if its scoring picks a better candidate.
     const reasoningAnalysis = this.analyzeReasoningComplexity(lastMessage);
-    const sliderPosition = slider?.position ?? config.sliderConfig.defaultPosition;
 
-    // Get model based on slider position and complexity using centralized config
-    const selectedModel = await this.getModelForSliderPosition(sliderPosition, reasoningAnalysis.complexity);
-
-    // Determine cost estimate based on tier
-    let estimatedCost: TaskAnalysis['estimatedCost'] = 'low';
-    if (sliderPosition <= 20) estimatedCost = 'minimal';
-    else if (sliderPosition <= 40) estimatedCost = 'low';
-    else if (sliderPosition <= 60) estimatedCost = 'medium';
-    else if (sliderPosition <= 90) estimatedCost = 'high';
-    else estimatedCost = 'premium';
+    // Bug fix (2026-04-26): never leak the 'auto' / 'model-router' sentinel
+    // out of TaskAnalysisService. ProviderManager's pre-flight gate rejects
+    // any model id no enabled provider serves — and "auto" is not a model.
+    // Earlier code returned 'auto' for simple prompts on the assumption
+    // that "the downstream completion stage resolves auto through
+    // SmartModelRouter before dispatching" — but no such resolver exists,
+    // so every simple-prompt workflow LLM node failed with HTTP 500. We
+    // resolve to the Registry default here, in one place, for every path.
+    let selectedModel = await this.getDefaultModel();
+    const reasoning = `${reasoningAnalysis.complexity} complexity → ${selectedModel} (router will refine by capability)`;
 
     this.logger.info({
-      sliderPosition,
       complexity: reasoningAnalysis.complexity,
       selectedModel,
-      estimatedCost,
       configSource: config.source
-    }, '🎚️ [TaskAnalysis] Model selected via ModelConfigurationService');
+    }, '[TaskAnalysis] Model selected via ModelConfigurationService (slider-free)');
 
     return {
       taskType: reasoningAnalysis.isComplex ? 'reasoning' : 'standard',
       confidence: reasoningAnalysis.confidence,
       suggestedModel: selectedModel,
-      reasoning: `Slider ${sliderPosition}% + ${reasoningAnalysis.complexity} complexity → ${selectedModel}`,
+      reasoning,
       requiresVision: false,
       requiresImageGen: false,
       complexity: reasoningAnalysis.complexity,
-      estimatedCost,
+      estimatedCost: 'medium',
       suggestedAgent: reasoningAnalysis.suggestedAgent,
     };
   }
@@ -356,7 +291,11 @@ export class TaskAnalysisService {
     }
 
     // Single-resource cloud operation — complex but doesn't necessarily need delegation.
-    const cloudOpsPattern = /\b(create|deploy|provision|launch|spin up|set up)\b.*\b(vm|instance|server|cluster|database|container|lambda|function|bucket|disk|network|resource)\b/i;
+    // NOTE: `function` narrowed to named FaaS forms (lambda function / cloud function /
+    // azure function) to prevent false-positives on "make me a function to do X".
+    // `resource` narrowed to cloud-scoped forms (cloud resource / resource group) to
+    // prevent false-positives on "create a resource for the website".
+    const cloudOpsPattern = /\b(create|deploy|provision|launch|spin up|set up)\b.*\b(vm|instance|server|cluster|database|container|lambda\s+function|cloud\s+function|azure\s+function|bucket|disk|network|cloud\s+resource|resource\s+group)\b/i;
     if (cloudOpsPattern.test(message)) {
       return { isComplex: true, confidence: 0.85, reason: 'Cloud operation detected', complexity: 'complex' };
     }
@@ -409,7 +348,6 @@ export class TaskAnalysisService {
 
     const deepMatches = deepThinkingKeywords.filter(keyword => lowerMessage.includes(keyword));
     // Require 2+ deep keywords AND length > 300 for complex classification.
-    // Previously: any message >150 chars was complex, forcing premium regardless of slider.
     if (deepMatches.length >= 2 && message.length > 300) {
       return {
         isComplex: true,
@@ -420,7 +358,6 @@ export class TaskAnalysisService {
     }
 
     // 2+ deep keywords but shorter message, or 1 deep keyword → moderate (not complex).
-    // Previously: single keyword was classified complex, bypassing slider entirely.
     if (deepMatches.length >= 2 || deepMatches.length === 1) {
       return {
         isComplex: deepMatches.length >= 2,

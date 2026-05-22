@@ -13,8 +13,14 @@
 import crypto from 'crypto';
 import { prisma } from '../utils/prisma.js';
 import { loggers } from '../utils/logger.js';
+import { DEFAULT_SERVICE_PROMPTS } from './prompt/ServicePromptService.js';
 
 const logger = loggers.services;
+
+// Minimal interface for the injected ServicePromptService.
+interface ServicePromptLike {
+  getPrompt(key: string): Promise<string>;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -48,6 +54,44 @@ interface SlackBlockKitMessage {
 // ---------------------------------------------------------------------------
 
 export class SlackIntegrationService {
+  private readonly servicePromptSvc?: ServicePromptLike;
+
+  /**
+   * @param servicePromptSvc Optional injected ServicePromptService. When
+   * provided, system prompts are read from DB. Falls back to inline defaults
+   * from DEFAULT_SERVICE_PROMPTS when unavailable (Sprint W — 2026-05-19).
+   */
+  constructor(servicePromptSvc?: ServicePromptLike) {
+    this.servicePromptSvc = servicePromptSvc;
+  }
+
+  /**
+   * Get the Slack integration system prompt from DB (Sprint W).
+   * Falls back to the DEFAULT_SERVICE_PROMPTS default when the DB service
+   * is unavailable.
+   */
+  async getSlackSystemPrompt(): Promise<string> {
+    let fallbackReason = 'NO-SVC-INJECTED';
+    if (this.servicePromptSvc) {
+      try {
+        return await this.servicePromptSvc.getPrompt('slack.integration_prompt');
+      } catch (err) {
+        fallbackReason = 'DB-READ-THREW';
+        logger.warn(
+          { err, key: 'slack.integration_prompt', reason: fallbackReason },
+          '[SlackIntegration] getSlackSystemPrompt DB read failed, using inline default',
+        );
+      }
+    }
+    // Loud fallback signal — DEFAULT_SERVICE_PROMPTS constant in memory can
+    // drift from the DB-edited row. Log every fallback at WARN so drift is
+    // visible in production logs. Gap #3 — 2026-05-20.
+    logger.warn(
+      { key: 'slack.integration_prompt', reason: fallbackReason },
+      '[ServicePrompt fallback] using DEFAULT_SERVICE_PROMPTS constant — DB row missing or read failed (slack.integration_prompt)',
+    );
+    return DEFAULT_SERVICE_PROMPTS['slack.integration_prompt'].body;
+  }
 
   /**
    * Verify Slack request signature using HMAC-SHA256
@@ -58,7 +102,11 @@ export class SlackIntegrationService {
 
     const sigBasestring = `v0:${timestamp}:${body}`;
     const mySignature = 'v0=' + crypto.createHmac('sha256', signingSecret).update(sigBasestring).digest('hex');
-    return crypto.timingSafeEqual(Buffer.from(mySignature), Buffer.from(signature));
+
+    const myBuf = Buffer.from(mySignature);
+    const sigBuf = Buffer.from(signature);
+    if (sigBuf.length !== myBuf.length) return false; // length guard — prevents ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH
+    return crypto.timingSafeEqual(myBuf, sigBuf);
   }
 
   /**
@@ -133,39 +181,8 @@ export class SlackIntegrationService {
         orderBy: { name: 'asc' },
       });
 
-      // Auto-match workflow based on message keywords
-      const lowerMsg = cleanMessage.toLowerCase();
-      let matchedWorkflow = null;
-
-      // Keyword-to-workflow matching
-      const keywordMap: Record<string, string[]> = {
-        'cost': ['Cost Optimization Advisor', 'Multi-Cloud Cost Comparison', 'AWS Cost & Security Audit'],
-        'deploy': ['Deployment Pipeline', 'DevOps Deploy Pipeline'],
-        'incident': ['P1 Incident Response', 'Incident Response Automator'],
-        'security': ['Security Audit Agent', 'Security Compliance Scanner'],
-        'k8s': ['K8s Cluster Ops & Incident Response'],
-        'kubernetes': ['K8s Cluster Ops & Incident Response'],
-        'pod': ['K8s Cluster Ops & Incident Response'],
-        'log': ['Log Analysis & Alerting', 'Data Pipeline Monitor'],
-        'drift': ['Infrastructure Drift Detector'],
-        'compliance': ['Compliance Audit Agent'],
-        'news': ['Daily AI News Digest'],
-        'research': ['Deep Research Agent'],
-        'review': ['Code Review Agent', 'Automated PR Review Pipeline'],
-        'azure': ['Azure Infrastructure Health Check'],
-        'aws': ['AWS Cost & Security Audit'],
-        'threat': ['Threat Intelligence Aggregator'],
-        'bug': ['Bug Triage & Reproduction'],
-        'support': ['Tier-1 Support Deflection'],
-        'onboard': ['User Onboarding Workflow'],
-      };
-
-      for (const [keyword, names] of Object.entries(keywordMap)) {
-        if (lowerMsg.includes(keyword)) {
-          matchedWorkflow = workflows.find(w => names.includes(w.name));
-          if (matchedWorkflow) break;
-        }
-      }
+      // Auto-match workflow based on semantic similarity to name + description
+      const matchedWorkflow = this.matchWorkflowByMessage(workflows, cleanMessage);
 
       if (matchedWorkflow) {
         // Execute the matched workflow
@@ -202,7 +219,13 @@ export class SlackIntegrationService {
           body: JSON.stringify({
             model: 'auto',
             messages: [
-              { role: 'system', content: 'You are OpenAgentic AI, responding via Slack. Be concise, use Slack markdown (*bold*, _italic_, `code`, ```code blocks```). If the user wants to run a workflow, tell them to use `/run <workflow-name>`. Available workflows include: ' + workflows.slice(0, 10).map(w => w.name).join(', ') + '.' },
+              {
+                role: 'system',
+                content: (await this.getSlackSystemPrompt()) +
+                  (workflows.length > 0
+                    ? ' Available workflows include: ' + workflows.slice(0, 10).map((w: any) => w.name).join(', ') + '.'
+                    : ''),
+              },
               { role: 'user', content: cleanMessage },
             ],
             max_tokens: 1024,
@@ -255,6 +278,56 @@ export class SlackIntegrationService {
         thread_ts: event.event?.thread_ts || event.event?.ts,
       });
     }
+  }
+
+  /**
+   * Match a user's Slack message to the best-fitting workflow using token-overlap
+   * scoring against workflow names and descriptions. No specific workflow names are
+   * referenced in this method — it operates purely on runtime data from the DB.
+   *
+   * Scoring (per workflow):
+   *   - Each token from the message that appears in the workflow name:        +3 pts
+   *   - Each token from the message that appears in the workflow description: +1 pt
+   *   (Tokens shorter than 3 characters are skipped to avoid noise.)
+   *
+   * A workflow is only returned when its score clears the MATCH_THRESHOLD.
+   * The highest-scoring candidate above the threshold wins.
+   */
+  private matchWorkflowByMessage(
+    workflows: Array<{ id: string; name: string; description: string | null }>,
+    msg: string,
+  ): { id: string; name: string; description: string | null } | null {
+    const MATCH_THRESHOLD = 1; // minimum score to be considered a match
+    const MIN_TOKEN_LEN = 3;   // ignore very short words (articles, prepositions, etc.)
+
+    const msgTokens = msg
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(t => t.length >= MIN_TOKEN_LEN);
+
+    if (msgTokens.length === 0) return null;
+
+    let bestScore = 0;
+    let bestWorkflow: (typeof workflows)[0] | null = null;
+
+    for (const wf of workflows) {
+      const nameLower = wf.name.toLowerCase();
+      const descLower = (wf.description ?? '').toLowerCase();
+
+      let score = 0;
+      for (const token of msgTokens) {
+        if (nameLower.includes(token)) score += 3;
+        else if (descLower.includes(token)) score += 1;
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestWorkflow = wf;
+      }
+    }
+
+    return bestScore >= MATCH_THRESHOLD ? bestWorkflow : null;
   }
 
   /**

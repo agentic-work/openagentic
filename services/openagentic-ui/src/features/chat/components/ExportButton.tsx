@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Download, FileText, FileDown, File, Check } from '@/shared/icons';
 import { ChatMessage } from '@/types';
+import { ClientExportService } from '@/features/chat/services/export/client';
+import type { ExportData, PDFGenerationOptions } from '@/features/chat/services/export/types';
 
 interface ExportButtonProps {
   messages: ChatMessage[];
@@ -46,6 +48,98 @@ const ExportButton: React.FC<ExportButtonProps> = ({
     }
   ];
 
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const exportPDFClientSide = async () => {
+    const now = new Date();
+    const exportData: ExportData = {
+      session: {
+        id: 'current',
+        title: sessionTitle,
+        messages: messages.filter(m => m.role !== 'system') as any,
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      } as any,
+      exportOptions: {
+        format: 'pdf',
+        includeTimestamps: true,
+        includeMetadata: false,
+        theme,
+        pageSize: 'A4',
+        orientation: 'portrait',
+        quality: 'medium',
+      } as PDFGenerationOptions,
+      exportedAt: now.toISOString(),
+    };
+
+    const service = new ClientExportService();
+    const result = await service.exportToPDF(exportData);
+    if (!result.success || !result.data || !result.filename) {
+      throw new Error(result.error || 'Client PDF export failed');
+    }
+    downloadBlob(result.data as Blob, result.filename);
+  };
+
+  const exportViaBackend = async (format: Exclude<ExportFormat, 'pdf'>) => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const token = localStorage.getItem('auth_token');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      'X-OpenAgentic-Frontend': 'true',
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const exportMessages = messages
+      .filter(msg => msg.role !== 'system')
+      .map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp,
+        metadata: msg.metadata,
+        toolCalls: msg.toolCalls,
+        mcpCalls: msg.mcpCalls,
+      }));
+
+    const response = await fetch(`${apiUrl}/api/render/export`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        messages: exportMessages,
+        options: {
+          format,
+          includeTimestamps: true,
+          includeMetadata: false,
+          title: sessionTitle,
+          author: 'OpenAgenticChat',
+          theme,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.details || error.error || 'Export failed');
+    }
+
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = `${sessionTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${Date.now()}.${format}`;
+    if (contentDisposition) {
+      const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition);
+      if (matches && matches[1]) filename = matches[1].replace(/['"]/g, '');
+    }
+    downloadBlob(await response.blob(), filename);
+  };
+
   const handleExport = async (format: ExportFormat) => {
     if (messages.length === 0) {
       alert('No messages to export');
@@ -56,83 +150,17 @@ const ExportButton: React.FC<ExportButtonProps> = ({
     setExportedFormat(null);
 
     try {
-      // Get API endpoint from environment or default
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-
-      // Get auth token
-      const token = localStorage.getItem('auth_token');
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-        'X-OpenAgentic-Frontend': 'true'
-      };
-
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      if (format === 'pdf') {
+        await exportPDFClientSide();
+      } else {
+        await exportViaBackend(format);
       }
 
-      // Prepare messages for export (filter out system messages if desired)
-      const exportMessages = messages
-        .filter(msg => msg.role !== 'system')
-        .map(msg => ({
-          id: msg.id,
-          role: msg.role,
-          content: msg.content,
-          timestamp: msg.timestamp,
-          metadata: msg.metadata,
-          toolCalls: msg.toolCalls,
-          mcpCalls: msg.mcpCalls
-        }));
-
-      const response = await fetch(`${apiUrl}/api/render/export`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          messages: exportMessages,
-          options: {
-            format,
-            includeTimestamps: true,
-            includeMetadata: false, // Set to true to include tool calls
-            title: sessionTitle,
-            author: 'OpenAgenticChat',
-            theme
-          }
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.details || 'Export failed');
-      }
-
-      // Get filename from Content-Disposition header or generate one
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = `${sessionTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${Date.now()}.${format}`;
-
-      if (contentDisposition) {
-        const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition);
-        if (matches && matches[1]) {
-          filename = matches[1].replace(/['"]/g, '');
-        }
-      }
-
-      // Download the file
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      // Show success state
       setExportedFormat(format);
       setTimeout(() => {
         setExportedFormat(null);
         setIsOpen(false);
       }, 2000);
-
     } catch (error) {
       console.error('Export failed:', error);
       alert(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

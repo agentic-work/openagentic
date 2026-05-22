@@ -5,6 +5,12 @@ import { CostTracker } from './CostTracker';
 import { MCPBridge } from '../tools/MCPBridge';
 import { logger } from '../utils/logger';
 import { getRedis } from '../utils/redis';
+import {
+  projectFlowToolToOpenAi,
+  buildFlowToolMap,
+  isFlowTool,
+  type FlowToolSchema,
+} from '../tools/flowTools';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -61,7 +67,9 @@ export interface RunContext {
   sessionMessages?: Array<{ role: string; content: string }>;
   userDisplayName?: string;
   userEmail?: string;
-  sliderPosition?: number; // User's intelligence slider position (0-100)
+  // sliderPosition removed 0.6.7 — intelligence slider ripped. Model is
+  // now decided by TieredFunctionCalling + admin defaults; sub-agents
+  // inherit the chat's resolved model.
   userMessage?: string; // The current user request that triggered delegation
   // GAP-#277: Azure AD ID token (separate audience from userToken). Injected as
   // X-Azure-ID-Token / X-AWS-ID-Token by MCPBridge so sub-agent MCP tool calls
@@ -237,16 +245,9 @@ export class AgentRunner {
     let modelUsed = spec.model;
     let fallbackUsed = false;
 
-    // Set slider position based on agent role for cost/quality balance
-    // if the user's actual slider wasn't forwarded from the chat session.
-    if (ctx.sliderPosition === undefined) {
-      const role = spec.role || 'custom';
-      const premiumRoles = ['tool_orchestration', 'reasoning', 'planning', 'artifact_creation', 'oat_function_builder'];
-      const economicalRoles = ['data_query', 'summarization', 'validation'];
-      if (premiumRoles.includes(role)) ctx.sliderPosition = 75;
-      else if (economicalRoles.includes(role)) ctx.sliderPosition = 40;
-      else ctx.sliderPosition = 55;
-    }
+    // Intelligence slider was ripped in 0.6.7. Agents now inherit the
+    // parent chat's resolved model (TFC-decided) instead of running an
+    // independent tier pick. No per-role slider fallback needed.
     let toolCallRounds = 0;
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
@@ -486,6 +487,13 @@ ${parentRag.slice(0, 3).map(renderChunk).join('\n\n')}
       agentTools = [...agentTools, ...workflowTools];
     }
 
+    // V1.1 flow_tool — inject user's saved flows tagged 'agent-tool' as
+    // dynamic per-turn tools. One round-trip to api at agent start; the
+    // routing map is consulted in the tool-dispatch switch below.
+    const flowToolMap = await this.loadUserFlowTools(ctx, (tools) => {
+      agentTools = [...agentTools, ...tools.map(projectFlowToolToOpenAi)];
+    });
+
     // Global image gen cap per execution (shared across all agents in the same execution)
     // Uses RunContext to track across sub-agents — prevents 15+ images from sub-delegation
     if (!(ctx as any)._globalImageGenCount) (ctx as any)._globalImageGenCount = 0;
@@ -704,6 +712,14 @@ ${parentRag.slice(0, 3).map(renderChunk).join('\n\n')}
           } else if (WORKFLOW_TOOLS.includes(toolName)) {
             // Handle workflow CRUD tools via direct HTTP to API
             result = await this.executeWorkflowTool(toolName, args, ctx);
+          } else if (isFlowTool(toolName, flowToolMap)) {
+            // V1.1 flow_tool — dispatch to the wrapped saved flow.
+            result = await this.executeFlowToolInvocation(
+              flowToolMap.get(toolName)!,
+              toolName,
+              args,
+              ctx,
+            );
           } else {
             result = await this.mcpBridge.callTool(toolName, args, authHeaders);
           }
@@ -855,13 +871,9 @@ ${parentRag.slice(0, 3).map(renderChunk).join('\n\n')}
     // Enable thinking for Claude models (Bedrock or direct Anthropic)
     const isThinkingModel = model.includes('claude') || model.includes('anthropic');
 
-    // Determine slider position for model selection:
-    // Use user's actual slider if available, otherwise default to balanced (55).
-    // The outer agent orchestrator should set ctx.sliderPosition based on the
-    // agent's role and task complexity. If not set, use 55 (balanced) which
-    // lets Smart Router pick based on message content analysis.
-    const agentSlider = ctx.sliderPosition ?? 55;
-
+    // slider_position removed in 0.6.7 — the /api/chat/completions and
+    // /v1/messages endpoints no longer honor it. Model is resolved via
+    // TFC + admin defaults upstream.
     const requestBody: Record<string, any> = {
       model,
       messages,
@@ -869,7 +881,6 @@ ${parentRag.slice(0, 3).map(renderChunk).join('\n\n')}
       max_tokens: 8192,
       tools: tools.length > 0 ? tools : undefined,
       stream: false,
-      slider_position: agentSlider,
     };
 
     if (isThinkingModel) {
@@ -985,7 +996,20 @@ ${parentRag.slice(0, 3).map(renderChunk).join('\n\n')}
     };
     if (ctx.userToken) headers['Authorization'] = `Bearer ${ctx.userToken}`;
     if (ctx.isAdmin) headers['X-Is-Admin'] = 'true';
-    if (ctx.userGroups.length) headers['X-User-Groups'] = ctx.userGroups.join(',');
+    // Sev-0 #927 (2026-05-17) — defensive length-on-undefined guard.
+    //
+    // Pre-fix: `if (ctx.userGroups.length)` threw `Cannot read properties of
+    // undefined (reading 'length')` when the chat-side OpenAgenticProxyClient
+    // sent a body without `userGroups` AND the proxy's execute-sync
+    // handler took the internal-caller-with-userId branch that SKIPS the
+    // body.userGroups = user.groups override (services/openagentic-proxy/src/
+    // routes/execute.ts:68-74). Pinned by api-side
+    // subagentDispatch.undefinedLength.test.ts.
+    //
+    // The api side now ships `userGroups: []` defensively so this access
+    // is safe from the chat path; this optional-chain is defense-in-depth
+    // for any future internal caller that omits the field.
+    if (ctx.userGroups && ctx.userGroups.length > 0) headers['X-User-Groups'] = ctx.userGroups.join(',');
     if (ctx.userEmail) headers['X-User-Email'] = ctx.userEmail;
     // GAP-#277: pass the user's Azure AD ID token (separate audience from
     // accessToken) so MCP servers can do OBO for Azure ARM / AWS Identity Center
@@ -1094,6 +1118,102 @@ ${parentRag.slice(0, 3).map(renderChunk).join('\n\n')}
     } catch (err: any) {
       logger.warn({ err: err.message, status: err.response?.status }, 'Image generation failed in agent');
       return { error: `Image generation failed: ${err.response?.data?.error || err.message}` };
+    }
+  }
+
+  /**
+   * V1.1 flow_tool: fetch the user's saved flows tagged `agent-tool` and
+   * surface them as a name→flowId map. The caller injects projected
+   * OpenAI-tool defs into `agentTools` via the side-effect callback. On any
+   * failure we log + return an empty map; flow-tool injection is best-effort.
+   */
+  private async loadUserFlowTools(
+    ctx: RunContext,
+    onTools: (tools: FlowToolSchema[]) => void,
+  ): Promise<Map<string, string>> {
+    try {
+      const apiUrl = process.env.API_URL || 'http://openagentic-api:8000';
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const internalSecret = process.env.INTERNAL_SERVICE_SECRET;
+      if (internalSecret) {
+        headers['X-Request-From'] = 'openagentic-proxy';
+        headers['X-Internal-Secret'] = internalSecret;
+        headers['Authorization'] = `Bearer ${internalSecret}`;
+        if (ctx.userId) headers['X-User-Id'] = ctx.userId;
+        if (ctx.userEmail) headers['X-User-Email'] = ctx.userEmail;
+      } else if (ctx.userToken) {
+        headers['Authorization'] = `Bearer ${ctx.userToken}`;
+      }
+
+      const response = await axios.get(`${apiUrl}/api/workflows/agent-tools`, {
+        headers,
+        timeout: 5000,
+      });
+      const tools: FlowToolSchema[] = response.data?.tools ?? [];
+      if (tools.length > 0) {
+        onTools(tools);
+        logger.info(
+          { agentId: ctx.executionId, flowToolCount: tools.length, names: tools.map((t) => t.name) },
+          '[AgentRunner] Injected user saved-flow tools',
+        );
+      }
+      return buildFlowToolMap(tools);
+    } catch (err: any) {
+      logger.warn(
+        { err: err.message, status: err.response?.status },
+        '[AgentRunner] Failed to load user flow tools — skipping injection',
+      );
+      return new Map();
+    }
+  }
+
+  /**
+   * V1.1 flow_tool: dispatch a flow-tool invocation by POSTing the args as
+   * trigger input to /api/workflows/:flowId/execute and parsing the SSE
+   * response — same envelope shape executeWorkflowTool already handles.
+   */
+  private async executeFlowToolInvocation(
+    flowId: string,
+    toolName: string,
+    args: Record<string, any>,
+    ctx: RunContext,
+  ): Promise<{ result?: string; error?: string }> {
+    const apiUrl = process.env.API_URL || 'http://openagentic-api:8000';
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const internalSecret = process.env.INTERNAL_SERVICE_SECRET;
+    if (internalSecret) {
+      headers['X-Request-From'] = 'openagentic-proxy';
+      headers['X-Internal-Secret'] = internalSecret;
+      headers['Authorization'] = `Bearer ${internalSecret}`;
+      if (ctx.userId) headers['X-User-Id'] = ctx.userId;
+      if (ctx.userEmail) headers['X-User-Email'] = ctx.userEmail;
+    } else if (ctx.userToken) {
+      headers['Authorization'] = `Bearer ${ctx.userToken}`;
+    }
+
+    try {
+      const response = await axios.post(
+        `${apiUrl}/api/workflows/${flowId}/execute`,
+        { input: args || {}, trigger_type: 'manual' },
+        { headers, timeout: 120000, responseType: 'text' },
+      );
+      const lines = (response.data || '').split('\n');
+      const completeLine = lines.find((l: string) => l.includes('execution_complete'));
+      if (completeLine) {
+        const data = JSON.parse(completeLine.replace(/^data:\s*/, ''));
+        const output = data.output ?? data.result ?? {};
+        return {
+          result: `Flow '${toolName}' (${flowId}) completed. Output: ${JSON.stringify(output).substring(0, 1000)}`,
+        };
+      }
+      const errorLine = lines.find((l: string) => l.includes('execution_error'));
+      if (errorLine) {
+        const data = JSON.parse(errorLine.replace(/^data:\s*/, ''));
+        return { error: `Flow '${toolName}' failed: ${data.error}` };
+      }
+      return { result: `Flow '${toolName}' started — check execution logs for results.` };
+    } catch (err: any) {
+      return { error: `Flow '${toolName}' failed: ${err.response?.data?.error || err.message}` };
     }
   }
 

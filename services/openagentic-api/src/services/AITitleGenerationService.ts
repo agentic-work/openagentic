@@ -7,6 +7,13 @@
 
 import { Logger } from 'pino';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions.js';
+import { ModelConfigurationService } from './ModelConfigurationService.js';
+import { DEFAULT_SERVICE_PROMPTS } from './prompt/ServicePromptService.js';
+
+// Minimal interface for injected ServicePromptService (Sprint W).
+interface ServicePromptLike {
+  getPrompt(key: string): Promise<string>;
+}
 
 // Use the existing ChatMessage type from session service
 export interface ChatMessage {
@@ -37,14 +44,18 @@ export class AITitleGenerationService {
   private cache: Map<string, string> = new Map();
   private readonly maxCacheSize = 1000;
   private readonly defaultMaxLength = 60;
+  /** Sprint W (2026-05-19) — optional injected ServicePromptService for DB-backed prompt. */
+  private _servicePromptSvc?: ServicePromptLike;
 
   constructor(
     logger: Logger,
     private options: TitleGenerationOptions = {},
-    titleClient?: TitleClient
+    titleClient?: TitleClient,
+    servicePromptSvc?: ServicePromptLike,
   ) {
     this.logger = logger.child({ service: 'AITitleGeneration' });
     this.titleClient = titleClient;
+    this._servicePromptSvc = servicePromptSvc;
     this.options = {
       maxLength: this.defaultMaxLength,
       style: 'concise',
@@ -108,8 +119,8 @@ export class AITitleGenerationService {
       throw new Error('Title generation client not configured');
     }
 
-    // Create a focused prompt for title generation
-    const systemPrompt = this.createTitleGenerationPrompt();
+    // Create a focused prompt for title generation (Sprint W: DB-backed when available)
+    const systemPrompt = await this.getTitleGenerationPrompt((this as any)._servicePromptSvc);
     
     // Include context from the conversation if available
     const contextMessages = allMessages.slice(0, 3).map(m => ({
@@ -127,12 +138,11 @@ export class AITitleGenerationService {
     ];
 
     try {
-      // Use cheapest model available - title generation is a simple task
+      // Resolve model from DB (SoT) — no env reads on live path
+      const titleAssignment = await ModelConfigurationService.getServiceModel('titleGeneration');
+      const resolvedModel = titleAssignment?.modelId ?? await ModelConfigurationService.getDefaultChatModel();
       const response = await this.titleClient.generateCompletion({
-        model: process.env.TITLE_GENERATION_MODEL ||
-               process.env.ECONOMICAL_MODEL ||  // Cheapest model (Haiku/Nova Micro)
-               process.env.SECONDARY_MODEL ||   // Second cheapest
-               process.env.DEFAULT_MODEL,
+        model: resolvedModel,
         messages,
         temperature: 0.3, // Lower temperature for more consistent titles
         max_tokens: 20 // Titles should be short
@@ -153,42 +163,55 @@ export class AITitleGenerationService {
 
       throw new Error('Generated title failed validation');
     } catch (error) {
-      this.logger.error({ error }, 'AI title generation failed');
+      // Bug 2 (2026-05-18): outer caller `generateTitle` already logs a `warn`
+      // when this path falls through to smartExtract. Logging at error here
+      // was duplicate spam on every first-message turn. Debug level keeps the
+      // signal for deep inspection without polluting prod logs.
+      this.logger.debug({ error }, 'AI title generation failed — falling back');
       throw error;
     }
   }
 
   /**
-   * Create the system prompt for title generation
+   * Sprint W (2026-05-19) — DB-backed title generation prompt.
+   *
+   * When `servicePromptSvc` is provided reads from DB key `title_gen.ai_service`.
+   * Falls back to DEFAULT_SERVICE_PROMPTS default when unavailable.
+   */
+  async getTitleGenerationPrompt(servicePromptSvc?: ServicePromptLike): Promise<string> {
+    let fallbackReason = 'NO-SVC-INJECTED';
+    if (servicePromptSvc) {
+      try {
+        return await servicePromptSvc.getPrompt('title_gen.ai_service');
+      } catch (err) {
+        fallbackReason = 'DB-READ-THREW';
+        this.logger.warn(
+          { err, key: 'title_gen.ai_service', reason: fallbackReason },
+          '[AITitleGen] DB prompt read failed, using inline default',
+        );
+      }
+    }
+    // Gap #3 — emit a loud fallback signal so DEFAULT_SERVICE_PROMPTS drift
+    // from the DB row becomes visible.
+    this.logger.warn(
+      { key: 'title_gen.ai_service', reason: fallbackReason },
+      '[ServicePrompt fallback] using DEFAULT_SERVICE_PROMPTS constant — DB row missing or read failed (title_gen.ai_service)',
+    );
+    return DEFAULT_SERVICE_PROMPTS['title_gen.ai_service'].body;
+  }
+
+  /**
+   * Create the system prompt for title generation.
+   * @deprecated Use getTitleGenerationPrompt(servicePromptSvc) for DB-backed prompt (Sprint W).
    */
   private createTitleGenerationPrompt(): string {
-    const styleInstructions = {
-      concise: 'Be extremely concise, 2-5 words maximum.',
-      descriptive: 'Be descriptive but concise, 4-8 words.',
-      question: 'Frame as a question when appropriate.'
-    };
-
-    return `You are a title generator for chat conversations. Your task is to create clear, informative titles.
-
-Rules:
-1. ${styleInstructions[this.options.style || 'concise']}
-2. Capture the main topic or intent
-3. Use proper capitalization
-4. No punctuation unless it's a question
-5. No quotes or special characters
-6. Focus on the user's intent, not implementation details
-7. If code is discussed, mention the language/framework
-8. Be specific but not verbose
-
-Examples of good titles:
-- "Python DataFrame Filtering"
-- "React Component Optimization"
-- "Database Migration Strategy"
-- "Fix Authentication Error"
-- "Explain Neural Networks"
-- "API Rate Limiting Setup"
-
-Return ONLY the title, nothing else.`;
+    // Gap #3 — even the deprecated path screams when it returns the inline
+    // constant so we can spot any lingering callers in production logs.
+    this.logger.warn(
+      { key: 'title_gen.ai_service', reason: 'DEPRECATED-SYNC-PATH' },
+      '[ServicePrompt fallback] using DEFAULT_SERVICE_PROMPTS constant — DB row missing or read failed (title_gen.ai_service @ legacy sync path)',
+    );
+    return DEFAULT_SERVICE_PROMPTS['title_gen.ai_service'].body;
   }
 
   /**
@@ -221,24 +244,30 @@ Return ONLY the title, nothing else.`;
   private extractKeyPhrases(text: string): string[] {
     const phrases: string[] = [];
     
-    // Common patterns for important phrases
-    const patterns = [
-      // Technical terms
-      /\b(implement|create|build|fix|debug|optimize|refactor|deploy|configure|setup|install)\s+(\w+(?:\s+\w+){0,2})/gi,
-      // Questions
-      /\b(what|how|why|when|where|can|should|would|could)\s+(\w+(?:\s+\w+){0,3})/gi,
-      // Concepts
-      /\b(explain|understand|learn|about)\s+(\w+(?:\s+\w+){0,2})/gi,
-      // Errors and issues
-      /\b(error|issue|problem|bug|crash|fail|wrong)\s+(?:with\s+)?(\w+(?:\s+\w+){0,2})/gi,
-      // Technologies (common ones)
-      /\b(react|vue|angular|python|javascript|typescript|java|go|rust|docker|kubernetes|aws|azure|gcp|api|database|sql|mongodb|redis)\b/gi
+    // Common patterns for important phrases. Each entry tracks whether to
+    // use the FULL match (verb + object — "fix authentication") or just the
+    // semantic OBJECT (group 2 — "send to the CTO" without leading "Can").
+    // #318: Question-starter words ("can/what/how/why") leaked into title
+    // heads ("Can Send to the Cto"); fix is to drop them via group 2 only.
+    const patterns: Array<{ regex: RegExp; useFull: boolean }> = [
+      // Technical terms — verb conveys intent, keep full match.
+      { regex: /\b(implement|create|build|fix|debug|optimize|refactor|deploy|configure|setup|install)\s+(\w+(?:\s+\w+){0,2})/gi, useFull: true },
+      // Questions — drop the question-starter, keep the object only.
+      { regex: /\b(?:what|how|why|when|where|can|should|would|could)\s+(?:you\s+|the\s+|a\s+|an\s+|i\s+)?(\w+(?:\s+\w+){0,3})/gi, useFull: false },
+      // Concepts — verb conveys intent, keep full match.
+      { regex: /\b(explain|understand|learn|about)\s+(\w+(?:\s+\w+){0,2})/gi, useFull: true },
+      // Errors and issues — keep full ("error in auth").
+      { regex: /\b(error|issue|problem|bug|crash|fail|wrong)\s+(?:with\s+)?(\w+(?:\s+\w+){0,2})/gi, useFull: true },
+      // Technologies (common ones) — single token.
+      { regex: /\b(react|vue|angular|python|javascript|typescript|java|go|rust|docker|kubernetes|aws|azure|gcp|api|database|sql|mongodb|redis)\b/gi, useFull: true },
     ];
 
-    for (const pattern of patterns) {
-      const matches = text.matchAll(pattern);
+    for (const { regex, useFull } of patterns) {
+      const matches = text.matchAll(regex);
       for (const match of matches) {
-        const phrase = match[0].toLowerCase().trim();
+        // Preserve original casing (acronyms like "CTO" / "API" / "SQL");
+        // capitalizePhrase below leaves all-uppercase tokens intact.
+        const phrase = (useFull ? match[0] : match[1] ?? match[0]).trim();
         if (phrase.length > 3 && phrase.length < 30) {
           phrases.push(phrase);
         }
@@ -294,8 +323,15 @@ Return ONLY the title, nothing else.`;
    */
   private cleanGeneratedTitle(title: string): string {
     return title
-      .replace(/^["']|["']$/g, '') // Remove quotes
-      .replace(/^Title:\s*/i, '') // Remove "Title:" prefix
+      .replace(/^["']|["']$/g, '') // Remove surrounding quotes
+      .replace(/^\*{1,2}(.*?)\*{1,2}$/, '$1') // Strip markdown bold/italic (**text** or *text*)
+      .replace(/^`(.*)`$/, '$1') // Strip surrounding backticks
+      // Strip LLM preambles like "Sure, here is the title:" / "The title is:"
+      // — any short prefix ending with a colon whose left side contains "title".
+      // Bounded length avoids stripping a real sentence that happens to contain
+      // the word "title" mid-prose. Bug 2 (2026-05-18).
+      .replace(/^[^:\n]{0,80}?\btitle\b[^:\n]{0,30}:\s*/i, '')
+      .replace(/^Title:\s*/i, '') // Remove bare "Title:" prefix (preamble regex misses this)
       .replace(/\.$/, '') // Remove trailing period
       .replace(/\s+/g, ' ') // Normalize whitespace
       .trim();
@@ -326,13 +362,20 @@ Return ONLY the title, nothing else.`;
   private capitalizePhrase(phrase: string): string {
     // List of words that should stay lowercase (unless first word)
     const lowercaseWords = new Set(['a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were']);
-    
+
     return phrase
       .split(/\s+/)
       .map((word, index) => {
+        if (!word) return word;
         const lower = word.toLowerCase();
-        // Always capitalize first word, acronyms, and non-lowercase words
-        if (index === 0 || !lowercaseWords.has(lower) || word.toUpperCase() === word) {
+        // #318: preserve all-uppercase acronyms verbatim ("CTO" / "API" /
+        // "SQL"). Previous code force-cased them through
+        // charAt(0).toUpperCase() + slice(1).toLowerCase() — turning "CTO"
+        // into "Cto" — which produced live titles like "Can Send to the Cto".
+        if (word.length >= 2 && word === word.toUpperCase() && /[A-Z]/.test(word)) {
+          return word;
+        }
+        if (index === 0 || !lowercaseWords.has(lower)) {
           return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
         }
         return lower;

@@ -19,6 +19,7 @@ import {
 } from '../Shared/AdminIcons';
 import { Layers, HardDrive, Users } from '@/shared/icons';
 import { apiRequest } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 
 // =============================================================================
 // Types
@@ -179,9 +180,9 @@ function formatDate(dateStr: string | null): string {
 }
 
 function hitRateColor(rate: number): string {
-  if (rate >= 90) return 'var(--color-success, #00D26A)';
-  if (rate >= 70) return 'var(--color-warning, #eab308)';
-  return 'var(--color-error, #ef4444)';
+  if (rate >= 90) return 'var(--ap-success, var(--color-success))';
+  if (rate >= 70) return 'var(--ap-warning, var(--color-warning))';
+  return 'var(--ap-error, var(--color-error))';
 }
 
 function statusBadgeClasses(status: string): string {
@@ -529,8 +530,8 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
       <svg width={width} height={height} className="opacity-70">
         <defs>
           <linearGradient id="sparkGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.3" />
+            <stop offset="0%" stopColor="var(--ap-accent)" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="var(--ap-info)" stopOpacity="0.3" />
           </linearGradient>
         </defs>
         <polyline
@@ -667,7 +668,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
         {/* L3 - Milvus Vector Cache */}
         <div>
           <SectionHeader
-            icon={<Layers size={20} className="text-purple-400" />}
+            icon={<Layers size={20} style={{ color: 'var(--ap-accent)' }} />}
             title="L3 - Milvus Vector Cache"
             description="Semantic vector cache for MCP tools, embeddings, and historical archive"
           />
@@ -704,7 +705,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
                       ? 'In sync with MCP proxy'
                       : 'Out of sync'
                   }
-                  color={mcpToolsStatus?.inSync ? undefined : 'var(--color-warning, #eab308)'}
+                  color={mcpToolsStatus?.inSync ? undefined : 'var(--color-warning)'}
                 />
               </div>
 
@@ -766,7 +767,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
         {/* Milvus Collections */}
         <div>
           <SectionHeader
-            icon={<Database size={20} className="text-purple-400" />}
+            icon={<Database size={20} style={{ color: 'var(--ap-accent)' }} />}
             title="Milvus Collections"
             description="Browse, inspect, and manage all Milvus vector collections"
           />
@@ -810,7 +811,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
                       </div>
                       <div className="col-span-3">
                         <div className="flex items-center gap-2">
-                          <Database size={14} className="text-purple-400" />
+                          <Database size={14} style={{ color: 'var(--ap-accent)' }} />
                           <span className="text-sm font-mono font-medium text-text-primary">
                             {col.name}
                           </span>
@@ -1036,7 +1037,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
                       style={{
                         color:
                           (redisMetrics.memory?.fragmentation_ratio ?? 1) > 1.5
-                            ? 'var(--color-warning, #eab308)'
+                            ? 'var(--color-warning)'
                             : 'var(--color-text-secondary)',
                       }}
                     >
@@ -1086,7 +1087,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
         {/* Milvus Diagnostics */}
         <div>
           <SectionHeader
-            icon={<Layers size={20} className="text-purple-400" />}
+            icon={<Layers size={20} style={{ color: 'var(--ap-accent)' }} />}
             title="Milvus Diagnostics"
             description="Deployment mode, health status, and dependency connectivity"
           />
@@ -1108,7 +1109,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
                     Deployment
                   </h4>
                   <div className="flex items-center gap-2">
-                    <Server size={16} className="text-purple-400" />
+                    <Server size={16} style={{ color: 'var(--ap-accent)' }} />
                     <span className="text-sm font-medium text-text-primary capitalize">
                       {milvusMetrics.mode || 'Standalone'}
                     </span>
@@ -1288,7 +1289,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
               label="User Memories"
               value={formatNumber(vectorUsage.pgvectorTotals.userMemories)}
               subtext="pgvector"
-              color="var(--color-info, #3b82f6)"
+              color="var(--color-info)"
             />
             <StatCard
               icon={<Zap size={14} />}
@@ -1301,7 +1302,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
               label="Verified Results"
               value={formatNumber(vectorUsage.pgvectorTotals.verifiedToolResults)}
               subtext="pgvector"
-              color="var(--color-success, #00D26A)"
+              color="var(--color-success)"
             />
             <StatCard
               icon={<Activity size={14} />}
@@ -1329,7 +1330,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
         {vectorUsage.milvusCollections.length > 0 && (
           <div>
             <SectionHeader
-              icon={<Layers size={20} className="text-purple-400" />}
+              icon={<Layers size={20} style={{ color: 'var(--ap-accent)' }} />}
               title="Milvus Collections"
               description="Per-collection row counts and dimensions"
             />
@@ -1348,7 +1349,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
                     className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-border/30 hover:bg-surface-secondary/30 transition-colors items-center"
                   >
                     <div className="col-span-5 flex items-center gap-2">
-                      <Database size={14} className="text-purple-400" />
+                      <Database size={14} style={{ color: 'var(--ap-accent)' }} />
                       <span className="text-sm font-mono text-text-primary">{col.name}</span>
                     </div>
                     <div className="col-span-3 text-right text-sm font-mono text-text-primary">
@@ -1562,30 +1563,14 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
   // ---------------------------------------------------------------------------
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold mb-2 text-text-primary flex items-center gap-3">
-            <Layers size={28} className="text-primary-500" />
-            Unified Data Layer
-          </h2>
-          <p className="text-text-secondary">
-            Manage all caching tiers: Redis (L1), pgvector (L2), and Milvus (L3) from one panel
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-text-tertiary">
-            Updated: {lastUpdated.toLocaleTimeString()}
-          </span>
-          <button
-            onClick={() => fetchDataForTab(activeTab)}
-            className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors flex items-center gap-2 text-sm"
-          >
-            <RefreshCw size={14} />
-            Refresh
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        crumbs={['Admin', 'Content', 'Data Layer']}
+        title="Unified Data Layer"
+        explainer={`Manage all caching tiers: Redis (L1), pgvector (L2), and Milvus (L3) from one panel. Updated: ${lastUpdated.toLocaleTimeString()}`}
+        actions={[
+          { label: 'Refresh', primary: true, onClick: () => fetchDataForTab(activeTab) },
+        ]}
+      />
 
       {/* Tab Bar */}
       <div className="flex gap-2 border-b border-border pb-4">

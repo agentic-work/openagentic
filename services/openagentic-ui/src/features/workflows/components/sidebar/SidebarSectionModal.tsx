@@ -37,11 +37,13 @@ import {
   Rocket,
   GitBranch,
   Star,
+  Activity,
 } from '@/shared/icons';
 import { useAuth } from '@/app/providers/AuthContext';
 import { useMCP } from '@/app/providers/MCPContext';
 import { workflowEndpoint } from '@/utils/api';
 import { nodeTypeConfigs } from '../../utils/nodeConfigs';
+import { TemplateLegend } from '../TemplateLegend';
 import { DataSection } from './DataSection';
 import {
   Zap, Brain, Bot, Rocket as Rocket2, Sparkles, Target, Code, Terminal as Terminal2,
@@ -54,7 +56,7 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
-export type SidebarSectionType = 'nodes' | 'credentials' | 'agents' | 'artifacts' | 'data' | 'variables' | 'webhooks' | 'api' | 'team' | 'playground' | 'deployed' | 'my_workflows' | 'templates' | 'settings' | 'versions';
+export type SidebarSectionType = 'nodes' | 'credentials' | 'agents' | 'artifacts' | 'data' | 'variables' | 'webhooks' | 'api' | 'team' | 'playground' | 'deployed' | 'my_workflows' | 'templates' | 'settings' | 'versions' | 'runs' | 'insights';
 
 export interface SidebarSectionModalProps {
   section: SidebarSectionType | null;
@@ -90,6 +92,8 @@ const sectionTitles: Record<SidebarSectionType, string> = {
   templates: 'Templates',
   settings: 'Workflow Settings',
   versions: 'Version History',
+  runs: 'My Runs',
+  insights: 'Insights',
 };
 
 const inputClass =
@@ -240,10 +244,10 @@ const nodeCapabilities: Record<string, { capabilities: string[]; inputs: string[
     useCases: ['Complex research tasks', 'Multi-step problem solving', 'Autonomous code generation'],
   },
   openagentic_llm: {
-    capabilities: ['Smart model routing via intelligence slider', 'All providers (Anthropic, OpenAI, Google, Azure, Ollama)', 'Extended thinking', 'Provider override', 'Cost optimization'],
-    inputs: ['Prompt', 'System prompt', 'Slider override', 'Model override', 'Thinking budget'],
+    capabilities: ['Smart model routing via SmartModelRouter', 'All providers (Anthropic, OpenAI, Google, Azure, Ollama)', 'Extended thinking', 'Provider override', 'Per-user × per-model budget caps'],
+    inputs: ['Prompt', 'System prompt', 'Model override', 'Thinking budget'],
     outputs: ['Generated text', 'Thinking blocks', 'Token usage', 'Cost', 'Model used'],
-    useCases: ['Route to cheapest model for simple tasks', 'Use premium models for critical decisions', 'Enable thinking for complex reasoning'],
+    useCases: ['Route to cheapest capable model for simple tasks', 'Use premium models for critical decisions', 'Enable thinking for complex reasoning'],
   },
   multi_agent: {
     capabilities: ['Concurrent agent execution', 'Shared context', 'Result aggregation (merge/vote/first)', 'Concurrency limits', 'Timeout per agent'],
@@ -571,7 +575,7 @@ const CredentialsContent: React.FC<{ workflowId?: string }> = ({ workflowId }) =
     try {
       setProvidersLoading(true);
       const headers = getAuthHeaders();
-      const res = await fetch('/api/admin/providers', { headers });
+      const res = await fetch('/api/admin/llm-providers', { headers });
       if (res.ok) {
         const data = await res.json();
         setProviders(Array.isArray(data) ? data : data.providers || []);
@@ -2432,6 +2436,11 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<'name' | 'updated' | 'runs'>('updated');
   const [deleting, setDeleting] = useState<string | null>(null);
+  // Per user 2026-05-14 — template gallery cards must surface a legend
+  // (purpose / how_it_works / expected_output / useful_when / tools_used)
+  // explaining what each flow is for. Single-click expands; double-click
+  // still clones+opens (existing behavior preserved).
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const fetchWorkflows = useCallback(async () => {
     setLoading(true);
@@ -2619,10 +2628,25 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
           {filtered.map(wf => (
             <div
               key={wf.id}
+              data-testid={filter === 'templates' ? 'template-gallery-card' : undefined}
+              data-template-slug={wf.name}
               className="group relative p-4 rounded-xl border transition-all hover:shadow-md cursor-pointer"
               style={{
-                borderColor: 'var(--color-border)',
+                borderColor: filter === 'templates' && expandedId === wf.id
+                  ? 'var(--user-accent-primary, #7c3aed)'
+                  : 'var(--color-border)',
                 backgroundColor: 'var(--color-bg-secondary)',
+                boxShadow: filter === 'templates' && expandedId === wf.id
+                  ? '0 0 0 1px var(--user-accent-primary, #7c3aed)' : undefined,
+              }}
+              onClick={(e) => {
+                // Templates view: single-click toggles legend; clicks on
+                // child buttons (Use Template, etc.) stop propagation
+                // upstream so this only fires on the card body.
+                if (filter !== 'templates') return;
+                const tag = (e.target as HTMLElement).tagName.toLowerCase();
+                if (tag === 'button' || (e.target as HTMLElement).closest('button')) return;
+                setExpandedId(prev => prev === wf.id ? null : wf.id);
               }}
               onDoubleClick={async () => {
                 if (filter === 'templates') {
@@ -2648,7 +2672,7 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
                   window.dispatchEvent(new CustomEvent('openWorkflow', { detail: { workflowId: wf.id } }));
                 }
               }}
-              title={filter === 'templates' ? 'Double-click to use this template' : 'Double-click to open in canvas'}
+              title={filter === 'templates' ? 'Click to view legend, double-click to use this template' : 'Double-click to open in canvas'}
             >
               {/* Header row */}
               <div className="flex items-start gap-3 mb-2">
@@ -2728,13 +2752,32 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
                 </div>
               )}
 
+              {/* Expanded legend (templates view only) — purpose / how it works / expected output / when to use */}
+              {filter === 'templates' && expandedId === wf.id && wf.meta && (
+                <div
+                  data-testid="template-card-legend"
+                  style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--color-border)' }}
+                >
+                  <TemplateLegend meta={wf.meta} variant="card" />
+                </div>
+              )}
+
               {/* Meta row */}
-              <div className="flex items-center justify-between text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
+              <div className="flex items-center justify-between text-[11px]" style={{ color: 'var(--color-text-tertiary)', marginTop: filter === 'templates' && expandedId === wf.id ? 10 : 0 }}>
                 <div className="flex items-center gap-3">
                   <span>{wf.nodes?.length || 0} nodes</span>
                   <span>{wf.executionCount || 0} runs</span>
                   {wf.updated_at && (
                     <span>{new Date(wf.updated_at).toLocaleDateString()}</span>
+                  )}
+                  {filter === 'templates' && wf.meta && (
+                    <span style={{
+                      fontWeight: 600,
+                      color: 'var(--user-accent-primary, #7c3aed)',
+                      cursor: 'pointer',
+                    }}>
+                      {expandedId === wf.id ? 'Hide legend' : 'Show legend'}
+                    </span>
                   )}
                 </div>
 
@@ -3016,16 +3059,9 @@ const SettingsContent: React.FC<{
               placeholder="auto (platform routing)" className={inputClass} style={inputStyle} />
             <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>Leave empty to use platform-level intelligent routing.</p>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>
-              Intelligence Level: {settings.execution?.intelligenceLevel ?? 50}%
-            </label>
-            <input type="range" min="0" max="100" step="5" value={settings.execution?.intelligenceLevel ?? 50}
-              onChange={e => updateSetting('execution.intelligenceLevel', parseInt(e.target.value))} className="w-full" />
-            <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
-              <span>Economical (0-40)</span><span>Balanced (41-60)</span><span>Premium (61-100)</span>
-            </div>
-          </div>
+          {/* 2026-04-19 — Intelligence Level row removed (task #144, slider
+              rip). SmartModelRouter picks the model; per-user × per-model
+              budget caps live in UserModelBudgetService. */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2" style={fieldLabelStyle}>Default Timeout (s)</label>
@@ -3155,6 +3191,226 @@ const SettingsContent: React.FC<{
 };
 
 // ---------------------------------------------------------------------------
+// RUNS CONTENT — User's recent workflow executions (Flows-scoped — replaces
+// the SEV-1 admin/observability leak from the F.5 backlog)
+// ---------------------------------------------------------------------------
+
+const RunsContent: React.FC = () => {
+  const { getAuthHeaders } = useAuth();
+  const [executions, setExecutions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchExecutions = useCallback(async () => {
+    try {
+      setLoading(true);
+      // Re-use the WorkflowApiService endpoint; mirrors FlowsSidebar's
+      // own getUserExecutions() call so we stay on the user-scoped read
+      // path (NOT /admin/observability — that's what was leaking).
+      const res = await fetch(workflowEndpoint('/workflows/executions/mine?limit=50'), {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setExecutions(data.executions || []);
+    } catch {
+      // ignore — Flows-scoped surface; never falls back to admin
+    } finally {
+      setLoading(false);
+    }
+  }, [getAuthHeaders]);
+
+  useEffect(() => { fetchExecutions(); }, [fetchExecutions]);
+
+  const statusColor = (status: string) => {
+    if (status === 'completed') return '#22c55e';
+    if (status === 'failed') return '#ef5350';
+    if (status === 'running') return '#ff9800';
+    return '#9e9e9e';
+  };
+
+  const timeAgo = (dateStr: string) => {
+    if (!dateStr) return '—';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const secs = Math.floor(diff / 1000);
+    if (secs < 60) return `${secs}s ago`;
+    const mins = Math.floor(secs / 60);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>My Runs</h2>
+          <p className="text-xs" style={{ color: 'var(--color-text-tertiary, #999)' }}>
+            Recent workflow executions you've launched. Workspace-scoped — admin observability lives in the admin portal.
+          </p>
+        </div>
+        <button
+          onClick={fetchExecutions}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-colors hover:bg-[var(--color-surface)]"
+          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Refresh
+        </button>
+      </div>
+      {loading && (
+        <div className="py-8 text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>Loading…</div>
+      )}
+      {!loading && executions.length === 0 && (
+        <div className="py-8 text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+          No runs yet. Open a workflow and click Run.
+        </div>
+      )}
+      {!loading && executions.length > 0 && (
+        <div className="rounded-lg border overflow-hidden" style={{ borderColor: 'var(--color-border)' }}>
+          <table className="w-full">
+            <thead>
+              <tr style={{ backgroundColor: 'var(--color-bg-secondary, var(--color-bg-primary))' }}>
+                <th className={tableHeaderClass} style={tableHeaderStyle}>Workflow</th>
+                <th className={tableHeaderClass} style={tableHeaderStyle}>Status</th>
+                <th className={tableHeaderClass} style={tableHeaderStyle}>Started</th>
+                <th className={tableHeaderClass} style={tableHeaderStyle}>Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              {executions.map((ex: any) => (
+                <tr key={ex.id}>
+                  <td className={tableCellClass} style={tableCellStyle}>
+                    {ex.workflow?.name || ex.workflow_name || ex.workflow_id || 'Workflow'}
+                  </td>
+                  <td className={tableCellClass} style={tableCellStyle}>
+                    <span
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[11px] rounded-full"
+                      style={{
+                        backgroundColor: `${statusColor(ex.status)}22`,
+                        color: statusColor(ex.status),
+                      }}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusColor(ex.status) }} />
+                      {ex.status || 'unknown'}
+                    </span>
+                  </td>
+                  <td className={tableCellClass} style={tableCellStyle}>
+                    {timeAgo(ex.created_at || ex.started_at)}
+                  </td>
+                  <td className={tableCellClass} style={tableCellStyle}>
+                    {ex.duration_ms ? `${(ex.duration_ms / 1000).toFixed(1)}s` : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// INSIGHTS CONTENT — Per-user run stats (Flows-scoped — replaces the leak
+// to the admin observability dashboard for non-admin users)
+// ---------------------------------------------------------------------------
+
+const InsightsContent: React.FC = () => {
+  const { getAuthHeaders } = useAuth();
+  const [executions, setExecutions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(workflowEndpoint('/workflows/executions/mine?limit=200'), {
+          method: 'GET',
+          headers: getAuthHeaders(),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setExecutions(data.executions || []);
+      } catch { /* ignore */ }
+      finally { setLoading(false); }
+    })();
+  }, [getAuthHeaders]);
+
+  const stats = useMemo(() => {
+    const total = executions.length;
+    const succeeded = executions.filter(e => e.status === 'completed').length;
+    const failed = executions.filter(e => e.status === 'failed').length;
+    const running = executions.filter(e => e.status === 'running').length;
+    const rate = total > 0 ? Math.round((succeeded / total) * 100) : 0;
+    const byWorkflow: Record<string, number> = {};
+    for (const e of executions) {
+      const name = e.workflow?.name || e.workflow_name || e.workflow_id || 'unknown';
+      byWorkflow[name] = (byWorkflow[name] || 0) + 1;
+    }
+    const topWorkflows = Object.entries(byWorkflow)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+    return { total, succeeded, failed, running, rate, topWorkflows };
+  }, [executions]);
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>Insights</h2>
+        <p className="text-xs" style={{ color: 'var(--color-text-tertiary, #999)' }}>
+          Stats across your last 200 runs. Workspace-scoped — for cross-tenant observability, ask your admin.
+        </p>
+      </div>
+      {loading && (
+        <div className="py-8 text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>Loading…</div>
+      )}
+      {!loading && (
+        <>
+          <div className="grid grid-cols-4 gap-3">
+            {[
+              { label: 'Total Runs', value: stats.total, color: 'var(--color-text)' },
+              { label: 'Succeeded', value: stats.succeeded, color: '#22c55e' },
+              { label: 'Failed', value: stats.failed, color: '#ef5350' },
+              { label: 'Success Rate', value: `${stats.rate}%`, color: 'var(--color-text)' },
+            ].map(card => (
+              <div
+                key={card.label}
+                className="rounded-lg border p-3"
+                style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary, var(--color-bg-primary))' }}
+              >
+                <div className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--color-text-tertiary, #999)' }}>
+                  {card.label}
+                </div>
+                <div className="text-xl font-semibold mt-1" style={{ color: card.color }}>
+                  {card.value}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-lg border p-4" style={{ borderColor: 'var(--color-border)' }}>
+            <div className="text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>Top workflows</div>
+            {stats.topWorkflows.length === 0 ? (
+              <div className="text-xs" style={{ color: 'var(--color-text-tertiary, #999)' }}>No runs yet.</div>
+            ) : (
+              <ul className="space-y-1.5">
+                {stats.topWorkflows.map(([name, count]) => (
+                  <li key={name} className="flex items-center justify-between text-sm" style={{ color: 'var(--color-text)' }}>
+                    <span className="truncate">{name}</span>
+                    <span className="text-xs" style={{ color: 'var(--color-text-tertiary, #999)' }}>{count} runs</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // VERSIONS CONTENT — Version history & restore
 // ---------------------------------------------------------------------------
 
@@ -3240,6 +3496,8 @@ const sectionIcons: Record<SidebarSectionType, React.ComponentType<any>> = {
   templates: Star,
   settings: Settings,
   versions: Clock,
+  runs: Play,
+  insights: Activity,
 };
 
 // ---------------------------------------------------------------------------
@@ -3302,6 +3560,12 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
         return <SettingsContent workflowSettings={workflowSettings} onSettingsChange={onSettingsChange} />;
       case 'versions':
         return <VersionsContent versions={versions} onRestoreVersion={onRestoreVersion} />;
+      case 'runs':
+        return <RunsContent />;
+      case 'insights':
+        return <InsightsContent />;
+      case 'artifacts':
+        return <ArtifactsModalContent />;
       default:
         return null;
     }
@@ -3406,6 +3670,12 @@ export const SidebarSectionModal: React.FC<SidebarSectionModalProps> = ({
         return <SettingsContent workflowSettings={workflowSettings} onSettingsChange={onSettingsChange} />;
       case 'versions':
         return <VersionsContent versions={versions} onRestoreVersion={onRestoreVersion} />;
+      case 'runs':
+        return <RunsContent />;
+      case 'insights':
+        return <InsightsContent />;
+      case 'artifacts':
+        return <ArtifactsModalContent />;
       default:
         return null;
     }
@@ -3472,3 +3742,206 @@ export const SidebarSectionModal: React.FC<SidebarSectionModalProps> = ({
     </AnimatePresence>
   );
 };
+
+// ---------------------------------------------------------------------------
+// ARTIFACTS — list-only modal content (uses /api/artifacts GET, NOT the
+// broken /api/knowledge/search the old sidebar accordion was pointed at).
+//
+// Root cause of the 404 the user flagged 2026-05-14: ArtifactsSection.tsx
+// (sidebar accordion) was calling GET /api/knowledge/search — that endpoint
+// only exists as POST /api/chat/knowledge/search behind authMiddleware, so
+// the GET request hit nothing → 404. The correct list endpoint is
+// GET /api/artifacts which is registered in misc.plugin.ts and returns
+// the user's artifacts via ArtifactService.listArtifacts.
+// ---------------------------------------------------------------------------
+
+const ArtifactsModalContent: React.FC = () => {
+  const { getAuthHeaders } = useAuth();
+  const [items, setItems] = useState<Array<any>>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch('/api/artifacts?limit=50&sortBy=created&sortOrder=desc', {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        setError(`Failed to load artifacts (${res.status})`);
+        setItems([]);
+        return;
+      }
+      const data = await res.json();
+      // ArtifactService.listArtifacts returns { artifacts: [...] } or [...] directly
+      const list = Array.isArray(data) ? data : (data.artifacts || data.results || []);
+      setItems(list);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load artifacts');
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [getAuthHeaders]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) {
+    return (
+      <div className="py-12 text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+        Loading artifacts…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-8 text-center">
+        <div className="text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>{error}</div>
+        <button
+          onClick={load}
+          className="px-4 py-2 text-sm rounded-lg border transition-colors hover:bg-[var(--color-surface)]"
+          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="py-12 text-center">
+        <div className="text-base font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
+          No artifacts yet
+        </div>
+        <div className="text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+          Workflow outputs (compose_visual, render_artifact, etc.) appear here once you run a flow.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 py-2">
+      {items.map((a) => {
+        const id = a.id || a.artifact_id || a.artifactId || Math.random().toString(36).slice(2);
+        const title = a.title || a.filename || a.originalName || 'Untitled artifact';
+        const ts = a.created_at || a.uploaded_at || a.createdAt;
+        const type = a.artifact_type || a.mime_type || a.format || 'file';
+        return (
+          <div
+            key={id}
+            className="rounded-xl p-4 border transition-colors hover:bg-[var(--color-surface)]"
+            style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
+          >
+            <div className="flex items-start gap-3">
+              <FileText className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--user-accent-primary, #7c3aed)' }} />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }} title={title}>
+                  {title}
+                </div>
+                <div className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
+                  {type}
+                  {ts ? ` · ${new Date(ts).toLocaleString()}` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// PUBLIC HELPERS — used by RailSurfaceModal so it can render any section
+// body inside its OWN BaseModal shell without duplicating the switch.
+//
+// Per user directive 2026-05-14 (round 2): each rail item must open its
+// own dedicated modal/settings page — not an inline canvas takeover.
+// RailSurfaceModal owns the modal chrome; we own the bodies. These two
+// helpers (renderSectionBody + sectionTitleFor) are the API surface
+// between them so the modal stays decoupled from this 3700-line file.
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the human-readable title for a section — same one shown
+ * inside ConfigPanel's header bar. Re-uses the module-local
+ * `sectionTitles` map.
+ */
+export function sectionTitleFor(section: SidebarSectionType): string {
+  return sectionTitles[section] || section;
+}
+
+interface RenderSectionBodyArgs {
+  section: SidebarSectionType;
+  workflowId?: string;
+  variables?: Record<string, any>;
+  onVariablesChange?: (vars: Record<string, any>) => void;
+  workflowSettings?: any;
+  onSettingsChange?: (settings: any) => void;
+  versions?: any[];
+  onRestoreVersion?: (versionId: string) => void;
+}
+
+/**
+ * Renders just the BODY of a section (no header / no chrome). The
+ * RailSurfaceModal wraps this in a BaseModal; ConfigPanel wraps it
+ * in a full-screen canvas takeover. Both call this helper so they
+ * stay in sync.
+ */
+export function renderSectionBody(args: RenderSectionBodyArgs): React.ReactNode {
+  const { section, workflowId, variables, onVariablesChange, workflowSettings, onSettingsChange, versions, onRestoreVersion } = args;
+  switch (section) {
+    case 'nodes':
+      return <NodesContent />;
+    case 'credentials':
+      return <CredentialsContent workflowId={workflowId} />;
+    case 'agents':
+      return <AgentsContent />;
+    case 'data':
+      return <DataContent />;
+    case 'variables':
+      if (variables && onVariablesChange) {
+        return <VariablesContent variables={variables} onVariablesChange={onVariablesChange} />;
+      }
+      return (
+        <div className="py-12 text-center">
+          <div className="text-base font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
+            Open a workflow to manage variables
+          </div>
+          <div className="text-sm" style={{ color: 'var(--color-text-tertiary)' }}>
+            Variables are scoped to the workflow you're editing. Open one from the Flows list first.
+          </div>
+        </div>
+      );
+    case 'webhooks':
+      return <WebhooksContent workflowId={workflowId} />;
+    case 'api':
+      return <ApiEndpointContent workflowId={workflowId} />;
+    case 'team':
+      return <TeamContent workflowId={workflowId} />;
+    case 'playground':
+      return <PlaygroundContent />;
+    case 'deployed':
+      return <WorkflowCardGridView filter="deployed" />;
+    case 'my_workflows':
+      return <WorkflowCardGridView filter="my" />;
+    case 'templates':
+      return <WorkflowCardGridView filter="templates" />;
+    case 'settings':
+      return <SettingsContent workflowSettings={workflowSettings} onSettingsChange={onSettingsChange} />;
+    case 'versions':
+      return <VersionsContent versions={versions} onRestoreVersion={onRestoreVersion} />;
+    case 'runs':
+      return <RunsContent />;
+    case 'insights':
+      return <InsightsContent />;
+    case 'artifacts':
+      return <ArtifactsModalContent />;
+    default:
+      return null;
+  }
+}

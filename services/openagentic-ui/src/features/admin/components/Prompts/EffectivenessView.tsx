@@ -8,6 +8,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw } from '@/shared/icons';
 import { AdminButton } from '../Shared/AdminButton';
 import { apiRequestJson } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 
 interface EffectivenessData {
   totalModules: number;
@@ -89,26 +90,15 @@ export const EffectivenessView: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)' }}>
-            Prompt Effectiveness
-          </h2>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-            Module usage frequency and feedback outcomes
-          </p>
-        </div>
-        <AdminButton
-          variant="secondary"
-          icon={<RefreshCw size={13} />}
-          loading={loading}
-          onClick={fetchData}
-          size="sm"
-        >
-          Refresh
-        </AdminButton>
-      </div>
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Prompts', 'Effectiveness']}
+        title="Prompt Effectiveness"
+        explainer="Module usage frequency and feedback outcomes."
+        actions={[
+          { label: 'Refresh', onClick: fetchData },
+        ]}
+      />
 
       {error && (
         <div
@@ -256,7 +246,7 @@ export const EffectivenessView: React.FC = () => {
                       style={{
                         padding: '10px 12px',
                         fontSize: '13px',
-                        color: '#22c55e',
+                        color: 'var(--ap-ok)',
                       }}
                     >
                       {row.positiveCount}
@@ -288,7 +278,7 @@ export const EffectivenessView: React.FC = () => {
                                 height: '100%',
                                 width: `${winRate}%`,
                                 backgroundColor:
-                                  winRate >= 60 ? '#22c55e' : winRate >= 40 ? '#f59e0b' : '#ef4444',
+                                  winRate >= 60 ? 'var(--ap-ok)' : winRate >= 40 ? 'var(--ap-warn)' : 'var(--ap-err)',
                                 borderRadius: '3px',
                                 transition: 'width 300ms',
                               }}
@@ -300,9 +290,9 @@ export const EffectivenessView: React.FC = () => {
                               fontWeight: '500',
                               color:
                                 winRate >= 60
-                                  ? '#22c55e'
+                                  ? 'var(--ap-ok)'
                                   : winRate >= 40
-                                  ? '#f59e0b'
+                                  ? 'var(--ap-warn)'
                                   : 'var(--color-error)',
                             }}
                           >

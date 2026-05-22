@@ -5,7 +5,6 @@
 
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware, adminMiddleware, AuthenticatedRequest } from '../middleware/unifiedAuth.js';
-import { promptVersionService } from '../services/PromptVersionService.js';
 import { pipelineService } from '../services/PipelineService.js';
 import { loggers } from '../utils/logger.js';
 
@@ -19,182 +18,13 @@ export const adminPortalEnhancedRoutes: FastifyPluginAsync = async (fastify) => 
   // Apply auth middleware as any to avoid type issues
   const authHandlers = [authMiddleware as any, adminMiddleware as any];
 
-  // ============================================================================
-  // PROMPT VERSION MANAGEMENT ROUTES
-  // ============================================================================
-
-  // Create a new prompt version
-  fastify.post('/prompts/versions', {
-    preHandler: authHandlers
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { templateId, content, variables } = request.body as any;
-      
-      if (!templateId || !content) {
-        return reply.code(400).send({ 
-          success: false, 
-          error: 'Template ID and content are required' 
-        });
-      }
-
-      const version = await promptVersionService.createVersion({
-        templateId,
-        content,
-        variables,
-        createdBy: request.user!.id
-      });
-      
-      return reply.send({ success: true, data: version });
-    } catch (error) {
-      logger.error('Failed to create prompt version', { error });
-      return reply.code(500).send({ 
-        success: false, 
-        error: 'Failed to create prompt version' 
-      });
-    }
-  });
-
-  // Test a prompt version
-  fastify.post('/prompts/versions/:versionId/test', {
-    preHandler: authHandlers
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { versionId } = request.params as any;
-      const { testCases } = request.body as any;
-      
-      if (!testCases || !Array.isArray(testCases)) {
-        return reply.code(400).send({ 
-          success: false, 
-          error: 'Test cases array is required' 
-        });
-      }
-
-      const results = await promptVersionService.testVersion(versionId, testCases);
-      return reply.send({ success: true, data: results });
-    } catch (error) {
-      logger.error('Failed to test prompt version', { error });
-      return reply.code(500).send({ 
-        success: false, 
-        error: 'Failed to test prompt version' 
-      });
-    }
-  });
-
-  // Activate a prompt version
-  fastify.post('/prompts/versions/:versionId/activate', {
-    preHandler: authHandlers
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { versionId } = request.params as any;
-      const version = await promptVersionService.activateVersion(versionId);
-      
-      logger.info('Prompt version activated', {
-        versionId,
-        userId: request.user!.id
-      });
-      
-      return reply.send({ success: true, data: version });
-    } catch (error) {
-      logger.error('Failed to activate prompt version', { error });
-      return reply.code(500).send({ 
-        success: false, 
-        error: 'Failed to activate prompt version' 
-      });
-    }
-  });
-
-  // Rollback to a previous version
-  fastify.post('/prompts/:templateId/rollback', {
-    preHandler: authHandlers
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { templateId } = request.params as any;
-      const { versionNumber } = request.body as any;
-      
-      if (!versionNumber) {
-        return reply.code(400).send({ 
-          success: false, 
-          error: 'Version number is required' 
-        });
-      }
-
-      const version = await promptVersionService.rollbackVersion(templateId, versionNumber);
-      
-      logger.info('Prompt rolled back', {
-        templateId,
-        versionNumber,
-        userId: request.user!.id
-      });
-      
-      return reply.send({ success: true, data: version });
-    } catch (error) {
-      logger.error('Failed to rollback prompt version', { error });
-      return reply.code(500).send({ 
-        success: false, 
-        error: 'Failed to rollback prompt version' 
-      });
-    }
-  });
-
-  // Get version history
-  fastify.get('/prompts/:templateId/versions', {
-    preHandler: authHandlers
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { templateId } = request.params as any;
-      const versions = await promptVersionService.getVersionHistory(templateId);
-      return reply.send({ success: true, data: versions });
-    } catch (error) {
-      logger.error('Failed to get version history', { error });
-      return reply.code(500).send({ 
-        success: false, 
-        error: 'Failed to get version history' 
-      });
-    }
-  });
-
-  // Compare two versions
-  fastify.get('/prompts/versions/compare', {
-    preHandler: authHandlers
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { version1, version2 } = request.query as any;
-      
-      if (!version1 || !version2) {
-        return reply.code(400).send({ 
-          success: false, 
-          error: 'Both version1 and version2 parameters are required' 
-        });
-      }
-
-      const comparison = await promptVersionService.compareVersions(version1, version2);
-      return reply.send({ success: true, data: comparison });
-    } catch (error) {
-      logger.error('Failed to compare versions', { error });
-      return reply.code(500).send({ 
-        success: false, 
-        error: 'Failed to compare versions' 
-      });
-    }
-  });
-
-  // Get version metrics
-  fastify.get('/prompts/:templateId/metrics', {
-    preHandler: authHandlers
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { templateId } = request.params as any;
-      const { days = 30 } = request.query as any;
-      const metrics = await promptVersionService.getVersionMetrics(templateId, parseInt(days));
-      return reply.send({ success: true, data: metrics });
-    } catch (error) {
-      logger.error('Failed to get version metrics', { error });
-      return reply.code(500).send({ 
-        success: false, 
-        error: 'Failed to get version metrics' 
-      });
-    }
-  });
+  // Legacy prompt-version routes RIPPED 2026-05-11 (chatmode-rip Phase E
+  // final). The PromptTemplate / PromptUsage models that backed
+  // /api/admin/prompts/versions* + /api/admin/prompts/:id/rollback +
+  // /api/admin/prompts/:id/versions + /api/admin/prompts/versions/compare +
+  // /api/admin/prompts/:id/metrics are deleted. RBAC prompts are admin-
+  // editable directly against the `rbac_system_prompts` table — no
+  // versioning surface yet.
 
   // ============================================================================
   // PIPELINE MANAGEMENT ROUTES

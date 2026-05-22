@@ -9,6 +9,8 @@
 import { FastifyInstance, FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../middleware/unifiedAuth.js';
 import { loggers } from '../../utils/logger.js';
+import { getProviderManager } from '../../services/llm-providers/ProviderManager.js';
+import { getModelCapabilityRegistry } from '../../services/ModelCapabilityRegistry.js';
 
 /**
  * Models Routes Plugin
@@ -21,7 +23,7 @@ export const modelsRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
    * List all available models
    */
   fastify.get('/', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['Models'],
       summary: 'List available models',
@@ -31,7 +33,7 @@ export const modelsRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       // Get provider manager from global
-      const providerManager = (global as any).providerManager;
+      const providerManager = getProviderManager();
 
       if (!providerManager) {
         return reply.send({
@@ -58,7 +60,7 @@ export const modelsRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
    * Get model details
    */
   fastify.get<{ Params: { id: string } }>('/:id', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['Models'],
       summary: 'Get model details',
@@ -72,7 +74,7 @@ export const modelsRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
   }, async (request, reply) => {
     const { id } = request.params;
     try {
-      const providerManager = (global as any).providerManager;
+      const providerManager = getProviderManager();
 
       if (!providerManager) {
         return reply.code(503).send({
@@ -80,7 +82,8 @@ export const modelsRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
         });
       }
 
-      const model = await providerManager.getModel(id);
+      const allModels = await providerManager.listModels();
+      const model = allModels.find(m => m.id === id);
 
       if (!model) {
         return reply.code(404).send({
@@ -104,7 +107,7 @@ export const modelsRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
    * Get model capabilities matrix
    */
   fastify.get('/capabilities', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['Models'],
       summary: 'Get model capabilities',
@@ -112,7 +115,8 @@ export const modelsRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
     }
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const providerManager = (global as any).providerManager;
+      // getProviderManager check is retained for initialization guard parity with other endpoints
+      const providerManager = getProviderManager();
 
       if (!providerManager) {
         return reply.send({
@@ -121,7 +125,8 @@ export const modelsRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
         });
       }
 
-      const capabilities = await providerManager.getCapabilities();
+      const registry = getModelCapabilityRegistry();
+      const capabilities = registry ? registry.getAllModelCapabilities() : [];
 
       return reply.send({ capabilities });
     } catch (error) {

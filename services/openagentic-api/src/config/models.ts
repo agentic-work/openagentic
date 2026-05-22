@@ -1,30 +1,22 @@
 /**
- * Centralized Model Configuration
+ * Centralized Model Configuration — Reduced Surface
  *
- * Single source of truth for ALL model IDs in the API service.
- * Every model reference imports from here. No hardcoded model strings elsewhere.
+ * DB is SoT. MODELS remains only for provider-class transitive use:
+ *   AnthropicProvider  — MODELS.anthropic
+ *   AWSBedrockProvider — MODELS.default
  *
- * Startup CRASHES if DEFAULT_MODEL is unset — this is intentional.
- * All tier/purpose models fall back to DEFAULT_MODEL if their env var is unset.
+ * All non-provider consumers have been migrated to ModelConfigurationService
+ * as of plan task 6b. Do NOT add new MODELS.* entries for non-provider use.
+ * See docs/rules/no-hardcoded-models.md.
  *
- * Environment variables:
- *   DEFAULT_MODEL          (REQUIRED) - crashes on startup if missing
- *   SECONDARY_MODEL        - cheap/fast fallback model (e.g. nova-micro)
- *   ECONOMICAL_MODEL       - slider 0-40% tier
- *   PREMIUM_MODEL          - slider 61-85% tier
- *   ULTRA_PREMIUM_MODEL    - slider 86-100% tier
- *   DEFAULT_CODE_MODEL     - code mode sessions
- *   COMPACTION_MODEL        - summarization/compaction
- *   ANTHROPIC_MODEL        - Anthropic direct API
- *   OPENAI_MODEL           - OpenAI direct API
- *   OLLAMA_MODEL           - Ollama local
- *   VERTEX_AI_MODEL / VERTEX_AI_CHAT_MODEL - Vertex AI
- *   VERTEX_THINKING_MODEL  - Vertex thinking model
- *   AIF_MODEL              - Azure AI Foundry
- *   GEMINI_IMAGE_MODEL     - Gemini image generation
- *   AZURE_IMAGE_MODEL      - Azure image generation
- *   VERTEX_IMAGE_MODEL     - Vertex image generation
- *   AGENT_<TYPE>_PRIMARY_MODEL / AGENT_<TYPE>_FALLBACK_MODEL - per-agent overrides
+ * Environment variables still honoured (for provider-class bootstrap only):
+ *   DEFAULT_MODEL   (REQUIRED) - crashes on startup if missing
+ *   ANTHROPIC_MODEL - Anthropic direct API
+ *
+ * H/M3 closed 2026-05-05: MODELS.ollama removed. The Ollama provider has
+ * always read its primary model from the registry / per-request, never from
+ * a static MODELS.ollama. The previously-flagged hardcoded fallback was
+ * dead code (no callers).
  */
 
 // =============================================================================
@@ -59,48 +51,14 @@ if (DEFAULT_MODEL === 'auto') {
 // =============================================================================
 
 export const MODELS = {
-  /** The guaranteed-set default model */
+  // -- Provider-class transitive use only (CLAUDE.md rule #7 allowlist) --
+
+  /** The guaranteed-set default model — used by AWSBedrockProvider */
   default: DEFAULT_MODEL,
 
-  /** Code mode sessions */
-  code: process.env.DEFAULT_CODE_MODEL || DEFAULT_MODEL,
-
-  /** Summarization / context compaction (should be fast+cheap) */
-  compaction: process.env.COMPACTION_MODEL || process.env.SECONDARY_MODEL || DEFAULT_MODEL,
-
-  // -- Provider-specific defaults (used by LLMProviderSeeder) --
-
-  /** Anthropic direct API default */
+  /** Anthropic direct API default — used by AnthropicProvider */
   anthropic: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
-
-  /** OpenAI direct API default */
-  openai: process.env.OPENAI_MODEL || DEFAULT_MODEL,
-
-  /** Ollama local model */
-  ollama: process.env.OLLAMA_MODEL || 'gpt-oss',
-
-  /** Vertex AI chat model */
-  vertexChat: process.env.VERTEX_AI_MODEL || process.env.VERTEX_AI_CHAT_MODEL || DEFAULT_MODEL,
-
-  /** Vertex AI thinking model */
-  vertexThinking: process.env.VERTEX_THINKING_MODEL || DEFAULT_MODEL,
-
-  /** Azure AI Foundry / model-router */
-  azureAiFoundry: process.env.AIF_MODEL || DEFAULT_MODEL,
-
-  /** Azure OpenAI (uses deployment name from env) */
-  azureOpenai: process.env.AZURE_OPENAI_DEPLOYMENT || DEFAULT_MODEL,
-
-  // Image generation models are now managed through the admin portal (LLMProvider system)
-  // No hardcoded image model env vars — providers with imageGeneration capability handle this
 } as const;
-
-/**
- * Get the default model. Guaranteed non-empty (startup validates).
- */
-export function getDefaultModel(): string {
-  return DEFAULT_MODEL;
-}
 
 // =============================================================================
 // AGENT MODELS (per-agent type primary + fallback)

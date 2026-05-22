@@ -57,13 +57,15 @@ export function useAgentPlayground() {
       try {
         setLoading(true);
         const headers = getAuthHeaders();
-        // Try non-admin agents endpoint first, fall back to admin
+        // SOT: /api/admin/agents (prisma.agent). Try /api/agents (auth-friendly
+        // alias) first; fall back to admin. /api/workflows/agents removed
+        // 2026-04-26 — it was a parallel registry hitting openagentic-proxy only.
         let res = await fetch('/api/agents', { headers });
-        if (!res.ok) res = await fetch('/api/workflows/agents', { headers });
         if (!res.ok) res = await fetch('/api/admin/agents', { headers });
         if (res.ok) {
           const data = await res.json();
-          const list = (data.agents || []).filter((a: any) => a.enabled !== false);
+          const raw = Array.isArray(data) ? data : (data.agents || []);
+          const list = raw.filter((a: any) => a.enabled !== false);
           setAgents(list);
           if (list.length > 0 && !selectedAgentId) {
             setSelectedAgentId(list[0].id);

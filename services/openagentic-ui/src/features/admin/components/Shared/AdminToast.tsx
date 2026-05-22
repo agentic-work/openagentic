@@ -14,9 +14,9 @@ interface AdminToastProps {
 }
 
 const TOAST_COLORS: Record<Toast['type'], string> = {
-  success: 'var(--toast-success, #00D26A)',
-  error: 'var(--toast-error, #FF453A)',
-  info: 'var(--toast-info, #0A84FF)',
+  success: 'var(--toast-success)',
+  error: 'var(--toast-error)',
+  info: 'var(--toast-info)',
 };
 
 /**
@@ -52,12 +52,14 @@ export const AdminToast: React.FC<AdminToastProps> = ({
 
   const color = TOAST_COLORS[toast.type];
 
+  // M3 Expressive (task #160): rounded-toast (14px), soft-lg shadow,
+  // slide-in from bottom-right over 300ms.
   return (
     <div
-      className="fixed top-4 right-4 z-[100] px-4 py-2.5 rounded-lg text-xs font-medium shadow-lg pointer-events-auto"
+      className="fixed bottom-4 right-4 z-[100] px-4 py-2.5 rounded-toast text-xs font-medium shadow-soft-lg pointer-events-auto animate-slide-up"
       style={{
         backgroundColor: color,
-        color: '#FFFFFF',
+        color: 'var(--ap-fg-0)',
       }}
       role="alert"
     >

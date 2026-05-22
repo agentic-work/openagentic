@@ -1,0 +1,348 @@
+/**
+ * EChartsRenderer — server-side ECharts SVG renderer.
+ *
+ * One renderer for sankey, chord, sunburst, radial_tree, treemap,
+ * parallel_coords, heatmap. Calls echarts.init in SSR mode and
+ * `renderToSVGString()` to produce a deterministic SVG string.
+ *
+ * Why ECharts: 66k★ Apache-2.0 with built-in SVG renderer that works in
+ * pure Node (no jsdom). Replaces ~80 LOC of hand-rolled math per chart
+ * type with a ~15-line config. Reference:
+ * https://echarts.apache.org/handbook/en/best-practices/canvas-vs-svg
+ *
+ * Determinism: ECharts in SSR mode does NOT reach for window/document
+ * and does NOT use Math.random or Date. Same input → same SVG output.
+ *
+ * IMPORTANT: import order matters. We must import echarts core + the
+ * SVG renderer BEFORE any chart types we register. The renderer is what
+ * unlocks `renderToSVGString()` in Node.
+ */
+
+// ECharts SSR entry — pulls a Node-safe build with no DOM dependency.
+// See https://echarts.apache.org/handbook/en/basics/help#use-svg-rendering
+//
+// We import the whole subpath as a namespace and cast to `any` at the use
+// site because echarts' `./charts` + `./components` subpaths ship a `.d.ts`
+// whose exported names don't survive `moduleResolution: NodeNext` in the
+// production Docker tsc step (pnpm-installed layout in the build container
+// differs from the dev tree, and nodenext picks the narrower dts). The
+// namespace import skips TS's named-export verification AND keeps us in
+// pure ESM (require() in this file would conflict with top-level await
+// elsewhere in the bundle and trigger ERR_AMBIGUOUS_MODULE_SYNTAX).
+import * as echarts from 'echarts/lib/echarts.js';
+import * as echartsRenderersNs from 'echarts/renderers';
+import * as echartsChartsNs from 'echarts/charts';
+import * as echartsComponentsNs from 'echarts/components';
+
+const echartsRenderers = echartsRenderersNs as any;
+const echartsCharts = echartsChartsNs as any;
+const echartsComponents = echartsComponentsNs as any;
+
+echarts.use([
+  echartsRenderers.SVGRenderer,
+  echartsCharts.SankeyChart,
+  echartsCharts.GraphChart,
+  echartsCharts.SunburstChart,
+  echartsCharts.TreeChart,
+  echartsCharts.TreemapChart,
+  echartsCharts.ParallelChart,
+  echartsCharts.HeatmapChart,
+  echartsComponents.TitleComponent,
+  echartsComponents.TooltipComponent,
+  echartsComponents.GridComponent,
+  echartsComponents.ParallelComponent,
+  echartsComponents.VisualMapComponent,
+]);
+
+export type EChartTemplate =
+  | 'sankey'
+  | 'chord'
+  | 'sunburst'
+  | 'radial_tree'
+  | 'treemap'
+  | 'parallel_coords'
+  | 'heatmap';
+
+export interface RenderedSvg {
+  kind: 'svg';
+  content: string;
+}
+
+const DIMS = { width: 800, height: 420 };
+
+const DARK_PALETTE = [
+  '#8b5cf6',
+  '#10b981',
+  '#f59e0b',
+  '#3b82f6',
+  '#ef4444',
+  '#06b6d4',
+  '#ec4899',
+  '#84cc16',
+];
+
+function isFiniteNumber(n: unknown): n is number {
+  return typeof n === 'number' && Number.isFinite(n);
+}
+
+function buildSankeyOption(data: any): unknown {
+  if (!data || !Array.isArray(data.flows) || data.flows.length === 0) {
+    throw new Error('sankey requires at least one flow in data.flows');
+  }
+  data.flows.forEach((f: any, i: number) => {
+    if (typeof f?.from !== 'string' || typeof f?.to !== 'string') {
+      throw new Error(`flow ${i}: from and to must be strings`);
+    }
+    if (!isFiniteNumber(f.value) || f.value <= 0) {
+      throw new Error(`flow ${i}: value must be a positive number`);
+    }
+  });
+
+  const nodeNames = new Set<string>();
+  for (const f of data.flows) {
+    nodeNames.add(f.from);
+    nodeNames.add(f.to);
+  }
+  const nodes = Array.from(nodeNames).map((name) => ({ name }));
+  const links = data.flows.map((f: any) => ({ source: f.from, target: f.to, value: f.value }));
+
+  return {
+    backgroundColor: 'transparent',
+    series: [{
+      type: 'sankey',
+      data: nodes,
+      links,
+      emphasis: { focus: 'adjacency' },
+      lineStyle: { color: 'gradient', curveness: 0.5 },
+      label: { color: '#f8fafc', fontFamily: 'Inter, system-ui', fontSize: 12 },
+      itemStyle: { color: '#8b5cf6', borderColor: '#8b5cf6' },
+    }],
+  };
+}
+
+function buildChordOption(data: any): unknown {
+  if (!Array.isArray(data?.nodes) || !Array.isArray(data?.matrix)) {
+    throw new Error('chord requires nodes: string[] and matrix: number[][]');
+  }
+  const n = data.nodes.length;
+  if (n === 0) throw new Error('chord requires at least one node');
+  if (data.matrix.length !== n) {
+    throw new Error('chord matrix must be square (rows == nodes.length)');
+  }
+  for (const row of data.matrix) {
+    if (!Array.isArray(row) || row.length !== n) {
+      throw new Error('chord matrix must be square (each row.length == nodes.length)');
+    }
+  }
+
+  const nodes = data.nodes.map((name: string) => ({ name, symbolSize: 30 }));
+  const links: Array<{ source: string; target: string; value: number }> = [];
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const v = (data.matrix[i][j] || 0) + (data.matrix[j][i] || 0);
+      if (v > 0) {
+        links.push({ source: data.nodes[i], target: data.nodes[j], value: v });
+      }
+    }
+  }
+
+  return {
+    backgroundColor: 'transparent',
+    series: [{
+      type: 'graph',
+      layout: 'circular',
+      circular: { rotateLabel: true },
+      data: nodes,
+      links,
+      lineStyle: { color: 'source', curveness: 0.3, opacity: 0.6 },
+      label: { show: true, color: '#f8fafc', fontFamily: 'Inter, system-ui' },
+      itemStyle: { color: '#8b5cf6' },
+      emphasis: { focus: 'adjacency' },
+    }],
+  };
+}
+
+function buildSunburstOption(data: any): unknown {
+  if (!data?.root) throw new Error('sunburst requires data.root');
+  return {
+    backgroundColor: 'transparent',
+    series: [{
+      type: 'sunburst',
+      data: [data.root],
+      radius: [0, '90%'],
+      label: { color: '#f8fafc', fontFamily: 'Inter, system-ui' },
+      itemStyle: { borderColor: '#0f1012', borderWidth: 1 },
+      levels: [{}, { itemStyle: { color: '#8b5cf6' } }, { itemStyle: { color: '#10b981' } }],
+    }],
+  };
+}
+
+function buildRadialTreeOption(data: any): unknown {
+  if (!data?.root) throw new Error('radial_tree requires data.root');
+  return {
+    backgroundColor: 'transparent',
+    series: [{
+      type: 'tree',
+      data: [data.root],
+      layout: 'radial',
+      symbol: 'circle',
+      symbolSize: 8,
+      initialTreeDepth: -1,
+      lineStyle: { color: '#3f3f46', curveness: 0.5 },
+      label: { color: '#d4d4d8', fontFamily: 'Inter, system-ui', fontSize: 11 },
+      itemStyle: { color: '#8b5cf6' },
+    }],
+  };
+}
+
+function buildTreemapOption(data: any): unknown {
+  if (!data?.root) throw new Error('treemap requires data.root');
+  return {
+    backgroundColor: 'transparent',
+    series: [{
+      type: 'treemap',
+      data: [data.root],
+      breadcrumb: { show: false },
+      roam: false,
+      nodeClick: false,
+      label: { color: '#f8fafc', fontFamily: 'Inter, system-ui' },
+      itemStyle: { borderColor: '#0f1012', borderWidth: 2, gapWidth: 2 },
+      levels: [
+        { itemStyle: { color: '#8b5cf6' } },
+        { itemStyle: { color: '#10b981' } },
+      ],
+    }],
+  };
+}
+
+function buildParallelCoordsOption(data: any): unknown {
+  if (!Array.isArray(data?.dims) || !Array.isArray(data?.rows)) {
+    throw new Error('parallel_coords requires dims: string[] and rows: {name,values}[]');
+  }
+  data.rows.forEach((r: any, i: number) => {
+    if (!Array.isArray(r?.values) || r.values.length !== data.dims.length) {
+      throw new Error(`row ${i}: values length must match dims.length`);
+    }
+  });
+  return {
+    backgroundColor: 'transparent',
+    parallelAxis: data.dims.map((dim: string, idx: number) => ({
+      dim: idx,
+      name: dim,
+      nameTextStyle: { color: '#a1a1aa', fontFamily: 'Inter, system-ui' },
+      axisLabel: { color: '#71717a' },
+      axisLine: { lineStyle: { color: '#3f3f46' } },
+    })),
+    parallel: {
+      left: '5%',
+      right: '5%',
+      top: '10%',
+      bottom: '10%',
+      parallelAxisDefault: { type: 'value' },
+    },
+    series: [{
+      type: 'parallel',
+      data: data.rows.map((r: any, i: number) => ({
+        name: r.name,
+        value: r.values,
+        lineStyle: { color: DARK_PALETTE[i % DARK_PALETTE.length], width: 2, opacity: 0.8 },
+      })),
+    }],
+  };
+}
+
+function buildHeatmapOption(data: any): unknown {
+  if (!Array.isArray(data?.x) || !Array.isArray(data?.y) || !Array.isArray(data?.cells)) {
+    throw new Error('heatmap requires x: string[], y: string[], cells: [xIdx,yIdx,val][]');
+  }
+  return {
+    backgroundColor: 'transparent',
+    grid: { left: 50, right: 30, top: 30, bottom: 50 },
+    xAxis: { type: 'category', data: data.x, axisLabel: { color: '#a1a1aa' }, axisLine: { lineStyle: { color: '#3f3f46' } } },
+    yAxis: { type: 'category', data: data.y, axisLabel: { color: '#a1a1aa' }, axisLine: { lineStyle: { color: '#3f3f46' } } },
+    visualMap: {
+      min: 0,
+      max: Math.max(1, ...data.cells.map((c: any[]) => Number(c[2]) || 0)),
+      orient: 'horizontal',
+      left: 'center',
+      bottom: 0,
+      textStyle: { color: '#a1a1aa' },
+      inRange: { color: ['#1c1f24', '#8b5cf6'] },
+    },
+    series: [{
+      type: 'heatmap',
+      data: data.cells,
+      label: { show: true, color: '#f8fafc' },
+      emphasis: { itemStyle: { shadowBlur: 8, shadowColor: 'rgba(139,92,246,0.5)' } },
+    }],
+  };
+}
+
+function buildOption(template: EChartTemplate, data: any): unknown {
+  switch (template) {
+    case 'sankey': return buildSankeyOption(data);
+    case 'chord': return buildChordOption(data);
+    case 'sunburst': return buildSunburstOption(data);
+    case 'radial_tree': return buildRadialTreeOption(data);
+    case 'treemap': return buildTreemapOption(data);
+    case 'parallel_coords': return buildParallelCoordsOption(data);
+    case 'heatmap': return buildHeatmapOption(data);
+    default: {
+      const exhaustive: never = template;
+      throw new Error(`unsupported template: ${String(exhaustive)}`);
+    }
+  }
+}
+
+/**
+ * ECharts (zrender) embeds a per-instance counter into clip-path / pattern
+ * IDs as `zr<N>-...`, where N increments globally across calls. That makes
+ * raw `renderToSVGString()` output non-deterministic across invocations
+ * (same input → different SVG bytes). We rewrite the counter to a stable
+ * sentinel ("zr-") so identical input always yields identical output —
+ * critical for downstream caching, snapshot tests, and SHA-256-based
+ * artifact identity. The references stay internally consistent because
+ * we rewrite both the `id="..."` definitions and the `url(#...)`
+ * references with the same regex.
+ */
+// zrender embeds the per-instance counter in two places:
+//   `zr<N>-...`   — clip-path ID prefix
+//   `zr-cls-<N>`  — CSS class name suffix (and corresponding <style> rules)
+// Strip both. References stay internally consistent because we rewrite
+// every site (id=..., url(#...), class=..., and the inline <style>) with
+// the same regex applied to the full SVG string.
+const ZR_INSTANCE_PATTERN = /\bzr\d+-/g;
+const ZR_CLASS_PATTERN = /\bzr-cls-\d+/g;
+
+function stripZRenderCounter(svg: string): string {
+  // Map every per-instance class name to a stable hash-of-its-position
+  // so rules in the embedded <style> still target the matching elements.
+  const classMap = new Map<string, string>();
+  let counter = 0;
+  return svg
+    .replace(ZR_INSTANCE_PATTERN, 'zr-')
+    .replace(ZR_CLASS_PATTERN, (match) => {
+      let stable = classMap.get(match);
+      if (!stable) {
+        stable = `zr-cls-s${counter++}`;
+        classMap.set(match, stable);
+      }
+      return stable;
+    });
+}
+
+export function renderEChart(template: EChartTemplate, data: unknown): RenderedSvg {
+  const option = buildOption(template, data);
+  // SSR mode: ECharts internally creates a virtual DOM and renders to SVG.
+  // Reference: https://echarts.apache.org/handbook/en/how-to/cross-platform/server
+  const chart = (echarts as any).init(null, null, {
+    renderer: 'svg',
+    ssr: true,
+    width: DIMS.width,
+    height: DIMS.height,
+  });
+  chart.setOption(option);
+  const raw: string = chart.renderToSVGString();
+  chart.dispose();
+  return { kind: 'svg', content: stripZRenderCounter(raw) };
+}

@@ -22,6 +22,22 @@ import { loggers } from '../utils/logger.js';
 
 const logger = loggers.services;
 
+// Map a language tag (or filename) to a best-effort mime type. Used by the
+// Collections sidebar to render a glyph; not used for content-negotiation.
+function mimeForLanguage(language: string, fileName: string): string {
+  const lang = (language || '').toLowerCase();
+  const ext = fileName.includes('.') ? fileName.slice(fileName.lastIndexOf('.') + 1).toLowerCase() : '';
+  if (lang === 'python' || ext === 'py') return 'text/x-python';
+  if (lang === 'typescript' || ext === 'ts' || ext === 'tsx') return 'text/typescript';
+  if (lang === 'javascript' || ext === 'js' || ext === 'jsx') return 'text/javascript';
+  if (lang === 'markdown' || ext === 'md') return 'text/markdown';
+  if (ext === 'json') return 'application/json';
+  if (ext === 'yaml' || ext === 'yml') return 'application/x-yaml';
+  if (ext === 'html') return 'text/html';
+  if (ext === 'css') return 'text/css';
+  return 'text/plain';
+}
+
 // Collection schema for code embeddings
 export interface CodeEmbedding {
   content: string;
@@ -523,6 +539,99 @@ export class CodeModeMilvusService {
         status: 'error'
       };
     }
+  }
+
+  /**
+   * List distinct files indexed in the user's collection.
+   *
+   * Queries the user's per-user collection only — never enumerates other
+   * users' collections. Returns file metadata for the Collections sidebar
+   * (services/openagentic-ui/src/codemode/components/CollectionsSection.tsx).
+   *
+   * Files are inferred from distinct `file_path` values in the user's
+   * collection. The latest `timestamp` per file is used as `mtimeMs`; size
+   * is derived from the largest content row for that path (a chunk-size
+   * proxy, not the on-disk size — Milvus doesn't track that).
+   */
+  async listUserFiles(userId: string): Promise<Array<{
+    name: string;
+    path: string;
+    size: number;
+    mtimeMs: number;
+    mime: string;
+  }>> {
+    const collectionName = this.getCollectionName(userId);
+
+    try {
+      const exists = await this.client.hasCollection({ collection_name: collectionName });
+      if (!exists.value) return [];
+
+      const result = await this.client.query({
+        collection_name: collectionName,
+        filter: 'file_path != ""',
+        output_fields: ['file_path', 'language', 'timestamp', 'metadata_json'],
+        limit: 16384,
+      });
+
+      const byPath = new Map<string, {
+        name: string;
+        path: string;
+        size: number;
+        mtimeMs: number;
+        mime: string;
+      }>();
+
+      for (const row of (result.data || []) as any[]) {
+        const path = row.file_path as string;
+        if (!path) continue;
+        const ts = Number(row.timestamp || 0);
+        let fileName = '';
+        try {
+          const meta = JSON.parse(row.metadata_json || '{}');
+          fileName = meta.fileName || '';
+        } catch { /* ignore */ }
+        if (!fileName) {
+          fileName = path.slice(path.lastIndexOf('/') + 1);
+        }
+        const lang = (row.language || '').toString();
+        const mime = mimeForLanguage(lang, fileName);
+
+        const existing = byPath.get(path);
+        if (!existing) {
+          byPath.set(path, { name: fileName, path, size: 0, mtimeMs: ts, mime });
+        } else {
+          if (ts > existing.mtimeMs) existing.mtimeMs = ts;
+        }
+      }
+
+      return Array.from(byPath.values()).sort((a, b) => a.path.localeCompare(b.path));
+    } catch (error) {
+      logger.error({ error, userId }, '[CodeModeMilvus] Failed to list user files');
+      return [];
+    }
+  }
+
+  /**
+   * Get a sidebar-friendly summary of the user's collection (vector count
+   * AND distinct file count). Returns null when the user has no collection.
+   */
+  async getUserCollectionSummary(userId: string): Promise<{
+    name: string;
+    userId: string;
+    vectorCount: number;
+    fileCount: number;
+    status: 'active' | 'inactive' | 'error';
+  } | null> {
+    const info = await this.getCollectionInfo(userId);
+    if (!info) return null;
+    const files = await this.listUserFiles(userId);
+    return {
+      name: info.name,
+      userId: info.userId,
+      vectorCount: info.vectorCount,
+      fileCount: files.length,
+      status: info.status,
+    };
   }
 
   /**

@@ -89,26 +89,14 @@ export const ModelSelectorDropdown: React.FC<ModelSelectorDropdownProps> = ({
 }) => {
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
-  const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter chat models
+  // Filter chat models — Registry surface is small and finite; no search
+  // bar to filter (per user direction).
   const chatModels = useMemo(() =>
     availableModels.filter(m => m.type === 'chat'),
     [availableModels]
   );
-
-  // Filter by search
-  const filteredModels = useMemo(() => {
-    if (!searchQuery.trim()) return chatModels;
-    const q = searchQuery.toLowerCase();
-    return chatModels.filter(m =>
-      m.id.toLowerCase().includes(q) ||
-      m.name.toLowerCase().includes(q) ||
-      m.provider?.toLowerCase().includes(q) ||
-      PROVIDER_CONFIG[m.provider || '']?.label.toLowerCase().includes(q)
-    );
-  }, [chatModels, searchQuery]);
+  const filteredModels = chatModels;
 
   // Group by provider, sorted by provider order
   const groupedModels = useMemo(() => {
@@ -138,42 +126,60 @@ export const ModelSelectorDropdown: React.FC<ModelSelectorDropdownProps> = ({
     });
   }, [filteredModels]);
 
-  // Calculate position
+  // Calculate position — anchor to the pill, not to the viewport. User locked
+  // 2026-04-22: dropdown must "attach to the Auto-Routing pill above it", NOT
+  // float in the center of the chat modal. The old `left: rect.right - 380`
+  // math right-aligned the dropdown with the pill, which — combined with the
+  // chat container's bounded max-width — put the dropdown visually center-ish
+  // inside the chat column. Fix: anchor the dropdown's RIGHT edge to the
+  // pill's right edge (so it opens flush above it), clamp to viewport gutters,
+  // and nudge up so the dropdown's bottom sits 6px above the pill.
   useEffect(() => {
+    const DROPDOWN_WIDTH = 380;
+    const GUTTER = 8;
+    const GAP_ABOVE_PILL = 6;
     const updatePosition = () => {
-      if (buttonRef.current) {
-        const rect = buttonRef.current.getBoundingClientRect();
-        const vh = window.innerHeight;
-        const dropdownMaxH = Math.min(520, vh - 32);
+      if (!buttonRef.current) return;
+      const rect = buttonRef.current.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const dropdownMaxH = Math.min(520, vh - 32);
 
-        if (position === 'above') {
-          const idealTop = rect.top - dropdownMaxH - 8;
-          setDropdownPosition({
-            top: Math.max(8, idealTop),
-            left: Math.max(8, rect.right - 380)
-          });
-        } else {
-          setDropdownPosition({
-            top: rect.bottom + 8,
-            left: Math.max(8, rect.right - 380)
-          });
-        }
+      // Right edge of dropdown == right edge of pill, clamped so the dropdown
+      // never overflows the viewport (keeps ≥ GUTTER from both edges).
+      const idealLeft = rect.right - DROPDOWN_WIDTH;
+      const clampedLeft = Math.max(
+        GUTTER,
+        Math.min(idealLeft, vw - DROPDOWN_WIDTH - GUTTER),
+      );
+
+      if (position === 'above') {
+        const idealTop = rect.top - dropdownMaxH - GAP_ABOVE_PILL;
+        setDropdownPosition({
+          top: Math.max(GUTTER, idealTop),
+          left: clampedLeft,
+        });
+      } else {
+        setDropdownPosition({
+          top: rect.bottom + GAP_ABOVE_PILL,
+          left: clampedLeft,
+        });
       }
     };
 
+    // Retry once on the next frame — covers the case where buttonRef.current
+    // isn't yet attached when this effect first runs (React refs settle after
+    // first paint). Without the retry the dropdown sticks at {top:0,left:0}.
     updatePosition();
-    window.addEventListener('scroll', updatePosition);
+    const rafId = requestAnimationFrame(updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
     window.addEventListener('resize', updatePosition);
     return () => {
-      window.removeEventListener('scroll', updatePosition);
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('scroll', updatePosition, true);
       window.removeEventListener('resize', updatePosition);
     };
   }, [buttonRef, position]);
-
-  // Focus search on open
-  useEffect(() => {
-    setTimeout(() => searchRef.current?.focus(), 50);
-  }, []);
 
   // Handle keyboard
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -221,50 +227,45 @@ export const ModelSelectorDropdown: React.FC<ModelSelectorDropdownProps> = ({
       onKeyDown={handleKeyDown}
       tabIndex={-1}
     >
-      {/* Search bar */}
-      <div className="px-3 pt-3 pb-2 border-b" style={{ borderColor: 'var(--color-border)' }}>
-        <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ backgroundColor: 'var(--color-surfaceHover)' }}>
-          <Search size={14} style={{ color: 'var(--color-textMuted)' }} />
-          <input
-            ref={searchRef}
-            type="text"
-            placeholder="Search models..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-transparent outline-none text-sm flex-1"
-            style={{ color: 'var(--color-text)' }}
-          />
-        </div>
-      </div>
+      {/* RIPPED: Search bar inside the model selector. The Registry shows
+          users their finite enabled set — searching across 5-10 models
+          is unnecessary chrome. Per user direction. */}
 
       {/* Scrollable model list */}
       <div className="overflow-y-auto flex-1 p-2" style={{ maxHeight: '440px' }}>
-        {/* Smart Router option */}
-        <button
-          onClick={() => { onModelChange(''); onClose(); }}
-          className={clsx(
-            'w-full text-left px-3 py-2 rounded-lg transition-colors text-sm flex items-center justify-between mb-1',
-          )}
-          style={{
-            color: 'var(--color-text)',
-            backgroundColor: !selectedModel ? 'color-mix(in srgb, var(--color-primary) 20%, transparent)' : 'transparent'
-          }}
-          onMouseEnter={(e) => { if (selectedModel) e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = !selectedModel ? 'color-mix(in srgb, var(--color-primary) 20%, transparent)' : 'transparent'; }}
-        >
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold" style={{ background: 'linear-gradient(135deg, #3B82F6, #A855F7)', color: '#fff' }}>
-              AI
-            </div>
-            <div>
-              <div className="font-medium">Smart Router</div>
-              <div className="text-[11px]" style={{ color: 'var(--color-textMuted)' }}>
-                Auto-selects based on query complexity
+        {/* Auto-Routing pseudo-option — only rendered when Registry has more
+            than one chat model. With exactly one (or zero) there's no routing
+            decision to make; showing Auto-Routing would be a lie. Behavior
+            locked by user 2026-04-22 ("it MAKE SENSE the Auto-Routing doesnt
+            show up when only one chat model is defined") + regression tested
+            in ModelSelectorDropdown.smart-router.test.tsx. */}
+        {chatModels.length > 1 && (
+          <button
+            onClick={() => { onModelChange(''); onClose(); }}
+            className={clsx(
+              'w-full text-left px-3 py-2 rounded-lg transition-colors text-sm flex items-center justify-between mb-1',
+            )}
+            style={{
+              color: 'var(--color-text)',
+              backgroundColor: !selectedModel ? 'color-mix(in srgb, var(--color-primary) 20%, transparent)' : 'transparent'
+            }}
+            onMouseEnter={(e) => { if (selectedModel) e.currentTarget.style.backgroundColor = 'var(--color-surfaceHover)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = !selectedModel ? 'color-mix(in srgb, var(--color-primary) 20%, transparent)' : 'transparent'; }}
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold" style={{ background: 'linear-gradient(135deg, #3B82F6, #A855F7)', color: '#fff' }}>
+                AI
+              </div>
+              <div>
+                <div className="font-medium">Auto-Routing</div>
+                <div className="text-[11px]" style={{ color: 'var(--color-textMuted)' }}>
+                  Auto-selects based on query complexity
+                </div>
               </div>
             </div>
-          </div>
-          {!selectedModel && <Check size={14} className="text-blue-400" />}
-        </button>
+            {!selectedModel && <Check size={14} className="text-blue-400" />}
+          </button>
+        )}
 
         {/* Provider groups */}
         {groupedModels.map(([provider, models]) => {
@@ -351,9 +352,10 @@ export const ModelSelectorDropdown: React.FC<ModelSelectorDropdownProps> = ({
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
-                      <span className="text-[10px] font-mono" style={{ color: costInfo.color }}>
-                        {costInfo.label}
-                      </span>
+                      {/* RIPPED $$/cost-tier label per user direction:
+                          "no more $$ or that shit". Pricing belongs in
+                          admin Model Registry, not on the per-turn
+                          model picker. */}
                       {isSelected && <Check size={14} className="text-blue-400" />}
                     </div>
                   </button>
@@ -363,11 +365,6 @@ export const ModelSelectorDropdown: React.FC<ModelSelectorDropdownProps> = ({
           );
         })}
 
-        {filteredModels.length === 0 && searchQuery && (
-          <div className="text-center py-6 text-sm" style={{ color: 'var(--color-textMuted)' }}>
-            No models matching "{searchQuery}"
-          </div>
-        )}
       </div>
     </div>,
     document.body
@@ -390,7 +387,7 @@ export const ModelSelectorButton: React.FC<{
   disabled = false,
   className = ''
 }) => {
-  const displayName = selectedModel ? (modelName || selectedModel) : 'Smart Router';
+  const displayName = selectedModel ? (modelName || selectedModel) : 'Auto-Routing';
 
   return (
     <button

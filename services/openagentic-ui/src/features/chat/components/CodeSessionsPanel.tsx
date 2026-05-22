@@ -260,7 +260,7 @@ export const CodeSessionsPanel: React.FC<CodeSessionsPanelProps> = ({ isExpanded
 
       {/* Empty state */}
       {!isLoading && !error && sessions.length === 0 && isExpanded && (
-        <div className="px-6 py-6 text-xs text-center" style={{ color: 'rgb(var(--text-muted))' }}>
+        <div className="px-6 py-6 text-xs text-center" style={{ color: 'var(--text-muted)' }}>
           <MessageSquare size={20} className="mx-auto mb-2 opacity-60" />
           <div>No sessions yet.</div>
           <div className="mt-1">
@@ -271,7 +271,7 @@ export const CodeSessionsPanel: React.FC<CodeSessionsPanelProps> = ({ isExpanded
 
       {/* Loading */}
       {isLoading && sessions.length === 0 && isExpanded && (
-        <div className="flex items-center justify-center py-6" style={{ color: 'rgb(var(--text-muted))' }}>
+        <div className="flex items-center justify-center py-6" style={{ color: 'var(--text-muted)' }}>
           <Loader2 size={16} className="animate-spin" />
         </div>
       )}
@@ -288,7 +288,7 @@ export const CodeSessionsPanel: React.FC<CodeSessionsPanelProps> = ({ isExpanded
             >
               <h3
                 className="text-sm font-medium uppercase tracking-wide"
-                style={{ color: 'rgb(var(--text-muted))' }}
+                style={{ color: 'var(--text-muted)' }}
               >
                 Recent
               </h3>
@@ -304,7 +304,7 @@ export const CodeSessionsPanel: React.FC<CodeSessionsPanelProps> = ({ isExpanded
             {isExpanded && (
               <div
                 className="px-3 pt-1 pb-1 text-[11px] uppercase tracking-wider"
-                style={{ color: 'rgb(var(--text-muted))', opacity: 0.8 }}
+                style={{ color: 'var(--text-muted)', opacity: 0.8 }}
               >
                 {BUCKET_LABEL[bucket]}
               </div>
@@ -370,7 +370,7 @@ export const CodeSessionsPanel: React.FC<CodeSessionsPanelProps> = ({ isExpanded
                           </div>
                           <div
                             className="text-xs mt-0.5 flex items-center gap-2"
-                            style={{ color: 'rgb(var(--text-muted))' }}
+                            style={{ color: 'var(--text-muted)' }}
                           >
                             <span>{relativeTime(s.lastActivity || s.createdAt)}</span>
                           </div>

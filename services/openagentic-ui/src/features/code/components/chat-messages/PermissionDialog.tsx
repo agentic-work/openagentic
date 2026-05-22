@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import type { CanUseToolRequest } from '../../types/streamJson';
+import type { CanUseToolRequest } from '../../types/_sdk-bindings';
 import { renderToolInputSummary } from './toolRenderers';
 
 interface PermissionDialogProps {

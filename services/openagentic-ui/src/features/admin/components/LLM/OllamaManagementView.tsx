@@ -4,6 +4,7 @@ import {
   Server, RefreshCw, Cpu, AlertCircle, CheckCircle, Loader2
 } from '../Shared/AdminIcons';
 import { apiRequest } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -86,7 +87,7 @@ const OllamaLogo: React.FC<{ size?: number }> = ({ size = 24 }) => (
     alt="Ollama"
     width={size}
     height={size}
-    style={{ borderRadius: 4, backgroundColor: '#fff', padding: 2, objectFit: 'contain' }}
+    style={{ borderRadius: 4, backgroundColor: 'var(--ap-fg-0)', padding: 2, objectFit: 'contain' }}
   />
 );
 
@@ -272,39 +273,15 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
 
   return (
     <div className="p-6 space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <OllamaLogo size={28} />
-          <div>
-            <h2 className="text-xl font-semibold text-white">Ollama Hosts</h2>
-            <p className="text-xs text-text-secondary">
-              {hosts.length} host{hosts.length !== 1 ? 's' : ''} configured
-              {' '}&middot;{' '}Auto-sync every 60s
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors
-              bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Syncing...' : 'Sync Now'}
-          </button>
-          <button
-            onClick={refresh}
-            disabled={loading}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors
-              bg-surface-hover hover:bg-surface-secondary text-white"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        crumbs={['Admin', 'LLM', 'Ollama']}
+        title="Ollama Hosts"
+        explainer={`${hosts.length} host${hosts.length !== 1 ? 's' : ''} configured · Auto-sync every 60s.`}
+        actions={[
+          { label: syncing ? 'Syncing...' : 'Sync Now', primary: true, onClick: handleSync, disabled: syncing },
+          { label: 'Refresh', onClick: refresh, disabled: loading },
+        ]}
+      />
 
       {/* Error */}
       {error && (
@@ -324,9 +301,10 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
               onClick={() => setActiveHostId(host.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm transition-colors whitespace-nowrap ${
                 activeHostId === host.id
-                  ? 'bg-surface-hover text-white border-b-2 border-purple-500'
+                  ? 'bg-surface-hover text-white border-b-2'
                   : 'text-text-secondary hover:text-white hover:bg-surface-hover/50'
               }`}
+              style={activeHostId === host.id ? { borderBottomColor: 'var(--ap-accent)' } : undefined}
             >
               <span className={`w-2 h-2 rounded-full ${
                 host.status === 'connected' ? 'bg-green-400' : 'bg-red-400'
@@ -362,7 +340,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
               <div>
                 <span className="text-white text-sm font-medium">{activeHost.host}</span>
                 <span className="text-text-secondary text-xs ml-3">
-                  Priority: {activeHost.priority} &middot; Chat model: <code className="text-purple-300">{activeHost.chatModel || 'auto'}</code>
+                  Priority: {activeHost.priority} &middot; Chat model: <code style={{ color: 'var(--ap-accent)' }}>{activeHost.chatModel || 'auto'}</code>
                 </span>
               </div>
             </div>
@@ -377,7 +355,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
               </div>
               <div>
                 <div className="text-xs text-text-secondary">Last sync</div>
-                <div className="text-sm text-purple-300">{formatTimeAgo(activeHost.lastSync)}</div>
+                <div className="text-sm" style={{ color: 'var(--ap-accent)' }}>{formatTimeAgo(activeHost.lastSync)}</div>
               </div>
             </div>
           </div>
@@ -418,11 +396,16 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                   <button
                     onClick={handlePull}
                     disabled={pulling || !pullModelName.trim()}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-white transition-colors ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${
                       pulling || !pullModelName.trim()
-                        ? 'bg-gray-600 cursor-not-allowed'
-                        : 'bg-purple-600 hover:bg-purple-500'
+                        ? 'bg-gray-600 cursor-not-allowed text-white'
+                        : ''
                     }`}
+                    style={
+                      pulling || !pullModelName.trim()
+                        ? undefined
+                        : { background: 'var(--ap-accent)', color: 'var(--ap-fg-on-accent)' }
+                    }
                   >
                     {pulling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                     {pulling ? 'Pulling...' : 'Pull'}
@@ -463,7 +446,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                 </h3>
                 {loading ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+                    <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--ap-accent)' }} />
                   </div>
                 ) : models.length === 0 ? (
                   <div className="text-center py-8 text-text-secondary text-sm">
@@ -482,7 +465,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400">RUNNING</span>
                               )}
                               {m.details?.parameter_size && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">
+                                <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--ap-accent-soft)', color: 'var(--ap-accent)' }}>
                                   {m.details.parameter_size}
                                 </span>
                               )}
@@ -581,8 +564,8 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                           {/* VRAM bar */}
                           <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-gradient-to-r from-purple-500 to-purple-400 rounded-full transition-all"
-                              style={{ width: `${Math.min(vramPct, 100)}%` }}
+                              className="h-full rounded-full transition-all"
+                              style={{ width: `${Math.min(vramPct, 100)}%`, background: 'var(--ap-accent)' }}
                             />
                           </div>
                           <div className="flex justify-between mt-1 text-[10px] text-text-secondary">
@@ -607,7 +590,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                         <span className="text-white text-sm font-medium">{h.name}</span>
                       </div>
                       <div className="text-xs text-text-secondary space-y-0.5">
-                        <div>Host: <code className="text-purple-300">{h.host}</code></div>
+                        <div>Host: <code style={{ color: 'var(--ap-accent)' }}>{h.host}</code></div>
                         <div>Models: {h.modelCount} &middot; Running: {h.runningCount}</div>
                         <div>Priority: {h.priority} &middot; Last sync: {formatTimeAgo(h.lastSync)}</div>
                       </div>

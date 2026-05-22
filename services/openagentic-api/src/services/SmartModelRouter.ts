@@ -17,7 +17,26 @@ import { ProviderManager } from './llm-providers/ProviderManager.js';
 import { ILLMProvider, CompletionRequest } from './llm-providers/ILLMProvider.js';
 import { UniversalEmbeddingService } from './UniversalEmbeddingService.js';
 import { RedisClientType } from 'redis';
-import type { SliderConfig } from './SliderService.js';
+import { RouterTuningService, RouterTuning, ROUTER_TUNING_DEFAULTS } from './RouterTuningService.js';
+// Phase E.1 (2026-05-10) — the intent classifier service (RIPPED 2026-05-10 Phase E.1) import REMOVED.
+// Spec §50: model decides; no pre-LLM classifier. SmartModelRouter
+// routes purely on FCA scoring + structural analysis (vision, tools,
+// prompt length). The `trivialIntent` cheapest-chat shortcut is gone.
+import { getModelCapabilityRegistry } from './ModelCapabilityRegistry.js';
+// 2026-04-19 — SliderConfig import removed (task #144, slider rip).
+import {
+  routerDecisionCounter,
+  routerEscalationCounter,
+  routerFloorExcludedCounter,
+  routerRouteRequestDurationMs,
+  routerQualityBonusCounter,
+} from '../metrics/index.js';
+// Q1-fix-3 (2026-05-12) — prompt-pattern task classifier. Maps prompt
+// shape to a CAPABILITY profile (FCA floor + context floor + reasoning
+// pref). The router filters DB-discovered models by capability; no
+// model IDs hardcoded here. See PromptClassifier.ts header for the
+// non-overlap argument with the banned regex-detector set.
+import { classifyAndProfile } from './router/PromptClassifier.js';
 
 // Model capability profile
 export interface ModelProfile {
@@ -36,6 +55,52 @@ export interface ModelProfile {
     streaming: boolean;
     jsonMode: boolean;
     structuredOutput: boolean;
+
+    // --- A₂ parity flags (added 2026-04-19) -----------------------------------
+    //
+    // These flags drive UI code paths that depend on wire-exact streaming
+    // features (per-char tool arg deltas, native extended-thinking, citations,
+    // signature chains). UI falls back gracefully when a flag is false — it
+    // simply skips the optional render path (e.g. no live tool-arg typing,
+    // no thinking block, no citation underlines).
+
+    /**
+     * True when the model streams tool-use input JSON per-character as
+     * `input_json_delta` chunks (Anthropic native, also OpenAI Responses
+     * API `response.function_call_arguments.delta`, Vertex Gemini partial
+     * function-call args, Qwen3Parser-era Ollama).
+     *
+     * False for legacy Bedrock Converse (non-Claude) and older providers
+     * that batch tool args into a single post-completion payload.
+     */
+    supportsToolInputDelta: boolean;
+
+    /**
+     * True when the model supports native extended-thinking blocks emitted
+     * during generation (Claude extended-thinking, GPT-5 + o-series
+     * reasoning, Gemini 3 thinking, DeepSeek-R1 / gpt-oss / Qwen3 thinking
+     * tags). Lifted from ModelCapabilityRegistry.supportsThinking() when
+     * available, otherwise inferred from the model-name pattern.
+     */
+    supportsThinking: boolean;
+
+    /**
+     * True when the model emits first-class inline citations
+     * (Anthropic Citations API on Claude 3.5+, Vertex Gemini with
+     * groundingMetadata). False for plain text-only responses.
+     */
+    supportsCitations: boolean;
+
+    /**
+     * True for adapters that FAKE thinking blocks on top of models that
+     * don't natively stream them — typically Ollama parsers for
+     * DeepSeek-R1 / Qwen3 / gpt-oss that pattern-match `<thinking>` tags
+     * out of the text stream and re-emit them as synthetic
+     * `thinking_*` events. The UI shows a subtle "synthetic" badge
+     * so users know the thinking trace came from a parser, not the
+     * model's native reasoning channel.
+     */
+    supportsSyntheticThinking: boolean;
   };
 
   performance: {
@@ -63,13 +128,21 @@ export interface ModelProfile {
   embedding?: number[];
 }
 
-// Request analysis result
+// Request analysis result.
+//
+// 2026-04-29 — chatmode-ux-mock-parity Wave2-D, task 1.7+1.17:
+// `isComplexReasoning`, `isMultiStep`, `isMultiCloud` removed. Those
+// signals were derived from 5 hand-tuned regex detectors inside
+// `analyzeRequest()` (verb / resource / breadth / compound-list /
+// discovery-plus-report). The classifier-driven FCA-floor escalation
+// path that briefly replaced them was itself ripped 2026-05-02
+// alongside the viz-tier ladder — the router now relies on the
+// neutral structural FCA floors (chat-pool / simple-tool) and
+// vendor-agnostic capability flags. Plan:
+// docs/chatmode-ux-mock-parity/02-plan-canonical.md §38-52.
 export interface RequestAnalysis {
   hasTools: boolean;
   toolCount: number;
-  isComplexReasoning: boolean;
-  isMultiStep: boolean;
-  isMultiCloud: boolean; // Mentions multiple cloud providers
   requiresVision: boolean;
   estimatedTokens: number;
   recommendedCapabilities: string[];
@@ -98,36 +171,21 @@ export interface RoutingDecision {
   };
 }
 
-/**
- * Destructive verbs the router should escalate on. Kept narrow — only
- * verbs that CAN cause resource loss. We exclude soft verbs (disable,
- * pause) because those are typically reversible.
- */
-const DESTRUCTIVE_VERB_REGEX = /\b(?:delete|deletes|deleting|remove|removes|removing|drop|drops|dropping|destroy|destroys|destroying|terminate|terminates|terminating|purge|purges|purging|shutdown|shutting\s+down|deallocate|deallocates|deallocating|kill|kills|killing|wipe|wipes|wiping|nuke|nukes|nuking|tear\s+down|tearing\s+down|truncate|truncates|truncating)\b/i;
-
-/**
- * Cloud-resource nouns. A prompt like "delete the report" doesn't count;
- * a prompt like "delete the resource group" does. Kept broad — anything
- * that maps to a cloud resource, pod, or secret.
- */
-const CLOUD_RESOURCE_NOUN_REGEX = /\b(?:resource\s+group|resource\s+groups|subscription|subscriptions|tenant|tenants|vm|vms|virtual\s+machine|virtual\s+machines|instance|instances|bucket|buckets|blob|blobs|storage\s+account|storage\s+accounts|database|databases|db|dbs|rds|sql\s+server|table|tables|cluster|clusters|aks|eks|gke|namespace|namespaces|pod|pods|deployment|deployments|statefulset|statefulsets|vault|vaults|key\s+vault|secret\s+manager|secret|secrets|key|keys|certificate|certificates|cert|certs|role|roles|policy|policies|user|users|group|groups|service\s+account|service\s+accounts|iam|iam\s+role|function|functions|lambda|lambdas|cloud\s+function|queue|queues|topic|topics|stream|streams|workspace|workspaces|alert|alerts|rule|rules|firewall|firewall\s+rule|network|networks|vpc|vpcs|vnet|vnets|subnet|subnets|route|routes|nat\s+gateway|load\s+balancer|load\s+balancers|lb|lbs|dns|dns\s+zone|app\s+service|app\s+services|front\s+door|cdn|container\s+registry|acr|ecr|gcr|snapshot|snapshots|backup|backups|volume|volumes|disk|disks|image|images|ami|amis|container|containers|configmap|configmaps|secret\s+store)\b/i;
-
-/**
- * Evaluate a prompt for destructive intent. Returns the matched verb +
- * noun when both co-occur, null otherwise. Matching is case-insensitive
- * and allows multi-word nouns ("resource group", "virtual machine").
- */
-export function detectDestructiveIntent(prompt: string): { verb: string; noun: string } | null {
-  if (!prompt || typeof prompt !== 'string') return null;
-  const verbMatch = DESTRUCTIVE_VERB_REGEX.exec(prompt);
-  if (!verbMatch) return null;
-  const nounMatch = CLOUD_RESOURCE_NOUN_REGEX.exec(prompt);
-  if (!nounMatch) return null;
-  return {
-    verb: verbMatch[0].toLowerCase(),
-    noun: nounMatch[0].toLowerCase(),
-  };
-}
+// REGEX DETECTORS DELETED (chatmode-ux-mock-parity Wave2-D, 2026-04-29).
+//
+// The four detectors that previously lived here (destructive / infra-ops /
+// cloud-list / complexity) were ~240 LOC of hand-tuned regex with documented
+// false-positives. The follow-on classifier-driven FCA-floor escalation
+// branch in `routeRequest()` / `simulatePrompt()` was itself ripped on
+// 2026-05-02 alongside the viz-tier ladder — the FCA-floor map encoded
+// model-specific knowledge in router config. The classifier itself stays;
+// its output previously flowed to the legacy per-intent ranker (ripped
+// Phase E.2 / E.10) and the V2 chat pipeline. Routing now relies on the
+// structural chat-pool / simple-tool FCA floors plus vendor-agnostic
+// capability flags.
+//
+// Plan: docs/chatmode-ux-mock-parity/02-plan-canonical.md §38-52, §80
+//       ("Regex-as-fallback IS regex routing").
 
 // Minimum function calling accuracy — two tiers.
 //
@@ -144,8 +202,185 @@ const MIN_FUNCTION_CALLING_ACCURACY_COMPLEX = 0.90;
 // Legacy alias — still exported for callers that use it as a getter floor.
 const MIN_FUNCTION_CALLING_ACCURACY = MIN_FUNCTION_CALLING_ACCURACY_COMPLEX;
 
-// Multi-cloud keywords
-const MULTI_CLOUD_KEYWORDS = ['azure', 'aws', 'gcp', 'google cloud', 'vertex', 'bedrock', 'lambda', 's3', 'ec2', 'iam'];
+// MULTI_CLOUD_KEYWORDS RIPPED 2026-04-29 (chatmode-ux-mock-parity Wave2-D).
+// The breadth/multi-cloud signal briefly flowed through the intent classifier service (RIPPED 2026-05-10 Phase E.1)
+// + the per-intent FCA-floor field; that FCA-escalation branch was ripped
+// 2026-05-02 with the viz-tier ladder. Tool-bearing requests fall through
+// to the structural simple-tool FCA floor; per-intent tool surface tuning
+// (formerly the per-intent top-K) was ripped 2026-05-10 (Phase E.10).
+
+/**
+ * Parity-flag inference for the A₂ streaming-parity overhaul.
+ *
+ * Drives four capability flags on `ModelProfile.capabilities`:
+ *
+ *   - `supportsToolInputDelta` — per-char tool-arg streaming
+ *       (`input_json_delta` in Anthropic events). True for Anthropic /
+ *       Claude via any provider, OpenAI Responses-era (GPT-5, o-series),
+ *       Gemini 3 Flash/Pro, and Ollama models served by Qwen3Parser
+ *       (Qwen / DeepSeek-R1 / gpt-oss). False for Bedrock Converse
+ *       non-Claude and legacy providers.
+ *
+ *   - `supportsThinking` — native extended-thinking channel. True for
+ *       Anthropic 4.x (opus/sonnet/haiku), GPT-5 + o-series, Gemini 2.5+
+ *       / Gemini 3, DeepSeek-R1, Qwen3, gpt-oss. False for plain
+ *       chat-only models.
+ *
+ *   - `supportsCitations` — Anthropic Citations API or Vertex
+ *       groundingMetadata. Anthropic Claude 3.5+ / 4.x, Vertex Gemini
+ *       with grounding — both TRUE. Everything else FALSE.
+ *
+ *   - `supportsSyntheticThinking` — adapter fakes thinking blocks by
+ *       pattern-matching `<thinking>` tags in the raw text stream. True
+ *       for Ollama-served models whose native wire protocol is plain
+ *       text but the adapter synthesizes thinking_* events. Used by the
+ *       UI to show a subtle "synthetic reasoning" badge.
+ */
+interface ParityFlags {
+  supportsToolInputDelta: boolean;
+  supportsThinking: boolean;
+  supportsCitations: boolean;
+  supportsSyntheticThinking: boolean;
+}
+
+export function inferParityFlags(input: {
+  lower: string;
+  providerType: ModelProfile['providerType'];
+  isGPT: boolean;
+  isClaude: boolean;
+  isGemini: boolean;
+  isQwen: boolean;
+  isDeepSeek: boolean;
+}): ParityFlags {
+  const { lower, providerType, isGPT, isClaude, isGemini, isQwen, isDeepSeek } = input;
+
+  // --- Native tool-input-delta support -------------------------------------
+  //
+  // H2 (defensible): wire-format gate. Decides whether the upstream
+  // provider's stream format includes the OpenAI Responses-API
+  // `function_call_arguments.delta` event (GPT-5/o-series),
+  // Gemini-3/2.5's grounded-stream protocol, or Anthropic's tool-use
+  // delta. This is an SDK contract check on the request/response
+  // shape — NOT a registry-bypass decision. The substrings below stay
+  // because the wire-format envelope is keyed by the model family,
+  // not by an admin-configurable column.
+  const isOpenAIResponsesGeneration =
+    isGPT &&
+    (lower.includes('gpt-5') ||
+      lower.includes('gpt5') ||
+      lower.includes('o1') ||
+      lower.includes('o3') ||
+      lower.includes('o4'));
+  const isGemini3 =
+    isGemini &&
+    (lower.includes('gemini-3') ||
+      lower.includes('gemini 3') ||
+      lower.includes('gemini-2.5') ||
+      lower.includes('gemini 2.5'));
+  const isOllamaParserEra =
+    providerType === 'ollama' && (isQwen || isDeepSeek || lower.includes('gpt-oss'));
+
+  const supportsToolInputDelta =
+    isClaude || isOpenAIResponsesGeneration || isGemini3 || isOllamaParserEra;
+
+  // --- Native extended-thinking --------------------------------------------
+  //
+  // Mirror of `ModelCapabilityRegistry.supportsThinking()` semantics, but
+  // derived locally from the model-name pattern so the router doesn't need
+  // to round-trip through the registry during profile construction.
+  const supportsThinking =
+    (isClaude &&
+      (lower.includes('sonnet-4') ||
+        lower.includes('opus-4') ||
+        lower.includes('haiku-4') ||
+        lower.includes('claude-4') ||
+        lower.includes('sonnet-3.7') ||
+        lower.includes('sonnet 3.7'))) ||
+    isOpenAIResponsesGeneration ||
+    isGemini3 ||
+    (providerType === 'ollama' &&
+      (isQwen ||
+        isDeepSeek ||
+        lower.includes('gpt-oss') ||
+        lower.includes('r1') ||
+        lower.includes('reasoning')));
+
+  // --- Citations / grounding -----------------------------------------------
+  //
+  // Anthropic Claude 3.5+ and 4.x expose citations via the Citations API.
+  // Vertex Gemini emits groundingMetadata + groundingSupports when
+  // grounded generation is enabled.
+  const isClaude35Plus =
+    isClaude &&
+    (lower.includes('3.5') ||
+      lower.includes('3-5') ||
+      lower.includes('3.7') ||
+      lower.includes('3-7') ||
+      lower.includes('claude-4') ||
+      lower.includes('opus-4') ||
+      lower.includes('sonnet-4') ||
+      lower.includes('haiku-4'));
+  const supportsCitations =
+    isClaude35Plus || (isGemini && providerType === 'google-vertex');
+
+  // --- Synthetic thinking (adapter-faked) ----------------------------------
+  //
+  // Ollama-served reasoning-style models emit `<thinking>` tags in the
+  // raw text stream; our OllamaProvider normalizer re-emits them as
+  // `thinking_*` events. Mark supportsSyntheticThinking so the UI can
+  // show a "synthetic reasoning" badge that distinguishes these from
+  // Claude's native thinking channel.
+  const supportsSyntheticThinking = isOllamaParserEra;
+
+  return {
+    supportsToolInputDelta,
+    supportsThinking,
+    supportsCitations,
+    supportsSyntheticThinking,
+  };
+}
+
+/**
+ * Capability-based filter: a profile is "image-or-audio only" when its
+ * `imageGeneration`/`audioGeneration` flag is true, OR when the modelId
+ * contains a well-known audio/speech/whisper substring as a defense-in-
+ * depth fallback (since the heuristic at inferProfileFromName always sets
+ * `chat:true` and may not set `imageGeneration`).
+ *
+ * Used by `isProfileRoutable` to keep test/specialty models out of the
+ * chat candidate pool. No hardcoded model IDs — substring heuristics
+ * only target generic audio/speech model name patterns, not specific
+ * vendor models.
+ *
+ * Exported separately for unit testing without singleton mocking.
+ */
+export function isImageOrAudioOnlyProfile(profile: ModelProfile): boolean {
+  const caps = (profile.capabilities ?? {}) as any;
+
+  // Capability flags are the SoT.
+  if (caps.imageGeneration === true && caps.chat !== true) return true;
+  if (caps.audioGeneration === true && caps.chat !== true) return true;
+
+  // When chat:true AND a generation capability is set, treat as
+  // generation-primary unless explicitly tagged for chat use.
+  // (nemotron3:33b: heuristic chat=true + imageGeneration=true → exclude.)
+  if (caps.imageGeneration === true || caps.audioGeneration === true) {
+    return true;
+  }
+
+  // Defense in depth: substring fallback for audio/speech models that
+  // may not yet have the capability flag wired in their profile.
+  const idLower = (profile.modelId || '').toLowerCase();
+  if (
+    /\b(whisper|tts|stt|speech|audio|voice|sd-?xl|sdxl|stable-?diffusion|flux|dall-?e|imagen|midjourney)\b/.test(
+      idLower,
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+}
 
 export class SmartModelRouter {
   private logger: Logger;
@@ -153,6 +388,7 @@ export class SmartModelRouter {
   private embeddingService?: UniversalEmbeddingService;
   private redisClient?: RedisClientType;
   private providerManager?: ProviderManager;
+  private tuningService?: RouterTuningService;
 
   private modelProfiles: Map<string, ModelProfile> = new Map();
   private initialized = false;
@@ -165,6 +401,7 @@ export class SmartModelRouter {
       embeddingService?: UniversalEmbeddingService;
       redisClient?: RedisClientType;
       providerManager?: ProviderManager;
+      tuningService?: RouterTuningService;
     }
   ) {
     this.logger = logger.child({ service: 'SmartModelRouter' });
@@ -172,6 +409,22 @@ export class SmartModelRouter {
     this.embeddingService = options?.embeddingService;
     this.redisClient = options?.redisClient;
     this.providerManager = options?.providerManager;
+    this.tuningService = options?.tuningService;
+  }
+
+  /**
+   * Fetch live tuning constants. Falls back to in-code defaults when
+   * no RouterTuningService is injected (e.g. in unit tests that don't
+   * need live tunables).
+   */
+  private async getTuning(): Promise<RouterTuning> {
+    if (this.tuningService) return this.tuningService.getTuning();
+    return {
+      id: 'singleton',
+      ...ROUTER_TUNING_DEFAULTS,
+      updated_at: new Date(0),
+      updated_by: null,
+    };
   }
 
   /**
@@ -219,10 +472,95 @@ export class SmartModelRouter {
   }
 
   /**
-   * Discover models from all configured providers
+   * Re-read the Model Registry and rebuild the profile set.
+   *
+   * Called from invalidateAllModelCaches() whenever an admin adds /
+   * updates / removes a model through /api/admin/llm-providers/**. The
+   * profile Map stays stable-referenced; we wipe its contents in place
+   * so any in-flight routing decision that captured the router instance
+   * sees the fresh set the moment this method returns.
+   *
+   * SoT invariant: after reload() finishes, router's routable set ==
+   * ModelConfigurationService.availableModels (registry), period.
+   */
+  async reload(): Promise<void> {
+    const startTime = Date.now();
+    const prevSize = this.modelProfiles.size;
+    this.modelProfiles.clear();
+    if (this.providerManager) {
+      await this.discoverFromProviders();
+    }
+    if (this.milvusClient) {
+      // Best-effort re-stash; failure here is non-fatal for routing.
+      await this.storeProfilesInMilvus().catch(() => {});
+    }
+    this.logger.info({
+      prevCount: prevSize,
+      newCount: this.modelProfiles.size,
+      durationMs: Date.now() - startTime,
+    }, '[SmartModelRouter] Reloaded from Model Registry');
+  }
+
+  /**
+   * Discover models from all configured providers — BUT only keep the
+   * ones that have been explicitly registered in the Model Registry
+   * (LLMModel table, surfaced via ModelConfigurationService.availableModels).
+   *
+   * The rule: `provider.listModels()` returns everything the CSP makes
+   * available (Bedrock alone hands back 100+ catalog entries). We don't
+   * want every Nemotron / Nova / Titan variant showing up in the Smart
+   * Router — admins only want the models they've explicitly approved
+   * through Add-Provider / Add-Model flows. The registry is the
+   * authoritative allowlist; provider discovery is just used to mark
+   * registry entries as "available in this runtime" and to seed
+   * capability metadata.
    */
   private async discoverFromProviders(): Promise<void> {
     if (!this.providerManager) return;
+
+    // Task #7 (Registry SoT): the router's candidate pool is the set of
+    // admin.model_role_assignments rows where enabled=true. This is the
+    // SAME source the chat toolbar and admin Models page read from —
+    // provider-add auto-populates Registry (task #2), admin toggles flip
+    // rows via PATCH /registry/:id (task #5), and the router picks from
+    // whatever the admin has left enabled. No more drift between the UI's
+    // model list and the router's actual routable set.
+    const registryIds = new Set<string>();
+    // #911 (2026-05-20): registry-row capabilities indexed by model id so the
+    // profile builder can read them as the SoT. createProfileFromDiscovery
+    // now REQUIRES the capabilities JSON — name-substring inference is gone.
+    const registryRowsByModel = new Map<string, { capabilities: Record<string, any>; contextWindowTokens?: number }>();
+    try {
+      const { prisma } = await import('../utils/prisma.js');
+      const { listRegistryCandidatePool } = await import('./model-routing/RegistryCandidatePool.js');
+      const pool = await listRegistryCandidatePool(prisma as any);
+      for (const entry of pool) {
+        if (entry.model) {
+          registryIds.add(entry.model);
+          // Capabilities is a Record<string, any> per RegistryCandidate; the
+          // contextWindowTokens lives inside capabilities for now (until the
+          // dedicated column lands per Phase 2 of the SoT rip plan).
+          const caps = (entry.capabilities ?? {}) as Record<string, any>;
+          registryRowsByModel.set(entry.model, {
+            capabilities: caps,
+            contextWindowTokens:
+              typeof caps.contextWindowTokens === 'number'
+                ? caps.contextWindowTokens
+                : typeof caps.maxContextTokens === 'number'
+                  ? caps.maxContextTokens
+                  : undefined,
+          });
+        }
+      }
+    } catch (err) {
+      this.logger.warn({ err }, '[SmartModelRouter] Could not load Model Registry; router will have no profiles until registry is populated');
+      return;
+    }
+
+    if (registryIds.size === 0) {
+      this.logger.warn({}, '[SmartModelRouter] Model Registry is empty — no profiles will be created. Admin must register at least one model.');
+      return;
+    }
 
     const providers = this.providerManager.getProviders();
 
@@ -230,25 +568,43 @@ export class SmartModelRouter {
       try {
         const models = await provider.listModels();
 
+        let registered = 0;
+        let skipped = 0;
         for (const model of models) {
+          if (!registryIds.has(model.id)) {
+            skipped++;
+            continue;
+          }
           // Check if we already have a profile for this model
           const existingProfile = this.findProfileByModelId(model.id);
-
           if (existingProfile) {
-            // Update availability
             existingProfile.metadata.isAvailable = true;
             existingProfile.metadata.lastTested = new Date();
           } else {
-            // Create new profile from discovered model
-            const newProfile = this.createProfileFromDiscovery(model, name);
-            this.modelProfiles.set(model.id, newProfile);
+            const registryRow = registryRowsByModel.get(model.id);
+            try {
+              const newProfile = this.createProfileFromDiscovery(model, name, registryRow);
+              this.modelProfiles.set(model.id, newProfile);
+            } catch (err) {
+              // Registry row missing capabilities — skip this model rather than
+              // fabricating a profile. Admin must populate capabilities.
+              this.logger.warn(
+                { modelId: model.id, provider: name, err: err instanceof Error ? err.message : err },
+                '[SmartModelRouter] Skipping registry-listed model with missing capabilities',
+              );
+              skipped++;
+              continue;
+            }
           }
+          registered++;
         }
 
         this.logger.info({
           provider: name,
-          modelsDiscovered: models.length
-        }, 'Discovered models from provider');
+          modelsDiscovered: models.length,
+          registered,
+          skippedOutOfRegistry: skipped,
+        }, 'Discovered models from provider (registry-filtered)');
 
       } catch (error) {
         this.logger.warn({
@@ -281,110 +637,126 @@ export class SmartModelRouter {
   }
 
   /**
-   * Create a profile from discovered model data
-   * Infers capabilities based on model naming patterns
+   * Create a profile from discovered model data.
+   *
+   * #911 rip (2026-05-20): substring-sniff capability inference REMOVED.
+   * Per the two-SoT contract (CLAUDE.md §7 + memory `feedback_two_sot_providers_models_only`),
+   * capabilities MUST come from the registry row's `capabilities` JSON.
+   * The router does NOT infer functionCalling, FCA, vision, jsonMode, etc.
+   * from model-name patterns. If the registry row lacks capabilities, the
+   * router throws MODEL_NOT_IN_REGISTRY rather than silently fabricating
+   * a profile.
+   *
+   * Pricing still falls back to ModelCapabilityRegistry (pattern-keyed
+   * pricing map seeded from published vendor rates) — that path is
+   * allowlisted by docs/rules/no-hardcoded-models.md as a "wire-format
+   * gate / pricing seed" carve-out and lives in MCR / BedrockPricingService
+   * which are the only files allowed to enumerate model-id literals.
+   *
+   * @param model            Discovered model meta from provider.listModels().
+   * @param providerName     Provider name the model lives on.
+   * @param registryRow      MUST be supplied. The registry-supplied
+   *                         capabilities JSON + context window. When null /
+   *                         undefined / capabilities missing, throws.
    */
   private createProfileFromDiscovery(
     model: { id: string; name: string; provider: string },
-    providerName: string
+    providerName: string,
+    registryRow?: { capabilities: Record<string, any> | null; contextWindowTokens?: number },
   ): ModelProfile {
-    const lower = model.id.toLowerCase();
-
-    // Infer capabilities from model name
-    const isGPT = lower.includes('gpt') && !lower.includes('gpt-oss'); // gpt-oss is qwen, not OpenAI GPT
-    const isClaude = lower.includes('claude');
-    const isGemini = lower.includes('gemini');
-    const isLlama = lower.includes('llama');
-    const isMistral = lower.includes('mistral');
-    const isVision = lower.includes('vision') || lower.includes('4o') || isGemini || isClaude;
-
-    // Infer function calling accuracy based on model family and version
-    let functionCallingAccuracy = 0.70; // Conservative default for unknown models
-
-    if (isGPT) {
-      if (lower.includes('gpt-5') || lower.includes('gpt5')) {
-        functionCallingAccuracy = lower.includes('nano') ? 0.65 : lower.includes('mini') ? 0.70 : 0.95;
-      } else if (lower.includes('gpt-4') || lower.includes('gpt4')) {
-        functionCallingAccuracy = 0.93;
-      } else if (lower.includes('o1') || lower.includes('o3')) {
-        functionCallingAccuracy = 0.96;
-      }
-    } else if (isClaude) {
-      if (lower.includes('sonnet')) {
-        functionCallingAccuracy = 0.94;
-      } else if (lower.includes('opus')) {
-        functionCallingAccuracy = 0.96;
-      } else if (lower.includes('haiku')) {
-        // Haiku 4.5 benchmarks at ~0.91 on function-calling eval suites;
-        // bumped from 0.85 so it clears SIMPLE floor and competes with
-        // gpt-oss for cheap tool-using traffic.
-        functionCallingAccuracy = 0.91;
-      }
-    } else if (isGemini) {
-      if (lower.includes('flash')) {
-        functionCallingAccuracy = 0.92;
-      } else if (lower.includes('pro')) {
-        functionCallingAccuracy = 0.93;
-      } else if (lower.includes('ultra')) {
-        functionCallingAccuracy = 0.95;
-      }
-    } else if (isLlama || isMistral) {
-      functionCallingAccuracy = 0.80; // Good but not as reliable as frontier models
-    } else if (lower.includes('qwen') || lower.includes('deepseek') || lower.includes('coder') || lower.includes('gpt-oss')) {
-      // Qwen, DeepSeek, coder models, and gpt-oss (qwen-based) — in-house
-      // A10 bench shows gpt-oss:20b reliably handles single-tool Azure/AWS
-      // list/get/describe calls. Bumped from 0.85 so it clears the SIMPLE
-      // floor and becomes the default for 80% of MCP tool traffic.
-      functionCallingAccuracy = 0.87;
+    if (!registryRow || !registryRow.capabilities || typeof registryRow.capabilities !== 'object') {
+      throw new Error(
+        `MODEL_NOT_IN_REGISTRY: createProfileFromDiscovery requires registry-supplied capabilities for ` +
+          `model=${model.id} provider=${providerName}. ` +
+          `The registry row's capabilities JSON is the SoT — name-substring inference is banned.`,
+      );
     }
 
-    const isQwen = lower.includes('qwen') || lower.includes('gpt-oss');
-    const isDeepSeek = lower.includes('deepseek');
-    const isCoder = lower.includes('coder');
-    const hasFunctionCalling = isGPT || isClaude || isGemini || isLlama || isMistral || isQwen || isDeepSeek || isCoder;
+    const providerType = this.inferProviderType(providerName);
+    const regCaps = registryRow.capabilities;
 
-    this.logger.info({
-      modelId: model.id,
-      provider: providerName,
-      hasFunctionCalling,
-      functionCallingAccuracy,
-      isGPT, isClaude, isGemini, isQwen, isDeepSeek, isCoder
-    }, 'Created profile from discovered model');
+    // Boolean capability flags MUST come from registry row. We do not
+    // OR-default any flag — undefined means "not set on registry row"
+    // which by SoT contract means false.
+    const capabilities: ModelProfile['capabilities'] = {
+      chat: regCaps.chat === true,
+      functionCalling: regCaps.functionCalling === true,
+      functionCallingAccuracy:
+        typeof regCaps.functionCallingAccuracy === 'number' ? regCaps.functionCallingAccuracy : 0,
+      vision: regCaps.vision === true,
+      imageGeneration: regCaps.imageGeneration === true,
+      embeddings: regCaps.embeddings === true,
+      streaming: regCaps.streaming === true,
+      jsonMode: regCaps.jsonMode === true,
+      structuredOutput: regCaps.structuredOutput === true,
+      supportsToolInputDelta: regCaps.supportsToolInputDelta === true,
+      supportsThinking: regCaps.supportsThinking === true,
+      supportsCitations: regCaps.supportsCitations === true,
+      supportsSyntheticThinking: regCaps.supportsSyntheticThinking === true,
+    };
+
+    const maxContextTokens =
+      typeof registryRow.contextWindowTokens === 'number'
+        ? registryRow.contextWindowTokens
+        : typeof regCaps.contextWindowTokens === 'number'
+          ? regCaps.contextWindowTokens
+          : typeof regCaps.maxContextTokens === 'number'
+            ? regCaps.maxContextTokens
+            : 8192;
+    const maxOutputTokens =
+      typeof regCaps.maxOutputTokens === 'number' ? regCaps.maxOutputTokens : 8192;
+
+    this.logger.info(
+      {
+        modelId: model.id,
+        provider: providerName,
+        sourcedFromRegistry: true,
+        functionCalling: capabilities.functionCalling,
+        functionCallingAccuracy: capabilities.functionCallingAccuracy,
+        maxContextTokens,
+      },
+      'Created profile from discovered model (registry-sourced capabilities)',
+    );
 
     return {
       modelId: model.id,
       provider: providerName,
-      providerType: this.inferProviderType(providerName),
-      capabilities: {
-        chat: true,
-        functionCalling: hasFunctionCalling,
-        functionCallingAccuracy,
-        vision: isVision,
-        imageGeneration: lower.includes('dall-e') || lower.includes('imagen'),
-        embeddings: lower.includes('embedding'),
-        streaming: true,
-        jsonMode: isGPT || isGemini || isClaude,
-        structuredOutput: isGPT || isGemini || isClaude
-      },
+      providerType,
+      capabilities,
       performance: {
-        maxContextTokens: isGemini ? 1000000 : isClaude ? 200000 : 128000,
-        maxOutputTokens: 8192,
+        maxContextTokens,
+        maxOutputTokens,
         avgLatencyMs: 500,
-        tokensPerSecond: 100
+        tokensPerSecond: 100,
       },
-      cost: {
-        // Ollama is FREE - set cost to 0 so it's preferred for simple queries
-        inputPer1kTokens: providerName.toLowerCase() === 'ollama' ? 0 : 0.001,
-        outputPer1kTokens: providerName.toLowerCase() === 'ollama' ? 0 : 0.002,
-        currency: 'USD'
-      },
+      cost: (() => {
+        // Pricing stays sourced from ModelCapabilityRegistry — that is the
+        // documented carve-out for pricing literals (see no-hardcoded-models.md).
+        // Capability inference is gone; pricing seed remains.
+        // Null-safe: MCR may be uninitialized in test contexts; we still need
+        // a profile for routing decisions even when pricing isn't seeded.
+        const mcr = getModelCapabilityRegistry();
+        const mcrCaps = mcr ? mcr.getCapabilities(model.id) : undefined;
+        const isLocalProvider = providerName.toLowerCase().includes('ollama');
+        const inputCost = mcrCaps && mcrCaps.inputCostPer1k != null
+          ? mcrCaps.inputCostPer1k
+          : (isLocalProvider ? 0 : 0.001);
+        const outputCost = mcrCaps && mcrCaps.outputCostPer1k != null
+          ? mcrCaps.outputCostPer1k
+          : (isLocalProvider ? 0 : 0.002);
+        return {
+          inputPer1kTokens: inputCost,
+          outputPer1kTokens: outputCost,
+          currency: 'USD',
+        };
+      })(),
       metadata: {
         family: this.inferModelFamily(model.id),
         version: this.inferModelVersion(model.id),
-        specializations: hasFunctionCalling ? ['tools', 'reasoning'] : ['general'],
+        specializations: capabilities.functionCalling ? ['tools', 'reasoning'] : ['general'],
         lastTested: new Date(),
-        isAvailable: true
-      }
+        isAvailable: true,
+      },
     };
   }
 
@@ -523,6 +895,12 @@ export class SmartModelRouter {
     if (profile.capabilities.vision) caps.push('vision image understanding');
     if (profile.capabilities.imageGeneration) caps.push('image generation');
     if (profile.capabilities.jsonMode) caps.push('JSON mode structured output');
+    // A₂ parity flags — surface to the embedding so Milvus semantic search
+    // can match queries like "streaming tool args" or "citations".
+    if (profile.capabilities.supportsToolInputDelta) caps.push('streaming tool argument deltas');
+    if (profile.capabilities.supportsThinking) caps.push('native extended thinking / reasoning');
+    if (profile.capabilities.supportsCitations) caps.push('inline citations and grounding');
+    if (profile.capabilities.supportsSyntheticThinking) caps.push('synthetic thinking traces');
 
     return `${profile.modelId} from ${profile.provider}: ${caps.join(', ')}. ` +
            `Specializations: ${profile.metadata.specializations.join(', ')}. ` +
@@ -531,60 +909,36 @@ export class SmartModelRouter {
   }
 
   /**
-   * Analyze a completion request to determine requirements
+   * Analyze a completion request to determine requirements.
+   *
+   * 2026-04-29 — chatmode-ux-mock-parity Wave2-D (plan §38-52, task 1.7+1.17):
+   * The 5 hand-tuned regex detectors that previously lived here (verb /
+   * resource / breadth / compound-list / discovery-plus-report) are
+   * deleted. The classifier-driven FCA-escalation branch that briefly
+   * replaced them (the per-intent FCA-floor field on RouterTuning) was
+   * itself ripped 2026-05-02 with the viz-tier ladder.
+   *
+   * What stays in here is purely structural:
+   *   - hasTools / toolCount: derived from the request.tools array.
+   *   - requiresVision: derived from message-content shape.
+   *   - estimatedTokens: derived from total content length.
+   *   - recommendedCapabilities: rolled up from the structural signals.
+   *
+   * No keyword regex. No prose interpretation. Plan §80: "Regex-as-fallback
+   * IS regex routing" — when the classifier is unavailable we let the
+   * FCA-floor scoring path handle it; we do not regex.
    */
   analyzeRequest(request: CompletionRequest): RequestAnalysis {
-    // Get the user message content
-    const userMessages = request.messages.filter(m => m.role === 'user');
-    const lastUserMessage = userMessages[userMessages.length - 1]?.content || '';
     const allContent = request.messages.map(m => m.content || '').join(' ').toLowerCase();
 
-    // ── Tool detection ───────────────────────────────────────────────
-    // The request.tools array is NOT populated at validation stage —
-    // MCP tools are resolved later. But we still need to route correctly
-    // based on the user's *intent*. Detect tool-implying prompts via
-    // infrastructure discovery/report verbs + resource keywords.
+    // Tool detection — purely structural.
     const hasExplicitTools = !!(request.tools && request.tools.length > 0);
     const explicitToolCount = request.tools?.length || 0;
+    const hasTools = hasExplicitTools;
+    const toolCount = explicitToolCount;
 
-    // Tool-implying intent: discovery verbs on infra resources
-    const TOOL_INTENT_VERBS = /\b(find|list|get|show|describe|inventory|audit|query|search|count|discover|map|trace|explore|scan|identify|locate|enumerate|catalog|dump|report on|tell me about|give me a report|give me a list|what.*are (all|my)|how many|which .*(have|use|run))\b/i;
-    const RESOURCE_KEYWORDS = /\b(subscription|resource.?group|vm|machine|server|disk|snapshot|nic|vnet|subnet|nsg|public.?ip|storage.?account|blob|queue|keyvault|secret|appgw|app.?gateway|front.?door|load.?balancer|aks|kubernetes|cluster|container|pod|image|web.?app|function.?app|app.?service|sql|postgres|mysql|mariadb|redis|cosmos|dynamodb|rds|ec2|s3|lambda|iam|role|policy|user|group|cert|certificate|cost|bill|spend|invoice|budget)\b/i;
-    const hasToolImpliedIntent =
-      TOOL_INTENT_VERBS.test(allContent) && RESOURCE_KEYWORDS.test(allContent);
-
-    const hasTools = hasExplicitTools || hasToolImpliedIntent;
-    const toolCount = explicitToolCount || (hasToolImpliedIntent ? 5 : 0); // heuristic: implied intent means tool plural
-
-    // ── Multi-cloud detection ────────────────────────────────────────
-    // Original: >=2 cloud keyword mentions. Also trigger if user is
-    // asking "across all" or "in all my" — indicates breadth.
-    const cloudMentions = MULTI_CLOUD_KEYWORDS.filter(kw => allContent.includes(kw.toLowerCase()));
-    const BREADTH_INDICATORS = /\b(across all|in all my|all my subs|every subscription|tenant.?wide|every account|all accounts|all (my )?(azure|aws|gcp|cloud) (subscriptions|accounts|projects|tenants))\b/i;
-    const isMultiCloud =
-      cloudMentions.length >= 2 ||
-      (cloudMentions.length >= 1 && BREADTH_INDICATORS.test(allContent));
-
-    // ── Complex reasoning detection ──────────────────────────────────
-    const complexIndicators = ['analyze', 'compare', 'explain why', 'step by step', 'reason through'];
-    const isComplexReasoning = complexIndicators.some(ind => allContent.includes(ind));
-
-    // ── Multi-step task detection ────────────────────────────────────
-    // Original: step words like 'then/next/finally'. Extend: multiple
-    // discovery verbs in a single sentence, OR an AND-joined resource
-    // list ("appgws AND frontdoors"), OR a discovery+report+analysis
-    // combo ("find ... and report on ..."), OR numbered lists.
-    const multiStepIndicators = ['then', 'after that', 'next', 'finally', 'first,', 'second,'];
-    const stepMatches = multiStepIndicators.filter(ind => allContent.includes(ind));
-    const hasCompoundResourceList = /\b(\w+s)\s+and\s+(\w+s)\s+(in|across|with|on)/i.test(allContent);
-    const hasDiscoveryPlusReport = /\b(find|list|get|show|inventory)\b.*\b(report|analysis|summary|breakdown|cost)\b/i.test(allContent);
-    const isMultiStep =
-      stepMatches.length >= 2 ||
-      (allContent.match(/\d+\./g)?.length || 0) >= 2 ||
-      hasCompoundResourceList ||
-      hasDiscoveryPlusReport;
-
-    // Vision detection
+    // Vision detection — purely structural (content is an array of parts
+    // with `type: 'image_url'`).
     const requiresVision = request.messages.some(m =>
       m.content &&
       typeof m.content === 'object' &&
@@ -595,19 +949,14 @@ export class SmartModelRouter {
     // Estimate tokens
     const estimatedTokens = Math.ceil(allContent.length / 4);
 
-    // Determine recommended capabilities
+    // Determine recommended capabilities — only structural signals now.
     const recommendedCapabilities: string[] = [];
     if (hasTools) recommendedCapabilities.push('functionCalling');
     if (requiresVision) recommendedCapabilities.push('vision');
-    if (isComplexReasoning || isMultiStep) recommendedCapabilities.push('reasoning');
-    if (isMultiCloud) recommendedCapabilities.push('multiCloudKnowledge');
 
     return {
       hasTools,
       toolCount,
-      isComplexReasoning,
-      isMultiStep,
-      isMultiCloud,
       requiresVision,
       estimatedTokens,
       recommendedCapabilities
@@ -615,18 +964,34 @@ export class SmartModelRouter {
   }
 
   /**
-   * Route request to optimal model
-   * @param request The completion request
-   * @param sliderConfig Optional slider configuration for cost/quality tradeoff
+   * Route request to optimal model.
+   * 2026-04-19 — slider ripped (task #144); scoring uses a fixed neutral
+   * 0.5 / 0.5 cost/quality weight. Per-user × per-model budget caps live
+   * in UserModelBudgetService at dispatch time.
+   *
+   * Q1-fix-10 (2026-05-12) — `opts.priorClassification` lets the caller
+   * thread the previous turn's task type into the classifier. The
+   * PromptClassifier uses it to inherit capability requirements on
+   * short continuation prompts (e.g. "break it down by day" after an
+   * agentic prior). Optional — when undefined the classifier behaves
+   * exactly as fresh-prompt path.
    */
-  async routeRequest(request: CompletionRequest, sliderConfig?: SliderConfig, userId?: string): Promise<RoutingDecision> {
+  async routeRequest(
+    request: CompletionRequest,
+    userId?: string,
+    opts?: { priorClassification?: import('./router/PromptClassifier.js').TaskType },
+  ): Promise<RoutingDecision> {
+    const __t0 = Date.now();
+    // Fetch live tuning ONCE at the top of every routing decision.
+    // RouterTuningService caches aggressively (in-memory + Redis), so this
+    // is effectively free on the hot path.
+    const tuning = await this.getTuning();
+
     const analysis = this.analyzeRequest(request);
 
     this.logger.debug({
       hasTools: analysis.hasTools,
       toolCount: analysis.toolCount,
-      isMultiCloud: analysis.isMultiCloud,
-      isMultiStep: analysis.isMultiStep
     }, 'Request analysis');
 
     // Get all available models
@@ -637,130 +1002,210 @@ export class SmartModelRouter {
     // reads from the always-fresh in-memory state that Redis pub/sub
     // invalidation keeps current. If providerManager isn't wired up, we
     // fall back to the local isAvailable flag.
+    //
+    // Phase I (2026-04-30): the filter ALSO writes back to
+    // `metadata.isAvailable` so callers like getCheapestChatModel — which
+    // only consult the cached flag and skip providerManager — see the same
+    // exclusion. Provider that comes back online flips the flag back to
+    // true so recovery is automatic without a profile-cache rebuild.
     const availableModels = Array.from(this.modelProfiles.values())
-      .filter(m => {
-        if (!m.metadata.isAvailable) return false;
-        // GUARD: Embedding-only models must NEVER be routed for chat
-        const idLower = m.modelId.toLowerCase();
-        if (idLower.includes('embed') || idLower.includes('nomic')) return false;
-        if (this.providerManager && typeof this.providerManager.isModelEnabled === 'function') {
-          return this.providerManager.isModelEnabled(m.modelId);
-        }
-        return true;
-      });
+      .filter(m => this.isProfileRoutable(m));
 
     if (availableModels.length === 0) {
+      try { routerRouteRequestDurationMs.observe(Date.now() - __t0); } catch { /* metrics error — non-fatal */ }
       throw new Error('No models available for routing');
     }
 
     // Filter and score models
     let candidates = availableModels;
     let reason = '';
-    let destructiveEscalation: RoutingDecision['destructive_context'] | null = null;
 
-    // DESTRUCTIVE-VERB ESCALATION (BLOCKER-001): When the prompt contains a
-    // destructive verb (delete/terminate/drop/...) paired with a cloud-resource
-    // noun, we MUST route to a frontier model regardless of slider setting.
-    // Cheap models misread destructive intent (wrong subscription, wrong
-    // resource name) and HITL approvers can rubber-stamp a modal on a typo.
-    // We'd rather pay the Opus tokens than lose a prod RG. This runs BEFORE
-    // every other branch so it wins over the cost-optimization branch.
-    const destructiveCheckText = (request.messages || [])
+    const promptText = (request.messages || [])
       .filter((m: any) => m.role === 'user')
       .map((m: any) => typeof m.content === 'string' ? m.content : '')
       .join(' ');
-    const destructiveHit = detectDestructiveIntent(destructiveCheckText);
-    if (destructiveHit) {
-      const frontierModels = candidates.filter(m =>
-        m.capabilities.functionCalling &&
-        m.capabilities.functionCallingAccuracy >= 0.93,
-      );
-      if (frontierModels.length > 0) {
-        candidates = frontierModels;
-        reason = `Destructive intent detected (${destructiveHit.verb} + ${destructiveHit.noun}) → frontier models only (≥93% accuracy). Slider override.`;
-        destructiveEscalation = {
-          verb: destructiveHit.verb,
-          noun: destructiveHit.noun,
-          escalatedTo: 'frontier',
-        };
-        this.logger.warn({
-          verb: destructiveHit.verb,
-          noun: destructiveHit.noun,
-          frontierCount: frontierModels.length,
-          frontierModels: frontierModels.map(m => m.modelId),
-          sliderOverridden: true,
-          route_escalated_destructive: true,
-        }, '🛡️ [DESTRUCTIVE ESCALATION] Slider overridden — destructive verb + cloud-noun detected, routing to frontier');
-      } else {
-        // No frontier available — log loudly but fall through; the HITL
-        // gate remains the last line of defence.
-        this.logger.error({
-          verb: destructiveHit.verb,
-          noun: destructiveHit.noun,
-          availableModels: candidates.map(m => `${m.modelId}(${m.capabilities.functionCallingAccuracy})`),
-        }, '🚨 [DESTRUCTIVE ESCALATION] No frontier models available — falling back. HITL gate is your only safety net.');
-      }
-    }
 
-    // PREMIUM ESCALATION: When slider is premium (>70) and request is complex
-    // (tools, multi-step, multi-cloud), prefer frontier models (accuracy >= 0.93).
-    // This ensures users who chose "premium" get Claude/GPT-5 for complex tasks,
-    // not local gpt-oss which is cheaper but less capable.
-    const sliderPos = sliderConfig?.position ?? 50;
-    const isPremiumTier = sliderPos > 70;
-    // NOTE: analysis.hasTools may be false at validation stage (tools not resolved yet).
-    // For premium escalation, also consider message content indicators of complexity:
-    // create/provision/deploy/audit/review/analyze + infrastructure keywords = complex.
-    const messageHint = (request.messages || [])
-      .filter((m: any) => m.role === 'user')
-      .map((m: any) => typeof m.content === 'string' ? m.content : '')
-      .join(' ').toLowerCase();
-    const hasInfraKeywords = /\b(create|provision|deploy|audit|review|analyze|list all|across.*subscription|infrastructure|resource.?group|vm|gateway|front.?door|aks|kubernetes|security|compliance|cost|vpc|subnet|ec2|s3|lambda|rds|iam|cloudwatch|elb|alb|nlb|route.?53|cloudfront|eks|ecs|fargate|dynamo|sns|sqs|kinesis|elastic|azure|aws|gcp|cloud|network|storage|database|server|cluster|container|policy|role|identity|certificate|ssl|tls|dns|monitor|alert|log|metric|advisor|defender|sentinel|waf|firewall|nsg|load.?balancer|app.?service|function.?app|cosmos|sql|postgres|redis|key.?vault|secret|managed.?identity|disk|snapshot|image|backup|restore|scale|autoscal|reserved|savings|idle|unused|orphan|tag|govern)\b/i.test(messageHint);
-    const isComplexRequest = analysis.hasTools || analysis.isMultiStep || analysis.isMultiCloud || analysis.isComplexReasoning || hasInfraKeywords;
-
-    if (isPremiumTier && isComplexRequest) {
-      const frontierModels = candidates.filter(m =>
-        m.capabilities.functionCalling &&
-        m.capabilities.functionCallingAccuracy >= 0.93
-      );
-      if (frontierModels.length > 0) {
-        candidates = frontierModels;
-        reason = `Premium tier (slider: ${sliderPos}) + complex request → frontier models only (≥93% accuracy)`;
-        this.logger.info({
-          sliderPos,
-          frontierCount: frontierModels.length,
-          frontierModels: frontierModels.map(m => m.modelId),
-        }, '🏆 [PREMIUM ESCALATION] Complex request routed to frontier models');
-      } else {
-        // No frontier models available — fall through to normal routing
-        this.logger.warn({
-          sliderPos,
-          availableModels: candidates.map(m => `${m.modelId}(${m.capabilities.functionCallingAccuracy})`),
-        }, '⚠️ [PREMIUM ESCALATION] No frontier models available — falling back to best available');
-      }
-    }
-
-    // CRITICAL: For tool-based requests, filter by function calling accuracy.
-    // Two-tier floor with COMPLEXITY as the discriminator:
-    //   - COMPLEX means genuinely multi-step: needs multi-step reasoning
-    //     AND/OR actual multi-cloud (2+ providers) AND/OR isComplexReasoning.
-    //     → floor 0.90, frontier-only (Sonnet/Opus/o3/GPT-5)
-    //   - Everything else (including single-cloud tenant-wide reads like
-    //     'list all my azure subs') is SIMPLE: one query, one iteration.
-    //     → floor 0.83, gpt-oss:20b + Haiku become eligible
+    // Q1-fix-3 (2026-05-12) — PROMPT-PATTERN TASK CLASSIFIER.
+    // Detects agentic shapes (multi-cloud / cross-system / cost-analysis /
+    // security-audit / file-read / single-system-read) and maps them to a
+    // CAPABILITY profile. The router then filters DB-discovered models by
+    // the profile's FCA + context floors. The classifier never names
+    // a model; the model is whichever DB-registered one passes the floors
+    // and wins the cost+quality score.
     //
-    // isMultiCloud alone does NOT imply complexity: "list azure subs" spans
-    // the whole tenant but is still a single-call, single-response pattern.
-    // Only escalate to COMPLEX when there's a genuine multi-step workflow.
-    if (!reason && (analysis.hasTools || analysis.isMultiStep || analysis.isMultiCloud)) {
-      const isComplexToolRequest =
-        analysis.isMultiStep ||
-        analysis.isComplexReasoning ||
-        (analysis.toolCount ?? 0) > 3;
+    // Why this is NOT the previously-banned regex routing:
+    //   - Banned routing was inside the chat tool-array stage (forced tool
+    //     injection by hardcoded tool-name keyword). This is router-stage,
+    //     filters CANDIDATE MODELS, never touches tools.
+    //   - Banned routing reproduced specific named identifier constants.
+    //     The arch-test source grep that pins them is in
+    //     `__tests__/architecture/no-regex-intent-routing.source-regression.test.ts`;
+    //     this classifier shares no needle with that set.
+    //   - Banned routing was the cheap-pool shortcut (simple-query verb
+    //     alternation) that bypassed the agents stage. This classifier
+    //     does the opposite: it ESCALATES away from the cheap pool for
+    //     agentic shapes; it never bypasses anything.
+    // Q1-fix-10 — thread prior turn's classification (when caller provides
+    // it) so a short follow-up like "break it down by day" inherits the
+    // agentic capability floor instead of falling through to pure-chat.
+    const { taskType, profile: capProfile } = classifyAndProfile(promptText, {
+      priorClassification: opts?.priorClassification,
+    });
+    // #796 follow-up — every -agentic TaskType must apply its capability
+    // profile floor; otherwise the classifier names the right profile but
+    // the router silently falls back to chat-pool FCA. Smoking gun
+    // 2026-05-13: taskType=architecture-design-agentic + profile FCA=0.90
+    // BUT selectedModelId=gpt-oss:20b (FCA 0.87) resolvedBy=chat_pool_floor.
+    // Root cause: this predicate was missing the new task type.
+    const classifiedAgentic =
+      taskType === 'multi-cloud-agentic' ||
+      taskType === 'multi-system-agentic' ||
+      taskType === 'cost-analysis-agentic' ||
+      taskType === 'cost-audit' ||
+      taskType === 'security-audit-agentic' ||
+      taskType === 'architecture-design-agentic';
 
-      const floor = isComplexToolRequest
-        ? MIN_FUNCTION_CALLING_ACCURACY_COMPLEX
-        : MIN_FUNCTION_CALLING_ACCURACY_SIMPLE;
+    // #828 T3 capability gate (2026-05-20). When the prompt complexity
+    // hits T3 OR the user explicitly asks for a premium/most-capable
+    // model, filter candidates to those with FCA ≥ 0.93 AND
+    // context_window_tokens ≥ 200_000 (Sonnet/Opus-class structural
+    // proxy). Anchored regex avoids substring fishing — the gate must
+    // fire on a real "most capable / premium / enterprise" intent
+    // phrase, not on incidental occurrences of those words. Throws
+    // NO_T3_MODEL_IN_REGISTRY when the gate is forced but no candidate
+    // qualifies — never silently downgrades to a Haiku-class model.
+    //
+    // T3 tasks (structural):
+    //   - cost-audit                    (FCA 0.93 floor by profile)
+    //   - architecture-design-agentic   (high-complexity multi-frame plan)
+    //
+    // Explicit anchor (any one fires the gate):
+    //   - "most capable" model/llm
+    //   - "premium" / "highest quality" / "top tier" / "best" model/llm
+    //   - "enterprise" (deployment, customer, tenant, scale)
+    //   - "frontier" model/grade
+    const EXPLICIT_MOST_CAPABLE_RE =
+      /\b(?:(?:pick|use|give\s+me|choose|select|require[s]?|need[s]?)\s+(?:the\s+)?(?:most\s+capable|premium|highest[\s-]?quality|top[\s-]?tier|frontier|best)\s+(?:model|llm|reasoning|agent)|(?:most\s+capable|premium|frontier)\s+(?:model|llm)|\benterprise\s+(?:tenant|customer|deployment|scale|grade|account)|\b(?:premium|top[\s-]?tier|frontier)[\s-]?grade\b)/i;
+    const explicitMostCapable = EXPLICIT_MOST_CAPABLE_RE.test(promptText);
+    const t3StructuralTask =
+      taskType === 'cost-audit' || taskType === 'architecture-design-agentic';
+    const forceT3Gate = t3StructuralTask || explicitMostCapable;
+
+    if (forceT3Gate) {
+      const T3_FCA_FLOOR = 0.93;
+      const T3_CONTEXT_FLOOR = 200_000;
+      const beforeT3 = candidates.length;
+      const t3Candidates = candidates.filter(
+        (m) =>
+          m.capabilities.chat === true &&
+          m.capabilities.functionCallingAccuracy >= T3_FCA_FLOOR &&
+          m.performance.maxContextTokens >= T3_CONTEXT_FLOOR,
+      );
+      if (t3Candidates.length === 0) {
+        // Hard fail when the user explicitly asks for T3 and no candidate
+        // qualifies. Per #828, silently downgrading to a Haiku-class
+        // model on enterprise prompts is a Sev-0 — the operator must
+        // register a Sonnet/Opus-class model before this prompt can
+        // route.
+        try { routerRouteRequestDurationMs.observe(Date.now() - __t0); } catch { /* metrics — non-fatal */ }
+        throw new Error(
+          `NO_T3_MODEL_IN_REGISTRY: prompt requires T3 (FCA≥${T3_FCA_FLOOR}, context≥${T3_CONTEXT_FLOOR}) ` +
+            `but no candidate registry row qualifies. taskType=${taskType}, explicitMostCapable=${explicitMostCapable}`,
+        );
+      }
+      try {
+        const excluded = candidates.filter(
+          (m) =>
+            !(
+              m.capabilities.chat === true &&
+              m.capabilities.functionCallingAccuracy >= T3_FCA_FLOOR &&
+              m.performance.maxContextTokens >= T3_CONTEXT_FLOOR
+            ),
+        );
+        for (const m of excluded) {
+          routerFloorExcludedCounter.inc({ floor: 't3_capability_gate', model: m.modelId });
+        }
+        routerEscalationCounter.inc({ type: 't3_capability_gate' });
+      } catch {
+        /* metrics — non-fatal */
+      }
+      candidates = t3Candidates;
+      reason = `T3 gate (${
+        explicitMostCapable ? 'explicit most-capable signal' : taskType
+      }) — capability floor FCA≥${T3_FCA_FLOOR} + context≥${T3_CONTEXT_FLOOR} (filtered ${beforeT3}→${candidates.length})`;
+    }
+
+    // INTENT CLASSIFIER — best-effort label, used downstream by the
+    // legacy per-intent ranker (ripped Phase E.2 / E.10) and
+    // validation.stage.ts (`route_escalated_destructive`). Phase E.1
+    // (2026-05-10) ripped the pre-LLM LLM-classifier. The prompt-pattern
+    // classifier above is its lightweight replacement for the
+    // tools-not-yet-attached path (V2 discovery-mode pickModel call,
+    // see chat/index.ts:401).
+
+    // PURE-CHAT FCA FLOOR (Stage C, 2026-04-23): when the request has NO
+    // tools AND the classifier did not detect an agentic shape, filter out
+    // models whose FCA is below the chat-pool floor. Agentic shapes are
+    // handled by the stricter capability-profile floor below.
+    if (!analysis.hasTools && !classifiedAgentic) {
+      const chatCapable = candidates.filter(
+        (m) => m.capabilities.functionCallingAccuracy >= tuning.fcaChatPoolFloor,
+      );
+      if (chatCapable.length > 0 && chatCapable.length < candidates.length) {
+        try {
+          const excluded = candidates.filter((m) => m.capabilities.functionCallingAccuracy < tuning.fcaChatPoolFloor);
+          for (const m of excluded) { routerFloorExcludedCounter.inc({ floor: 'chat_pool', model: m.modelId }); }
+          routerEscalationCounter.inc({ type: 'chat_pool_filter' });
+        } catch { /* metrics error — non-fatal */ }
+        candidates = chatCapable;
+        reason = `Pure chat — filtered to FCA ≥ ${tuning.fcaChatPoolFloor}`;
+      }
+    }
+
+    // Q1-fix-3 — CAPABILITY-PROFILE FLOOR: apply the classifier's FCA +
+    // context floors. For agentic shapes this gates FCA-0.87-class models
+    // (gpt-oss:20b) out of contention so they don't get picked for a
+    // multi-cloud tool fan-out plan they empirically can't execute.
+    if (classifiedAgentic) {
+      const beforeCount = candidates.length;
+      const profileCandidates = candidates.filter(
+        (m) =>
+          m.capabilities.functionCallingAccuracy >= capProfile.requiresToolUseReliability &&
+          m.performance.maxContextTokens >= capProfile.requiresContextTokens,
+      );
+      if (profileCandidates.length > 0) {
+        try {
+          const excluded = candidates.filter(
+            (m) =>
+              m.capabilities.functionCallingAccuracy < capProfile.requiresToolUseReliability ||
+              m.performance.maxContextTokens < capProfile.requiresContextTokens,
+          );
+          for (const m of excluded) {
+            routerFloorExcludedCounter.inc({ floor: 'capability_profile', model: m.modelId });
+          }
+          routerEscalationCounter.inc({ type: 'capability_profile_filter' });
+        } catch { /* metrics error — non-fatal */ }
+        candidates = profileCandidates;
+        reason = `${taskType} — capability profile FCA≥${capProfile.requiresToolUseReliability} (filtered ${beforeCount}→${candidates.length})`;
+      } else {
+        // No model clears the strict floor — keep the original candidate
+        // set so chat never crashes. Surface a soft warning in the reason.
+        reason = `${taskType} — capability profile FCA≥${capProfile.requiresToolUseReliability} unmet by any DB model; falling back to all candidates`;
+      }
+    }
+
+    // SIMPLE TOOL FLOOR: For tool-based requests, filter by function-calling
+    // accuracy. Single-tier — the classifier-driven complex-tool escalation
+    // was ripped 2026-05-02 with the viz-tier ladder. gpt-oss:20b + Haiku
+    // remain eligible at the 0.83 default; per-intent tool surface tuning
+    // (formerly per-intent top-K) was ripped Phase E.10.
+    if (analysis.hasTools) {
+      const floor = tuning.fcaSimpleToolFloor;
+      const floorLabel = 'simple_tool';
+      try {
+        const toolExcluded = candidates.filter((m) => !(m.capabilities.functionCalling && m.capabilities.functionCallingAccuracy >= floor));
+        for (const m of toolExcluded) { routerFloorExcludedCounter.inc({ floor: floorLabel, model: m.modelId }); }
+      } catch { /* metrics error — non-fatal */ }
 
       candidates = candidates.filter(m =>
         m.capabilities.functionCalling &&
@@ -774,48 +1219,9 @@ export class SmartModelRouter {
           .sort((a, b) => b.capabilities.functionCallingAccuracy - a.capabilities.functionCallingAccuracy)
           .slice(0, 3);
 
-        reason = `No models meet ${floor * 100}% accuracy threshold (${isComplexToolRequest ? 'complex' : 'simple'}), using best available`;
+        reason = `No models meet ${floor * 100}% accuracy threshold, using best available`;
       } else {
-        reason = `${isComplexToolRequest ? 'Complex' : 'Simple'} tool request — ${candidates.length} models ≥${floor * 100}% FC accuracy`;
-      }
-
-      // CRITICAL: For COMPLEX tool requests, prefer Sonnet over Opus unless
-      // the user explicitly chose premium (slider > 70). Opus is 5-6x more
-      // expensive for a 0.02 FC accuracy delta (0.96 vs 0.94) that almost
-      // never matters in practice. Budget cap on Opus (25 capacity in CDC
-      // dev/stg foundry) makes this even more important.
-      if (isComplexToolRequest && sliderPos <= 70) {
-        const withoutOpus = candidates.filter(m => !m.modelId.toLowerCase().includes('opus'));
-        if (withoutOpus.length > 0) {
-          candidates = withoutOpus;
-          reason += ' (Opus reserved for slider >70)';
-        }
-      }
-
-      // CRITICAL: For SIMPLE tool requests, strongly prefer free/local
-      // models over frontier Claude. A 1-tool list/get/describe query
-      // should NEVER pay $15/1M tokens for Opus when gpt-oss on the A10
-      // GPU can do it for $0. If any free-tier (cost=0) model passes
-      // the SIMPLE floor, use ONLY free-tier candidates. If none pass,
-      // prefer the cheapest AIF model (Haiku) over Sonnet/Opus.
-      if (!isComplexToolRequest && sliderPos <= 60) {
-        const freeCandidates = candidates.filter(m =>
-          m.cost.inputPer1kTokens === 0 && m.cost.outputPer1kTokens === 0
-        );
-        if (freeCandidates.length > 0) {
-          candidates = freeCandidates;
-          reason += ' (free/local tier preferred for simple)';
-        } else {
-          // No free model eligible — demote Opus/Sonnet, prefer Haiku
-          const cheapCandidates = candidates.filter(m => {
-            const id = m.modelId.toLowerCase();
-            return !id.includes('opus') && !id.includes('sonnet') && !id.includes('o3') && !id.includes('gpt-5') && !id.includes('gpt-4');
-          });
-          if (cheapCandidates.length > 0) {
-            candidates = cheapCandidates;
-            reason += ' (cheap AIF tier preferred for simple)';
-          }
-        }
+        reason = `Tool request — ${candidates.length} models ≥${floor * 100}% FC accuracy`;
       }
     }
 
@@ -847,10 +1253,18 @@ export class SmartModelRouter {
       } catch { /* FeedbackLearningService not available */ }
     }
 
-    // Score remaining candidates with slider weights + per-user bonus
+    // Score remaining candidates with live tuning weights + per-user bonus.
+    // Phase E.1 (2026-05-10) — `classification` arg dropped. Spec §50: model
+    // decides; FCA scoring is the sole routing signal. scoreModel's
+    // `classification` param is retained for backwards-compat but never
+    // populated; the intent-based FCA bonus is effectively dead code (gated
+    // by `classification?.intent` which is now always undefined) until a
+    // follow-up rips the parameter from scoreModel itself.
     const scoredCandidates = candidates.map(model => ({
       model,
-      score: this.scoreModel(model, analysis, sliderConfig) + (userModelBonus.get(model.modelId) || 0)
+      // #872 — pass classifiedAgentic through so the quality bonus fires
+      // for *-agentic taskTypes when analysis.hasTools=false (v2 discovery).
+      score: this.scoreModel(model, analysis, tuning, null, classifiedAgentic) + (userModelBonus.get(model.modelId) || 0)
     })).sort((a, b) => b.score - a.score);
 
     const selected = scoredCandidates[0].model;
@@ -860,8 +1274,6 @@ export class SmartModelRouter {
     if (!reason) {
       if (analysis.hasTools) {
         reason = `Tool calling (${analysis.toolCount} tools) - ${selected.modelId} has ${(selected.capabilities.functionCallingAccuracy * 100).toFixed(0)}% accuracy`;
-      } else if (analysis.isComplexReasoning) {
-        reason = `Complex reasoning task - using ${selected.modelId} for best results`;
       } else {
         reason = `Simple chat - using cost-effective ${selected.modelId}`;
       }
@@ -882,54 +1294,251 @@ export class SmartModelRouter {
       requestAnalysis: {
         hasTools: analysis.hasTools,
         toolCount: analysis.toolCount,
-        isComplexReasoning: analysis.isComplexReasoning,
-        isMultiStep: analysis.isMultiStep,
-        isMultiCloud: analysis.isMultiCloud,
         estimatedTokens: analysis.estimatedTokens
       },
-      sliderPosition: sliderConfig?.position ?? 'default(50)',
-      costWeight: sliderConfig?.costWeight ?? 0.5,
-      qualityWeight: sliderConfig?.qualityWeight ?? 0.5
-    }, '🧭 MODEL ROUTING DECISION');
+    }, '[ROUTER] MODEL ROUTING DECISION (slider removed)');
+
+    // Derive resolved_by label from the routing path taken. The
+    // `intent_classifier` resolvedBy was ripped 2026-05-02 alongside
+    // the FCA-floor escalation branch; the prompt-pattern classifier
+    // (Q1-fix-3, 2026-05-12) is its lightweight replacement for the
+    // tools-not-yet-attached path.
+    let resolvedBy = 'cost_quality_score';
+    if (reason.startsWith('T3 gate')) resolvedBy = 't3_capability_gate';
+    else if (classifiedAgentic) resolvedBy = 'capability_profile';
+    else if (reason.startsWith('Pure chat')) resolvedBy = 'chat_pool_floor';
+    else if (reason.startsWith('Tool request')) resolvedBy = 'tool_floor';
+
+    // Log the classified task type + chosen profile so operators can audit
+    // the new routing branch from kibana / api logs without re-running the
+    // request.
+    this.logger.info(
+      {
+        promptHead: promptText.slice(0, 120),
+        taskType,
+        capabilityProfile: {
+          requiresToolUseReliability: capProfile.requiresToolUseReliability,
+          requiresContextTokens: capProfile.requiresContextTokens,
+          requiresReasoning: capProfile.requiresReasoning,
+        },
+        selectedModelId: selected.modelId,
+        selectedFca: selected.capabilities.functionCallingAccuracy,
+        resolvedBy,
+      },
+      '[ROUTER] task classification + capability profile',
+    );
+
+    // Derive tier label from FCA
+    const fca = selected.capabilities.functionCallingAccuracy;
+    const tier = fca >= 0.93 ? 'frontier' : fca >= 0.85 ? 'high' : fca >= 0.80 ? 'mid' : 'low';
+
+    try {
+      routerDecisionCounter.inc({ resolved_by: resolvedBy, selected_model: selected.modelId, tier });
+      routerRouteRequestDurationMs.observe(Date.now() - __t0);
+    } catch { /* metrics error — non-fatal */ }
 
     return {
       selectedModel: selected,
       reason,
       alternativeModels: alternatives,
       analysisResults: analysis,
-      route_escalated_destructive: destructiveEscalation !== null,
-      destructive_context: destructiveEscalation ?? undefined,
+      // Phase E.1 (2026-05-10) — `route_escalated_destructive` always
+      // false post-classifier-rip. The destructive-write intent label
+      // was a classifier output; without a classifier, downstream audit
+      // consumers fall back to reading the tool name + arguments.
+      route_escalated_destructive: false,
+      destructive_context: undefined,
     };
   }
 
   /**
-   * Score a model for a given request
-   * Scoring is weighted by the slider configuration:
-   * - costWeight: How much to favor cheaper models (slider 0 = max cost priority)
-   * - qualityWeight: How much to favor capable models (slider 100 = max quality priority)
+   * Simulate routing for a user prompt without actually dispatching to an LLM.
+   * Returns the same RoutingDecision as routeRequest plus a ranked list of
+   * every candidate the router scored (including those filtered out by
+   * floors), so the admin Live Scoring Lab can show the full picture.
+   */
+  async simulatePrompt(prompt: string): Promise<{
+    analysis: RequestAnalysis;
+    decision: {
+      selectedModelId: string;
+      reason: string;
+      resolvedBy: string;
+      tier: string;
+    };
+    ranked: Array<{
+      modelId: string;
+      provider: string;
+      score: number;
+      fca: number;
+      inputCostPer1k: number;
+      avgLatencyMs: number;
+      tier: string;
+      eligible: boolean;
+      rank: number;
+    }>;
+    filteredOut: Array<{
+      modelId: string;
+      fca: number;
+      excludedBy: string;
+    }>;
+  }> {
+    const request: CompletionRequest = {
+      messages: [{ role: 'user', content: prompt }],
+      model: 'auto',
+    } as CompletionRequest;
+
+    const tuning = await this.getTuning();
+    const analysis = this.analyzeRequest(request);
+
+    // Phase I — same isProfileRoutable() helper as routeRequest. Flips
+    // metadata.isAvailable in-place so the simulator stays consistent with
+    // the live router.
+    const allModels = Array.from(this.modelProfiles.values()).filter((m) => this.isProfileRoutable(m));
+
+    // Run the same filter chain as routeRequest but track exclusions.
+    //
+    // 2026-04-29 (chatmode-ux-mock-parity Wave2-D): the destructive /
+    // infra-ops / cloud-list / complexity-bias regex branches were
+    // deleted alongside the 5 named regex detectors in `analyzeRequest`.
+    // 2026-05-02 (viz-tier-ladder rip): the classifier-driven per-intent
+    // FCA-floor escalation that briefly replaced them was also ripped —
+    // the simulator now mirrors the live routeRequest path exactly:
+    // structural chat-pool / simple-tool FCA floors only.
+    const filteredOut: Array<{ modelId: string; fca: number; excludedBy: string }> = [];
+    let candidates = [...allModels];
+
+    // PURE-CHAT FCA FLOOR — when the request has no explicit tools,
+    // filter the chat pool by tuning.fcaChatPoolFloor. Keeps
+    // Ministral-3B-class garbage out.
+    if (!analysis.hasTools) {
+      const survivors = candidates.filter(
+        (m) => m.capabilities.functionCallingAccuracy >= tuning.fcaChatPoolFloor,
+      );
+      if (survivors.length > 0 && survivors.length < candidates.length) {
+        for (const m of candidates) {
+          if (m.capabilities.functionCallingAccuracy < tuning.fcaChatPoolFloor) {
+            filteredOut.push({
+              modelId: m.modelId,
+              fca: m.capabilities.functionCallingAccuracy,
+              excludedBy: `chat pool floor (FCA ≥ ${tuning.fcaChatPoolFloor})`,
+            });
+          }
+        }
+        candidates = survivors;
+      }
+    }
+
+    // SIMPLE-TOOL FCA FLOOR — applies to tool-bearing requests. Single
+    // tier; the per-intent escalation knob was ripped 2026-05-02. Per-intent
+    // tool surface tuning (formerly per-intent top-K) was ripped Phase E.10.
+    if (analysis.hasTools) {
+      const floor = tuning.fcaSimpleToolFloor;
+      const before = candidates;
+      candidates = candidates.filter(
+        (m) => m.capabilities.functionCalling && m.capabilities.functionCallingAccuracy >= floor,
+      );
+      for (const m of before) {
+        if (!candidates.includes(m)) {
+          filteredOut.push({
+            modelId: m.modelId,
+            fca: m.capabilities.functionCallingAccuracy,
+            excludedBy: `simple tool floor (FCA ≥ ${floor})`,
+          });
+        }
+      }
+    }
+
+    // Vision filter
+    if (analysis.requiresVision) {
+      const visionCandidates = candidates.filter((m) => m.capabilities.vision);
+      if (visionCandidates.length > 0) {
+        for (const m of candidates) {
+          if (!m.capabilities.vision) {
+            filteredOut.push({
+              modelId: m.modelId,
+              fca: m.capabilities.functionCallingAccuracy,
+              excludedBy: 'vision required but model lacks vision',
+            });
+          }
+        }
+        candidates = visionCandidates;
+      }
+    }
+
+    // Score surviving candidates
+    const scored = candidates
+      .map((model) => ({
+        model,
+        score: this.scoreModel(model, analysis, tuning),
+      }))
+      .sort((a, b) => b.score - a.score);
+
+    const tierOf = (fca: number): string =>
+      fca >= 0.93 ? 'frontier' : fca >= 0.85 ? 'high' : fca >= 0.8 ? 'mid' : 'low';
+
+    const ranked = scored.map((s, idx) => ({
+      modelId: s.model.modelId,
+      provider: s.model.provider,
+      score: Number(s.score.toFixed(2)),
+      fca: s.model.capabilities.functionCallingAccuracy,
+      inputCostPer1k: s.model.cost.inputPer1kTokens,
+      avgLatencyMs: s.model.performance.avgLatencyMs,
+      tier: tierOf(s.model.capabilities.functionCallingAccuracy),
+      eligible: true,
+      rank: idx + 1,
+    }));
+
+    // Post-hoc resolvedBy/reason derivation from the structural
+    // analysis signals. The classifier-driven escalation override was
+    // ripped 2026-05-02 with the viz-tier ladder.
+    const resolvedBy = analysis.hasTools ? 'tool_floor' : 'chat_pool_floor';
+    const reason = scored[0]
+      ? analysis.hasTools
+        ? `Tool calling (${analysis.toolCount} tools) — ${scored[0].model.modelId} wins at ${(scored[0].model.capabilities.functionCallingAccuracy * 100).toFixed(0)}% FCA`
+        : `Chat pool (FCA ≥ ${tuning.fcaChatPoolFloor}) — ${scored[0].model.modelId} wins on cost`
+      : 'No eligible candidates after filters';
+
+    const decision = {
+      selectedModelId: scored[0]?.model.modelId ?? '(no eligible model)',
+      reason,
+      resolvedBy,
+      tier: scored[0] ? tierOf(scored[0].model.capabilities.functionCallingAccuracy) : 'none',
+    };
+
+    return { analysis, decision, ranked, filteredOut };
+  }
+
+  /**
+   * Score a model for a given request.
+   * 2026-04-19 — slider ripped (task #144). Cost/quality weights default
+   * to 0.5/0.5 (balanced) but are now live-configurable via RouterTuningService.
+   * UserModelBudgetService enforces per-user spend caps at dispatch time.
+   *
+   * Stage C (2026-04-23): all scoring constants sourced from `tuning` so
+   * admins can adjust them live via the admin router-tuning endpoint.
    */
   private scoreModel(
     model: ModelProfile,
     analysis: RequestAnalysis,
-    sliderConfig?: SliderConfig
+    tuning: RouterTuning,
+    classification?: { intent?: string | null } | null,
+    // #872 (2026-05-15) — pass the classifier verdict down so the quality
+    // bonus fires for *-agentic taskTypes even in v2 discovery-mode where
+    // analysis.hasTools=false (tools resolve mid-turn). Without this, the
+    // Q1 Azure list prompt classifies as multi-system-agentic but the
+    // bonus skips, scoring collapses to cost+latency, and gpt-oss:20b
+    // beats Sonnet 4.6. Live regression of #796/#658/#670.
+    classifiedAgentic?: boolean,
   ): number {
-    // Default weights if no slider config
-    const costWeight = sliderConfig?.costWeight ?? 0.5;
-    const qualityWeight = sliderConfig?.qualityWeight ?? 0.5;
+    const { costWeight, qualityWeight } = tuning;
 
     let score = 0;
 
     // Function calling accuracy is critical for tool-based tasks (quality-weighted)
     if (analysis.hasTools) {
       // Base score for function calling, weighted by quality preference
-      const functionCallingScore = model.capabilities.functionCallingAccuracy * 50;
+      const functionCallingScore = model.capabilities.functionCallingAccuracy * tuning.toolCallingBonusMaxPoints;
       score += functionCallingScore * (0.5 + qualityWeight * 0.5); // Min 50% of base score
-    }
-
-    // Multi-step and multi-cloud need reliable reasoning (quality-weighted)
-    if (analysis.isMultiStep || analysis.isMultiCloud) {
-      const reasoningScore = model.capabilities.functionCallingAccuracy * 30;
-      score += reasoningScore * (0.5 + qualityWeight * 0.5);
     }
 
     // Vision requirement
@@ -944,17 +1553,67 @@ export class SmartModelRouter {
 
     // Cost optimization (cost-weighted)
     // Higher cost weight = more bonus for cheaper models
-    const costScore = (1 - Math.min(model.cost.inputPer1kTokens / 0.01, 1)) * 25;
+    const costScore = (1 - Math.min(model.cost.inputPer1kTokens / tuning.costNormalizationCeiling, 1)) * tuning.costBonusMaxPoints;
     score += costScore * costWeight;
 
     // Latency bonus for faster models (cost-weighted - speed matters more when optimizing cost)
-    const latencyScore = (1 - Math.min(model.performance.avgLatencyMs / 1000, 1)) * 10;
+    const latencyScore = (1 - Math.min(model.performance.avgLatencyMs / 1000, 1)) * tuning.latencyBonusMaxPoints;
     score += latencyScore * costWeight;
 
-    // Quality bonus for premium models (quality-weighted)
-    // Models with higher function calling accuracy get extra points when quality matters
-    if (qualityWeight > 0.6) {
-      score += model.capabilities.functionCallingAccuracy * 15 * qualityWeight;
+    // Quality bonus (quality-weighted, gated on complexity signals).
+    //
+    // 2026-04-29 (chatmode-ux-mock-parity Wave2-D): hasTools was the only
+    // structural signal. That broke #670: when the v2 cascade is in
+    // discovery-mode, `tools=[]` at routing time even for action prompts
+    // ("show me my cloud resources" with intent=cloud-list arrives with
+    // 0 tools — the model picks them up mid-turn via tool_search). With
+    // hasTools as the only gate, the quality bonus was skipped and
+    // routing collapsed to pure cost+latency, which always picks the
+    // cheapest model regardless of which models are enabled.
+    //
+    // 2026-05-07 #670: add intent as a complexity signal. Any non-chat
+    // intent (cloud-list / code-gen / architecture / destructive-write
+    // / render-artifact / single-read / unclear) implies "this prompt
+    // wants real work done" — quality bonus fires so the highest-FCA
+    // available model wins, regardless of registry topology.
+    const intent = classification?.intent;
+    const isActionIntent = intent != null && intent !== 'chat';
+    // #872 (2026-05-15) — classifiedAgentic is the third complexity signal.
+    // Required because v2 discovery-mode delivers analysis.hasTools=false
+    // even for agentic prompts (tools resolve mid-turn via tool_search).
+    // The intent classifier was ripped Phase E.1 so `intent` is always
+    // null. Without classifiedAgentic, hasAnyComplexity is false for
+    // every action prompt and scoring collapses to cost+latency.
+    const hasAnyComplexity = analysis.hasTools || isActionIntent || classifiedAgentic === true;
+    if (!tuning.fcaQualityGatedByComplexity || hasAnyComplexity) {
+      const qualityHeadroom = Math.max(
+        0,
+        model.capabilities.functionCallingAccuracy - tuning.fcaQualityFloor,
+      );
+      // 2026-05-07 #670 — multiplier amplification for action intents.
+      //
+      // Default fcaQualityMultiplier=100 with qualityWeight=0.5 produces a
+      // max quality-bonus of ~12.5 points, which is below the cost-side
+      // headroom of ~35 (cost 25 + latency 10). That meant cheap models
+      // beat smart models even when the prompt was clearly action-y. For
+      // any intent the classifier locked onto something other than chat
+      // — or even when it returned `unclear` — capability has to outweigh
+      // cost. Empirical 5x amplifier: a 0.07 FCA gap (sonnet 0.94 vs
+      // gpt-oss 0.87) produces ~17.5 quality points, comfortably beating
+      // the ~3.6 cost-side delta when comparing $0.003/1k vs $0.0001/1k
+      // models. Cost-conscious operators can still tilt back via
+      // RouterTuning.qualityWeight (admin-editable).
+      //
+      // #872 (2026-05-15) — classifiedAgentic ALSO triggers the 5x amp,
+      // matching the isActionIntent contract for the post-intent-classifier
+      // world. Without this, agentic prompts get the gate-pass but no
+      // amplification, so cost still nudges cheap models ahead.
+      const actionAmp = isActionIntent || classifiedAgentic === true ? 5 : 1;
+      score += qualityHeadroom * tuning.fcaQualityMultiplier * qualityWeight * actionAmp;
+      try { routerQualityBonusCounter.inc({ applied: 'yes' }); } catch { /* metrics error — non-fatal */ }
+    } else {
+      // fcaQualityGatedByComplexity=true AND no complexity signals — bonus skipped
+      try { routerQualityBonusCounter.inc({ applied: 'no_complexity_gate' }); } catch { /* metrics error — non-fatal */ }
     }
 
     // Feedback-driven bonus: adjust score based on real user satisfaction data
@@ -1019,6 +1678,58 @@ export class SmartModelRouter {
       profile.metadata.isAvailable = isAvailable;
       profile.metadata.lastTested = new Date();
     }
+  }
+
+  /**
+   * Phase I — single routability check shared by routeRequest, simulateRouting
+   * and any other candidate-pool consumer.
+   *
+   * Returns true iff:
+   *   1. The model is not an embedding-only profile (chat-side guard).
+   *   2. The model's provider is currently live in providerManager
+   *      (i.e. enabled=true AND deleted_at=null at the DB layer; absent
+   *      from getProviders() / isModelEnabled() if not).
+   *
+   * Side effect: writes back to `profile.metadata.isAvailable` to mirror the
+   * live provider status. This makes downstream callers that ONLY check the
+   * cached flag (e.g. getCheapestChatModel) consistent with the routing path
+   * without forcing a profile-cache rebuild every CRUD cycle.
+   */
+  private isProfileRoutable(profile: ModelProfile): boolean {
+    // Embedding-side guard: never route an embed-only model for chat.
+    const idLower = profile.modelId.toLowerCase();
+    if (idLower.includes('embed') || idLower.includes('nomic')) {
+      profile.metadata.isAvailable = false;
+      return false;
+    }
+
+    // Capability-side guard: image-gen / audio-gen models never route for chat.
+    // Ref: 2026-05-02 Sev-0 — `nemotron3:33b` (HAL test model for image/audio)
+    // leaked into chat candidate pool because the heuristic at line ~637
+    // unconditionally sets `chat:true`. Causes 30s OllamaProvider timeout
+    // when its `OLLAMA_BASE_URL` is unset, surfacing as "REQUEST_TIMEOUT" to
+    // the chat user. Filter capability-first; no hardcoded model ids.
+    if (isImageOrAudioOnlyProfile(profile)) {
+      profile.metadata.isAvailable = false;
+      return false;
+    }
+
+    // Live provider check via providerManager (the always-fresh source of
+    // truth). When a provider is soft-deleted or admin-disabled, ProviderManager
+    // removes it from `getProviders()` / returns false from `isModelEnabled`.
+    if (this.providerManager && typeof this.providerManager.isModelEnabled === 'function') {
+      const live = this.providerManager.isModelEnabled(profile.modelId);
+      // Sync the cached flag both ways so the next read is correct.
+      if (profile.metadata.isAvailable !== live) {
+        profile.metadata.isAvailable = live;
+        profile.metadata.lastTested = new Date();
+      }
+      return live;
+    }
+
+    // No providerManager wired up (some test fixtures): fall back to the
+    // cached flag. We don't write to it here.
+    return profile.metadata.isAvailable;
   }
 
   /**

@@ -63,6 +63,21 @@ from azure.mgmt.policyinsights import PolicyInsightsClient
 from azure.mgmt.loganalytics import LogAnalyticsManagementClient
 from azure.mgmt.applicationinsights import ApplicationInsightsManagementClient
 from azure.monitor.query import LogsQueryClient, LogsQueryStatus
+
+# 2026-05-15: imports for the batch-inventory tool's AIF/Front Door/Container Apps
+# coverage. Lazy try/import below tolerates missing SDK in lean image builds.
+try:
+    from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+except ImportError:
+    CognitiveServicesManagementClient = None  # type: ignore[assignment]
+try:
+    from azure.mgmt.cdn import CdnManagementClient
+except ImportError:
+    CdnManagementClient = None  # type: ignore[assignment]
+try:
+    from azure.mgmt.appcontainers import ContainerAppsAPIClient
+except ImportError:
+    ContainerAppsAPIClient = None  # type: ignore[assignment]
 # Resource Health SDK is beta-only — we use ARM REST directly via requests
 # in azure_service_health_events to avoid the unstable beta dependency.
 
@@ -1212,6 +1227,14 @@ User: "Why is our Azure bill so high this month?"
    → "Forecasted: $8,500 for next 30 days"
 ```
 
+## Subscription Resolution
+- All three cost tools accept `subscription_id` as an OPTIONAL argument.
+- When you omit it (or pass `null`), the tool auto-resolves the caller's
+  visible subscriptions via the OBO token and fans the query across each,
+  aggregating into a single answer. Use this for "show me my total Azure
+  cost" prompts — DON'T chain `azure_list_subscriptions` first.
+- Pass an explicit UUID only when the user wants one specific subscription.
+
 ## Tips
 - Cost data may have 24-48 hour delay
 - group_by dimensions: ResourceType, ResourceGroup, ServiceName, etc.
@@ -1326,30 +1349,49 @@ If an operation fails:
 # SUBSCRIPTION & RESOURCE GROUP TOOLS
 # =============================================================================
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my subscriptions", "show me subscriptions", "what subscriptions do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_subscriptions(
     meta: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    List all Azure subscriptions the logged-in user has ANY access to, across
-    every tenant their account spans. RBAC-filtered: if the user has no
-    subscriptions, the list is empty (an error of fact, not a permissions bug).
+    List the Azure AD tenant subscriptions visible to the caller.
 
-    Call this FIRST when:
-      - The user says "list my resources" and doesn't name a subscription.
-      - You need to find the right subscription_id for a scoped call.
-      - You're building cross-subscription reports.
+    Resource: Azure subscriptions (sometimes called "subs" or "billing accounts").
+    Read-only. Uses the caller's OBO token; no extra consent prompt required.
+    RBAC-filtered: if the user has no role assignments on any subscription, the
+    list is empty (an error of fact, not a permissions bug).
+
+    Trigger phrases: "list my subscriptions", "show me my Azure subs",
+    "what subscriptions do I have", "azure billing accounts", "what tenant am I in".
+
+    Example: azure_list_subscriptions()  # caller's primary tenant, all visible subs
 
     Returns:
         { success, count, subscriptions: [
             { id, name, state: "Enabled"|"Disabled"|"Warned"|..., tenant_id }
-          ], executed_as
-        }
+          ], executed_as }
 
-    Common next calls:
-      - `azure_list_resource_groups(subscription_id=<id from here>)`.
-      - `azure_resource_graph_query(subscriptions=[<id>, ...], kql=...)` — run
-        ad-hoc cross-sub queries in Kusto.
+    Adjacent tools:
+      - Drill into one sub: azure_list_resource_groups(subscription_id=...)
+      - Cross-sub KQL: azure_resource_graph_query(subscriptions=[id, ...], kql=...)
+      - Cost view: azure_cost_query(subscription_id=..., lookback_days=30)
     """
     try:
         credential, user_info = require_user_token(meta)
@@ -1357,6 +1399,14 @@ async def azure_list_subscriptions(
         client = SubscriptionClient(credential)
         subscriptions = list(client.subscriptions.list())
 
+        # #572 — Azure SDK's Subscription.tenant_id is often None for the
+        # primary listing path (only populated for true cross-tenant
+        # Lighthouse delegations). Fall back to the validated JWT's `tid`
+        # claim from user_info (require_user_token decoded it at line 163)
+        # — that's the authenticated user's home tenant, which matches the
+        # subs they own in the OBO chain. Last-resort literal "unknown"
+        # was harming UI rendering of subscription tables.
+        user_tid = user_info.get("tid", "") if isinstance(user_info, dict) else ""
         return {
             "success": True,
             "count": len(subscriptions),
@@ -1365,7 +1415,12 @@ async def azure_list_subscriptions(
                     "id": sub.subscription_id,
                     "name": sub.display_name,
                     "state": sub.state.value if hasattr(sub.state, 'value') else str(sub.state) if sub.state else "Unknown",
-                    "tenant_id": getattr(sub, "tenant_id", None) or sub.additional_properties.get("tenantId", "unknown")
+                    "tenant_id": (
+                        getattr(sub, "tenant_id", None)
+                        or sub.additional_properties.get("tenantId")
+                        or user_tid
+                        or "unknown"
+                    ),
                 }
                 for sub in subscriptions
             ],
@@ -1376,31 +1431,56 @@ async def azure_list_subscriptions(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my resource groups", "show me resource groups", "what resource groups do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_resource_groups(
     subscription_id: Optional[str] = None,
     meta: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    List all resource groups in a subscription that the user has RBAC visibility on.
+    List the resource groups in an Azure subscription visible to the caller.
 
-    Useful as the second step after `azure_list_subscriptions`, or to answer
-    "what resource groups do I have in <sub>?" or "does <rg-name> already exist?"
+    Resource: Azure resource groups ("RGs") — logical containers for
+    deployments. Read-only. RBAC-filtered. Useful as the second step after
+    azure_list_subscriptions, or to answer "what resource groups do I have
+    in <sub>?" / "does <rg-name> already exist?".
+
+    Trigger phrases: "list my resource groups", "show me my RGs",
+    "list resource groups in <sub>", "what RGs do I have", "azure rg list".
+
+    Example:
+      azure_list_resource_groups(subscription_id="11111111-2222-3333-4444-555555555555")
+      # subscription_id=None → falls back to AZURE_SUBSCRIPTION_ID server env
 
     Args:
-        subscription_id: Optional. Defaults to the configured subscription
-                         (AZURE_SUBSCRIPTION_ID from server env).
+        subscription_id: Subscription UUID. Get from azure_list_subscriptions.
+                         When omitted, server-side default applies.
 
     Returns:
         { success, subscription_id, count, resource_groups: [
             { name, location, provisioning_state, tags }
-          ], executed_as
-        }
+          ], executed_as }
 
-    Chain with:
-      - `azure_create_resource_group(name, location)` if the one you want is missing.
-      - `azure_list_vnets(resource_group=<rg>)` to enumerate networking inside it.
-      - `azure_resource_graph_query` for cross-RG / cross-sub KQL queries.
+    Adjacent tools:
+      - Create one: azure_create_resource_group(name, location)
+      - Drill networking: azure_list_vnets(resource_group=<rg>)
+      - Cross-RG KQL: azure_resource_graph_query(kql="Resources | where ...")
     """
     try:
         credential, user_info = require_user_token(meta)
@@ -1432,7 +1512,622 @@ async def azure_list_resource_groups(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+# =============================================================================
+# #857 — Batch resource group inventory
+# =============================================================================
+# Replaces the model's typical 10-15 sequential tool calls (list_vms +
+# list_disks + list_vnets + list_nics + list_nsgs + list_storage_accounts +
+# list_key_vaults + list_aks + list_web_apps + list_app_gateways + ...) with
+# a single tool that fan-outs across all categories in parallel via
+# asyncio.gather + _in_thread. Each category returns {count, items} OR
+# {error: "..."} so partial failures don't drop the whole payload.
+#
+# Latency budget: ~3-5s wall-clock for an RG with ~50 resources (vs ~30-60s
+# for the model's sequential approach). Reduces max_turns pressure and the
+# Ollama Harmony-prose-in-args symptom that surfaced in #806/#851.
+# =============================================================================
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 4000,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [
+            "what's in resource group {name}",
+            "show me everything in rg {name}",
+            "audit resource group {name}",
+            "list all resources in {name}",
+            "full inventory of {rg}",
+            "give me an overview of resource group {name}",
+        ],
+        "testFixture": None,
+    },
+)
+async def azure_get_resource_group_inventory(
+    resource_group: str,
+    subscription_id: Optional[str] = None,
+    include: Optional[List[str]] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Fetch ALL resource types in a resource group in ONE parallel call.
+
+    Use this whenever you need to enumerate resources in an RG instead of
+    chaining 10+ separate azure_list_* calls. Categories run in parallel via
+    asyncio.gather; per-category failures degrade gracefully (each returns
+    either {count, items} or {error}).
+
+    Args:
+        resource_group: Resource group name (required).
+        subscription_id: Azure subscription ID (default: DEFAULT_SUBSCRIPTION_ID).
+        include: Optional list of category names to fetch. If None, fetches all.
+
+    Returns a dict with `categories` keyed by category name, each containing
+    `{count, items}` on success or `{error, type}` on failure. `errors` is a
+    flat list of any per-category failures for quick scanning.
+    """
+    # Fail-fast: validate `include` against the known category set BEFORE any
+    # Azure SDK call (no point auto-resolving subscription_id just to reject
+    # a typo). The fetcher dict below is the source of truth; this literal
+    # mirror is OK because changes to either must be made together — the
+    # behavior test `test_inventory_rejects_unknown_category` guards parity.
+    _VALID_CATEGORIES = {
+        "vms", "disks", "snapshots", "vmss",
+        "network_interfaces", "virtual_networks", "network_security_groups",
+        "public_ip_addresses", "load_balancers", "application_gateways",
+        "storage_accounts", "key_vaults", "aks_clusters",
+        "web_apps", "app_service_plans", "role_assignments",
+        # 2026-05-15: added AIF / Front Door / Container Apps / App Insights so
+        # the model can enumerate them via this one tool instead of needing
+        # per-type fan-out (which won't exist in this MCP at all for several).
+        "cognitive_services", "cdn_profiles",
+        "container_apps", "app_insights",
+    }
+    if include is not None:
+        unknown_early = [c for c in include if c not in _VALID_CATEGORIES]
+        if unknown_early:
+            return {
+                "success": False,
+                "error": f"Unknown categories: {unknown_early}. Valid: {sorted(_VALID_CATEGORIES)}",
+            }
+
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        auto_resolved_sub: Optional[str] = None
+
+        # Auto-resolve subscription_id when caller didn't provide one and no
+        # env default exists. Without this, Azure SDK throws InvalidSubscriptionId
+        # and the model has no way to recover unless azure_list_subscriptions
+        # happens to be in its top-K tool shortlist — which it often isn't.
+        # We list the user's OBO-accessible subs and either:
+        #   1 sub  → auto-pick it (transparent: result annotated)
+        #   >1 sub → return structured error with `available_subscriptions`
+        #            so the model can pick + retry without a follow-up tool
+        #   0 sub  → clear error (NOT a leaked SDK InvalidSubscriptionId)
+        if not sub_id:
+            sub_client = SubscriptionClient(credential)
+            try:
+                available = await _in_thread(
+                    lambda: list(sub_client.subscriptions.list())
+                )
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": f"Could not list user subscriptions to auto-resolve: {e}",
+                    "type": type(e).__name__,
+                }
+            if len(available) == 0:
+                return {
+                    "success": False,
+                    "error": (
+                        "No accessible Azure subscriptions for this user. "
+                        "Cannot run inventory without a subscription_id."
+                    ),
+                }
+            if len(available) > 1:
+                return {
+                    "success": False,
+                    "error": (
+                        "subscription_id is required: the user has multiple "
+                        "accessible subscriptions. Re-call with one of the "
+                        "IDs from `available_subscriptions`."
+                    ),
+                    "available_subscriptions": [
+                        {
+                            "id": s.subscription_id,
+                            "name": getattr(s, "display_name", None),
+                        }
+                        for s in available
+                    ],
+                }
+            sub_id = available[0].subscription_id
+            auto_resolved_sub = sub_id
+
+        compute = ComputeManagementClient(credential, sub_id)
+        network = NetworkManagementClient(credential, sub_id)
+        storage = StorageManagementClient(credential, sub_id)
+        keyvault = KeyVaultManagementClient(credential, sub_id)
+        aks = ContainerServiceClient(credential, sub_id)
+        web = WebSiteManagementClient(credential, sub_id)
+        authz = AuthorizationManagementClient(credential, sub_id)
+
+        async def _vms():
+            items = await _in_thread(lambda: list(compute.virtual_machines.list(resource_group)))
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": v.name,
+                        "location": v.location,
+                        "vm_size": v.hardware_profile.vm_size if v.hardware_profile else None,
+                        "os_type": v.storage_profile.os_disk.os_type.value
+                        if v.storage_profile and v.storage_profile.os_disk and v.storage_profile.os_disk.os_type
+                        else None,
+                        "provisioning_state": v.provisioning_state,
+                        "tags": v.tags or {},
+                    }
+                    for v in items
+                ],
+            }
+
+        async def _disks():
+            items = await _in_thread(lambda: list(compute.disks.list_by_resource_group(resource_group)))
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": d.name,
+                        "location": d.location,
+                        "disk_size_gb": d.disk_size_gb,
+                        "sku": d.sku.name if d.sku else None,
+                        "disk_state": d.disk_state,
+                        "tags": d.tags or {},
+                    }
+                    for d in items
+                ],
+            }
+
+        async def _snapshots():
+            items = await _in_thread(lambda: list(compute.snapshots.list_by_resource_group(resource_group)))
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": s.name,
+                        "location": s.location,
+                        "disk_size_gb": s.disk_size_gb,
+                        "time_created": s.time_created.isoformat() if s.time_created else None,
+                        "tags": s.tags or {},
+                    }
+                    for s in items
+                ],
+            }
+
+        async def _vmss():
+            items = await _in_thread(
+                lambda: list(compute.virtual_machine_scale_sets.list(resource_group))
+            )
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": s.name,
+                        "location": s.location,
+                        "sku": s.sku.name if s.sku else None,
+                        "capacity": s.sku.capacity if s.sku else None,
+                        "tags": s.tags or {},
+                    }
+                    for s in items
+                ],
+            }
+
+        async def _network_interfaces():
+            items = await _in_thread(lambda: list(network.network_interfaces.list(resource_group)))
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": n.name,
+                        "location": n.location,
+                        "mac_address": n.mac_address,
+                        "ip_configurations": [
+                            {
+                                "name": ip.name,
+                                "private_ip": ip.private_ip_address,
+                                "public_ip_id": ip.public_ip_address.id if ip.public_ip_address else None,
+                            }
+                            for ip in (n.ip_configurations or [])
+                        ],
+                    }
+                    for n in items
+                ],
+            }
+
+        async def _virtual_networks():
+            items = await _in_thread(lambda: list(network.virtual_networks.list(resource_group)))
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": v.name,
+                        "location": v.location,
+                        "address_space": list(v.address_space.address_prefixes) if v.address_space else [],
+                        "subnets": [
+                            {"name": s.name, "address_prefix": s.address_prefix}
+                            for s in (v.subnets or [])
+                        ],
+                        "tags": v.tags or {},
+                    }
+                    for v in items
+                ],
+            }
+
+        async def _nsgs():
+            items = await _in_thread(lambda: list(network.network_security_groups.list(resource_group)))
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": n.name,
+                        "location": n.location,
+                        "rule_count": len(n.security_rules or []),
+                        "tags": n.tags or {},
+                    }
+                    for n in items
+                ],
+            }
+
+        async def _public_ips():
+            items = await _in_thread(lambda: list(network.public_ip_addresses.list(resource_group)))
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": p.name,
+                        "location": p.location,
+                        "ip_address": p.ip_address,
+                        "allocation_method": p.public_ip_allocation_method,
+                        "tags": p.tags or {},
+                    }
+                    for p in items
+                ],
+            }
+
+        async def _load_balancers():
+            items = await _in_thread(lambda: list(network.load_balancers.list(resource_group)))
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": lb.name,
+                        "location": lb.location,
+                        "sku": lb.sku.name if lb.sku else None,
+                        "frontend_count": len(lb.frontend_ip_configurations or []),
+                        "tags": lb.tags or {},
+                    }
+                    for lb in items
+                ],
+            }
+
+        async def _app_gateways():
+            items = await _in_thread(lambda: list(network.application_gateways.list(resource_group)))
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": g.name,
+                        "location": g.location,
+                        "sku": g.sku.name if g.sku else None,
+                        "tier": g.sku.tier if g.sku else None,
+                        "operational_state": g.operational_state,
+                        "tags": g.tags or {},
+                    }
+                    for g in items
+                ],
+            }
+
+        async def _storage_accounts():
+            items = await _in_thread(
+                lambda: list(storage.storage_accounts.list_by_resource_group(resource_group))
+            )
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": s.name,
+                        "location": s.location,
+                        "kind": s.kind,
+                        "sku": s.sku.name if s.sku else None,
+                        "allow_blob_public_access": s.allow_blob_public_access,
+                        "minimum_tls_version": s.minimum_tls_version,
+                        "tags": s.tags or {},
+                    }
+                    for s in items
+                ],
+            }
+
+        async def _key_vaults():
+            items = await _in_thread(lambda: list(keyvault.vaults.list_by_resource_group(resource_group)))
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": k.name,
+                        "location": k.location,
+                        "vault_uri": k.properties.vault_uri if k.properties else None,
+                        "enable_rbac_authorization": (
+                            k.properties.enable_rbac_authorization if k.properties else None
+                        ),
+                        "public_network_access": (
+                            k.properties.public_network_access if k.properties else None
+                        ),
+                        "tags": k.tags or {},
+                    }
+                    for k in items
+                ],
+            }
+
+        async def _aks_clusters():
+            items = await _in_thread(
+                lambda: list(aks.managed_clusters.list_by_resource_group(resource_group))
+            )
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": c.name,
+                        "location": c.location,
+                        "kubernetes_version": c.kubernetes_version,
+                        "node_pool_count": len(c.agent_pool_profiles or []),
+                        "provisioning_state": c.provisioning_state,
+                        "tags": c.tags or {},
+                    }
+                    for c in items
+                ],
+            }
+
+        async def _web_apps():
+            items = await _in_thread(lambda: list(web.web_apps.list_by_resource_group(resource_group)))
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": w.name,
+                        "location": w.location,
+                        "kind": w.kind,
+                        "state": w.state,
+                        "default_host_name": w.default_host_name,
+                        "https_only": w.https_only,
+                        "tags": w.tags or {},
+                    }
+                    for w in items
+                ],
+            }
+
+        async def _app_service_plans():
+            items = await _in_thread(
+                lambda: list(web.app_service_plans.list_by_resource_group(resource_group))
+            )
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": p.name,
+                        "location": p.location,
+                        "kind": p.kind,
+                        "sku": p.sku.name if p.sku else None,
+                        "tier": p.sku.tier if p.sku else None,
+                        "number_of_workers": p.number_of_workers,
+                        "tags": p.tags or {},
+                    }
+                    for p in items
+                ],
+            }
+
+        async def _role_assignments():
+            scope = f"/subscriptions/{sub_id}/resourceGroups/{resource_group}"
+            items = await _in_thread(
+                lambda: list(authz.role_assignments.list_for_scope(scope))
+            )
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": r.name,
+                        "role_definition_id": r.role_definition_id,
+                        "principal_id": r.principal_id,
+                        "principal_type": r.principal_type,
+                        "scope": r.scope,
+                    }
+                    for r in items
+                ],
+            }
+
+        # 2026-05-15: AIF/Front Door/Container Apps/App Insights fetchers — see
+        # `_VALID_CATEGORIES` comment for context. Each one builds its SDK
+        # client lazily so a missing SDK only kills that one category, not the
+        # whole inventory.
+        async def _cognitive_services():
+            if CognitiveServicesManagementClient is None:
+                raise RuntimeError("azure-mgmt-cognitiveservices SDK not installed")
+            client = CognitiveServicesManagementClient(credential, sub_id)
+            items = await _in_thread(
+                lambda: list(client.accounts.list_by_resource_group(resource_group))
+            )
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": a.name,
+                        "location": a.location,
+                        # `kind` distinguishes AIServices (AIF), OpenAI, FormRecognizer, etc.
+                        "kind": getattr(a, "kind", None),
+                        "sku": getattr(a.sku, "name", None) if getattr(a, "sku", None) else None,
+                        "endpoint": getattr(getattr(a, "properties", None), "endpoint", None),
+                        "tags": a.tags or {},
+                    }
+                    for a in items
+                ],
+            }
+
+        async def _cdn_profiles():
+            # Covers Azure Front Door Standard/Premium (Microsoft.Cdn provider)
+            # and classic CDN profiles. Classic Microsoft.Network/frontDoors needs
+            # a separate SDK and is rare in new deployments — not in scope here.
+            if CdnManagementClient is None:
+                raise RuntimeError("azure-mgmt-cdn SDK not installed")
+            client = CdnManagementClient(credential, sub_id)
+            items = await _in_thread(
+                lambda: list(client.profiles.list_by_resource_group(resource_group))
+            )
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": p.name,
+                        "location": p.location,
+                        # sku.name marks Front Door (Standard_AzureFrontDoor /
+                        # Premium_AzureFrontDoor) vs classic CDN (Standard_Microsoft etc).
+                        "sku": getattr(p.sku, "name", None) if getattr(p, "sku", None) else None,
+                        "kind": getattr(p, "kind", None),
+                        "tags": p.tags or {},
+                    }
+                    for p in items
+                ],
+            }
+
+        async def _container_apps():
+            if ContainerAppsAPIClient is None:
+                raise RuntimeError("azure-mgmt-appcontainers SDK not installed")
+            client = ContainerAppsAPIClient(credential, sub_id)
+            items = await _in_thread(
+                lambda: list(client.container_apps.list_by_resource_group(resource_group))
+            )
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": c.name,
+                        "location": c.location,
+                        "provisioning_state": getattr(c, "provisioning_state", None),
+                        "tags": c.tags or {},
+                    }
+                    for c in items
+                ],
+            }
+
+        async def _app_insights():
+            client = ApplicationInsightsManagementClient(credential, sub_id)
+            items = await _in_thread(
+                lambda: list(client.components.list_by_resource_group(resource_group))
+            )
+            return {
+                "count": len(items),
+                "items": [
+                    {
+                        "name": c.name,
+                        "location": c.location,
+                        "kind": getattr(c, "kind", None),
+                        "application_type": getattr(c, "application_type", None),
+                        "tags": c.tags or {},
+                    }
+                    for c in items
+                ],
+            }
+
+        # Category registry: name → fetcher coroutine factory.
+        fetchers = {
+            "vms": _vms,
+            "disks": _disks,
+            "snapshots": _snapshots,
+            "vmss": _vmss,
+            "network_interfaces": _network_interfaces,
+            "virtual_networks": _virtual_networks,
+            "network_security_groups": _nsgs,
+            "public_ip_addresses": _public_ips,
+            "load_balancers": _load_balancers,
+            "application_gateways": _app_gateways,
+            "storage_accounts": _storage_accounts,
+            "key_vaults": _key_vaults,
+            "aks_clusters": _aks_clusters,
+            "web_apps": _web_apps,
+            "app_service_plans": _app_service_plans,
+            "role_assignments": _role_assignments,
+            "cognitive_services": _cognitive_services,
+            "cdn_profiles": _cdn_profiles,
+            "container_apps": _container_apps,
+            "app_insights": _app_insights,
+        }
+
+        selected = include or list(fetchers.keys())
+        unknown = [c for c in selected if c not in fetchers]
+        if unknown:
+            return {
+                "success": False,
+                "error": f"Unknown categories: {unknown}. Valid: {sorted(fetchers.keys())}",
+            }
+
+        names = [c for c in selected if c in fetchers]
+        results = await asyncio.gather(
+            *[fetchers[c]() for c in names], return_exceptions=True
+        )
+
+        categories: Dict[str, Any] = {}
+        errors: List[Dict[str, str]] = []
+        total_count = 0
+        for name, result in zip(names, results):
+            if isinstance(result, BaseException):
+                categories[name] = {"error": str(result), "type": type(result).__name__}
+                errors.append({"category": name, "error": str(result), "type": type(result).__name__})
+            else:
+                categories[name] = result
+                total_count += result.get("count", 0)
+
+        result_payload: Dict[str, Any] = {
+            "success": True,
+            "resource_group": resource_group,
+            "subscription_id": sub_id,
+            "total_count": total_count,
+            "categories": categories,
+            "errors": errors,
+            "executed_as": user_info,
+        }
+        if auto_resolved_sub:
+            result_payload["auto_resolved_subscription_id"] = auto_resolved_sub
+        return result_payload
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if "user_info" in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_create_resource_group(
     name: str,
     location: str,
@@ -1492,7 +2187,24 @@ async def azure_create_resource_group(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": True,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-destructive",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "free",
+        "averageLatencyMs": 5000,
+        "failureModes": ["not_found", "auth_expired", "rate_limited", "conflict"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_delete_resource_group(
     name: str,
     subscription_id: Optional[str] = None,
@@ -1532,7 +2244,24 @@ async def azure_delete_resource_group(
 # COMPUTE (VM) TOOLS
 # =============================================================================
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my vms", "show me vms", "what vms do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_vms(
     resource_group: Optional[str] = None,
     subscription_id: Optional[str] = None,
@@ -1578,7 +2307,24 @@ async def azure_list_vms(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["get vm details", "show me one vm"],
+        "testFixture": None,
+    },
+)
 async def azure_get_vm(
     name: str,
     resource_group: str,
@@ -1631,7 +2377,24 @@ async def azure_get_vm(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "medium",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 8000,
+        "failureModes": ["not_found", "auth_expired", "rate_limited", "conflict"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_start_vm(
     name: str,
     resource_group: str,
@@ -1665,7 +2428,24 @@ async def azure_start_vm(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "medium",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 8000,
+        "failureModes": ["not_found", "auth_expired", "rate_limited", "conflict"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_stop_vm(
     name: str,
     resource_group: str,
@@ -1701,7 +2481,24 @@ async def azure_stop_vm(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "medium",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 8000,
+        "failureModes": ["not_found", "auth_expired", "rate_limited", "conflict"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_restart_vm(
     name: str,
     resource_group: str,
@@ -1735,11 +2532,203 @@ async def azure_restart_vm(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
+@mcp.tool(
+    annotations={
+        "destructiveHint": True,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-destructive",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "free",
+        "averageLatencyMs": 5000,
+        "failureModes": ["not_found", "auth_expired", "rate_limited", "conflict"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def azure_delete_vm(
+    name: str,
+    resource_group: str,
+    subscription_id: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Delete (destroy) a virtual machine.
+
+    DESTRUCTIVE: this permanently deletes the VM. The OS disk, NIC, and
+    public IP may be left orphaned (use the portal or a follow-up call to
+    clean those up). HITL approval is required from the chatmode cascade
+    before this tool is invoked.
+
+    Args:
+        name: VM name
+        resource_group: Resource group containing the VM
+        subscription_id: Azure subscription ID
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+
+        client = ComputeManagementClient(credential, sub_id)
+        poller = client.virtual_machines.begin_delete(resource_group, name)
+
+        return {
+            "success": True,
+            "message": f"VM '{name}' delete operation initiated",
+            "vm_name": name,
+            "resource_group": resource_group,
+            "executed_as": user_info
+        }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "medium",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 8000,
+        "failureModes": ["not_found", "auth_expired", "rate_limited", "conflict"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def azure_deallocate_vm(
+    name: str,
+    resource_group: str,
+    subscription_id: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Deallocate a virtual machine (stops billing for compute).
+
+    Equivalent to ``azure_stop_vm`` — kept under the explicit name so the
+    Smart Router can match deallocate-specific prompts ("deallocate the
+    web-01 VM to stop billing") without keyword-matching to "stop".
+
+    Args:
+        name: VM name
+        resource_group: Resource group containing the VM
+        subscription_id: Azure subscription ID
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+
+        client = ComputeManagementClient(credential, sub_id)
+        poller = client.virtual_machines.begin_deallocate(resource_group, name)
+
+        return {
+            "success": True,
+            "message": f"VM '{name}' deallocate operation initiated (compute billing stopped)",
+            "vm_name": name,
+            "resource_group": resource_group,
+            "executed_as": user_info
+        }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "medium",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 8000,
+        "failureModes": ["not_found", "auth_expired", "rate_limited", "conflict"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def azure_resize_vm(
+    name: str,
+    resource_group: str,
+    vm_size: str,
+    subscription_id: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Resize a virtual machine to a new SKU.
+
+    DESTRUCTIVE: this restarts the VM with new hardware. In-flight workloads
+    are interrupted. The new SKU must be available in the VM's region. HITL
+    approval is required from the chatmode cascade before this tool is invoked.
+
+    Args:
+        name: VM name
+        resource_group: Resource group containing the VM
+        vm_size: Target SKU (e.g. ``Standard_B2s``, ``Standard_D4s_v5``)
+        subscription_id: Azure subscription ID
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+
+        client = ComputeManagementClient(credential, sub_id)
+        # Update path: change hardware_profile.vm_size on the VM resource.
+        # The Azure SDK accepts a partial dict for begin_update.
+        poller = client.virtual_machines.begin_update(
+            resource_group,
+            name,
+            {"hardware_profile": {"vm_size": vm_size}},
+        )
+
+        return {
+            "success": True,
+            "message": f"VM '{name}' resize to {vm_size} initiated",
+            "vm_name": name,
+            "resource_group": resource_group,
+            "vm_size": vm_size,
+            "executed_as": user_info
+        }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
 # =============================================================================
 # AKS (KUBERNETES) TOOLS
 # =============================================================================
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my aks clusters", "show me aks clusters", "what aks clusters do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_aks_clusters(
     resource_group: Optional[str] = None,
     subscription_id: Optional[str] = None,
@@ -1788,7 +2777,24 @@ async def azure_list_aks_clusters(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["get aks cluster details", "show me one aks cluster"],
+        "testFixture": None,
+    },
+)
 async def azure_get_aks_cluster(
     name: str,
     resource_group: str,
@@ -1847,7 +2853,24 @@ async def azure_get_aks_cluster(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["get aks credentials details", "show me one aks credentials"],
+        "testFixture": None,
+    },
+)
 async def azure_get_aks_credentials(
     name: str,
     resource_group: str,
@@ -1898,7 +2921,24 @@ async def azure_get_aks_credentials(
 # NETWORKING TOOLS
 # =============================================================================
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my vnets", "show me vnets", "what vnets do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_vnets(
     resource_group: Optional[str] = None,
     subscription_id: Optional[str] = None,
@@ -1961,7 +3001,24 @@ async def azure_list_vnets(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my nsgs", "show me nsgs", "what nsgs do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_nsgs(
     resource_group: Optional[str] = None,
     subscription_id: Optional[str] = None,
@@ -2009,7 +3066,24 @@ async def azure_list_nsgs(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my app gateways", "show me app gateways", "what app gateways do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_app_gateways(
     resource_group: Optional[str] = None,
     subscription_id: Optional[str] = None,
@@ -2079,7 +3153,24 @@ async def azure_list_app_gateways(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["get app gateway details", "show me one app gateway"],
+        "testFixture": None,
+    },
+)
 async def azure_get_app_gateway(
     name: str,
     resource_group: str,
@@ -2207,7 +3298,24 @@ async def azure_get_app_gateway(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "medium",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 5000,
+        "failureModes": ["auth_expired"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_app_gateway_backend_health(
     name: str,
     resource_group: str,
@@ -2262,7 +3370,24 @@ async def azure_app_gateway_backend_health(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "medium",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 8000,
+        "failureModes": ["not_found", "auth_expired", "rate_limited", "conflict"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_app_gateway_start(
     name: str,
     resource_group: str,
@@ -2297,7 +3422,24 @@ async def azure_app_gateway_start(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "medium",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 8000,
+        "failureModes": ["not_found", "auth_expired", "rate_limited", "conflict"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_app_gateway_stop(
     name: str,
     resource_group: str,
@@ -2334,7 +3476,24 @@ async def azure_app_gateway_stop(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my load balancers", "show me load balancers", "what load balancers do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_load_balancers(
     resource_group: Optional[str] = None,
     subscription_id: Optional[str] = None,
@@ -2386,7 +3545,24 @@ async def azure_list_load_balancers(
 # STORAGE TOOLS
 # =============================================================================
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my storage accounts", "show me storage accounts", "what storage accounts do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_storage_accounts(
     resource_group: Optional[str] = None,
     subscription_id: Optional[str] = None,
@@ -2437,7 +3613,24 @@ async def azure_list_storage_accounts(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my containers", "show me containers", "what containers do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_containers(
     storage_account: str,
     resource_group: str,
@@ -2481,7 +3674,24 @@ async def azure_list_containers(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my blobs", "show me blobs", "what blobs do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_blobs(
     storage_account: str,
     container_name: str,
@@ -2533,7 +3743,24 @@ async def azure_list_blobs(
 # KEY VAULT TOOLS
 # =============================================================================
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my keyvaults", "show me keyvaults", "what keyvaults do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_keyvaults(
     resource_group: Optional[str] = None,
     subscription_id: Optional[str] = None,
@@ -2579,7 +3806,24 @@ async def azure_list_keyvaults(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my secrets", "show me secrets", "what secrets do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_secrets(
     vault_name: str,
     meta: Optional[Dict[str, Any]] = None
@@ -2619,7 +3863,24 @@ async def azure_list_secrets(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["get secret details", "show me one secret"],
+        "testFixture": None,
+    },
+)
 async def azure_get_secret(
     vault_name: str,
     secret_name: str,
@@ -2658,7 +3919,24 @@ async def azure_get_secret(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "medium",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 8000,
+        "failureModes": ["not_found", "auth_expired", "rate_limited", "conflict"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_set_secret(
     vault_name: str,
     secret_name: str,
@@ -2703,7 +3981,61 @@ async def azure_set_secret(
 # COST MANAGEMENT TOOLS
 # =============================================================================
 
-@mcp.tool()
+def _resolve_cost_subscriptions(
+    subscription_id: Optional[str],
+    credential: Any,
+) -> List[str]:
+    """
+    Resolve which Azure subscriptions a cost query should target.
+
+    Q1-blocker-1 (2026-05-12): models invoke cost tools without
+    `subscription_id`. Previously the tool fell back to `DEFAULT_SUBSCRIPTION_ID`
+    (empty string in agentic-dev), built scope=`/subscriptions/`, and the
+    Azure SDK collapsed `/subscriptions//providers/...` so Azure returned
+    `InvalidSubscriptionId 'providers' is malformed`.
+
+    Resolution order:
+      1. Explicit `subscription_id` argument (single-sub mode).
+      2. `DEFAULT_SUBSCRIPTION_ID` env var if non-empty (single-sub mode).
+      3. SubscriptionClient.list() via the user's OBO token (fan-out mode).
+
+    Returns the list of subscription UUIDs to query. Raises ValueError if
+    the user has no visible subscriptions — the caller turns that into a
+    `{success: False}` response, never a malformed Azure URL.
+    """
+    if subscription_id:
+        return [subscription_id]
+    if DEFAULT_SUBSCRIPTION_ID:
+        return [DEFAULT_SUBSCRIPTION_ID]
+
+    sub_client = SubscriptionClient(credential)
+    subs = [s.subscription_id for s in sub_client.subscriptions.list() if s.subscription_id]
+    if not subs:
+        raise ValueError(
+            "No subscription_id provided and the caller has no visible Azure "
+            "subscriptions (OBO returned an empty list). Pass `subscription_id` "
+            "explicitly or call `azure_list_subscriptions` to see what's available."
+        )
+    return subs
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_cost_query(
     days: int = 30,
     granularity: str = "Daily",
@@ -2718,11 +4050,15 @@ async def azure_cost_query(
         days: Number of days to query (default 30)
         granularity: Time granularity - 'Daily', 'Monthly', or 'None'
         group_by: List of dimensions to group by (e.g., ['ResourceType', 'ResourceGroup'])
-        subscription_id: Azure subscription ID
+        subscription_id: Optional Azure subscription ID. When omitted, the
+            tool auto-resolves the caller's visible subscriptions via OBO
+            and fans the cost query across each, returning aggregated data.
+            Pass an explicit UUID to scope to one subscription.
     """
+    user_info: Optional[dict] = None
     try:
         credential, user_info = require_user_token(meta)
-        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        sub_ids = _resolve_cost_subscriptions(subscription_id, credential)
 
         client = CostManagementClient(credential)
 
@@ -2751,12 +4087,19 @@ async def azure_cost_query(
                 {"type": "Dimension", "name": dim} for dim in group_by
             ]
 
-        scope = f"/subscriptions/{sub_id}"
-        result = client.query.usage(scope, query_def)
+        all_rows: List[Any] = []
+        columns: List[str] = []
+        per_sub: List[Dict[str, Any]] = []
 
-        # Parse results
-        columns = [col.name for col in result.columns] if result.columns else []
-        rows = result.rows or []
+        for sid in sub_ids:
+            scope = f"/subscriptions/{sid}"
+            result = client.query.usage(scope, query_def)
+            sub_cols = [col.name for col in result.columns] if result.columns else []
+            sub_rows = result.rows or []
+            if not columns:
+                columns = sub_cols
+            all_rows.extend(sub_rows)
+            per_sub.append({"subscription_id": sid, "row_count": len(sub_rows)})
 
         return {
             "success": True,
@@ -2765,16 +4108,35 @@ async def azure_cost_query(
             "to_date": end_date.strftime("%Y-%m-%d"),
             "granularity": granularity,
             "columns": columns,
-            "row_count": len(rows),
-            "data": rows[:100],  # Limit to first 100 rows
+            "subscription_count": len(sub_ids),
+            "subscriptions": per_sub,
+            "row_count": len(all_rows),
+            "data": all_rows[:100],  # Limit to first 100 rows
             "executed_as": user_info
         }
     except ValueError as e:
         return {"success": False, "error": str(e)}
     except AzureError as e:
-        return error_response(e, user_info if 'user_info' in dir() else None)
+        return error_response(e, user_info)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_cost_by_service(
     days: int = 30,
     top_n: int = 10,
@@ -2787,11 +4149,15 @@ async def azure_cost_by_service(
     Args:
         days: Number of days to analyze
         top_n: Number of top services to return
-        subscription_id: Azure subscription ID
+        subscription_id: Optional Azure subscription ID. When omitted, the
+            tool auto-resolves the caller's visible subscriptions via OBO,
+            queries each, and returns top services aggregated across all
+            of them. Pass an explicit UUID to scope to one subscription.
     """
+    user_info: Optional[dict] = None
     try:
         credential, user_info = require_user_token(meta)
-        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        sub_ids = _resolve_cost_subscriptions(subscription_id, credential)
 
         client = CostManagementClient(credential)
 
@@ -2815,23 +4181,26 @@ async def azure_cost_by_service(
             }
         }
 
-        scope = f"/subscriptions/{sub_id}"
-        result = client.query.usage(scope, query_def)
+        # Aggregate cost per service across every subscription.
+        agg: Dict[str, float] = {}
+        for sid in sub_ids:
+            scope = f"/subscriptions/{sid}"
+            result = client.query.usage(scope, query_def)
+            for row in (result.rows or []):
+                cost = row[0] if len(row) > 0 else 0
+                service = row[1] if len(row) > 1 else "Unknown"
+                agg[service] = agg.get(service, 0.0) + float(cost)
 
-        # Parse and format results
-        rows = result.rows or []
-        services = []
-        total_cost = 0
-
-        for row in rows[:top_n]:
-            cost = row[0] if len(row) > 0 else 0
-            service = row[1] if len(row) > 1 else "Unknown"
-            services.append({"service": service, "cost": round(cost, 2)})
-            total_cost += cost
+        # Top-N by aggregated cost.
+        ranked = sorted(agg.items(), key=lambda kv: kv[1], reverse=True)[:top_n]
+        services = [{"service": s, "cost": round(c, 2)} for s, c in ranked]
+        total_cost = sum(c for _, c in ranked)
 
         return {
             "success": True,
             "period": f"Last {days} days",
+            "subscription_count": len(sub_ids),
+            "subscriptions": [{"subscription_id": s} for s in sub_ids],
             "total_cost": round(total_cost, 2),
             "currency": "USD",
             "top_services": services,
@@ -2840,9 +4209,26 @@ async def azure_cost_by_service(
     except ValueError as e:
         return {"success": False, "error": str(e)}
     except AzureError as e:
-        return error_response(e, user_info if 'user_info' in dir() else None)
+        return error_response(e, user_info)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_cost_forecast(
     forecast_days: int = 30,
     subscription_id: Optional[str] = None,
@@ -2853,11 +4239,15 @@ async def azure_cost_forecast(
 
     Args:
         forecast_days: Number of days to forecast
-        subscription_id: Azure subscription ID
+        subscription_id: Optional Azure subscription ID. When omitted, the
+            tool auto-resolves the caller's visible subscriptions via OBO
+            and sums forecasted spend across each. Pass an explicit UUID to
+            scope to one subscription.
     """
+    user_info: Optional[dict] = None
     try:
         credential, user_info = require_user_token(meta)
-        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        sub_ids = _resolve_cost_subscriptions(subscription_id, credential)
 
         client = CostManagementClient(credential)
 
@@ -2879,32 +4269,54 @@ async def azure_cost_forecast(
             }
         }
 
-        scope = f"/subscriptions/{sub_id}"
-        result = client.forecast.usage(scope, query_def)
-
-        rows = result.rows or []
-        forecasted_total = sum(row[0] for row in rows if len(row) > 0)
+        forecasted_total = 0.0
+        total_points = 0
+        for sid in sub_ids:
+            scope = f"/subscriptions/{sid}"
+            result = client.forecast.usage(scope, query_def)
+            rows = result.rows or []
+            total_points += len(rows)
+            forecasted_total += sum(row[0] for row in rows if len(row) > 0)
 
         return {
             "success": True,
             "forecast_period": f"Next {forecast_days} days",
             "from_date": start_date.strftime("%Y-%m-%d"),
             "to_date": end_date.strftime("%Y-%m-%d"),
+            "subscription_count": len(sub_ids),
+            "subscriptions": [{"subscription_id": s} for s in sub_ids],
             "forecasted_total": round(forecasted_total, 2),
             "currency": "USD",
-            "daily_data_points": len(rows),
+            "daily_data_points": total_points,
             "executed_as": user_info
         }
     except ValueError as e:
         return {"success": False, "error": str(e)}
     except AzureError as e:
-        return error_response(e, user_info if 'user_info' in dir() else None)
+        return error_response(e, user_info)
 
 # =============================================================================
 # MICROSOFT GRAPH (AZURE AD / ENTRA ID) TOOLS
 # =============================================================================
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my users", "show me users", "what users do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_users(
     filter_query: Optional[str] = None,
     top: int = 100,
@@ -2953,7 +4365,24 @@ async def azure_list_users(
     except Exception as e:
         return {"success": False, "error": str(e), "error_type": type(e).__name__}
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["get user details", "show me one user"],
+        "testFixture": None,
+    },
+)
 async def azure_get_user(
     user_id: str,
     meta: Optional[Dict[str, Any]] = None
@@ -2993,7 +4422,24 @@ async def azure_get_user(
     except Exception as e:
         return {"success": False, "error": str(e), "error_type": type(e).__name__}
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my groups", "show me groups", "what groups do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_groups(
     filter_query: Optional[str] = None,
     top: int = 100,
@@ -3036,7 +4482,24 @@ async def azure_list_groups(
     except Exception as e:
         return {"success": False, "error": str(e), "error_type": type(e).__name__}
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my apps", "show me apps", "what apps do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_apps(
     top: int = 100,
     meta: Optional[Dict[str, Any]] = None
@@ -3080,7 +4543,24 @@ async def azure_list_apps(
 # MONITORING TOOLS
 # =============================================================================
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my alerts", "show me alerts", "what alerts do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_alerts(
     resource_group: Optional[str] = None,
     subscription_id: Optional[str] = None,
@@ -3133,7 +4613,24 @@ async def azure_list_alerts(
 # narrowly scoped so semantic search picks the right one per task.
 # =============================================================================
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_create_app_service_plan(
     name: str,
     resource_group: str,
@@ -3204,7 +4701,24 @@ async def azure_create_app_service_plan(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_create_web_app(
     name: str,
     resource_group: str,
@@ -3284,7 +4798,24 @@ async def azure_create_web_app(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_create_function_app(
     name: str,
     resource_group: str,
@@ -3383,7 +4914,24 @@ async def azure_create_function_app(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_create_storage_account(
     name: str,
     resource_group: str,
@@ -3462,7 +5010,24 @@ async def azure_create_storage_account(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "medium",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 8000,
+        "failureModes": ["not_found", "auth_expired", "rate_limited", "conflict"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_storage_account_set_public_access(
     name: str,
     resource_group: str,
@@ -3506,7 +5071,24 @@ async def azure_storage_account_set_public_access(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_create_container_app(
     name: str,
     resource_group: str,
@@ -3616,7 +5198,24 @@ async def azure_create_container_app(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_create_key_vault(
     name: str,
     resource_group: str,
@@ -3693,7 +5292,24 @@ async def azure_create_key_vault(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_create_vm(
     name: str,
     resource_group: str,
@@ -3838,7 +5454,24 @@ async def azure_create_vm(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my role assignments", "show me role assignments", "what role assignments do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_role_assignments(
     scope: Optional[str] = None,
     principal_id: Optional[str] = None,
@@ -3892,7 +5525,24 @@ async def azure_list_role_assignments(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_security_list_assessments(
     subscription_id: Optional[str] = None,
     meta: Optional[Dict[str, Any]] = None
@@ -3926,7 +5576,24 @@ async def azure_security_list_assessments(
     except Exception as e:
         return {"success": False, "error": str(e), "executed_as": user_info if 'user_info' in dir() else None}
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "medium",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 5000,
+        "failureModes": ["auth_expired"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_security_secure_score(
     subscription_id: Optional[str] = None,
     meta: Optional[Dict[str, Any]] = None
@@ -3959,7 +5626,24 @@ async def azure_security_secure_score(
     except Exception as e:
         return {"success": False, "error": str(e), "executed_as": user_info if 'user_info' in dir() else None}
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_security_list_alerts(
     subscription_id: Optional[str] = None,
     meta: Optional[Dict[str, Any]] = None
@@ -3993,7 +5677,24 @@ async def azure_security_list_alerts(
     except Exception as e:
         return {"success": False, "error": str(e), "executed_as": user_info if 'user_info' in dir() else None}
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_log_analytics_list_workspaces(
     subscription_id: Optional[str] = None,
     resource_group: Optional[str] = None,
@@ -4028,7 +5729,24 @@ async def azure_log_analytics_list_workspaces(
     except Exception as e:
         return {"success": False, "error": str(e), "executed_as": user_info if 'user_info' in dir() else None}
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_log_analytics_query(
     workspace_id: str,
     kql_query: str,
@@ -4076,7 +5794,24 @@ async def azure_log_analytics_query(
     except Exception as e:
         return {"success": False, "error": str(e), "executed_as": user_info if 'user_info' in dir() else None}
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_app_insights_list_components(
     subscription_id: Optional[str] = None,
     resource_group: Optional[str] = None,
@@ -4111,7 +5846,24 @@ async def azure_app_insights_list_components(
     except Exception as e:
         return {"success": False, "error": str(e), "executed_as": user_info if 'user_info' in dir() else None}
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_app_insights_query(
     app_id: str,
     kql_query: str,
@@ -4161,7 +5913,24 @@ async def azure_app_insights_query(
     except Exception as e:
         return {"success": False, "error": str(e), "executed_as": user_info if 'user_info' in dir() else None}
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_policy_list_compliance_states(
     subscription_id: Optional[str] = None,
     top: Optional[int] = 200,
@@ -4226,7 +5995,24 @@ async def azure_policy_list_compliance_states(
 # AZURE AI FOUNDRY DEPLOYMENT MANAGEMENT
 # =============================================================================
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def aif_list_deployments(
     resource_group: str,
     account_name: str,
@@ -4273,7 +6059,24 @@ async def aif_list_deployments(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def aif_create_deployment(
     resource_group: str,
     account_name: str,
@@ -4331,7 +6134,24 @@ async def aif_create_deployment(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": True,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-destructive",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "free",
+        "averageLatencyMs": 5000,
+        "failureModes": ["not_found", "auth_expired", "rate_limited", "conflict"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def aif_delete_deployment(
     resource_group: str,
     account_name: str,
@@ -4370,7 +6190,24 @@ async def aif_delete_deployment(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def aif_get_deployment_status(
     resource_group: str,
     account_name: str,
@@ -4425,6 +6262,1366 @@ async def aif_get_deployment_status(
         return error_response(e, user_info if 'user_info' in dir() else None)
 
 # =============================================================================
+# AIF — Project / Model / Deployment-scale management (#675)
+# =============================================================================
+#
+# Tools added 2026-05-07 (#675) for full ML-platform control. The earlier
+# deployment-quartet (aif_list_deployments / aif_create_deployment /
+# aif_delete_deployment / aif_get_deployment_status) covers per-deployment
+# CRUD. These add the remaining surface:
+#
+#   Projects (data-plane via azure-ai-projects):
+#     - aif_list_projects       : list AIF projects on an account
+#     - aif_get_project         : one project's details
+#     - aif_create_project      : create a project
+#     - aif_delete_project      : delete a project
+#
+#   Models (catalog via management-plane CognitiveServicesManagementClient):
+#     - aif_list_models         : list models available to the account
+#     - aif_get_model           : one model's metadata
+#     - aif_list_model_versions : version list for one model
+#     - aif_get_model_version   : one model-version's details
+#
+#   Deployment scaling/update (management-plane):
+#     - aif_scale_deployment    : change SKU tier / capacity
+#     - aif_update_deployment   : update model / version on a deployment
+#
+# All run as the calling user via require_user_token(meta) — no SP /
+# managed identity / fallback creds, matching the rest of this server.
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_list_projects(
+    resource_group: str,
+    account_name: str,
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List AI Foundry projects on an account.
+
+    Use when the user asks "list my AIF projects", "show AI Foundry projects",
+    "what projects do I have in <account>". Returns
+    {success, count, projects:[{name, id, location, description}], executed_as}.
+    Backed by the data-plane SDK (azure-ai-projects); falls back to a graceful
+    diagnostic when the SDK isn't installed in this image.
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry account name
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+        try:
+            from azure.ai.projects import AIProjectClient  # type: ignore
+        except ImportError:
+            return {
+                "success": False,
+                "error": "azure-ai-projects SDK not installed in this image. "
+                         "Add it to requirements.txt and rebuild the MCP to enable Project management.",
+            }
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        mgmt = CognitiveServicesManagementClient(credential, sub_id)
+        account = await _in_thread(lambda: mgmt.accounts.get(resource_group, account_name))
+        endpoint = getattr(account.properties, "endpoint", None) if account.properties else None
+        if not endpoint:
+            return {"success": False, "error": f"AIF account {account_name} has no endpoint configured"}
+        client = AIProjectClient(endpoint=endpoint, credential=credential)
+        projects = await _in_thread(lambda: list(client.projects.list()))
+        return {
+            "success": True,
+            "count": len(projects),
+            "projects": [
+                {
+                    "name": getattr(p, "name", None),
+                    "id": getattr(p, "id", None),
+                    "location": getattr(p, "location", None),
+                    "description": getattr(p, "description", None),
+                }
+                for p in projects
+            ],
+            "executed_as": user_info,
+        }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_get_project(
+    resource_group: str,
+    account_name: str,
+    project_id: str,
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Get one AI Foundry project's details by id (or name).
+
+    Use when the user asks "show me project X details", "describe AIF project Y",
+    "what's the status of project Z". Returns
+    {success, project:{name, id, location, description, properties}, executed_as}.
+    Data-plane SDK call (azure-ai-projects).
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry account name
+        project_id: Project id or name
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+        try:
+            from azure.ai.projects import AIProjectClient  # type: ignore
+        except ImportError:
+            return {
+                "success": False,
+                "error": "azure-ai-projects SDK not installed in this image.",
+            }
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        mgmt = CognitiveServicesManagementClient(credential, sub_id)
+        account = await _in_thread(lambda: mgmt.accounts.get(resource_group, account_name))
+        endpoint = getattr(account.properties, "endpoint", None) if account.properties else None
+        if not endpoint:
+            return {"success": False, "error": f"AIF account {account_name} has no endpoint configured"}
+        client = AIProjectClient(endpoint=endpoint, credential=credential)
+        p = await _in_thread(lambda: client.projects.get(project_id))
+        return {
+            "success": True,
+            "project": {
+                "name": getattr(p, "name", None),
+                "id": getattr(p, "id", None),
+                "location": getattr(p, "location", None),
+                "description": getattr(p, "description", None),
+                "properties": getattr(p, "properties", {}) if hasattr(p, "properties") else {},
+            },
+            "executed_as": user_info,
+        }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_create_project(
+    resource_group: str,
+    account_name: str,
+    project_name: str,
+    description: str = "",
+    location: str = "",
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Create an AI Foundry project on an account.
+
+    Use when the user asks "create AIF project named X", "make a new AI Foundry
+    project under <account>", "spin up project Y for our team". Returns
+    {success, status:'created', project:{name, id}, executed_as}. Data-plane
+    SDK call (azure-ai-projects.projects.create).
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry account name
+        project_name: Display name for the new project
+        description: Optional description
+        location: Region (defaults to the account's region when empty)
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+        try:
+            from azure.ai.projects import AIProjectClient  # type: ignore
+        except ImportError:
+            return {
+                "success": False,
+                "error": "azure-ai-projects SDK not installed in this image.",
+            }
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        mgmt = CognitiveServicesManagementClient(credential, sub_id)
+        account = await _in_thread(lambda: mgmt.accounts.get(resource_group, account_name))
+        endpoint = getattr(account.properties, "endpoint", None) if account.properties else None
+        if not endpoint:
+            return {"success": False, "error": f"AIF account {account_name} has no endpoint configured"}
+        client = AIProjectClient(endpoint=endpoint, credential=credential)
+        project = await _in_thread(
+            lambda: client.projects.create(
+                name=project_name,
+                description=description or None,
+                location=location or account.location,
+            )
+        )
+        return {
+            "success": True,
+            "status": "created",
+            "project": {
+                "name": getattr(project, "name", project_name),
+                "id": getattr(project, "id", None),
+            },
+            "executed_as": user_info,
+        }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": True,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-destructive",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "free",
+        "averageLatencyMs": 5000,
+        "failureModes": ["not_found", "auth_expired", "rate_limited", "conflict"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_delete_project(
+    resource_group: str,
+    account_name: str,
+    project_id: str,
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Delete an AI Foundry project by id.
+
+    Use when the user asks "delete AIF project X", "remove project Y from my
+    account", "tear down the foo project". Returns
+    {success, status:'deleted', project_id, executed_as}. Data-plane SDK
+    call (azure-ai-projects.projects.delete).
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry account name
+        project_id: Project id (from aif_list_projects)
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+        try:
+            from azure.ai.projects import AIProjectClient  # type: ignore
+        except ImportError:
+            return {
+                "success": False,
+                "error": "azure-ai-projects SDK not installed in this image.",
+            }
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        mgmt = CognitiveServicesManagementClient(credential, sub_id)
+        account = await _in_thread(lambda: mgmt.accounts.get(resource_group, account_name))
+        endpoint = getattr(account.properties, "endpoint", None) if account.properties else None
+        if not endpoint:
+            return {"success": False, "error": f"AIF account {account_name} has no endpoint configured"}
+        client = AIProjectClient(endpoint=endpoint, credential=credential)
+        await _in_thread(lambda: client.projects.delete(project_id))
+        return {
+            "success": True,
+            "status": "deleted",
+            "project_id": project_id,
+            "executed_as": user_info,
+        }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_list_models(
+    resource_group: str,
+    account_name: str,
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List models available in an AIF / Azure OpenAI account catalog.
+
+    Use when the user asks "what models are available in <account>", "list AIF
+    models", "show me the OpenAI model catalog on this resource". Returns
+    {success, count, models:[{name, format, source, capabilities}], executed_as}.
+    Backed by management-plane
+    `cognitiveservices.models.client.accounts.list_models(rg, account)`.
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry / Cognitive Services account name
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        client = CognitiveServicesManagementClient(credential, sub_id)
+        models = await _in_thread(lambda: list(client.accounts.list_models(resource_group, account_name)))
+        results = []
+        for m in models:
+            mm = getattr(m, "model", None)
+            results.append({
+                "name": getattr(mm, "name", None) if mm else None,
+                "version": getattr(mm, "version", None) if mm else None,
+                "format": getattr(mm, "format", None) if mm else None,
+                "source": getattr(mm, "source", None) if mm else None,
+                "capabilities": getattr(m, "capabilities", {}) or {},
+                "lifecycle_status": getattr(m, "lifecycle_status", None),
+                "is_default_version": getattr(m, "is_default_version", None),
+            })
+        return {
+            "success": True,
+            "count": len(results),
+            "models": results,
+            "executed_as": user_info,
+        }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_get_model(
+    resource_group: str,
+    account_name: str,
+    model_id: str,
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Get one model's catalog entry (default version) from an AIF account.
+
+    Use when the user asks "describe model gpt-4o on <account>", "show me details
+    of <model>", "what's the lifecycle status of <model>". Returns
+    {success, model:{name, version, format, capabilities, lifecycle_status,
+    is_default_version}, executed_as}. Resolves by filtering the management-plane
+    `accounts.list_models` response (the management API returns the catalog
+    list rather than a per-model GET).
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry / Cognitive Services account name
+        model_id: Model name (e.g. 'gpt-4o', 'text-embedding-3-large')
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        client = CognitiveServicesManagementClient(credential, sub_id)
+        models = await _in_thread(lambda: list(client.accounts.list_models(resource_group, account_name)))
+        for m in models:
+            mm = getattr(m, "model", None)
+            if mm and getattr(mm, "name", None) == model_id and getattr(m, "is_default_version", False):
+                return {
+                    "success": True,
+                    "model": {
+                        "name": getattr(mm, "name", None),
+                        "version": getattr(mm, "version", None),
+                        "format": getattr(mm, "format", None),
+                        "source": getattr(mm, "source", None),
+                        "capabilities": getattr(m, "capabilities", {}) or {},
+                        "lifecycle_status": getattr(m, "lifecycle_status", None),
+                        "is_default_version": True,
+                    },
+                    "executed_as": user_info,
+                }
+        # Fall back to first match if no default-version row exists
+        for m in models:
+            mm = getattr(m, "model", None)
+            if mm and getattr(mm, "name", None) == model_id:
+                return {
+                    "success": True,
+                    "model": {
+                        "name": getattr(mm, "name", None),
+                        "version": getattr(mm, "version", None),
+                        "format": getattr(mm, "format", None),
+                        "source": getattr(mm, "source", None),
+                        "capabilities": getattr(m, "capabilities", {}) or {},
+                        "lifecycle_status": getattr(m, "lifecycle_status", None),
+                        "is_default_version": getattr(m, "is_default_version", False),
+                    },
+                    "executed_as": user_info,
+                }
+        return {"success": False, "error": f"Model {model_id} not found in account {account_name}"}
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_list_model_versions(
+    resource_group: str,
+    account_name: str,
+    model_id: str,
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List all versions for one model in an AIF account catalog.
+
+    Use when the user asks "what versions of gpt-4o are available", "list
+    versions for model X", "show me model-Y version history on <account>".
+    Returns {success, model_id, count, versions:[{version, format, source,
+    capabilities, lifecycle_status, is_default_version}], executed_as}.
+    Filters the management-plane `accounts.list_models` response by name.
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry / Cognitive Services account name
+        model_id: Model name to enumerate versions for
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        client = CognitiveServicesManagementClient(credential, sub_id)
+        models = await _in_thread(lambda: list(client.accounts.list_models(resource_group, account_name)))
+        versions = []
+        for m in models:
+            mm = getattr(m, "model", None)
+            if not mm or getattr(mm, "name", None) != model_id:
+                continue
+            versions.append({
+                "version": getattr(mm, "version", None),
+                "format": getattr(mm, "format", None),
+                "source": getattr(mm, "source", None),
+                "capabilities": getattr(m, "capabilities", {}) or {},
+                "lifecycle_status": getattr(m, "lifecycle_status", None),
+                "is_default_version": getattr(m, "is_default_version", False),
+            })
+        return {
+            "success": True,
+            "model_id": model_id,
+            "count": len(versions),
+            "versions": versions,
+            "executed_as": user_info,
+        }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_get_model_version(
+    resource_group: str,
+    account_name: str,
+    model_id: str,
+    version: str,
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Get one specific (model, version) pair's catalog entry.
+
+    Use when the user asks "describe gpt-4o version 2024-05-13", "show me
+    version X of model Y on <account>", "is version Z still in lifecycle".
+    Returns {success, model:{name, version, format, capabilities,
+    lifecycle_status, is_default_version}, executed_as}. Filters
+    `accounts.list_models` by (name, version).
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry / Cognitive Services account name
+        model_id: Model name (e.g. 'gpt-4o')
+        version: Model version (e.g. '2024-05-13')
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        client = CognitiveServicesManagementClient(credential, sub_id)
+        models = await _in_thread(lambda: list(client.accounts.list_models(resource_group, account_name)))
+        for m in models:
+            mm = getattr(m, "model", None)
+            if mm and getattr(mm, "name", None) == model_id and getattr(mm, "version", None) == version:
+                return {
+                    "success": True,
+                    "model": {
+                        "name": getattr(mm, "name", None),
+                        "version": getattr(mm, "version", None),
+                        "format": getattr(mm, "format", None),
+                        "source": getattr(mm, "source", None),
+                        "capabilities": getattr(m, "capabilities", {}) or {},
+                        "lifecycle_status": getattr(m, "lifecycle_status", None),
+                        "is_default_version": getattr(m, "is_default_version", False),
+                    },
+                    "executed_as": user_info,
+                }
+        return {"success": False, "error": f"Model {model_id} version {version} not found in account {account_name}"}
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_scale_deployment(
+    resource_group: str,
+    account_name: str,
+    deployment_name: str,
+    sku_name: str = "",
+    capacity: int = 0,
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Scale an AIF deployment — change SKU tier and/or TPM capacity in-place.
+
+    Use when the user asks "scale deployment X to Y TPM", "bump capacity on
+    deployment Z to N", "change SKU on deployment W to GlobalStandard". Existing
+    model + version are preserved. Returns
+    {success, status:'scaled', name, sku_name, capacity, provisioning_state,
+    executed_as}. Calls
+    `cognitiveservices.deployments.client.deployments.begin_create_or_update`
+    with merged sku + existing model.
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry / Azure OpenAI account name
+        deployment_name: Deployment to scale
+        sku_name: New SKU (GlobalStandard / Standard / ProvisionedManaged) — keep current if empty
+        capacity: New capacity units (TPM in thousands) — keep current if 0
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        from azure.mgmt.cognitiveservices.models import Deployment, DeploymentModel, Sku
+        client = CognitiveServicesManagementClient(credential, sub_id)
+
+        existing = await _in_thread(lambda: client.deployments.get(resource_group, account_name, deployment_name))
+        existing_model = existing.properties.model if existing.properties and existing.properties.model else None
+        existing_sku = existing.sku
+        if not existing_model:
+            return {"success": False, "error": f"Deployment {deployment_name} has no model property; cannot scale"}
+
+        new_sku_name = sku_name or (existing_sku.name if existing_sku else "Standard")
+        new_capacity = capacity or (existing_sku.capacity if existing_sku else 1)
+        new_deployment = Deployment(
+            sku=Sku(name=new_sku_name, capacity=new_capacity),
+            properties={"model": DeploymentModel(
+                name=getattr(existing_model, "name", None),
+                version=getattr(existing_model, "version", None),
+                format=getattr(existing_model, "format", "OpenAI"),
+            )},
+        )
+        result = await _in_thread(
+            lambda: client.deployments.begin_create_or_update(
+                resource_group, account_name, deployment_name, new_deployment
+            ).result()
+        )
+        return {
+            "success": True,
+            "status": "scaled",
+            "name": result.name,
+            "sku_name": new_sku_name,
+            "capacity": new_capacity,
+            "provisioning_state": result.properties.provisioning_state if result.properties else "unknown",
+            "executed_as": user_info,
+        }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_update_deployment(
+    resource_group: str,
+    account_name: str,
+    deployment_name: str,
+    model_name: str = "",
+    model_version: str = "",
+    sku_name: str = "",
+    capacity: int = 0,
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Update an AIF deployment — swap model, version, SKU, and/or capacity.
+
+    Use when the user asks "update deployment X to use gpt-4o-mini", "switch
+    deployment Y to model Z version W", "upgrade my deployment to the latest
+    model version". Empty fields keep the existing value. Returns
+    {success, status:'updated', name, model, model_version, sku_name, capacity,
+    provisioning_state, executed_as}. Calls
+    `cognitiveservices.deployments.client.deployments.begin_create_or_update`.
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry / Azure OpenAI account name
+        deployment_name: Deployment to update
+        model_name: New model (e.g. gpt-4o-mini) — keep current if empty
+        model_version: New model version — keep current if empty
+        sku_name: New SKU — keep current if empty
+        capacity: New capacity (TPM thousands) — keep current if 0
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        from azure.mgmt.cognitiveservices.models import Deployment, DeploymentModel, Sku
+        client = CognitiveServicesManagementClient(credential, sub_id)
+
+        existing = await _in_thread(lambda: client.deployments.get(resource_group, account_name, deployment_name))
+        existing_model = existing.properties.model if existing.properties and existing.properties.model else None
+        existing_sku = existing.sku
+
+        new_model_name = model_name or (getattr(existing_model, "name", None) if existing_model else None)
+        new_model_version = model_version or (getattr(existing_model, "version", None) if existing_model else None)
+        new_format = (getattr(existing_model, "format", "OpenAI") if existing_model else "OpenAI")
+        new_sku_name = sku_name or (existing_sku.name if existing_sku else "Standard")
+        new_capacity = capacity or (existing_sku.capacity if existing_sku else 1)
+        if not new_model_name:
+            return {"success": False, "error": f"Deployment {deployment_name} has no model_name; pass model_name explicitly"}
+
+        new_deployment = Deployment(
+            sku=Sku(name=new_sku_name, capacity=new_capacity),
+            properties={"model": DeploymentModel(
+                name=new_model_name,
+                version=new_model_version or None,
+                format=new_format,
+            )},
+        )
+        result = await _in_thread(
+            lambda: client.deployments.begin_create_or_update(
+                resource_group, account_name, deployment_name, new_deployment
+            ).result()
+        )
+        return {
+            "success": True,
+            "status": "updated",
+            "name": result.name,
+            "model": new_model_name,
+            "model_version": new_model_version,
+            "sku_name": new_sku_name,
+            "capacity": new_capacity,
+            "provisioning_state": result.properties.provisioning_state if result.properties else "unknown",
+            "executed_as": user_info,
+        }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+# =============================================================================
+# AIF — Project / Resource overview + Responsible AI Guardrails + Agents
+# =============================================================================
+#
+# Tools added 2026-04-26 (#72) to round out AIF management. Existing
+# deployment tools above (aif_list_deployments / aif_create_deployment /
+# aif_delete_deployment / aif_get_deployment_status) cover model
+# provisioning. These add:
+#   - aif_project_status     : single-call overview of an AIF account
+#   - aif_list_guardrails    : Responsible AI policies on the account
+#   - aif_create_guardrail   : create / update an RAI policy
+#   - aif_delete_guardrail   : delete an RAI policy
+#   - aif_list_agents        : Agent service agents (preview)
+#   - aif_create_agent       : create an Agent service agent
+#   - aif_delete_agent       : delete an Agent service agent
+#
+# All run as the calling user via require_user_token(meta) — no SP /
+# managed identity / fallback creds, matching the rest of this server.
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "medium",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 5000,
+        "failureModes": ["auth_expired"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_project_status(
+    resource_group: str,
+    account_name: str,
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """One-shot overview of an Azure AI Foundry account: location, SKU,
+    provisioning state, capabilities, deployment count, RAI policy count,
+    and quota usage.
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry / Cognitive Services account name
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        client = CognitiveServicesManagementClient(credential, sub_id)
+
+        account = await _in_thread(lambda: client.accounts.get(resource_group, account_name))
+        deployments = await _in_thread(lambda: list(client.deployments.list(resource_group, account_name)))
+        # RAI policies live under the same account; some SDK versions expose
+        # them as `rai_policies` and older ones do not. Tolerate either.
+        rai_policies: List[Any] = []
+        try:
+            if hasattr(client, "rai_policies"):
+                rai_policies = await _in_thread(lambda: list(client.rai_policies.list(resource_group, account_name)))
+        except Exception as e:
+            logger.debug(f"[aif_project_status] rai_policies.list skipped: {e}")
+
+        usages: List[Dict[str, Any]] = []
+        try:
+            location = account.location
+            for u in await _in_thread(lambda: list(client.usages.list(location))):
+                usages.append({
+                    "name": getattr(u.name, "value", None) if u.name else None,
+                    "current_value": getattr(u, "current_value", None),
+                    "limit": getattr(u, "limit", None),
+                    "unit": getattr(u, "unit", None),
+                })
+        except Exception as e:
+            logger.debug(f"[aif_project_status] usages.list skipped: {e}")
+
+        return {
+            "success": True,
+            "account": {
+                "name": account.name,
+                "location": account.location,
+                "kind": account.kind,
+                "sku": account.sku.name if account.sku else None,
+                "provisioning_state": getattr(account.properties, "provisioning_state", None) if account.properties else None,
+                "endpoint": getattr(account.properties, "endpoint", None) if account.properties else None,
+                "tags": account.tags or {},
+            },
+            "deployment_count": len(deployments),
+            "deployments": [
+                {
+                    "name": d.name,
+                    "model": d.properties.model.name if d.properties and d.properties.model else None,
+                    "provisioning_state": d.properties.provisioning_state if d.properties else None,
+                }
+                for d in deployments
+            ],
+            "guardrail_count": len(rai_policies),
+            "guardrails": [{"name": p.name} for p in rai_policies],
+            "quota_usages": usages,
+            "executed_as": user_info,
+        }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_list_guardrails(
+    resource_group: str,
+    account_name: str,
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List Responsible-AI content-safety policies (guardrails) on an
+    Azure AI Foundry / Cognitive Services account.
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry account name
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        client = CognitiveServicesManagementClient(credential, sub_id)
+
+        if not hasattr(client, "rai_policies"):
+            return {
+                "success": False,
+                "error": "RAI policy management not available in this azure-mgmt-cognitiveservices version. "
+                         "Upgrade the SDK to expose client.rai_policies."
+            }
+        policies = await _in_thread(lambda: list(client.rai_policies.list(resource_group, account_name)))
+        return {
+            "success": True,
+            "count": len(policies),
+            "policies": [
+                {
+                    "name": p.name,
+                    "type": getattr(p, "type", None),
+                    "mode": getattr(p.properties, "mode", None) if getattr(p, "properties", None) else None,
+                    "base_policy_name": getattr(p.properties, "base_policy_name", None) if getattr(p, "properties", None) else None,
+                }
+                for p in policies
+            ],
+            "executed_as": user_info,
+        }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_create_guardrail(
+    resource_group: str,
+    account_name: str,
+    policy_name: str,
+    base_policy_name: str = "Microsoft.Default",
+    mode: str = "Default",
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Create or update a Responsible-AI content-safety policy on an
+    Azure AI Foundry account.
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry account name
+        policy_name: New policy name
+        base_policy_name: Inherits filters from this base (default: "Microsoft.Default")
+        mode: 'Default' / 'Asynchronous_filter' / 'Deferred'
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        client = CognitiveServicesManagementClient(credential, sub_id)
+
+        if not hasattr(client, "rai_policies"):
+            return {
+                "success": False,
+                "error": "RAI policy management not available in this azure-mgmt-cognitiveservices version."
+            }
+
+        body = {
+            "properties": {
+                "basePolicyName": base_policy_name,
+                "mode": mode,
+            }
+        }
+        result = await _in_thread(
+            lambda: client.rai_policies.create_or_update(resource_group, account_name, policy_name, body)
+        )
+        return {
+            "success": True,
+            "status": "created_or_updated",
+            "name": result.name if hasattr(result, "name") else policy_name,
+            "executed_as": user_info,
+        }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": True,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-destructive",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "free",
+        "averageLatencyMs": 5000,
+        "failureModes": ["not_found", "auth_expired", "rate_limited", "conflict"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_delete_guardrail(
+    resource_group: str,
+    account_name: str,
+    policy_name: str,
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Delete a Responsible-AI content-safety policy from an AIF account.
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry account name
+        policy_name: Policy to delete
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        client = CognitiveServicesManagementClient(credential, sub_id)
+
+        if not hasattr(client, "rai_policies"):
+            return {
+                "success": False,
+                "error": "RAI policy management not available in this azure-mgmt-cognitiveservices version."
+            }
+        await _in_thread(lambda: client.rai_policies.delete(resource_group, account_name, policy_name))
+        return {"success": True, "status": "deleted", "policy": policy_name, "executed_as": user_info}
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_list_agents(
+    resource_group: str,
+    account_name: str,
+    project_name: str = "",
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """List AI Foundry Agent-service agents under a project (preview).
+
+    A2S = Agent-to-System: a connected agent definition that wires a model
+    deployment to a set of tools / functions / data sources. Implementation
+    requires the data-plane SDK; this tool surfaces a graceful diagnostic
+    when the runtime SDK isn't available so the admin UI can degrade.
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry account name
+        project_name: AIF project (data-plane scope) — required by the SDK
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+        # The Agent service is a data-plane API; the management-plane
+        # CognitiveServicesManagementClient does not expose it. The
+        # Azure SDK ships a separate package
+        # `azure.ai.projects` for this; we attempt an import and bail
+        # gracefully if it isn't installed in this MCP image.
+        try:
+            from azure.ai.projects import AIProjectClient  # type: ignore
+        except ImportError:
+            return {
+                "success": False,
+                "error": "azure-ai-projects SDK not installed in this image. "
+                         "Add it to requirements.txt and rebuild the MCP to enable Agent management.",
+            }
+        # Resolve endpoint via management plane
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        mgmt = CognitiveServicesManagementClient(credential, sub_id)
+        account = await _in_thread(lambda: mgmt.accounts.get(resource_group, account_name))
+        endpoint = getattr(account.properties, "endpoint", None) if account.properties else None
+        if not endpoint:
+            return {"success": False, "error": f"AIF account {account_name} has no endpoint configured"}
+        client = AIProjectClient(endpoint=endpoint, credential=credential, project_name=project_name or account_name)
+        agents = await _in_thread(lambda: list(client.agents.list_agents()))
+        return {
+            "success": True,
+            "count": len(agents),
+            "agents": [
+                {
+                    "id": getattr(a, "id", None),
+                    "name": getattr(a, "name", None),
+                    "model": getattr(a, "model", None),
+                    "instructions": getattr(a, "instructions", None),
+                }
+                for a in agents
+            ],
+            "executed_as": user_info,
+        }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_create_agent(
+    resource_group: str,
+    account_name: str,
+    agent_name: str,
+    model: str,
+    instructions: str,
+    project_name: str = "",
+    tools: Optional[List[Dict[str, Any]]] = None,
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Create an AI Foundry Agent-service agent (A2S — Agent-to-System).
+
+    Wires a deployed model to a set of tools / data sources via the
+    AI Foundry data-plane SDK. Returns the new agent's id.
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry account name
+        agent_name: Display name for the agent
+        model: Deployment name of the underlying model (must exist on the account)
+        instructions: System prompt / instructions
+        project_name: AIF project (defaults to account_name when empty)
+        tools: Optional list of tool definitions (function/code-interpreter/file-search)
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+        try:
+            from azure.ai.projects import AIProjectClient  # type: ignore
+        except ImportError:
+            return {
+                "success": False,
+                "error": "azure-ai-projects SDK not installed in this image. "
+                         "Add it to requirements.txt and rebuild the MCP to enable Agent management.",
+            }
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        mgmt = CognitiveServicesManagementClient(credential, sub_id)
+        account = await _in_thread(lambda: mgmt.accounts.get(resource_group, account_name))
+        endpoint = getattr(account.properties, "endpoint", None) if account.properties else None
+        if not endpoint:
+            return {"success": False, "error": f"AIF account {account_name} has no endpoint configured"}
+        client = AIProjectClient(endpoint=endpoint, credential=credential, project_name=project_name or account_name)
+        agent = await _in_thread(
+            lambda: client.agents.create_agent(
+                model=model,
+                name=agent_name,
+                instructions=instructions,
+                tools=tools or [],
+            )
+        )
+        return {
+            "success": True,
+            "status": "created",
+            "id": getattr(agent, "id", None),
+            "name": getattr(agent, "name", agent_name),
+            "model": model,
+            "executed_as": user_info,
+        }
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+@mcp.tool(
+    annotations={
+        "destructiveHint": True,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-destructive",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "free",
+        "averageLatencyMs": 5000,
+        "failureModes": ["not_found", "auth_expired", "rate_limited", "conflict"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
+async def aif_delete_agent(
+    resource_group: str,
+    account_name: str,
+    agent_id: str,
+    project_name: str = "",
+    subscription_id: str = "",
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Delete an AI Foundry Agent-service agent by id.
+
+    Args:
+        resource_group: Azure resource group name
+        account_name: Azure AI Foundry account name
+        agent_id: Agent id (from aif_list_agents)
+        project_name: AIF project (defaults to account_name when empty)
+        subscription_id: Azure subscription ID (uses default if empty)
+    """
+    try:
+        credential, user_info = require_user_token(meta)
+        sub_id = subscription_id or DEFAULT_SUBSCRIPTION_ID
+        if not sub_id:
+            return {"success": False, "error": "No subscription_id provided and no default configured"}
+        try:
+            from azure.ai.projects import AIProjectClient  # type: ignore
+        except ImportError:
+            return {
+                "success": False,
+                "error": "azure-ai-projects SDK not installed in this image.",
+            }
+        from azure.mgmt.cognitiveservices import CognitiveServicesManagementClient
+        mgmt = CognitiveServicesManagementClient(credential, sub_id)
+        account = await _in_thread(lambda: mgmt.accounts.get(resource_group, account_name))
+        endpoint = getattr(account.properties, "endpoint", None) if account.properties else None
+        if not endpoint:
+            return {"success": False, "error": f"AIF account {account_name} has no endpoint configured"}
+        client = AIProjectClient(endpoint=endpoint, credential=credential, project_name=project_name or account_name)
+        await _in_thread(lambda: client.agents.delete_agent(agent_id))
+        return {"success": True, "status": "deleted", "agent_id": agent_id, "executed_as": user_info}
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    except AzureError as e:
+        return error_response(e, user_info if 'user_info' in dir() else None)
+
+# =============================================================================
 # STARTUP
 # =============================================================================
 
@@ -4455,7 +7652,24 @@ sys.path.insert(0, '/app/shared')
 # Azure Resource Graph — single source for cross-subscription resource queries
 # ----------------------------------------------------------------------------
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_resource_graph_query(
     query: str,
     subscriptions: Optional[List[str]] = None,
@@ -4588,7 +7802,24 @@ async def azure_resource_graph_query(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_resource_graph_query_tenant_wide(
     query: str,
     max_results: int = 50000,
@@ -4692,7 +7923,24 @@ async def azure_resource_graph_query_tenant_wide(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my public facing resources", "show me public facing resources", "what public facing resources do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_public_facing_resources(
     subscription_id: Optional[str] = None,
     include_types: Optional[List[str]] = None,
@@ -4787,7 +8035,24 @@ async def azure_list_public_facing_resources(
 # Management Groups — tenant hierarchy + cross-sub discovery
 # ----------------------------------------------------------------------------
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my management groups", "show me management groups", "what management groups do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_management_groups(
     tenant_id: Optional[str] = None,
     meta: Optional[Dict[str, Any]] = None
@@ -4825,7 +8090,24 @@ async def azure_list_management_groups(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my subscriptions in management group", "show me subscriptions in management group", "what subscriptions in management group do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_subscriptions_in_management_group(
     management_group_id: str,
     meta: Optional[Dict[str, Any]] = None
@@ -4878,7 +8160,24 @@ async def azure_list_subscriptions_in_management_group(
 # Web Apps & Function Apps — runtime config (Python version etc)
 # ----------------------------------------------------------------------------
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my web apps", "show me web apps", "what web apps do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_web_apps(
     subscription_id: Optional[str] = None,
     resource_group: Optional[str] = None,
@@ -4990,7 +8289,24 @@ async def azure_list_web_apps(
 # Azure Advisor — security/cost/performance recommendations
 # ----------------------------------------------------------------------------
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "medium",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 5000,
+        "failureModes": ["auth_expired"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_advisor_recommendations(
     subscription_id: Optional[str] = None,
     category: Optional[str] = None,
@@ -5076,7 +8392,24 @@ async def azure_advisor_recommendations(
 # Service Health — current and historical Azure incidents
 # ----------------------------------------------------------------------------
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "medium",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 5000,
+        "failureModes": ["auth_expired"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_service_health_events(
     regions: Optional[List[str]] = None,
     event_types: Optional[List[str]] = None,
@@ -5214,7 +8547,24 @@ async def azure_service_health_events(
 # Azure Front Door — issue #287 explicit requirement
 # ----------------------------------------------------------------------------
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["list my front doors", "show me front doors", "what front doors do i have"],
+        "testFixture": None,
+    },
+)
 async def azure_list_front_doors(
     subscription_id: Optional[str] = None,
     resource_group: Optional[str] = None,
@@ -5280,7 +8630,24 @@ async def azure_list_front_doors(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["get front door details", "show me one front door"],
+        "testFixture": None,
+    },
+)
 async def azure_get_front_door(
     name: str,
     resource_group: str,
@@ -5329,7 +8696,24 @@ async def azure_get_front_door(
 # Cost forecast — extended with resource_group scope
 # ----------------------------------------------------------------------------
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_cost_forecast_for_resource_group(
     resource_group: str,
     forecast_days: int = 30,
@@ -5400,7 +8784,24 @@ try:
 except ImportError:
     HTTP_TRANSPORT_AVAILABLE = False
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_create_vnet(
     name: str,
     resource_group: str,
@@ -5476,7 +8877,24 @@ async def azure_create_vnet(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_create_subnet(
     vnet_name: str,
     subnet_name: str,
@@ -5531,7 +8949,24 @@ async def azure_create_subnet(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_create_nsg(
     name: str,
     resource_group: str,
@@ -5624,7 +9059,24 @@ async def azure_create_nsg(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_create_app_gateway(
     name: str,
     resource_group: str,
@@ -5821,7 +9273,24 @@ async def azure_create_app_gateway(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-create",
+        "hitlRisk": "high",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 30000,
+        "failureModes": ["quota_exceeded", "auth_expired", "rate_limited", "conflict", "invalid_args"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_create_front_door(
     name: str,
     resource_group: str,
@@ -6025,7 +9494,24 @@ async def azure_create_front_door(
         except Exception:
             return {"success": False, "error": f"{type(e).__name__}: {e}", "executed_as": user_info}
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-mutate",
+        "hitlRisk": "medium",
+        "requiresConsent": True,
+        "cost": "metered",
+        "averageLatencyMs": 5000,
+        "failureModes": ["auth_expired"],
+        "goldenPrompts": [],
+        "testFixture": None,
+    },
+)
 async def azure_activity_log(
     subscription_id: Optional[str] = None,
     resource_group: Optional[str] = None,
@@ -6107,7 +9593,24 @@ async def azure_activity_log(
     except AzureError as e:
         return error_response(e, user_info if 'user_info' in dir() else None)
 
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "destructiveHint": False,
+        "readOnlyHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+    meta={
+        "category": "cloud-list",
+        "hitlRisk": "low",
+        "requiresConsent": False,
+        "cost": "free",
+        "averageLatencyMs": 1500,
+        "failureModes": ["not_found", "auth_expired", "rate_limited"],
+        "goldenPrompts": ["get metrics details", "show me one metrics"],
+        "testFixture": None,
+    },
+)
 async def azure_get_metrics(
     resource_id: str,
     metric_names: str = "Percentage CPU",

@@ -25,6 +25,7 @@ import {
 import { apiRequest, apiEndpoint } from '@/utils/api';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { parseNDJSONStream } from '@/utils/ndjsonStream';
+import { PageHeader } from '../../primitives-v2';
 
 interface MCPTool {
   name: string;
@@ -624,7 +625,6 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
             <div className="text-center">
               <File className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p className="font-medium">Select a tool to test</p>
-              <p className="text-sm mt-1">Choose a tool from the list to see its parameters and test it</p>
             </div>
           </div>
         ) : (
@@ -968,20 +968,6 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
           )}
         </div>
 
-        {/* Info Box */}
-        <div className={`p-4 rounded-lg ${isDark ? 'bg-primary-700/20 border-primary/30' : 'ap-bg-primary border-primary'} border`}>
-          <div className="flex items-start gap-3">
-            <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isDark ? 'text-primary-500' : 'text-primary-600'}`} />
-            <div>
-              <p className={`text-sm font-medium ${isDark ? 'text-primary-500' : 'text-primary-600'}`}>
-                Runtime MCP Control
-              </p>
-              <p className={`text-sm mt-1 ${isDark ? 'text-primary-500/80' : 'text-primary-600'}`}>
-                Changes are persisted to Redis and will survive restarts. Disabling an MCP server prevents it from being used for tool calls globally across all users.
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
     );
   };
@@ -1259,35 +1245,15 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-text-primary'}`}>
-            MCP Server Management
-          </h2>
-          <p className={`mt-1 text-sm ${isDark ? 'text-text-secondary' : 'text-text-secondary'}`}>
-            Manage Model Context Protocol servers and test tools
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => { loadServers(); loadAllTools(); }}
-            className={`p-2 rounded-lg transition-colors ${
-              isDark ? 'hover:bg-surface-hover text-text-secondary' : 'hover:bg-surface-secondary text-text-secondary'
-            }`}
-            title="Refresh"
-          >
-            <RotateCw className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add Server
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        crumbs={['Admin', 'Tools', 'Server Management']}
+        title="MCP Server Management"
+        explainer="Manage Model Context Protocol servers and test tools."
+        actions={[
+          { label: 'Refresh', onClick: () => { loadServers(); loadAllTools(); } },
+          { label: 'Add Server', primary: true, onClick: () => setShowAddModal(true) },
+        ]}
+      />
 
       {/* Tabs */}
       <div className={`flex gap-2 border-b ${isDark ? 'border-border-hover' : 'border-border'}`}>
@@ -1514,9 +1480,6 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
               <h3 className="text-xl font-semibold" style={{ color: 'var(--color-text)' }}>
                 Add MCP Server
               </h3>
-              <p className="mt-1 text-sm" style={{ color: 'var(--color-textSecondary)' }}>
-                Configure a new MCP server using JSON configuration
-              </p>
             </div>
             <div className="p-6">
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-textSecondary)' }}>

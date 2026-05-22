@@ -1,0 +1,10 @@
+{
+  "name": "gpt-5.4",
+  "modelName": "gpt-5.4",
+  "modelVersion": "2026-04-01",
+  "modelFormat": "OpenAI",
+  "sku": "GlobalStandard",
+  "capacity": 100,
+  "endpoint": "https://awf-aif-20902.openai.azure.com",
+  "location": "eastus2"
+}

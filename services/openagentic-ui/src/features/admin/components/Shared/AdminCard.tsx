@@ -13,13 +13,13 @@ const PADDING_MAP = {
 } as const;
 
 /**
- * Shared card wrapper for admin console sections.
- * Consistent rounded-lg, surface bg, border. Use everywhere instead of inline Card components.
+ * Shared card wrapper for admin console sections — M3 Expressive (task #160).
+ * rounded-card (20px), surface-1 background, no visible border — tonal
+ * elevation carries the separation.
  */
 export const AdminCard: React.FC<AdminCardProps> = ({ children, className = '', padding = 'md' }) => (
   <div
-    className={`rounded-lg ${PADDING_MAP[padding]} ${className}`}
-    style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+    className={`rounded-card bg-surface-1 ${PADDING_MAP[padding]} ${className}`}
   >
     {children}
   </div>

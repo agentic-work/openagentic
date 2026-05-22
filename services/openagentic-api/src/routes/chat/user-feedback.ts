@@ -43,7 +43,7 @@ export async function registerUserFeedbackRoutes(fastify: FastifyInstance) {
   fastify.post<{ Body: FeedbackRequest }>(
     '/api/chat/feedback',
     {
-      preHandler: authMiddleware,
+      onRequest: authMiddleware,
       schema: {
         description: 'Record user feedback on a tool execution or response',
         tags: ['chat', 'feedback'],
@@ -140,7 +140,7 @@ export async function registerUserFeedbackRoutes(fastify: FastifyInstance) {
   fastify.post<{ Body: VerifyResultRequest }>(
     '/api/chat/feedback/verify',
     {
-      preHandler: authMiddleware,
+      onRequest: authMiddleware,
       schema: {
         description: 'Verify a tool result as high-quality for semantic learning',
         tags: ['chat', 'feedback'],
@@ -216,7 +216,7 @@ export async function registerUserFeedbackRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/api/chat/feedback/stats',
     {
-      preHandler: authMiddleware,
+      onRequest: authMiddleware,
       schema: {
         description: 'Get feedback and learning statistics',
         tags: ['chat', 'feedback'],

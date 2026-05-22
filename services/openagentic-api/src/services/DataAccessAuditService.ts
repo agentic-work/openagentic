@@ -68,7 +68,15 @@ export class DataAccessAuditService {
   private readonly persistence: AuditPersistence;
 
   constructor(logger: Logger, persistence: AuditPersistence) {
-    this.logger = logger.child({ component: 'DataAccessAuditService' });
+    // Tolerate both pino and plain shim loggers — chat ctx.logger is a
+    // plain {info,warn,error,debug} without .child(). Mirror the
+    // PermissionService defensive pattern. Without this guard,
+    // /api/chat/tool-approval/:requestId crashes when the singleton was
+    // first seeded by a chat request (shim logger) and the HTTP route
+    // tries to use it later (regression of #756).
+    this.logger = typeof (logger as any)?.child === 'function'
+      ? logger.child({ component: 'DataAccessAuditService' })
+      : logger;
     this.persistence = persistence;
   }
 

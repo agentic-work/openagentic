@@ -348,22 +348,9 @@ export class ChatCacheService {
     await this.delete(key);
   }
 
-  /**
-   * Cache intelligence slider value - checked on every chat request
-   */
-  async cacheSliderValue(userId: string, value: number, ttlSeconds: number = 3600): Promise<void> {
-    const key = `slider:${userId}`;
-    await this.set(key, { value, cachedAt: Date.now() }, ttlSeconds);
-  }
-
-  /**
-   * Get cached slider value - instant slider resolution
-   */
-  async getCachedSliderValue(userId: string): Promise<number | null> {
-    const key = `slider:${userId}`;
-    const cached = await this.get(key);
-    return cached?.value ?? null;
-  }
+  // cacheSliderValue / getCachedSliderValue removed in 0.6.7 — slider
+  // rip. Users are now bucketed by capability tier (TFC) or admin-set
+  // default model, no per-user slider position.
 
   /**
    * Track user's last active session for quick resume

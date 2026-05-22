@@ -1,0 +1,130 @@
+# Proprietary and confidential. Unauthorized copying prohibited.
+#
+# Flows Harness CI
+# ----------------
+# Runs the 109-test workflows harness on every push/PR that touches the
+# workflows service, the shared workflow-engine, the SDK consumer paths,
+# or this workflow file itself. Closes the "could regress silently" gap
+# called out in GH issue #143 (Flows 0.7.1 ship list).
+#
+# Layout note: the workflows-svc declares the SDK via a file: dep that
+# walks out of the repo:
+#   "@agentic-work/llm-sdk": "file:../../../openagentic-sdk"
+# The SDK lives in a sibling repo (agentic-work/openagentic-sdk). We
+# therefore check the SDK out next to the agentic repo at the relative
+# path `../openagentic-sdk` so npm install resolves the file: dep at
+# install time. The SDK ships prebuilt dist/ via npm's `files` field, so
+# we still run `npm install` on it after checkout in case the upstream
+# repo doesn't ship dist/ (clean clones omit it; npm's `prepare` script
+# rebuilds dist/ during install).
+
+name: flows-harness
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/openagentic-workflows/**'
+      - 'services/shared/workflow-engine/**'
+      - '.github/workflows/flows-harness.yml'
+  pull_request:
+    paths:
+      - 'services/openagentic-workflows/**'
+      - 'services/shared/workflow-engine/**'
+      - '.github/workflows/flows-harness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  harness:
+    name: bun test:harness (>=109 passing)
+    runs-on: openagentic-runners
+    timeout-minutes: 20
+    steps:
+      - name: Checkout agentic
+        uses: actions/checkout@v4
+        with:
+          path: agentic
+
+      - name: Checkout sibling openagentic-sdk
+        uses: actions/checkout@v4
+        with:
+          repository: agentic-work/openagentic-sdk
+          path: openagentic-sdk
+          fetch-depth: 1
+          # Sibling private repo — default GITHUB_TOKEN is scoped to the
+          # workflow's own repo so checkout returns 404. SDK_READ_PAT is a
+          # read-only fine-grained PAT with Contents:Read on the SDK repo.
+          token: ${{ secrets.SDK_READ_PAT }}
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: "Build openagentic-sdk (file dep target)"
+        working-directory: openagentic-sdk
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Install openagentic-workflows deps (brings transitive nodemailer/etc)
+        working-directory: agentic/services/openagentic-workflows
+        run: |
+          npm install --no-audit --no-fund
+          npx prisma generate
+
+      - name: Build shared workflow-engine (mirrors Dockerfile node_modules symlink)
+        working-directory: agentic/services/shared/workflow-engine
+        run: |
+          # workflow-engine doesn't declare every transitive dep it uses
+          # (nodemailer, etc.) — the Dockerfile resolves this by symlinking
+          # the consumer's node_modules into the shared package so tsc can
+          # resolve bare imports during build. Mirror that pattern here.
+          ln -sfn "$GITHUB_WORKSPACE/agentic/services/openagentic-workflows/node_modules" ./node_modules
+          npx tsc -p tsconfig.json
+
+      - name: Run flows harness
+        working-directory: agentic/services/openagentic-workflows
+        run: |
+          set -o pipefail
+          bun test:harness 2>&1 | tee harness.log
+
+      - name: Gate on >=109 passing
+        working-directory: agentic/services/openagentic-workflows
+        run: |
+          # vitest summary line looks like:
+          #   Tests  109 passed | 5 todo (114)
+          # When run via bun/vitest, the log contains ANSI color escapes
+          # around the numbers (e.g. "[2m Tests [22m [32m109 passed[39m"),
+          # so strip ANSI first then grep.
+          STRIPPED=$(sed 's/\x1b\[[0-9;]*m//g' harness.log)
+          PASS=$(echo "$STRIPPED" | grep -oE "Tests +[0-9]+ passed" | tail -1 | grep -oE "[0-9]+")
+          if [ -z "$PASS" ]; then
+            echo "::error::Failed to parse pass count from harness.log"
+            tail -30 harness.log
+            exit 1
+          fi
+          echo "Harness pass count: $PASS"
+          if [ "$PASS" -lt 109 ]; then
+            echo "::error::Expected >=109 passing tests, got $PASS (regression)"
+            tail -50 harness.log
+            exit 1
+          fi
+          echo "Harness GREEN: $PASS passing (>=109 floor)"
+
+      - name: Upload harness log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flows-harness-log
+          path: agentic/services/openagentic-workflows/harness.log
+          if-no-files-found: warn
+          retention-days: 14

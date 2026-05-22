@@ -6,6 +6,7 @@ import {
   Eye, GitBranch
 } from '../Shared/AdminIcons';
 import { apiRequest } from '../../../../utils/api';
+import { PageHeader, LogRow, type LogSeverity } from '../../primitives-v2';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -120,16 +121,24 @@ const fmt = {
   }
 };
 
+function statusToSeverity(status: string): LogSeverity {
+  const s = status.toLowerCase();
+  if (['completed', 'succeeded', 'success', 'active'].includes(s)) return 'ok';
+  if (['failed', 'error'].includes(s)) return 'err';
+  if (['running', 'suspended', 'pending'].includes(s)) return 'warn';
+  return 'info';
+}
+
 function statusDot(status: string) {
   const map: Record<string, string> = {
-    active: 'var(--color-success)', running: '#f59e0b', completed: 'var(--color-success)', succeeded: 'var(--color-success)',
-    success: 'var(--color-success)', failed: '#ef4444', error: '#ef4444', pending: '#6b7280',
-    suspended: '#f59e0b', deleted: '#6b7280', cancelled: '#6b7280',
+    active: 'var(--color-success)', running: 'var(--ap-warn)', completed: 'var(--color-success)', succeeded: 'var(--color-success)',
+    success: 'var(--color-success)', failed: 'var(--ap-err)', error: 'var(--ap-err)', pending: 'var(--color-textMuted)',
+    suspended: 'var(--ap-warn)', deleted: 'var(--color-textMuted)', cancelled: 'var(--color-textMuted)',
   };
-  const color = map[status.toLowerCase()] || '#6b7280';
+  const color = map[status.toLowerCase()] || 'var(--color-textMuted)';
   return (
     <span
-      style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: color, boxShadow: `0 0 6px ${color}80` }}
+      style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: color, boxShadow: `0 0 6px color-mix(in srgb, ${color} 50%, transparent)` }}
     />
   );
 }
@@ -448,59 +457,18 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({ theme }) => {
 
   return (
     <div className="space-y-4">
-      {/* ─── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className="p-2 rounded-lg"
-            style={{ background: isDark ? 'linear-gradient(135deg, #2563eb22, #7c3aed22)' : 'linear-gradient(135deg, #2563eb11, #7c3aed11)' }}
-          >
-            <Shield className="w-6 h-6" style={{ color: '#2563eb' }} />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold" style={{ color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
-              Audit Trail
-            </h2>
-            <p className="text-xs" style={s.muted}>
-              SOC2-compliant activity logging across all platform domains
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {autoRefresh && (
-            <span className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-full" style={{ backgroundColor: 'var(--color-success)18', color: 'var(--color-success)' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--color-success)', animation: 'pulse 2s infinite' }} />
-              Live
-            </span>
-          )}
-          <button
-            onClick={() => setAutoRefresh(!autoRefresh)}
-            className="p-2 rounded-lg transition-colors hover:opacity-80"
-            style={{ ...s.surfaceSec, border: '1px solid', ...s.border }}
-            title={autoRefresh ? 'Pause auto-refresh' : 'Enable auto-refresh'}
-          >
-            <RefreshCw className={`w-4 h-4 ${autoRefresh ? 'animate-spin' : ''}`} style={s.muted} />
-          </button>
-          <button
-            onClick={() => handleExport('csv')}
-            disabled={exporting}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80 disabled:opacity-40"
-            style={{ ...s.surfaceSec, border: '1px solid', ...s.border }}
-          >
-            <Download className="w-3.5 h-3.5" />
-            CSV
-          </button>
-          <button
-            onClick={() => handleExport('json')}
-            disabled={exporting}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80 disabled:opacity-40"
-            style={{ ...s.surfaceSec, border: '1px solid', ...s.border }}
-          >
-            <Download className="w-3.5 h-3.5" />
-            JSON
-          </button>
-        </div>
-      </div>
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Monitoring', 'Audit']}
+        title="Audit Logs"
+        explainer="SOC2-compliant activity logging across chat sessions, code mode, and flow executions. Filter, search, and export for compliance review."
+        actions={[
+          { label: autoRefresh ? 'Pause Live' : 'Live', onClick: () => setAutoRefresh(!autoRefresh) },
+          { label: 'Export CSV', onClick: () => handleExport('csv'), disabled: exporting },
+          { label: 'Export JSON', onClick: () => handleExport('json'), primary: true, disabled: exporting },
+        ]}
+        sticky
+      />
 
       {/* ─── Tabs ───────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-1 p-1 rounded-lg" style={s.surfaceSec}>
@@ -524,8 +492,8 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({ theme }) => {
                 <span
                   className="px-1.5 py-0.5 rounded-full text-xs tabular-nums"
                   style={{
-                    backgroundColor: active ? (isDark ? '#2563eb33' : '#2563eb18') : (isDark ? '#ffffff10' : '#00000008'),
-                    color: active ? '#2563eb' : 'var(--color-textSecondary)',
+                    backgroundColor: active ? 'var(--ap-accent-soft)' : 'var(--ap-bg-2)',
+                    color: active ? 'var(--ap-accent)' : 'var(--color-textSecondary)',
                     fontSize: '0.65rem',
                     fontWeight: 600,
                     minWidth: 20,
@@ -564,8 +532,8 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({ theme }) => {
               onClick={() => { setDateRange(r); setCurrentPage(1); }}
               className="px-2.5 py-1.5 rounded-md text-xs font-medium transition-all"
               style={{
-                backgroundColor: dateRange === r ? (isDark ? '#2563eb33' : '#2563eb15') : 'transparent',
-                color: dateRange === r ? '#2563eb' : 'var(--color-textSecondary)',
+                backgroundColor: dateRange === r ? 'color-mix(in srgb, var(--ap-accent) 20%, transparent)' : 'transparent',
+                color: dateRange === r ? 'var(--ap-accent)' : 'var(--color-textSecondary)',
               }}
             >
               {r === 'all' ? 'All' : r.toUpperCase()}
@@ -602,7 +570,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({ theme }) => {
 
       {/* ─── Error Banner ───────────────────────────────────────────────── */}
       {error && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-lg border" style={{ backgroundColor: '#ef444410', borderColor: '#ef444440', color: '#ef4444' }}>
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg border" style={{ backgroundColor: 'var(--ap-err-soft)', borderColor: 'color-mix(in srgb, var(--ap-err) 25%, transparent)', color: 'var(--ap-err)' }}>
           <XCircle className="w-4 h-4 flex-shrink-0" />
           <span className="text-sm">{error}</span>
           <button onClick={() => setError(null)} className="ml-auto text-xs underline">Dismiss</button>
@@ -696,72 +664,54 @@ const ChatTable: React.FC<TableProps & {
 
   return (
     <div>
-      {/* Header */}
-      <div
-        className="grid gap-3 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider border-b"
-        style={{ ...s.surfaceSec, ...s.border, gridTemplateColumns: '28px 1fr 160px 80px 80px 80px 80px 60px' }}
-      >
-        <span />
-        <span style={s.muted}>Session</span>
-        <span style={s.muted}>User</span>
-        <span style={{ ...s.muted, textAlign: 'right' }}>Model</span>
-        <span style={{ ...s.muted, textAlign: 'right' }}>Messages</span>
-        <span style={{ ...s.muted, textAlign: 'right' }}>Tokens</span>
-        <span style={{ ...s.muted, textAlign: 'right' }}>Cost</span>
-        <span style={{ ...s.muted, textAlign: 'right' }}>Tools</span>
-      </div>
-
       {sessions.map(sess => {
         const isOpen = expanded.has(sess.id);
+        const modelLabel = (sess.model || '—').replace('anthropic/', '').replace('openai/', '');
+        const message = (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 500, color: 'var(--ap-fg-1, var(--fg-1))' }}>
+              {sess.title || 'Untitled Session'}
+            </span>
+            <span style={{ color: 'var(--ap-fg-3, var(--fg-3))' }}>· {modelLabel}</span>
+            <span style={{ color: 'var(--ap-fg-3, var(--fg-3))' }}>· {sess.messageCount} msg ({sess.userQueries}u/{sess.aiResponses}ai)</span>
+          </span>
+        );
+        const meta = (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontFamily: 'var(--font-mono)' }}>{fmt.tokens(sess.totalTokens)} tok</span>
+            <span style={{ color: 'var(--ap-ok, var(--ok))', fontFamily: 'var(--font-mono)' }}>
+              {fmt.cost(sess.totalCost)}
+            </span>
+            <span style={{ fontFamily: 'var(--font-mono)' }}>{sess.mcpCallsCount + sess.toolExecutionsCount} tools</span>
+            {isOpen
+              ? <ChevronDown className="w-4 h-4" />
+              : <ChevronRight className="w-4 h-4" />}
+          </span>
+        );
         return (
           <div key={sess.id}>
             <div
-              className="grid gap-3 px-4 py-3 border-b items-center cursor-pointer transition-colors hover:opacity-90"
-              style={{
-                ...s.border,
-                gridTemplateColumns: '28px 1fr 160px 80px 80px 80px 80px 60px',
-                backgroundColor: isOpen ? (isDark ? '#ffffff05' : '#00000003') : 'transparent',
-              }}
               onClick={() => toggle(sess.id)}
+              role="button"
+              aria-expanded={isOpen}
+              style={{
+                cursor: 'pointer',
+                backgroundColor: isOpen ? 'var(--ap-bg-2)' : 'transparent',
+              }}
             >
-              <span>
-                {isOpen
-                  ? <ChevronDown className="w-4 h-4" style={s.muted} />
-                  : <ChevronRight className="w-4 h-4" style={s.muted} />}
-              </span>
-              <div className="min-w-0">
-                <div className="text-sm font-medium truncate" style={{ color: 'var(--color-text)' }}>
-                  {sess.title || 'Untitled Session'}
-                </div>
-                <div className="text-xs truncate" style={s.faint}>{fmt.tsShort(sess.createdAt)}</div>
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm truncate" style={{ color: 'var(--color-text)' }}>{sess.userName || '—'}</div>
-                <div className="text-xs truncate" style={s.faint}>{sess.userEmail}</div>
-              </div>
-              <div className="text-xs text-right truncate" style={s.muted}>
-                <span className="px-1.5 py-0.5 rounded" style={{ backgroundColor: isDark ? '#ffffff08' : '#00000006' }}>
-                  {(sess.model || '—').replace('anthropic/', '').replace('openai/', '')}
-                </span>
-              </div>
-              <div className="text-sm text-right tabular-nums" style={{ color: 'var(--color-text)' }}>
-                {sess.messageCount}
-                <div className="text-xs" style={s.faint}>{sess.userQueries}u/{sess.aiResponses}ai</div>
-              </div>
-              <div className="text-sm text-right tabular-nums" style={{ color: 'var(--color-text)' }}>
-                {fmt.tokens(sess.totalTokens)}
-              </div>
-              <div className="text-sm text-right tabular-nums" style={{ color: 'var(--color-success)' }}>
-                {fmt.cost(sess.totalCost)}
-              </div>
-              <div className="text-sm text-right tabular-nums" style={{ color: 'var(--color-text)' }}>
-                {sess.mcpCallsCount + sess.toolExecutionsCount}
-              </div>
+              <LogRow
+                severity="info"
+                timestamp={fmt.tsShort(sess.createdAt)}
+                source={sess.userEmail || sess.userName || 'system'}
+                sourceAccent={!!sess.userEmail || !!sess.userName}
+                message={message}
+                meta={meta}
+              />
             </div>
 
             {/* Expanded conversation */}
             {isOpen && sess.conversation && (
-              <div className="px-6 py-4 border-b" style={{ ...s.border, backgroundColor: isDark ? '#ffffff03' : '#f8fafc' }}>
+              <div className="px-6 py-4 border-b" style={{ ...s.border, backgroundColor: 'var(--ap-bg-1)' }}>
                 <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                   {sess.conversation.map(msg => (
                     <div
@@ -770,7 +720,7 @@ const ChatTable: React.FC<TableProps & {
                     >
                       <div className="flex-shrink-0 mt-1">
                         {msg.role === 'user'
-                          ? <User className="w-4 h-4" style={{ color: '#2563eb' }} />
+                          ? <User className="w-4 h-4" style={{ color: 'var(--ap-accent)' }} />
                           : <Activity className="w-4 h-4" style={{ color: 'var(--color-success)' }} />}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -780,17 +730,17 @@ const ChatTable: React.FC<TableProps & {
                           </span>
                           <span className="text-xs" style={s.faint}>{fmt.ts(msg.timestamp)}</span>
                           {msg.model && (
-                            <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: isDark ? '#ffffff08' : '#00000006', ...s.muted }}>
+                            <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--ap-bg-2)', ...s.muted }}>
                               {msg.model}
                             </span>
                           )}
                           {msg.hasMcpCalls && (
-                            <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#2563eb18', color: '#2563eb' }}>
+                            <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--ap-info-soft)', color: 'var(--ap-accent)' }}>
                               MCP
                             </span>
                           )}
                           {msg.hasToolCalls && (
-                            <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: '#7c3aed18', color: '#7c3aed' }}>
+                            <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--ap-accent-soft)', color: 'var(--ap-accent)' }}>
                               Tools
                             </span>
                           )}
@@ -829,58 +779,39 @@ const CodeTable: React.FC<TableProps & { sessions: CodeSession[] }> = ({ session
 
   return (
     <div>
-      <div
-        className="grid gap-3 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider border-b"
-        style={{ ...s.surfaceSec, ...s.border, gridTemplateColumns: '1fr 180px 100px 140px 140px 120px' }}
-      >
-        <span style={s.muted}>Session ID</span>
-        <span style={s.muted}>User</span>
-        <span style={s.muted}>Status</span>
-        <span style={s.muted}>Created</span>
-        <span style={s.muted}>Last Activity</span>
-        <span style={s.muted}>Pod</span>
-      </div>
-
-      {sessions.map(sess => (
-        <div
-          key={sess.id}
-          className="grid gap-3 px-4 py-3 border-b items-center"
-          style={{ ...s.border, gridTemplateColumns: '1fr 180px 100px 140px 140px 120px' }}
-        >
-          <div className="min-w-0">
-            <code className="text-xs font-mono truncate block" style={{ color: 'var(--color-text)' }}>
-              {sess.id.substring(0, 12)}...
-            </code>
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm truncate" style={{ color: 'var(--color-text)' }}>
-              {sess.user?.name || sess.user?.email || sess.user_id.substring(0, 8)}
-            </div>
-            {sess.user?.email && (
-              <div className="text-xs truncate" style={s.faint}>{sess.user.email}</div>
+      {sessions.map(sess => {
+        const userLabel = sess.user?.email || sess.user?.name || sess.user_id.substring(0, 8);
+        const podShort = sess.pod_name ? sess.pod_name.replace('openagentic-runner-', '').substring(0, 12) : '';
+        const message = (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <code style={{ color: 'var(--ap-fg-1, var(--fg-1))' }}>{sess.id.substring(0, 12)}…</code>
+            <span style={{ color: 'var(--ap-fg-3, var(--fg-3))' }}>· {sess.status}</span>
+            {podShort && (
+              <code style={{ color: 'var(--ap-fg-3, var(--fg-3))' }}>· pod:{podShort}</code>
             )}
-          </div>
-          <div className="flex items-center gap-1.5">
-            {statusDot(sess.status)}
-            <span className="text-xs font-medium capitalize" style={{ color: 'var(--color-text)' }}>
-              {sess.status}
-            </span>
-          </div>
-          <div className="text-xs" style={s.muted}>{fmt.tsShort(sess.created_at)}</div>
-          <div className="text-xs" style={s.muted}>
-            {sess.last_activity ? fmt.ago(sess.last_activity) : sess.updated_at ? fmt.ago(sess.updated_at) : '—'}
-          </div>
-          <div className="min-w-0">
-            {sess.pod_name ? (
-              <code className="text-xs font-mono truncate block px-1.5 py-0.5 rounded" style={{ backgroundColor: isDark ? '#ffffff08' : '#00000006', ...s.muted }}>
-                {sess.pod_name.replace('openagentic-runner-', '').substring(0, 12)}
-              </code>
-            ) : (
-              <span className="text-xs" style={s.faint}>—</span>
-            )}
-          </div>
-        </div>
-      ))}
+          </span>
+        );
+        const meta = (
+          <span>
+            {sess.last_activity
+              ? fmt.ago(sess.last_activity)
+              : sess.updated_at
+                ? fmt.ago(sess.updated_at)
+                : '—'}
+          </span>
+        );
+        return (
+          <LogRow
+            key={sess.id}
+            severity={statusToSeverity(sess.status)}
+            timestamp={fmt.tsShort(sess.created_at)}
+            source={userLabel}
+            sourceAccent={!!sess.user?.email}
+            message={message}
+            meta={meta}
+          />
+        );
+      })}
     </div>
   );
 };
@@ -894,62 +825,44 @@ const FlowsTable: React.FC<TableProps & { executions: FlowExecution[] }> = ({ ex
 
   return (
     <div>
-      <div
-        className="grid gap-3 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider border-b"
-        style={{ ...s.surfaceSec, ...s.border, gridTemplateColumns: '1fr 100px 90px 80px 100px 80px 140px' }}
-      >
-        <span style={s.muted}>Workflow</span>
-        <span style={s.muted}>Status</span>
-        <span style={s.muted}>Trigger</span>
-        <span style={{ ...s.muted, textAlign: 'right' }}>Nodes</span>
-        <span style={{ ...s.muted, textAlign: 'right' }}>Duration</span>
-        <span style={{ ...s.muted, textAlign: 'right' }}>Cost</span>
-        <span style={s.muted}>Started</span>
-      </div>
-
-      {executions.map(ex => (
-        <div
-          key={ex.id}
-          className="grid gap-3 px-4 py-3 border-b items-center"
-          style={{ ...s.border, gridTemplateColumns: '1fr 100px 90px 80px 100px 80px 140px' }}
-        >
-          <div className="min-w-0">
-            <div className="text-sm font-medium truncate" style={{ color: 'var(--color-text)' }}>
-              {ex.workflow_name}
-            </div>
-            <code className="text-xs font-mono" style={s.faint}>{ex.id.substring(0, 8)}</code>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {statusDot(ex.status)}
-            <span className="text-xs font-medium capitalize" style={{ color: 'var(--color-text)' }}>
-              {ex.status}
-            </span>
-          </div>
-          <div>
+      {executions.map(ex => {
+        const message = (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 500, color: 'var(--ap-fg-1, var(--fg-1))' }}>{ex.workflow_name}</span>
+            <code style={{ color: 'var(--ap-fg-3, var(--fg-3))' }}>{ex.id.substring(0, 8)}</code>
+            <span style={{ color: 'var(--ap-fg-3, var(--fg-3))' }}>· {ex.status}</span>
             <span
-              className="text-xs px-1.5 py-0.5 rounded font-medium"
               style={{
-                backgroundColor: ex.trigger_type === 'manual' ? (isDark ? '#f59e0b18' : '#f59e0b12') : (isDark ? '#2563eb18' : '#2563eb12'),
-                color: ex.trigger_type === 'manual' ? '#f59e0b' : '#2563eb',
+                color: ex.trigger_type === 'manual' ? 'var(--ap-warn, var(--warn))' : 'var(--ap-accent, var(--accent))',
               }}
             >
-              {ex.trigger_type}
+              · {ex.trigger_type}
             </span>
-          </div>
-          <div className="text-sm text-right tabular-nums" style={{ color: 'var(--color-text)' }}>
-            {ex.completed_nodes}/{ex.total_nodes}
-          </div>
-          <div className="text-sm text-right tabular-nums" style={s.muted}>
-            {fmt.dur(ex.execution_time_ms)}
-          </div>
-          <div className="text-sm text-right tabular-nums" style={{ color: ex.cost ? 'var(--color-success)' : 'var(--color-textSecondary)' }}>
-            {ex.cost ? fmt.cost(ex.cost) : '—'}
-          </div>
-          <div className="text-xs" style={s.muted}>
-            {fmt.tsShort(ex.started_at)}
-          </div>
-        </div>
-      ))}
+            <span style={{ color: 'var(--ap-fg-3, var(--fg-3))' }}>· {ex.completed_nodes}/{ex.total_nodes} nodes</span>
+          </span>
+        );
+        const meta = (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontFamily: 'var(--font-mono)' }}>{fmt.dur(ex.execution_time_ms)}</span>
+            {ex.cost && (
+              <span style={{ color: 'var(--ap-ok, var(--ok))', fontFamily: 'var(--font-mono)' }}>
+                {fmt.cost(ex.cost)}
+              </span>
+            )}
+          </span>
+        );
+        return (
+          <LogRow
+            key={ex.id}
+            severity={statusToSeverity(ex.status)}
+            timestamp={fmt.tsShort(ex.started_at)}
+            source={ex.trigger_type}
+            sourceAccent={ex.trigger_type !== 'manual'}
+            message={message}
+            meta={meta}
+          />
+        );
+      })}
     </div>
   );
 };

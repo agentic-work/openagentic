@@ -119,19 +119,43 @@ export const sessionHandler = {
         // Priority: user request → database LLM provider config → env var → fallback
         const defaultModel = request.body.model || await ModelConfigurationService.getDefaultChatModel();
 
-        // Create session
+        // Create session — pass identity hints for Sev-0 Bug A defensive upsert
+        // when token-oid does not match an existing users.id row.
         const createdSessionId = await sessionService.createSession(request.user.id, {
           sessionId,
           title: requestedTitle,
           model: defaultModel,
-          metadata: request.body.metadata || {}
+          metadata: request.body.metadata || {},
+          userEmail: (request.user as any).email,
+          userName: (request.user as any).name,
+          azureOid: (request.user as any).oid,
+          azureTenantId: (request.user as any).tenantId,
         });
 
         // Increment session counter for Grafana dashboards
         chatSessionsTotal.inc({ user_id: request.user.id });
 
-        // Get the created session
-        const session = await sessionService.getSession(createdSessionId, request.user.id);
+        // Sev-0 Bug A follow-up — when ChatStorageService.createSession upserts
+        // the user (token-oid -> DB-id remap), the request.user.id may be stale.
+        // Try lookup with current user.id; if null, the session was stored under
+        // a remapped userId — use the chatStorage's repository directly to find
+        // it without ownership filter, then sync request.user.id.
+        let session = await sessionService.getSession(createdSessionId, request.user.id);
+        if (!session) {
+          // Bypass ownership check via direct repo lookup (we just created it).
+          // Prisma returns snake_case columns: row.user_id (NOT row.userId).
+          const directLookup: any = await (sessionService as any).chatStorage?.sessionRepo?.findById?.(createdSessionId);
+          if (directLookup) {
+            const remappedUserId = directLookup.user_id ?? directLookup.userId;
+            if (remappedUserId && remappedUserId !== request.user.id) {
+              (request as any).user.id = remappedUserId;
+              // Re-fetch through the cache-aware service path now that user.id is correct.
+              session = await sessionService.getSession(createdSessionId, remappedUserId);
+            } else {
+              session = directLookup;
+            }
+          }
+        }
 
         // Track this as user's last active session for quick resume
         await sessionService.setLastActiveSession(request.user.id, createdSessionId);

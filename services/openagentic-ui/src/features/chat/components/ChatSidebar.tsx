@@ -21,9 +21,10 @@ import { CompanyLogo } from '@/components/CompanyLogo';
 import { VersionBadge } from '@/components/VersionBadge';
 import { FlowsSidebar } from '@/features/workflows/components/FlowsSidebar';
 import type { WorkflowTemplateItem } from '@/features/workflows/utils/workflowTemplates';
-import { MemoryPanel } from './MemoryPanel';
-import { ToolUsagePanel } from './ToolUsagePanel';
 import { CodeSessionsPanel } from './CodeSessionsPanel';
+import type { AgentTreeNode } from './v2/AgentTree';
+import { FileTreeSection } from '@/codemode/components/FileTreeSection';
+import { CollectionsSection } from '@/codemode/components/CollectionsSection';
 
 /**
  * Format timestamp for display with relative time for recent updates
@@ -94,6 +95,14 @@ interface ChatSidebarProps {
   onCodeSessionSelect?: (session: { id: string; model?: string | null; workspacePath?: string | null }) => void;
   // Code mode new session callback
   onCodeNewSession?: () => void;
+  /** Pixels to push the sidebar in from the left edge — used when the
+   *  Flows workspace nav rail is mounted to its left. */
+  leftOffsetPx?: number;
+  /**
+   * Phase 19 — Sub-agent tree for the active chat session. Mock 04:~830
+   * "Agent tree · this chat". Empty array hides the section.
+   */
+  agentTreeNodes?: AgentTreeNode[];
 }
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -126,6 +135,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   // Code mode session callbacks
   onCodeSessionSelect,
   onCodeNewSession,
+  leftOffsetPx = 0,
+  agentTreeNodes,
 }) => {
   // Use prop for isExpanded if provided, otherwise use local state
   const [localIsExpanded, setLocalIsExpanded] = useState(true);
@@ -208,9 +219,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
       {/* Single Unified Sidebar */}
       <motion.div
         initial={{ width: 64 }}
-        animate={{ width: isExpanded ? 320 : 64 }}
+        animate={{ width: isExpanded ? 280 : 64 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300, duration: 0.3 }}
-        className="fixed left-0 top-0 h-full z-[1000] flex flex-col m-2 ml-0 mr-0"
+        className="fixed top-0 h-full z-[1000] flex flex-col m-2 ml-0 mr-0"
+        style={{ left: leftOffsetPx }}
       >
         <div className="h-full flex flex-col relative sidebar-glass">
         {/* Header Section with Logo, Search and Toggle */}
@@ -277,10 +289,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="overflow-hidden px-3 pb-3 border-b"
-              style={{ borderColor: 'rgb(var(--border-primary))' }}
+              style={{ borderColor: 'var(--color-border)' }}
             >
               <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: 'rgb(var(--text-muted))' }} />
+                <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                 <input
                   type="text"
                   value={searchQuery}
@@ -288,9 +300,12 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   placeholder="Search chats..."
                   className="w-full pl-9 pr-3 py-2 text-sm rounded-lg transition-all focus:outline-none focus:ring-1"
                   style={{
-                    backgroundColor: 'rgb(var(--bg-tertiary))',
-                    color: 'rgb(var(--text-primary))',
-                    borderColor: 'rgb(var(--border-primary))'
+                    // These tokens are hex values, not "R G B" triples — apply
+                    // them directly. Wrapping a hex in rgb() produces invalid
+                    // CSS that the browser silently drops (see ChatInputBar fix).
+                    backgroundColor: 'var(--color-surfaceSecondary)',
+                    color: 'var(--text-primary)',
+                    borderColor: 'var(--color-border)',
                   }}
                   autoFocus
                 />
@@ -399,9 +414,15 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
         {/* Content Area - Different based on mode */}
         {appMode === 'code' && canUseCodeMode ? (
-          /* CODE MODE: single continuous session with auto-compaction.
-             Sessions list removed — claude.ai/code shows one session. */
-          <div className="flex-1" />
+          /* CODE MODE: file tree in sidebar (A.13). FileTreeSection owns
+             the workspace explorer; FilePanel (sibling in ChatContainer)
+             owns the editor pane. CollectionsSection sits below the file
+             tree and surfaces the user's per-user Milvus collection +
+             indexed files. */
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
+            <FileTreeSection rootPath="/workspaces" />
+            <CollectionsSection />
+          </div>
         ) : appMode === 'flows' && canUseFlows ? (
           /* FLOWS MODE: Show workflow sidebar with agents, workflows, templates
              Wrapped in flex-1 min-h-0 to constrain height so Settings stays at bottom */
@@ -460,6 +481,15 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               </motion.button>
             </div>
 
+            {/* 2026-05-07 — RIPPED Phase-19 sidebar Agent-tree panel.
+                User feedback: orchestrator/agent state belongs INLINE
+                where it happens (mock 10 SubAgentCard at Task-call position),
+                not in a sidebar list nobody scans. Sub-agents now render
+                inline via the assistant message stream; this duplicate
+                sidebar copy was UX clutter. The `agentTreeNodes` prop is
+                still accepted for backwards-compat with callers, but
+                deliberately not rendered here. */}
+
             {/* Recent Section */}
         <div className="flex flex-col">
           {filteredSessions.length > 0 && (
@@ -473,7 +503,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     exit={{ opacity: 0 }}
                     className="px-6 py-2 flex items-center justify-between"
                   >
-                    <h3 className="text-sm font-medium uppercase tracking-wide" style={{ color: 'rgb(var(--text-muted))' }}>
+                    <h3 className="text-sm font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
                       {searchQuery ? `Found ${filteredSessions.length}` : 'Recent'}
                     </h3>
                     {sessions.length > 0 && !searchQuery && (
@@ -508,7 +538,41 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               </AnimatePresence>
               
               <div className="px-3">
-                {filteredSessions.map((session, index) => (
+                {filteredSessions.map((session, index) => {
+                  // v0.6.7 mockup §I — TODAY / YESTERDAY / LAST 7 DAYS /
+                  // OLDER section headers between sessions. We insert the
+                  // label before the first session in each group; the group
+                  // key is derived from updatedAt. Sessions without a
+                  // timestamp fall into "OLDER".
+                  const getGroup = (s: typeof session): string => {
+                    if (!s.updatedAt) return 'OLDER';
+                    const ts = new Date(s.updatedAt).getTime();
+                    const now = Date.now();
+                    const dayMs = 86400000;
+                    const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+                    if (ts >= startOfToday.getTime()) return 'TODAY';
+                    if (ts >= startOfToday.getTime() - dayMs) return 'YESTERDAY';
+                    if (ts >= now - 7 * dayMs) return 'LAST 7 DAYS';
+                    return 'OLDER';
+                  };
+                  const thisGroup = getGroup(session);
+                  const prevGroup = index > 0 ? getGroup(filteredSessions[index - 1]) : null;
+                  const showHeader = isExpanded && !searchQuery && thisGroup !== prevGroup;
+                  return (<React.Fragment key={`frag-${session.id}-${index}`}>
+                  {showHeader && (
+                    <div
+                      className="px-1 pt-3 pb-1"
+                      style={{
+                        fontSize: 10,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.08em',
+                        color: 'var(--fg-3, #71717a)',
+                        fontWeight: 500,
+                      }}
+                    >
+                      {thisGroup}
+                    </div>
+                  )}
                   <div key={`${session.id}-${index}`} className="relative mb-1">
                     <motion.div
                       whileHover={{ scale: 1.02 }}
@@ -579,7 +643,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                             }`}>
                               {session.title || 'New Chat'}
                             </div>
-                            <div className="text-xs mt-0.5 flex items-center gap-2" style={{ color: 'rgb(var(--text-muted))' }}>
+                            <div className="text-xs mt-0.5 flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
                               <span>
                                 {session.messageCount !== undefined ? session.messageCount : 0} {(session.messageCount || 0) === 1 ? 'message' : 'messages'}
                               </span>
@@ -648,17 +712,17 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                       )}
                     </AnimatePresence>
                   </div>
-                ))}
+                  </React.Fragment>);
+                })}
               </div>
             </>
           )}
         </div>
 
-            {/* Memory Panel - shows what the AI remembers */}
-            <MemoryPanel isExpanded={isExpanded} theme={currentTheme} />
-
-            {/* Tool Usage Panel - shows personal MCP tool analytics */}
-            <ToolUsagePanel isExpanded={isExpanded} theme={currentTheme} />
+            {/* Memory + Tool Usage panels removed 2026-04-20 per user
+                feedback — they cluttered the sidebar and the info they
+                surfaced is available from the admin console. Keep imports
+                out so the bundle drops them. */}
           </div>
         )}
 

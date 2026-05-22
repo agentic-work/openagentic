@@ -1111,9 +1111,19 @@ SUMMARY:
 [1-2 sentence overview]
 ---`;
 
-      // Use a model that definitely exists on the provider.
-      // Fallback chain: SUMMARIZATION_MODEL env → gemini-2.5-flash (cheap Vertex model) → gpt-oss (Ollama)
-      const summaryModel = process.env.SUMMARIZATION_MODEL || 'gemini-2.5-flash';
+      // SoT — admin.model_role_assignments rows resolved via
+      // ModelConfigurationService. Prefer the 'compaction' service slot
+      // (cheap summarization tier); fall through to the default chat model.
+      // Reading process.env.SUMMARIZATION_MODEL or hardcoding a literal
+      // would bypass the registry and break per-env model swaps.
+      const { ModelConfigurationService } = await import('./ModelConfigurationService.js');
+      const compactionAssignment = await ModelConfigurationService.getServiceModel('compaction').catch(() => null);
+      const summaryModel = compactionAssignment?.modelId
+        ?? await ModelConfigurationService.getDefaultChatModel().catch(() => '');
+      if (!summaryModel) {
+        this.logger.warn('[Milvus] No chat/compaction model configured — falling back to extractive summary');
+        return this.extractBasicSummary(messages);
+      }
       const response = await this.providerManager.createCompletion({
         messages: [
           { role: 'system', content: 'You are a precise memory indexing assistant. Extract and preserve key facts, results, and data from conversations.' },
@@ -1344,8 +1354,7 @@ SUMMARY:
   }
 
   /**
-   * Store a single conversation message with embedding for semantic search
-   * Used by PromptTemplateSemanticService for template indexing
+   * Store a single conversation message with embedding for semantic search.
    */
   async storeConversationMessage(data: {
     user_id: string;
@@ -1386,8 +1395,7 @@ SUMMARY:
   }
 
   /**
-   * Search for similar conversations using vector similarity
-   * Used by PromptTemplateSemanticService
+   * Search for similar conversations using vector similarity.
    */
   async searchSimilarConversations(
     userId: string,
@@ -1427,8 +1435,7 @@ SUMMARY:
   }
 
   /**
-   * Search user memories by embedding similarity
-   * Used by PromptTemplateSemanticService for user preference detection
+   * Search user memories by embedding similarity.
    */
   async searchMemoriesByEmbedding(
     userId: string,

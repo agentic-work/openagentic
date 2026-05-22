@@ -23,6 +23,7 @@ import {
   Tooltip as RechartsTooltip, ResponsiveContainer,
 } from 'recharts';
 import { apiRequest } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 
 // ── Helper components ─────────────────────────────────────────────────
 
@@ -218,14 +219,18 @@ const PromptMetrics: React.FC<PromptMetricsProps> = ({ theme }) => {
 
   return (
     <div className="space-y-6">
-      {/* Header + Filter Bar */}
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Prompts', 'Metrics']}
+        title="Prompt Metrics"
+        explainer="Track which prompts, templates, and injections are used per chat session."
+        actions={[
+          { label: 'Refresh', onClick: fetchPromptMetrics },
+        ]}
+      />
+
+      {/* Filter Bar */}
       <div>
-        <h2 className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-          Prompt Metrics
-        </h2>
-        <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-          Track which prompts, templates, and injections are used per chat session
-        </p>
 
         <AdminFilterBar
           searchTerm={searchTerm}

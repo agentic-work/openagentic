@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Codemode TUI-parity mock 1 — Deploy debug</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="codemode-shell">
+
+  <!-- ───── Faded pixel banner (3s show + 600ms fade complete; sits at 0.18 opacity) ───── -->
+  <div class="cm-banner">
+    <div class="cm-banner-pixel">[ A G E N T I C W O R K ]</div>
+  </div>
+
+  <!-- ───── Top status rule ───── -->
+  <div class="cm-rule">
+    <span class="pill ready">● READY</span>
+    <span class="sep">·</span>
+    <span>14,892 tok</span>
+    <span class="sep">·</span>
+    <span>$0.142</span>
+    <span class="sep">·</span>
+    <span>17m 04s elapsed</span>
+    <span class="sep">·</span>
+    <span class="cm-accent">claude-sonnet-4-6</span>
+    <span class="sep">·</span>
+    <span>workspace: <span class="cm-accent">openagentic-omhs</span></span>
+  </div>
+
+  <!-- ───── Hint footer (Phase 1, gap 13) ───── -->
+  <div class="cm-hint-footer">
+    <kbd>/?</kbd> help &nbsp;·&nbsp; <kbd>ctrl+c</kbd> cancel &nbsp;·&nbsp; <kbd>ctrl+o</kbd> expand thinking &nbsp;·&nbsp; <kbd>/exit</kbd> quit
+  </div>
+
+  <!-- ───── Transcript ───── -->
+  <main class="cm-transcript">
+
+    <!-- Status notice (Phase 7, gap 12) -->
+    <div class="cm-status-notice">
+      <span class="icon cm-mono">⚑</span>
+      <div class="body">
+        <div class="title">v0.6.27 "Atlas Shrugged" — TUI-parity Phase 1 shipped</div>
+        <div class="desc">Thinking glyph migrated to <code>∴</code>, Braille spinner now active, both-side diff renderer landed in this build. <a>view changelog →</a></div>
+      </div>
+    </div>
+
+    <!-- ───────────────────── TURN 1 ───────────────────── -->
+    <div class="cm-user">
+      <div class="bubble">codemode pod won't start in the dev cluster — login spins forever and the boot stream just sits at "verifying CSI-S3 mount". This was working yesterday. Help me debug.</div>
+    </div>
+
+    <div class="cm-assistant">
+      <!-- Thinking with rainbow keywords (gap 4 + 20) -->
+      <div class="cm-thinking">
+        <div class="head">
+          <span class="glyph">∴</span><span>Thinking</span><span class="timer">5s</span><span class="ctrl-o-hint">(ctrl+o to expand)</span>
+        </div>
+        <div class="body">
+          User reports <span class="cm-rkw1">codemode</span> login hang at <span class="cm-rkw2">CSI-S3 mount</span> verification. Recent change: I shipped a <span class="cm-rkw3">hashUserId</span> alignment from 16→12 chars to fix the <span class="cm-rkw4">PVC ↔ Secret</span> name mismatch. If the new <span class="cm-rkw5">api</span> shipped but <span class="cm-rkw6">code-manager</span> didn't, the Secret name will be <code>ws-&lt;12&gt;-creds</code> but the PVC will be <code>ws-&lt;16&gt;</code> — mount times out. Plan: (1) inspect the user's pod for events, (2) compare the api and cm image SHAs, (3) check the actual Secret + PVC names side by side.
+        </div>
+      </div>
+
+      <div class="text-block first">
+        <p>Most likely the api and code-manager are out of sync after the <code>hashUserId</code> rename. Let me look at the pod state, the image SHAs, and the actual Secret/PVC names in parallel.</p>
+      </div>
+
+      <!-- Parallel tool group (gap 2) -->
+      <div class="cm-parallel">
+        <div class="header">↯ <span class="count">3</span> tools in parallel</div>
+
+        <div class="cm-tool branch">
+          <div class="head">
+            <span class="glyph">⎿</span>
+            <span class="name">Bash</span>
+            <span class="arg">kubectl describe pod -n agentic-dev -l user-id=phatoldsun</span>
+            <span class="check">✓</span>
+            <span class="elapsed">1.2s</span>
+            <span class="toggle">[hide]</span>
+          </div>
+          <div class="cm-tool-body bash">Name:         openagentic-2cb1bf3f719f-xxd49
+Namespace:    agentic-dev
+Status:       Pending
+Events:
+  Type     Reason       Age   From                Message
+  ----     ------       ----  ----                -------
+  Normal   Scheduled    72s   default-scheduler   Successfully assigned ...
+  Warning  FailedMount  62s   kubelet             MountVolume.SetUp failed for volume "ws-9b13ee30":
+                                                  rpc error: code = NotFound desc = Secret
+                                                  "ws-9b13ee3046fa-creds" not found
+            <span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">1.21s</span></div>
+        </div>
+
+        <div class="cm-tool branch">
+          <div class="head">
+            <span class="glyph">⎿</span>
+            <span class="name">Bash</span>
+            <span class="arg">kubectl get pods -n agentic-dev -o jsonpath='{.items[*].spec.containers[*].image}' | tr ' ' '\n' | sort -u</span>
+            <span class="check">✓</span>
+            <span class="elapsed">0.8s</span>
+            <span class="toggle">[hide]</span>
+          </div>
+          <div class="cm-tool-body bash">10.2.10.131:30500/openagentic-api:0.6.27-ab531e0d
+10.2.10.131:30500/openagentic-code-manager:0.6.26-3dcaebcb
+10.2.10.131:30500/openagentic-ui:0.6.27-ab531e0d
+            <span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">0.78s</span></div>
+        </div>
+
+        <div class="cm-tool branch">
+          <div class="head">
+            <span class="glyph">⎿</span>
+            <span class="name">Read</span>
+            <span class="arg">services/openagentic-manager/src/services/userStorage.service.ts:40-90</span>
+            <span class="check">✓</span>
+            <span class="elapsed">0.1s</span>
+            <span class="toggle">[hide]</span>
+          </div>
+          <div class="cm-read">
+            <div class="hdr">services/openagentic-manager/src/services/userStorage.service.ts</div>
+            <div class="row"><div class="ln">40</div><div class="content">/**</div></div>
+            <div class="row"><div class="ln">41</div><div class="content"> * Hash a user identifier into a stable 16-char hex used in PVC names.</div></div>
+            <div class="row"><div class="ln">42</div><div class="content"> * Must match openagentic-api's UserStorageService.hashUserId.</div></div>
+            <div class="row"><div class="ln">43</div><div class="content"> */</div></div>
+            <div class="row"><div class="ln">44</div><div class="content">export function hashUserId(userId: string): string {</div></div>
+            <div class="row"><div class="ln">45</div><div class="content">  return crypto</div></div>
+            <div class="row"><div class="ln">46</div><div class="content">    .createHash('sha256')</div></div>
+            <div class="row"><div class="ln">47</div><div class="content">    .update(`openagentic-user:${userId}`)</div></div>
+            <div class="row"><div class="ln">48</div><div class="content">    .digest('hex')</div></div>
+            <div class="row"><div class="ln">49</div><div class="content">    .slice(0, 16);  // ← 16 chars</div></div>
+            <div class="row"><div class="ln">50</div><div class="content">}</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-block">
+        <p>Confirmed. The kubelet event explicitly says <code>Secret "ws-9b13ee3046fa-creds" not found</code> — note it's looking for a 12-char-hex name. But <code>code-manager</code> is on image <code>0.6.26-3dcaebcb</code> while <code>api</code> is on <code>0.6.27-ab531e0d</code>, and the file above (cm 0.6.26) still slices 16 chars. Two paths forward:</p>
+        <ol>
+          <li><strong>Roll cm to 0.6.27.</strong> Already built.</li>
+          <li><strong>Verify the api side is actually 12.</strong> Then redeploy and confirm the PVC + Secret align.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Bash input — user types directly (gap 19) -->
+    <div class="cm-user-bash">
+      <span class="prefix">!</span>
+      <span class="cmd">kubectl get pvc,secrets -n agentic-dev | grep ws-</span>
+    </div>
+    <div class="cm-tool-body bash" style="margin-left: 0;"><span class="corner">⎿</span>persistentvolumeclaim/ws-9b13ee3046fa     Bound    pvc-...   1Gi   minio-csi   8m
+secret/ws-9b13ee3046fa-creds                                                       Opaque   3      2m
+secret/ws-9b13ee3046fab12c-creds                                                   Opaque   3      14h
+<span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">0.31s</span></div>
+
+    <div class="cm-assistant">
+      <div class="text-block first">
+        <p>So the cluster already has <strong>both</strong> a 12-char Secret (just created by the new api) and a stale 16-char Secret from the old code-manager. The PVC is 12-char, which is what the api wants — but cm is still trying to mount with the 16-char Secret it thinks it created. That's why the mount is timing out: Kubernetes can't find a Secret with that name because <em>nothing</em> created one with the 16-char shape under the new api.</p>
+      </div>
+
+      <!-- Single tool, not parallel (will degrade gracefully) -->
+      <div class="cm-tool">
+        <div class="head">
+          <span class="glyph">●</span>
+          <span class="name">Bash</span>
+          <span class="arg">kubectl logs -n agentic-dev deploy/openagentic-code-manager --tail=40</span>
+          <span class="check">✓</span>
+          <span class="elapsed">0.4s</span>
+          <span class="toggle">[hide]</span>
+        </div>
+        <div class="cm-tool-body bash"><span class="corner">⎿</span>2026-04-25T13:14:02.103Z [code-manager] sessionManager.startSession() user=phatoldsun
+2026-04-25T13:14:02.118Z [code-manager] PVC ws-9b13ee3046fa1234 created
+2026-04-25T13:14:02.121Z [code-manager] Secret ws-9b13ee3046fa1234-creds created
+2026-04-25T13:14:02.130Z [code-manager] pod scheduled, waiting for Ready
+2026-04-25T13:15:02.130Z [code-manager] WARN: pod not ready after 60s — kubelet event:
+                                          MountVolume.SetUp failed: Secret "ws-9b13ee3046fa-creds" not found
+<span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">0.42s</span></div>
+      </div>
+
+      <div class="text-block first">
+        <p>Confirmed the diagnosis — cm logs show it created a <strong>16-char</strong> PVC (<code>ws-9b13ee3046fa1234</code>) and Secret (<code>ws-9b13ee3046fa1234-creds</code>), but the kubelet then tries to mount the <strong>12-char</strong> name (<code>ws-9b13ee3046fa-creds</code>) — because the StorageClass parameter <code>csi.storage.k8s.io/node-publish-secret-name</code> is rendered from the api side, which is on 12-char.</p>
+        <p>Let me dispatch a sub-agent to read both code paths simultaneously and confirm exactly where the divergence is, so we patch the right line and not just paper over it.</p>
+      </div>
+
+      <!-- Sub-agent (gap 7) -->
+      <div class="cm-tool">
+        <div class="head">
+          <span class="glyph">●</span>
+          <span class="name">Task</span>
+          <span class="arg">root-cause-investigator: hashUserId divergence between api &amp; cm</span>
+          <span class="check">✓</span>
+          <span class="elapsed">38.4s</span>
+          <span class="toggle">[hide]</span>
+        </div>
+        <div class="cm-subagent">
+          <div class="hdr">
+            <span>◆</span>
+            <span class="name">root-cause-investigator</span>
+            <span class="status">— 4 turns, 2 tools, completed</span>
+          </div>
+          <div class="body">
+            <div class="turn"><span class="cm-stage think">THINK</span>I need to find every <code>hashUserId</code> definition + caller across <code>services/</code>.</div>
+            <div class="turn"><span class="cm-stage act">ACT</span>Grep <code>hashUserId</code> across <code>services/</code> — found 4 hits.</div>
+            <div class="turn"><span class="cm-stage observe">OBSERVE</span>
+              <ul style="margin: 4px 0 0 0; padding-left: 18px;">
+                <li><code>services/openagentic-api/src/services/UserStorageService.ts:88</code> — slices to <strong>12</strong> ✓</li>
+                <li><code>services/openagentic-manager/src/services/userStorage.service.ts:49</code> — slices to <strong>16</strong> ✗</li>
+                <li><code>services/openagentic-manager/src/k8s/podTemplate.ts:147</code> — calls hashUserId then suffixes <code>-creds</code></li>
+                <li><code>services/openagentic-api/src/services/__tests__/UserStorageService.test.ts:66</code> — locks 12 in a snapshot</li>
+              </ul>
+            </div>
+            <div class="turn"><span class="cm-stage reflect">REFLECT</span>The fix is one-line in cm. The api side is correct + tested. After the cm patch, the existing 16-char Secret in the cluster needs deleting so the next session start re-creates it at 12-char. Recommend: patch line 49 + delete stale Secret + roll cm.</div>
+          </div>
+          <div class="footer">
+            <span>◆ completed</span>
+            <span>·</span>
+            <span>4 turns</span>
+            <span>·</span>
+            <span>$0.0084</span>
+            <span>·</span>
+            <span>38.4s</span>
+            <span>·</span>
+            <span>by claude-haiku-4-5</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-block first">
+        <p>Sub-agent confirmed. One-line fix in cm. Patching:</p>
+      </div>
+
+      <!-- Edit tool with BOTH sides (gap 1 — the P0 fix) -->
+      <div class="cm-tool">
+        <div class="head">
+          <span class="glyph">●</span>
+          <span class="name">Edit</span>
+          <span class="arg">services/openagentic-manager/src/services/userStorage.service.ts</span>
+          <span class="check">✓</span>
+          <span class="elapsed">0.0s</span>
+          <span class="toggle">[hide]</span>
+        </div>
+        <div class="cm-diff">
+          <div class="filehdr">
+            <span>📁</span><span class="path">services/openagentic-manager/src/services/userStorage.service.ts</span>
+            <span class="stat">−1 +1</span>
+          </div>
+          <div class="row ctx"><div class="marker"> </div><div class="ln">44</div><div class="content">export function hashUserId(userId: string): string {</div></div>
+          <div class="row ctx"><div class="marker"> </div><div class="ln">45</div><div class="content">  return crypto</div></div>
+          <div class="row ctx"><div class="marker"> </div><div class="ln">46</div><div class="content">    .createHash('sha256')</div></div>
+          <div class="row ctx"><div class="marker"> </div><div class="ln">47</div><div class="content">    .update(`openagentic-user:${userId}`)</div></div>
+          <div class="row ctx"><div class="marker"> </div><div class="ln">48</div><div class="content">    .digest('hex')</div></div>
+          <div class="row rem"><div class="marker">−</div><div class="ln">49</div><div class="content">    .slice(0, <span class="word-rem">16</span>);  // ← <span class="word-rem">16</span> chars</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">49</div><div class="content">    .slice(0, <span class="word-add">12</span>);  // ← <span class="word-add">12</span> chars (matches api UserStorageService — see #350)</div></div>
+          <div class="row ctx"><div class="marker"> </div><div class="ln">50</div><div class="content">}</div></div>
+        </div>
+      </div>
+
+      <div class="text-block first">
+        <p>Now I'll write a regression test that locks both sides to 12 (so this can never re-diverge), update todos to track the rollout, then build.</p>
+      </div>
+
+      <!-- TodoWrite (gap 3) -->
+      <div class="cm-tool">
+        <div class="head">
+          <span class="glyph">●</span>
+          <span class="name">TodoWrite</span>
+          <span class="arg">5 todo(s)</span>
+          <span class="check">✓</span>
+          <span class="elapsed">0.0s</span>
+        </div>
+        <div class="cm-todo">
+          <div class="item completed"><span class="box">☒</span><span class="text">Diagnose CSI-S3 mount timeout (api ↔ cm hash divergence)</span></div>
+          <div class="item completed"><span class="box">☒</span><span class="text">Patch <code>hashUserId</code> in code-manager → 12 chars</span></div>
+          <div class="item in_progress"><span class="box">◐</span><span class="text">Write regression test pinning both sides to 12 chars</span></div>
+          <div class="item pending"><span class="box">☐</span><span class="text">Delete stale 16-char Secret in agentic-dev namespace</span></div>
+          <div class="item pending"><span class="box">☐</span><span class="text">Build cm 0.6.28, helm upgrade, verify login goes through</span></div>
+        </div>
+      </div>
+
+      <!-- Edit — new test file (additions only since file is new) -->
+      <div class="cm-tool">
+        <div class="head">
+          <span class="glyph">●</span>
+          <span class="name">Write</span>
+          <span class="arg">services/openagentic-manager/src/services/__tests__/userStorage.hash-parity.test.ts</span>
+          <span class="check">✓</span>
+          <span class="elapsed">0.0s</span>
+        </div>
+        <div class="cm-diff">
+          <div class="filehdr"><span>📁</span><span class="path">services/openagentic-manager/src/services/__tests__/userStorage.hash-parity.test.ts</span><span class="stat">+24 (new file)</span></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">1</div><div class="content">import { describe, it, expect } from 'vitest';</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">2</div><div class="content">import { hashUserId as cmHash } from '../userStorage.service.js';</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">3</div><div class="content">import { hashUserId as apiHash } from</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">4</div><div class="content">  '../../../../../openagentic-api/src/services/UserStorageService.js';</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">5</div><div class="content"></div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">6</div><div class="content">describe('hashUserId — api ↔ cm parity', () =&gt; {</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">7</div><div class="content">  const samples = [</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">8</div><div class="content">    'phatoldsun@gmail.com',</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">9</div><div class="content">    'mcp-tester@phatoldsungmail.onmicrosoft.com',</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">10</div><div class="content">    'agw-test-01@phatoldsungmail.onmicrosoft.com',</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">11</div><div class="content">  ];</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">12</div><div class="content"></div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">13</div><div class="content">  it.each(samples)('produces identical 12-char hex for %s', (userId) =&gt; {</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">14</div><div class="content">    const a = apiHash(userId);</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">15</div><div class="content">    const c = cmHash(userId);</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">16</div><div class="content">    expect(a).toHaveLength(12);</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">17</div><div class="content">    expect(c).toHaveLength(12);</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">18</div><div class="content">    expect(a).toBe(c);</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">19</div><div class="content">  });</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">20</div><div class="content">});</div></div>
+        </div>
+      </div>
+
+      <!-- Bash test run -->
+      <div class="cm-tool">
+        <div class="head">
+          <span class="glyph">●</span>
+          <span class="name">Bash</span>
+          <span class="arg">cd services/openagentic-manager &amp;&amp; bun test src/services/__tests__/userStorage.hash-parity.test.ts</span>
+          <span class="check">✓</span>
+          <span class="elapsed">2.1s</span>
+        </div>
+        <div class="cm-tool-body bash"><span class="corner">⎿</span>bun test v1.0.36
+
+src/services/__tests__/userStorage.hash-parity.test.ts:
+  ✓ hashUserId — api ↔ cm parity
+    ✓ produces identical 12-char hex for phatoldsun@gmail.com [3.21ms]
+    ✓ produces identical 12-char hex for mcp-tester@phatoldsungmail.onmicrosoft.com [0.84ms]
+    ✓ produces identical 12-char hex for agw-test-01@phatoldsungmail.onmicrosoft.com [0.71ms]
+
+ 3 pass
+ 0 fail
+ Ran 3 tests across 1 file. [2.05s]
+<span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">2.13s</span></div>
+      </div>
+    </div>
+
+    <!-- Boundary frame: model swap (gap 5) — user manually flipped to gpt-oss for the cheap build steps -->
+    <div class="cm-boundary">
+      <span class="glyph">⤳</span>
+      <span class="label">Model swap</span>
+      <span>claude-sonnet-4-6 → gpt-oss:20b (issued by /model)</span>
+    </div>
+
+    <!-- ───────────────────── TURN 2 ───────────────────── -->
+    <div class="cm-user">
+      <div class="bubble">good — now build the cm image, kill the stale Secret, helm upgrade, and verify my login works. take your time, run live, watch for errors.</div>
+    </div>
+
+    <div class="cm-assistant">
+      <div class="cm-thinking">
+        <div class="head">
+          <span class="glyph">∴</span><span>Thinking</span><span class="timer">2s</span><span class="ctrl-o-hint">(ctrl+o to expand)</span>
+        </div>
+      </div>
+
+      <div class="text-block first">
+        <p>Sequencing: build → push → delete-stale-secret → helm upgrade → rollout-restart cm → verify login. I'll run them sequentially since each step depends on the previous, and watch for the long-build stall pattern.</p>
+      </div>
+
+      <!-- Long bash with stall-detection (gap 15) -->
+      <div class="cm-tool">
+        <div class="head">
+          <span class="glyph">●</span>
+          <span class="name">Bash</span>
+          <span class="arg">./scripts/build.sh openagentic-manager --buildpush --no-cache</span>
+          <span class="check">✓</span>
+          <span class="elapsed">3m 12s</span>
+          <span class="toggle">[hide]</span>
+        </div>
+        <div class="cm-tool-body bash"><span class="corner">⎿</span>[ build.sh ] image: 10.2.10.131:30500/openagentic-code-manager:0.6.28-c4e2f871
+[ build.sh ] platform: linux/amd64
+[ build.sh ] no-cache: yes
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 2.3kB done
+#2 [internal] load .dockerignore
+#3 [internal] load metadata for docker.io/library/node:20-alpine
+#4 [base 1/6] FROM node:20-alpine
+#5 [internal] load build context
+#5 transferring context: 14.2MB done
+#6 [base 2/6] WORKDIR /app
+#7 [base 3/6] RUN apk add --no-cache python3 make g++
+#7 4.8s
+#8 [base 4/6] COPY package.json package-lock.json ./
+#9 [base 5/6] RUN npm ci --omit=dev
+                                                                                  ⠋ installing... 28s
+                                                                                  ⠙ resolving deps... 47s
+                                                                                  ⠹ resolving deps... 1m 04s
+                                                                                  ⠼ <span style="color: var(--cm-warning);">stall: registry.npmjs.org slow (1m 04s, no progress)</span>
+                                                                                  ⠴ resuming... 1m 18s
+#9 1m 32s
+#10 [base 6/6] COPY . .
+#11 [build] RUN npm run build
+#11 28.4s
+#12 [final] exporting to image
+#12 1.2s
+#13 push 10.2.10.131:30500/openagentic-code-manager:0.6.28-c4e2f871
+#13 12.0s done
+
+DONE 3m 12s
+<span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">3m 12s</span></div>
+      </div>
+
+      <!-- Bash — delete stale Secret -->
+      <div class="cm-tool">
+        <div class="head">
+          <span class="glyph">●</span>
+          <span class="name">Bash</span>
+          <span class="arg">kubectl delete secret -n agentic-dev ws-9b13ee3046fab12c-creds</span>
+          <span class="check">✓</span>
+          <span class="elapsed">0.6s</span>
+        </div>
+        <div class="cm-tool-body bash"><span class="corner">⎿</span>secret "ws-9b13ee3046fab12c-creds" deleted
+<span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">0.62s</span></div>
+      </div>
+
+      <!-- Helm upgrade -->
+      <div class="cm-tool">
+        <div class="head">
+          <span class="glyph">●</span>
+          <span class="name">Bash</span>
+          <span class="arg">helm upgrade openagentic ~/openagentic-helm -f values-k3s-local.yaml -n agentic-dev --no-hooks</span>
+          <span class="check">✓</span>
+          <span class="elapsed">14.2s</span>
+        </div>
+        <div class="cm-tool-body bash"><span class="corner">⎿</span>Release "openagentic" has been upgraded. Happy Helming!
+NAME: openagentic
+LAST DEPLOYED: Sat Apr 25 13:31:14 2026
+NAMESPACE: agentic-dev
+STATUS: deployed
+REVISION: 184
+TEST SUITE: None
+NOTES: image-updater will roll the new cm image automatically (~30s)
+<span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">14.21s</span></div>
+      </div>
+
+      <!-- Rollout restart -->
+      <div class="cm-tool">
+        <div class="head">
+          <span class="glyph">●</span>
+          <span class="name">Bash</span>
+          <span class="arg">kubectl rollout status deployment/openagentic-code-manager -n agentic-dev</span>
+          <span class="check">✓</span>
+          <span class="elapsed">31.4s</span>
+        </div>
+        <div class="cm-tool-body bash"><span class="corner">⎿</span>Waiting for deployment "openagentic-code-manager" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "openagentic-code-manager" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "openagentic-code-manager" rollout to finish: 0 of 1 updated replicas are available...
+deployment "openagentic-code-manager" successfully rolled out
+<span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">31.44s</span></div>
+      </div>
+
+      <!-- Force-delete the user's pod so a fresh session spawns from new cm -->
+      <div class="cm-tool">
+        <div class="head">
+          <span class="glyph">●</span>
+          <span class="name">Bash</span>
+          <span class="arg">kubectl delete pod -n agentic-dev -l user-id=phatoldsun --force --grace-period=0</span>
+          <span class="check">✓</span>
+          <span class="elapsed">1.8s</span>
+        </div>
+        <div class="cm-tool-body bash"><span class="corner">⎿</span>warning: Immediate deletion does not wait for confirmation that the running resource has been terminated.
+pod "openagentic-2cb1bf3f719f-xxd49" force deleted
+<span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">1.82s</span></div>
+      </div>
+
+      <!-- Verification -->
+      <div class="cm-tool">
+        <div class="head">
+          <span class="glyph">●</span>
+          <span class="name">Bash</span>
+          <span class="arg">curl -s -o /dev/null -w '%{http_code}' https://chat-dev.openagentic.io/api/openagentic/sessions/start -H 'Authorization: Bearer $TEST_JWT' -d '{}'</span>
+          <span class="check">✓</span>
+          <span class="elapsed">2.4s</span>
+        </div>
+        <div class="cm-tool-body bash"><span class="corner">⎿</span>200
+<span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">2.43s</span></div>
+      </div>
+
+      <!-- Final verification — describe the new pod -->
+      <div class="cm-tool">
+        <div class="head">
+          <span class="glyph">●</span>
+          <span class="name">Bash</span>
+          <span class="arg">kubectl describe pod -n agentic-dev -l user-id=phatoldsun | grep -A2 'Events:'</span>
+          <span class="check">✓</span>
+          <span class="elapsed">0.5s</span>
+        </div>
+        <div class="cm-tool-body bash"><span class="corner">⎿</span>Events:
+  Type    Reason     Age   From               Message
+  ----    ------     ----  ----               -------
+  Normal  Scheduled  18s   default-scheduler  Successfully assigned ...
+  Normal  Pulled     14s   kubelet            Container image already present
+  Normal  Created    14s   kubelet            Created container openagentic
+  Normal  Started    13s   kubelet            Started container openagentic
+  Normal  Mounted    13s   kubelet            MountVolume.SetUp succeeded for volume "ws-9b13ee3046fa"
+<span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">0.51s</span></div>
+      </div>
+
+      <div class="text-block first">
+        <p>Login round-trip is <span class="cm-success cm-mono">200</span>, and the kubelet event log shows <code>MountVolume.SetUp succeeded</code> instead of the previous <code>not found</code>. Updating todos:</p>
+      </div>
+
+      <div class="cm-tool">
+        <div class="head"><span class="glyph">●</span><span class="name">TodoWrite</span><span class="arg">5 todo(s)</span><span class="check">✓</span></div>
+        <div class="cm-todo">
+          <div class="item completed"><span class="box">☒</span><span class="text">Diagnose CSI-S3 mount timeout (api ↔ cm hash divergence)</span></div>
+          <div class="item completed"><span class="box">☒</span><span class="text">Patch <code>hashUserId</code> in code-manager → 12 chars</span></div>
+          <div class="item completed"><span class="box">☒</span><span class="text">Write regression test pinning both sides to 12 chars</span></div>
+          <div class="item completed"><span class="box">☒</span><span class="text">Delete stale 16-char Secret in agentic-dev namespace</span></div>
+          <div class="item completed"><span class="box">☒</span><span class="text">Build cm 0.6.28, helm upgrade, verify login goes through</span></div>
+        </div>
+      </div>
+
+      <div class="text-block first">
+        <p>All 5 done. The <span class="cm-success">api ↔ cm hash parity</span> is now locked by the new test (will fail loudly on any future divergence). To prevent the stale-Secret-stuck-around problem, I should also wire a cleanup in cm's session-start path so it deletes orphaned Secrets matching <code>ws-{old-hash}-creds</code> on first session post-upgrade — but that's a follow-up; not blocking the current bug.</p>
+      </div>
+    </div>
+
+    <!-- Boundary frame: compacted (gap 6) — long session reached the threshold -->
+    <div class="cm-boundary compact">
+      <span class="glyph">∿</span>
+      <span class="label">Compacted to token limit</span>
+      <span>summarized 26 turns · saved 38,422 tokens · context now 14,892 / 200,000 (7%)</span>
+    </div>
+
+    <!-- ───────────────────── TURN 3 ───────────────────── -->
+    <div class="cm-user">
+      <div class="bubble">awesome. now write a follow-up issue describing the orphan-Secret cleanup so I can pick it up tomorrow, and a one-paragraph rundown of the root cause for the team standup. Also do the same diagnosis for whether the `node-publish-secret-namespace` could also drift — because we have multi-tenant in CDC.</div>
+    </div>
+
+    <!-- Boundary frame: model swap back to sonnet for the writing task -->
+    <div class="cm-boundary">
+      <span class="glyph">⤳</span>
+      <span class="label">Model swap</span>
+      <span>gpt-oss:20b → claude-sonnet-4-6 (auto-selected: writing task)</span>
+    </div>
+
+    <div class="cm-assistant">
+      <div class="cm-thinking">
+        <div class="head"><span class="glyph">∴</span><span>Thinking</span><span class="timer">8s</span><span class="ctrl-o-hint">(ctrl+o to expand)</span></div>
+        <div class="body">
+          Two deliverables: (1) <span class="cm-rkw1">orphan-Secret cleanup</span> issue, (2) <span class="cm-rkw3">team standup rundown</span>. Plus a <span class="cm-rkw5">multi-tenant drift check</span> on <code>node-publish-secret-namespace</code>. For the drift question I should grep for any place either api or cm renders that namespace param — if it's pinned in helm values it can't drift; if it's runtime-computed from a context, it could.
+        </div>
+      </div>
+
+      <div class="text-block first">
+        <p>Three artifacts incoming. First, the parallel checks for the namespace drift question:</p>
+      </div>
+
+      <div class="cm-parallel">
+        <div class="header">↯ <span class="count">2</span> tools in parallel</div>
+        <div class="cm-tool branch">
+          <div class="head"><span class="glyph">⎿</span><span class="name">Grep</span><span class="arg">node-publish-secret-namespace</span><span class="check">✓</span><span class="elapsed">0.4s</span></div>
+          <div class="cm-grep">
+            <div class="summary">3 matches in 2 files</div>
+            <div class="match"><span class="path">helm/openagentic/templates/csi-s3-storageclass.yaml</span><span class="lineno">:18</span><span class="text"><em class="hit">csi.storage.k8s.io/node-publish-secret-namespace</em>: agentic-dev</span></div>
+            <div class="match"><span class="path">helm/openagentic/templates/csi-s3-storageclass.yaml</span><span class="lineno">:22</span><span class="text">{{- if .Values.csiS3.<em class="hit">nodePublishSecretNamespace</em> }}</span></div>
+            <div class="match"><span class="path">services/openagentic-manager/src/k8s/podTemplate.ts</span><span class="lineno">:147</span><span class="text">// reads from CSI_S3_SECRET_NAMESPACE env, default 'agentic-dev'</span></div>
+          </div>
+        </div>
+        <div class="cm-tool branch">
+          <div class="head"><span class="glyph">⎿</span><span class="name">Read</span><span class="arg">helm/openagentic/templates/csi-s3-storageclass.yaml</span><span class="check">✓</span><span class="elapsed">0.1s</span></div>
+          <div class="cm-read">
+            <div class="hdr">helm/openagentic/templates/csi-s3-storageclass.yaml</div>
+            <div class="row"><div class="ln">15</div><div class="content">parameters:</div></div>
+            <div class="row"><div class="ln">16</div><div class="content">  csi.storage.k8s.io/provisioner-secret-name: minio-csi-creds</div></div>
+            <div class="row"><div class="ln">17</div><div class="content">  csi.storage.k8s.io/provisioner-secret-namespace: {{ .Release.Namespace }}</div></div>
+            <div class="row"><div class="ln">18</div><div class="content">  csi.storage.k8s.io/node-publish-secret-namespace: {{ .Values.csiS3.nodePublishSecretNamespace | default .Release.Namespace }}</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-block first">
+        <p>Good news: the StorageClass uses <code>{{ .Release.Namespace }}</code> — deterministic from the helm install context. Multi-tenant CDC is fine because each tenant gets its own helm release in its own namespace. There's <strong>no</strong> runtime divergence path. Confirmed safe.</p>
+        <p>Now the artifacts:</p>
+      </div>
+
+      <!-- Artifact panel (gap 10) — issue body -->
+      <div class="cm-artifact">
+        <div class="hdr">
+          <span class="label">📝 ARTIFACT</span><span class="name">issue-orphan-secret-cleanup.md</span>
+          <div class="actions"><a>copy</a><a>open</a></div>
+        </div>
+        <div class="body">
+<strong style="font-size: 14px;">Title:</strong> code-manager: clean up orphan-named Secrets on session-start after hashUserId rename
+<br><br>
+<strong>Body:</strong>
+<pre>## Problem
+After renaming `hashUserId` from 16→12 char slice
+(commit c4e2f871), Kubernetes Secrets created
+under the old shape (ws-&lt;16hex&gt;-creds) are
+orphaned in tenant namespaces. They don't break
+anything but they bloat the namespace and confuse
+operators reading `kubectl get secrets`.
+
+## Repro
+Any tenant that ran a codemode session under
+cm 0.6.27-or-prior + then upgraded to 0.6.28
+will have one orphan per active user.
+
+## Fix
+In `openagentic-manager/src/services/userStorage.service.ts`
+`startSession()`, after creating the new Secret,
+list all Secrets matching `ws-*-creds` for the
+tenant namespace, drop any whose name doesn't
+match the canonical 12-char shape derived from
+`hashUserId(userId)`. Log the cleanup at INFO.
+
+## Acceptance
+- Test: spawn session with stale 16-char Secret
+  pre-existing → after `startSession` only the
+  12-char Secret remains.
+- No-op when no orphans present.
+
+## Severity
+P3 — cosmetic. Not a security bug; orphan
+Secrets contain only this user's bucket creds.</pre>
+        </div>
+      </div>
+
+      <!-- Artifact panel — standup rundown -->
+      <div class="cm-artifact">
+        <div class="hdr">
+          <span class="label">📝 ARTIFACT</span><span class="name">standup-rundown.md</span>
+          <div class="actions"><a>copy</a><a>open</a></div>
+        </div>
+        <div class="body">
+<pre>**CSI-S3 mount timeout (resolved)** — codemode
+login was hanging at the mount-verify step in
+agentic-dev. Root cause: I shipped a hashUserId
+slice change from 16→12 chars in the api side
+(commit ab531e0d) but missed the matching change
+in code-manager — so when cm rendered a per-user
+PVC, the Secret name it generated was 16 chars
+long while the api-side StorageClass parameter
+hardcoded the 12-char name. Kubernetes' kubelet
+couldn't find the Secret to mount. Fix landed
+in cm 0.6.28-c4e2f871 plus a regression test
+in services/openagentic-manager/src/services/
+__tests__/userStorage.hash-parity.test.ts that
+fails if the two implementations ever diverge
+again. Filed a follow-up (P3) for orphan-Secret
+cleanup. Multi-tenant CDC is unaffected — the
+namespace param is helm-pinned, not runtime.</pre>
+        </div>
+      </div>
+
+      <div class="text-block first">
+        <p>Pasted both above. The standup rundown is plain prose and ~155 words; the issue is structured for GitHub. Anything else for tomorrow?</p>
+      </div>
+    </div>
+
+    <!-- Slash palette mid-flow (existing primitive — included to show keyboard interaction) -->
+    <div style="margin-top: 14px; opacity: 0.95;">
+      <div class="cm-mono cm-muted" style="font-size: 11px; margin-bottom: 4px;">user typed <kbd>/</kbd>...</div>
+      <div class="cm-palette">
+        <div class="row selected">
+          <span class="glyph p0">●</span><span class="name">/compact</span><span class="desc">Summarize the conversation so far</span>
+        </div>
+        <div class="row">
+          <span class="glyph p0">●</span><span class="name">/clear</span><span class="desc">Reset the conversation history</span>
+        </div>
+        <div class="row">
+          <span class="glyph p1">◐</span><span class="name">/model</span><span class="desc">Switch the active model</span>
+        </div>
+        <div class="row">
+          <span class="glyph p1">◐</span><span class="name">/agents</span><span class="desc">List + invoke registered sub-agents</span>
+        </div>
+        <div class="row">
+          <span class="glyph p2">○</span><span class="name">/skills</span><span class="desc">Browse + run installed skills</span>
+        </div>
+        <div class="row">
+          <span class="glyph p2">○</span><span class="name">/plugins</span><span class="desc">Manage plugin marketplaces</span>
+        </div>
+        <div class="row">
+          <span class="glyph p3">·</span><span class="name">/exit</span><span class="desc">Save session + quit</span>
+        </div>
+        <div class="footer"><kbd>↑</kbd><kbd>↓</kbd> navigate · <kbd>↵</kbd> run · <kbd>esc</kbd> dismiss · <strong>7</strong> matches</div>
+      </div>
+    </div>
+
+    <!-- Composer -->
+    <div class="cm-composer">
+      <span class="placeholder">Message — try /agents, /skills, or @file …</span>
+      <span class="send">Send</span>
+    </div>
+  </main>
+
+  <!-- Metadata strip (existing primitive) -->
+  <div class="cm-metadata">
+    <span class="cell"><span class="label">v</span><span class="val">0.6.28</span></span>
+    <span class="sep">·</span>
+    <span class="cell"><span class="label">model</span><span class="val">claude-sonnet-4-6</span></span>
+    <span class="sep">·</span>
+    <span class="cell"><span class="label">cwd</span><span class="val">~/openagentic-omhs</span></span>
+    <span class="sep">·</span>
+    <span class="cell"><span class="label">budget</span><span class="val">$0.142 / $5.00 · 2.8%</span></span>
+    <span class="sep">·</span>
+    <span class="cell"><span class="label">surface</span><span class="val">61 tools · 4 mcp · 3 agents · 2 plugins</span></span>
+    <span class="sep">·</span>
+    <span class="cell"><kbd>/help</kbd></span>
+    <span class="cell"><kbd>/model</kbd></span>
+    <span class="cell"><kbd>Tab</kbd></span>
+    <span class="cell"><kbd>⌘P</kbd></span>
+    <span class="cell"><kbd>⌘↵</kbd></span>
+  </div>
+
+  <!-- Status bar (Phase 1, gap 13) -->
+  <div class="cm-statusbar">
+    <span class="cell"><span class="dot ok"></span><span>WS connected</span></span>
+    <span class="sep">·</span>
+    <span class="cell"><span>latency</span><span class="val">42ms</span></span>
+    <span class="sep">·</span>
+    <span class="cell"><span>pod</span><span class="val">openagentic-2cb1bf3f719f-q4p2k</span></span>
+    <span class="sep">·</span>
+    <span class="cell"><span>session</span><span class="val">17m 26s</span></span>
+    <span class="cell right"><span class="val cm-mono">⠋ idle</span></span>
+  </div>
+</div>
+</body>
+</html>

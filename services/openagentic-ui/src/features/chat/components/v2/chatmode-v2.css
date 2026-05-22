@@ -1,0 +1,1675 @@
+/* ============================================================================
+ * OpenAgentic chatmode V2 — UX contract from mocks/UX/01-09.html
+ *
+ * 8px baseline grid. Dark-first; light variant via html[data-theme=light].
+ * Class names match the mocks 1:1 so any mock prompt can be reproduced
+ * server→client without invention. Follow this file as the SoT for the V2
+ * components in /v2/.
+ * ========================================================================== */
+
+.cm-v2 {
+  --cm-bg-0: #09090b;
+  --cm-bg-1: #0f1012;
+  --cm-bg-2: #16181c;
+  --cm-bg-3: #1c1f24;
+  --cm-bg-4: #242831;
+  --cm-line-1: rgba(255, 255, 255, 0.06);
+  --cm-line-2: rgba(255, 255, 255, 0.10);
+  --cm-line-3: rgba(255, 255, 255, 0.16);
+  --cm-fg-0: #f8fafc;
+  --cm-fg-1: #d4d4d8;
+  --cm-fg-2: #a1a1aa;
+  --cm-fg-3: #71717a;
+  /* Accent flows from the user's Settings → Accent picker.
+   * ThemeContext.applyAccentColor() sets --user-accent-primary on
+   * <html>, plus --user-accent-soft (alpha 0.14) and --user-accent-line
+   * (alpha 0.32). The fallbacks here are the canonical green from the
+   * mocks (end-state-NN-*.html all define --cm-accent: #4ade80) for
+   * first-paint before ThemeContext mounts. Sprint Z changed from purple
+   * (#8b5cf6) to match the mock SoT. */
+  --cm-accent: var(--user-accent-primary, #4ade80);
+  --cm-accent-soft: var(--user-accent-soft, rgba(74, 222, 128, 0.14));
+  --cm-accent-line: var(--user-accent-line, rgba(74, 222, 128, 0.32));
+  --cm-agent-c: #f59e0b;
+  --cm-agent-g: #10b981;
+  --cm-agent-s: #ef4444;
+  --cm-agent-k: #3b82f6;
+  --cm-ok: #22c55e;
+  --cm-warn: #f59e0b;
+  --cm-err: #ef4444;
+  --cm-info: #38bdf8;
+  /* Cloud-category tokens (mock-07 §tri-cloud-cost-spikes). Drive
+   * per-cloud accents on tool-card left-borders, streaming-table
+   * Cloud-cells (CloudBadge), and sankey gradient stops. AWS reuses
+   * the "fs" (filesystem/orange) hue; Azure rides the canonical
+   * info-blue; GCP reuses the k8s-violet so they stay distinct in
+   * monochrome screenshots too. Soft + line variants follow the same
+   * (0.10 / 0.25 alpha) pattern as --cm-accent-soft / --cm-accent-line. */
+  --cm-cloud: #38bdf8;
+  --cm-k8s: #a78bfa;
+  --cm-fs: #f59e0b;
+  --cm-cloud-soft: rgba(56, 189, 248, 0.10);
+  --cm-k8s-soft: rgba(167, 139, 250, 0.10);
+  --cm-fs-soft: rgba(245, 158, 11, 0.10);
+  --cm-cloud-line: rgba(56, 189, 248, 0.25);
+  --cm-k8s-line: rgba(167, 139, 250, 0.25);
+  --cm-fs-line: rgba(245, 158, 11, 0.25);
+  /* Phase-coded for the ThinkingSphere + narrative thinking text. Violet
+   * for thinking mirrors mocks/UX/AI/Chatmode/end-state-08 (#c4b5fd label,
+   * #a78bfa stroke). Tools reuse --cm-info; generating reuses --cm-ok.
+   * Glow variants are the 0.4-alpha sibling for box-shadow / drop-shadow. */
+  --cm-thinking: #a78bfa;
+  --cm-thinking-soft: #c4b5fd;
+  --cm-thinking-glow: rgba(167, 139, 250, 0.40);
+  --cm-info-glow: rgba(56, 189, 248, 0.40);
+  --cm-ok-glow: rgba(34, 197, 94, 0.40);
+  --cm-warn-glow: rgba(245, 158, 11, 0.40);
+  --cm-err-glow: rgba(239, 68, 68, 0.40);
+  --cm-radius-sm: 6px;
+  --cm-radius-md: 10px;
+  --cm-radius-lg: 14px;
+  --cm-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --cm-transcript-max-width: 902px;
+}
+
+html[data-theme='light'] .cm-v2 {
+  --cm-bg-0: #fafafa;
+  --cm-bg-1: #ffffff;
+  --cm-bg-2: #f4f4f5;
+  --cm-bg-3: #e4e4e7;
+  --cm-bg-4: #d4d4d8;
+  --cm-line-1: rgba(0, 0, 0, 0.06);
+  --cm-line-2: rgba(0, 0, 0, 0.10);
+  --cm-line-3: rgba(0, 0, 0, 0.16);
+  --cm-fg-0: #09090b;
+  --cm-fg-1: #27272a;
+  --cm-fg-2: #52525b;
+  --cm-fg-3: #71717a;
+  /* Light theme uses a tighter alpha on the soft tint so it stays
+   * legible against the brighter background. The user-accent-soft
+   * override (set by ThemeContext) wins when a non-default accent
+   * is picked. */
+  --cm-accent-soft: var(--user-accent-soft-light, rgba(139, 92, 246, 0.10));
+  --cm-thinking: #7c3aed;
+  --cm-thinking-soft: #5b21b6;
+  --cm-thinking-glow: rgba(124, 58, 237, 0.30);
+  --cm-info-glow: rgba(2, 132, 199, 0.30);
+  --cm-ok-glow: rgba(22, 163, 74, 0.30);
+  --cm-warn-glow: rgba(217, 119, 6, 0.30);
+  --cm-err-glow: rgba(220, 38, 38, 0.30);
+}
+
+/* ----------------------------- transcript ---------------------------------- */
+
+.cm-chat {
+  max-width: var(--cm-transcript-max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* ----------------------------- message header ----------------------------- */
+
+.cm-msg-asst {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 12px;
+}
+
+.cm-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-size: 12px;
+  color: white;
+  letter-spacing: -0.01em;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+.cm-avatar.cm-av-asst { background: linear-gradient(135deg, #a78bfa, #6366f1); }
+.cm-avatar.cm-av-c { background: linear-gradient(135deg, #fbbf24, #d97706); }
+.cm-avatar.cm-av-g { background: linear-gradient(135deg, #34d399, #059669); }
+.cm-avatar.cm-av-s { background: linear-gradient(135deg, #f87171, #b91c1c); }
+.cm-avatar.cm-av-k { background: linear-gradient(135deg, #60a5fa, #1d4ed8); }
+.cm-avatar.cm-av-sm { width: 20px; height: 20px; border-radius: 6px; font-size: 10px; }
+
+.cm-msg-body { min-width: 0; }
+
+.cm-msg-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.cm-msg-head .cm-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cm-fg-0);
+}
+.cm-msg-head .cm-model {
+  font-size: 10px;
+  color: var(--cm-fg-3);
+  padding: 2px 7px;
+  border-radius: 99px;
+  border: 1px solid var(--cm-line-2);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.cm-msg-head .cm-model .cm-tag {
+  color: var(--cm-accent);
+  margin-right: 4px;
+}
+.cm-msg-head .cm-time {
+  font-size: 11px;
+  color: var(--cm-fg-3);
+  font-variant-numeric: tabular-nums;
+}
+.cm-msg-head .cm-spacer { flex: 1; }
+
+/* ----------------------------- tool call card (mock SoT) ----------------- */
+/* Sprint Z.2: switched from Claude.ai flush-inline style to the mock-SoT
+ * card layout. Mock anatomy (end-state-01-azure-subs-rgs.html §108-129):
+ *   .tool { background: var(--cm-bg-1); border: 1px solid var(--cm-line-1);
+ *           border-left: 3px solid var(--cm-cloud); border-radius: var(--radius-md); }
+ * The running shimmer, per-cloud data-tool-cat borders (§1448-1452), and
+ * result-preview classes (§1454-1468) are preserved / extended. */
+
+.cm-tool {
+  background: var(--cm-bg-1);
+  border: 1px solid var(--cm-line-1);
+  border-left: 3px solid var(--cm-cloud);
+  border-radius: var(--cm-radius-md);
+  margin: 10px 0;
+  overflow: hidden;
+  position: relative;
+}
+.cm-tool.cm-running::before {
+  content: '';
+  position: absolute;
+  inset: -2px 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(74, 222, 128, 0.06) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: cm-shimmer 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.cm-tool .cm-t-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 12px;
+  color: var(--cm-fg-2);
+}
+.cm-tool .cm-t-head:hover { color: var(--cm-fg-0); background: rgba(255,255,255,0.02); }
+.cm-tool[aria-expanded='true'] .cm-t-head { color: var(--cm-fg-0); }
+.cm-tool .cm-t-ico {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--cm-bg-2);
+  display: grid;
+  place-items: center;
+  color: var(--cm-cloud);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.cm-tool .cm-t-name {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--cm-fg-0);
+  font-weight: 500;
+}
+.cm-tool .cm-t-status { font-size: 11px; color: var(--cm-fg-3); }
+.cm-tool .cm-t-status.cm-ok { color: var(--cm-ok); }
+.cm-tool .cm-t-status.cm-err { color: var(--cm-err); }
+.cm-tool .cm-t-timer {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--cm-fg-3);
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.cm-tool .cm-t-chev {
+  color: var(--cm-fg-3);
+  transition: transform 0.2s;
+}
+.cm-tool[aria-expanded='true'] .cm-t-chev { transform: rotate(90deg); }
+.cm-tool .cm-t-body { display: none; padding: 0; }
+.cm-tool[aria-expanded='true'] .cm-t-body { display: block; }
+.cm-tool .cm-t-section {
+  padding: 10px 12px;
+  border-top: 1px solid var(--cm-line-1);
+}
+.cm-tool .cm-t-section + .cm-t-section { margin-top: 0; }
+.cm-tool .cm-t-section .cm-t-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--cm-fg-3);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.cm-tool pre.cm-json {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--cm-bg-0);
+  border: 1px solid var(--cm-line-1);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--cm-fg-1);
+  overflow-x: auto;
+  max-height: 220px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.cm-json .cm-k { color: #93c5fd; }
+.cm-json .cm-s { color: #86efac; }
+.cm-json .cm-n { color: #fcd34d; }
+.cm-json .cm-b { color: #f0abfc; }
+.cm-json .cm-c { color: var(--cm-fg-3); font-style: italic; }
+.cm-json .cm-null { color: var(--cm-fg-3); }
+
+/* ----------------------------- sub-agent card ----------------------------- */
+
+.cm-subagent {
+  border: 1px solid var(--cm-line-1);
+  border-left: 3px solid var(--cm-agent-c);
+  background: var(--cm-bg-1);
+  border-radius: 10px;
+  margin: 6px 0;
+  overflow: hidden;
+}
+.cm-subagent.cm-agent-c { border-left-color: var(--cm-agent-c); }
+.cm-subagent.cm-agent-g { border-left-color: var(--cm-agent-g); }
+.cm-subagent.cm-agent-s { border-left-color: var(--cm-agent-s); }
+.cm-subagent.cm-agent-k { border-left-color: var(--cm-agent-k); }
+
+.cm-sa-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--cm-line-1);
+}
+.cm-sa-head .cm-name { font-weight: 600; color: var(--cm-fg-0); font-size: 13px; }
+.cm-sa-head .cm-role { font-size: 11px; color: var(--cm-fg-3); }
+.cm-sa-head .cm-stats {
+  margin-left: auto;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--cm-fg-3);
+  display: flex;
+  gap: 10px;
+}
+.cm-sa-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.cm-sa-return {
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.20);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #6ee7b7;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cm-sa-return strong { color: #34d399; font-weight: 600; }
+/* Phase 16 — long sub-agent outputs clamp to a scrollable box so the
+ * card stays compact in the transcript. */
+.cm-sa-return .cm-sa-return-body {
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Phase 12 — sub-agent enrichment (running indicator, tools-used, error, description). */
+.cm-sa-description {
+  font-size: 12px;
+  color: var(--cm-fg-2);
+  line-height: 1.5;
+  font-style: italic;
+}
+.cm-sa-running {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 3px 9px;
+  border-radius: 99px;
+  border: 1px solid var(--cm-accent-line);
+  background: var(--cm-accent-soft);
+  color: var(--cm-accent);
+  font-size: 11px;
+}
+.cm-sa-running .cm-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cm-accent);
+  animation: cm-pulse 1.4s ease-in-out infinite;
+}
+.cm-sa-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+}
+.cm-sa-tools .cm-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--cm-fg-3);
+  font-weight: 600;
+  margin-right: 2px;
+}
+.cm-sa-tool {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 99px;
+  border: 1px solid var(--cm-line-2);
+  background: var(--cm-bg-1);
+  color: var(--cm-fg-1);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.cm-sa-error {
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #fca5a5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cm-sa-error strong { color: #f87171; font-weight: 600; }
+
+/* ----------------------------- stages strip ------------------------------- */
+
+.cm-stages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0;
+  font-size: 11px;
+}
+.cm-stage {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 99px;
+  border: 1px solid var(--cm-line-2);
+  color: var(--cm-fg-2);
+  background: var(--cm-bg-1);
+}
+.cm-stage.cm-active {
+  border-color: var(--cm-accent-line);
+  color: var(--cm-accent);
+  background: var(--cm-accent-soft);
+}
+.cm-stage.cm-done {
+  border-color: rgba(34, 197, 94, 0.25);
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.06);
+}
+.cm-stage .cm-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ----------------------------- topbar crumbs ----------------------------- */
+/* Phase 1 universal-anatomy parity — mock 01:144 .crumbs anatomy. */
+
+.cm-crumbs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--cm-fg-3);
+}
+.cm-crumbs .cm-crumb {
+  color: var(--cm-fg-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.cm-crumbs .cm-crumb.cm-active {
+  color: var(--cm-fg-0);
+  font-weight: 500;
+}
+.cm-crumbs .cm-sep {
+  color: var(--cm-fg-3);
+  opacity: 0.6;
+}
+
+/* ----------------------------- topbar tools pill ------------------------- */
+/* mock 10:205 .tools-pill anatomy + mock 01:146-152 chip variant. */
+
+.cm-tools-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--cm-line-2);
+  background: var(--cm-bg-1);
+  font-size: 11px;
+  color: var(--cm-fg-2);
+  white-space: nowrap;
+}
+.cm-tools-pill .cm-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cm-ok, #22c55e);
+}
+.cm-tools-pill .cm-tools-pill-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.cm-tools-pill .cm-sep {
+  color: var(--cm-fg-3);
+  opacity: 0.7;
+}
+
+/* ----------------------------- annotated code -------------------------- */
+/* Phase 24 — mocks 03, 07. Pre-tokenized lines with cm-ann marker. */
+
+pre.cm-code {
+  display: block;
+  margin: 8px 0;
+  padding: 12px 0;
+  background: var(--cm-bg-0);
+  border: 1px solid var(--cm-line-1);
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--cm-fg-1);
+  overflow-x: auto;
+}
+pre.cm-code .cm-ln {
+  display: block;
+  padding: 0 14px;
+  white-space: pre;
+}
+pre.cm-code .cm-ln.cm-ann {
+  background: rgba(245, 158, 11, 0.10);
+  border-left: 2px solid #fbbf24;
+  padding-left: 12px;
+}
+
+/* ----------------------------- stack grid ------------------------------ */
+/* Phase 23 — mock 09 tech-stack grid. */
+
+.cm-stack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin: 8px 0;
+}
+.cm-stack-grid .cm-s {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--cm-line-2);
+  border-radius: 8px;
+  background: var(--cm-bg-1);
+}
+.cm-stack-grid .cm-s .cm-role {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--cm-fg-3);
+}
+.cm-stack-grid .cm-s .cm-t {
+  font-size: 13px;
+  color: var(--cm-fg-0);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.cm-stack-grid .cm-s .cm-meta {
+  font-size: 11px;
+  color: var(--cm-fg-3);
+  line-height: 1.4;
+}
+
+/* ----------------------------- wave timeline --------------------------- */
+/* Phase 22 — mocks 06, 08 horizontal wave/phase timeline. */
+
+.cm-wave-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--cm-line-2);
+  border-radius: 10px;
+  background: var(--cm-bg-1);
+}
+.cm-wt-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--cm-line-1);
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+.cm-wt-hdr .cm-wt-ico { color: var(--cm-accent); }
+.cm-wt-hdr .cm-wt-title { color: var(--cm-fg-0); font-weight: 600; }
+.cm-wt-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+.cm-wt-row .cm-tag {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-weight: 600;
+  color: var(--cm-fg-1);
+}
+.cm-wt-row .cm-tag .cm-dates {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--cm-fg-3);
+}
+.cm-wt-bar {
+  position: relative;
+  height: 24px;
+  background: var(--cm-bg-2);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.cm-seg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--cm-fg-0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-radius: 4px;
+}
+.cm-seg.cm-tone-a { background: linear-gradient(135deg, rgba(139, 92, 246, .6), rgba(99, 102, 241, .55)); }
+.cm-seg.cm-tone-b { background: linear-gradient(135deg, rgba(16, 185, 129, .6), rgba(34, 197, 94, .55)); }
+.cm-seg.cm-tone-c { background: linear-gradient(135deg, rgba(245, 158, 11, .6), rgba(217, 119, 6, .55)); }
+.cm-seg.cm-tone-d { background: linear-gradient(135deg, rgba(239, 68, 68, .6), rgba(185, 28, 28, .55)); }
+.cm-seg.cm-tone-e { background: linear-gradient(135deg, rgba(56, 189, 248, .6), rgba(29, 78, 216, .55)); }
+.cm-seg.cm-tone-f { background: linear-gradient(135deg, rgba(236, 72, 153, .6), rgba(147, 51, 234, .55)); }
+
+/* ----------------------------- runbook ---------------------------------- */
+/* Phase 21 — mocks 04, 05, 08 ordered step list. */
+
+.cm-runbook {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+  border: 1px solid var(--cm-line-2);
+  border-radius: 10px;
+  background: var(--cm-bg-1);
+  padding: 10px 14px;
+}
+.cm-rb-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--cm-line-1);
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.cm-rb-hdr .cm-rb-ico { color: var(--cm-accent); flex-shrink: 0; }
+.cm-rb-hdr .cm-rb-title {
+  font-weight: 600;
+  color: var(--cm-fg-0);
+  flex: 1;
+}
+.cm-rb-hdr .cm-rb-budget {
+  margin-left: auto;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--cm-fg-3);
+}
+.cm-rb-step {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  gap: 12px;
+  align-items: start;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--cm-line-1);
+  font-size: 12px;
+}
+.cm-rb-step:last-child { border-bottom: 0; }
+.cm-rb-step .cm-n {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cm-fg-3);
+  text-align: right;
+  padding-top: 2px;
+}
+.cm-rb-step.cm-sev-warn .cm-n { color: #fbbf24; }
+.cm-rb-step.cm-sev-err  .cm-n { color: #f87171; }
+.cm-rb-step.cm-sev-ok   .cm-n { color: #4ade80; }
+.cm-rb-step .cm-t {
+  color: var(--cm-fg-1);
+  line-height: 1.55;
+  min-width: 0;
+}
+.cm-rb-step .cm-t strong {
+  color: var(--cm-fg-0);
+  font-weight: 600;
+  margin-right: 2px;
+}
+.cm-rb-step .cm-t code {
+  background: var(--cm-bg-2);
+  border: 1px solid var(--cm-line-1);
+  border-radius: 3px;
+  padding: 0 5px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--cm-fg-1);
+}
+.cm-rb-step .cm-owner {
+  display: block;
+  margin-top: 3px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--cm-fg-3);
+}
+.cm-rb-step .cm-dur {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--cm-fg-3);
+  white-space: nowrap;
+  padding-top: 2px;
+}
+
+/* ----------------------------- artifact pane (split-pane viewer) -------- */
+/* Phase 20 — mocks 02, 03, 06, 07, 08, 09 right-side artifact panel. */
+
+.cm-artifact-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--cm-bg-1);
+  border-left: 1px solid var(--cm-line-1);
+  animation: cm-slideInRight 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes cm-slideInRight {
+  from { transform: translateX(8px); opacity: 0; }
+  to   { transform: translateX(0);   opacity: 1; }
+}
+
+.cm-art-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--cm-line-1);
+  font-size: 12px;
+  flex-shrink: 0;
+  background: var(--cm-bg-1);
+}
+.cm-art-head .cm-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--cm-accent-soft);
+  color: var(--cm-accent);
+  border: 1px solid var(--cm-accent-line);
+}
+.cm-art-head .cm-title {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--cm-fg-0);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+.cm-art-head .cm-meta {
+  font-size: 11px;
+  color: var(--cm-fg-3);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.cm-art-head .cm-spacer { flex: 1; }
+.cm-art-head .cm-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 0;
+  background: transparent;
+  color: var(--cm-fg-2);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+.cm-art-head .cm-action:hover {
+  background: var(--cm-bg-2);
+  color: var(--cm-fg-0);
+}
+
+.cm-art-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--cm-line-1);
+  background: var(--cm-bg-0);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+.cm-art-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--cm-fg-2);
+  font-size: 12px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 120ms, border-color 120ms, background 120ms;
+}
+.cm-art-tab:hover { color: var(--cm-fg-0); }
+.cm-art-tab.cm-active {
+  color: var(--cm-fg-0);
+  border-bottom-color: var(--cm-accent);
+  background: var(--cm-bg-1);
+}
+
+.cm-art-body {
+  flex: 1;
+  overflow: auto;
+  padding: 20px 24px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--cm-fg-1);
+}
+.cm-art-body h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--cm-fg-0);
+  margin: 0 0 4px;
+  letter-spacing: -0.02em;
+}
+.cm-art-body h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--cm-fg-0);
+  margin: 18px 0 6px;
+}
+.cm-art-body .art-sub {
+  font-size: 12px;
+  color: var(--cm-fg-3);
+  margin-bottom: 24px;
+}
+
+/* ----------------------------- pass chip -------------------------------- */
+/* Phase 17 — mock 04 sub-agent multi-pass indicator. */
+
+.cm-pass-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: var(--cm-bg-3);
+  color: var(--cm-fg-2);
+}
+.cm-pass-chip.cm-pass-2 { background: rgba(245, 158, 11, 0.16); color: #fcd34d; }
+.cm-pass-chip.cm-pass-3 { background: rgba(249, 115, 22, 0.18); color: #fb923c; }
+.cm-pass-chip.cm-pass-4,
+.cm-pass-chip.cm-pass-5,
+.cm-pass-chip.cm-pass-6,
+.cm-pass-chip.cm-pass-7,
+.cm-pass-chip.cm-pass-8,
+.cm-pass-chip.cm-pass-9 { background: rgba(239, 68, 68, 0.18); color: #fca5a5; }
+
+/* ----------------------------- correction card -------------------------- */
+/* Phase 15 — mocks 04, 05, 06 self-correction strip. */
+
+.cm-correction-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.06);
+  margin: 6px 0;
+}
+.cm-correction-card.cm-resolved {
+  opacity: 0.55;
+}
+.cm-correction-card .cm-ico {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  color: #fbbf24;
+  margin-top: 1px;
+}
+.cm-correction-card .cm-cc-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.cm-correction-card .cm-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cm-fg-0);
+}
+.cm-correction-card .cm-sub {
+  font-size: 12px;
+  color: var(--cm-fg-2);
+  line-height: 1.5;
+}
+
+/* ----------------------------- findings list ---------------------------- */
+/* Phase 14 — mocks 03, 07, 08, 09 numbered finding cards with severity. */
+
+.cm-findings {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+.cm-finding {
+  border: 1px solid var(--cm-line-2);
+  border-left: 3px solid var(--cm-line-3);
+  border-radius: 8px;
+  background: var(--cm-bg-1);
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cm-finding.cm-sev-critical { border-left-color: #ef4444; }
+.cm-finding.cm-sev-high     { border-left-color: #f97316; }
+.cm-finding.cm-sev-med      { border-left-color: #f59e0b; }
+.cm-finding.cm-sev-low      { border-left-color: #fbbf24; }
+.cm-finding.cm-sev-info     { border-left-color: #38bdf8; }
+.cm-finding.cm-sev-ok       { border-left-color: #22c55e; }
+
+.cm-f-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.cm-f-head .cm-ord {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--cm-bg-3);
+  color: var(--cm-fg-2);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+}
+.cm-f-head .cm-title {
+  flex: 1;
+  color: var(--cm-fg-0);
+  font-weight: 500;
+}
+.cm-f-head .cm-sev {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+  border: 1px solid;
+}
+.cm-finding.cm-sev-critical .cm-f-head .cm-sev { color: #f87171; background: rgba(239,68,68,.10); border-color: rgba(239,68,68,.28); }
+.cm-finding.cm-sev-high     .cm-f-head .cm-sev { color: #fb923c; background: rgba(249,115,22,.10); border-color: rgba(249,115,22,.28); }
+.cm-finding.cm-sev-med      .cm-f-head .cm-sev { color: #fbbf24; background: rgba(245,158,11,.10); border-color: rgba(245,158,11,.28); }
+.cm-finding.cm-sev-low      .cm-f-head .cm-sev { color: #fcd34d; background: rgba(251,191,36,.08); border-color: rgba(251,191,36,.24); }
+.cm-finding.cm-sev-info     .cm-f-head .cm-sev { color: #7dd3fc; background: rgba(56,189,248,.08); border-color: rgba(56,189,248,.24); }
+.cm-finding.cm-sev-ok       .cm-f-head .cm-sev { color: #4ade80; background: rgba(34,197,94,.08); border-color: rgba(34,197,94,.24); }
+
+.cm-f-body {
+  font-size: 12px;
+  color: var(--cm-fg-2);
+  line-height: 1.5;
+  padding-left: 26px;
+}
+.cm-f-body code {
+  background: var(--cm-bg-2);
+  border: 1px solid var(--cm-line-1);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--cm-fg-1);
+}
+
+/* ----------------------------- agent tree (sidebar hierarchy) ----------- */
+/* Phase 10 — mock 04:~830 cm-agent-tree anatomy. Multi-agent hierarchy with
+ * orchestrator at root + sub-agents indented. */
+
+.cm-agent-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.cm-agent-tree .cm-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: var(--cm-fg-1);
+}
+.cm-agent-tree .cm-node:hover {
+  background: var(--cm-bg-2);
+}
+.cm-agent-tree .cm-node.cm-sub {
+  padding-left: 22px;
+}
+.cm-agent-tree .cm-node.cm-sub::before {
+  content: '';
+  width: 8px;
+  height: 1px;
+  background: var(--cm-line-2);
+  margin-right: -4px;
+}
+.cm-agent-tree .cm-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cm-agent-tree .cm-dot.cm-av-asst { background: linear-gradient(135deg, #a78bfa, #6366f1); }
+.cm-agent-tree .cm-dot.cm-av-c { background: #f59e0b; }
+.cm-agent-tree .cm-dot.cm-av-g { background: #10b981; }
+.cm-agent-tree .cm-dot.cm-av-s { background: #ef4444; }
+.cm-agent-tree .cm-dot.cm-av-k { background: #3b82f6; }
+.cm-agent-tree .cm-dot.cm-av-n { background: #94a3b8; }
+.cm-agent-tree .cm-dot.cm-av-p { background: #ec4899; }
+.cm-agent-tree .cm-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--cm-fg-1);
+}
+.cm-agent-tree .cm-count {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--cm-fg-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----------------------------- citation chip (inline) ------------------- */
+/* Phase 4 — mock 01:1139 inline citation chip. Replaces `[cite:N]` markers
+ * via the remarkCiteMarker plugin. Keeps rehype-sanitize happy by routing
+ * through mdast `data.hName` annotation. */
+
+sup.cm-citation {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin: 0 2px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: super;
+  background: var(--cm-accent-soft, rgba(139, 92, 246, 0.14));
+  border: 1px solid var(--cm-accent-line, rgba(139, 92, 246, 0.32));
+  color: var(--cm-accent, #b9a8ff);
+  cursor: help;
+  text-decoration: none;
+}
+
+/* ----------------------------- tool array (chip row) -------------------- */
+/* Phase 2 — mock 10:227-241 inline tool-loadout chip row. Sits above the
+ * assistant prose; one chip per tool with tier badge + count optional. */
+
+.cm-tool-array {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 8px;
+  font-size: 11px;
+}
+.cm-tool-array .cm-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--cm-fg-3);
+  font-weight: 600;
+  margin-right: 2px;
+}
+.cm-tool-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  border: 1px solid var(--cm-line-2);
+  background: var(--cm-bg-1);
+  color: var(--cm-fg-2);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.cm-tool-chip .cm-tier {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--cm-bg-3);
+  color: var(--cm-fg-2);
+}
+.cm-tool-chip.cm-tier-1 .cm-tier { background: rgba(148, 163, 184, 0.18); color: #cbd5e1; }
+.cm-tool-chip.cm-tier-2 .cm-tier { background: rgba(124, 92, 255, 0.18); color: #b9a8ff; }
+.cm-tool-chip.cm-tier-3 .cm-tier { background: rgba(34, 197, 94, 0.18); color: #86efac; }
+.cm-tool-chip .cm-name {
+  color: var(--cm-fg-1);
+}
+.cm-tool-chip .cm-count {
+  color: var(--cm-fg-3);
+  font-size: 10px;
+  padding-left: 4px;
+  border-left: 1px solid var(--cm-line-1);
+}
+
+/* ----------------------------- topbar cost pill --------------------------- */
+
+.cm-cost-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--cm-line-2, rgba(255, 255, 255, 0.10));
+  background: rgba(139, 92, 246, 0.05);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--cm-fg-1, #d4d4d8);
+  font-variant-numeric: tabular-nums;
+}
+.cm-cost-pill .cm-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cm-accent, #8b5cf6);
+}
+.cm-cost-pill.cm-live .cm-dot {
+  animation: cm-pulse 1.4s ease-in-out infinite;
+}
+.cm-cost-pill .cm-amount {
+  font-variant-numeric: tabular-nums;
+}
+.cm-cost-pill .cm-delta {
+  margin-left: 2px;
+  font-size: 10px;
+  color: var(--cm-ok, #22c55e);
+  animation: cm-deltaFlash 2.4s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes cm-deltaFlash {
+  0% { opacity: 0; transform: translateY(4px); }
+  10% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; transform: translateY(-2px); }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
+.cm-cost-pill.cm-done .cm-dot {
+  background: var(--cm-ok, #22c55e);
+  animation: none;
+}
+
+/* ----------------------------- handoff pill ------------------------------- */
+
+.cm-handoff {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--cm-accent-line);
+  background: var(--cm-accent-soft);
+  color: var(--cm-accent);
+  font-size: 11px;
+  margin: 4px 0;
+}
+.cm-handoff .cm-from { color: var(--cm-fg-3); text-decoration: line-through; opacity: 0.7; }
+.cm-handoff .cm-arrow { color: var(--cm-fg-3); }
+.cm-handoff .cm-to { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+/* ---------------------------- tier badge (Phase 5b #460) ----------------- */
+
+.cm-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  margin-left: 6px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--cm-accent-line, rgba(255, 255, 255, 0.1));
+  background: var(--cm-accent-soft, rgba(124, 92, 255, 0.08));
+  color: var(--cm-fg-2, rgba(255, 255, 255, 0.7));
+  cursor: help;
+  user-select: none;
+}
+.cm-tier-badge.cm-tier-1 {
+  border-color: rgba(148, 163, 184, 0.35);
+  background: rgba(148, 163, 184, 0.10);
+  color: var(--cm-fg-2, rgba(148, 163, 184, 1));
+}
+.cm-tier-badge.cm-tier-2 {
+  border-color: rgba(124, 92, 255, 0.45);
+  background: rgba(124, 92, 255, 0.14);
+  color: var(--cm-accent, #b9a8ff);
+}
+.cm-tier-badge.cm-tier-3 {
+  border-color: rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.14);
+  color: #86efac;
+}
+
+/* --------------------------- handoff chip (Phase 5b #460) ---------------- */
+
+.cm-handoff-chip {
+  display: flex;
+  margin: 8px 0 0 0;
+}
+.cm-handoff-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  border: 1px solid var(--cm-accent-line, rgba(124, 92, 255, 0.35));
+  background: var(--cm-accent-soft, rgba(124, 92, 255, 0.10));
+  color: var(--cm-fg-1, rgba(255, 255, 255, 0.85));
+  font-size: 12px;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 80ms ease;
+}
+.cm-handoff-chip-btn:hover:not(:disabled) {
+  background: var(--cm-accent-soft-hover, rgba(124, 92, 255, 0.18));
+  border-color: var(--cm-accent, rgba(124, 92, 255, 0.7));
+}
+.cm-handoff-chip-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.cm-handoff-chip-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.cm-handoff-chip-arrow {
+  font-size: 13px;
+  color: var(--cm-accent, #b9a8ff);
+}
+.cm-handoff-chip-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.cm-handoff-chip-model {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--cm-accent, #b9a8ff);
+  background: rgba(0, 0, 0, 0.18);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.cm-handoff-chip-generic {
+  font-style: italic;
+  color: var(--cm-fg-2, rgba(255, 255, 255, 0.7));
+}
+.cm-handoff-chip-tiers {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--cm-fg-3, rgba(255, 255, 255, 0.5));
+  padding-left: 6px;
+  border-left: 1px solid var(--cm-line, rgba(255, 255, 255, 0.08));
+}
+.cm-handoff-chip-arrow-sm {
+  margin: 0 2px;
+  color: var(--cm-fg-3, rgba(255, 255, 255, 0.4));
+}
+
+/* ----------------------------- animations --------------------------------- */
+
+@keyframes cm-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes cm-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.1); }
+}
+
+/* ============================ streaming-table (P1-6, mock 01:385-462) ===== */
+.streaming-table {
+  border: 1px solid var(--cm-line-2);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--cm-bg-1);
+  margin: 10px 0;
+}
+.streaming-table .tt-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--cm-bg-2);
+  border-bottom: 1px solid var(--cm-line-2);
+  font-size: 11px;
+  color: var(--cm-fg-2);
+}
+.streaming-table .tt-count {
+  margin-left: auto;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--cm-fg-3);
+  font-size: 11px;
+}
+.streaming-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.streaming-table thead th {
+  text-align: left;
+  padding: 7px 12px;
+  font-weight: 500;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--cm-fg-3);
+  background: var(--cm-bg-1);
+  border-bottom: 1px solid var(--cm-line-1);
+}
+.streaming-table tbody td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--cm-line-1);
+  color: var(--cm-fg-1);
+  font-variant-numeric: tabular-nums;
+}
+.streaming-table tbody tr:last-child td { border-bottom: 0; }
+/* P3 #940 (2026-05-18) — row-mount animation ripped during streaming.
+ * Was: every `tbody tr` ran cm-rowIn for 400ms with 80ms-per-position
+ * cascading nth-child delays. With index-based keys, each new row that
+ * arrived mid-stream pushed previous rows to new nth-child positions,
+ * re-firing the animation on every row → visible "glitching out"
+ * (verbatim user complaint).
+ *
+ * Now: animation is GONE during streaming. Rows append instantly with
+ * no transition. Hover/sort/filter interactivity is unchanged. If row
+ * entry animation is ever needed back, gate it on a `[data-first-paint]`
+ * attribute the component stamps on first mount and clears with rAF —
+ * but instant append matches Excel/Sheets behavior users actually want.
+ */
+.streaming-table .mono { color: var(--cm-fg-2); font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+.streaming-table .tnum { font-variant-numeric: tabular-nums; }
+.streaming-table td .sev {
+  display: inline-block;
+  width: 54px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  text-align: center;
+  font-weight: 500;
+}
+.streaming-table .sev.sev-ok { background: rgba(34, 197, 94, .10); color: #4ade80; border: 1px solid rgba(34, 197, 94, .25); }
+.streaming-table .sev.sev-warn { background: rgba(245, 158, 11, .10); color: #fbbf24; border: 1px solid rgba(245, 158, 11, .28); }
+.streaming-table .sev.sev-err { background: rgba(239, 68, 68, .10); color: #f87171; border: 1px solid rgba(239, 68, 68, .28); }
+@keyframes cm-rowIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================ mock-07 fidelity polish ===================== *
+ * Tri-cloud cost spikes layer (mocks/UX/AI/Chatmode/end-state-07-…).
+ * Layer adds (a) cloud-badge pill, (b) sub-agent rail, (c) tool-card
+ * cost-summary preview + per-category left-border classes, (d) streaming-
+ * table sticky thead + filter pill + max-height scroll + sortable arrows +
+ * threshold colors. All colors via tokens — no hardcoded literals.
+ * ========================================================================= */
+
+/* (a) CloudBadge pill — mock-07 lines 111-113. */
+.cm-cloud-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  line-height: 1.4;
+  font-weight: 500;
+  border: 1px solid var(--cm-line-2);
+}
+.cm-cloud-badge[data-cloud='aws'] {
+  background: var(--cm-fs-soft);
+  color: var(--cm-fs);
+  border-color: var(--cm-fs-line);
+}
+.cm-cloud-badge[data-cloud='azure'] {
+  background: var(--cm-cloud-soft);
+  color: var(--cm-cloud);
+  border-color: var(--cm-cloud-line);
+}
+.cm-cloud-badge[data-cloud='gcp'] {
+  background: var(--cm-k8s-soft);
+  color: var(--cm-k8s);
+  border-color: var(--cm-k8s-line);
+}
+
+/* (b) Sub-agent .sa-rail — mock-07 line 94. The expanded sub-agent body
+ *     wraps its nested tool cards in a left-railed container so the
+ *     sub-agent's children read as a unit, not loose siblings. */
+.cm-sa-rail {
+  border-left: 1.5px solid var(--cm-accent-line);
+  padding-left: 12px;
+  margin: 8px 0 4px 4px;
+}
+/* Mock-07 line 81 — soft gradient on the header so the band reads as a
+ * single "stage" boundary. We add a default if no provider-specific
+ * accent override is present. The existing .cm-sa-head selector already
+ * declares a background; we deepen it with the gradient via attribute
+ * selector so we don't fight the existing tokens. */
+.cm-subagent .cm-sa-head {
+  background: linear-gradient(180deg, var(--cm-accent-soft), transparent);
+}
+
+/* (c) ToolCard result-preview (mock-07 lines 77-79, 190, 201, 212) +
+ *     per-category left-border accent. */
+.cm-tool[data-tool-cat='azure'] { border-left: 3px solid var(--cm-cloud); padding-left: 8px; }
+.cm-tool[data-tool-cat='k8s']   { border-left: 3px solid var(--cm-k8s);   padding-left: 8px; }
+.cm-tool[data-tool-cat='aws']   { border-left: 3px solid var(--cm-fs);    padding-left: 8px; }
+.cm-tool[data-tool-cat='gcp']   { border-left: 3px solid var(--cm-k8s);   padding-left: 8px; }
+.cm-tool[data-tool-cat='default'] { border-left: 3px solid var(--cm-accent); padding-left: 8px; }
+
+.cm-tool .cm-result-preview {
+  font-size: 12px;
+  color: var(--cm-fg-2);
+}
+.cm-tool .cm-result-preview .cm-summary {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 4px 0 2px;
+}
+.cm-tool .cm-result-preview .cm-summary span b {
+  color: var(--cm-fg-0);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* (d) StreamingTable extensions — sticky thead, sortable arrows, max-height
+ *     scroll wrap, filter pill, threshold cell colors. The base
+ *     .streaming-table block above stays untouched; this adds the mock-07
+ *     surface area on top. */
+.streaming-table .st-wrap {
+  max-height: 360px;
+  overflow: auto;
+}
+.streaming-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.streaming-table thead th.cm-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.streaming-table thead th .cm-arr {
+  color: var(--cm-fg-3);
+  font-size: 9px;
+  margin-left: 4px;
+}
+.streaming-table thead th.cm-sorted .cm-arr {
+  color: var(--cm-accent);
+}
+.streaming-table .tt-filter {
+  margin-left: auto;
+  padding: 3px 8px;
+  background: var(--cm-bg-2);
+  border: 1px solid var(--cm-line-2);
+  border-radius: 4px;
+  color: var(--cm-fg-2);
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.streaming-table .tt-filter:focus {
+  outline: 1px solid var(--cm-accent-line);
+  border-color: var(--cm-accent-line);
+}
+.streaming-table td.cm-red   { color: var(--cm-err); }
+.streaming-table td.cm-amber { color: var(--cm-warn); }
+.streaming-table td.cm-green { color: var(--cm-ok); }
+
+/* ============================ .cm-streaming-table alias (Sprint Z.3) ====== *
+ * Mock-07 (end-state-07-tri-cloud-cost-spikes.html §95-110) uses the
+ * .cm-streaming-table root class. StreamingTable.tsx now emits both
+ * class="streaming-table cm-streaming-table" so both namespaces apply.
+ * These rules mirror the mock spec exactly; the base .streaming-table block
+ * above is the living implementation — this block adds the cm- prefix alias
+ * for mock-parity. All colors via tokens, no hardcoded literals.
+ * ========================================================================== */
+.cm-streaming-table {
+  background: var(--cm-bg-1);
+  border: 1px solid var(--cm-line-1);
+  border-radius: var(--cm-radius-md);
+  margin: 12px 0;
+  overflow: hidden;
+}
+.cm-streaming-table .st-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--cm-line-1);
+  font-size: 11px;
+  color: var(--cm-fg-3);
+}
+.cm-streaming-table .st-head .label { text-transform: uppercase; letter-spacing: 0.08em; }
+.cm-streaming-table .st-head .count { color: var(--cm-fg-1); font-family: 'JetBrains Mono', monospace; }
+.cm-streaming-table .st-wrap {
+  max-height: 360px;
+  overflow: auto;
+}
+.cm-streaming-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.cm-streaming-table th {
+  position: sticky;
+  top: 0;
+  background: var(--cm-bg-2);
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 500;
+  color: var(--cm-fg-2);
+  border-bottom: 1px solid var(--cm-line-2);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.cm-streaming-table td {
+  padding: 7px 12px;
+  color: var(--cm-fg-1);
+  border-bottom: 1px solid var(--cm-line-1);
+  font-variant-numeric: tabular-nums;
+}
+.cm-streaming-table td.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: var(--cm-fg-0);
+}
+.cm-streaming-table td.num { text-align: right; font-family: 'JetBrains Mono', monospace; }
+.cm-streaming-table td.red  { color: var(--cm-err); }
+.cm-streaming-table td.amber { color: var(--cm-warn); }
+.cm-streaming-table td.green { color: var(--cm-ok); }
+.cm-streaming-table tbody tr:hover td { background: var(--cm-bg-2); }
+
+/* ============================ .viz / .viz-head wrapper (Sprint Z.5) ======= *
+ * Unified outer chrome for FrameRendererRegistry frames. Every registered
+ * renderer is wrapped in VizPanel which emits .viz > .viz-head + children.
+ * Mock SoT: end-state-07-tri-cloud-cost-spikes.html §114-121.
+ * ========================================================================== */
+.viz {
+  margin: 14px 0;
+  border: 1px solid var(--cm-line-1);
+  border-radius: var(--cm-radius-md);
+  background: var(--cm-bg-1);
+  overflow: hidden;
+}
+.viz-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--cm-line-1);
+  background: var(--cm-bg-1);
+}
+.viz-head .ico {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--cm-accent-soft);
+  display: grid;
+  place-items: center;
+  color: var(--cm-accent);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.viz-head .name {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--cm-fg-0);
+  font-weight: 500;
+}
+.viz-head .caption {
+  font-size: 11px;
+  color: var(--cm-fg-3);
+}
+.viz-head .badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--cm-accent-soft);
+  color: var(--cm-accent);
+  border: 1px solid var(--cm-accent-line);
+  margin-left: 4px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.viz-head .timer {
+  margin-left: auto;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--cm-fg-3);
+}
+.viz iframe {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: var(--cm-bg-1);
+}
+
+/* ============================ cloud badge chips (Sprint Z.4) =============== *
+ * Mock SoT: end-state-07-tri-cloud-cost-spikes.html §111-113.
+ * Three inline-block pills for aws/azure/gcp with the per-cloud token colors.
+ * All colors reference the established --cm-fs / --cm-cloud / --cm-k8s
+ * tokens and their rgba soft variants. No hardcoded hex.
+ * ========================================================================== */
+.badge-aws {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--cm-fs-soft);
+  color: var(--cm-fs);
+  border: 1px solid var(--cm-fs-line);
+}
+.badge-azure {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--cm-cloud-soft);
+  color: var(--cm-cloud);
+  border: 1px solid var(--cm-cloud-line);
+}
+.badge-gcp {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--cm-k8s-soft);
+  color: var(--cm-k8s);
+  border: 1px solid var(--cm-k8s-line);
+}

@@ -8,6 +8,7 @@ import { Plus, Edit, Trash2, Save, X, Search, Play, ChevronDown, ChevronRight } 
 import { AgentExecutionDashboard } from './AgentExecutionDashboard';
 import { AgentPlayground } from './AgentPlayground';
 import { SkillsMarketplaceView } from './SkillsMarketplaceView';
+import { SoTBanner, PageHeader } from '../../primitives-v2';
 
 interface ModelConfig {
   primaryModel?: string;
@@ -155,23 +156,36 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
   }, []);
 
   const fetchModels = useCallback(async () => {
+    // Pull ONLY models that have been EXPLICITLY added to the Model Registry
+    // (admin → Models page). Per project policy: provider-create stores creds;
+    // discovery feeds the Add-Model picker; agent configs must NEVER list
+    // discovered-but-unregistered models. SoT = ModelRoleAssignment table,
+    // exposed via /api/admin/llm-providers/registry.
+    //
+    // role=chat is the right scope here — agents pick a chat-capable model
+    // for their primary + fallback slots. enabledOnly defaults to true on the
+    // server side so disabled-but-registered rows are also filtered out.
     try {
-      const response = await fetch('/api/admin/llm-providers', { credentials: 'include' });
+      const response = await fetch('/api/admin/llm-providers/registry?role=chat', { credentials: 'include' });
       if (!response.ok) return;
-      const data = await response.json();
-      const models: AvailableModel[] = [];
-      for (const provider of (data.providers || [])) {
-        if (!provider.enabled) continue;
-        for (const model of (provider.models || [])) {
-          models.push({
-            id: model.id || model.name,
-            name: model.name || model.id,
-            provider: provider.displayName || provider.name,
-            capabilities: model.capabilities,
-            maxTokens: model.maxTokens,
-          });
-        }
-      }
+      const rows = await response.json() as Array<{
+        id: string;
+        model: string;
+        provider: string;
+        provider_display_name?: string;
+        provider_enabled?: boolean;
+        capabilities?: Record<string, unknown>;
+        max_tokens?: number | null;
+      }>;
+      const models: AvailableModel[] = rows
+        .filter(r => r.provider_enabled !== false) // hide rows whose provider is disabled
+        .map(r => ({
+          id: r.model,
+          name: r.model,
+          provider: r.provider_display_name ?? r.provider,
+          capabilities: r.capabilities as any,
+          maxTokens: r.max_tokens ?? undefined,
+        }));
       setAvailableModels(models);
     } catch { /* non-critical */ }
   }, []);
@@ -187,7 +201,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
 
   const fetchPromptModules = useCallback(async () => {
     try {
-      const response = await fetch('/api/admin/prompt-modules', { credentials: 'include' });
+      const response = await fetch('/api/admin/prompts/modules', { credentials: 'include' });
       if (!response.ok) return;
       const data = await response.json();
       setAvailableModules(data.modules || []);
@@ -431,7 +445,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                 <div className="text-xs space-y-0.5" style={{ color: 'var(--text-secondary)' }}>
                   <div>
                     <span style={{ color: 'var(--text-tertiary)' }}>Primary:</span>{' '}
-                    {agent.model_config?.primaryModel || 'auto (slider)'}
+                    {agent.model_config?.primaryModel || 'auto (TFC)'}
                     {agent.model_config?.temperature != null && <> &nbsp;<span style={{ color: 'var(--text-tertiary)' }}>Temp:</span> {agent.model_config.temperature}</>}
                     {agent.model_config?.maxTokens && <> &nbsp;<span style={{ color: 'var(--text-tertiary)' }}>Max:</span> {agent.model_config.maxTokens.toLocaleString()}</>}
                   </div>
@@ -567,15 +581,16 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
 
   return (
     <div className="h-full flex flex-col overflow-hidden" style={{ maxWidth: '100%' }}>
-      {/* Sticky Page Header */}
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Agents', 'Registry']}
+        title="Agent Registry"
+        explainer={`${agents.length} agents — ${platformAgents.length} platform — ${backgroundAgents.length} background — ${availableModels.length} models`}
+      />
+
+      {/* Sticky toolbar — tab switcher + new-agent button below the page header */}
       <div className="flex flex-wrap items-center gap-3 px-7 py-4" style={{ borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--color-bg, var(--color-surface))' }}>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>Agent Registry</h1>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-            {agents.length} agents &mdash; {platformAgents.length} platform &mdash; {backgroundAgents.length} background &mdash; {availableModels.length} models
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
           <div className="inline-flex rounded-lg p-0.5 gap-0.5" style={{ backgroundColor: 'var(--color-surface)' }}>
             {(['registry', 'skills', 'playground', 'observability'] as const).map(tab => (
               <button
@@ -583,7 +598,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                 onClick={() => setActiveTab(tab)}
                 className="px-3.5 py-1.5 text-xs font-semibold rounded-md transition-colors capitalize"
                 style={activeTab === tab
-                  ? { backgroundColor: 'var(--color-accent, var(--color-primary))', color: '#fff' }
+                  ? { backgroundColor: 'var(--color-accent, var(--color-primary))', color: 'var(--ap-fg-0)' }
                   : { color: 'var(--text-tertiary)' }
                 }
               >{tab}</button>
@@ -599,7 +614,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
               max_spawn_depth: 3, max_children: 5,
             })}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all hover:brightness-110"
-            style={{ backgroundColor: 'var(--color-accent, var(--color-primary))', color: '#fff' }}
+            style={{ backgroundColor: 'var(--color-accent, var(--color-primary))', color: 'var(--ap-fg-0)' }}
           >
             <Plus size={12} /> New Agent
           </button>
@@ -612,6 +627,11 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
           <button onClick={() => setError(null)} className="ml-2 hover:opacity-70">dismiss</button>
         </div>
       )}
+
+      {/* Mission Control · SoT enforcement banner */}
+      <div className="px-7 pt-3">
+        <SoTBanner context="Agents resolve their model through tier (not literal model name) — tier composition lives in the registry. Removing a model from a tier rolls forward agents that depended on it to next-best in that tier." />
+      </div>
 
       {/* Search */}
       <div className="px-7 py-3">
@@ -775,7 +795,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--color-text-primary)' }}>
-                      Primary Model <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 'normal' }}>(blank = slider)</span>
+                      Primary Model <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 'normal' }}>(blank = TFC auto-pick)</span>
                     </label>
                     <select
                       value={editingAgent.model_config?.primaryModel || ''}
@@ -787,7 +807,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                         color: 'var(--color-text-primary)',
                       }}
                     >
-                      <option value="">Auto (slider-based)</option>
+                      <option value="">Auto (TFC-routed)</option>
                       {availableModels.map(m => (
                         <option key={m.id} value={m.id}>{m.name} ({m.provider})</option>
                       ))}
@@ -1047,7 +1067,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                         onClick={() => setEditingAgent({ ...editingAgent, prompt_strategy: strategy })}
                         className="px-3 py-1 text-xs rounded-md transition-colors capitalize"
                         style={(editingAgent.prompt_strategy || 'composite') === strategy
-                          ? { backgroundColor: 'var(--color-accent, var(--color-accent-primary))', color: '#fff' }
+                          ? { backgroundColor: 'var(--color-accent, var(--color-accent-primary))', color: 'var(--ap-fg-0)' }
                           : { color: 'var(--color-text-secondary)' }
                         }
                       >{strategy === 'composite' ? 'Composable' : 'Custom'}</button>
@@ -1113,7 +1133,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                               border: '1px solid color-mix(in srgb, var(--color-warning) 15%, transparent)',
                               color: 'var(--color-text-secondary)',
                             }}>
-                              No prompt modules loaded. Ensure the API endpoint <code style={{ color: 'var(--color-text-primary)' }}>/api/admin/prompt-modules</code> is available.
+                              No prompt modules loaded. Ensure the API endpoint <code style={{ color: 'var(--color-text-primary)' }}>/api/admin/prompts/modules</code> is available.
                             </div>
                           )}
                           {Object.entries(grouped).map(([category, modules]) => {

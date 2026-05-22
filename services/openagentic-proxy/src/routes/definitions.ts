@@ -2,8 +2,19 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import axios from 'axios';
 import { authMiddleware } from '../middleware/auth';
 import { logger } from '../utils/logger';
+import { applyDeferAgentsGate } from './definitionsGate';
 
-// Built-in agent definitions (fallback when DB is unreachable)
+// Built-in agent definitions (FALLBACK ONLY when api `/api/admin/agents/db`
+// is unreachable). Option B (2026-05-13): the canonical SoT is now
+// `prisma.agent`. The api boot path seeds the 8 markdown built-ins into
+// that table via `14-agent-md-to-db-seeder.ts`. This in-memory list is
+// retained for graceful degradation when the api is briefly unreachable
+// (e.g. rolling restart) — UI agent pickers stay populated instead of
+// going blank. Once we ship inter-service liveness probes, this list
+// can be ripped entirely (no consumer relies on it independently — every
+// surface that reads this endpoint also reads `dbAgents` from
+// `/api/admin/agents/db`, and DB entries win the merge).
+//
 // model: 'auto' → SmartModelRouter selects based on intelligence slider + available providers
 const BUILTIN_AGENTS = [
   { id: 'research', name: 'Research Agent', role: 'reasoning', model: 'auto', tools: ['web_search', 'web_fetch'], category: 'platform', icon: 'search', background: null },
@@ -65,16 +76,21 @@ async function getDBAgents(authHeader?: string): Promise<any[]> {
 
 export async function definitionRoutes(app: FastifyInstance): Promise<void> {
   // List all agent definitions (built-in + DB-backed)
+  //
+  // DEFER_AGENTS gating: when env is "true", we hide every specialized
+  // agent behind the `agent_search` synthetic meta-tool. The model is
+  // forced to discover via Milvus search before dispatching via Task.
+  // Pure gating logic lives in `./definitionsGate` so it stays tested
+  // under node:test without dragging in pino/auth.
   app.get('/api/agents/definitions', {
     preHandler: authMiddleware,
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const dbAgents = await getDBAgents(request.headers.authorization);
-    // Merge: DB agents override built-in if same id
-    const dbIds = new Set(dbAgents.map(a => a.id));
-    const merged = [
-      ...BUILTIN_AGENTS.filter(a => !dbIds.has(a.id)),
-      ...dbAgents,
-    ];
+    const merged = applyDeferAgentsGate(
+      BUILTIN_AGENTS,
+      dbAgents,
+      process.env.DEFER_AGENTS,
+    );
     return reply.send({ agents: merged });
   });
 

@@ -57,14 +57,41 @@ export class MCPSyncService {
   }
 
   /**
-   * Gets MCP Proxy servers
+   * Gets the list of MCP servers actually loaded by mcp-proxy.
+   * Fetches GET ${MCP_PROXY_URL}/servers — same endpoint ChatMCPService
+   * uses (see routes/chat/services/ChatMCPService.ts:74).
+   *
+   * Returns whatever mcp-proxy reports — internal pod-hosted servers
+   * (kubernetes-mcp, github-mcp, etc) plus any user-connected remotes.
+   * Empty array on failure (caller falls back to DB list).
    */
   async getMCPProxyServers(): Promise<any[]> {
     try {
-      // Stub implementation - would query MCP Proxy
-      return [];
+      const url = process.env.MCP_PROXY_URL || 'http://mcp-proxy:8080';
+      const r = await fetch(`${url}/servers`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!r.ok) {
+        this.logger.warn({ status: r.status, url }, 'mcp-proxy /servers returned non-OK');
+        return [];
+      }
+      const data: any = await r.json();
+      // mcp-proxy actually returns an OBJECT keyed by server name, not an
+      // array — e.g. { openagentic_admin: {status, transport, pid, …}, openagentic_kubernetes: {…} }.
+      // Normalize all three shapes (object / wrapped array / bare array).
+      let servers: any[] = []
+      if (Array.isArray(data?.servers)) servers = data.servers
+      else if (Array.isArray(data)) servers = data
+      else if (data && typeof data === 'object') {
+        servers = Object.entries(data).map(([name, cfg]: [string, any]) => ({
+          name,
+          ...cfg,
+        }))
+      }
+      return servers;
     } catch (error) {
-      this.logger.error({ error }, 'Failed to get MCP Proxy servers');
+      this.logger.error({ error: (error as Error)?.message }, 'Failed to get MCP Proxy servers');
       return [];
     }
   }

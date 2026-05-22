@@ -14,7 +14,28 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
-import type { NormalizedStreamEvent } from '../types/NormalizedStreamTypes';
+import type { NormalizedStreamEvent } from '../types/AnthropicStreamEvent';
+
+/**
+ * Slice G.3 / G.4 (2026-05-01) — `useCodeModeWebSocket` still emits the
+ * legacy `Normalized*` model-stream variants (thinking_*, tool_*, text_*)
+ * into this buffer because the codemode/openagentic WebSocket has its own
+ * stream contract. Migration is deferred to Slice G.4d. Until then the
+ * buffer accepts a wider type so the codemode emit sites stay typed
+ * without forcing a cast every call.
+ */
+type LegacyCodeModeStreamEvent =
+  | { type: 'thinking_start'; id: string }
+  | { type: 'thinking_delta'; id: string; content: string; accumulated: string }
+  | { type: 'thinking_stop'; id: string; elapsedMs: number }
+  | { type: 'tool_start'; id: string; toolName: string; serverName: string; agentId?: string }
+  | { type: 'tool_delta'; id: string; argsFragment: string }
+  | { type: 'tool_stop'; id: string; result: unknown; durationMs: number }
+  | { type: 'text_start'; id: string }
+  | { type: 'text_delta'; id: string; content: string }
+  | { type: 'text_stop'; id: string };
+
+export type CodeModeStreamEvent = NormalizedStreamEvent | LegacyCodeModeStreamEvent;
 
 // =============================================================================
 // Types
@@ -212,9 +233,9 @@ interface CodeModeState {
   // (not just alt-screen/clear/mouse-tracking setup escapes). TerminalPanel
   // flips this on when it observes any codepoint > 32 in the wasmTerm
   // buffer. The session-ready gate uses this as the FINAL green-light —
-  // pod up + code-server up + openagentic cli_ready events all fire long
-  // before Ink's first frame actually reaches the browser, and the user
-  // has been burned by the gate dismissing on backend signals only.
+  // pod up + openagentic cli_ready events all fire long before Ink's first
+  // frame actually reaches the browser, and the user has been burned by
+  // the gate dismissing on backend signals only.
   //
   // Reset on WS disconnect so every reconnect re-runs the validation.
   terminalContentReady: boolean;
@@ -240,7 +261,7 @@ interface CodeModeState {
   currentThinkingBlockId: string | null; // Track current thinking block to append to
 
   // Normalized stream events for UnifiedActivityTree
-  normalizedEvents: NormalizedStreamEvent[];
+  normalizedEvents: CodeModeStreamEvent[];
 
   // Agent tree state
   agentTree: AgentTreeNode[];
@@ -266,6 +287,19 @@ interface CodeModeState {
 
   // Interaction mode (Shift+Tab to cycle)
   interactionMode: 'normal' | 'plan' | 'yolo';
+
+  /**
+   * Codemode v2 backend selector fetched from `/api/openagentic/config`.
+   * `null` while the initial fetch is in flight so consumers can render
+   * a loading state instead of silently falling back to the default.
+   *
+   * v0.6.7: codemode is v2-only (chat-pipeline-direct →
+   * /api/code/v2/ws/chat). The legacy openagentic-cli backend was
+   * removed — see server.ts 4410 gate and #217. The store still
+   * tracks this field so `useCodeModeChat` can wait for the
+   * /api/openagentic/config fetch before opening the socket.
+   */
+  backend: 'chat-pipeline-direct' | null;
 
   // Terminal command bridge
   sendTerminalCommand: ((command: string) => void) | null;
@@ -306,6 +340,20 @@ interface CodeModeActions {
   appendToAssistantMessage: (text: string) => void;
   finalizeAssistantMessage: () => void;
   clearMessages: () => void;
+  /**
+   * Replace the entire conversation with a hydrated transcript.
+   *
+   * Used by session resume to restore prior turns from the API
+   * `/sessions/:id/resume` payload without flattening tool calls,
+   * thinking blocks, or other rich content into bare text. Each input
+   * row becomes one ConversationMessage with proper ContentBlocks so
+   * the UI renders the resumed session identically to a live one.
+   *
+   * Caller is responsible for converting the API row shape (PersistedMessage)
+   * to ConversationMessage; this action just bulk-sets the array and
+   * resets streaming-related transient state.
+   */
+  hydrateMessages: (messages: ConversationMessage[]) => void;
 
   // Tool steps
   addToolStep: (step: Omit<ToolStep, 'isCollapsed' | 'isStreaming'>) => void;
@@ -347,6 +395,14 @@ interface CodeModeActions {
   cycleInteractionMode: () => void;
   setInteractionMode: (mode: 'normal' | 'plan' | 'yolo') => void;
 
+  /**
+   * Update the cached codemode v2 backend selector. Called from
+   * `useCodeModeChat` once `/api/openagentic/config` resolves. Accepts
+   * `null` to reset back to the "loading" state if the backend needs
+   * to be re-fetched (e.g. admin flipped the toggle mid-session).
+   */
+  setBackend: (backend: 'chat-pipeline-direct' | null) => void;
+
   // Terminal command bridge — lets UI components send slash commands
   // (e.g. /model, /compact) to the openagentic CLI via the PTY WebSocket.
   // TerminalPanel registers its sender on mount; null when disconnected.
@@ -361,7 +417,7 @@ interface CodeModeActions {
   setForceTerminalRefit: (fn: (() => void) | null) => void;
 
   // Normalized events
-  pushNormalizedEvent: (event: NormalizedStreamEvent) => void;
+  pushNormalizedEvent: (event: CodeModeStreamEvent) => void;
   clearNormalizedEvents: () => void;
 
   // Reset
@@ -459,6 +515,9 @@ const initialState: CodeModeState = {
   // Interaction mode
   interactionMode: 'normal',
 
+  // Codemode v2 backend — null until /api/openagentic/config resolves.
+  backend: null,
+
   // Terminal command bridge
   sendTerminalCommand: null,
 
@@ -466,9 +525,16 @@ const initialState: CodeModeState = {
   forceTerminalRefit: null,
 };
 
-// Keys to persist
+// Keys to persist.
+//
+// `activeSessionId` is INTENTIONALLY OMITTED. Persisting it across page
+// reloads created a race: the UI's ws-chat would connect using the
+// stale stored id while the openagentic-manager would (re)spawn a pod
+// session under a NEW id, so model output streamed to a channel the UI
+// wasn't listening on. Symptom: assistant text never appears even
+// though Bedrock IS streaming deltas. Always derive the active session
+// fresh on Code-tab mount via auto-create or the Sessions sidebar.
 const PERSISTED_KEYS = [
-  'activeSessionId',
   'isCodeModeActive',
   'preferredModel',
   'defaultWorkspace',
@@ -969,6 +1035,26 @@ export const useCodeModeStore = create<CodeModeStore>()(
             'clearMessages'
           ),
 
+        hydrateMessages: (messages) =>
+          set(
+            {
+              // Replace transcript wholesale and reset all streaming-related
+              // transient state. After hydration the next live event from
+              // the WS will start a fresh streaming message on top.
+              messages,
+              streamingMessage: null,
+              streamingText: '',
+              streamingThinking: '',
+              currentSteps: [],
+              currentContentBlocks: [],
+              currentTextBlockId: null,
+              currentThinkingBlockId: null,
+              normalizedEvents: [],
+            },
+            false,
+            'hydrateMessages'
+          ),
+
         // ---------------------------------------------------------------------
         // Tool Steps
         // ---------------------------------------------------------------------
@@ -1300,6 +1386,12 @@ export const useCodeModeStore = create<CodeModeStore>()(
         setInteractionMode: (mode) =>
           set({ interactionMode: mode }, false, 'setInteractionMode'),
 
+        // Cache the backend identifier returned by /api/openagentic/config.
+        // Setter is idempotent — writing the same value is a no-op from
+        // the subscriber's perspective since zustand dedupes with ===.
+        setBackend: (backend) =>
+          set({ backend }, false, 'setBackend'),
+
         // ---------------------------------------------------------------------
         // Normalized Events (for UnifiedActivityTree)
         // ---------------------------------------------------------------------
@@ -1335,7 +1427,14 @@ export const useCodeModeStore = create<CodeModeStore>()(
           ),
       }),
       {
-        name: 'code-mode-store',
+        // Renamed from 'code-mode-store' on 2026-04-15 to invalidate
+        // every browser's stale `activeSessionId` (and other stale keys
+        // we no longer persist). Without a name change zustand's
+        // `partialize` only controls what's WRITTEN, not what's READ on
+        // hydrate — so old saved blobs were re-hydrating an
+        // activeSessionId that no longer matched any live exec-pod
+        // session, opening ws-chat to a dead channel.
+        name: 'code-mode-store-v2',
         partialize: (state) =>
           Object.fromEntries(
             PERSISTED_KEYS.map((key) => [key, state[key]])

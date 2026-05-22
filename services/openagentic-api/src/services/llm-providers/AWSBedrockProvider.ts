@@ -8,14 +8,27 @@ import {
   BedrockRuntimeClient,
   InvokeModelCommand,
   InvokeModelWithResponseStreamCommand,
+  ConverseCommand,
   ConverseStreamCommand,
+  type ConverseCommandInput,
   type ConverseStreamCommandInput,
   type ContentBlock,
   type Message as BedrockMessage,
   type Tool as BedrockTool,
   type ToolConfiguration
 } from '@aws-sdk/client-bedrock-runtime';
-import { BedrockClient, ListFoundationModelsCommand, GetFoundationModelCommand } from '@aws-sdk/client-bedrock';
+import {
+  BedrockClient,
+  ListFoundationModelsCommand,
+  GetFoundationModelCommand,
+  ListInferenceProfilesCommand,
+} from '@aws-sdk/client-bedrock';
+import {
+  bedrockSummaryToDiscoveredModel,
+  bedrockInferenceProfileToDiscoveredModel,
+  indexFoundationSummaries,
+} from './BedrockCapabilityInference.js';
+import { toConverseToolConfig } from './helpers/bedrockToolConverter.js';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import https from 'https';
 import type { Logger } from 'pino';
@@ -26,10 +39,31 @@ import {
   type CompletionResponse,
   type ProviderHealth,
   type DiscoveredModel,
-  type NormalizerState,
 } from './ILLMProvider.js';
-import { NormalizedStreamEvent } from '../NormalizedStreamTypes.js';
+import type { CanonicalStreamFormat } from '@agentic-work/llm-sdk/lib/normalizers/index.js';
+import { createGemmaToOpenagenticNormalizer } from '@agentic-work/llm-sdk/lib/normalizers/index.js';
 import { MODELS } from '../../config/models.js';
+import {
+  assumeRoleWithAADToken,
+  type AWSOIDCredentials,
+} from './AWSOIDCFederation.js';
+// Phase 0.4 — SDK adapter is SoT for Claude-on-Bedrock InvokeModel
+// wire shape. The Claude branches of the in-class `convertToBedrock`
+// route through this helper now; non-Claude branches (Llama/Nova/Titan)
+// still use the in-class converter (separate Phase 0.4 commit).
+import { buildBedrockClaudeBody } from './aws/buildBedrockClaudeBody.js';
+
+/**
+ * Per-call caller context used for user-scoped credential resolution.
+ * When `aadToken` is present, the provider swaps in OIDC-derived creds
+ * via AssumeRoleWithWebIdentity instead of the service's default chain.
+ */
+export interface BedrockCallerContext {
+  /** Azure AD ID token of the requesting user. */
+  aadToken?: string;
+  /** User identifier (email/upn) — drives STS RoleSessionName. */
+  userEmail?: string;
+}
 
 export interface BedrockConfig {
   region: string;
@@ -178,7 +212,35 @@ function flattenTopLevelUnions(raw: any): Record<string, any> {
 export class AWSBedrockProvider extends BaseLLMProvider {
   readonly name = 'AWS Bedrock';
   readonly type = 'aws-bedrock' as const;
-  readonly streamFormat = 'anthropic' as const; // Claude models use native Anthropic format
+  // D-1.3 — Bedrock is multi-mode. Claude models stream Anthropic Messages
+  // SSE under AWS event-stream framing (`'bedrock-anthropic'`); Nova/Titan
+  // use ConverseStream which has its own shape and is not yet wired to a
+  // dedicated SDK normalizer (a `'bedrock-converse'` discriminator is the
+  // D-2.7 follow-up). The static default reflects the dominant Claude path;
+  // `getStreamFormat(request)` below selects per-model.
+  readonly streamFormat = 'bedrock-anthropic' as const;
+
+  /**
+   * Per-request stream-format dispatch (D-1.3).
+   *
+   * Mirrors the runtime branch at AWSBedrockProvider.ts:932-944:
+   *   - `'anthropic.claude'` model id → `'bedrock-anthropic'`
+   *     (InvokeModelWithResponseStream emitting Anthropic-shape SSE under
+   *     AWS event-stream framing — handled by createBedrockToOpenagenticNormalizer)
+   *   - non-Claude (Nova / Titan / Jurassic) → fallback to `'anthropic'`
+   *     until D-2.7 lands a `'bedrock-converse'` normalizer.
+   */
+  getStreamFormat(request: CompletionRequest): CanonicalStreamFormat {
+    const modelId = (request.model || '').toLowerCase();
+    if (modelId.includes('anthropic.claude')) {
+      return 'bedrock-anthropic';
+    }
+    // Nova / Titan / Jurassic via ConverseStream — wire-in deferred.
+    // Falling back to 'anthropic' keeps the type contract honest; the
+    // pipeline-side wire-in (D-3) will gate on the model id and skip
+    // SDK normalization for non-Claude until D-2.7.
+    return 'anthropic';
+  }
 
   private runtimeClient?: BedrockRuntimeClient;
   private bedrockClient?: BedrockClient;
@@ -193,6 +255,12 @@ export class AWSBedrockProvider extends BaseLLMProvider {
   private readonly initialRetryDelayMs: number;
   private readonly secondaryModel?: string;
 
+  // Short-lived LRU of user-scoped BedrockRuntimeClients keyed by AAD token
+  // hash. Reuses the same client for the lifetime of the assumed-role
+  // credentials, avoiding a new TLS handshake on every chat request.
+  private userRuntimeClients: Map<string, { client: BedrockRuntimeClient; expiresAt: number }> = new Map();
+  private static readonly USER_CLIENT_LRU_MAX = 64;
+
   constructor(logger: Logger) {
     super(logger, 'aws-bedrock');
     // Default retry configuration
@@ -200,6 +268,120 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     this.initialRetryDelayMs = 1000; // Start with 1 second
     // Secondary model from provider config (DB) or env var fallback
     this.secondaryModel = process.env.SECONDARY_MODEL || MODELS.default;
+  }
+
+  /**
+   * Resolve AWS credentials for a request.
+   *
+   * - If the caller supplied an AAD ID token, exchange it for short-lived
+   *   STS credentials via AssumeRoleWithWebIdentity and return those.
+   * - Otherwise return `null` — telling the call-site to use the existing
+   *   singleton runtime client (which is bootstrapped from static creds
+   *   or the default AWS credential chain at `initialize()` time).
+   *
+   * This is the seam the Python `_get_credentials_via_direct_oidc` helper
+   * sits in; keep the logic purely about credential resolution so the
+   * upstream caller can decide how to plumb the result into a client.
+   */
+  private async resolveCredentials(
+    callerContext?: BedrockCallerContext,
+  ): Promise<AWSOIDCredentials | null> {
+    if (!callerContext?.aadToken) {
+      return null;
+    }
+
+    try {
+      return await assumeRoleWithAADToken(callerContext.aadToken, {
+        userEmail: callerContext.userEmail,
+        region:
+          this.config?.region || process.env.AWS_REGION || 'us-east-1',
+      });
+    } catch (err) {
+      // Surface the failure with the same context the Python ref logs.
+      this.logger.error(
+        {
+          error: err instanceof Error ? err.message : String(err),
+          hasUserEmail: !!callerContext.userEmail,
+        },
+        '❌ [BEDROCK-OIDC] AssumeRoleWithWebIdentity failed — falling back to service creds',
+      );
+      throw err;
+    }
+  }
+
+  /**
+   * Return a BedrockRuntimeClient appropriate for the caller.
+   *
+   * - When `callerContext.aadToken` is present, build a fresh client
+   *   wired to the OIDC-derived credentials (and cache it briefly so
+   *   back-to-back calls from the same user reuse the same socket pool).
+   * - When no context is provided (service-init paths), return the
+   *   singleton `this.runtimeClient` that was built in `initialize()`.
+   */
+  private async getBedrockClient(
+    callerContext?: BedrockCallerContext,
+  ): Promise<BedrockRuntimeClient> {
+    if (!callerContext?.aadToken) {
+      if (!this.runtimeClient) {
+        throw new Error('AWS Bedrock provider not initialized');
+      }
+      return this.runtimeClient;
+    }
+
+    const creds = await this.resolveCredentials(callerContext);
+    if (!creds) {
+      // resolveCredentials returned null despite aadToken — shouldn't
+      // happen in practice, but fall back safely.
+      if (!this.runtimeClient) {
+        throw new Error('AWS Bedrock provider not initialized');
+      }
+      return this.runtimeClient;
+    }
+
+    // Short-lived per-user client cache keyed by token hash + user email
+    // to avoid building a new TLS-backed client per request.
+    const crypto = await import('crypto');
+    const cacheKey = crypto
+      .createHash('sha256')
+      .update(`${callerContext.aadToken}|${callerContext.userEmail || ''}`)
+      .digest('hex');
+    const cached = this.userRuntimeClients.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      // LRU: move to end
+      this.userRuntimeClients.delete(cacheKey);
+      this.userRuntimeClients.set(cacheKey, cached);
+      return cached.client;
+    }
+
+    const clientConfig: any = {
+      region: this.config?.region || process.env.AWS_REGION || 'us-east-1',
+      credentials: {
+        accessKeyId: creds.accessKeyId,
+        secretAccessKey: creds.secretAccessKey,
+        sessionToken: creds.sessionToken,
+      },
+    };
+    if (this.config?.endpoint) {
+      clientConfig.endpoint = this.config.endpoint;
+    }
+    const client = new BedrockRuntimeClient(clientConfig);
+
+    // Cache until 60s before cred expiration so the client is never
+    // served with near-expired creds.
+    const expiresAt = Math.max(
+      creds.expiration.getTime() - 60_000,
+      Date.now() + 60_000,
+    );
+    this.userRuntimeClients.set(cacheKey, { client, expiresAt });
+
+    // Evict oldest entries beyond the LRU budget.
+    while (this.userRuntimeClients.size > AWSBedrockProvider.USER_CLIENT_LRU_MAX) {
+      const firstKey = this.userRuntimeClients.keys().next().value;
+      if (firstKey === undefined) break;
+      this.userRuntimeClients.delete(firstKey);
+    }
+
+    return client;
   }
 
   /**
@@ -251,6 +433,17 @@ export class AWSBedrockProvider extends BaseLLMProvider {
    * If no mapping exists, returns the original model ID (may fail if Bedrock requires profile).
    */
   private toInferenceProfile(modelId: string): string {
+    // Defense-in-depth for #577. The primary guard lives at the top of
+    // createCompletion — this one catches any other call-site that grows a
+    // missing/empty modelId (e.g. a future secondary-model helper). Throwing
+    // a typed Error here keeps the "Cannot read properties of undefined
+    // (reading 'startsWith')" TypeError from ever leaking again.
+    if (typeof modelId !== 'string' || modelId.trim() === '') {
+      throw new Error(
+        'No Bedrock model configured: toInferenceProfile called without a model id.'
+      );
+    }
+
     // Already an inference profile? Validate the :0 suffix is correct.
     // If us.xxx:0 is passed but the MAP has us.xxx (no :0), strip it.
     // If us.xxx is passed but the MAP has us.xxx:0, add it.
@@ -471,15 +664,43 @@ export class AWSBedrockProvider extends BaseLLMProvider {
       throw new Error('AWS Bedrock provider not initialized');
     }
 
+    // Extract per-request caller context (AAD token / user email) so the
+    // STS::AssumeRoleWithWebIdentity path can run for user-scoped calls.
+    // The field is Bedrock-specific and threaded via a runtime-only cast
+    // to avoid widening the shared CompletionRequest interface for other
+    // providers. Upstream callers attach the field on the `request` object
+    // before invoking createCompletion. If unset, the per-site helpers
+    // fall through to the singleton client built in initialize().
+    const callerContext = (request as unknown as {
+      callerContext?: BedrockCallerContext;
+    }).callerContext;
+
     const startTime = Date.now();
 
     // Determine model from request or use default
-    const requestedModelId = request.model || process.env.AWS_BEDROCK_DEFAULT_MODEL || process.env.ECONOMICAL_MODEL;
+    const rawModelId = request.model || process.env.AWS_BEDROCK_DEFAULT_MODEL || process.env.ECONOMICAL_MODEL;
+    const requestedModelId = typeof rawModelId === 'string' ? rawModelId.trim() : '';
+
+    // #577 — fail loudly with actionable guidance when no model is configured.
+    // This used to crash inside toInferenceProfile as
+    // "Cannot read properties of undefined (reading 'startsWith')", which the
+    // wizard Test Connection UI then surfaced as an opaque TypeError. The
+    // live trigger is a freshly-added Bedrock provider with an empty Model
+    // Registry and no AWS_BEDROCK_DEFAULT_MODEL env — the right fix is a
+    // typed Error the UI can render as "Add a model first".
+    if (!requestedModelId) {
+      throw new Error(
+        'No Bedrock model configured for this request. Add a Bedrock model in ' +
+        'the Model Registry (Admin → LLM → Models → Add Model) and re-run the ' +
+        'Test Connection, or set AWS_BEDROCK_DEFAULT_MODEL for server-side fallback.'
+      );
+    }
+
     const requestedSecondaryModelId = this.config?.secondaryModel || this.secondaryModel;
 
     // CRITICAL: Convert model IDs to inference profiles for AWS Bedrock
     // AWS Bedrock now REQUIRES inference profiles for on-demand model invocation
-    const primaryModelId = this.toInferenceProfile(requestedModelId!);
+    const primaryModelId = this.toInferenceProfile(requestedModelId);
     const secondaryModelId = requestedSecondaryModelId ? this.toInferenceProfile(requestedSecondaryModelId) : undefined;
 
     this.logger.info({
@@ -510,16 +731,85 @@ export class AWSBedrockProvider extends BaseLLMProvider {
         }, '🔄 [BEDROCK] Falling back to secondary model after throttling');
       }
 
-      // Convert OpenAI-style messages to Bedrock format
-      const body = this.convertToBedrock(request, currentModelId);
+      // Body shape depends on whether we're going through InvokeModel
+      // (Claude only) or Converse (everyone else). convertToBedrock's
+      // non-Claude branches produce inputText / prompt / etc. shapes that
+      // Converse cannot consume — if we're heading to Converse, keep the
+      // raw OpenAI-shape request on the body so convertToConverseMessages
+      // can translate it uniformly. That's also how AWS itself positions
+      // the Converse API: "one API to interact with any Bedrock model."
+      const isClaudeModel = currentModelId.includes('anthropic.claude');
+      // Phase 0.4 (2026-05-12) — Claude branch routes through the SDK
+      // outbound adapter via buildBedrockClaudeBody. Wire-shape is
+      // byte-identical to Anthropic.com direct (proven by
+      // buildAnthropicWireBody.real round-trip), with Bedrock-specific
+      // anthropic_version + model-strip. The legacy convertToBedrock
+      // Claude branch stays in-class temporarily for non-Claude models
+      // (Llama/Nova/Titan have different wire shapes).
+      // Bedrock-Claude thinking support: Sonnet 4.x / Opus 4.x / Haiku 4.5
+      // accept the `thinking` field; older Claude 3.x do not. Inline name
+      // pattern instead of a separate method since the gate is simple.
+      //
+      // Operator off-switch (2026-05-12): `BEDROCK_EXTENDED_THINKING_ENABLED=false`
+      // disables thinking globally regardless of model. Helm-tunable; flips at
+      // pod restart. Use when thinking budget cost > value, or when temperature
+      // overrides are needed (Anthropic forbids non-1 temperature with thinking
+      // on, so disabling thinking is the only way to use 0.7 / 0.5 / etc).
+      // Per-message / per-model overrides are a follow-up if needed.
+      const extendedThinkingEnvEnabled =
+        process.env.BEDROCK_EXTENDED_THINKING_ENABLED !== 'false';
+      const supportsThinking =
+        extendedThinkingEnvEnabled && (
+          /claude-(opus|sonnet|haiku)-4-/.test(currentModelId.toLowerCase()) ||
+          currentModelId.toLowerCase().includes('claude-3-7-sonnet')
+        );
+      const thinkingBudget = supportsThinking
+        ? parseInt(process.env.BEDROCK_THINKING_BUDGET_TOKENS || '4096', 10)
+        : undefined;
+      // Sev-1 #794 (2026-05-13) — model's real output-token ceiling.
+      // The provider-config layer (ProviderManager.executeCompletion) has
+      // ALREADY substituted `modelConfig.maxTokens` (sourced from the
+      // ModelConfigurationService → registry row's `max_tokens` column OR
+      // the AWS_BEDROCK_MAX_TOKENS env var) into `request.max_tokens` when
+      // the caller omitted it (ProviderManager.ts:1349). When even that
+      // upstream substitution is undefined (early-boot paths, test harnesses,
+      // or fresh deploys without the env set), we fall back to the model-
+      // ID-derived ceiling so synth code-gen / compose_app gets the full
+      // 32K-128K window Bedrock-Claude actually supports — instead of the
+      // canonical-default 4096 trap.
+      const inferredCap = this.inferMaxOutputTokens(currentModelId);
+      const modelOutputCap = inferredCap > 0 ? inferredCap : undefined;
+      const claudeWireBody = isClaudeModel
+        ? buildBedrockClaudeBody(request, {
+            parallelOn: true, // Bedrock-Claude defaults to parallel-on
+            supportsThinking,
+            thinkingBudgetTokens: thinkingBudget,
+            modelOutputCap,
+          })
+        : undefined;
+      const body = isClaudeModel
+        ? claudeWireBody!
+        : {
+            // Drop system messages from the array — Converse takes them
+            // separately on the `system` field. Without this filter, a
+            // [{role:'system'}, {role:'user'}] input would be serialized
+            // with the system message first and AWS rejects with
+            // "conversation must start with a user message".
+            messages: request.messages.filter(m => m.role !== 'system'),
+            system: request.messages.filter(m => m.role === 'system').map(m => m.content).join('\n\n') || undefined,
+            tools: (request as any).tools,
+            temperature: request.temperature,
+            max_tokens: request.max_tokens,
+            top_p: request.top_p,
+          };
 
       // Retry loop with exponential backoff
       for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
         try {
           if (request.stream) {
-            return await this.streamCompletionWithRetry(currentModelId, body, startTime, attempt);
+            return await this.streamCompletionWithRetry(currentModelId, body, startTime, attempt, callerContext);
           } else {
-            return await this.nonStreamCompletion(currentModelId, body, startTime);
+            return await this.nonStreamCompletion(currentModelId, body, startTime, callerContext);
           }
         } catch (error: any) {
           lastError = error;
@@ -588,14 +878,29 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     modelId: string,
     body: any,
     startTime: number,
-    attempt: number
+    attempt: number,
+    callerContext?: BedrockCallerContext,
   ): Promise<AsyncGenerator<any>> {
     // For streaming, we need to handle throttling at the initial request level
     // The generator itself shouldn't need retry logic since throttling happens upfront
-    return this.streamCompletion(modelId, body, startTime);
+    return this.streamCompletion(modelId, body, startTime, callerContext);
   }
 
-  private async nonStreamCompletion(modelId: string, body: any, startTime: number): Promise<CompletionResponse> {
+  private async nonStreamCompletion(
+    modelId: string,
+    body: any,
+    startTime: number,
+    callerContext?: BedrockCallerContext,
+  ): Promise<CompletionResponse> {
+    // Non-Claude models on Bedrock (Nova, Llama, Nemotron, Mistral, etc.)
+    // reject InvokeModel with Anthropic-shaped bodies ("Failed to deserialize
+    // the JSON body"). Route them through Converse, same gate as
+    // streamCompletion() uses for the streaming path.
+    const isClaudeModel = modelId.includes('anthropic.claude');
+    if (!isClaudeModel) {
+      return this.nonStreamWithConverseAPI(modelId, body, startTime, callerContext);
+    }
+
     const command = new InvokeModelCommand({
       modelId,
       body: JSON.stringify(body),
@@ -603,7 +908,8 @@ export class AWSBedrockProvider extends BaseLLMProvider {
       accept: 'application/json'
     });
 
-    const response = await this.runtimeClient!.send(command);
+    const client = await this.getBedrockClient(callerContext);
+    const response = await client.send(command);
     const responseBody = JSON.parse(new TextDecoder().decode(response.body));
 
     const latency = Date.now() - startTime;
@@ -619,7 +925,99 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     return parsedResponse;
   }
 
-  private async *streamCompletion(modelId: string, body: any, startTime: number): AsyncGenerator<any> {
+  /**
+   * Non-streaming completion via Converse API. Mirrors streamWithConverseAPI
+   * for the non-stream case — Converse normalizes Nova/Llama/Nemotron/Mistral
+   * body shapes so one path handles every non-Claude Bedrock model.
+   */
+  private async nonStreamWithConverseAPI(
+    modelId: string,
+    body: any,
+    startTime: number,
+    callerContext?: BedrockCallerContext,
+  ): Promise<CompletionResponse> {
+    const converseInput: ConverseCommandInput = {
+      modelId,
+      messages: this.convertToConverseMessages(body.messages),
+      inferenceConfig: body.inferenceConfig || {
+        maxTokens: body.max_tokens || 4096,
+        temperature: body.temperature ?? 1,
+      },
+    };
+
+    if (body.system) {
+      converseInput.system = Array.isArray(body.system)
+        ? body.system
+        : [{ text: body.system }];
+    }
+    if (body.tools && body.tools.length > 0) {
+      converseInput.toolConfig = toConverseToolConfig(body.tools) as ConverseCommandInput['toolConfig'];
+    }
+
+    this.logger.info({ modelId }, '🔵 [CONVERSE-API] Non-stream request');
+    const command = new ConverseCommand(converseInput);
+    const client = await this.getBedrockClient(callerContext);
+    const response = await client.send(command);
+
+    const latency = Date.now() - startTime;
+    const msg = response.output?.message;
+    const content = msg?.content || [];
+    const textBlock = content.find((b: any) => typeof b.text === 'string');
+    const toolUseBlocks = content.filter((b: any) => b.toolUse);
+    // #647 — surface Converse reasoningContent blocks so V2/codemode can
+    // render Sonnet/Nova thinking. Concatenate when multiple blocks
+    // arrive in one response. Streaming path already emits these as
+    // thinking_delta (line ~1226); non-stream silently dropped them.
+    const reasoningText = content
+      .filter((b: any) => b.reasoningContent?.reasoningText?.text)
+      .map((b: any) => b.reasoningContent.reasoningText.text)
+      .join('');
+    const usage: any = response.usage || {};
+    const totalTokens = (usage.inputTokens || 0) + (usage.outputTokens || 0);
+    const cost = this.estimateCost(modelId, totalTokens);
+    this.trackSuccess(latency, totalTokens, cost);
+
+    const openAIShape: any = {
+      id: `bedrock-converse-${Date.now()}`,
+      object: 'chat.completion',
+      created: Math.floor(Date.now() / 1000),
+      model: modelId,
+      choices: [{
+        index: 0,
+        message: {
+          role: 'assistant',
+          content: textBlock?.text || '',
+          ...(reasoningText && { reasoning_content: reasoningText }),
+          ...(toolUseBlocks.length > 0 && {
+            tool_calls: toolUseBlocks.map((b: any) => ({
+              id: b.toolUse.toolUseId,
+              type: 'function',
+              function: {
+                name: b.toolUse.name,
+                arguments: JSON.stringify(b.toolUse.input || {}),
+              },
+            })),
+          }),
+        },
+        finish_reason: response.stopReason === 'tool_use' ? 'tool_calls'
+          : response.stopReason === 'max_tokens' ? 'length'
+          : 'stop',
+      }],
+      usage: {
+        prompt_tokens: usage.inputTokens || 0,
+        completion_tokens: usage.outputTokens || 0,
+        total_tokens: totalTokens,
+      },
+    };
+    return openAIShape;
+  }
+
+  private async *streamCompletion(
+    modelId: string,
+    body: any,
+    startTime: number,
+    callerContext?: BedrockCallerContext,
+  ): AsyncGenerator<any> {
     // Route to appropriate streaming API based on model:
     // - Claude models: InvokeModelWithResponseStream (native Anthropic format)
     // - Nova/Other models: ConverseStream (unified format, better streaming support)
@@ -628,7 +1026,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     if (!isClaudeModel) {
       // Use ConverseStream for non-Claude models (Nova, Titan, etc.)
       this.logger.info({ modelId }, '[AWSBedrockProvider] Using ConverseStream for non-Claude model');
-      yield* this.streamWithConverseAPI(modelId, body, startTime);
+      yield* this.streamWithConverseAPI(modelId, body, startTime, callerContext);
       return;
     }
 
@@ -641,7 +1039,8 @@ export class AWSBedrockProvider extends BaseLLMProvider {
       accept: 'application/json'
     });
 
-    const response = await this.runtimeClient!.send(command);
+    const client = await this.getBedrockClient(callerContext);
+    const response = await client.send(command);
 
     if (!response.body) {
       throw new Error('No response body from Bedrock streaming');
@@ -701,14 +1100,25 @@ export class AWSBedrockProvider extends BaseLLMProvider {
    * Stream completion using the Converse API for Claude models.
    * This API properly returns content_block events for interleaved thinking/text/tool_use.
    */
-  private async *streamWithConverseAPI(modelId: string, body: any, startTime: number): AsyncGenerator<any> {
+  private async *streamWithConverseAPI(
+    modelId: string,
+    body: any,
+    startTime: number,
+    callerContext?: BedrockCallerContext,
+  ): AsyncGenerator<any> {
     // Convert our internal format to Converse API format
     // Note: For Nova models, body may already have inferenceConfig from convertToBedrock
+    //
+    // Sev-1 #794 (2026-05-13) — fall through to the model's real output
+    // ceiling when neither caller nor provider config supplied max_tokens.
+    // Previously hardcoded to 32768; that ignored e.g. Nova Pro (5120)
+    // and Llama-3 (4096) which reject larger values, AND under-allocated
+    // for Claude-3.7 / 4.x which support 128K.
     const converseInput: ConverseStreamCommandInput = {
       modelId,
       messages: this.convertToConverseMessages(body.messages),
       inferenceConfig: body.inferenceConfig || {
-        maxTokens: body.max_tokens || 32768,
+        maxTokens: body.max_tokens || this.inferMaxOutputTokens(modelId),
         temperature: body.temperature ?? 1,
       },
     };
@@ -746,17 +1156,22 @@ export class AWSBedrockProvider extends BaseLLMProvider {
       }
     }
 
-    // Add tools if present
+    // Add tools if present. Centralized helper handles both Anthropic-flat
+    // and OpenAI-function formats. Tools without a resolvable name are
+    // dropped (regression: Smart Router null-name crash, 2026-04-23).
     if (body.tools && body.tools.length > 0) {
-      converseInput.toolConfig = {
-        tools: body.tools.map((tool: any) => ({
+      const converted = toConverseToolConfig(body.tools);
+      if (converted.tools.length > 0) {
+        // Re-apply flattenTopLevelUnions to each tool's inputSchema.json to
+        // preserve Bedrock's existing anyOf/oneOf normalization behavior.
+        converted.tools = converted.tools.map(t => ({
           toolSpec: {
-            name: tool.name,
-            description: tool.description || '',
-            inputSchema: { json: flattenTopLevelUnions(tool.input_schema || {}) }
-          }
-        }))
-      };
+            ...t.toolSpec,
+            inputSchema: { json: flattenTopLevelUnions(t.toolSpec.inputSchema.json) },
+          },
+        }));
+        converseInput.toolConfig = converted as ConverseStreamCommandInput['toolConfig'];
+      }
     }
 
     // Add thinking configuration if enabled
@@ -782,7 +1197,8 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     }, '🔵 [CONVERSE-API] Starting ConverseStream request');
 
     const command = new ConverseStreamCommand(converseInput);
-    const response = await this.runtimeClient!.send(command);
+    const client = await this.getBedrockClient(callerContext);
+    const response = await client.send(command);
 
     if (!response.stream) {
       throw new Error('No stream in Converse API response');
@@ -790,6 +1206,26 @@ export class AWSBedrockProvider extends BaseLLMProvider {
 
     let totalTokens = 0;
     let blockIndex = 0;
+
+    // Gemma 3 has no native tool_use blocks — it leaks `\`\`\`tool_calls`
+    // fenced blocks in the text stream. Route Bedrock-Gemma deltas through
+    // the SDK normalizer to recover canonical tool_use content_blocks.
+    // Verified against `google.gemma-3-27b-it` on chat-dev 2026-05-20.
+    const isGemmaModel =
+      modelId.includes('google.gemma') || /gemma-?3/i.test(modelId);
+    const gemmaNormalizer = isGemmaModel
+      ? createGemmaToOpenagenticNormalizer({
+          messageId: `bedrock-gemma-${Date.now()}`,
+          model: modelId,
+        })
+      : null;
+    let gemmaPromotedStopReason: string | null = null;
+    if (isGemmaModel) {
+      this.logger.info(
+        { modelId },
+        '[CONVERSE] Gemma detected — routing text deltas through GemmaToOpenagentic normalizer for inline tool_call extraction',
+      );
+    }
 
     // Emit message_start
     yield {
@@ -840,13 +1276,18 @@ export class AWSBedrockProvider extends BaseLLMProvider {
           };
           this.logger.debug({ index: blockIndex }, '[CONVERSE] thinking block start');
         } else {
-          // Default to text block
-          yield {
-            type: 'content_block_start',
-            index: blockIndex,
-            content_block: { type: 'text' }
-          };
-          this.logger.debug({ index: blockIndex }, '[CONVERSE] text block start');
+          // Default to text block. For Gemma we SUPPRESS this upstream
+          // emission because the normalizer creates its own content_block
+          // events at the right time (only after seeing real text outside
+          // a tool_call fence, with its own block-index management).
+          if (!gemmaNormalizer) {
+            yield {
+              type: 'content_block_start',
+              index: blockIndex,
+              content_block: { type: 'text' }
+            };
+            this.logger.debug({ index: blockIndex }, '[CONVERSE] text block start');
+          }
         }
       }
 
@@ -856,6 +1297,21 @@ export class AWSBedrockProvider extends BaseLLMProvider {
         const idx = delta.contentBlockIndex ?? blockIndex;
 
         if (delta.delta?.text) {
+          // Gemma branch — pipe text through normalizer, forward canonical
+          // events. Normalizer extracts fenced ```tool_calls blocks into
+          // tool_use content_blocks; plain text flows through as text_delta.
+          if (gemmaNormalizer) {
+            const events = gemmaNormalizer.consume({ textDelta: delta.delta.text });
+            for (const evt of events) {
+              if (evt.type === 'message_start' || evt.type === 'message_stop') continue;
+              if (evt.type === 'message_delta') {
+                gemmaPromotedStopReason = evt.delta.stop_reason;
+                continue;
+              }
+              yield evt;
+            }
+            continue;
+          }
           yield {
             type: 'content_block_delta',
             index: idx,
@@ -891,8 +1347,10 @@ export class AWSBedrockProvider extends BaseLLMProvider {
         }
       }
 
-      // Handle content block stop
-      if (event.contentBlockStop) {
+      // Handle content block stop. Suppressed for Gemma — the normalizer
+      // emits its own content_block_stop when the fenced block (or text
+      // segment) closes.
+      if (event.contentBlockStop && !gemmaNormalizer) {
         yield {
           type: 'content_block_stop',
           index: event.contentBlockStop.contentBlockIndex ?? blockIndex
@@ -902,7 +1360,24 @@ export class AWSBedrockProvider extends BaseLLMProvider {
 
       // Handle message stop with usage
       if (event.messageStop) {
-        const stopReason = event.messageStop.stopReason;
+        const rawStopReason = event.messageStop.stopReason;
+        // Gemma: finalize the normalizer, flush any pending block-stop,
+        // and use the promoted stop_reason if a tool_call was extracted
+        // (Bedrock reports "end_turn" but we promoted to "tool_use" so
+        // chatLoop dispatches correctly).
+        let stopReason: string | undefined = rawStopReason;
+        if (gemmaNormalizer) {
+          const finalEvents = gemmaNormalizer.finalize();
+          for (const evt of finalEvents) {
+            if (evt.type === 'message_start' || evt.type === 'message_stop') continue;
+            if (evt.type === 'message_delta') {
+              gemmaPromotedStopReason = evt.delta.stop_reason;
+              continue;
+            }
+            yield evt;
+          }
+          if (gemmaPromotedStopReason === 'tool_use') stopReason = 'tool_use';
+        }
         yield {
           id: `bedrock-converse-${Date.now()}`,
           object: 'chat.completion.chunk',
@@ -1488,6 +1963,18 @@ export class AWSBedrockProvider extends BaseLLMProvider {
 
         message.content = textContent || responseBody.completion || '';
 
+        // #647 — surface Anthropic-shape `thinking` blocks (Sonnet
+        // extended-thinking) so V2/codemode can render reasoning. The
+        // streaming Bedrock path already emits these as thinking_delta
+        // (line ~1009/1233); non-stream silently dropped them.
+        const reasoningContent = responseBody.content
+          .filter((block: any) => block.type === 'thinking' && typeof block.thinking === 'string')
+          .map((block: any) => block.thinking)
+          .join('');
+        if (reasoningContent) {
+          message.reasoning_content = reasoningContent;
+        }
+
         // Extract tool calls
         const toolUseBlocks = responseBody.content.filter((block: any) => block.type === 'tool_use');
         if (toolUseBlocks.length > 0) {
@@ -1984,9 +2471,114 @@ export class AWSBedrockProvider extends BaseLLMProvider {
   }
 
   /**
+   * #650 — Live provider-pulled model details. Used by the Add-Model
+   * route + daily refresh cron to populate every Registry column from
+   * the SDK rather than the request body or static defaults.
+   *
+   * Pipeline:
+   *   1. GetFoundationModel — modality + streaming + provider name
+   *   2. inferBedrockFamilyAndLimits — family + tools/thinking/limits
+   *      from the admin-editable table (SDK silent on these fields)
+   *   3. BedrockPricingFetcher — USD rates from @aws-sdk/client-pricing
+   *
+   * Test injects `bedrockClient` + `injectedPricingFetcher` so the
+   * suite runs offline; real SDK clients are integration-tested
+   * separately when AWS_PRICING_INTEGRATION=1.
+   */
+  async discoverModelDetails(
+    modelId: string,
+    region?: string,
+  ): Promise<import('./discovery/ModelDiscoveryRecord.js').ModelDiscoveryRecord | null> {
+    if (!this.initialized || !this.bedrockClient) {
+      throw new Error('[AWSBedrockProvider] not initialized');
+    }
+    const inferenceRegion = region ?? (this.config?.region as string | undefined) ?? 'us-east-1';
+
+    // 1. GetFoundationModel — capabilities source.
+    const baseModelId = modelId.replace(/^(us|eu|apac)\./, '');
+    const fmResp = await this.bedrockClient.send(
+      new GetFoundationModelCommand({ modelIdentifier: baseModelId }),
+    );
+    const details = fmResp.modelDetails;
+    if (!details) {
+      throw new Error(
+        `[AWSBedrockProvider] GetFoundationModel returned no details for ${modelId}`,
+      );
+    }
+
+    // 2. Family + table-driven flags (tools/thinking/limits — Bedrock SDK
+    //    does NOT return these; consult the admin-editable inference table).
+    const { inferBedrockFamilyAndLimits } = await import('./BedrockCapabilityInference.js');
+    const inferred = inferBedrockFamilyAndLimits(details);
+
+    // 3. Pricing — delegate to BedrockPricingFetcher (#342 already shipped).
+    //    Tests inject `injectedPricingFetcher` so the suite runs offline.
+    const fetcher =
+      (this as any).injectedPricingFetcher ??
+      (await import('../pricing/BedrockPricingFetcher.js').then(
+        (m) => new m.BedrockPricingFetcher(),
+      ));
+    // Mirror GoogleVertexProvider — degrade gracefully when pricing creds
+    // aren't available so capabilities + limits still populate. Live-verify
+    // on chat-dev surfaced this: Sonnet refresh returned 502 because the
+    // Pricing API client couldn't resolve AWS creds, even though the model
+    // exists and its limits ARE known from the family table.
+    let pricing: any = {
+      source: 'bedrock-pricing-sdk',
+      fetchedAt: new Date().toISOString(),
+    };
+    try {
+      pricing = await fetcher.fetch({ modelId, region: inferenceRegion });
+    } catch (err) {
+      this.logger.warn(
+        { modelId, err: (err as Error).message },
+        '[AWSBedrockProvider] pricing fetch failed — leaving null',
+      );
+    }
+
+    return {
+      modelId,
+      providerType: 'aws-bedrock',
+      displayName: details.modelName ?? modelId,
+      family: inferred.family,
+      capabilities: {
+        chat: !inferred.isEmbedding,
+        vision: (details.inputModalities ?? []).includes('IMAGE'),
+        tools: inferred.supportsTools,
+        thinking: inferred.supportsThinking,
+        embeddings: inferred.isEmbedding,
+        imageGeneration: (details.outputModalities ?? []).includes('IMAGE'),
+        streaming: !!details.responseStreamingSupported,
+        nativeToolCalling: inferred.nativeToolCalling,
+      },
+      contextWindow: inferred.contextWindow,
+      maxOutputTokens: inferred.maxOutputTokens,
+      thinkingBudget: inferred.thinkingBudget,
+      temperature: inferred.temperature,
+      topP: inferred.topP,
+      topK: inferred.topK,
+      pricing: {
+        inputTokenUsd: pricing.inputTokenUsd ?? null,
+        outputTokenUsd: pricing.outputTokenUsd ?? null,
+        cacheReadUsd: pricing.cacheReadUsd ?? null,
+        cacheWriteUsd: pricing.cacheWriteUsd ?? null,
+        thinkingTokenUsd: pricing.thinkingTokenUsd ?? null,
+        embeddingTokenUsd: pricing.embeddingTokenUsd ?? null,
+        perRequestUsd: pricing.imageGenPerRequestUsd ?? null,
+        source: pricing.source as any,
+        fetchedAt: pricing.fetchedAt,
+        region: inferenceRegion,
+      },
+    };
+  }
+
+  /**
    * Generate text embeddings using Amazon Titan Embedding models
    */
-  async embedText(text: string | string[]): Promise<number[] | number[][]> {
+  async embedText(
+    text: string | string[],
+    callerContext?: BedrockCallerContext,
+  ): Promise<number[] | number[][]> {
     if (!this.initialized || !this.runtimeClient) {
       throw new Error('AWS Bedrock provider not initialized');
     }
@@ -1997,6 +2589,9 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     }
     const texts = Array.isArray(text) ? text : [text];
     const embeddings: number[][] = [];
+
+    // Build client once per call so a token exchange is not repeated per chunk.
+    const client = await this.getBedrockClient(callerContext);
 
     for (const inputText of texts) {
       // Prepare request body for Titan embedding model
@@ -2014,7 +2609,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
       });
 
       try {
-        const response = await this.runtimeClient.send(command);
+        const response = await client.send(command);
         const responseBody = JSON.parse(new TextDecoder().decode(response.body));
 
         // Titan returns: { embedding: number[], inputTextTokenCount: number }
@@ -2107,82 +2702,82 @@ export class AWSBedrockProvider extends BaseLLMProvider {
         this.logger.info({ count: this.foundationModelCache.models.length }, '[AWSBedrockProvider] Fetched live foundation models from AWS');
       }
 
-      models = this.foundationModelCache.models
-        .filter((m: any) => {
-          // Only ON_DEMAND inference, exclude LEGACY
-          const inferenceTypes = m.inferenceTypesSupported || [];
-          if (!inferenceTypes.includes('ON_DEMAND')) return false;
-          if (m.modelLifecycle?.status === 'LEGACY') return false;
-          // Only include text-generating, embedding, and image models
-          const outputModalities = m.outputModalities || [];
-          if (!outputModalities.includes('TEXT') && !outputModalities.includes('EMBEDDING') && !outputModalities.includes('IMAGE')) return false;
-          return true;
-        })
-        .map((m: any): DiscoveredModel => {
-          const modelId = m.modelId || '';
-          const inputModalities = m.inputModalities || [];
-          const outputModalities = m.outputModalities || [];
-          const providerName = (m.providerName || '').toLowerCase();
+      // Foundation models eligible for discovery: keep ON_DEMAND + non-LEGACY,
+      // and surface chat/embedding/image-gen modalities. INFERENCE_PROFILE-only
+      // entries are surfaced below via the inference-profile merge.
+      const foundationModels: DiscoveredModel[] = [];
+      for (const m of this.foundationModelCache.models as any[]) {
+        const inferenceTypes = m.inferenceTypesSupported || [];
+        if (!inferenceTypes.includes('ON_DEMAND')) continue;
+        if (m.modelLifecycle?.status === 'LEGACY') continue;
+        const outputModalities = m.outputModalities || [];
+        if (
+          !outputModalities.includes('TEXT') &&
+          !outputModalities.includes('EMBEDDING') &&
+          !outputModalities.includes('IMAGE')
+        )
+          continue;
+        const discovered = bedrockSummaryToDiscoveredModel(m);
+        if (discovered) foundationModels.push(discovered);
+      }
+      models = foundationModels;
 
-          // Infer capabilities
-          const hasVision = inputModalities.includes('IMAGE');
-          const hasChat = outputModalities.includes('TEXT');
-          const hasEmbeddings = outputModalities.includes('EMBEDDING');
-          const hasImageGen = outputModalities.includes('IMAGE') && !inputModalities.includes('TEXT');
-          const hasStreaming = m.responseStreamingSupported !== false;
-
-          // Infer thinking from model ID (claude-4+ and claude-3.7+ support thinking)
-          const hasThinking = modelId.includes('claude-opus-4') || modelId.includes('claude-sonnet-4') ||
-                              modelId.includes('claude-haiku-4') || modelId.includes('claude-3-7');
-
-          // Infer tools support (Claude, Nova, Llama support tools)
-          const hasTools = providerName === 'anthropic' || modelId.includes('nova-pro') ||
-                          modelId.includes('nova-lite') || modelId.includes('nova-micro') ||
-                          modelId.includes('llama');
-
-          // Infer cost tier from provider
-          let costTier: DiscoveredModel['costTier'] = 'mid';
-          if (modelId.includes('opus')) costTier = 'premium';
-          else if (modelId.includes('haiku') || modelId.includes('micro') || modelId.includes('lite')) costTier = 'low';
-          else if (modelId.includes('sonnet') || modelId.includes('pro')) costTier = 'high';
-          else if (modelId.includes('nova-canvas') || modelId.includes('titan-embed')) costTier = 'low';
-
-          // Infer family
-          let family = providerName;
-          if (modelId.includes('claude-opus-4-6') || modelId.includes('claude-sonnet-4-6')) family = 'claude-4.6';
-          else if (modelId.includes('claude') && modelId.includes('4-5')) family = 'claude-4.5';
-          else if (modelId.includes('claude') && (modelId.includes('4-1') || modelId.includes('4-20'))) family = 'claude-4';
-          else if (modelId.includes('claude-3')) family = 'claude-3';
-          else if (modelId.includes('nova')) family = 'nova';
-          else if (modelId.includes('titan')) family = 'titan';
-          else if (modelId.includes('llama')) family = 'llama';
-          else if (modelId.includes('mistral')) family = 'mistral';
-
-          return {
-            id: modelId,
-            name: m.modelName || modelId,
-            provider: 'aws-bedrock',
-            description: `${m.providerName || 'Unknown'} — ${m.modelName || modelId}`,
-            family,
-            costTier,
-            capabilities: {
-              chat: hasChat && !hasEmbeddings,
-              vision: hasVision,
-              tools: hasTools,
-              thinking: hasThinking,
-              embeddings: hasEmbeddings,
-              imageGeneration: hasImageGen,
-              streaming: hasStreaming,
-            },
-            contextWindow: this.inferContextWindow(modelId),
-            maxOutputTokens: this.inferMaxOutputTokens(modelId),
-          };
-        });
-
-      this.logger.info({ discoveredCount: models.length }, '[AWSBedrockProvider] Live model discovery complete');
+      this.logger.info(
+        { discoveredCount: models.length },
+        '[AWSBedrockProvider] Live foundation-model discovery complete',
+      );
     } catch (err: any) {
-      this.logger.error({ error: err.message }, '[AWSBedrockProvider] Live discovery failed — returning empty list');
+      this.logger.error(
+        { error: err.message },
+        '[AWSBedrockProvider] Live foundation-model discovery failed',
+      );
       models = [];
+    }
+
+    // Sev-2 (2026-04-19): merge cross-region inference profiles so Claude 4.x
+    // and every other INFERENCE_PROFILE-only model appears in Add-Model.
+    // Capability inference comes from the underlying foundation model's API
+    // modality fields via BedrockCapabilityInference (no name matching).
+    try {
+      if (this.initialized && this.bedrockClient) {
+        const ancestorIndex = indexFoundationSummaries(
+          (this.foundationModelCache?.models || []) as any[],
+        );
+        const profileResp = await this.bedrockClient.send(
+          new ListInferenceProfilesCommand({ typeEquals: 'SYSTEM_DEFINED' }),
+        );
+        const profiles = profileResp.inferenceProfileSummaries || [];
+        const existingIds = new Set(models.map((m) => m.id));
+        let added = 0;
+        for (const p of profiles as any[]) {
+          const discovered = bedrockInferenceProfileToDiscoveredModel(
+            p,
+            ancestorIndex,
+          );
+          if (!discovered) continue;
+          if (existingIds.has(discovered.id)) continue;
+          models.push(discovered);
+          existingIds.add(discovered.id);
+          added += 1;
+        }
+        if (added > 0) {
+          this.logger.info(
+            {
+              profilesAdded: added,
+              totalAfterMerge: models.length,
+            },
+            '[AWSBedrockProvider] Merged inference profiles into discovery',
+          );
+        }
+      }
+    } catch (err: any) {
+      // Older deployments may lack bedrock:ListInferenceProfiles in the
+      // IAM policy. Don't fail the whole discovery — continue with
+      // whatever foundation models we already have.
+      this.logger.warn(
+        { error: err.message },
+        '[AWSBedrockProvider] Inference-profile discovery failed — continuing with foundation models only',
+      );
     }
 
     // Mark configured models
@@ -2239,16 +2834,14 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     };
   }
 
-  /** Normalize a raw Bedrock chunk into NormalizedStreamEvents. */
-  normalizeChunk(rawChunk: any, state: NormalizerState): NormalizedStreamEvent[] {
-    return normalizeBedrockChunk(rawChunk, state);
-  }
-
   /**
    * Generate an image using AWS Bedrock (Nova Canvas, Titan Image, Stability AI).
    * Request format auto-detected from model ID.
    */
-  async generateImage(request: import('./ILLMProvider.js').ImageGenerationRequest): Promise<import('./ILLMProvider.js').ImageGenerationResponse> {
+  async generateImage(
+    request: import('./ILLMProvider.js').ImageGenerationRequest,
+    callerContext?: BedrockCallerContext,
+  ): Promise<import('./ILLMProvider.js').ImageGenerationResponse> {
     if (!this.initialized || !this.runtimeClient) {
       throw new Error('[AWSBedrockProvider] Not initialized — cannot generate image');
     }
@@ -2290,7 +2883,8 @@ export class AWSBedrockProvider extends BaseLLMProvider {
       accept: 'application/json',
     });
 
-    const response = await this.runtimeClient.send(command);
+    const client = await this.getBedrockClient(callerContext);
+    const response = await client.send(command);
     const responseBody = JSON.parse(new TextDecoder().decode(response.body));
     const generationTimeMs = Date.now() - startTime;
 
@@ -2320,291 +2914,3 @@ export class AWSBedrockProvider extends BaseLLMProvider {
 // Exported normalizer — testable without instantiating the provider
 // ---------------------------------------------------------------------------
 
-/**
- * Normalizes a raw AWS Bedrock streaming chunk into NormalizedStreamEvent[].
- *
- * Handles two formats:
- *   Format A — Anthropic-style content_block events (Claude models via InvokeModelWithResponseStream)
- *   Format B — OpenAI-style choices[] events (non-Claude models via Converse API)
- */
-export function normalizeBedrockChunk(rawChunk: any, state: NormalizerState): NormalizedStreamEvent[] {
-  const events: NormalizedStreamEvent[] = [];
-
-  // Format A: Anthropic-style events have a `type` string field
-  if (typeof rawChunk.type === 'string') {
-    return normalizeBedrockAnthropicStyleChunk(rawChunk, state, events);
-  }
-
-  // Format B: OpenAI-style chunks have a `choices` array or `usage` object
-  return normalizeBedrockOpenAIStyleChunk(rawChunk, state, events);
-}
-
-/**
- * Handle Anthropic-style content_block events (Format A).
- * These come from the Claude path (InvokeModelWithResponseStream).
- * Mirrors the AnthropicProvider normalizer but with provider = 'aws-bedrock'.
- */
-function normalizeBedrockAnthropicStyleChunk(
-  rawChunk: any,
-  state: NormalizerState,
-  events: NormalizedStreamEvent[],
-): NormalizedStreamEvent[] {
-  const blockTypes = state.blockTypes;
-
-  switch (rawChunk.type) {
-    case 'message_start': {
-      const msg = rawChunk.message;
-      state.inputTokens = msg?.usage?.input_tokens || 0;
-      state.model = msg?.model || '';
-      state.streamStartEmitted = true;
-      events.push({
-        type: 'stream_start',
-        messageId: msg?.id || '',
-        model: state.model,
-        provider: 'aws-bedrock',
-      });
-      break;
-    }
-
-    case 'content_block_start': {
-      const block = rawChunk.content_block;
-      const index: number = rawChunk.index;
-      if (block?.type === 'thinking') {
-        const id = `tk-${index}`;
-        state.thinkingId = id;
-        state.thinkingStartTime = Date.now();
-        state.thinkingAccumulated = '';
-        blockTypes.set(index, { type: 'thinking', id });
-        events.push({ type: 'thinking_start', id });
-      } else if (block?.type === 'text') {
-        const id = `txt-${index}`;
-        state.textBlockId = id;
-        blockTypes.set(index, { type: 'text', id });
-        events.push({ type: 'text_start', id });
-      } else if (block?.type === 'tool_use') {
-        const id = block.id || `tool-${index}`;
-        blockTypes.set(index, { type: 'tool_use', id });
-        events.push({ type: 'tool_start', id, toolName: block.name || '', serverName: '' });
-      }
-      break;
-    }
-
-    case 'content_block_delta': {
-      const delta = rawChunk.delta;
-      const index: number = rawChunk.index;
-      const blockInfo = blockTypes.get(index);
-
-      if (delta?.type === 'thinking_delta') {
-        state.thinkingAccumulated += delta.thinking || '';
-        events.push({
-          type: 'thinking_delta',
-          id: blockInfo?.id || state.thinkingId || `tk-${index}`,
-          content: delta.thinking || '',
-          accumulated: state.thinkingAccumulated,
-        });
-      } else if (delta?.type === 'text_delta') {
-        events.push({
-          type: 'text_delta',
-          id: blockInfo?.id || state.textBlockId || `txt-${index}`,
-          content: delta.text || '',
-        });
-      } else if (delta?.type === 'input_json_delta') {
-        const toolId = blockInfo?.id || `tool-${index}`;
-        events.push({ type: 'tool_delta', id: toolId, argsFragment: delta.partial_json || '' });
-      } else if (delta?.type === 'signature_delta') {
-        events.push({
-          type: 'redacted_thinking',
-          id: state.thinkingId || `tk-${index}`,
-          signature: delta.signature,
-        });
-      }
-      break;
-    }
-
-    case 'content_block_stop': {
-      const index: number = rawChunk.index;
-      const blockInfo = blockTypes.get(index);
-      if (blockInfo?.type === 'thinking') {
-        const elapsed = state.thinkingStartTime ? Date.now() - state.thinkingStartTime : 0;
-        events.push({ type: 'thinking_stop', id: blockInfo.id, elapsedMs: elapsed });
-        state.thinkingId = null;
-        state.thinkingStartTime = null;
-        state.thinkingAccumulated = '';
-      } else if (blockInfo?.type === 'text') {
-        events.push({ type: 'text_stop', id: blockInfo.id });
-        state.textBlockId = null;
-      } else if (blockInfo?.type === 'tool_use') {
-        events.push({ type: 'tool_stop', id: blockInfo.id, result: null, durationMs: 0 });
-      }
-      blockTypes.delete(index);
-      break;
-    }
-
-    case 'message_delta': {
-      if (rawChunk.usage) {
-        const tokensOut = rawChunk.usage.output_tokens || 0;
-        events.push({
-          type: 'usage',
-          tokensIn: state.inputTokens,
-          tokensOut,
-          cost: 0,
-          contextUsed: 0,
-          contextMax: 0,
-        });
-      }
-      break;
-    }
-
-    case 'message_stop': {
-      events.push({ type: 'stream_end', finishReason: 'stop', totalDurationMs: 0 });
-      break;
-    }
-
-    default:
-      // Unknown event — return empty
-      break;
-  }
-
-  return events;
-}
-
-/**
- * Handle OpenAI-style chunks (Format B).
- * These come from the Converse API path (non-Claude models).
- * Emits a synthetic thinking block on the first chunk so every response
- * has a thinking node in the activity tree.
- */
-function normalizeBedrockOpenAIStyleChunk(
-  rawChunk: any,
-  state: NormalizerState,
-  events: NormalizedStreamEvent[],
-): NormalizedStreamEvent[] {
-  const pendingTools = state.pendingTools;
-
-  const choice = rawChunk.choices?.[0];
-
-  // Usage-only chunk (no choices)
-  if (!choice && rawChunk.usage) {
-    events.push({
-      type: 'usage',
-      tokensIn: rawChunk.usage.prompt_tokens || 0,
-      tokensOut: rawChunk.usage.completion_tokens || 0,
-      cost: 0,
-      contextUsed: 0,
-      contextMax: 0,
-    });
-    return events;
-  }
-
-  if (!choice) return events;
-
-  const delta = choice.delta;
-  if (!delta && !choice.finish_reason) return events;
-
-  // -----------------------------------------------------------------------
-  // First chunk — role === 'assistant': emit stream_start + synthetic thinking
-  // -----------------------------------------------------------------------
-  if (delta?.role === 'assistant' && !state.streamStartEmitted) {
-    state.streamStartEmitted = true;
-    state.model = rawChunk.model || '';
-    events.push({
-      type: 'stream_start',
-      messageId: rawChunk.id || '',
-      model: rawChunk.model || '',
-      provider: 'aws-bedrock',
-    });
-
-    // Emit synthetic thinking block (closed when real content arrives)
-    const thinkId = 'tk-synth-0';
-    state.thinkingId = thinkId;
-    state.thinkingStartTime = Date.now();
-    events.push({ type: 'thinking_start', id: thinkId });
-    events.push({ type: 'thinking_delta', id: thinkId, content: 'Processing', accumulated: 'Processing' });
-    return events;
-  }
-
-  // -----------------------------------------------------------------------
-  // Helper: close synthetic thinking if still active
-  // -----------------------------------------------------------------------
-  const closeSyntheticThinking = () => {
-    if (state.thinkingId) {
-      const elapsed = state.thinkingStartTime ? Date.now() - state.thinkingStartTime : 0;
-      events.push({ type: 'thinking_stop', id: state.thinkingId, elapsedMs: elapsed });
-      state.thinkingId = null;
-      state.thinkingStartTime = null;
-    }
-  };
-
-  // -----------------------------------------------------------------------
-  // Text content delta
-  // -----------------------------------------------------------------------
-  if (delta?.content) {
-    closeSyntheticThinking();
-    if (!state.textBlockId) {
-      state.textBlockId = 'txt-0';
-      events.push({ type: 'text_start', id: state.textBlockId });
-    }
-    events.push({ type: 'text_delta', id: state.textBlockId, content: delta.content });
-  }
-
-  // -----------------------------------------------------------------------
-  // Tool call deltas
-  // -----------------------------------------------------------------------
-  if (delta?.tool_calls) {
-    closeSyntheticThinking();
-    for (const tc of delta.tool_calls) {
-      if (tc.function?.name) {
-        const toolId = tc.id || `tool-${tc.index}`;
-        pendingTools.set(toolId, tc.function.name);
-        state.toolIndexToId.set(tc.index, toolId);
-        events.push({ type: 'tool_start', id: toolId, toolName: tc.function.name, serverName: '' });
-      }
-      if (tc.function?.arguments) {
-        const toolId = tc.id || state.toolIndexToId.get(tc.index) || `tool-${tc.index}`;
-        events.push({ type: 'tool_delta', id: toolId, argsFragment: tc.function.arguments });
-      }
-    }
-  }
-
-  // -----------------------------------------------------------------------
-  // Finish reason
-  // -----------------------------------------------------------------------
-  if (choice.finish_reason) {
-    if (choice.finish_reason === 'tool_calls') {
-      for (const [id] of pendingTools) {
-        events.push({ type: 'tool_stop', id, result: null, durationMs: 0 });
-      }
-      pendingTools.clear();
-    }
-
-    if (state.textBlockId) {
-      events.push({ type: 'text_stop', id: state.textBlockId });
-      state.textBlockId = null;
-    }
-
-    // Close any still-open synthetic thinking (e.g. response with no content)
-    closeSyntheticThinking();
-
-    events.push({
-      type: 'stream_end',
-      finishReason: choice.finish_reason === 'stop' ? 'stop' : choice.finish_reason,
-      totalDurationMs: 0,
-    });
-  }
-
-  // -----------------------------------------------------------------------
-  // Usage embedded in the same chunk
-  // -----------------------------------------------------------------------
-  if (rawChunk.usage) {
-    events.push({
-      type: 'usage',
-      tokensIn: rawChunk.usage.prompt_tokens || 0,
-      tokensOut: rawChunk.usage.completion_tokens || 0,
-      cost: 0,
-      contextUsed: 0,
-      contextMax: 0,
-    });
-  }
-
-  return events;
-}

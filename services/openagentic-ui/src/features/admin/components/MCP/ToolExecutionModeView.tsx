@@ -1,257 +1,222 @@
 /**
- * Tool Execution Mode View
+ * Tool Execution Mode — global read-only kill switch for MCP tools.
  *
- * Global read-only kill switch for MCP tools.
- * When enabled, all write operations (create, delete, update, restart, etc.) are blocked.
- * Read operations (list, get, describe, search) continue to work.
- * OAT (Tool Synthesis) is exempt -- it has its own HITL approval gate.
+ * Phase 1 admin-overhaul rewrite (§11.5 optimistic concurrency + §11.4 CRUD
+ * feedback + §11.2 copy budget). State + save flow through useOptimisticVersion;
+ * destructive transitions go through the Modal primitive's typed-confirm; 409
+ * surfaces ConflictModal.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Shield, AlertTriangle, CheckCircle, Info } from 'lucide-react';
-// ShieldAlert missing from lucide-react type defs — alias AlertTriangle
-const ShieldAlert = AlertTriangle;
+import React, { useState } from 'react'
+import { Shield, AlertTriangle } from 'lucide-react'
+// ShieldAlert is missing from lucide-react's type defs — alias AlertTriangle.
+const ShieldAlert = AlertTriangle
+import { PageHeader, Modal, ConflictModal } from '../../primitives-v2'
+import { useOptimisticVersion } from '../../hooks/useOptimisticVersion'
 
-interface ToolExecutionModeViewProps {
-  theme?: string;
+type ReadonlyState = {
+  enabled: boolean
+  source?: 'database' | 'env' | 'default'
+  version: number
+  updated_at?: string
+  updated_by?: string
 }
 
-export const ToolExecutionModeView: React.FC<ToolExecutionModeViewProps> = ({ theme }) => {
-  const [readOnlyEnabled, setReadOnlyEnabled] = useState(false);
-  const [settingSource, setSettingSource] = useState<'database' | 'env' | 'default'>('default');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState<'enable' | 'disable' | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [lastChanged, setLastChanged] = useState<string | null>(null);
+const ENABLE_PHRASE = 'enable read-only'
+const RESTORE_PHRASE = 'restore full access'
 
-  const fetchStatus = useCallback(async () => {
-    try {
-      setLoading(true);
-      const token = document.cookie.replace(/.*openagentic_token=([^;]*).*/, '$1');
-      const res = await fetch('/api/admin/tools/readonly', {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setReadOnlyEnabled(data.enabled);
-        setSettingSource(data.source || 'default');
-        setLastChanged(data.lastChanged || null);
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+export const ToolExecutionModeView: React.FC = () => {
+  const opt = useOptimisticVersion<{ enabled: boolean }, ReadonlyState>({
+    endpoint: '/api/admin/tools/readonly',
+    queryKey: ['admin', 'tools', 'readonly'],
+  })
 
-  useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
+  const [pendingTarget, setPendingTarget] = useState<boolean | null>(null)
+  const enabled = opt.state?.enabled ?? false
 
-  const handleToggle = () => {
-    if (readOnlyEnabled) {
-      // Disabling read-only (restoring full access) -- needs HITL confirmation
-      setShowConfirmDialog('disable');
-    } else {
-      // Enabling read-only (kill switch) -- needs confirmation
-      setShowConfirmDialog('enable');
-    }
-  };
+  const onToggle = () => setPendingTarget(!enabled)
+  const onCancel = () => setPendingTarget(null)
+  const onConfirm = async () => {
+    if (pendingTarget === null) return
+    await opt.save({ enabled: pendingTarget })
+    setPendingTarget(null)
+  }
 
-  const confirmChange = async (newValue: boolean) => {
-    try {
-      setSaving(true);
-      setError(null);
-      const token = document.cookie.replace(/.*openagentic_token=([^;]*).*/, '$1');
-      const res = await fetch('/api/admin/tools/readonly', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ enabled: newValue }),
-      });
-      if (res.ok) {
-        setReadOnlyEnabled(newValue);
-        setSettingSource('database');
-        setLastChanged(new Date().toISOString());
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Failed to update setting');
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
-      setShowConfirmDialog(null);
-    }
-  };
-
-  const isDark = theme !== 'light';
+  const goingDestructive = pendingTarget === false // disabling read-only re-opens writes
+  const requirePhrase = goingDestructive ? RESTORE_PHRASE : ENABLE_PHRASE
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div>
-        <h2 className={`text-xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          Tool Execution Mode
-        </h2>
-        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-          Control whether MCP tools can perform write operations. When read-only mode is active,
-          tools that create, delete, modify, or restart resources are blocked. Read operations
-          (list, get, describe, search) continue to work normally.
-        </p>
-      </div>
+    <div style={{ maxWidth: 760, display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <PageHeader
+        crumbs={['Admin', 'Tools', 'Execution Mode']}
+        title="Tool Execution Mode"
+        explainer="Block write operations across MCP tools globally."
+      />
 
-      {/* Status Card */}
-      {!loading && (
-        <div className={`rounded-lg border p-6 ${
-          readOnlyEnabled
-            ? isDark ? 'border-yellow-600/50 bg-yellow-900/20' : 'border-yellow-300 bg-yellow-50'
-            : isDark ? 'border-green-600/50 bg-green-900/20' : 'border-green-300 bg-green-50'
-        }`}>
-          <div className="flex items-start gap-4">
-            <div className={`p-3 rounded-full ${
-              readOnlyEnabled
-                ? isDark ? 'bg-yellow-900/50 text-yellow-400' : 'bg-yellow-100 text-yellow-600'
-                : isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-600'
-            }`}>
-              {readOnlyEnabled ? <ShieldAlert size={28} /> : <Shield size={28} />}
+      {opt.isLoading && (
+        <div
+          style={{
+            border: '1px solid var(--ap-ln-1, var(--line-1))',
+            borderRadius: 12,
+            padding: 18,
+            color: 'var(--ap-fg-3, var(--fg-3))',
+            background: 'var(--ap-bg-1, var(--bg-1))',
+            fontSize: 13,
+          }}
+        >
+          Loading…
+        </div>
+      )}
+
+      {opt.error && (
+        <div
+          role="alert"
+          style={{
+            border: '1px solid var(--ap-err, var(--err))',
+            background: 'var(--ap-err-soft, transparent)',
+            borderRadius: 10,
+            padding: 12,
+            fontSize: 13,
+            color: 'var(--ap-err, var(--err))',
+          }}
+        >
+          {opt.error.message}
+        </div>
+      )}
+
+      {opt.state && !opt.isLoading && (
+        <div
+          data-testid="readonly-status-card"
+          style={{
+            border: `1px solid ${enabled ? 'var(--ap-warn, var(--warn))' : 'var(--ap-ok, var(--ok))'}`,
+            background: enabled ? 'var(--ap-warn-soft, transparent)' : 'var(--ap-ok-soft, transparent)',
+            borderRadius: 12,
+            padding: 18,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 10,
+                display: 'grid',
+                placeItems: 'center',
+                color: enabled ? 'var(--ap-warn, var(--warn))' : 'var(--ap-ok, var(--ok))',
+                background: enabled ? 'var(--ap-warn-soft, transparent)' : 'var(--ap-ok-soft, transparent)',
+                border: `1px solid ${enabled ? 'var(--ap-warn, var(--warn))' : 'var(--ap-ok, var(--ok))'}`,
+              }}
+            >
+              {enabled ? <ShieldAlert size={22} /> : <Shield size={22} />}
             </div>
-            <div className="flex-1">
-              <h3 className={`text-lg font-semibold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {readOnlyEnabled ? 'Read-Only Mode Active' : 'Full Access Mode'}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: 16,
+                  fontWeight: 600,
+                  color: 'var(--ap-fg-0, var(--fg-0))',
+                }}
+              >
+                {enabled ? 'Read-only mode active' : 'Full access'}
               </h3>
-              <p className={`text-sm mb-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                {readOnlyEnabled
-                  ? 'Write operations are blocked across all MCP tools. Only read operations (list, get, describe, search) are allowed.'
-                  : 'All MCP tool operations are enabled, including write operations (create, delete, update, restart).'}
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  color: 'var(--ap-fg-2, var(--fg-2))',
+                }}
+              >
+                {enabled
+                  ? 'Write operations are blocked. List, get, describe, and search still work.'
+                  : 'All MCP write operations are enabled.'}
               </p>
-              <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                Source: {settingSource === 'database' ? 'Admin Console (persisted)' : settingSource === 'env' ? 'Environment Variable' : 'System Default'}
-                {lastChanged && ` | Last changed: ${new Date(lastChanged).toLocaleString()}`}
+              <div
+                style={{
+                  fontSize: 11.5,
+                  color: 'var(--ap-fg-3, var(--fg-3))',
+                  marginTop: 4,
+                  fontFamily: 'var(--font-mono)',
+                }}
+              >
+                v{opt.state.version} · {opt.state.source ?? 'default'}
+                {opt.state.updated_at && ` · ${new Date(opt.state.updated_at).toLocaleString()}`}
               </div>
             </div>
           </div>
 
-          {/* Toggle Button */}
-          <div className="mt-4 pt-4 border-t border-current/10">
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button
-              onClick={handleToggle}
-              disabled={saving}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                readOnlyEnabled
-                  ? isDark
-                    ? 'bg-green-600 hover:bg-green-500 text-white'
-                    : 'bg-green-600 hover:bg-green-700 text-white'
-                  : isDark
-                    ? 'bg-yellow-600 hover:bg-yellow-500 text-white'
-                    : 'bg-yellow-600 hover:bg-yellow-700 text-white'
-              } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+              type="button"
+              data-testid="toggle-readonly"
+              onClick={onToggle}
+              disabled={opt.isSaving}
+              style={{
+                padding: '9px 16px',
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                border: '1px solid transparent',
+                background: enabled ? 'var(--ap-ok, var(--ok))' : 'var(--ap-warn, var(--warn))',
+                color: 'var(--ap-fg-on-accent, white)',
+                cursor: opt.isSaving ? 'not-allowed' : 'pointer',
+                opacity: opt.isSaving ? 0.6 : 1,
+              }}
             >
-              {saving ? 'Updating...' : readOnlyEnabled ? 'Restore Full Access' : 'Enable Read-Only Mode'}
+              {enabled ? 'Restore Full Access' : 'Enable Read-Only Mode'}
             </button>
           </div>
         </div>
       )}
 
-      {loading && (
-        <div className={`rounded-lg border p-6 ${isDark ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50'}`}>
-          <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>Loading tool execution mode...</p>
-        </div>
-      )}
+      {/* Typed-confirm modal for the destructive transition */}
+      <Modal
+        open={pendingTarget !== null && opt.conflict === null}
+        onClose={onCancel}
+        title={goingDestructive ? 'Restore full access?' : 'Enable read-only mode?'}
+        body={
+          goingDestructive
+            ? 'Re-enables every MCP write tool. Running flows resume immediately.'
+            : 'Blocks every MCP write tool. Running flows will fail at the next write step.'
+        }
+        variant={goingDestructive ? 'destructive' : 'confirm'}
+        requireConfirmText={requirePhrase}
+        primary={{
+          label: goingDestructive ? 'Restore access' : 'Enable',
+          onClick: onConfirm,
+          loading: opt.isSaving,
+        }}
+        secondary={{ label: 'Cancel', onClick: onCancel }}
+      />
 
-      {error && (
-        <div className={`rounded-lg border p-4 ${isDark ? 'border-red-600/50 bg-red-900/20' : 'border-red-300 bg-red-50'}`}>
-          <p className={`text-sm ${isDark ? 'text-red-400' : 'text-red-600'}`}>{error}</p>
-        </div>
-      )}
-
-      {/* Info Section */}
-      <div className={`rounded-lg border p-4 ${isDark ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50'}`}>
-        <div className="flex items-start gap-3">
-          <Info size={18} className={isDark ? 'text-blue-400 mt-0.5' : 'text-blue-600 mt-0.5'} />
-          <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-            <p className="font-medium mb-2">What is affected by read-only mode?</p>
-            <div className="space-y-1 text-xs">
-              <div className="flex items-center gap-2">
-                <AlertTriangle size={12} className="text-yellow-500" />
-                <span><strong>Blocked when active:</strong> create, delete, update, modify, restart, deploy, scale, patch operations</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle size={12} className="text-green-500" />
-                <span><strong>Always allowed:</strong> list, get, describe, search, health, status, query operations</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle size={12} className="text-green-500" />
-                <span><strong>Not affected:</strong> OAT (Tool Synthesis) has its own HITL approval gate</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Confirmation Dialogs */}
-      {showConfirmDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className={`rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl ${isDark ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
-            <div className="flex items-center gap-3 mb-4">
-              <AlertTriangle size={24} className="text-yellow-500" />
-              <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {showConfirmDialog === 'enable' ? 'Enable Read-Only Mode?' : 'Restore Full Tool Access?'}
-              </h3>
-            </div>
-
-            {showConfirmDialog === 'enable' ? (
-              <div className={`text-sm space-y-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                <p>This will immediately <strong>block all MCP tools</strong> that perform write operations:</p>
-                <ul className="list-disc ml-5 space-y-1 text-xs">
-                  <li>Creating and deleting cloud resources (VMs, storage, databases)</li>
-                  <li>Restarting Kubernetes deployments and pods</li>
-                  <li>Modifying security groups and network configurations</li>
-                </ul>
-                <p className="text-xs">Read-only tools (list, get, describe, search) will continue to work.
-                  OAT (Tool Synthesis) is not affected.</p>
-                <p className={`text-xs font-medium ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                  Any running workflows using write tools will fail at the next write step.</p>
-              </div>
-            ) : (
-              <div className={`text-sm space-y-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                <p>This will <strong>re-enable ALL write operations</strong> for MCP tools including:</p>
-                <ul className="list-disc ml-5 space-y-1 text-xs">
-                  <li>Create, delete, and modify cloud resources</li>
-                  <li>Restart and scale Kubernetes workloads</li>
-                  <li>Modify security configurations</li>
-                </ul>
-                <p className={`text-xs font-medium ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-                  Are you sure you want to restore full write access?</p>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setShowConfirmDialog(null)}
-                className={`px-4 py-2 rounded-md text-sm ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => confirmChange(showConfirmDialog === 'enable')}
-                disabled={saving}
-                className={`px-4 py-2 rounded-md text-sm font-medium text-white ${
-                  showConfirmDialog === 'enable'
-                    ? 'bg-yellow-600 hover:bg-yellow-500'
-                    : 'bg-red-600 hover:bg-red-500'
-                } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {saving ? 'Updating...' : showConfirmDialog === 'enable' ? 'Enable Read-Only Mode' : 'I understand, restore full access'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Conflict modal for the §11.5 contract */}
+      {opt.conflict && (
+        <ConflictModal
+          open={true}
+          onClose={() => {
+            opt.dismissConflict()
+            setPendingTarget(null)
+          }}
+          conflict={opt.conflict}
+          onReapply={async () => {
+            const payload = opt.conflict?.attemptedPayload as { enabled: boolean } | undefined
+            if (!payload) return
+            await opt.resolveAndSave(payload)
+            setPendingTarget(null)
+          }}
+          onTakeTheirs={async () => {
+            opt.dismissConflict()
+            setPendingTarget(null)
+            await opt.refetch()
+          }}
+        />
       )}
     </div>
-  );
-};
+  )
+}
 
-export default ToolExecutionModeView;
+export default ToolExecutionModeView

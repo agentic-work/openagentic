@@ -1,6 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
+import { rehypeSemanticTokens } from '@/features/shared/markdown/rehypeSemanticTokens';
+import { rehypeRainbowInlineCode } from '@/features/shared/markdown/rehypeRainbowInlineCode';
+import { normalizeLatexDelimiters } from '@/features/shared/markdown/normalizeLatexDelimiters';
 import { Highlight, themes as prismThemes } from 'prism-react-renderer';
 import { ThinkingSphere } from '@/shared/components/ThinkingSphere';
 import type {
@@ -10,8 +16,18 @@ import type {
   UiThinkingBlock,
   UiToolResult,
   UiToolUseBlock,
-} from '../../types/streamJson';
+} from '../../types/uiState';
+import type { CanUseToolRequest } from '../../types/_sdk-bindings';
 import { renderToolInputSummary } from './toolRenderers';
+import { formatElapsed } from '../../chat/sdkAdapter';
+import { deriveCurrentActivity } from '../../utils/deriveCurrentActivity';
+import { Part } from '../Part';
+import { groupParallelTools } from '../../state/streamReducer';
+import {
+  InlinePermissionCard,
+  type PermissionDecision,
+} from './InlinePermissionCard';
+import { UserTextMessageDispatch } from './UserTextMessageDispatch';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Visual constants — match openagentic/src/constants/figures.ts
@@ -27,7 +43,7 @@ const BOTTOM_LEFT_CORNER = '⎿';
 const PROMPT_CARET = '❯';
 
 // Theme-agnostic colors via CSS vars (--cm-*). These match the palette
-// already used by CodeModeChatView and CodeModeLayoutV2 so themes apply
+// already used by CodeModeChatView and CodeModeLayout so themes apply
 // uniformly.
 const TEXT = 'var(--cm-text, #e6edf3)';
 const DIM = 'var(--cm-text-muted, #8b949e)';
@@ -94,32 +110,29 @@ const Row: React.FC<{
 // User row: `> say hi in one word`
 // ────────────────────────────────────────────────────────────────────────────
 
+// C.2 P1 — matches mocks/codemode-mockup.html .msg-user pattern:
+//   <div class="msg-user">
+//     <span class="prompt-marker">❯</span>
+//     <span class="content">…</span>
+//   </div>
+// Drops the prior teal pill bubble; user wants the OpenAgentic TUI feel.
 const UserRow: React.FC<{ text: string }> = ({ text }) => (
   <div
+    data-part="user-prompt"
+    className="cm-msg-row cm-msg-user"
     style={{
-      display: 'flex',
-      justifyContent: 'flex-end',
-      margin: '14px 0 6px 0',
+      margin: '12px 0 8px 0',
+      fontFamily: 'var(--cm-mono-font, JetBrains Mono, monospace)',
+      fontSize: 13,
+      lineHeight: 1.5,
+      whiteSpace: 'pre-wrap',
+      wordBreak: 'break-word',
     }}
   >
-    <div
-      style={{
-        maxWidth: '85%',
-        padding: '8px 14px',
-        borderRadius: 14,
-        background: 'color-mix(in srgb, var(--cm-accent, #58a6ff) 14%, transparent)',
-        border: '1px solid color-mix(in srgb, var(--cm-accent, #58a6ff) 22%, transparent)',
-        color: 'var(--cm-text, #e6edf3)',
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-word',
-        fontFamily: 'var(--cm-prose-font, Inter, system-ui, sans-serif)',
-        fontSize: 14,
-        lineHeight: 1.5,
-        boxShadow: '0 1px 0 rgba(0,0,0,0.08)',
-      }}
-    >
+    <span className="cm-prompt-marker">❯</span>
+    <span className="cm-prompt-content" style={{ color: 'var(--fg-0, #e6edf3)' }}>
       {text}
-    </div>
+    </span>
   </div>
 );
 
@@ -237,7 +250,67 @@ const MarkdownCode: React.FC<{
   if (isInline) {
     return <code className={className}>{children}</code>;
   }
+  // `html-artifact` is a special fence used by slash commands (e.g.
+  // /selftest) to embed a sandboxed inline HTML preview directly in the
+  // transcript. Renders as an iframe with `srcdoc` so the artifact
+  // displays without leaving the codemode view.
+  if ((langMatch?.[1] || '') === 'html-artifact') {
+    // MARKER_HTML_ARTIFACT_BLOCK_v2
+    return <HtmlArtifactBlock html={text} />;
+  }
   return <SyntaxCodeBlock code={text} lang={langMatch?.[1] || ''} />;
+};
+
+const HtmlArtifactBlock: React.FC<{ html: string }> = ({ html }) => {
+  const openInTab = () => {
+    const w = window.open('', '_blank', 'noopener,noreferrer');
+    if (w) { w.document.open(); w.document.write(html); w.document.close(); }
+  };
+  return (
+    <div className="cm-html-artifact" data-part="html-artifact" style={{
+      margin: '10px 0',
+      border: '1px solid var(--cm-border, #30363d)',
+      borderRadius: 8,
+      overflow: 'hidden',
+      background: '#06070a',
+      boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '6px 12px',
+        borderBottom: '1px solid var(--cm-border, #30363d)',
+        background: 'var(--cm-bg-secondary, #161b22)',
+        fontFamily: 'var(--cm-mono-font, ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace)',
+        fontSize: 11,
+        color: 'var(--cm-text-muted, #8b949e)',
+        letterSpacing: '0.04em',
+      }}>
+        <span style={{ color: 'var(--cm-accent, #58a6ff)', fontWeight: 600 }}>◉</span>
+        <span>html artifact</span>
+        <span style={{ color: '#3a3f47', margin: '0 4px' }}>·</span>
+        <span>{(html.length / 1024).toFixed(1)}KB</span>
+        <span style={{ flex: 1 }} />
+        <button type="button" onClick={openInTab} style={{
+          background: 'transparent',
+          border: '1px solid var(--cm-border, #30363d)',
+          color: 'var(--cm-text-muted, #8b949e)',
+          padding: '2px 8px',
+          borderRadius: 4,
+          fontFamily: 'inherit',
+          fontSize: 10,
+          letterSpacing: '0.06em',
+          cursor: 'pointer',
+        }}>open in tab ↗</button>
+      </div>
+      <iframe
+        title="html-artifact"
+        srcDoc={html}
+        sandbox="allow-scripts allow-same-origin"
+        loading="lazy"
+        style={{ display: 'block', width: '100%', height: 480, border: 0, background: '#06070a' }}
+      />
+    </div>
+  );
 };
 
 // ReAct cognitive-loop markers — detect `THINK: foo` / `ACT: foo` /
@@ -297,10 +370,10 @@ const FileLineRefPill: React.FC<{ path: string; line: number }> = ({ path, line 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     try {
-      // EditorPanel does not yet listen for 'openInEditor' — TODO(codemode):
-      // wire this into EditorPanel.tsx so the click actually jumps to the
-      // referenced location. Until then we postMessage + console.log so
-      // any listener that gets added later works without touching callers.
+      // TODO(codemode): wire up a pop-out window listener that receives
+      // 'openInEditor' and jumps to the referenced file+line location.
+      // Until then we postMessage + console.log so any future listener
+      // works without touching callers.
       window.postMessage({ type: 'openInEditor', path, line }, window.location.origin);
       // eslint-disable-next-line no-console
       console.log('[codemode] openInEditor', { path, line });
@@ -388,9 +461,71 @@ const MARKDOWN_COMPONENTS = {
     }
     return <p>{renderFileLineRefs(children)}</p>;
   },
-  li: ({ children }: { children?: React.ReactNode }) => (
-    <li>{renderFileLineRefs(children)}</li>
-  ),
+  li: ({ children }: { children?: React.ReactNode }) => {
+    // mock-3 parity: a list item that opens with a ReAct stage marker
+    // (e.g. `OBSERVE: …`, `PLAN: …`) wears the same colored pill as
+    // paragraph-level marker handling above. ReactMarkdown wraps the
+    // <li> body's loose text in a <p>, so the first child is often a
+    // <p>; we peek into it for the leading text.
+    const arr = React.Children.toArray(children);
+    if (arr.length > 0) {
+      // Find the first text node, descending one level into a <p> if
+      // the first child is one. We never go deeper — if remarkGfm wraps
+      // it in something else we just fall through to the no-badge path.
+      let firstString: string | undefined;
+      let consumeFromIdx = -1;
+      let extractFromP = false;
+      const first = arr[0];
+      if (typeof first === 'string') {
+        firstString = first;
+        consumeFromIdx = 0;
+      } else if (
+        React.isValidElement<{ children?: React.ReactNode }>(first) &&
+        first.type === 'p'
+      ) {
+        const pChildren = React.Children.toArray(first.props.children);
+        if (pChildren.length > 0 && typeof pChildren[0] === 'string') {
+          firstString = pChildren[0];
+          consumeFromIdx = 0;
+          extractFromP = true;
+        }
+      }
+      if (firstString !== undefined) {
+        const m = firstString.match(REACT_STAGE_REGEX);
+        if (m) {
+          const [, leadingWs, stage, restOfFirstChild] = m;
+          const stageKey = stage as keyof typeof REACT_STAGE_TONES;
+          if (extractFromP) {
+            // Replace the first <p>'s leading text with badge + rest,
+            // keep the rest of the <p>'s children, then any siblings.
+            const firstEl = first as React.ReactElement<{ children?: React.ReactNode }>;
+            const pChildren = React.Children.toArray(firstEl.props.children);
+            const remainingPChildren = [restOfFirstChild, ...pChildren.slice(consumeFromIdx + 1)];
+            const newP = React.cloneElement(
+              firstEl,
+              { key: 'li-stage-p' },
+              <>
+                {leadingWs}
+                <ReactStageBadge
+                  stage={stageKey}
+                  rest={renderFileLineRefs(remainingPChildren)}
+                />
+              </>,
+            );
+            return <li>{[newP, ...arr.slice(1)]}</li>;
+          }
+          const remainingChildren = [restOfFirstChild, ...arr.slice(1)];
+          return (
+            <li>
+              {leadingWs}
+              <ReactStageBadge stage={stageKey} rest={renderFileLineRefs(remainingChildren)} />
+            </li>
+          );
+        }
+      }
+    }
+    return <li>{renderFileLineRefs(children)}</li>;
+  },
 };
 
 const AssistantTextRow: React.FC<{ text: string; isFirstBlock: boolean }> = ({
@@ -409,8 +544,12 @@ const AssistantTextRow: React.FC<{ text: string; isFirstBlock: boolean }> = ({
       }}
     >
       <div className="cm-markdown" style={{ color: 'var(--cm-text, #e6edf3)' }}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
-          {text}
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: false }]]}
+          rehypePlugins={[rehypeSemanticTokens, [rehypeKatex as any, { strict: false, throwOnError: false, output: 'html' }]]}
+          components={MARKDOWN_COMPONENTS}
+        >
+          {normalizeLatexDelimiters(text)}
         </ReactMarkdown>
       </div>
     </div>
@@ -519,25 +658,44 @@ function useElapsedTimer(active: boolean): number {
 
 const PURPLE_COLOR = '#a371f7';
 
+/**
+ * Extract the first sentence of a thinking blob for the collapsed-row
+ * preview. Bounded at 140 chars so a sentence-less monologue still gives
+ * the user a glanceable hint instead of an empty button.
+ */
+export function firstSentencePreview(text: string): string {
+  if (!text) return '';
+  const trimmed = text.replace(/\s+/g, ' ').trim();
+  if (!trimmed) return '';
+  const m = trimmed.match(/^.+?[.!?](?=\s|$)/);
+  const sentence = (m ? m[0] : trimmed).trim();
+  return sentence.length <= 140 ? sentence : sentence.slice(0, 137).trimEnd() + '…';
+}
+
 const ThinkingRow: React.FC<{ block: UiThinkingBlock; marginTop: number }> = ({
   block,
   marginTop,
 }) => {
-  // Collapse thinking by default to match claude.ai/code ref — large
-  // local models (e.g. gpt-oss:20b) produce long internal monologues
-  // that drown the transcript. User clicks to expand.
-  const [userCollapsed, setUserCollapsed] = useState(true);
+  // Default-COLLAPSED to match openagentic/Claude Code TUI parity. User
+  // feedback 2026-05-07: "thinking bar is printing the whole thing- and
+  // how does ~/anthropic/src and openagentic show thinking- we want
+  // thinking to be more like claude/openagentic not blocks inline users
+  // will never read." Reference: openagentic
+  // src/components/messages/AssistantThinkingMessage.tsx — single
+  // `∴ Thinking <Ctrl-O to expand>` dim-italic line by default; full
+  // body only when user toggles. Streaming thinking still shows the
+  // animated dot + `Thinking…` label so the user knows reasoning is
+  // in flight, but the wall of CoT is gated behind one click.
+  const [userExpanded, setUserExpanded] = useState(false);
   const elapsed = useElapsedTimer(block.streaming);
   const charCount = block.thinking.length;
   const tokCount = Math.round(charCount / 4);
-  const speed = elapsed > 0.2 ? Math.round(tokCount / elapsed) : 0;
-  const showBody = !userCollapsed && (block.streaming || charCount > 0);
+  const showBody = userExpanded && charCount > 0;
+  const preview = '';
 
   if (!block.thinking && !block.streaming) return null;
 
   const timerStr = elapsed > 0 ? `${elapsed.toFixed(1)}s` : '';
-  const tokenHint = tokCount > 5 ? `~${tokCount} tok` : '';
-  const speedHint = speed > 0 ? `${speed} tok/s` : '';
 
   return (
     <div
@@ -548,31 +706,35 @@ const ThinkingRow: React.FC<{ block: UiThinkingBlock; marginTop: number }> = ({
     >
       <button
         type="button"
-        onClick={() => setUserCollapsed((v) => !v)}
+        onClick={() => setUserExpanded((v) => !v)}
         style={{
           background: 'none',
           border: 'none',
           padding: 0,
           color: 'var(--cm-text-muted, #8b949e)',
-          cursor: 'pointer',
+          cursor: charCount > 0 ? 'pointer' : 'default',
           textAlign: 'left',
-          display: 'flex',
+          display: 'inline-flex',
           alignItems: 'center',
-          gap: 8,
-          fontSize: 12,
+          gap: 6,
+          fontSize: 12.5,
+          fontStyle: 'italic',
           fontFamily: 'var(--cm-prose-font, Inter, system-ui, sans-serif)',
         }}
-        title={showBody ? 'Click to collapse' : 'Click to expand'}
+        title={charCount === 0 ? '' : showBody ? 'Click to collapse' : 'Click to expand'}
       >
-        <ThinkingGlobe streaming={block.streaming} size={6} />
-        <span>Thinking{block.streaming ? '…' : ''}</span>
+        <span aria-hidden style={{ fontStyle: 'normal', opacity: 0.7 }}>∴</span>
+        <span>{block.streaming ? 'Thinking…' : 'Thinking'}</span>
         {timerStr && (
-          <span style={{ fontVariantNumeric: 'tabular-nums', opacity: 0.7 }}>
+          <span style={{ fontVariantNumeric: 'tabular-nums', opacity: 0.55, fontStyle: 'normal' }}>
             {timerStr}
           </span>
         )}
-        {!showBody && !block.streaming && charCount > 0 && (
-          <span style={{ opacity: 0.5 }}>(expand)</span>
+        {!showBody && charCount > 0 && (
+          <span style={{ opacity: 0.45, fontStyle: 'normal' }}>· click to expand</span>
+        )}
+        {showBody && charCount > 0 && (
+          <span style={{ opacity: 0.45, fontStyle: 'normal' }}>· click to collapse</span>
         )}
       </button>
       {showBody && block.thinking && (
@@ -590,7 +752,11 @@ const ThinkingRow: React.FC<{ block: UiThinkingBlock; marginTop: number }> = ({
             fontFamily: 'var(--cm-prose-font, Inter, system-ui, sans-serif)',
           }}
         >
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{block.thinking}</ReactMarkdown>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: false }]]}
+            rehypePlugins={[rehypeSemanticTokens, rehypeRainbowInlineCode, [rehypeKatex as any, { strict: false, throwOnError: false, output: 'html' }]]}
+            components={MARKDOWN_COMPONENTS}
+          >{normalizeLatexDelimiters(block.thinking)}</ReactMarkdown>
           {block.streaming && <span className="cm-cursor-blink" />}
         </div>
       )}
@@ -602,10 +768,23 @@ const ThinkingRow: React.FC<{ block: UiThinkingBlock; marginTop: number }> = ({
 // Tool use row: `● Bash(npm install)` + expandable JSON card
 // ────────────────────────────────────────────────────────────────────────────
 
-const ToolUseRow: React.FC<{ block: UiToolUseBlock; isFirstBlock: boolean }> = ({
-  block,
-  isFirstBlock,
-}) => {
+const ToolUseRow: React.FC<{
+  block: UiToolUseBlock;
+  isFirstBlock: boolean;
+  /**
+   * Phase F (codemode-permanent-plan §4) — when set, renders an
+   * `InlinePermissionCard` inside this Tool's panel (after the
+   * sub-transcript and live output, before the tool_result row). The
+   * caller is `AssistantMessageBody`, which routes the panel based on
+   * `pendingPermission.parent_tool_use_id`. Optional + null-default
+   * preserves the single-agent path (tail mount in
+   * `AssistantMessageBody`).
+   */
+  inlinePermission?: {
+    request: CanUseToolRequest & { request_id: string };
+    onRespond: (decision: PermissionDecision) => void;
+  } | null;
+}> = ({ block, isFirstBlock, inlinePermission }) => {
   // Write/Edit/NotebookEdit show a line-numbered diff body that's
   // auto-expanded on render (matches claude.ai/code). Other tools stay
   // collapsed — the JSON body is rarely interesting for Bash/Read/etc.
@@ -662,6 +841,14 @@ const ToolUseRow: React.FC<{ block: UiToolUseBlock; isFirstBlock: boolean }> = (
           ◐
         </span>
       )}
+      {block.streaming && !block.result && typeof block.elapsedSec === 'number' && block.elapsedSec > 0 && (
+        <span
+          style={{ color: DIM, marginLeft: '1ch', fontSize: 11 }}
+          aria-label={`running for ${block.elapsedSec} seconds`}
+        >
+          · {formatElapsed(block.elapsedSec)}
+        </span>
+      )}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
@@ -687,7 +874,12 @@ const ToolUseRow: React.FC<{ block: UiToolUseBlock; isFirstBlock: boolean }> = (
     block.subBlocks.length > 0;
 
   return (
-    <>
+    // Phase F: wrap in a transparent (`display: contents`) container that
+    // tags the panel with `data-tool-use-id`. Visual layout is unchanged
+    // (children flow exactly as siblings of the parent), but the DOM now
+    // exposes a stable selector the InlinePermissionCard can use to
+    // resolve which subagent's panel a permission request belongs to.
+    <div data-tool-use-id={block.toolUseId} style={{ display: 'contents' }}>
       <Row
         gutter={isFirstBlock ? BLACK_CIRCLE : ''}
         gutterColor={TEXT}
@@ -739,7 +931,20 @@ const ToolUseRow: React.FC<{ block: UiToolUseBlock; isFirstBlock: boolean }> = (
         </Row>
       )}
       {block.result && <ToolResultSubRow result={block.result} toolName={block.name} />}
-    </>
+      {/* Phase F: subagent-scoped permission card. Mounts inline at the
+          end of THIS Task panel when the daemon-side
+          `parent_tool_use_id` envelope flag matches this block's id.
+          The single-agent / root case (parent_tool_use_id == null) is
+          handled by `AssistantMessageBody` below — it keeps rendering
+          the card at the message tail so single-turn flows are
+          unchanged. */}
+      {inlinePermission && (
+        <InlinePermissionCard
+          request={inlinePermission.request}
+          onRespond={inlinePermission.onRespond}
+        />
+      )}
+    </div>
   );
 };
 
@@ -747,38 +952,31 @@ const ToolUseRow: React.FC<{ block: UiToolUseBlock; isFirstBlock: boolean }> = (
  * Nested child transcript for Task / Agent tool invocations. openagentic
  * spawns a sub-LLM whose stream_event records arrive on the parent
  * stream with `parent_tool_use_id` pointing at the Task tool_use id —
- * see useCodeModeChat.applyStreamEventRouted. We render the resulting
- * subBlocks indented to the right with a vertical rule so the user can
- * see what the subagent is doing inside the parent card.
+ * see useCodeModeChat.applyStreamEventRouted. As of Phase 3 of the
+ * codemode-bridge plan we render each sub-block through `<Part />` so
+ * parallel subagents and their tool calls flow through the same
+ * dispatcher as the top-level transcript — matching Claude Code's
+ * inline rendering. The `cm-subtranscript` className lets the styling
+ * system add the indented left-border on every nesting level.
  */
-const SubagentTranscript: React.FC<{ blocks: AssistantBlock[] }> = ({ blocks }) => {
-  // Reuse the same first-content-index rule as the top-level assistant
-  // body, so only the leading subagent block gets the `●` gutter.
-  const firstContentIndex = blocks.findIndex((b) => {
-    if (b.kind === 'text') return b.text.length > 0;
-    if (b.kind === 'thinking') return b.thinking.length > 0;
-    return true;
-  });
-  return (
-    <div
-      style={{
-        marginLeft: 12,
-        paddingLeft: 10,
-        marginTop: 4,
-        borderLeft: `2px solid ${BORDER}`,
-      }}
-    >
-      {blocks.map((b, idx) => (
-        <AssistantBlockRow
-          key={idx}
-          block={b}
-          index={idx}
-          firstContentIndex={firstContentIndex}
-        />
-      ))}
-    </div>
-  );
-};
+const SubagentTranscript: React.FC<{ blocks: AssistantBlock[]; depth?: number }> = ({
+  blocks,
+  depth = 1,
+}) => (
+  <div
+    className="cm-subtranscript"
+    style={{
+      marginLeft: 12,
+      paddingLeft: 10,
+      marginTop: 4,
+      borderLeft: `2px solid ${BORDER}`,
+    }}
+  >
+    {blocks.map((b, idx) => (
+      <Part key={idx} part={b} depth={depth} />
+    ))}
+  </div>
+);
 
 /**
  * Rendered beneath a ToolUseRow once the result arrives. Matches
@@ -921,6 +1119,80 @@ const FileWriteDiffBody: React.FC<{ block: UiToolUseBlock }> = ({ block }) => {
   );
 };
 
+// Provider-tool result body — pretty-prints structured JSON the
+// openagentic `Provider` tool emits via JSON.stringify. Live bug
+// 2026-04-30: the raw payload `{"action":"current","model":"gpt-oss:20b",
+// "isOverride":true}` was leaking into the transcript; this renderer
+// parses it and prints `Model: gpt-oss:20b / Override: yes` instead.
+//
+// Also exported so unit tests in Part.test.tsx can drive the same
+// formatter without depending on MessageTree's private internals (the
+// Part.tsx `ProviderTool` renderer uses a sibling implementation —
+// keep both in sync).
+type ProviderResultPayload =
+  | { action: 'current'; model: string; isOverride: boolean }
+  | { action: 'switch'; previousModel: string; newModel: string; reason?: string }
+  | { action: 'reset'; previousModel: string; initialModel: string };
+
+function tryParseProviderResult(text: string | undefined): ProviderResultPayload | null {
+  if (!text) return null;
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('{') || !trimmed.includes('"action"')) return null;
+  try {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+    if (parsed && typeof parsed === 'object' && typeof parsed.action === 'string') {
+      return parsed as ProviderResultPayload;
+    }
+  } catch {
+    // not JSON or malformed — fall back to raw text
+  }
+  return null;
+}
+
+const ProviderResultSubRow: React.FC<{ payload: ProviderResultPayload; isError: boolean }> = ({
+  payload,
+  isError,
+}) => {
+  const lines: Array<{ label: string; value: string }> = [];
+  if (payload.action === 'current') {
+    lines.push({ label: 'Model', value: payload.model });
+    lines.push({ label: 'Override', value: payload.isOverride ? 'yes' : 'no' });
+  } else if (payload.action === 'switch') {
+    lines.push({ label: 'From', value: payload.previousModel || '(default)' });
+    lines.push({ label: 'To', value: payload.newModel });
+    if (payload.reason && payload.reason.trim().length > 0) {
+      lines.push({ label: 'Reason', value: payload.reason });
+    }
+  } else if (payload.action === 'reset') {
+    lines.push({ label: 'Reset', value: payload.previousModel });
+    lines.push({ label: 'Initial', value: payload.initialModel });
+  }
+  const color = isError ? ERROR_COLOR : DIM;
+  return (
+    <div className="cm-fade-in">
+      <Row gutter={BOTTOM_LEFT_CORNER} gutterColor={color} marginTop={2}>
+        <div
+          data-tool-result-error={isError ? 'true' : undefined}
+          data-tool-renderer="provider"
+          style={{
+            ...MONO_STYLE,
+            color: isError ? ERROR_COLOR : TEXT,
+            fontSize: 12,
+            lineHeight: 1.55,
+          }}
+        >
+          {lines.map(({ label, value }, i) => (
+            <div key={i} style={{ display: 'flex', gap: '0.6ch' }}>
+              <span style={{ color: DIM, width: '8ch', flexShrink: 0 }}>{label}:</span>
+              <span>{value}</span>
+            </div>
+          ))}
+        </div>
+      </Row>
+    </div>
+  );
+};
+
 const ToolResultSubRow: React.FC<{ result: UiToolResult; toolName?: string }> = ({ result, toolName }) => {
   const [expanded, setExpanded] = useState(false);
 
@@ -932,6 +1204,18 @@ const ToolResultSubRow: React.FC<{ result: UiToolResult; toolName?: string }> = 
 
   const color = result.isError ? ERROR_COLOR : DIM;
   const bodyColor = result.isError ? ERROR_COLOR : TEXT;
+
+  // Provider tool: pretty-print structured JSON instead of rendering
+  // the raw `{"action":"current","model":"gpt-oss:20b",...}` payload.
+  // Live bug 2026-04-30 user filed against codemode render parity.
+  if (toolName === 'Provider') {
+    const payload = tryParseProviderResult(text);
+    if (payload) {
+      return <ProviderResultSubRow payload={payload} isError={result.isError === true} />;
+    }
+    // Fall-through to the raw renderer when the payload doesn't parse
+    // (defensive — keeps non-JSON error strings visible).
+  }
 
   // WebSearch: render with favicons
   const isSearch = toolName === 'WebSearch';
@@ -1059,22 +1343,27 @@ const ToolResultSubRow: React.FC<{ result: UiToolResult; toolName?: string }> = 
 
 const SystemRow: React.FC<{ text: string }> = ({ text }) => (
   <div
+    className="cm-msg-row cm-msg-system"
+    data-part="system"
     style={{
       ...MONO_STYLE,
-      color: DIM,
-      fontStyle: 'italic',
-      textAlign: 'center',
       marginTop: 8,
     }}
   >
+    <span className="cm-msg-glyph" aria-hidden>◆</span>
     {text}
   </div>
 );
 
 const ErrorRow: React.FC<{ text: string }> = ({ text }) => (
-  <Row gutter="!" gutterColor={ERROR_COLOR} marginTop={8}>
-    <div style={{ color: ERROR_COLOR, whiteSpace: 'pre-wrap' }}>{text}</div>
-  </Row>
+  <div
+    className="cm-msg-row cm-msg-error"
+    data-part="error"
+    style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}
+  >
+    <span className="cm-msg-glyph" aria-hidden>✗</span>
+    {text}
+  </div>
 );
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1288,11 +1577,42 @@ const RanNCommandsSummary: React.FC<{ toolUses: UiToolUseBlock[] }> = ({ toolUse
   );
 };
 
+/**
+ * Single per-block dispatcher. As of Phase 3 of the codemode-bridge
+ * plan, every block renders through `<Part />` — including subBlocks
+ * recursion for parallel-subagent inline transcripts. The
+ * `firstContentIndex` is preserved as a presentation hint so the
+ * leading content block can still get the `●` gutter chrome via the
+ * row wrappers below; specialised rendering for thinking / tool_use
+ * still flows through the existing local components for visual parity
+ * with the openagentic TUI.
+ *
+ * Phase 3 contract:
+ *   - text & sub-transcript blocks always go through Part
+ *   - thinking & top-level tool_use keep their existing chrome (gutter
+ *     bullet, expand/collapse, FileWrite diff body) — these are NOT
+ *     migrated yet; P4+ will collapse the duplication once the
+ *     specialised renderers move into TOOL_RENDERERS
+ *   - new block kinds (tool_result orphan, todo) flow through Part
+ */
 const AssistantBlockRow: React.FC<{
   block: AssistantBlock;
   index: number;
   firstContentIndex: number;
-}> = ({ block, index, firstContentIndex }) => {
+  /**
+   * Phase F (codemode-permanent-plan §4) — when the active permission
+   * request was triggered by a subagent (i.e., its envelope-level
+   * `parent_tool_use_id` matches THIS block's `toolUseId`), the
+   * `AssistantMessageBody` parent forwards the card payload here so
+   * `ToolUseRow` can render it inline within its panel. `null` /
+   * undefined means this row is not the routing target — current
+   * behaviour preserved.
+   */
+  inlinePermission?: {
+    request: CanUseToolRequest & { request_id: string };
+    onRespond: (decision: PermissionDecision) => void;
+  } | null;
+}> = ({ block, index, firstContentIndex, inlinePermission }) => {
   const isFirstBlock = index === firstContentIndex;
 
   if (block.kind === 'text') {
@@ -1301,20 +1621,71 @@ const AssistantBlockRow: React.FC<{
   if (block.kind === 'thinking') {
     return <ThinkingRow block={block} marginTop={isFirstBlock ? 8 : 4} />;
   }
-  return <ToolUseRow block={block} isFirstBlock={isFirstBlock} />;
+  if (block.kind === 'tool_use') {
+    // Bug-fix 2026-04-30: route ALL top-level tool_use blocks through
+    // the new Part renderer. Part now matches Claude Code TUI's exact
+    // `Bash(<command>)` head format + `⎿  `-prefixed result body, while
+    // ToolUseRow had drifted into a `description [show]` head + fenced
+    // TEXT code-block result.
+    void ToolUseRow; // keep the symbol referenced for any direct callers
+    return (
+      <div data-tool-use-id={block.toolUseId} style={{ display: 'contents' }}>
+        <Part part={block} depth={0} />
+        {inlinePermission && (
+          <InlinePermissionCard
+            request={inlinePermission.request}
+            onRespond={inlinePermission.onRespond}
+          />
+        )}
+      </div>
+    );
+  }
+  // tool_result / todo (and any future block kinds) — route directly
+  // through the new Part component.
+  return <Part part={block} depth={0} />;
 };
 
 const AssistantMessageBody: React.FC<{
   message: AssistantChatMessage;
   isFirstAssistantTurn?: boolean;
-}> = ({ message, isFirstAssistantTurn = false }) => {
+  /**
+   * Active permission request for THIS streaming message. When set,
+   * an InlinePermissionCard mounts at the END of the message body —
+   * Cline-style. Only honoured when the message is currently streaming
+   * (inline approvals don't make sense on closed turns). Phase 4 of the
+   * codemode-bridge plan replaces the portal'd PermissionDialog modal.
+   *
+   * Phase F (codemode-permanent-plan §4): when the request envelope
+   * carries a `parent_tool_use_id` matching one of THIS message's
+   * top-level tool_use blocks, the card is routed INTO that block's
+   * panel instead of mounting at the message tail — so a permission
+   * triggered by a parallel subagent shows up next to the right
+   * subagent rather than at the bottom of the assistant message.
+   */
+  pendingPermission?:
+    | (CanUseToolRequest & {
+        request_id: string;
+        parent_tool_use_id?: string | null;
+      })
+    | null;
+  onRespondToPermission?: (decision: PermissionDecision) => void;
+}> = ({
+  message,
+  isFirstAssistantTurn = false,
+  pendingPermission,
+  onRespondToPermission,
+}) => {
+  // Apply the parallel-tool grouping pass once so `firstContentIndex`
+  // and the per-row index align with what's actually rendered (the
+  // .map below also uses the grouped view).
+  const groupedBlocks = groupParallelTools(message.blocks);
   // Find the index of the first block with any visible content — used so
   // only the leading block gets the `●` gutter (matches openagentic where
   // shouldShowDot is true only for the first rendered block of the turn).
-  const firstContentIndex = message.blocks.findIndex((b) => {
+  const firstContentIndex = groupedBlocks.findIndex((b) => {
     if (b.kind === 'text') return b.text.length > 0;
     if (b.kind === 'thinking') return b.thinking.length > 0;
-    return true; // tool_use always shows
+    return true; // tool_use / boundary / parallel_group always shows
   });
 
   const hasAny = firstContentIndex >= 0;
@@ -1326,33 +1697,476 @@ const AssistantMessageBody: React.FC<{
     (b): b is UiToolUseBlock => b.kind === 'tool_use',
   );
 
+  const isPermissionActive =
+    !!pendingPermission && message.streaming && !!onRespondToPermission;
+
+  // Phase F routing: when the daemon flagged the control_request envelope
+  // with `parent_tool_use_id`, find the matching top-level tool_use. If
+  // the id matches a block, the card mounts inside that block's panel
+  // (see ToolUseRow / AssistantBlockRow). Otherwise (id null or no
+  // match) we fall back to the message-tail mount — the historical
+  // single-agent behaviour.
+  const routedParentToolUseId =
+    isPermissionActive && pendingPermission?.parent_tool_use_id
+      ? pendingPermission.parent_tool_use_id
+      : null;
+  const routedBlockId = (() => {
+    if (!routedParentToolUseId) return null;
+    const match = message.blocks.find(
+      (b): b is UiToolUseBlock =>
+        b.kind === 'tool_use' && b.toolUseId === routedParentToolUseId,
+    );
+    return match ? match.toolUseId : null;
+  })();
+  const showTailPermission = isPermissionActive && routedBlockId === null;
+
   return (
-    <>
-      {/* Breadcrumb pills removed — claude code CLI shows each tool
-          inline without a per-turn setup summary. */}
-      {!hasAny && message.streaming && (
-        <Row gutter={BLACK_CIRCLE} gutterColor={ACCENT} marginTop={8}>
-          <StreamingPlaceholder />
-        </Row>
-      )}
-      {message.blocks.map((block, i) => (
-        <AssistantBlockRow
-          key={i}
-          block={block}
-          index={i}
-          firstContentIndex={firstContentIndex}
+    <div
+      className="cm-msg-row cm-msg-assistant"
+      data-part="assistant"
+      data-testid={message.streaming ? 'cm-streaming-message' : undefined}
+    >
+      {/* StreamingPlaceholder removed 2026-05-07 — was rendering a
+          DUPLICATE heartbeat ('Considering… 68.7s' on its own row)
+          alongside the real InlineActivityHeartbeat below
+          ('almost done thinking 68.7s ↑14.9k'). User feedback: 'two
+          lines'. The InlineActivityHeartbeat now mounts from second 1
+          of streaming and is the single source of truth. */}
+      {groupedBlocks.map((block, i) => {
+        // Route the permission card into THIS block when its toolUseId
+        // matches the resolved parent_tool_use_id. Other blocks pass
+        // null so they don't render the card. Note: parallel_group
+        // blocks NEVER carry a permission card directly — the card
+        // would land on a child tool_use INSIDE the group, which the
+        // generic Part render handles via its own dispatch.
+        const inlinePermission =
+          isPermissionActive &&
+          pendingPermission &&
+          onRespondToPermission &&
+          block.kind === 'tool_use' &&
+          routedBlockId === block.toolUseId
+            ? {
+                request: pendingPermission,
+                onRespond: onRespondToPermission,
+              }
+            : null;
+        return (
+          <AssistantBlockRow
+            key={i}
+            block={block}
+            index={i}
+            firstContentIndex={firstContentIndex}
+            inlinePermission={inlinePermission}
+          />
+        );
+      })}
+      {/* Live heartbeat ONLY — no per-turn footer. openagentic/Claude Code
+          show the live counter while the model is thinking and drop it
+          on completion; a frozen post-turn readout is just chrome that
+          could be filled with anything (user feedback 2026-05-08). */}
+      {message.streaming && <InlineActivityHeartbeat message={message} />}
+      {/* Inline permission affordance — replaces the portal'd PermissionDialog
+          modal. Mounted at the END of the streaming assistant message so the
+          user stays in the transcript scoped to the exact tool that needs
+          permission. See Phase 4 of the codemode-bridge plan and
+          chat-messages/InlinePermissionCard.tsx.
+          Phase F: this tail mount fires only when the request is NOT
+          routed into a specific subagent panel — root-level permission
+          (parent_tool_use_id null) or unknown id (graceful fallback). */}
+      {showTailPermission && pendingPermission && onRespondToPermission && (
+        <InlinePermissionCard
+          request={pendingPermission}
+          onRespond={onRespondToPermission}
         />
-      ))}
+      )}
       {/* Blinking caret removed — was rendering per streaming assistant
           message, causing multiple cursors throughout the interleave.
           Claude code CLI (PTY) shows a single spinner in the footer
-          while streaming; the StreamingPlaceholder at the top of a new
-          turn serves that purpose here. */}
-      {/* Claude code CLI (PTY) renders tools inline without any per-turn
-          rollup summary. "Ran N commands" + the startup breadcrumb are
-          both off by default — each tool_use + tool_result reads cleanly
-          on its own inline. Cost/session stats live in the bottom status bar. */}
-    </>
+          while streaming; the InlineActivityHeartbeat above keeps the
+          user oriented mid-turn — pulsing dot + the live action line
+          ("Bash: ls", "Writing /a/b.tsx", "Reasoning: …"). */}
+    </div>
+  );
+};
+
+/**
+ * InlineActivityHeartbeat — pulsing bullet + the live action line, mounted
+ * at the bottom of the latest streaming assistant message so the user
+ * always sees a moving indicator inline where the work is happening
+ * (parity with claude code TUI's persistent activity strip). Uses
+ * deriveCurrentActivity to pull the right phrase from the message's
+ * blocks (Bash/Writing/Reasoning/etc.). Falls back to "Working…" when
+ * no specific phase can be derived.
+ */
+/**
+ * Estimate the live output token count for the streaming assistant
+ * message. Matches claude code's `responseLength / 4` heuristic
+ * (anthropic/src/components/Spinner/SpinnerAnimationRow.tsx) which sums
+ * the visible streaming chars (text + thinking + tool input json) and
+ * divides by 4 — close enough to GPT-style tokenization for a live
+ * counter that just needs to feel alive while the model streams.
+ */
+function streamingResponseChars(message: AssistantChatMessage): number {
+  let chars = 0;
+  for (const b of message.blocks) {
+    if (b.kind === 'text') chars += (b.text || '').length;
+    else if (b.kind === 'thinking') chars += (b.text || '').length;
+    else if (b.kind === 'tool_use') chars += (b.partialInputJson || '').length;
+  }
+  return chars;
+}
+
+/**
+ * Smooth, monotonic token counter — mirrors Claude Code TUI's
+ * `tokenCounterRef` ramp from
+ *   ~/anthropic/src/components/Spinner/SpinnerAnimationRow.tsx:142-160.
+ *
+ * The ref's stored value is in CHARS (not tokens) so the increments
+ * match the upstream stream rate. The displayed value divides by 4 for
+ * GPT-style approximate tokens.
+ *
+ * Why a ref + ramp instead of just `chars / 4`: the AIF/gpt-oss-120b
+ * provider restarts message_delta usage between tool-loop sub-messages
+ * with output_tokens=0, which makes a snapshot-based counter jitter
+ * (e.g. 406 → 166 → 67 → 156 → 199). The ref-based ramp is monotonic
+ * — the displayed value can only ever climb because each frame does
+ * `Math.min(ref + increment, currentChars)`. Drops of input simply
+ * stall the counter; they never reverse it.
+ */
+function useSmoothLiveTokens(currentChars: number): number {
+  // Bump on every animation frame (50ms via useElapsedTimer's 100ms
+  // tick is plenty fast for the visual). The ref is mutated and we
+  // force a render via the elapsed timer subscription so React picks
+  // up the new value.
+  const counterRef = useRef(0);
+  const gap = currentChars - counterRef.current;
+  if (gap > 0) {
+    let increment: number;
+    if (gap < 70) increment = 3;
+    else if (gap < 200) increment = Math.max(8, Math.ceil(gap * 0.15));
+    else increment = 50;
+    counterRef.current = Math.min(counterRef.current + increment, currentChars);
+  } else if (currentChars < counterRef.current) {
+    // Edge: a fresh message resets chars to 0. Reset the ref too so
+    // the next streaming turn doesn't start with a stale value.
+    counterRef.current = currentChars;
+  }
+  return Math.round(counterRef.current / 4);
+}
+
+/**
+ * 2s minimum dwell on each thinking state — mirrors Claude Code TUI's
+ * `useEffect` thinking-status state machine in
+ *   ~/anthropic/src/components/Spinner.tsx:125-159.
+ *
+ * State transitions:
+ *   none           → 'thinking…' (immediate when thinkingStartedAt set)
+ *   'thinking…'    → 'thought for Ns' (after thinkingEndedAt + 2s min display of 'thinking…')
+ *   'thought for'  → null (2s after that flip)
+ *
+ * Without the dwell, fast-thinking models (≤500ms) make the label
+ * flicker through three states in a single render and the user can't
+ * read what's happening.
+ */
+function useThinkingLabel(
+  startedAt: number | undefined,
+  endedAt: number | undefined,
+  isLive: boolean,
+): string | null {
+  const [label, setLabel] = useState<string | null>(null);
+  const startRef = useRef<number | null>(null);
+  useEffect(() => {
+    let toDuration: ReturnType<typeof setTimeout> | null = null;
+    let toClear: ReturnType<typeof setTimeout> | null = null;
+    if (isLive && startedAt) {
+      if (startRef.current === null) {
+        startRef.current = startedAt;
+        setLabel('thinking…');
+      }
+    } else if (startRef.current !== null && endedAt) {
+      const duration = endedAt - startRef.current;
+      const elapsed = Date.now() - startRef.current;
+      const remaining = Math.max(0, 2000 - elapsed);
+      startRef.current = null;
+      const flip = () => {
+        const dur = Math.max(1, Math.round(duration / 1000));
+        setLabel(`thought for ${dur}s`);
+        toClear = setTimeout(() => setLabel(null), 2000);
+      };
+      if (remaining > 0) toDuration = setTimeout(flip, remaining);
+      else flip();
+    }
+    return () => {
+      if (toDuration) clearTimeout(toDuration);
+      if (toClear) clearTimeout(toClear);
+    };
+  }, [isLive, startedAt, endedAt]);
+  return label;
+}
+
+function formatLiveTokens(n: number): string {
+  if (n < 1000) return String(n);
+  if (n < 100_000) return `${(n / 1000).toFixed(1)}k`;
+  return `${(n / 1000).toFixed(0)}k`;
+}
+
+const InlineActivityHeartbeat: React.FC<{
+  message: AssistantChatMessage;
+}> = ({ message }) => {
+  const elapsed = useElapsedTimer(true);
+  const chars = streamingResponseChars(message);
+  const liveTokens = useSmoothLiveTokens(chars);
+
+  // Activity verb (the bit BEFORE the parens). Cycles through verbs
+  // until tools/text arrive, then settles to a derived activity name.
+  const hasBlocks = message.blocks.length > 0;
+  const isThinkingLive = message.blocks.some((b) => b.kind === 'thinking' && b.streaming);
+  const derived = deriveCurrentActivity([message]);
+  const thinkingLiveSec = message.thinkingStartedAt && isThinkingLive
+    ? (Date.now() - message.thinkingStartedAt) / 1000
+    : 0;
+  let activity: string;
+  if (thinkingLiveSec > 25) {
+    activity = 'almost done thinking';
+  } else if (derived && derived !== 'Working…') {
+    activity = derived;
+  } else if (!hasBlocks && elapsed > 12) {
+    activity = 'almost done thinking';
+  } else if (!hasBlocks) {
+    const idx = Math.floor(elapsed / 2.5) % THINKING_VERBS.length;
+    activity = `${THINKING_VERBS[idx]}…`;
+  } else if (isThinkingLive) {
+    activity = 'Reasoning…';
+  } else {
+    activity = derived || 'Working…';
+  }
+
+  // Thinking label — `thinking…` while live, `thought for Ns` after
+  // (held for 2s before clearing). State machine in useThinkingLabel.
+  const thinkingLabel = useThinkingLabel(
+    message.thinkingStartedAt,
+    message.thinkingEndedAt,
+    isThinkingLive,
+  );
+
+  // Build the parenthesized status string Claude-Code-style:
+  //   `(12.3s · ↓ 1.3k tokens · thought for 2s)`
+  // Drop chips that don't have data yet — under 0.4s elapsed reads as
+  // 0.0s which adds noise; tokens=0 isn't useful; thinking is null
+  // when no thinking happened or after the 2s clear timeout.
+  const parts: string[] = [];
+  if (elapsed > 0.4) parts.push(`${elapsed.toFixed(1)}s`);
+  if (liveTokens > 0) parts.push(`↓ ${formatLiveTokens(liveTokens)} tokens`);
+  if (thinkingLabel) parts.push(thinkingLabel);
+
+  return (
+    <div
+      data-testid="codemode-inline-activity-heartbeat"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 6,
+        padding: '4px 0 4px 14px',
+        fontFamily: 'var(--cm-mono-font, ui-monospace, Menlo, Monaco, Consolas, monospace)',
+        fontSize: 11.5,
+        color: 'var(--cm-text-muted, #8b949e)',
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          display: 'inline-block',
+          width: 7,
+          height: 7,
+          borderRadius: '50%',
+          background: '#b25cff',
+          boxShadow: '0 0 6px rgba(178, 92, 255, 0.55)',
+          animation: 'cm-inline-activity-pulse 1s ease-in-out infinite',
+          flexShrink: 0,
+        }}
+      />
+      <span
+        style={{
+          color: 'var(--cm-text, #e7ecf5)',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          minWidth: 0,
+          flex: 1,
+        }}
+      >
+        {activity}
+      </span>
+      {parts.length > 0 && (
+        <span
+          data-testid="codemode-inline-status"
+          style={{
+            fontVariantNumeric: 'tabular-nums',
+            opacity: 0.7,
+            flexShrink: 0,
+          }}
+        >
+          ({parts.join(' · ')})
+        </span>
+      )}
+      <style>{`
+        @keyframes cm-inline-activity-pulse {
+          0%, 100% { opacity: 0.45; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.25); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+/**
+ * TurnStatsFooter — persistent one-line summary that mounts under each
+ * completed assistant turn. User feedback 2026-05-06: "token count isnt
+ * working" — the live heartbeat unmounts when streaming ends and the
+ * user lost visibility into the turn's token + duration totals.
+ *
+ * Renders: `↑<input> · ↓<output> · <elapsed>s · <model> · thought for Ns`
+ * — only the fields that exist for this message. If the daemon never
+ * surfaced usage (e.g. AIF mid-rollout) we render nothing instead of
+ * showing zero-tokens (avoids misleading the user).
+ */
+/**
+ * TurnStatsFooter — minimal one-liner under each completed turn.
+ *
+ * Fields per the user's spec: `(elapsed · ↑input · ↓output · thinking)`.
+ * Renders all four even at zero so each turn's row is structurally
+ * identical (no shifty "where did the chip go" feel between turns).
+ * Model + cost trail to the right when available.
+ *
+ * Design goal: low cognitive drain. Compact 12px monospace, dim color
+ * via --cm-text-muted, dot separators dimmed further (opacity 0.4) so
+ * the eye groups the data not the separators. Tabular-num digits keep
+ * the row from jittering as values tick.
+ */
+const TurnStatsFooter: React.FC<{ message: AssistantChatMessage }> = ({ message }) => {
+  const u = message.usage;
+  const inTok = u?.inputTokens ?? 0;
+  const outTok = u?.outputTokens ?? 0;
+  const cost = u?.totalCostUsd ?? 0;
+  // Total turn elapsed: turnStartedAt → turnEndedAt (frozen on result),
+  // falls back to createdAt on the start side and Date.now() on the end
+  // side for in-flight messages — though in practice this footer only
+  // mounts after streaming, so end is always frozen.
+  const start = message.turnStartedAt ?? message.createdAt;
+  const end = message.turnEndedAt ?? Date.now();
+  const elapsedSec = Math.max(0, (end - start) / 1000);
+  // Reasoning sub-segment.
+  const thinkSec = message.thinkingStartedAt
+    ? Math.max(0, ((message.thinkingEndedAt ?? Date.now()) - message.thinkingStartedAt) / 1000)
+    : 0;
+  // Hide when there's literally nothing useful to show.
+  if (inTok === 0 && outTok === 0 && !message.turnModel && elapsedSec < 0.1) return null;
+
+  // Dot-separator helper — renders a bullet between chips, dimmed so
+  // the eye groups the chips not the separators (Claude's exact trick).
+  const dot = (key: string) => (
+    <span
+      key={key}
+      aria-hidden
+      style={{ opacity: 0.4, padding: '0 1px' }}
+    >
+      ·
+    </span>
+  );
+
+  const chips: React.ReactNode[] = [];
+  // Elapsed — always.
+  chips.push(
+    <span
+      key="elapsed"
+      data-testid="codemode-turn-elapsed"
+      style={{ fontVariantNumeric: 'tabular-nums' }}
+      title="Total turn elapsed (first byte → message_stop)"
+    >
+      {elapsedSec < 60
+        ? `${elapsedSec.toFixed(1)}s`
+        : `${Math.floor(elapsedSec / 60)}m ${Math.round(elapsedSec % 60)}s`}
+    </span>,
+  );
+  chips.push(dot('d1'));
+  // ↑ Input.
+  chips.push(
+    <span
+      key="in"
+      data-testid="codemode-turn-input-tokens"
+      style={{ fontVariantNumeric: 'tabular-nums' }}
+      title="Input tokens for this turn"
+    >
+      <span aria-hidden style={{ opacity: 0.6 }}>↑</span>
+      {formatLiveTokens(inTok)}
+    </span>,
+  );
+  chips.push(dot('d2'));
+  // ↓ Output.
+  chips.push(
+    <span
+      key="out"
+      data-testid="codemode-turn-output-tokens"
+      style={{ fontVariantNumeric: 'tabular-nums' }}
+      title="Output tokens for this turn"
+    >
+      <span aria-hidden style={{ opacity: 0.6 }}>↓</span>
+      {formatLiveTokens(outTok)}
+    </span>,
+  );
+  if (thinkSec > 0) {
+    chips.push(dot('d3'));
+    chips.push(
+      <span
+        key="thinking"
+        data-testid="codemode-turn-thinking-duration"
+        style={{ fontVariantNumeric: 'tabular-nums' }}
+        title="Reasoning duration for this turn"
+      >
+        thought {thinkSec < 60 ? `${Math.max(1, Math.round(thinkSec))}s` : `${Math.round(thinkSec / 60)}m`}
+      </span>,
+    );
+  }
+  if (message.turnModel) {
+    chips.push(dot('d4'));
+    chips.push(
+      <span key="model" style={{ opacity: 0.7 }} title="Model that produced this turn">
+        {message.turnModel}
+      </span>,
+    );
+  }
+  if (cost > 0) {
+    chips.push(dot('d5'));
+    chips.push(
+      <span
+        key="cost"
+        style={{ fontVariantNumeric: 'tabular-nums', opacity: 0.6 }}
+        title="USD cost for this turn"
+      >
+        ${cost.toFixed(4)}
+      </span>,
+    );
+  }
+
+  return (
+    <div
+      data-testid="codemode-turn-stats-footer"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 6,
+        marginBottom: 4,
+        padding: '3px 0 3px 14px',
+        fontFamily: 'var(--cm-mono-font, ui-monospace, Menlo, Monaco, Consolas, monospace)',
+        fontSize: 12,
+        color: 'var(--cm-text-muted, #8b949e)',
+        flexWrap: 'wrap',
+      }}
+    >
+      {chips}
+    </div>
   );
 };
 
@@ -1423,7 +2237,11 @@ const PlanProposalCard: React.FC<{
         </div>
         {planText ? (
           <div className="cm-markdown">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{planText}</ReactMarkdown>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: false }]]}
+              rehypePlugins={[rehypeSemanticTokens, [rehypeKatex as any, { strict: false, throwOnError: false, output: 'html' }]]}
+              components={MARKDOWN_COMPONENTS}
+            >{normalizeLatexDelimiters(planText)}</ReactMarkdown>
           </div>
         ) : (
           <div style={{ color: DIM, fontStyle: 'italic', fontSize: 12 }}>
@@ -1495,16 +2313,92 @@ export const MessageRow: React.FC<{
    *  chips. The parent computes this in one pass so we don't have to
    *  scan the entire transcript per-row. */
   isFirstAssistantTurn?: boolean;
-}> = ({ message, isFirstAssistantTurn }) => {
-  if (message.role === 'user') return <UserRow text={message.text} />;
-  if (message.role === 'system') return <SystemRow text={message.text} />;
+  /**
+   * Active permission request from the codemode hook. When set AND
+   * this message is the streaming-in-flight assistant turn, an
+   * InlinePermissionCard mounts at the end of the message — replaces
+   * the portal'd PermissionDialog modal (Phase 4 of the codemode-bridge
+   * plan). Callers should only pass this on the message where the
+   * permission belongs (typically the most-recent streaming message).
+   *
+   * Phase F (codemode-permanent-plan §4): the augmented type includes
+   * an optional `parent_tool_use_id` that, when present, routes the
+   * card into the matching subagent panel instead of the message
+   * tail. Optional + null-default keeps single-agent flows unchanged.
+   */
+  pendingPermission?:
+    | (CanUseToolRequest & {
+        request_id: string;
+        parent_tool_use_id?: string | null;
+      })
+    | null;
+  /** Callback wired to useCodeModeChat.respondToPermission. */
+  respondToPermission?: (decision: PermissionDecision) => void;
+}> = ({
+  message,
+  isFirstAssistantTurn,
+  pendingPermission,
+  respondToPermission,
+}) => {
+  if (message.role === 'user') {
+    // Phase D: route XML-tagged user-message bodies (slash command,
+    // bash input/output, memory input, channel push, mcp resource
+    // updates, task notifications, etc.) through UserTextMessageDispatch.
+    // The dispatcher returns null for plain text so the user bubble
+    // continues to render via UserRow.
+    const dispatched = (
+      <UserTextMessageDispatch text={message.text} addMargin />
+    );
+    // Cheap check so we don't render an empty fragment for plain text.
+    // If the dispatcher would return null, fall through to UserRow.
+    if (mightHaveDispatchTag(message.text)) {
+      return dispatched;
+    }
+    return <UserRow text={message.text} />;
+  }
+  if (message.role === 'system') {
+    // Phase D: surface system messages through SystemTextMessage so
+    // subtype-specific tones (turn_duration, bridge_status, thinking,
+    // memory_saved, stop_hook_summary, api_retry, etc.) render with
+    // their proper visual treatment when the hook injects a structured
+    // SystemChatMessage. Today the hook injects plain text, so the
+    // generic branch lights up.
+    return <SystemRow text={message.text} />;
+  }
   if (message.role === 'error') return <ErrorRow text={message.text} />;
   return (
     <AssistantMessageBody
       message={message as AssistantChatMessage}
       isFirstAssistantTurn={isFirstAssistantTurn}
+      pendingPermission={pendingPermission}
+      onRespondToPermission={respondToPermission}
     />
   );
 };
+
+/**
+ * Cheap pre-check: returns true if the user-message text contains any
+ * of the XML tag wrappers UserTextMessageDispatch knows how to render.
+ * Avoids the React reconciler returning null when 99% of user messages
+ * are plain text typed into the composer.
+ */
+function mightHaveDispatchTag(text: string): boolean {
+  if (text.length === 0) return false;
+  return (
+    text.startsWith('<bash-stdout') ||
+    text.startsWith('<bash-stderr') ||
+    text.startsWith('<local-command-stdout') ||
+    text.startsWith('<local-command-stderr') ||
+    text.includes('<bash-input>') ||
+    text.includes('<command-message>') ||
+    text.includes('<user-memory-input>') ||
+    text.includes('<task-notification') ||
+    text.includes('<mcp-resource-update') ||
+    text.includes('<mcp-polling-update') ||
+    text.includes('<channel source="') ||
+    text === '[Request interrupted by user]' ||
+    text === '[Request interrupted by user for tool use]'
+  );
+}
 
 export default MessageRow;

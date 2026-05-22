@@ -6,6 +6,7 @@ import {
   Shield, Server, AlertTriangle, CheckCircle, XCircle, Lock
 } from '../Shared/AdminIcons';
 import { apiRequestJson } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 
 interface ServiceStatus {
   service: string;
@@ -89,8 +90,15 @@ const NetworkSecurityView: React.FC<NetworkSecurityViewProps> = ({ theme }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+      <div className="space-y-6">
+        <PageHeader
+          crumbs={['Admin', 'Security', 'Network']}
+          title="Network Security"
+          explainer="Manage Kubernetes NetworkPolicies to control inter-service communication and egress."
+        />
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+        </div>
       </div>
     );
   }
@@ -106,14 +114,14 @@ const NetworkSecurityView: React.FC<NetworkSecurityViewProps> = ({ theme }) => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold mb-2 text-text-primary">
-          Network Security
-        </h2>
-        <p className="text-text-secondary">
-          Manage Kubernetes NetworkPolicies to control inter-service communication and egress
-        </p>
-      </div>
+      <PageHeader
+        crumbs={['Admin', 'Security', 'Network']}
+        title="Network Security"
+        explainer="Manage Kubernetes NetworkPolicies to control inter-service communication and egress."
+        actions={[
+          { label: 'Refresh', onClick: () => { void fetchAll(); } },
+        ]}
+      />
 
       {error && (
         <div className="glass-card border-error/50 bg-error-500/10 p-4 rounded-lg flex items-center gap-3">

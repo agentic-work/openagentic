@@ -1,5 +1,6 @@
 import { PrismaClient, CodeModeProvisioning } from '@prisma/client';
 import type { Logger } from 'pino';
+import { ModelConfigurationService } from './ModelConfigurationService.js';
 
 export type ProvisioningStatus = 'pending' | 'provisioning' | 'ready' | 'failed' | 'suspended';
 
@@ -28,7 +29,8 @@ export interface ProvisioningResult {
 interface ProvisioningConfig {
   environmentType: 'docker' | 'kubernetes';
   workspaceBasePath: string;
-  defaultModel: string;
+  /** Never set from env — DB is SoT via resolveDefaultModel(). undefined until resolved. */
+  defaultModel: string | undefined;
   openagenticManagerUrl?: string;
 }
 
@@ -51,10 +53,23 @@ export class CodeModeProvisioningService {
     this.config = {
       environmentType: (process.env.ENVIRONMENT_TYPE as 'docker' | 'kubernetes') || 'docker',
       workspaceBasePath: process.env.CODE_MODE_WORKSPACE_PATH || '/workspace',
-      // Use env var chain - NEVER hardcode model IDs
-      defaultModel: process.env.CODE_MODE_DEFAULT_MODEL || process.env.DEFAULT_MODEL || process.env.FALLBACK_MODEL,
+      // DB is SoT — resolved per-call via resolveDefaultModel(). Never env.
+      defaultModel: undefined,
       openagenticManagerUrl: process.env.OPENAGENTIC_MANAGER_URL || 'http://openagentic-manager:3001',
     };
+  }
+
+  /**
+   * Resolve the default model. Pattern A (plan task 5):
+   * DB (ModelConfigurationService) → undefined fallback (field is nullable String?).
+   * Never reads process.env model vars.
+   */
+  private async resolveDefaultModel(): Promise<string | undefined> {
+    try {
+      const m = await ModelConfigurationService.getDefaultChatModel();
+      return m || undefined;
+    } catch { /* DB unavailable — undefined is an acceptable null for openagentic_model */ }
+    return undefined;
   }
 
   /**
@@ -146,7 +161,7 @@ export class CodeModeProvisioningService {
         status: 'provisioning',
         status_message: 'Initializing...',
         environment_type: this.config.environmentType,
-        openagentic_model: this.config.defaultModel,
+        openagentic_model: await this.resolveDefaultModel(),
       },
       update: {
         status: 'provisioning',
@@ -333,7 +348,7 @@ export class CodeModeProvisioningService {
       where: { user_id: userId },
       data: {
         openagentic_provisioned: true,
-        openagentic_model: this.config.defaultModel,
+        openagentic_model: await this.resolveDefaultModel(),
       }
     });
 

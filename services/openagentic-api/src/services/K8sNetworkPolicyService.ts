@@ -7,6 +7,7 @@
  */
 
 import { loggers } from '../utils/logger.js';
+import { featureFlags } from '../config/featureFlags.js';
 
 const logger = loggers.routes;
 
@@ -62,7 +63,7 @@ async function initK8s(): Promise<boolean> {
 }
 
 function getNamespace(): string {
-  return process.env.NAMESPACE || process.env.POD_NAMESPACE || 'agentic-dev';
+  return featureFlags.k8sNamespace;
 }
 
 class K8sNetworkPolicyService {

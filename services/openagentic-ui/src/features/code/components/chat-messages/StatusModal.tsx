@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEscToClose } from './CommandModals';
 
 const MONO =
   'var(--cm-mono-font, ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace)';
@@ -36,6 +37,9 @@ type TabId = 'status' | 'config' | 'usage';
 export const StatusModal: React.FC<StatusModalProps> = (props) => {
   const [tab, setTab] = useState<TabId>('status');
   const tabs: TabId[] = ['status', 'config', 'usage'];
+  // Document-level Esc — see useEscToClose JSDoc. The dialog's local
+  // onKeyDown is shadowed by the composer textarea's swallow.
+  useEscToClose(props.onClose);
 
   return (
     <div
@@ -178,7 +182,7 @@ const ConfigTab: React.FC<StatusModalProps> = (p) => (
     <PropRow label="contextLimit" value={`${p.contextLimit.toLocaleString()} tokens`} />
 
     <SectionHeader>Actions</SectionHeader>
-    <ActionRow label="Change model" onClick={() => { p.onSend('/model'); p.onClose(); }} />
+    {/* /model action removed v0.6.7 — codemode is admin-locked to one model. */}
     <ActionRow label="Edit permissions" onClick={() => { p.onSend('/permissions'); p.onClose(); }} />
     <ActionRow label="Manage MCP servers" onClick={() => { p.onSend('/mcp'); p.onClose(); }} />
     <ActionRow label="Edit memory" onClick={() => { p.onSend('/memory edit'); p.onClose(); }} />

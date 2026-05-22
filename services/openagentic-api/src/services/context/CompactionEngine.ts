@@ -235,8 +235,6 @@ export class CompactionEngine {
         ],
         temperature: 0.1,
         max_tokens: 1024,
-        // Use economy tier via slider if supported
-        sliderValue: 20,
       });
 
       // Extract text content

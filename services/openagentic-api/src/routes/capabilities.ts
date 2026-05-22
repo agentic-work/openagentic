@@ -98,7 +98,7 @@ fastify.get('/catalog', async (request, reply) => {
   /**
    * Recommend capabilities for requirements
    */
-  fastify.post('/recommend', { preHandler: authMiddleware }, async (request, reply) => {
+  fastify.post('/recommend', { onRequest: authMiddleware }, async (request, reply) => {
     try {
       const requirements = request.body as ExtendedTaskRequirements;
       
@@ -137,7 +137,7 @@ fastify.get('/catalog', async (request, reply) => {
   /**
    * Analyze message to determine requirements
    */
-  fastify.post('/analyze', { preHandler: authMiddleware }, async (request, reply) => {
+  fastify.post('/analyze', { onRequest: authMiddleware }, async (request, reply) => {
     try {
       const { message, attachments } = request.body as {
         message: string;
@@ -166,7 +166,7 @@ fastify.get('/catalog', async (request, reply) => {
   /**
    * Select model for a message
    */
-  fastify.post('/select-model', { preHandler: authMiddleware }, async (request, reply) => {
+  fastify.post('/select-model', { onRequest: authMiddleware }, async (request, reply) => {
     try {
       const { message, attachments, preferences } = request.body as {
         message: string;
@@ -287,7 +287,7 @@ fastify.get('/catalog', async (request, reply) => {
   /**
    * Refresh capability discovery
    */
-  fastify.post('/refresh', { preHandler: adminMiddleware }, async (request, reply) => {
+  fastify.post('/refresh', { onRequest: adminMiddleware }, async (request, reply) => {
     try {
       // Re-initialize to refresh capabilities
       await capabilityIntegration.initialize();
@@ -361,7 +361,7 @@ fastify.get('/catalog', async (request, reply) => {
   /**
    * Update capability performance (called after usage)
    */
-  fastify.post('/performance', { preHandler: authMiddleware }, async (request, reply) => {
+  fastify.post('/performance', { onRequest: authMiddleware }, async (request, reply) => {
     try {
       const { capabilityId, performance } = request.body as {
         capabilityId: string;

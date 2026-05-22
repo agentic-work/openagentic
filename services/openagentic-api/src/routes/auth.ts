@@ -284,32 +284,11 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
               email: user.email
             }, 'Created new local user for Azure AD user with mapped admin status');
 
-            // 🔒 SECURITY: Assign appropriate prompt template based on admin status
-            if (isAdmin) {
-              try {
-                const adminTemplate = await prisma.promptTemplate.findFirst({
-                  where: { category: 'admin', is_active: true }
-                });
-
-                if (adminTemplate) {
-                  await prisma.userPromptAssignment.create({
-                    data: {
-                      user_id: newUser.id,
-                      prompt_template_id: adminTemplate.id,
-                      assigned_by: 'system',
-                      assigned_at: new Date()
-                    }
-                  });
-
-                  logger.info({
-                    userId: newUser.id,
-                    templateName: 'Admin Mode'
-                  }, '✅ Assigned Admin Mode template to new Azure AD admin user');
-                }
-              } catch (assignmentError) {
-                logger.warn({ error: assignmentError, userId: newUser.id }, '⚠️ Failed to assign Admin Mode template to new admin user');
-              }
-            }
+            // Legacy "assign Admin Mode prompt template on first login" block
+            // RIPPED 2026-05-11 (chatmode-rip Phase E final). The
+            // PromptTemplate + UserPromptAssignment tables are gone;
+            // admin vs member system prompts are now resolved per-turn via
+            // getSystemPromptForRole() against the rbac_system_prompts table.
 
             // Validate first-time admin if needed
             if (isAdmin) {
@@ -1929,41 +1908,11 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
           return reply.redirect(`${baseUrl}/login?error=account_locked&message=${errorMessage}`);
         }
 
-        // 🔒 SECURITY: Assign Admin Mode template to new admin users
-        if (isNewUser && user.isAdmin) {
-          try {
-            const adminTemplate = await prisma.promptTemplate.findFirst({
-              where: { category: 'admin', is_active: true }
-            });
-
-            if (adminTemplate) {
-              await prisma.userPromptAssignment.upsert({
-                where: {
-                  user_id_prompt_template_id: {
-                    user_id: azureUserId,
-                    prompt_template_id: adminTemplate.id
-                  }
-                },
-                create: {
-                  user_id: azureUserId,
-                  prompt_template_id: adminTemplate.id,
-                  assigned_by: 'system',
-                  assigned_at: new Date()
-                },
-                update: {
-                  assigned_at: new Date()
-                }
-              });
-
-              logger.info({
-                userId: azureUserId,
-                templateName: 'Admin Mode'
-              }, '✅ Assigned Admin Mode template to new Azure AD admin user (callback flow)');
-            }
-          } catch (assignmentError) {
-            logger.warn({ error: assignmentError, userId: azureUserId }, '⚠️ Failed to assign Admin Mode template');
-          }
-        }
+        // Legacy "assign Admin Mode prompt template on Azure AD callback"
+        // block RIPPED 2026-05-11 (chatmode-rip Phase E final). The
+        // PromptTemplate + UserPromptAssignment tables are gone; admin
+        // vs member system prompts are now resolved per-turn via
+        // getSystemPromptForRole() against the rbac_system_prompts table.
 
         // Now store access token for MCP/Graph API usage (only if user sync succeeded)
         // CRITICAL: Store refresh token for auto-refresh when access token expires

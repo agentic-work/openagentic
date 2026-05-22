@@ -24,7 +24,7 @@ export interface SystemConfig {
     // Optional services - require explicit enabling
     ollama: boolean;
     multiModel: boolean;
-    slider: boolean;
+    // 2026-04-19 — `slider` feature flag removed (task #144, slider rip).
   };
   version: string;
 }
@@ -44,7 +44,6 @@ const DEFAULT_CONFIG: SystemConfig = {
     // Optional services - default to enabled for development
     ollama: false,
     multiModel: true,
-    slider: true
   },
   version: '1.0.0'
 };

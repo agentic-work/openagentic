@@ -1,8 +1,27 @@
 import axios from 'axios';
 import { Logger } from 'pino';
+import { mintInterServiceSystemToken } from './llm-providers/util/mintInterServiceSystemToken.js';
 import { PrismaClient } from '@prisma/client';
 import { UniversalEmbeddingService } from './UniversalEmbeddingService.js';
 import { extractToolTags } from '../utils/toolTagExtractor.js';
+import { extractToolMetadata, toSearchEmbeddingText } from './extractToolMetadata.js';
+import {
+  loadToolMetadataOverlay,
+  mergeOverlayWithInference,
+  type MergedToolMetadata,
+} from './ToolMetadataOverlay.js';
+// Built-in meta-tool defs that ship in the openagentic-api image but were
+// dropped from the T1 catalog (per toolRegistry.ts header). These must be
+// discoverable via `tool_search` so the model can expand the catalog
+// mid-turn — same surface as MCP-server-registered tools.
+// chatmode-rip Phase C indexer extension (2026-05-11).
+import { COMPOSE_VISUAL_TOOL } from './ComposeVisualTool.js';
+import { COMPOSE_APP_TOOL } from './ComposeAppTool.js';
+import { RENDER_ARTIFACT_TOOL } from './RenderArtifactTool.js';
+import { REQUEST_CLARIFICATION_TOOL } from './RequestClarificationTool.js';
+import { BROWSER_SANDBOX_EXEC_TOOL } from './BrowserSandboxExecTool.js';
+import { MEMORIZE_TOOL } from './MemorizeTool.js';
+import { MEMORY_SEARCH_TOOL_DEF } from './MemorySearchTool.js';
 
 /**
  * MCP Tool Indexing Service
@@ -104,6 +123,36 @@ export class MCPToolIndexingService {
           const embeddedCount = Number(pgEmbedCount[0]?.cnt || 0);
           if (embeddedCount === 0) {
             this.logger.info('[MCP_INDEXING] 🔄 pgvector embeddings empty - forcing re-index regardless of Redis hash');
+            forceReindex = true;
+          }
+        }
+
+        // CRITICAL: Always re-index if Milvus mcp_tools collection is empty.
+        // Symmetric to the pgvector empty-check above. This is the actual
+        // store the legacy ranker queried — if it's empty (because a prior
+        // indexing run silently failed inside indexToolsInMilvus, or the
+        // collection was dropped externally), the time-based skip gate
+        // would otherwise strand us with row_count=0 forever.
+        // Caught live 2026-04-29 (task #530): pgvector had 270 rows but
+        // Milvus mcp_tools had 0 rows because indexToolsInMilvus errors
+        // are swallowed (line ~800 "Don't throw"). Skip-on-recent-time
+        // happily skipped, ranker returned no narrowing, all 270 tools
+        // hit gpt-oss:20b — defeating the entire ranker.
+        if (!forceReindex && this.milvusClient) {
+          try {
+            const milvusStats = await this.milvusClient.getCollectionStatistics({
+              collection_name: 'mcp_tools',
+            });
+            const rowCount = Number(milvusStats?.data?.row_count ?? milvusStats?.stats?.find((s: any) => s.key === 'row_count')?.value ?? 0);
+            if (!Number.isFinite(rowCount) || rowCount === 0) {
+              this.logger.info({ rowCount }, '[MCP_INDEXING] 🔄 Milvus mcp_tools collection empty - forcing re-index regardless of Redis hash');
+              forceReindex = true;
+            }
+          } catch (milvusErr: any) {
+            // Stats query itself failed — treat as worst-case empty and
+            // force re-index. Better to redo the work than silently leave
+            // ToolRanker with no data.
+            this.logger.warn({ err: milvusErr?.message }, '[MCP_INDEXING] 🔄 Milvus mcp_tools stats query failed - forcing re-index (fail-safe)');
             forceReindex = true;
           }
         }
@@ -214,6 +263,28 @@ export class MCPToolIndexingService {
       this.logger.info('[MCP_INDEXING] 💾 [LAST RESORT] Caching tools in Redis (emergency fallback)...');
       await this.cacheToolsInRedis(allTools);
 
+      // 4. BUILT-IN META-TOOLS (chatmode-rip Phase C) — keep tool_search
+      //    capable of returning compose_visual / compose_app / render_artifact
+      //    / request_clarification / browser_sandbox_exec / memorize /
+      //    memory_search alongside the MCP fan-out. Indexed under
+      //    server_id='builtin' so the UI can distinguish them.
+      await this.indexBuiltInMetaTools();
+
+      // 5. TAG-PRIMARY-KEY (#766, 2026-05-11) — populate the tool_tags
+      //    Milvus collection with one row per (tool, tag) pair extracted
+      //    from the deepened scalar facets (cloud_provider, verb, service,
+      //    cost_class, aliases). Tags become first-class filter-then-vector
+      //    rows so the model can string complex tools together for business
+      //    usecase goals.
+      try {
+        await this.indexToolTags(allTools);
+      } catch (tagErr: any) {
+        this.logger.warn(
+          { err: tagErr?.message },
+          '[MCP_INDEXING] ⚠️ tool_tags indexing failed (non-fatal — mcp_tools still primary)',
+        );
+      }
+
       // Store indexing metadata in Redis for admin UI
       if (this.redisClient) {
         try {
@@ -291,8 +362,15 @@ export class MCPToolIndexingService {
       mcpProxyUrl
     }, '[MCP_INDEXING] 🔧 MCP Proxy connection configuration');
 
+    // Substrate fix S1 (2026-05-09): mcp-proxy requires Authorization on every
+    // call. #1029 (2026-05-22) deduped the inline minting pattern into
+    // mintInterServiceSystemToken so all 4 call sites stay byte-identical.
+    // Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §3 S1
+    const systemToken = mintInterServiceSystemToken(process.env.INTERNAL_SERVICE_SECRET);
+
     const headers: any = {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${systemToken}`,
     };
 
     // MCP Proxy tools endpoint
@@ -324,15 +402,26 @@ export class MCPToolIndexingService {
         const toolsData = response.data.tools || [];
 
         if (toolsData.length > 0) {
-          // Transform MCP Proxy format to our expected format
+          // Transform MCP Proxy format to our expected format. Preserve
+          // ALL MCP-spec Tool fields beyond name/description/parameters —
+          // _meta carries cascade-authoritative fields (category, hitlRisk,
+          // goldenPrompts), annotations carries MCP-standard hints, and
+          // outputSchema enables response-shape validation. Earlier
+          // revisions hand-projected only 3 fields and silently dropped
+          // the rest, breaking the cascade ranker's metadata feed.
           const tools = toolsData.map((tool: any) => ({
             type: 'function',
             function: {
               name: tool.name,
               description: tool.description || tool.name,
-              parameters: tool.inputSchema || {}
+              parameters: tool.inputSchema || {},
+              ...(tool.outputSchema ? { outputSchema: tool.outputSchema } : {}),
             },
-            serverId: tool.server || 'unknown'
+            serverId: tool.server || 'unknown',
+            ...(tool._meta ? { _meta: tool._meta } : {}),
+            ...(tool.annotations ? { annotations: tool.annotations } : {}),
+            ...(tool.title ? { title: tool.title } : {}),
+            ...(tool.icons ? { icons: tool.icons } : {}),
           }));
 
           this.logger.info({
@@ -372,101 +461,11 @@ export class MCPToolIndexingService {
     return [];
   }
 
-  /**
-   * Ensure Milvus collection exists for MCP tools
-   */
-  private async ensureMilvusCollection(): Promise<void> {
-    try {
-      const collectionName = 'mcp_tools';
-
-      // Check if collection exists
-      const hasCollection = await this.milvusClient.hasCollection({
-        collection_name: collectionName
-      });
-
-      if (hasCollection.value) {
-        this.logger.info('[MCP_INDEXING] MCP tools collection already exists');
-        return;
-      }
-
-      // Create collection with proper schema
-      const createResult = await this.milvusClient.createCollection({
-        collection_name: collectionName,
-        fields: [
-          {
-            name: 'id',
-            description: 'Tool ID',
-            data_type: 'VarChar',
-            max_length: 100,
-            is_primary_key: true
-          },
-          {
-            name: 'tool_name',
-            description: 'Tool function name',
-            data_type: 'VarChar',
-            max_length: 255
-          },
-          {
-            name: 'tool_description',
-            description: 'Tool description',
-            data_type: 'VarChar',
-            max_length: 2000
-          },
-          {
-            name: 'tool_schema',
-            description: 'Full tool schema as JSON',
-            data_type: 'VarChar',
-            max_length: 10000
-          },
-          {
-            name: 'server_id',
-            description: 'MCP server ID',
-            data_type: 'VarChar',
-            max_length: 100
-          },
-          {
-            name: 'tags',
-            description: 'Comma-separated searchable tags (abbreviations, keywords, etc.)',
-            data_type: 'VarChar',
-            max_length: 1024
-          },
-          {
-            name: 'embedding',
-            description: 'Tool description embedding',
-            data_type: 'FloatVector',
-            dim: parseInt(process.env.EMBEDDING_DIMENSION || '768')
-          }
-        ]
-      });
-
-      this.logger.info({
-        createResult
-      }, '[MCP_INDEXING] Created MCP tools collection');
-
-      // Create index on embedding field
-      await this.milvusClient.createIndex({
-        collection_name: collectionName,
-        field_name: 'embedding',
-        index_type: 'IVF_FLAT',
-        metric_type: 'COSINE',
-        params: { nlist: 1024 }
-      });
-
-      // Load collection
-      await this.milvusClient.loadCollection({
-        collection_name: collectionName
-      });
-
-      this.logger.info('[MCP_INDEXING] MCP tools collection created and indexed');
-
-    } catch (error: any) {
-      this.logger.error({
-        error: error.message
-      }, '[MCP_INDEXING] Failed to ensure Milvus collection');
-
-      throw error;
-    }
-  }
+  // H12: removed dead `ensureMilvusCollection()` (no-args). The live indexer
+  // uses `ensureMilvusCollectionWithDimension(name, dim)` at line ~854 with
+  // `this.embeddingService.getInfo().dimensions`. The dead path baked a
+  // `process.env.EMBEDDING_DIMENSION || '<n>'` schema literal — registry
+  // bypass per docs/rules/no-hardcoded-models.md.
 
   /**
    * Index tools into Milvus with embeddings
@@ -678,19 +677,21 @@ export class MCPToolIndexingService {
   private async generateEmbedding(text: string): Promise<number[]> {
     try {
       const mcpProxyUrl = process.env.MCP_PROXY_ENDPOINT || 'http://openagentic-mcp-proxy:8080';
-      const masterKey = process.env.MCP_PROXY_API_KEY;
       const embeddingModel = process.env.EMBEDDING_MODEL;
 
       if (!embeddingModel) {
         throw new Error('EMBEDDING_MODEL environment variable not set');
       }
 
+      // Substrate fix S1 — deduped via mintInterServiceSystemToken (#1029).
+      const systemToken = mintInterServiceSystemToken(process.env.INTERNAL_SERVICE_SECRET);
+
       const response = await axios.post(`${mcpProxyUrl}/v1/embeddings`, {
         model: embeddingModel,
         input: text
       }, {
         headers: {
-          'Authorization': `Bearer ${masterKey}`,
+          'Authorization': `Bearer ${systemToken}`,
           'Content-Type': 'application/json'
         },
         timeout: 10000
@@ -817,26 +818,57 @@ export class MCPToolIndexingService {
       });
 
       if (hasCollection.value) {
-        // Check if dimension matches
+        // Check if dimension matches AND deepened-schema fields are present.
         const collectionInfo = await this.milvusClient.describeCollection({
           collection_name: collectionName
         });
 
         const embeddingField = collectionInfo.schema.fields.find((f: any) => f.name === 'embedding');
-        if (embeddingField && embeddingField.dim === dimension) {
+        // Milvus returns embeddingField.dim as a STRING (e.g. "768"); the
+        // `dimension` parameter is a NUMBER (e.g. 768). Strict `===` returns
+        // false for string-vs-number → the collection got dropped on EVERY
+        // boot, even when the dimensions matched. Coerce both sides.
+        // Caught live 2026-04-30 — race between this drop+recreate and a
+        // sibling indexer wiped the freshly-flushed 270 rows. Mirrors the
+        // ToolSemanticCacheService.ts:220 pattern.
+        const existingDimNum = embeddingField?.dim != null ? Number(embeddingField.dim) : null;
+
+        // 2026-05-11 — schema-fields presence check. Existing pre-deepening
+        // mcp_tools collections only carry 7 fields (id, tool_name,
+        // tool_description, tool_schema, server_id, tags, embedding). The
+        // deepened schema requires 11 additional fields; if ANY is missing,
+        // we must drop+recreate. Milvus does NOT support ALTER on existing
+        // collections — full reindex is the only path.
+        const existingFieldNames = new Set<string>(
+          (collectionInfo.schema.fields || []).map((f: any) => f.name),
+        );
+        const REQUIRED_DEEP_FIELDS = [
+          'usage_examples', 'when_to_use', 'when_NOT_to_use',
+          'aliases', 'output_shape', 'cost_class',
+          'requires_capabilities', 'cloud_provider', 'service',
+          'verb', 'related_tools',
+        ];
+        const missingDeepFields = REQUIRED_DEEP_FIELDS.filter((f) => !existingFieldNames.has(f));
+
+        if (embeddingField && existingDimNum === dimension && missingDeepFields.length === 0) {
           this.logger.info({
             collectionName,
             dimension
-          }, '[MCP_INDEXING] Milvus collection exists with correct dimension');
+          }, '[MCP_INDEXING] Milvus collection exists with correct dimension AND deepened schema');
           return;
         }
 
-        // Dimension mismatch - drop and recreate
+        // Dimension OR schema mismatch - drop and recreate.
         this.logger.warn({
           collectionName,
           existingDim: embeddingField?.dim,
-          requiredDim: dimension
-        }, '[MCP_INDEXING] Dimension mismatch - recreating collection');
+          existingDimNum,
+          requiredDim: dimension,
+          missingDeepFields,
+          reason: missingDeepFields.length > 0
+            ? 'schema-deepening (2026-05-11) — old collection predates deepened fields'
+            : 'dimension-mismatch',
+        }, '[MCP_INDEXING] Collection mismatch - dropping and recreating');
 
         await this.milvusClient.dropCollection({
           collection_name: collectionName
@@ -888,6 +920,74 @@ export class MCPToolIndexingService {
             description: 'Comma-separated searchable tags (abbreviations, keywords, etc.)',
             data_type: 'VarChar',
             max_length: 1024
+          },
+          // === Deepened schema fields (2026-05-11) ===
+          // See ToolMetadataOverlay + inferToolMetadataFromName for source of truth.
+          {
+            name: 'usage_examples',
+            description: 'JSON array of 1-3 concrete {prompt, picked_because} usage examples',
+            data_type: 'VarChar',
+            max_length: 4096
+          },
+          {
+            name: 'when_to_use',
+            description: 'One-paragraph "use this tool WHEN..." prose',
+            data_type: 'VarChar',
+            max_length: 1024
+          },
+          {
+            name: 'when_NOT_to_use',
+            description: 'One-paragraph "do NOT use this tool when..." disambiguator prose',
+            data_type: 'VarChar',
+            max_length: 1024
+          },
+          {
+            name: 'aliases',
+            description: 'Comma-separated semantic aliases (e.g. "subs, subscriptions, azure subs")',
+            data_type: 'VarChar',
+            max_length: 512
+          },
+          {
+            name: 'output_shape',
+            description: 'One-line description of what the tool returns',
+            data_type: 'VarChar',
+            max_length: 1024
+          },
+          {
+            name: 'cost_class',
+            description: 'read | mutating | destructive',
+            data_type: 'VarChar',
+            max_length: 32
+          },
+          {
+            name: 'requires_capabilities',
+            description: 'Comma-separated capability requirements (e.g. "aws,azure")',
+            data_type: 'VarChar',
+            max_length: 256
+          },
+          {
+            name: 'cloud_provider',
+            description: 'azure | aws | gcp | k8s | platform | (empty)',
+            data_type: 'VarChar',
+            max_length: 32
+          },
+          {
+            name: 'service',
+            description: 'Sub-service (e.g. arm, iam, ec2, gke, app_service)',
+            data_type: 'VarChar',
+            max_length: 64
+          },
+          {
+            name: 'verb',
+            description: 'list | get | create | update | delete | query | execute | search | fetch',
+            data_type: 'VarChar',
+            max_length: 32
+          },
+          {
+            name: 'related_tools',
+            description: 'Comma-separated tool names typically called after this one',
+            data_type: 'VarChar',
+            max_length: 512
           },
           {
             name: 'embedding',
@@ -961,6 +1061,29 @@ export class MCPToolIndexingService {
       this.logger.info({
         insertedCount: insertResult.insert_cnt
       }, '[MCP_INDEXING] ✅ Data inserted into Milvus');
+
+      // CRITICAL: Milvus gRPC mode does not auto-flush. Without this call
+      // rows stay in the segment buffer and getCollectionStatistics returns
+      // row_count=0, leaving the legacy ranker with no data to query.
+      // Caught live 2026-04-29 21:40 UTC (task #530b): pgvector populated
+      // for 270 tools but Milvus row_count=0 because this insert never
+      // flushed. Sibling ToolSemanticCacheService.indexBatchInMilvus does
+      // flush after insert (ToolSemanticCacheService.ts:776-779) — that
+      // path is healthy. Mirror it here.
+      // Flush failure is warn-only: pgvector is the SoT, Milvus is a
+      // resilience replica, so a flush failure must NOT abort the pipeline.
+      try {
+        await this.milvusClient.flush({ collection_names: [collectionName] });
+        this.logger.info({
+          rowsFlushed: data.length,
+          collectionName,
+        }, `[MCP_INDEXING] 🔄 Flushed ${data.length} rows to Milvus collection ${collectionName}`);
+      } catch (flushErr: any) {
+        this.logger.warn({
+          err: flushErr?.message,
+          collectionName,
+        }, '[MCP_INDEXING] ⚠️ Milvus flush failed — rows may not be visible until next auto-flush (pgvector remains SoT)');
+      }
 
     } catch (error: any) {
       this.logger.error({
@@ -1036,12 +1159,53 @@ export class MCPToolIndexingService {
           const serverId = tool?.serverId || 'unknown';
           const description = tool?.function?.description || '';
           const schema = tool?.function?.parameters || {};
-          const category = this.inferToolCategory(toolName, description);
+          // Pull the per-tool metadata block (category, destructiveness,
+          // hitlRisk, requiresConsent, cost, goldenPrompts, ...). Falls
+          // back to text-mining when a tool doesn't ship a block.
+          const md = extractToolMetadata(
+            tool,
+            (n, d) => this.inferToolCategory(n, d),
+          );
+          const category = md.category;
 
           if (!toolName) {
             errors.push('Tool missing function.name');
             continue;
           }
+
+          // Persist the metadata block as JSON so ToolRanker + HITL gate
+          // can read it without re-deriving from name/description text.
+          // Now ALSO includes the deepened-schema fields (2026-05-11):
+          //   usage_examples, when_to_use, when_NOT_to_use, aliases,
+          //   output_shape, cost_class, requires_capabilities,
+          //   cloud_provider, service, verb, related_tools
+          // sourced via overlay+inference merge (ToolMetadataOverlay).
+          const overlayMap = loadToolMetadataOverlay();
+          const merged: MergedToolMetadata = mergeOverlayWithInference(
+            toolName,
+            overlayMap.get(toolName),
+          );
+          const persistedMetadata = {
+            destructiveness: md.destructiveness ?? null,
+            hitlRisk: md.hitlRisk ?? null,
+            requiresConsent: md.requiresConsent ?? null,
+            cost: md.cost ?? null,
+            idempotent: md.idempotent ?? null,
+            averageLatencyMs: md.averageLatencyMs ?? null,
+            goldenPrompts: md.goldenPrompts,
+            // Deepened schema fields.
+            usage_examples: merged.usage_examples,
+            when_to_use: merged.when_to_use,
+            when_NOT_to_use: merged.when_NOT_to_use,
+            aliases: merged.aliases,
+            output_shape: merged.output_shape,
+            cost_class: merged.cost_class,
+            requires_capabilities: merged.requires_capabilities,
+            cloud_provider: merged.cloud_provider,
+            service: merged.service,
+            verb: merged.verb,
+            related_tools: merged.related_tools,
+          };
 
           // Upsert tool record using Prisma
           const upsertedTool = await this.prisma.mCPTool.upsert({
@@ -1055,6 +1219,7 @@ export class MCPToolIndexingService {
               description,
               schema,
               category,
+              metadata: persistedMetadata as any,
               is_enabled: true,
               updated_at: new Date()
             },
@@ -1064,6 +1229,7 @@ export class MCPToolIndexingService {
               description,
               schema,
               category,
+              metadata: persistedMetadata as any,
               is_enabled: true,
               execution_count: 0
             }
@@ -1084,8 +1250,25 @@ export class MCPToolIndexingService {
                 ? descEmbeddingResult
                 : (descEmbeddingResult as any).embedding;
 
-              // Generate search embedding (includes name, description, category)
-              const searchText = `${toolName} ${description} ${category || ''}`.trim();
+              // Generate search embedding. Includes goldenPrompts so a
+              // user query phrased like "list my azure subs" rank-boosts
+              // azure_list_subscriptions even when the tool name and
+              // description don't share keywords with the query.
+              //
+              // 2026-05-11 — ALSO embeds the deepened overlay fields
+              // (when_to_use, aliases, usage_examples) so alias-form
+              // queries hit the right tool in top-3 instead of forcing
+              // the model to call the same tool 5× expecting different
+              // results. See data/tool-metadata-overlay.json for source.
+              const searchText = toSearchEmbeddingText({
+                toolName,
+                description,
+                category,
+                goldenPrompts: md.goldenPrompts,
+                when_to_use: merged.when_to_use,
+                aliases: merged.aliases,
+                usage_examples: merged.usage_examples,
+              });
               const searchEmbeddingResult = await this.embeddingService.generateEmbedding(searchText);
               const searchEmbedding: number[] = Array.isArray(searchEmbeddingResult)
                 ? searchEmbeddingResult
@@ -1160,6 +1343,393 @@ export class MCPToolIndexingService {
         stack: error.stack
       }, '[MCP_INDEXING] ❌ Failed to index tools in PostgreSQL');
       // Don't throw - PostgreSQL indexing is optional (Milvus + Redis still work)
+    }
+  }
+
+  // =====================================================================
+  // tool_tags collection (#766, 2026-05-11) — tag primary-key dimension
+  //
+  // Each (tool, tag) pair becomes a Milvus row so the model can:
+  //   1. Filter by exact tag_name in a category (e.g. cloud_provider='azure')
+  //   2. Vector-rank fuzzy tag matches via tag_embedding
+  //
+  // Schema fields:
+  //   id              VarChar(100) [PK]   = '<tool_id>::<tag_name>'
+  //   tool_id         VarChar(100)         FK to mcp_tools.id
+  //   tag_name        VarChar(64)
+  //   tag_category    VarChar(32)
+  //   weight          Float 0.0-1.0
+  //   tag_embedding   FloatVector(dim)
+  //
+  // Closed tag_category enum (matches arch test):
+  //   'cloud_provider' | 'verb' | 'service' | 'cost_class' |
+  //   'capability' | 'resource_type' | 'business_goal'
+  // =====================================================================
+
+  /**
+   * Ensure the tool_tags collection exists at the right embedding dim.
+   * Mirrors ensureMilvusCollectionWithDimension's drop+recreate pattern.
+   */
+  private async ensureToolTagsCollection(dimension: number): Promise<void> {
+    if (!this.milvusClient) {
+      this.logger.warn('[MCP_INDEXING] Milvus client unavailable — skipping tool_tags ensure');
+      return;
+    }
+    const collectionName = 'tool_tags';
+
+    const hasResp = await this.milvusClient.hasCollection({
+      collection_name: collectionName,
+    });
+
+    if (hasResp?.value) {
+      try {
+        const info = await this.milvusClient.describeCollection({
+          collection_name: collectionName,
+        });
+        const embeddingField = (info?.schema?.fields ?? []).find(
+          (f: any) => f.name === 'tag_embedding',
+        );
+        const existingDim = embeddingField?.dim != null ? Number(embeddingField.dim) : null;
+        if (embeddingField && existingDim === dimension) {
+          this.logger.info(
+            { dimension },
+            '[MCP_INDEXING] tool_tags collection already at correct dimension',
+          );
+          return;
+        }
+        this.logger.warn(
+          { existingDim, requiredDim: dimension },
+          '[MCP_INDEXING] tool_tags dimension mismatch — drop+recreate',
+        );
+        await this.milvusClient.dropCollection({ collection_name: collectionName });
+      } catch (descErr: any) {
+        this.logger.warn(
+          { err: descErr?.message },
+          '[MCP_INDEXING] tool_tags describeCollection failed — recreating',
+        );
+        try {
+          await this.milvusClient.dropCollection({ collection_name: collectionName });
+        } catch { /* swallow */ }
+      }
+    }
+
+    await this.milvusClient.createCollection({
+      collection_name: collectionName,
+      fields: [
+        {
+          name: 'id',
+          description: 'Composite PK: <tool_id>::<tag_name>',
+          data_type: 'VarChar',
+          max_length: 200,
+          is_primary_key: true,
+        },
+        {
+          name: 'tool_id',
+          description: 'FK to mcp_tools.id',
+          data_type: 'VarChar',
+          max_length: 100,
+        },
+        {
+          name: 'tag_name',
+          description: 'e.g. azure, list, subscriptions, read-only',
+          data_type: 'VarChar',
+          max_length: 64,
+        },
+        {
+          name: 'tag_category',
+          description: 'cloud_provider | verb | service | cost_class | capability | resource_type | business_goal',
+          data_type: 'VarChar',
+          max_length: 32,
+        },
+        {
+          name: 'weight',
+          description: '0.0-1.0 — primary tags = 1.0, secondary = 0.5',
+          data_type: 'Float',
+        },
+        {
+          name: 'tag_embedding',
+          description: 'Embedding of "{tag_name} {tag_category}" for fuzzy match',
+          data_type: 'FloatVector',
+          dim: dimension,
+        },
+      ],
+    });
+
+    await this.milvusClient.createIndex({
+      collection_name: collectionName,
+      field_name: 'tag_embedding',
+      index_type: 'IVF_FLAT',
+      metric_type: 'COSINE',
+      params: { nlist: 256 },
+    });
+    await this.milvusClient.loadCollection({ collection_name: collectionName });
+
+    this.logger.info(
+      { collection: collectionName, dimension },
+      '[MCP_INDEXING] tool_tags collection created + indexed',
+    );
+  }
+
+  /**
+   * Extract tag rows from a single MCP tool. Each row carries one tag
+   * (category, name, weight) — the indexer batches them into Milvus.
+   *
+   * Categories sourced (in priority order):
+   *   1. cloud_provider — overlay/inferred
+   *   2. verb           — overlay/inferred
+   *   3. service        — overlay/inferred
+   *   4. cost_class     — overlay/inferred
+   *   5. capability     — requires_capabilities CSV (each entry)
+   *   6. resource_type  — alias tokens
+   *
+   * Primary tags (the cloud_provider / verb / service / cost_class set)
+   * get weight=1.0; aliases and capabilities get weight=0.5.
+   */
+  private extractTagRowsFromTool(
+    toolName: string,
+    serverId: string,
+    merged: MergedToolMetadata,
+  ): Array<{
+    tool_id: string;
+    tag_name: string;
+    tag_category: string;
+    weight: number;
+  }> {
+    const rows: Array<{
+      tool_id: string;
+      tag_name: string;
+      tag_category: string;
+      weight: number;
+    }> = [];
+    const toolId = `${serverId}_${toolName}`;
+    const seen = new Set<string>();
+
+    const push = (tag_name: string, tag_category: string, weight: number) => {
+      const trimmed = (tag_name || '').toString().trim();
+      if (!trimmed) return;
+      const key = `${tag_category}::${trimmed}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      rows.push({ tool_id: toolId, tag_name: trimmed, tag_category, weight });
+    };
+
+    // 1. cloud_provider — primary, weight 1.0
+    if (merged.cloud_provider) push(merged.cloud_provider, 'cloud_provider', 1.0);
+
+    // 2. verb — primary, weight 1.0
+    if (merged.verb) push(merged.verb, 'verb', 1.0);
+
+    // 3. service — primary, weight 1.0
+    if (merged.service) push(merged.service, 'service', 1.0);
+
+    // 4. cost_class — primary, weight 1.0
+    if (merged.cost_class) push(merged.cost_class, 'cost_class', 1.0);
+
+    // 5. capability — split requires_capabilities CSV, weight 0.5
+    if (merged.requires_capabilities) {
+      for (const cap of merged.requires_capabilities.split(',')) {
+        push(cap.trim(), 'capability', 0.5);
+      }
+    }
+
+    // 6. resource_type — split aliases CSV, weight 0.5
+    if (merged.aliases) {
+      for (const alias of merged.aliases.split(',')) {
+        push(alias.trim(), 'resource_type', 0.5);
+      }
+    }
+
+    return rows;
+  }
+
+  /**
+   * Populate the tool_tags Milvus collection from the deepened-schema
+   * facets on every tool. Called from indexAllMCPTools() after the
+   * mcp_tools indexing pass.
+   *
+   * Idempotent: drops + recreates the collection at the embedding dim,
+   * then inserts the full tag row set for the current tool catalog.
+   * Pod restart safe.
+   */
+  async indexToolTags(tools: ReadonlyArray<any>): Promise<void> {
+    if (!this.embeddingEnabled || !this.embeddingService) {
+      this.logger.info('[MCP_INDEXING] tool_tags — embedding service disabled, skipping');
+      return;
+    }
+    if (!this.milvusClient) {
+      this.logger.info('[MCP_INDEXING] tool_tags — Milvus unavailable, skipping');
+      return;
+    }
+
+    const info = this.embeddingService.getInfo();
+    const dimension = info.dimensions;
+    await this.ensureToolTagsCollection(dimension);
+
+    const overlayMap = loadToolMetadataOverlay();
+
+    // Flatten every tool's tag rows.
+    const allRows: Array<{
+      id: string;
+      tool_id: string;
+      tag_name: string;
+      tag_category: string;
+      weight: number;
+    }> = [];
+
+    for (const tool of tools) {
+      const toolName = tool?.function?.name;
+      const serverId = tool?.serverId || 'unknown';
+      if (!toolName) continue;
+
+      const merged = mergeOverlayWithInference(toolName, overlayMap.get(toolName));
+      const rows = this.extractTagRowsFromTool(toolName, serverId, merged);
+
+      for (const r of rows) {
+        allRows.push({
+          id: `${r.tool_id}::${r.tag_name}`,
+          tool_id: r.tool_id,
+          tag_name: r.tag_name,
+          tag_category: r.tag_category,
+          weight: r.weight,
+        });
+      }
+    }
+
+    if (allRows.length === 0) {
+      this.logger.info('[MCP_INDEXING] tool_tags — no tag rows extracted');
+      return;
+    }
+
+    // Generate embeddings in one batch — text = `${tag_name} ${tag_category}`.
+    const texts = allRows.map((r) => `${r.tag_name} ${r.tag_category}`);
+    const batch = await this.embeddingService.generateBatchEmbeddings(texts);
+
+    const data = allRows.map((r, i) => ({
+      id: r.id,
+      tool_id: r.tool_id,
+      tag_name: r.tag_name,
+      tag_category: r.tag_category,
+      weight: r.weight,
+      tag_embedding: batch.embeddings[i],
+    }));
+
+    // Clear-then-insert (mirror mcp_tools pattern).
+    try {
+      const existing = await this.milvusClient.query({
+        collection_name: 'tool_tags',
+        filter: 'id != ""',
+        output_fields: ['id'],
+        limit: 10000,
+      });
+      if (existing?.data?.length > 0) {
+        const ids = existing.data.map((d: any) => `"${d.id}"`).join(',');
+        await this.milvusClient.delete({
+          collection_name: 'tool_tags',
+          filter: `id in [${ids}]`,
+        });
+      }
+    } catch (clearErr: any) {
+      this.logger.warn(
+        { err: clearErr?.message },
+        '[MCP_INDEXING] tool_tags pre-insert clear failed (non-fatal)',
+      );
+    }
+
+    const insertResult = await this.milvusClient.insert({
+      collection_name: 'tool_tags',
+      data,
+    });
+
+    try {
+      await this.milvusClient.flush({ collection_names: ['tool_tags'] });
+    } catch { /* non-fatal */ }
+
+    this.logger.info(
+      {
+        toolCount: tools.length,
+        tagRowCount: data.length,
+        insertedCount: insertResult?.insert_cnt ?? data.length,
+      },
+      '[MCP_INDEXING] tool_tags indexed — primary-key tag dimension ready',
+    );
+  }
+
+  /**
+   * Built-in meta-tools that ship in the openagentic-api image but were
+   * removed from the T1 catalog per the chatmode-rip plan. They must be
+   * discoverable via `tool_search` so the model can expand its tool array
+   * mid-turn (e.g. when the user asks for a chart, the model searches and
+   * finds `compose_visual` in the top results).
+   *
+   * Indexed under server_id='builtin' so tool_search results can
+   * distinguish them from MCP-server-registered tools at render time.
+   *
+   * delegate_to_agents was already ripped per #412 and is NOT indexed.
+   * synth/synth_execute remain in T1 (catalog primitives, not discovered).
+   */
+  private static readonly BUILTIN_META_TOOLS: ReadonlyArray<any> = [
+    COMPOSE_VISUAL_TOOL,
+    COMPOSE_APP_TOOL,
+    RENDER_ARTIFACT_TOOL,
+    REQUEST_CLARIFICATION_TOOL,
+    BROWSER_SANDBOX_EXEC_TOOL,
+    MEMORIZE_TOOL,
+    MEMORY_SEARCH_TOOL_DEF,
+  ];
+
+  /**
+   * Index the built-in meta-tools (chatmode-rip Phase C). Idempotent —
+   * uses the same Prisma upsert path as MCP-server tools, keyed on
+   * (server_id='builtin', name). Repeated calls overwrite the existing
+   * rows without producing duplicates.
+   *
+   * Called from `indexAllMCPTools()` on every boot so the meta-tool
+   * surface stays in sync with the code (description tweaks, schema
+   * changes propagate to the semantic index without manual reindexing).
+   *
+   * No-op when prisma is not wired (test paths that bypass DB) — the
+   * service still functions for Milvus-only callers.
+   */
+  async indexBuiltInMetaTools(): Promise<void> {
+    if (!this.prisma) {
+      this.logger.info('[MCP_INDEXING] indexBuiltInMetaTools — prisma not wired, skipping');
+      return;
+    }
+
+    // Re-shape the meta-tool defs to match the MCP-tool projection
+    // `indexToolsInPostgres` consumes: `{ function: { name, description,
+    // parameters }, serverId, ... }`. The COMPOSE_*_TOOL etc. defs are
+    // already in this shape; we only need to stamp `serverId: 'builtin'`.
+    const projected = MCPToolIndexingService.BUILTIN_META_TOOLS.map((tool) => ({
+      type: 'function',
+      function: {
+        name: tool.function?.name,
+        description: tool.function?.description,
+        parameters: tool.function?.parameters ?? {},
+      },
+      serverId: 'builtin',
+      // Mark builtin so tool_search results can render them differently
+      // (e.g. a "platform" badge) when the model surfaces them.
+      _meta: { source: 'builtin' },
+    }));
+
+    this.logger.info(
+      { count: projected.length, names: projected.map((p) => p.function.name) },
+      '[MCP_INDEXING] 🛠️ Indexing built-in meta-tools (chatmode-rip Phase C)',
+    );
+
+    try {
+      await this.indexToolsInPostgres(projected);
+      this.logger.info(
+        { count: projected.length },
+        '[MCP_INDEXING] ✅ Built-in meta-tools indexed in pgvector',
+      );
+    } catch (err: any) {
+      // Non-fatal — pgvector errors must not abort the chat-pipeline boot.
+      this.logger.warn(
+        { err: err?.message ?? String(err) },
+        '[MCP_INDEXING] ⚠️ Built-in meta-tool indexing failed (continuing)',
+      );
     }
   }
 

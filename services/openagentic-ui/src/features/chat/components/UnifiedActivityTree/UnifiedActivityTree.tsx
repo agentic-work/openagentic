@@ -8,7 +8,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import type { NormalizedStreamEvent } from '../../../../types/NormalizedStreamTypes';
+import type { NormalizedStreamEvent } from '../../../../types/AnthropicStreamEvent';
 import { buildTree, type TreeNode as TreeNodeType } from './buildTree';
 import { TreeNode } from './TreeNode';
 import { TokenPill } from './TokenPill';
@@ -16,6 +16,7 @@ import { ToolDetailPanel } from './ToolDetailPanel';
 import { ArtifactNode } from './ArtifactNode';
 import { HITLPopup } from './HITLPopup';
 import { LiveTokenBar } from './LiveTokenBar';
+import { colorHashForId, avatarInitial } from './colorHash';
 
 interface UnifiedActivityTreeProps {
   events: NormalizedStreamEvent[];
@@ -38,6 +39,9 @@ export function UnifiedActivityTree({
 }: UnifiedActivityTreeProps) {
   const tree = useMemo(() => buildTree(events), [events]);
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
+  // v0.6.7 fix 5 — agent nodes are expanded by default, but each can be
+  // collapsed by clicking its avatar. Collapsed state is keyed by agent id.
+  const [collapsedAgents, setCollapsedAgents] = useState<Set<string>>(new Set());
 
   // Extract usage data from events
   const usageData = useMemo(() => {
@@ -57,7 +61,14 @@ export function UnifiedActivityTree({
         contextMax = e.contextMax;
       }
       if (e.type === 'agent_start') agentCount++;
-      if (e.type === 'tool_start') toolCount++;
+      // Slice G.3 — tool_start was ripped; canonical content_block_start
+      // with content_block.type === 'tool_use' is the new tool entry.
+      if (
+        e.type === 'content_block_start' &&
+        (e as any).content_block?.type === 'tool_use'
+      ) {
+        toolCount++;
+      }
     }
     return { tokensIn, tokensOut, cost, agentCount, toolCount, contextUsed, contextMax };
   }, [events]);
@@ -74,6 +85,15 @@ export function UnifiedActivityTree({
 
   const toggleTool = (id: string) => {
     setExpandedTools(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAgent = (id: string) => {
+    setCollapsedAgents(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -177,32 +197,198 @@ export function UnifiedActivityTree({
           </div>
         )}
 
-        {node.type === 'agent' && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span
+        {node.type === 'agent' && (() => {
+          const agentId: string = node.id ?? node.data?.id ?? '';
+          const initial = avatarInitial(node.data.name, agentId);
+          const color = colorHashForId(agentId, theme);
+          const isCollapsed = collapsedAgents.has(agentId);
+          // "Turns" == tool invocations + text-generation rounds under
+          // this agent. For the tree, we simply count direct children.
+          const turnCount = node.children?.length ?? 0;
+          const turnLabel = turnCount === 1 ? '1 turn' : `${turnCount} turns`;
+          // v0.6.7 Mockup 03 "secure api build" decomposition — render the
+          // agent as an EXPANDED sub-agent card: colored-left-border
+          // surface, header (avatar + name + role chip + stats), body
+          // (nested thinking / tool calls + return_value). The card mirrors
+          // the `.subagent` CSS in
+          // docs/release-plans/v0.6.7-ux-mockups/03-secure-api-build.html
+          // so a "dev agent · 2 sub-agents · 2 passes" flow decomposes
+          // into a stack of clearly-separated producer + reviewer panels
+          // inside the assistant message body instead of a single flat
+          // "X tools completed" summary.
+          const tokensIn = node.data.tokensIn ?? 0;
+          const tokensOut = node.data.tokensOut ?? 0;
+          const totalTok = tokensIn + tokensOut;
+          const durationMs = node.data.durationMs ?? 0;
+          const cost = node.data.cost ?? 0;
+          const tokenLabel =
+            totalTok > 0
+              ? `${totalTok.toLocaleString()} tok`
+              : node.status === 'running'
+                ? '…'
+                : '';
+          const timeLabel =
+            durationMs > 0 ? `${(durationMs / 1000).toFixed(1)}s` : '';
+          const costLabel = cost > 0 ? `$${cost.toFixed(3)}` : '';
+          const returnNode = node.children?.find(
+            c =>
+              c.type === 'text' ||
+              c.type === 'error' ||
+              (c.data && (c.data.returnValue || c.data.isReturn)),
+          );
+          const statusOk =
+            node.status === 'success' &&
+            !(returnNode && returnNode.status === 'error');
+          return (
+            <div
+              data-testid="agent-card"
+              data-agent-id={agentId}
+              data-collapsed={isCollapsed ? 'true' : 'false'}
+              data-status={node.status}
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderLeft: `3px solid ${color}`,
+                borderRadius: 10,
+                margin: '6px 0',
+                overflow: 'hidden',
+              }}
+            >
+              {/* sa-head — avatar + name + role + stats */}
+              <div
                 style={{
-                  fontSize: 11,
-                  color: '#e6edf3',
-                  fontWeight: 600,
-                  fontFamily: 'SF Mono, JetBrains Mono, monospace',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '9px 12px',
+                  background: 'rgba(255,255,255,0.02)',
+                  borderBottom: '1px solid rgba(255,255,255,0.06)',
                 }}
               >
-                {node.data.name}
-              </span>
-              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>
-                {node.data.role}
-              </span>
-              <TokenPill
-                tokensIn={node.data.tokensIn}
-                tokensOut={node.data.tokensOut}
-                cost={node.data.cost}
-                live={node.status === 'running'}
-              />
+                <button
+                  onClick={() => toggleAgent(agentId)}
+                  aria-expanded={!isCollapsed}
+                  aria-label={`${node.data.name ?? 'Agent'} — ${
+                    isCollapsed ? 'expand' : 'collapse'
+                  }`}
+                  data-testid="agent-avatar"
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 6,
+                    backgroundColor: color,
+                    color: '#0d1117',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    fontFamily: 'Inter, sans-serif',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                    flexShrink: 0,
+                  }}
+                >
+                  {initial}
+                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      color: '#e6edf3',
+                      fontWeight: 600,
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {node.data.name || 'sub-agent'}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: 'rgba(255,255,255,0.45)',
+                      lineHeight: 1.2,
+                      fontFamily: 'SF Mono, JetBrains Mono, monospace',
+                    }}
+                  >
+                    sub-agent{node.data.role ? ` · ${node.data.role}` : ''}
+                  </span>
+                </div>
+                <div style={{ flex: 1 }} />
+                <div
+                  data-testid="agent-stats"
+                  style={{
+                    display: 'flex',
+                    gap: 10,
+                    fontFamily: 'SF Mono, JetBrains Mono, monospace',
+                    fontSize: 11,
+                    color: 'rgba(255,255,255,0.45)',
+                  }}
+                >
+                  <span data-testid="agent-turn-count">{turnLabel}</span>
+                  {tokenLabel && <span>{tokenLabel}</span>}
+                  {timeLabel && <span>{timeLabel}</span>}
+                  {costLabel && <span>{costLabel}</span>}
+                </div>
+              </div>
+              {/* sa-body — nested children (thinking, tools, return_value) */}
+              {!isCollapsed && (
+                <div
+                  style={{
+                    padding: '10px 12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                  }}
+                >
+                  {node.children.length > 0 ? (
+                    node.children.map((child, i) =>
+                      renderNode(child, i, node.children, depth + 1),
+                    )
+                  ) : (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: 'rgba(255,255,255,0.35)',
+                        fontStyle: 'italic',
+                      }}
+                    >
+                      {node.status === 'running' ? 'running…' : 'no steps'}
+                    </span>
+                  )}
+                  {node.status === 'success' && (
+                    <div
+                      data-testid="agent-return"
+                      style={{
+                        background: statusOk
+                          ? 'rgba(16,185,129,0.05)'
+                          : 'rgba(239,68,68,0.06)',
+                        border: `1px solid ${
+                          statusOk
+                            ? 'rgba(16,185,129,0.2)'
+                            : 'rgba(239,68,68,0.25)'
+                        }`,
+                        borderRadius: 8,
+                        padding: '8px 10px',
+                        fontSize: 12,
+                        color: statusOk ? '#6ee7b7' : '#fca5a5',
+                        fontFamily: 'SF Mono, JetBrains Mono, monospace',
+                        marginTop: 4,
+                      }}
+                    >
+                      <strong style={{ color: statusOk ? '#34d399' : '#f87171' }}>
+                        return_value:
+                      </strong>{' '}
+                      {`{ turns: ${turnCount}${
+                        totalTok > 0 ? `, tokens: ${totalTok}` : ''
+                      }${durationMs > 0 ? `, time: "${(durationMs / 1000).toFixed(1)}s"` : ''} }`}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            {node.children.map((child, i) => renderNode(child, i, node.children, depth + 1))}
-          </div>
-        )}
+          );
+        })()}
 
         {node.type === 'hitl' && (
           <div

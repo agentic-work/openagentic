@@ -1,357 +1,138 @@
 {
   "domain": "chat-pipeline",
   "title": "Chat Pipeline",
-  "description": "Chat message processing pipeline with 16 stages handling authentication, validation, prompt engineering, MCP tools, completion, and response streaming.",
-  "icon": "brain",
+  "description": "Three-layer chat pipeline architecture (chatmode rip 2026-05-10): Layer-1 session facts, Layer-2 T1 catalog, Layer-3 chatLoop.",
+  "icon": "flow",
   "category": "core",
-  "generatedAt": "2026-04-06T02:45:19.437Z",
+  "generatedAt": "2026-05-13T20:48:20.567Z",
   "sourceFiles": [
-    "services/openagentic-api/src/routes/chat/pipeline/ChatPipeline.ts",
-    "services/openagentic-api/src/routes/chat/pipeline/agents.stage.ts",
-    "services/openagentic-api/src/routes/chat/pipeline/auth.stage.ts",
-    "services/openagentic-api/src/routes/chat/pipeline/completion-simple.stage.ts",
-    "services/openagentic-api/src/routes/chat/pipeline/mcp.stage.ts",
-    "services/openagentic-api/src/routes/chat/pipeline/memory.stage.ts",
-    "services/openagentic-api/src/routes/chat/pipeline/message-preparation.stage.ts",
-    "services/openagentic-api/src/routes/chat/pipeline/multi-model.stage.ts",
-    "services/openagentic-api/src/routes/chat/pipeline/prompt.stage.ts",
-    "services/openagentic-api/src/routes/chat/pipeline/rag.stage.ts",
-    "services/openagentic-api/src/routes/chat/pipeline/response.stage.ts",
-    "services/openagentic-api/src/routes/chat/pipeline/validation.stage.ts"
+    "services/openagentic-api/src/routes/chat/pipeline/chat/buildUserMessageContent.ts",
+    "services/openagentic-api/src/routes/chat/pipeline/chat/builders.ts",
+    "services/openagentic-api/src/routes/chat/pipeline/chat/chatLoop.ts",
+    "services/openagentic-api/src/routes/chat/pipeline/chat/dispatchChatToolCall.ts",
+    "services/openagentic-api/src/routes/chat/pipeline/chat/dispatchTool.ts",
+    "services/openagentic-api/src/routes/chat/pipeline/chat/extractAttachmentText.ts",
+    "services/openagentic-api/src/routes/chat/pipeline/chat/extractUserJwt.ts",
+    "services/openagentic-api/src/routes/chat/pipeline/chat/parseInlineComposePatterns.ts",
+    "services/openagentic-api/src/routes/chat/pipeline/chat/runChat.ts",
+    "services/openagentic-api/src/routes/chat/pipeline/chat/streamProvider.ts",
+    "services/openagentic-api/src/routes/chat/pipeline/chat/toolOrchestration.ts",
+    "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts",
+    "services/openagentic-api/src/routes/chat/pipeline/chat/types.ts"
   ],
   "sections": [
     {
-      "id": "pipeline-stages",
-      "title": "Pipeline Stages",
-      "description": "The chat pipeline processes messages through 16 sequential stages, from authentication to response streaming.",
+      "id": "layer1",
+      "title": "Layer 1 — Session Facts",
+      "description": "Input prep: user message assembly, attachments, JWT, builders, inline-compose patterns",
       "adminOnly": false,
       "items": [
         {
-          "id": "stage-AuthStage",
-          "name": "Auth",
-          "description": "Pipeline stage: Auth",
-          "type": "pipeline-stage",
-          "properties": {
-            "className": "AuthStage",
-            "sourceFile": "auth.stage.js"
-          },
-          "sourceLine": 80,
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/ChatPipeline.ts"
+          "id": "buildUserMessageContent",
+          "name": "buildUserMessageContent.ts",
+          "description": "buildUserMessageContent — attachment-aware user-message body builder. Builds the user message `content` field. Handles the three drag-drop",
+          "type": "pipeline-module",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/buildUserMessageContent.ts"
         },
         {
-          "id": "stage-ValidationStage",
-          "name": "Validation",
-          "description": "Pipeline stage: Validation",
-          "type": "pipeline-stage",
-          "properties": {
-            "className": "ValidationStage",
-            "sourceFile": "validation.stage.js"
-          },
-          "sourceLine": 81,
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/ChatPipeline.ts"
+          "id": "builders",
+          "name": "builders.ts",
+          "description": "V3 typed-event builders — typed constructors for the V3 emit sites. Phase 2 (Spec §12.2): every `ctx.emit(...)` call in V3 uses a typed",
+          "type": "pipeline-module",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/builders.ts"
         },
         {
-          "id": "stage-RAGStage",
-          "name": "RAG",
-          "description": "Pipeline stage: RAG",
-          "type": "pipeline-stage",
-          "properties": {
-            "className": "RAGStage",
-            "sourceFile": "rag.stage.js"
-          },
-          "sourceLine": 103,
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/ChatPipeline.ts"
+          "id": "extractAttachmentText",
+          "name": "extractAttachmentText.ts",
+          "description": "extractAttachmentText — pull readable text out of non-image drag-drop attachments so the LLM can reason over PDF/DOCX/text uploads.",
+          "type": "pipeline-module",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/extractAttachmentText.ts"
         },
         {
-          "id": "stage-MemoryStage",
-          "name": "Memory",
-          "description": "Pipeline stage: Memory",
-          "type": "pipeline-stage",
-          "properties": {
-            "className": "MemoryStage",
-            "sourceFile": "memory.stage.js"
-          },
-          "sourceLine": 119,
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/ChatPipeline.ts"
+          "id": "extractUserJwt",
+          "name": "extractUserJwt.ts",
+          "description": "extractUserJwt — chat-pipeline JWT accessor (chatmode-rip Phase C.6). Surfaces the user's Azure AD ACCESS token from the loose `RunCtx.user`",
+          "type": "pipeline-module",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/extractUserJwt.ts"
         },
         {
-          "id": "stage-PromptStage",
-          "name": "Prompt",
-          "description": "Pipeline stage: Prompt",
-          "type": "pipeline-stage",
-          "properties": {
-            "className": "PromptStage",
-            "sourceFile": "prompt.stage.js"
-          },
-          "sourceLine": 129,
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/ChatPipeline.ts"
-        },
-        {
-          "id": "stage-MCPStage",
-          "name": "MCP",
-          "description": "Pipeline stage: MCP",
-          "type": "pipeline-stage",
-          "properties": {
-            "className": "MCPStage",
-            "sourceFile": "mcp.stage.js"
-          },
-          "sourceLine": 136,
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/ChatPipeline.ts"
-        },
-        {
-          "id": "stage-AgentsStage",
-          "name": "Agents",
-          "description": "Pipeline stage: Agents",
-          "type": "pipeline-stage",
-          "properties": {
-            "className": "AgentsStage",
-            "sourceFile": "agents.stage.js"
-          },
-          "sourceLine": 137,
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/ChatPipeline.ts"
-        },
-        {
-          "id": "stage-MessagePreparationStage",
-          "name": "Message Preparation",
-          "description": "Pipeline stage: Message Preparation",
-          "type": "pipeline-stage",
-          "properties": {
-            "className": "MessagePreparationStage",
-            "sourceFile": "message-preparation.stage.js"
-          },
-          "sourceLine": 138,
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/ChatPipeline.ts"
-        },
-        {
-          "id": "stage-MultiModelOrchestrationStage",
-          "name": "Multi Model Orchestration",
-          "description": "Pipeline stage: Multi Model Orchestration",
-          "type": "pipeline-stage",
-          "properties": {
-            "className": "MultiModelOrchestrationStage",
-            "sourceFile": "multi-model.stage.js"
-          },
-          "sourceLine": 150,
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/ChatPipeline.ts"
-        },
-        {
-          "id": "stage-CompletionStage",
-          "name": "Completion",
-          "description": "Pipeline stage: Completion",
-          "type": "pipeline-stage",
-          "properties": {
-            "className": "CompletionStage",
-            "sourceFile": "completion-simple.stage.js"
-          },
-          "sourceLine": 152,
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/ChatPipeline.ts"
-        },
-        {
-          "id": "stage-ResponseStage",
-          "name": "Response",
-          "description": "Pipeline stage: Response",
-          "type": "pipeline-stage",
-          "properties": {
-            "className": "ResponseStage",
-            "sourceFile": "response.stage.js"
-          },
-          "sourceLine": 156,
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/ChatPipeline.ts"
-        },
-        {
-          "id": "stage-agents",
-          "name": "agents",
-          "description": "Pipeline stage \"agents\" (priority: 45)",
-          "type": "pipeline-stage",
-          "properties": {
-            "stageName": "agents",
-            "priority": 45,
-            "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/agents.stage.ts"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/agents.stage.ts"
-        },
-        {
-          "id": "stage-completion",
-          "name": "completion",
-          "description": "Pipeline stage \"completion\" (priority: 50)",
-          "type": "pipeline-stage",
-          "properties": {
-            "stageName": "completion",
-            "priority": 50,
-            "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/completion-simple.stage.ts"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/completion-simple.stage.ts"
-        },
-        {
-          "id": "stage-mcp",
-          "name": "mcp",
-          "description": "Pipeline stage \"mcp\" (priority: 40)",
-          "type": "pipeline-stage",
-          "properties": {
-            "stageName": "mcp",
-            "priority": 40,
-            "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/mcp.stage.ts"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/mcp.stage.ts"
-        },
-        {
-          "id": "stage-message-preparation",
-          "name": "message-preparation",
-          "description": "Pipeline stage \"message-preparation\" (priority: 45)",
-          "type": "pipeline-stage",
-          "properties": {
-            "stageName": "message-preparation",
-            "priority": 45,
-            "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/message-preparation.stage.ts"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/message-preparation.stage.ts"
-        },
-        {
-          "id": "stage-multi-model-orchestration",
-          "name": "multi-model-orchestration",
-          "description": "Pipeline stage \"multi-model-orchestration\" (priority: N/A)",
-          "type": "pipeline-stage",
-          "properties": {
-            "stageName": "multi-model-orchestration",
-            "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/multi-model.stage.ts"
-          },
-          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/multi-model.stage.ts"
+          "id": "parseInlineComposePatterns",
+          "name": "parseInlineComposePatterns.ts",
+          "description": "#807 part 2 — server-side rescue for inline compose_app/compose_visual XML. Models like o4-mini (chat-dev 2026-05-13T20:16 k8s audit session) emit",
+          "type": "pipeline-module",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/parseInlineComposePatterns.ts"
         }
       ]
     },
     {
-      "id": "pipeline-config",
-      "title": "Pipeline Configuration",
-      "description": "Configuration flags and environment variables controlling pipeline behavior.",
-      "adminOnly": true,
+      "id": "layer2",
+      "title": "Layer 2 — T1 Tool Catalog",
+      "description": "Canonical primitive registry + tool orchestration",
+      "adminOnly": false,
       "items": [
         {
-          "id": "config-enableRAG",
-          "name": "enableRAG",
-          "description": "Toggle to enable/disable the RAG stage",
-          "type": "config-flag"
+          "id": "toolOrchestration",
+          "name": "toolOrchestration.ts",
+          "description": "V3 tool orchestration — partitionToolCalls + runConcurrent + runSerial. Ported from /home/trent/anthropic/src/services/tools/toolOrchestration.ts:91.",
+          "type": "pipeline-module",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/toolOrchestration.ts"
         },
         {
-          "id": "config-enabled",
-          "name": "enabled",
-          "description": "Toggle to enable/disable the d stage",
-          "type": "config-flag"
-        },
-        {
-          "id": "config-enableMCP",
-          "name": "enableMCP",
-          "description": "Toggle to enable/disable the MCP stage",
-          "type": "config-flag"
-        },
-        {
-          "id": "config-enablePromptEngineering",
-          "name": "enablePromptEngineering",
-          "description": "Toggle to enable/disable the PromptEngineering stage",
-          "type": "config-flag"
-        },
-        {
-          "id": "config-enableCoT",
-          "name": "enableCoT",
-          "description": "Toggle to enable/disable the CoT stage",
-          "type": "config-flag"
-        },
-        {
-          "id": "config-enableMemory",
-          "name": "enableMemory",
-          "description": "Toggle to enable/disable the Memory stage",
-          "type": "config-flag"
-        },
-        {
-          "id": "config-enableCaching",
-          "name": "enableCaching",
-          "description": "Toggle to enable/disable the Caching stage",
-          "type": "config-flag"
-        },
-        {
-          "id": "config-enableAnalytics",
-          "name": "enableAnalytics",
-          "description": "Toggle to enable/disable the Analytics stage",
-          "type": "config-flag"
-        },
-        {
-          "id": "env-ENABLE_MULTI_MODEL",
-          "name": "ENABLE_MULTI_MODEL",
-          "description": "Environment variable controlling pipeline behavior (checked against \"true\")",
-          "type": "env-flag",
-          "properties": {
-            "expectedValue": "true"
-          }
-        },
-        {
-          "id": "env-PIPELINE_MODE",
-          "name": "PIPELINE_MODE",
-          "description": "Environment variable controlling pipeline behavior (checked against \"nonblocking\")",
-          "type": "env-flag",
-          "properties": {
-            "expectedValue": "nonblocking"
-          }
-        },
-        {
-          "id": "env-NODE_ENV",
-          "name": "NODE_ENV",
-          "description": "Environment variable controlling pipeline behavior (checked against \"development\")",
-          "type": "env-flag",
-          "properties": {
-            "expectedValue": "development"
-          }
-        },
-        {
-          "id": "env-ENABLE_MEMORY",
-          "name": "ENABLE_MEMORY",
-          "description": "Environment variable controlling pipeline behavior (checked against \"true\")",
-          "type": "env-flag",
-          "properties": {
-            "expectedValue": "true"
-          }
+          "id": "toolRegistry",
+          "name": "toolRegistry.ts",
+          "description": "Chat toolRegistry — T1 catalog source-of-truth + concurrency-safe set. Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §C.1",
+          "type": "pipeline-module",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts"
         }
       ]
     },
     {
-      "id": "stage-ordering",
-      "title": "Stage Execution Order",
-      "description": "The documented order in which pipeline stages execute for each chat message.",
+      "id": "layer3",
+      "title": "Layer 3 — chatLoop",
+      "description": "Multi-turn loop, streaming, dispatch, types",
       "adminOnly": false,
       "items": [
         {
-          "id": "order-authentication",
-          "name": "Authentication",
-          "description": "Validate user and extract context",
-          "type": "stage-order"
+          "id": "chatLoop",
+          "name": "chatLoop.ts",
+          "description": "V3 chat loop — thin Claude-Code-style ReAct. One streaming provider call per iteration. Collect tool_use blocks,",
+          "type": "pipeline-module",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/chatLoop.ts"
         },
         {
-          "id": "order-validation",
-          "name": "Validation",
-          "description": "Sanitize and validate input",
-          "type": "stage-order"
+          "id": "dispatchChatToolCall",
+          "name": "dispatchChatToolCall.ts",
+          "description": "dispatchChatToolCall — single-stage tool-use routing for chatmode. Mirrors Claude Code's main loop in `/home/trent/anthropic/src/QueryEngine.ts`:",
+          "type": "pipeline-module",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/dispatchChatToolCall.ts"
         },
         {
-          "id": "order-prompt-engineering",
-          "name": "Prompt Engineering",
-          "description": "Select and enhance system prompt",
-          "type": "stage-order"
+          "id": "dispatchTool",
+          "name": "dispatchTool.ts",
+          "description": "dispatchTool — adapter over `dispatchChatToolCall`. Wraps the meta-tool router + MCP fall-through into the chat pipeline's",
+          "type": "pipeline-module",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/dispatchTool.ts"
         },
         {
-          "id": "order-mcp-integration",
-          "name": "MCP Integration",
-          "description": "Execute tools and gather results",
-          "type": "stage-order"
+          "id": "runChat",
+          "name": "runChat.ts",
+          "description": "Chat pipeline — entry point. Composes system prompt, builds tool array, calls chatLoop.",
+          "type": "pipeline-module",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/runChat.ts"
         },
         {
-          "id": "order-completion",
-          "name": "Completion",
-          "description": "Generate AI response",
-          "type": "stage-order"
+          "id": "streamProvider",
+          "name": "streamProvider.ts",
+          "description": "V3 streamProvider — pipes raw provider chunks through the SDK `selectCanonicalNormalizer(format, opts)` factory and yields V3-shape",
+          "type": "pipeline-module",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/streamProvider.ts"
         },
         {
-          "id": "order-response-processing",
-          "name": "Response Processing",
-          "description": "Format and stream output",
-          "type": "stage-order"
+          "id": "types",
+          "name": "types.ts",
+          "description": "V3 chat-loop shared types. Mirrors Anthropic Messages content blocks + ProviderManager turn shape,",
+          "type": "pipeline-module",
+          "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/types.ts"
         }
       ]
     }

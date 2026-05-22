@@ -8,14 +8,59 @@ import React, { memo, useCallback, useMemo, useState, Component, ErrorInfo, Reac
 import { Edit2, Send, FileText, Image as ImageIcon, AlertTriangle, Copy, Check, ThumbsUp, ThumbsDown, RotateCcw } from '@/shared/icons';
 import { ChatMessage } from '@/types/index';
 import EnhancedMessageContent from './MessageContent/EnhancedMessageContent';
-import InlineModelBadge from './InlineModelBadge';
-import { CostPill } from './CostPill';
+// Sev-0 #840 — memo comparator lives in its own lean module so tests
+// can import it without dragging the full MessageBubble component tree
+// (Lottie / Shiki / Three.js) into jsdom. Rename the binding locally
+// so Rollup's tree-shaker keeps the chunk-local var declaration intact
+// (the original `export { … }` re-export was being elided, leaving a
+// ReferenceError at module top-level when `memo()` ran).
+import { shouldSkipMessageBubbleRerender as memoComparator } from './MessageBubble.memo';
+// #781 Phase D wire-in — new-pipeline artifact slide-out launchers.
+// Render ABOVE legacy EnhancedMessageContent so messages with
+// visualizations[] or tool_result._meta.artifactKind get the new
+// slide-out UX; legacy ArtifactRenderer remains as fallback until
+// Phase D.3 ripping.
+import { ArtifactSlideOutLauncher } from './artifacts/ArtifactSlideOutLauncher';
+import { extractArtifacts } from './artifacts/extractArtifacts';
+// V2 mock-parity components (per chatmode-ux-mock-parity branch).
+// MessageHeader replaces the legacy InlineModelBadge + CostPill meta-row.
+// Per-message CostPill is REMOVED (per user direction — topbar-only). The
+// V2 anatomy at mocks/UX/01-cloud-ops.html lines 184-214 shows avatar +
+// name + model pill + timestamp; no per-message cost pill.
+import { MessageHeader, LiveTurnStatus } from './v2';
 import { ArtifactErrorBoundary } from '@/shared/components';
+import { ThinkingSphere } from '@/shared/components/ThinkingSphere';
 // InlineStep type now in activity.types.ts
 import type { InlineStep, ThinkingProgress } from './AgenticActivityStream/types/activity.types';
 import { AgenticActivityStream, useInlineStepsAdapter } from './AgenticActivityStream';
 import { UnifiedActivityTree } from './UnifiedActivityTree';
-import type { NormalizedStreamEvent } from '../../../types/NormalizedStreamTypes';
+import type { NormalizedStreamEvent } from '../../../types/AnthropicStreamEvent';
+// Task #104 — use the canonical streaming block type from useChatStream.
+// The previous local `StreamingContentBlock` interface was a structural
+// subset of this one; dropping it removes a triple-declaration smell
+// (the other two live in useChatStream.ts and activity.types.ts; the
+// latter is a legit display-layer type with its own `metadata` nesting).
+import type { ContentBlock as StreamingContentBlock, SubAgentEntry } from '../hooks/useChatStream';
+import { buildFinalContentBlocks } from './MessageBubble/buildFinalContentBlocks';
+// Step 3 (2026-05-18) — optional StreamEngine wrapper. Gated by
+// VITE_FEATURE_STREAM_ENGINE; default OFF in helm production values.
+// When ON + isStreaming=true, the engine takes over rendering of the
+// streaming content blocks via its owned DOM container; on stream
+// completion the engine is finalized and AgenticActivityStream renders
+// the persisted UIContentBlock[] from the canonical reducer.
+import {
+  StreamEnginedActivityStream,
+  isStreamEngineEnabled,
+} from './MessageBubble/StreamEnginedActivityStream';
+
+// `splitModelLabel` removed 2026-04-30 (P0-2). The hook
+// (useChatStream.attachModelIdentifier) now stamps modelTag + modelId on the
+// message at frame-receive time using the canonical `splitModelIdentifier`
+// helper (split-on-first-hyphen, mock 01:206-212 contract). MessageHeader
+// reads message.modelTag / message.modelId directly. Single source of truth.
+
+import { splitModelIdentifier } from '../hooks/useChatStream';
+import { InlineGroundingChip, stripGroundingArtifacts } from './GroundingVerdictChip';
 
 // Debug Error Boundary to catch and log render errors with details
 class MessageErrorBoundary extends Component<
@@ -254,20 +299,6 @@ interface TurnInfo {
   roundCount?: number;
 }
 
-// Streaming ContentBlock type (from useSSEChat)
-interface StreamingContentBlock {
-  index: number;
-  type: 'thinking' | 'text' | 'tool_use';
-  content: string;
-  isComplete: boolean;
-  toolName?: string;
-  toolId?: string;
-  agentId?: string;
-  parentToolId?: string;
-  agentRole?: string;
-  timestamp?: number;
-}
-
 interface MessageBubbleProps {
   message: ChatMessage;
   theme: 'light' | 'dark';
@@ -299,6 +330,63 @@ interface MessageBubbleProps {
   onCopy?: (messageId: string) => void;
   // Normalized stream events (UNIFIED_STREAM=true path)
   normalizedEvents?: NormalizedStreamEvent[];
+  // v0.6.7 fix 2 — running cost (USD) from cost_delta events, live during streaming
+  runningCost?: number | null;
+  /**
+   * #646 Option B — sub-agent lifecycle entries (sub_agent_started /
+   * sub_agent_completed) for the in-flight streaming message. Forwarded
+   * straight into AgenticActivityStream so the rich SubAgentCard renders
+   * INLINE at the agent_group's timeline position (mock 01:1077-1140)
+   * rather than as a trailing sibling.
+   */
+  subAgents?: SubAgentEntry[];
+  /**
+   * #646 Option B — per-message scoped sub-agent map. Wins over the flat
+   * `subAgents` array when a key matches `message.id`, so completed
+   * sub-agents from previous turns stay scoped to their own turn instead
+   * of bleeding into the next assistant message.
+   */
+  subAgentsByMessageId?: Record<string, SubAgentEntry[]>;
+  /**
+   * Sev-1 #922 — HITL approvals for THIS message. Threaded straight into
+   * AgenticActivityStream so the approval card renders INLINE next to the
+   * matching tool_use. The previous per-message footer-strip render in
+   * ChatMessages was ripped (Sev-1 #922) because the card stayed anchored
+   * to the message-end while the tool card scrolled out of view as the
+   * model emitted more content, breaking the visual coupling between
+   * tool dispatch and approval prompt.
+   */
+  hitlApprovals?: Array<{
+    requestId: string;
+    toolName: string;
+    serverName?: string;
+    reason: string;
+    timeoutMs: number;
+    arguments?: unknown;
+    status: 'pending' | 'approved' | 'denied' | 'expired';
+  }>;
+  onApproveHitl?: (requestId: string) => void;
+  onDenyHitl?: (requestId: string) => void;
+  /**
+   * Sev-0 dup-render rip (2026-05-21) — streaming-table data scoped to
+   * THIS message. Forwarded straight into AgenticActivityStream so a
+   * `viz_render(template=table)` ContentBlock renders the matching
+   * native `<StreamingTable>` INLINE at the tool_use position instead
+   * of the buggy iframe-srcdoc HTML table. The sibling strip below the
+   * bubble in ChatMessages.tsx is RIPPED — AAS owns this render now.
+   */
+  streamingTables?: import('../hooks/useChatStream').StreamingTable[];
+  /**
+   * LiveTurnStatus inputs (codemode-style strip rendered RIGHT of the
+   * spinning sphere during streaming):
+   *   ↑ tokensIn · ↓ tokensOut · elapsed · TTFT · activity summary
+   * Only renders for the streaming assistant message (isStreaming=true).
+   */
+  turnStartedAt?: number | null;
+  ttftMs?: number | null;
+  liveTokensIn?: number;
+  liveTokensOut?: number;
+  liveActivity?: string;
 }
 
 /**
@@ -417,7 +505,15 @@ const mcpCallToStep = (mcpCall: any, index: number, model?: string, isHistorical
  */
 const toolCallToStep = (toolCall: any, index: number, toolResult?: any, model?: string, isHistorical: boolean = false): InlineStep => {
   const toolName = toolCall.function?.name || toolCall.name || 'tool';
-  const argsRaw = toolCall.function?.arguments || toolCall.arguments;
+  // E1.5 (2026-05-12) — read canonical V2 persisted shape `input`
+  // (chat_messages.tool_calls[]) BEFORE legacy `arguments` /
+  // `function.arguments`. Without this, every reloaded expand panel
+  // showed INPUT {} because legacy keys weren't on the persisted row.
+  // Pinned by MessageBubble.toolCallShapeNormalization.test.tsx (E1.5).
+  const argsRaw =
+    toolCall.input ??
+    toolCall.function?.arguments ??
+    toolCall.arguments;
   let args = argsRaw;
 
   // Parse arguments if they're a string
@@ -429,19 +525,34 @@ const toolCallToStep = (toolCall: any, index: number, toolResult?: any, model?: 
     }
   }
 
-  const hasResult = toolResult !== undefined;
+  // E1.5 — persisted tool_result rows have shape
+  // `{name, tool_use_id, content, is_error, _meta}`. Older callers had
+  // `result` directly. Normalize so downstream `summary` / `details.result`
+  // see the structured content object, not the wrapper envelope.
+  const normalizedResult =
+    toolResult && typeof toolResult === 'object' && 'content' in toolResult
+      ? (toolResult as any).content
+      : toolResult;
 
-  // Detect if the result contains an error
-  const hasError = detectErrorInResult(toolResult);
+  const hasResult = normalizedResult !== undefined;
+
+  // Detect if the result contains an error. Honor explicit is_error stamp
+  // from the persisted wrapper too (V2 tool_result frame).
+  const hasError =
+    (toolResult && typeof toolResult === 'object' && (toolResult as any).is_error === true) ||
+    detectErrorInResult(normalizedResult);
 
   // Get result summary
   let summary = '';
-  if (hasResult && toolResult) {
-    if (typeof toolResult === 'string') {
-      summary = toolResult.substring(0, 100) + (toolResult.length > 100 ? '...' : '');
-    } else if (toolResult.content?.[0]?.text) {
-      const text = toolResult.content[0].text;
+  if (hasResult && normalizedResult) {
+    if (typeof normalizedResult === 'string') {
+      summary = normalizedResult.substring(0, 100) + (normalizedResult.length > 100 ? '...' : '');
+    } else if ((normalizedResult as any).content?.[0]?.text) {
+      const text = (normalizedResult as any).content[0].text;
       summary = text.substring(0, 100) + (text.length > 100 ? '...' : '');
+    } else if (typeof (normalizedResult as any).summary === 'string') {
+      // V2 envelope: structuredContent = { summary, data }
+      summary = (normalizedResult as any).summary.substring(0, 100);
     }
   }
 
@@ -456,7 +567,7 @@ const toolCallToStep = (toolCall: any, index: number, toolResult?: any, model?: 
   }
 
   return {
-    id: `tool-${index}-${toolCall.id || Date.now()}`,
+    id: `tool-${index}-${toolCall.id || toolCall.tool_use_id || Date.now()}`,
     type: getStepType(toolName),
     title: toolName,
     summary: hasResult ? summary : undefined,
@@ -464,9 +575,11 @@ const toolCallToStep = (toolCall: any, index: number, toolResult?: any, model?: 
     model,
     details: {
       args,
-      result: toolResult,
+      result: normalizedResult,
       command: getStepType(toolName) === 'bash' ? (args?.command || args?.script) : undefined,
-      output: toolResult?.content?.[0]?.text || (typeof toolResult === 'string' ? toolResult : undefined),
+      output:
+        (normalizedResult as any)?.content?.[0]?.text ??
+        (typeof normalizedResult === 'string' ? normalizedResult : undefined),
     },
   };
 };
@@ -501,6 +614,18 @@ const MessageBubble = memo(function MessageBubble({
   onThumbsDown,
   onCopy,
   normalizedEvents,
+  runningCost,
+  subAgents,
+  subAgentsByMessageId,
+  hitlApprovals,
+  onApproveHitl,
+  onDenyHitl,
+  turnStartedAt,
+  ttftMs,
+  liveTokensIn,
+  liveTokensOut,
+  liveActivity,
+  streamingTables,
 }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isAssistant = message.role === 'assistant';
@@ -739,7 +864,16 @@ const MessageBubble = memo(function MessageBubble({
   }, [message.toolCalls, message.toolResults, message.mcpCalls, message.thinkingSteps, message.reasoningTrace, message.metadata?.thinkingContent, message.id, message.model, activeMcpCalls, showMCPIndicators, showThinkingInline, isStreaming, aggregatedMessages]);
 
   // Determine if we should show the steps display
-  const hasSteps = steps.length > 0 || (showThinkingInline && isStreaming && thinkingContent);
+  // Sev-0 #924/#925/#926 — also true when the persisted message carries
+  // content_blocks (the canonical chronology). On rehydration, the
+  // legacy toolCalls/thinkingSteps[] may be empty for messages saved
+  // with only the new content_blocks shape; AAS must still render.
+  const _persistedBlocksForHasSteps = (message as any).content_blocks as any[] | undefined;
+  const _hasPersistedBlocksForHasSteps = Array.isArray(_persistedBlocksForHasSteps) && _persistedBlocksForHasSteps.length > 0;
+  const hasSteps: boolean =
+    steps.length > 0 ||
+    Boolean(showThinkingInline && isStreaming && thinkingContent) ||
+    _hasPersistedBlocksForHasSteps;
 
   // Convert steps to AgenticActivityStream format when enabled
   const activityStreamData = useInlineStepsAdapter({
@@ -749,42 +883,70 @@ const MessageBubble = memo(function MessageBubble({
     currentModel: message.model,
   });
 
-  // For completed messages with steps, add text content to activity stream
-  // so the interleaved thinking/tools/text layout persists after streaming ends
-  const finalContentBlocks = useMemo(() => {
-    if (!isStreaming && message.content && hasSteps && activityStreamData.contentBlocks.length > 0) {
-      const blocks = [...activityStreamData.contentBlocks];
-      // Strip thinking/reasoning tags from content before adding as text block
-      let textContent = message.content;
-      if (typeof textContent === 'string') {
-        textContent = textContent.replace(/<thinking>[\s\S]*?<\/thinking>/g, '');
-        textContent = textContent.replace(/<reasoning>[\s\S]*?<\/reasoning>/g, '');
-        textContent = textContent.replace(/<tool_code>[\s\S]*?<\/tool_code>/g, '');
-        textContent = textContent.trim();
+  // Sev-0 #924/#925/#926 — when the message carries the canonical
+  // `content_blocks` chronology (persisted on done finalize), prefer it
+  // over the reconstructed activityStreamData.contentBlocks. The
+  // adapter-reconstructed path can only emit thinking + tool_use blocks
+  // (it reads from `thinkingSteps[]`, which excludes text / viz_render /
+  // app_render / streaming_table / follow_up / sub_agent / hitl_approval /
+  // tool_round / tool_result). When content_blocks is present we render
+  // byte-identical DOM to the live stream. When absent (legacy messages
+  // persisted before Phase 3) we fall back to the reconstruction path.
+  const persistedContentBlocks = (message as any).content_blocks as
+    | any[]
+    | undefined;
+  const hasPersistedBlocks =
+    !isStreaming &&
+    Array.isArray(persistedContentBlocks) &&
+    persistedContentBlocks.length > 0;
+
+  // Delegate to the pure helper (see buildFinalContentBlocks for the
+  // chronological-interleave contract pinned at #814).
+  const finalContentBlocks = useMemo(
+    () => {
+      if (hasPersistedBlocks) {
+        // Direct passthrough — server is the source of truth for the
+        // persisted chronology; the reducer wrote them in wire order.
+        return persistedContentBlocks as any[];
       }
-      // Skip adding artifact content as a text block — it renders via EnhancedMessageContent instead
-      const isArtifactContent = textContent && (
-        textContent.includes('```artifact:') ||
-        textContent.includes('```html') ||
-        textContent.includes('<!DOCTYPE') ||
-        textContent.includes('<html')
-      );
-      if (textContent && !isArtifactContent) {
-        blocks.push({
-          id: `text-${message.id}`,
-          type: 'text' as const,
-          content: textContent,
-          timestamp: Date.now(),
-          isComplete: true,
-        });
-      }
-      return blocks;
-    }
-    return activityStreamData.contentBlocks;
-  }, [isStreaming, message.content, message.id, hasSteps, activityStreamData.contentBlocks]);
+      return buildFinalContentBlocks({
+        activityBlocks: activityStreamData.contentBlocks,
+        messageContent: message.content,
+        messageId: message.id,
+        isStreaming,
+        hasSteps,
+      });
+    },
+    [
+      hasPersistedBlocks,
+      persistedContentBlocks,
+      isStreaming,
+      message.content,
+      message.id,
+      hasSteps,
+      activityStreamData.contentBlocks,
+    ],
+  );
 
   // Whether the activity stream includes text content (completed messages with interleaved blocks)
   const activityStreamHasText = finalContentBlocks.some(b => b.type === 'text');
+
+  // #971 follow-up (Sev-1, 2026-05-20) — second-tier guard for the
+  // artifact duplicate. AgenticActivityStream inline-mounts
+  // `viz_render` blocks via <InlineVizBadge> and `app_render` blocks
+  // via <InlineAppBadge> at their chronological position. When those
+  // blocks are present in finalContentBlocks, the per-message
+  // ArtifactSlideOutLauncher chip row below (which iterates
+  // extractArtifacts(message) over the SAME source data —
+  // message.visualizations[] + tool_result._meta.artifactKind) is a
+  // visual duplicate of what AAS already mounted. Suppress the chip
+  // row in that case. The launcher render is KEPT active when AAS
+  // does NOT inline-mount (legacy persisted messages, fallback
+  // artifacts the AAS render path doesn't handle) — see the JSX
+  // gate at the artifact-launcher-list block.
+  const activityStreamHasInlineArtifacts = finalContentBlocks.some(
+    b => b.type === 'viz_render' || b.type === 'app_render',
+  );
 
   // DEBUG: Write comprehensive diagnostic to localStorage
   if (message.role === 'assistant' && !isStreaming) {
@@ -808,14 +970,6 @@ const MessageBubble = memo(function MessageBubble({
     } catch {}
   }
 
-  // Detect artifact content that MUST render through EnhancedMessageContent (artifact:html, raw HTML docs)
-  const hasArtifactContent = !!(message.content && typeof message.content === 'string' && (
-    message.content.includes('```artifact:') ||
-    message.content.includes('```html') ||
-    message.content.includes('<!DOCTYPE') ||
-    message.content.includes('<html')
-  ));
-
   return (
     <MessageErrorBoundary messageId={message.id}>
     <div
@@ -824,10 +978,14 @@ const MessageBubble = memo(function MessageBubble({
       className="w-full"
       style={{ willChange: 'contents' }}
     >
-      {/* Message container */}
-      <div className={`flex gap-4 p-4 ${isUser ? 'justify-end' : 'justify-center'}`}>
+      {/* Message container — task #166 mockup: 760px chat column
+          centered, 32px gap between messages (via mockup-v067.css sibling
+          selectors), assistant left-aligned with avatar, user right-aligned
+          in a 640px bubble. We keep flex so existing behavior is preserved;
+          the mockup CSS targets [data-message-role=...]. */}
+      <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
         {/* Message content */}
-        <div className={`flex-1 w-full ${isUser ? 'text-right' : ''}`}>
+        <div className={`flex-1 min-w-0 ${isUser ? 'text-right' : ''}`}>
           {/* User message bubble - uses user's accent color */}
           {isUser && (
             <div className="inline-block max-w-prose">
@@ -872,13 +1030,62 @@ const MessageBubble = memo(function MessageBubble({
                     </div>
                   )}
                   <div
-                    className="text-white rounded-2xl px-4 py-2"
+                    className="rounded-[14px] px-4 py-3 text-left"
+                    data-testid="user-message-bubble"
                     style={{
-                      background: 'var(--user-accent-primary, rgb(124, 58, 237))'
+                      background: 'var(--bg-2, rgba(255,255,255,0.04))',
+                      color: 'var(--fg-0, #f8fafc)',
+                      border: '1px solid var(--line-2, rgba(255,255,255,0.1))',
+                      boxShadow: 'var(--mk-shadow-sm)',
+                      // Editorial typography — mirror codemode .cm-markdown.
+                      // Inter first, tighter letter-spacing, full font-feature
+                      // set for single-story 'a' + ligatures + tabular nums.
+                      fontFamily:
+                        '"Inter", "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                      fontSize: 15,
+                      lineHeight: 1.6,
+                      letterSpacing: '-0.005em',
+                      fontFeatureSettings: '"kern" 1, "liga" 1, "calt" 1, "tnum" 1, "cv11" 1',
+                      WebkitFontSmoothing: 'antialiased',
+                      textRendering: 'optimizeLegibility',
+                      // Wider than the old 640 — user asked for ~800 so the
+                      // chat feels closer to codemode's breathing room and
+                      // long paragraphs don't wrap awkwardly.
+                      // 2026-04-24: now uses the shared transcript token so
+                      // user bubble width matches codemode's transcript.
+                      maxWidth: 'var(--transcript-max-width)',
+                      display: 'inline-block',
                     }}
                   >
                     {message.content}
                   </div>
+                  {/* Mockup 03 pattern — meta-row under user bubble:
+                      `HH:MM · YYYY-MM-DD`. Keeps the bubble clean and
+                      gives the user-identity + time context the mockup
+                      shows for security/audit trails. */}
+                  {message.timestamp && (
+                    <div
+                      data-testid="user-message-meta"
+                      style={{
+                        marginTop: 4,
+                        fontSize: 10,
+                        color: 'var(--fg-3, #71717a)',
+                        fontFamily: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+                        fontVariantNumeric: 'tabular-nums',
+                        textAlign: 'right',
+                      }}
+                    >
+                      {(() => {
+                        const d = new Date(message.timestamp);
+                        const hh = String(d.getHours()).padStart(2, '0');
+                        const mm = String(d.getMinutes()).padStart(2, '0');
+                        const yyyy = d.getFullYear();
+                        const mo = String(d.getMonth() + 1).padStart(2, '0');
+                        const dd = String(d.getDate()).padStart(2, '0');
+                        return `${hh}:${mm} · ${yyyy}-${mo}-${dd}`;
+                      })()}
+                    </div>
+                  )}
                   {/* Edit button - shows on hover */}
                   <button
                     onClick={() => onEditStart(message)}
@@ -894,32 +1101,109 @@ const MessageBubble = memo(function MessageBubble({
             </div>
           )}
 
-          {/* Assistant message */}
+          {/* Assistant message — mock 01:184-214 cm-msg-asst 2-col grid.
+              col-1: 28x28 cm-avatar gradient. col-2: cm-msg-body holds the
+              MessageHeader (noAvatar) + activity stream + content. The
+              `group` class survives so the existing hover-edit affordance
+              keeps working. */}
           {isAssistant && (
-            <div className="group space-y-2">
-              {/* Model badge — always visible for assistant messages, regardless of renderer.
-                  F.4: cost pill sits alongside; shows estimate during streaming, authoritative
-                  cost once tokenUsage arrives from the server. */}
-              {showModelBadges && message.model && !isStreaming && (
-                <div className="flex items-center gap-2 mb-1">
-                  <InlineModelBadge model={message.model} theme={theme} />
-                  <CostPill
-                    model={message.model}
-                    outputText={message.content || ''}
-                    usage={message.tokenUsage}
-                    isStreaming={false}
-                    theme={theme}
+            <div className="cm-v2 cm-msg-asst group" data-testid="assistant-row">
+              {/* 2026-05-07 — when streaming, swap the static purple-gradient
+                  avatar square for the animated ThinkingSphere. When the
+                  stream completes (`isStreaming` flips false), we render
+                  the static avatar back, so the sphere disappears at end
+                  of turn — exactly what the user asked for: "the sphere
+                  should be where the square is and disappear when
+                  thinking/request is done." */}
+              {isStreaming ? (
+                <div
+                  className="cm-avatar cm-av-asst"
+                  aria-hidden
+                  style={{ background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  data-testid="assistant-thinking-sphere"
+                >
+                  <ThinkingSphere state="thinking" size={28} />
+                </div>
+              ) : (
+                /*
+                 * Done state — small static accent-coloured orb that
+                 * replaces the prior solid blue square. Pure CSS radial
+                 * gradient + one glossy highlight, theme-token-driven via
+                 * --accent / --accent-line so it tracks the user's accent
+                 * picker.
+                 */
+                <div
+                  className="cm-avatar cm-av-asst"
+                  aria-hidden
+                  data-testid="assistant-static-orb"
+                  style={{ background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <div
+                    style={{
+                      position: 'relative',
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      background:
+                        'radial-gradient(circle at 32% 30%, var(--accent, #8b5cf6) 0%, color-mix(in srgb, var(--accent, #8b5cf6) 65%, #000) 80%, color-mix(in srgb, var(--accent, #8b5cf6) 40%, #000) 100%)',
+                      boxShadow:
+                        '0 0 0 1px var(--accent-line, rgba(139,92,246,0.32)), 0 1px 6px color-mix(in srgb, var(--accent, #8b5cf6) 35%, transparent)',
+                    }}
+                  >
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 2,
+                        left: 4,
+                        width: 5,
+                        height: 5,
+                        borderRadius: '50%',
+                        background: 'rgba(255,255,255,0.55)',
+                        filter: 'blur(0.5px)',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="cm-msg-body space-y-2">
+              {/* LiveTurnStatus — codemode-style strip rendered DIRECTLY to the
+                  right of the spinning ThinkingSphere during streaming. Shows
+                  ↑in · ↓out tokens · elapsed · TTFT · activity summary. */}
+              {isStreaming && turnStartedAt != null && (
+                <div data-testid="live-turn-status-row" style={{ marginTop: '4px' }}>
+                  <LiveTurnStatus
+                    turnStartedAt={turnStartedAt}
+                    firstTokenAt={ttftMs != null ? turnStartedAt + ttftMs : null}
+                    tokensIn={liveTokensIn ?? 0}
+                    tokensOut={liveTokensOut ?? 0}
+                    activitySummary={liveActivity ?? 'thinking'}
+                    isStreaming={isStreaming}
                   />
                 </div>
               )}
-              {showModelBadges && message.model && isStreaming && (
-                <div className="flex items-center gap-2 mb-1">
-                  <InlineModelBadge model={message.model} theme={theme} />
-                  <CostPill
-                    model={message.model}
-                    outputText={message.content || ''}
-                    isStreaming={true}
-                    theme={theme}
+              {showModelBadges && (
+                <div data-testid="assistant-meta-row">
+                  <MessageHeader
+                    name="Assistant"
+                    variant="asst"
+                    modelTag={
+                      message.modelTag
+                        ?? splitModelIdentifier(message.model)?.tag
+                        ?? undefined
+                    }
+                    modelId={
+                      message.modelId
+                        ?? (splitModelIdentifier(message.model)?.id || undefined)
+                    }
+                    timestamp={
+                      message.timestamp
+                        ? new Date(message.timestamp).toLocaleTimeString([], {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })
+                        : undefined
+                    }
+                    noAvatar
                   />
                 </div>
               )}
@@ -934,42 +1218,219 @@ const MessageBubble = memo(function MessageBubble({
               {/* Activity stream for streaming content, tool calls, and artifact rendering */}
               {(hasSteps || (isStreaming && streamingContentBlocks && streamingContentBlocks.length > 0)) && (
                   <ArtifactErrorBoundary fallbackContent={message.content || ''}>
+                  {(() => {
+                    // #646 Option B — resolve which SubAgentEntry list to thread
+                    // into AgenticActivityStream. Prefer the per-message scoped
+                    // map (so completed sub-agents stay glued to their own
+                    // turn). Fall back to the flat `subAgents` array only when
+                    // this is the in-flight streaming message (matches the
+                    // ChatMessages trailing-strip resolution at lines 502-509
+                    // before the strip was ripped). Any null/empty path passes
+                    // an empty array so AgenticActivityStream's default kicks in.
+                    const scoped = subAgentsByMessageId?.[message.id];
+                    const aasSubAgents: SubAgentEntry[] =
+                      scoped && scoped.length > 0
+                        ? scoped
+                        : isStreaming && subAgents
+                          ? subAgents
+                          : [];
+                    return (
                   <AgenticActivityStream
                     isStreaming={isStreaming}
                     streamingState={activityStreamData.streamingState}
-                    contentBlocks={isStreaming && streamingContentBlocks && streamingContentBlocks.length > 0
-                      ? streamingContentBlocks.map(block => ({
-                          id: `stream-${block.index}`,
-                          type: block.type === 'tool_use' ? 'tool_call' : block.type,
-                          timestamp: Date.now(),
-                          content: block.content,
-                          isComplete: block.isComplete,
-                          toolId: block.toolId,
-                          toolName: block.toolName,
-                          agentId: block.agentId,
-                          parentToolId: block.parentToolId,
-                          agentRole: block.agentRole,
-                          metadata: block.toolName ? { toolName: block.toolName } : undefined,
-                        }))
-                      : finalContentBlocks}
+                    subAgents={aasSubAgents}
+                    hitlApprovals={hitlApprovals}
+                    onApproveHitl={onApproveHitl}
+                    onDenyHitl={onDenyHitl}
+                    streamingTables={streamingTables}
+                    contentBlocks={
+                      // 3-Sev-0 #1 (2026-05-18) — REFINED PM after user spotted
+                      // compose tools broke under the broad zero-out.
+                      //
+                      // When the StreamEngine is the live painter (flag ON +
+                      // isStreaming), the engine paints `thinking`/`text`/
+                      // `tool_use`/`tool_round`/`follow_up` blocks in its
+                      // own DOM. AAS would double-paint those → "shit prints
+                      // twice".
+                      //
+                      // BUT the engine has NO React parity for compose
+                      // artifacts: `viz_render` (ECharts/D3/svg charts via
+                      // ChartBridge), `app_render` (compose_app iframes that
+                      // need parent theme tokens injected via React-side
+                      // AppRenderer), `streaming_table` (TanStack table) —
+                      // plus the engine isn't even given `themeTokens` at
+                      // construction so `var(--cm-*)` falls through to
+                      // defaults inside any iframe it does try to render.
+                      //
+                      // So during live stream:
+                      //   - Engine paints simple block types (no dup needed).
+                      //   - AAS paints artifact block types ONLY (React
+                      //     keeps full theme + chart fidelity).
+                      //   - The two never paint the same block type.
+                      //
+                      // On finalize the engine unmounts, AAS rehydrates from
+                      // `finalContentBlocks` (the full persisted chronology)
+                      // and renders everything.
+                      isStreaming && isStreamEngineEnabled()
+                        ? (streamingContentBlocks ?? [])
+                            .filter(b => b.type === 'viz_render' || b.type === 'app_render' || b.type === 'streaming_table')
+                            .map(block => ({
+                              id: `stream-${block.index}`,
+                              type: block.type,
+                              timestamp: block.timestamp ?? Date.now(),
+                              content: block.content,
+                              isComplete: block.isComplete,
+                              toolId: block.toolId,
+                              toolName: block.toolName,
+                              startTime: (block as any).startTime,
+                              duration: (block as any).duration,
+                              input: (block as any).input,
+                              result: (block as any).resultRaw ?? (block as any).result,
+                              metadata: block.toolName ? { toolName: block.toolName } : undefined,
+                              // 2026-05-19 — app_render render-critical fields.
+                              // Without these the InlineAppBadge → AppRenderer
+                              // chain mounts an empty "Mini app" stub (no iframe)
+                              // because AppRenderer's empty-html guard returns
+                              // null. The reducer (foldAppRenderFrame) populates
+                              // them from the wire frame; the adapter MUST
+                              // pass them through.
+                              title: (block as any).title,
+                              html: (block as any).html,
+                              nonce: (block as any).nonce,
+                              pyodideRequired: (block as any).pyodideRequired,
+                              kind: (block as any).kind,
+                              groupId: (block as any).groupId,
+                            }))
+                        : streamingContentBlocks && streamingContentBlocks.length > 0
+                          ? streamingContentBlocks.map(block => ({
+                              id: `stream-${block.index}`,
+                              // Wire-in D (#82) — preserve tool_round so the
+                              // parallel-group renderer can pick it up. All
+                              // other tool_use blocks still normalize to the
+                              // legacy 'tool_call' type.
+                              type: block.type === 'tool_use'
+                                ? 'tool_call'
+                                : block.type,
+                              timestamp: block.timestamp ?? Date.now(),
+                              content: block.content,
+                              isComplete: block.isComplete,
+                              toolId: block.toolId,
+                              toolName: block.toolName,
+                              agentId: block.agentId,
+                              parentToolId: block.parentToolId,
+                              agentRole: block.agentRole,
+                              // v0.6.7 task #159 — thread startTime/duration so
+                              // InlineThinkingBlock can derive startedAt/endedAt
+                              // and ToolCallCard can render live elapsed timers.
+                              startTime: (block as any).startTime,
+                              duration: (block as any).duration,
+                              // E1.5 (2026-05-12) — propagate the structured
+                              // input/result objects through to ToolCallGroup
+                              // / ToolCard so the JSON view renders without
+                              // a parse round-trip (avoids escape soup).
+                              input: (block as any).input,
+                              result: (block as any).resultRaw ?? (block as any).result,
+                              metadata: block.toolName ? { toolName: block.toolName } : undefined,
+                              // Wire-in D (#82) — thread tool_round container
+                              // fields straight through to the adapter layer.
+                              roundId: block.roundId,
+                              toolIds: block.toolIds,
+                              children: block.children as any,
+                              durationMs: block.durationMs,
+                              succeeded: block.succeeded,
+                              failed: block.failed,
+                              // #919 F1-6 — propagate follow_up chip items.
+                              items: (block as any).items,
+                              // 2026-05-19 — app_render / viz_render render-critical
+                              // fields. The InlineAppBadge → AppRenderer chain
+                              // reads `block.html` to mount the iframe; without
+                              // it AppRenderer's empty-html guard returns null
+                              // and the user sees an empty "Mini app" stub.
+                              // Same for `viz_render` block.kind discriminator.
+                              title: (block as any).title,
+                              html: (block as any).html,
+                              nonce: (block as any).nonce,
+                              pyodideRequired: (block as any).pyodideRequired,
+                              kind: (block as any).kind,
+                              groupId: (block as any).groupId,
+                            }))
+                          : finalContentBlocks
+                    }
                     tasks={activityStreamData.tasks}
                     toolCalls={activityStreamData.toolCalls}
                     theme={theme}
                     thinkingProgress={isStreaming ? thinkingProgress : undefined}
                     onInterrupt={onInterrupt}
                   />
+                    );
+                  })()}
+                  {/* Step 3 (2026-05-18) — StreamEngine handoff. Mounts
+                      ONLY when VITE_FEATURE_STREAM_ENGINE=true AND the
+                      message is actively streaming. The engine owns its
+                      own DOM subtree (data-cm-stream-engine="true"); it
+                      reads frames published from useChatStream's frame
+                      loop via the streamFrameBus singleton. On stream
+                      end the engine finalizes — AgenticActivityStream
+                      above takes over rendering from the persisted
+                      UIContentBlock[]. Handoff is structurally invisible
+                      because both speak the SDK SoT shape. */}
+                  {isStreaming && isStreamEngineEnabled() && (
+                    <StreamEnginedActivityStream
+                      messageId={message.id}
+                      isStreaming={isStreaming}
+                    />
+                  )}
                   </ArtifactErrorBoundary>
               )}
 
+              {/* #781 Phase D — new-pipeline artifact launchers (visualizations[]
+                  or tool_result._meta.artifactKind). Render as compact buttons
+                  above the message content; clicking opens ArtifactSlideOut.
+                  #971 follow-up (Sev-1, 2026-05-20) — short-circuit when AAS
+                  has already inline-mounted the corresponding viz_render /
+                  app_render blocks. Same source data, otherwise rendered
+                  twice (inline iframe via InlineVizBadge/InlineAppBadge +
+                  launcher chip here). Legacy/fallback path preserved when
+                  AAS does NOT inline-mount. */}
+              {(() => {
+                if (activityStreamHasInlineArtifacts) return null;
+                const artifacts = extractArtifacts(message);
+                if (artifacts.length === 0) return null;
+                return (
+                  <div
+                    data-testid="artifact-launcher-list"
+                    style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}
+                  >
+                    {artifacts.map((a) => (
+                      <ArtifactSlideOutLauncher
+                        key={a.id}
+                        kind={a.kind}
+                        title={a.title}
+                        payload={a.payload}
+                        status={a.status}
+                      />
+                    ))}
+                  </div>
+                );
+              })()}
+
               {/* Message content - EnhancedMessageContent for finished messages (has Shiki, proper tables) */}
-              {/* Suppressed when: (a) streaming with content blocks, or (b) activity stream has text blocks (completed interleaved view) */}
-              {/* Exception: artifact content MUST always render through EnhancedMessageContent for proper artifact:html handling */}
-              {message.content && !(isStreaming && streamingContentBlocks && streamingContentBlocks.length > 0) && (!activityStreamHasText || hasArtifactContent) && (
+              {/* Suppressed when: (a) streaming with content blocks, or (b) activity stream has text blocks (completed interleaved view).
+                  #966 (2026-05-20) — DROPPED the hasArtifactContent carve-out. AAS is authoritative for inline artifacts (image://, artifact:html, <html, <!DOCTYPE) via InlineVizBadge / InlineAppBadge / SharedMarkdownRenderer. Rendering EnhancedMessageContent in addition produced a literal double-render of the entire assistant body. */}
+              {message.content && !(isStreaming && streamingContentBlocks && streamingContentBlocks.length > 0) && !activityStreamHasText && (
                 <ArtifactErrorBoundary fallbackContent={message.content}>
                   <div className="max-w-none">
                     <EnhancedMessageContent
                       message={message}
-                      content={message.content}
+                      // 2026-05-18 PM — strip grounding verdict line + the
+                      // <grounding-sources> JSON block from the prose so
+                      // neither leaks into the rendered body. The chip
+                      // below renders them in their proper UI form.
+                      content={
+                        message.role === 'assistant'
+                          ? stripGroundingArtifacts(message.content)
+                          : message.content
+                      }
                       theme={theme}
                       showModelBadges={false}
                       onExpandToCanvas={onExpandToCanvas}
@@ -978,6 +1439,21 @@ const MessageBubble = memo(function MessageBubble({
                     />
                   </div>
                 </ArtifactErrorBoundary>
+              )}
+
+              {/* #940 P1 (2026-05-18) — grounding T1 verdict chip.
+                  When the user toggled the chat-input-toolbar SearchCheck
+                  pill ON for this turn, the system-prompt addendum (set in
+                  runChat.ts) instructed the model to verify factual claims
+                  via the existing web_search MCP tool and end its final
+                  text with a canonical "Grounding: ..." verdict line.
+                  InlineGroundingChip parses message.content for that line
+                  and renders an inline chip with the verdict + source
+                  count. Renders nothing when the line isn't present
+                  (grounding off, or model didn't comply). Chip only on
+                  assistant role + non-streaming final state. */}
+              {message.role === 'assistant' && !isStreaming && (
+                <InlineGroundingChip assistantText={message.content} />
               )}
 
               {/* Feedback row - Claude.ai style actions */}
@@ -991,6 +1467,7 @@ const MessageBubble = memo(function MessageBubble({
                   onCopy={() => onCopy?.(message.id)}
                 />
               )}
+              </div>
             </div>
           )}
         </div>
@@ -998,105 +1475,6 @@ const MessageBubble = memo(function MessageBubble({
     </div>
     </MessageErrorBoundary>
   );
-}, (prevProps, nextProps) => {
-  // Custom comparison function for optimal memoization
-  // Return true if props are equal (no re-render needed)
-
-  // Always re-render if the message itself changed
-  if (prevProps.message !== nextProps.message) {
-    // Deep check relevant message properties
-    if (
-      prevProps.message.id !== nextProps.message.id ||
-      prevProps.message.content !== nextProps.message.content ||
-      prevProps.message.status !== nextProps.message.status ||
-      prevProps.message.role !== nextProps.message.role ||
-      prevProps.message.mcpCalls !== nextProps.message.mcpCalls ||
-      prevProps.message.toolCalls !== nextProps.message.toolCalls ||
-      prevProps.message.toolResults !== nextProps.message.toolResults ||
-      prevProps.message.thinkingSteps !== nextProps.message.thinkingSteps ||
-      prevProps.message.reasoningTrace !== nextProps.message.reasoningTrace ||
-      prevProps.message.model !== nextProps.message.model ||
-      prevProps.message.attachedImages !== nextProps.message.attachedImages
-    ) {
-      return false;
-    }
-  }
-
-  // Re-render if editing state changed for this message
-  if (prevProps.isEditing !== nextProps.isEditing) {
-    return false;
-  }
-
-  // Re-render if edit content changed while editing
-  if (nextProps.isEditing && prevProps.editContent !== nextProps.editContent) {
-    return false;
-  }
-
-  // Re-render if theme changed
-  if (prevProps.theme !== nextProps.theme) {
-    return false;
-  }
-
-  // Re-render if thinking content changed for streaming messages
-  if (
-    nextProps.message.status === 'streaming' &&
-    prevProps.thinkingContent !== nextProps.thinkingContent
-  ) {
-    return false;
-  }
-
-  // Re-render if active MCP calls changed
-  if (prevProps.activeMcpCalls !== nextProps.activeMcpCalls) {
-    return false;
-  }
-
-  // Re-render if display options changed
-  if (
-    prevProps.showMCPIndicators !== nextProps.showMCPIndicators ||
-    prevProps.showModelBadges !== nextProps.showModelBadges ||
-    prevProps.showThinkingInline !== nextProps.showThinkingInline
-  ) {
-    return false;
-  }
-
-  // Re-render if turn info changed
-  if (prevProps.turnInfo !== nextProps.turnInfo) {
-    return false;
-  }
-
-  // Re-render if aggregated messages changed
-  if (prevProps.aggregatedMessages !== nextProps.aggregatedMessages) {
-    return false;
-  }
-
-  // Re-render if streaming content blocks changed (for live interleaved thinking display)
-  if (prevProps.streamingContentBlocks !== nextProps.streamingContentBlocks) {
-    // Check if content actually changed (not just array reference)
-    const prevBlocks = prevProps.streamingContentBlocks || [];
-    const nextBlocks = nextProps.streamingContentBlocks || [];
-    if (prevBlocks.length !== nextBlocks.length) {
-      return false;
-    }
-    // Check if any block content changed
-    for (let i = 0; i < nextBlocks.length; i++) {
-      if (prevBlocks[i]?.content !== nextBlocks[i]?.content ||
-          prevBlocks[i]?.type !== nextBlocks[i]?.type) {
-        return false;
-      }
-    }
-  }
-
-  // Re-render if normalized events changed (UNIFIED_STREAM path)
-  if (prevProps.normalizedEvents !== nextProps.normalizedEvents) {
-    const prevLen = prevProps.normalizedEvents?.length ?? 0;
-    const nextLen = nextProps.normalizedEvents?.length ?? 0;
-    if (prevLen !== nextLen) {
-      return false;
-    }
-  }
-
-  // Props are equal, no re-render needed
-  return true;
-});
+}, memoComparator);
 
 export default MessageBubble;

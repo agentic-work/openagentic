@@ -8,7 +8,7 @@
  * hello@openagentic.io
  */
 
-import type { NormalizedStreamEvent } from '../../../../types/NormalizedStreamTypes';
+import type { NormalizedStreamEvent } from '../../../../types/AnthropicStreamEvent';
 
 export interface TreeNode {
   id: string;
@@ -23,80 +23,109 @@ export function buildTree(events: NormalizedStreamEvent[]): TreeNode[] {
   const nodeMap = new Map<string, TreeNode>(); // id → node
   const agentStack: string[] = []; // stack of agent IDs for nesting
 
-  for (const event of events) {
+  // Canonical Anthropic Messages SSE event tracking (Slice G.4a):
+  // index → { kind, id, thinkingStartTime } so content_block_delta and
+  // content_block_stop can locate the node opened by content_block_start.
+  const blockIndex = new Map<
+    number,
+    { kind: 'thinking' | 'text' | 'tool_use'; id: string; thinkingStartTime?: number }
+  >();
+  let nextSyntheticBlockId = 0;
+  const synthBlockId = (kind: string, idx: number) =>
+    `${kind}-${idx}-${nextSyntheticBlockId++}`;
+
+  for (const event of events as any[]) {
     switch (event.type) {
-      case 'thinking_start': {
-        const node: TreeNode = {
-          id: event.id,
-          type: 'thinking',
-          status: 'running',
-          children: [],
-          data: { content: '', elapsedMs: 0 },
-        };
-        nodeMap.set(event.id, node);
-        addToParent(node, agentStack, rootNodes, nodeMap);
+      // ---------------------------------------------------------------------
+      // Canonical Anthropic Messages SSE wire events (Slice G.4a)
+      // ---------------------------------------------------------------------
+      case 'message_start':
+      case 'message_stop':
+      case 'message_delta':
+      case 'ping':
+        // Envelope events; no tree nodes
         break;
-      }
-      case 'thinking_delta': {
-        const node = nodeMap.get(event.id);
-        if (node) node.data.content = event.accumulated;
-        break;
-      }
-      case 'thinking_stop': {
-        const node = nodeMap.get(event.id);
-        if (node) {
-          node.status = 'success';
-          node.data.elapsedMs = event.elapsedMs;
-        }
-        break;
-      }
-      // text_start/delta/stop — SKIP. Text rendering is handled by EnhancedMessageContent.
-      // Including text nodes here would cause doubled content since the old stream path
-      // already feeds message.content for the main text renderer.
-      case 'text_start':
-      case 'text_delta':
-      case 'text_stop':
-        break;
-      case 'tool_start': {
-        const node: TreeNode = {
-          id: event.id,
-          type: 'tool',
-          status: 'running',
-          children: [],
-          data: {
-            toolName: event.toolName,
-            serverName: event.serverName,
-            args: '',
-            result: null,
-            durationMs: 0,
-          },
-        };
-        nodeMap.set(event.id, node);
-        // If tool has agentId, add to that agent; otherwise add to current agent or root
-        const parentId =
-          event.agentId ||
-          (agentStack.length > 0 ? agentStack[agentStack.length - 1] : undefined);
-        if (parentId && nodeMap.has(parentId)) {
-          nodeMap.get(parentId)!.children.push(node);
-        } else {
+
+      case 'content_block_start': {
+        const block = event.content_block || {};
+        const idx: number = event.index;
+        if (block.type === 'thinking') {
+          const id = synthBlockId('cb-think', idx);
+          blockIndex.set(idx, { kind: 'thinking', id, thinkingStartTime: Date.now() });
+          const node: TreeNode = {
+            id,
+            type: 'thinking',
+            status: 'running',
+            children: [],
+            data: { content: '', elapsedMs: 0 },
+          };
+          nodeMap.set(id, node);
+          addToParent(node, agentStack, rootNodes, nodeMap);
+        } else if (block.type === 'text') {
+          // Text rendering is handled by EnhancedMessageContent; track the
+          // index so deltas don't accidentally hit a stale entry but don't
+          // create a tree node.
+          const id = synthBlockId('cb-text', idx);
+          blockIndex.set(idx, { kind: 'text', id });
+        } else if (block.type === 'tool_use') {
+          const id = block.id || synthBlockId('cb-tool', idx);
+          blockIndex.set(idx, { kind: 'tool_use', id });
+          const node: TreeNode = {
+            id,
+            type: 'tool',
+            status: 'running',
+            children: [],
+            data: {
+              toolName: block.name || '',
+              serverName: '',
+              args: '',
+              result: null,
+              durationMs: 0,
+            },
+          };
+          nodeMap.set(id, node);
           addToParent(node, agentStack, rootNodes, nodeMap);
         }
         break;
       }
-      case 'tool_delta': {
-        const node = nodeMap.get(event.id);
-        if (node) node.data.args += event.argsFragment;
+
+      case 'content_block_delta': {
+        const idx: number = event.index;
+        const info = blockIndex.get(idx);
+        if (!info) break;
+        const node = nodeMap.get(info.id);
+        const delta = event.delta || {};
+        if (info.kind === 'thinking' && delta.type === 'thinking_delta') {
+          if (node) node.data.content = (node.data.content || '') + (delta.thinking || '');
+        } else if (info.kind === 'tool_use' && delta.type === 'input_json_delta') {
+          if (node) node.data.args = (node.data.args || '') + (delta.partial_json || '');
+        }
+        // text_delta, signature_delta, citations_delta — no tree node action
         break;
       }
-      case 'tool_stop': {
-        const node = nodeMap.get(event.id);
+
+      case 'content_block_stop': {
+        const idx: number = event.index;
+        const info = blockIndex.get(idx);
+        if (!info) break;
+        const node = nodeMap.get(info.id);
         if (node) {
           node.status = 'success';
-          node.data.result = event.result;
-          node.data.durationMs = event.durationMs;
+          if (info.kind === 'thinking' && info.thinkingStartTime) {
+            node.data.elapsedMs = Date.now() - info.thinkingStartTime;
+          }
         }
+        blockIndex.delete(idx);
         break;
       }
+
+      // ---------------------------------------------------------------------
+      // Platform envelope events — kept (these are NOT model-stream events;
+      // they describe orchestration state the Anthropic Messages API itself
+      // doesn't model). The synthetic Normalized* model-stream variants
+      // (thinking_*, text_*, tool_*) were ripped in Slice G.4c — buildTree
+      // now consumes only the canonical content_block_* events for those.
+      // ---------------------------------------------------------------------
       case 'agent_start': {
         const node: TreeNode = {
           id: event.id,
@@ -200,7 +229,7 @@ export function buildTree(events: NormalizedStreamEvent[]): TreeNode[] {
         rootNodes.push(node);
         break;
       }
-      // stream_start, stream_end, usage, redacted_thinking — skip for tree building
+      // stream_start, stream_end, usage — skip for tree building
     }
   }
 

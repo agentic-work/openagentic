@@ -104,9 +104,13 @@ msgraph-sdk>=1.16.0                 # Users, groups, apps, service principals
 # azure-ai-projects>=1.0.0          # Uncomment when needed
 
 # =============================================================================
-# MCP FRAMEWORK
+# MCP FRAMEWORK (Phase 1.6 standardization — pin current stable)
+# server.py uses `from mcp.server.fastmcp import FastMCP` (bundled), so
+# both deps must be pinned to versions whose tools/list response carries
+# annotations + _meta + outputSchema (proven via wire trace on 2026-05-01).
 # =============================================================================
-fastmcp>=2.0.0
+mcp>=1.27.0,<2.0.0
+fastmcp>=3.2.0,<4.0.0
 
 # =============================================================================
 # UTILITIES

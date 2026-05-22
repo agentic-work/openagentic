@@ -20,25 +20,20 @@ import {
   CompletionResponse,
   ProviderConfig,
   ProviderHealth,
-  NormalizerState,
 } from './ILLMProvider.js';
-import { NormalizedStreamEvent } from '../NormalizedStreamTypes.js';
 import { MODELS } from '../../config/models.js';
+import { shouldEnableParallelToolCalls } from './parallelToolCallsPolicy.js';
+import { selectCanonicalNormalizer } from '@agentic-work/llm-sdk/lib/normalizers/index.js';
+import { getModelCapabilityRegistry } from '../ModelCapabilityRegistry.js';
+// Phase 0.4 — SDK adapter is SoT for canonical → Anthropic Messages wire
+// translation. Provider becomes thin: HTTP + auth + thinking-config +
+// streaming/non-streaming dispatch. The in-class convertMessages /
+// convertTools / convertToolChoice (220 LOC) are DELETED.
+import { buildAnthropicWireBody } from './anthropic/buildAnthropicWireBody.js';
 
-// Anthropic model pricing (per 1M tokens)
-const ANTHROPIC_PRICING: Record<string, { input: number; output: number }> = {
-  'claude-opus-4-6': { input: 5.0, output: 25.0 },
-  'claude-sonnet-4-6': { input: 3.0, output: 15.0 },
-  'claude-haiku-4-5-20251001': { input: 0.80, output: 4.0 },
-  'claude-3-5-sonnet-20241022': { input: 3.0, output: 15.0 },
-  'claude-3-5-haiku-20241022': { input: 0.80, output: 4.0 },
-  'claude-3-opus-20240229': { input: 15.0, output: 75.0 },
-  'claude-3-sonnet-20240229': { input: 3.0, output: 15.0 },
-  'claude-3-haiku-20240307': { input: 0.25, output: 1.25 },
-};
-
-// Default pricing for unknown models
-const DEFAULT_PRICING = { input: 3.0, output: 15.0 };
+// H13: pricing comes from ModelCapabilityRegistry → admin.model_role_assignments.
+// Until the registry has a row for the model, calculateCost reports 0 —
+// the operator's signal that the row is missing, not a best-guess wrong number.
 
 export interface AnthropicProviderConfig {
   apiKey: string;
@@ -100,61 +95,52 @@ export class AnthropicProvider extends BaseLLMProvider {
     const startTime = Date.now();
 
     try {
-      // Convert OpenAI-style messages to Anthropic format
-      const { systemPrompt, messages } = this.convertMessages(request.messages);
-
-      // Determine model
+      // Resolve model first — needed for capability gates (thinking).
       const model = request.model || this.config.defaultModel || MODELS.anthropic;
 
-      // Build request parameters
-      const anthropicRequest: Anthropic.MessageCreateParams = {
+      // Capability + provider-config decisions (NOT wire shape — those
+      // live in the SDK adapter via buildAnthropicWireBody).
+      const parallelOn = shouldEnableParallelToolCalls({
+        tools: request.tools as any,
+        metadata: (request as any).metadata,
+      });
+      // Z.ET (2026-05-19) — honor per-request extended thinking toggle.
+      // When the UI Brain toggle is OFF the caller sends
+      // extendedThinkingEnabled:false. Only enable thinking when:
+      //   (a) the caller did NOT explicitly turn it off (undefined = ON), AND
+      //   (b) the model supports it (shouldEnableThinking).
+      // The `!== false` guard treats undefined (omitted) as ON — backwards-
+      // compatible: callers that don't set the field see no behavior change.
+      const supportsThinking =
+        (request as any).extendedThinkingEnabled !== false &&
+        this.shouldEnableThinking(model);
+      const thinkingConfig = supportsThinking ? this.getThinkingConfig() : null;
+      const thinkingBudgetTokens = thinkingConfig?.budget_tokens;
+
+      // Default tool_choice='auto' if caller passed tools but no explicit
+      // choice. The legacy path did this inline; we forward it to the
+      // helper via the request object so the SDK adapter sees it.
+      const effectiveRequest: CompletionRequest =
+        !request.tool_choice && request.tools && request.tools.length > 0
+          ? { ...request, tool_choice: 'auto' }
+          : request;
+
+      // Phase 0.4 — SDK adapter is SoT for canonical → Anthropic wire shape.
+      const anthropicRequest = buildAnthropicWireBody(effectiveRequest, {
         model,
-        max_tokens: request.max_tokens || 8192,
-        messages,
-        temperature: request.temperature,
-        top_p: request.top_p,
-      };
+        parallelOn,
+        supportsThinking,
+        thinkingBudgetTokens,
+      }) as unknown as Anthropic.MessageCreateParams;
 
-      // Add system prompt if present (with optional caching)
-      if (systemPrompt) {
-        anthropicRequest.system = this.applyCaching(systemPrompt) as any;
-      }
-
-      // Add tools if present
-      if (request.tools && request.tools.length > 0) {
-        anthropicRequest.tools = this.convertTools(request.tools);
-      }
-
-      // Handle tool_choice
-      if (request.tool_choice) {
-        anthropicRequest.tool_choice = this.convertToolChoice(request.tool_choice);
-      }
-
-      // Add thinking configuration for supported models
-      const thinkingEnabled = this.shouldEnableThinking(model);
-      if (thinkingEnabled) {
-        const thinkingConfig = this.getThinkingConfig();
-        if (thinkingConfig) {
-          (anthropicRequest as any).thinking = thinkingConfig;
-        }
-      }
-
-      // Add effort parameter when thinking is NOT enabled (mutually exclusive)
-      // Maps intelligence slider: 0-40% → low, 41-60% → medium (default, omit), 61-100% → high
-      if (!thinkingEnabled && request.sliderValue !== undefined) {
-        const effort = this.mapSliderToEffort(request.sliderValue);
-        if (effort !== 'medium') {
-          // Only set effort when non-default; medium is the API default
-          (anthropicRequest as any).effort = effort;
-        }
-      }
-
-      // Add output_config for structured JSON outputs
-      if (request.outputSchema) {
-        (anthropicRequest as any).output_config = {
-          type: 'json_schema',
-          schema: request.outputSchema,
-        };
+      // Optional system-prompt cache_control. The SDK adapter doesn't yet
+      // attach cache_control markers (Phase 0.5 future work); the provider
+      // wraps in applyCaching() which prepends the `cache_control:ephemeral`
+      // marker when prompt-caching is enabled.
+      if (anthropicRequest.system) {
+        (anthropicRequest as any).system = this.applyCaching(
+          anthropicRequest.system as any,
+        ) as any;
       }
 
       // Handle streaming
@@ -162,8 +148,13 @@ export class AnthropicProvider extends BaseLLMProvider {
         return this.createStreamingCompletion(anthropicRequest, model);
       }
 
-      // Non-streaming request
-      const response = await this.client.messages.create(anthropicRequest);
+      // Non-streaming request — strip the stream flag that buildAnthropicWireBody
+      // may have set, so the Anthropic SDK returns a Message (not a Stream).
+      const nonStreamingRequest: Anthropic.MessageCreateParamsNonStreaming = {
+        ...anthropicRequest,
+        stream: false,
+      } as Anthropic.MessageCreateParamsNonStreaming;
+      const response = await this.client.messages.create(nonStreamingRequest);
 
       const latency = Date.now() - startTime;
       const tokens = (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0);
@@ -180,7 +171,18 @@ export class AnthropicProvider extends BaseLLMProvider {
   }
 
   /**
-   * Create streaming completion with proper thinking support
+   * Create streaming completion with proper thinking support.
+   *
+   * Wire-in: every native Anthropic SDK event flows through the canonical
+   * SDK normalizer (`selectCanonicalNormalizer('anthropic', …)`). The
+   * normalizer is a passthrough state-machine for Anthropic-shape input —
+   * it preserves text/thinking/tool_use/signature deltas verbatim, and
+   * synthesizes any missing wrapper events so downstream always sees the
+   * canonical pair (`message_start` → … → `message_delta` → `message_stop`).
+   *
+   * Cost tracking remains a side effect of this method: token counts are
+   * captured from the raw SDK events before delegation, then `trackSuccess`
+   * fires at `message_stop`.
    */
   private async *createStreamingCompletion(
     request: Anthropic.MessageCreateParams,
@@ -188,275 +190,64 @@ export class AnthropicProvider extends BaseLLMProvider {
   ): AsyncGenerator<any> {
     if (!this.client) throw new Error('Client not initialized');
 
-    // Stream the response - beta headers for interleaved thinking handled by SDK
     const stream = await this.client.messages.stream(request);
+
+    const normalizer = selectCanonicalNormalizer('anthropic', {
+      messageId: `msg_${Date.now()}_anthropic`,
+      model,
+    });
 
     let inputTokens = 0;
     let outputTokens = 0;
-    let currentThinking = '';
-    let currentText = '';
 
-    for await (const event of stream) {
-      // Handle different event types
-      if (event.type === 'message_start') {
-        inputTokens = event.message.usage?.input_tokens || 0;
-        yield {
-          type: 'message_start',
-          message: {
-            id: event.message.id,
-            model: event.message.model,
-            usage: event.message.usage,
-          },
-        };
-      } else if (event.type === 'content_block_start') {
-        const block = event.content_block;
-        // CRITICAL FIX: Emit consistent content_block_start format for ALL block types
-        // The completion stage expects content_block_start with content_block.type
-        yield {
-          type: 'content_block_start',
-          index: event.index,
-          content_block: block, // Pass through the original block (thinking, text, or tool_use)
-        };
-      } else if (event.type === 'content_block_delta') {
-        const delta = event.delta;
-        // CRITICAL FIX: Emit consistent content_block_delta format
-        // The completion stage expects delta.type to be 'thinking_delta', 'text_delta', or 'input_json_delta'
-        if (delta.type === 'thinking_delta') {
-          currentThinking += delta.thinking;
-          yield {
-            type: 'content_block_delta',
-            index: event.index,
-            delta: {
-              type: 'thinking_delta',
-              thinking: delta.thinking,
-            },
-          };
-        } else if (delta.type === 'text_delta') {
-          currentText += delta.text;
-          yield {
-            type: 'content_block_delta',
-            index: event.index,
-            delta: {
-              type: 'text_delta',
-              text: delta.text,
-            },
-          };
-        } else if (delta.type === 'input_json_delta') {
-          yield {
-            type: 'content_block_delta',
-            index: event.index,
-            delta: {
-              type: 'input_json_delta',
-              partial_json: delta.partial_json,
-            },
-          };
-        } else if (delta.type === 'signature_delta') {
-          // Signature delta marks the end of thinking content - pass through
-          yield {
-            type: 'content_block_delta',
-            index: event.index,
-            delta: {
-              type: 'signature_delta',
-              signature: delta.signature,
-            },
-          };
+    try {
+      for await (const event of stream) {
+        if (event.type === 'message_start') {
+          inputTokens = event.message.usage?.input_tokens || 0;
+        } else if (event.type === 'message_delta') {
+          outputTokens = event.usage?.output_tokens || 0;
         }
-      } else if (event.type === 'content_block_stop') {
-        yield {
-          type: 'content_block_stop',
-          index: event.index,
-        };
-      } else if (event.type === 'message_delta') {
-        outputTokens = event.usage?.output_tokens || 0;
-        yield {
-          type: 'message_delta',
-          delta: {
-            stop_reason: event.delta.stop_reason,
-          },
-          usage: event.usage,
-        };
-      } else if (event.type === 'message_stop') {
-        const cost = this.calculateCost(model, inputTokens, outputTokens);
-        this.trackSuccess(0, inputTokens + outputTokens, cost);
 
-        yield {
-          type: 'message_stop',
-          usage: {
-            input_tokens: inputTokens,
-            output_tokens: outputTokens,
-          },
-        };
+        const canonicalEvents = normalizer.consume(event);
+        for (const out of canonicalEvents) {
+          yield out;
+        }
+
+        if (event.type === 'message_stop') {
+          const cost = this.calculateCost(model, inputTokens, outputTokens);
+          this.trackSuccess(0, inputTokens + outputTokens, cost);
+        }
+      }
+    } finally {
+      const flushed = normalizer.finalize();
+      for (const out of flushed) {
+        yield out;
       }
     }
   }
 
-  /**
-   * Convert OpenAI-style messages to Anthropic format
-   */
-  private convertMessages(messages: CompletionRequest['messages']): {
-    systemPrompt: string | undefined;
-    messages: Anthropic.MessageParam[];
-  } {
-    let systemPrompt: string | undefined;
-    const anthropicMessages: Anthropic.MessageParam[] = [];
-
-    for (const msg of messages) {
-      if (msg.role === 'system') {
-        // Concatenate system messages
-        systemPrompt = systemPrompt ? `${systemPrompt}\n\n${msg.content}` : msg.content;
-        continue;
-      }
-
-      if (msg.role === 'user') {
-        // Handle content with images - convert OpenAI image_url format to Anthropic format
-        if (Array.isArray(msg.content)) {
-          const anthropicContent: Anthropic.ContentBlockParam[] = [];
-          for (const block of msg.content) {
-            if (block.type === 'text') {
-              anthropicContent.push({ type: 'text', text: block.text || '' });
-            } else if (block.type === 'image') {
-              // Already in Anthropic format
-              anthropicContent.push(block as Anthropic.ImageBlockParam);
-            } else if (block.type === 'image_url' && block.image_url) {
-              // Convert OpenAI image_url format to Anthropic image format
-              const imageUrl = block.image_url.url || '';
-              if (imageUrl.startsWith('data:')) {
-                // Parse data URL: data:image/png;base64,<data>
-                const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
-                if (match) {
-                  anthropicContent.push({
-                    type: 'image',
-                    source: {
-                      type: 'base64',
-                      media_type: match[1] as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-                      data: match[2],
-                    },
-                  });
-                }
-              } else {
-                // URL-based image (Anthropic also supports this)
-                anthropicContent.push({
-                  type: 'image',
-                  source: {
-                    type: 'url',
-                    url: imageUrl,
-                  } as any, // Anthropic SDK may need cast for URL type
-                });
-              }
-            }
-          }
-          anthropicMessages.push({
-            role: 'user',
-            content: anthropicContent,
-          });
-        } else {
-          anthropicMessages.push({
-            role: 'user',
-            content: msg.content,
-          });
-        }
-      } else if (msg.role === 'assistant') {
-        // Handle tool calls in assistant messages
-        if (msg.tool_calls && msg.tool_calls.length > 0) {
-          const content: Anthropic.ContentBlockParam[] = [];
-
-          // Add text if present
-          if (msg.content) {
-            content.push({ type: 'text', text: msg.content });
-          }
-
-          // Add tool use blocks
-          for (const toolCall of msg.tool_calls) {
-            let input: Record<string, unknown>;
-            try {
-              input = JSON.parse(toolCall.function.arguments || '{}');
-            } catch {
-              input = {};
-            }
-
-            content.push({
-              type: 'tool_use',
-              id: toolCall.id,
-              name: toolCall.function.name,
-              input,
-            });
-          }
-
-          anthropicMessages.push({
-            role: 'assistant',
-            content,
-          });
-        } else {
-          anthropicMessages.push({
-            role: 'assistant',
-            content: msg.content,
-          });
-        }
-      } else if (msg.role === 'tool') {
-        // Tool result message
-        anthropicMessages.push({
-          role: 'user',
-          content: [
-            {
-              type: 'tool_result',
-              tool_use_id: msg.tool_call_id || '',
-              content: msg.content,
-            },
-          ],
-        });
-      }
-    }
-
-    return { systemPrompt, messages: anthropicMessages };
-  }
+  // Phase 0.4 (2026-05-12) — convertMessages / convertTools /
+  // convertToolChoice DELETED. Wire-shape translation moved to the SDK
+  // adapter via `buildAnthropicWireBody` (see import above). The adapter
+  // is the SoT for canonical → Anthropic Messages wire conversion;
+  // provider-specific decoration (thinking, output_config, sampling)
+  // lives in the helper alongside.
 
   /**
-   * Convert OpenAI-style tools to Anthropic format
-   */
-  private convertTools(tools: any[]): Anthropic.Tool[] {
-    return tools
-      .filter((tool) => tool.type === 'function')
-      .map((tool) => ({
-        name: tool.function.name,
-        description: tool.function.description || '',
-        input_schema: tool.function.parameters || { type: 'object', properties: {} },
-      }));
-  }
-
-  /**
-   * Convert tool_choice to Anthropic format
-   */
-  private convertToolChoice(toolChoice: any): Anthropic.MessageCreateParams['tool_choice'] {
-    if (toolChoice === 'auto') {
-      return { type: 'auto' };
-    } else if (toolChoice === 'none') {
-      return { type: 'none' };
-    } else if (toolChoice === 'required' || toolChoice?.type === 'required') {
-      return { type: 'any' };
-    } else if (toolChoice?.function?.name) {
-      return { type: 'tool', name: toolChoice.function.name };
-    }
-    return { type: 'auto' };
-  }
-
-  /**
-   * Check if model supports thinking
+   * Wire-format gate: does this model accept the `thinking` field in the
+   * request body?
+   *
+   * Source of truth: ModelCapabilityRegistry.supportsThinking(model), which
+   * reads `capabilities.thinking` from admin.model_role_assignments (the
+   * registry SoT). This eliminates the former substring-sniff and closes
+   * CLAUDE.md Rule 7 for AnthropicProvider (Task A, 2026-05-19).
+   *
+   * Fail-safe: if the registry is not yet initialised (null), returns false
+   * so a missing registry row never accidentally enables thinking.
    */
   private shouldEnableThinking(model: string): boolean {
     if (!this.config?.enableThinking) return false;
-
-    // Thinking is supported on Claude 3.5 Sonnet and newer
-    const thinkingModels = [
-      'claude-opus-4-6',
-      'claude-sonnet-4-6',
-      'claude-opus-4-5',
-      'claude-sonnet-4-5',
-      'claude-haiku-4-5',
-      'claude-3-5-sonnet',
-      'claude-3-5-haiku',
-    ];
-
-    return thinkingModels.some((m) => model.includes(m));
+    return getModelCapabilityRegistry()?.supportsThinking(model) ?? false;
   }
 
   /**
@@ -473,32 +264,15 @@ export class AnthropicProvider extends BaseLLMProvider {
   }
 
   /**
-   * Map intelligence slider value (0-100) to Anthropic effort parameter.
-   * - 0-40%: "low" (economical, faster responses)
-   * - 41-60%: "medium" (balanced, API default)
-   * - 61-100%: "high" (premium, deeper reasoning)
-   */
-  private mapSliderToEffort(sliderValue: number): 'low' | 'medium' | 'high' {
-    if (sliderValue <= 40) return 'low';
-    if (sliderValue <= 60) return 'medium';
-    return 'high';
-  }
-
-  /**
-   * Check if model supports interleaved thinking (Claude 4 models only)
-   * Interleaved thinking allows thinking/text/tool_use blocks to interleave naturally
+   * Wire-format gate: which Anthropic models accept the
+   * `interleaved-thinking-2025-05-14` beta header. Claude 4 family only.
+   * This is an SDK contract, not a config decision. Cage-safe substrings.
    */
   private supportsInterleavedThinking(model: string): boolean {
     if (!this.config?.enableThinking) return false;
-
-    // Interleaved thinking is only supported on Claude 4 models
-    const interleavedModels = [
-      'claude-opus-4',
-      'claude-sonnet-4',
-      'claude-haiku-4',
-    ];
-
-    return interleavedModels.some((m) => model.includes(m));
+    const ml = model.toLowerCase();
+    const interleavedMarkers = ['opus-4', 'sonnet-4', 'haiku-4'];
+    return interleavedMarkers.some((m) => ml.includes(m));
   }
 
   /**
@@ -591,36 +365,21 @@ export class AnthropicProvider extends BaseLLMProvider {
   }
 
   /**
-   * Calculate cost for request
+   * Calculate cost for request via ModelCapabilityRegistry (admin.model_role_assignments SoT).
+   * Returns 0 if the model isn't registered — the operator's cue to add it.
    */
   private calculateCost(model: string, inputTokens: number, outputTokens: number): number {
-    // Find matching pricing
-    let pricing = DEFAULT_PRICING;
-    for (const [key, value] of Object.entries(ANTHROPIC_PRICING)) {
-      if (model.includes(key) || key.includes(model)) {
-        pricing = value;
-        break;
-      }
-    }
-
-    const inputCost = (inputTokens / 1_000_000) * pricing.input;
-    const outputCost = (outputTokens / 1_000_000) * pricing.output;
-
-    return inputCost + outputCost;
+    const caps = getModelCapabilityRegistry()?.getCapabilities(model);
+    const inputPer1k = typeof caps?.inputCostPer1k === 'number' ? caps.inputCostPer1k : 0;
+    const outputPer1k = typeof caps?.outputCostPer1k === 'number' ? caps.outputCostPer1k : 0;
+    return (inputTokens / 1000) * inputPer1k + (outputTokens / 1000) * outputPer1k;
   }
 
   async listModels(): Promise<Array<{ id: string; name: string; provider: string }>> {
-    // Anthropic doesn't have a list models endpoint, return known models
-    return [
-      { id: 'claude-opus-4-6', name: 'Claude Opus 4.6', provider: 'anthropic' },
-      { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6', provider: 'anthropic' },
-      { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', provider: 'anthropic' },
-      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'anthropic' },
-      { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', provider: 'anthropic' },
-      { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', provider: 'anthropic' },
-      { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet', provider: 'anthropic' },
-      { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', provider: 'anthropic' },
-    ];
+    // H13: no static catalog. Live discovery via discoverModels() (Anthropic
+    // /v1/models API) is the SoT; the platform consults
+    // admin.model_role_assignments for what's actually configured.
+    return [];
   }
 
   async getHealth(): Promise<ProviderHealth> {
@@ -664,21 +423,21 @@ export class AnthropicProvider extends BaseLLMProvider {
       throw new Error('Anthropic provider not initialized');
     }
 
-    const { systemPrompt, messages } = this.convertMessages(request.messages);
     const model = request.model || this.config.defaultModel || MODELS.anthropic;
-
+    // Phase 0.4 — use the SDK adapter via the wire helper so countTokens
+    // mirrors the createCompletion wire shape byte-for-byte. The helper
+    // returns the full Anthropic body; countTokens only needs
+    // model + messages + system + tools, so we destructure.
+    const wire = buildAnthropicWireBody(request, {
+      model,
+      parallelOn: false, // doesn't matter for token count
+    });
     const countRequest: any = {
       model,
-      messages,
+      messages: (wire as any).messages,
     };
-
-    if (systemPrompt) {
-      countRequest.system = systemPrompt;
-    }
-
-    if (request.tools && request.tools.length > 0) {
-      countRequest.tools = this.convertTools(request.tools);
-    }
+    if ((wire as any).system) countRequest.system = (wire as any).system;
+    if ((wire as any).tools) countRequest.tools = (wire as any).tools;
 
     try {
       // Use the beta countTokens API
@@ -781,6 +540,16 @@ export class AnthropicProvider extends BaseLLMProvider {
       const data = await response.json() as any;
       const apiModels = data.data || [];
 
+      // H13 / discovery-only inference:
+      // The Anthropic /v1/models API returns id + display_name only. The
+      // capability/family/cost-tier tags below are SUBSTRING INFERENCE of
+      // last resort — they populate the *Add Model* picker so the operator
+      // sees something useful before they save the row.
+      //
+      // Once the operator persists the row to admin.model_role_assignments,
+      // the registry SoT (ModelCapabilityRegistry.getCapabilities) trumps
+      // every value below. This block MUST NOT be consulted for routing,
+      // pricing, or capability gating — only for the discovery picker.
       const models: DiscoveredModel[] = apiModels.map((m: any): DiscoveredModel => {
         const modelId = m.id || '';
         const displayName = m.display_name || modelId;
@@ -849,14 +618,6 @@ export class AnthropicProvider extends BaseLLMProvider {
   }
 
   /**
-   * Normalize a raw Anthropic stream chunk into NormalizedStreamEvents.
-   * Delegates to the exported pure function for testability.
-   */
-  normalizeChunk(rawChunk: any, state: NormalizerState): NormalizedStreamEvent[] {
-    return normalizeAnthropicChunk(rawChunk, state);
-  }
-
-  /**
    * Anthropic doesn't have a model info API — use ModelCapabilityRegistry as fallback.
    */
   async getModelDefaults(modelId: string): Promise<Partial<import('./ILLMProvider.js').ProviderDefaultConfig> | null> {
@@ -877,142 +638,10 @@ export class AnthropicProvider extends BaseLLMProvider {
       supportsTopK: true, supportsFreqPenalty: false, supportsThinking: true,
       thinkingMode: 'budget',
       temperatureRange: [0, 1], maxTokensRange: [256, 128000], topKRange: [1, 500],
-      defaultChatModel: 'claude-sonnet-4-6', defaultEmbeddingModel: '',
+      // H13: no hardcoded default — admin must select a model from the registry.
+      defaultChatModel: '', defaultEmbeddingModel: '',
     };
   }
-}
-
-// ---------------------------------------------------------------------------
-// Exported normalizer function — pure, per-chunk, state-mutating
-// ---------------------------------------------------------------------------
-
-/**
- * Normalizes a single raw Anthropic streaming chunk into zero or more
- * NormalizedStreamEvents.  State is mutated in place to track block types,
- * thinking accumulation, and timing across chunk boundaries.
- */
-export function normalizeAnthropicChunk(rawChunk: any, state: NormalizerState): NormalizedStreamEvent[] {
-  const events: NormalizedStreamEvent[] = [];
-  const blockTypes = state.blockTypes;
-
-  switch (rawChunk.type) {
-    case 'message_start': {
-      const msg = rawChunk.message;
-      state.inputTokens = msg?.usage?.input_tokens || 0;
-      state.model = msg?.model || '';
-      events.push({
-        type: 'stream_start',
-        messageId: msg?.id || '',
-        model: state.model,
-        provider: 'anthropic',
-      });
-      state.streamStartEmitted = true;
-      break;
-    }
-
-    case 'content_block_start': {
-      const block = rawChunk.content_block;
-      const index: number = rawChunk.index;
-      if (block?.type === 'thinking') {
-        const id = `tk-${index}`;
-        state.thinkingId = id;
-        state.thinkingStartTime = Date.now();
-        state.thinkingAccumulated = '';
-        blockTypes.set(index, { type: 'thinking', id });
-        events.push({ type: 'thinking_start', id });
-      } else if (block?.type === 'text') {
-        const id = `txt-${index}`;
-        state.textBlockId = id;
-        blockTypes.set(index, { type: 'text', id });
-        events.push({ type: 'text_start', id });
-      } else if (block?.type === 'tool_use') {
-        const id = block.id || `tool-${index}`;
-        blockTypes.set(index, { type: 'tool_use', id });
-        events.push({ type: 'tool_start', id, toolName: block.name || '', serverName: '' });
-      }
-      break;
-    }
-
-    case 'content_block_delta': {
-      const delta = rawChunk.delta;
-      const index: number = rawChunk.index;
-      const blockInfo = blockTypes.get(index);
-
-      if (delta?.type === 'thinking_delta') {
-        state.thinkingAccumulated += delta.thinking || '';
-        events.push({
-          type: 'thinking_delta',
-          id: blockTypes.get(index)?.id || state.thinkingId || `tk-${index}`,
-          content: delta.thinking || '',
-          accumulated: state.thinkingAccumulated,
-        });
-      } else if (delta?.type === 'text_delta') {
-        events.push({
-          type: 'text_delta',
-          id: blockTypes.get(index)?.id || state.textBlockId || `txt-${index}`,
-          content: delta.text || '',
-        });
-      } else if (delta?.type === 'input_json_delta') {
-        const toolId = blockInfo?.id || `tool-${index}`;
-        events.push({ type: 'tool_delta', id: toolId, argsFragment: delta.partial_json || '' });
-      } else if (delta?.type === 'signature_delta') {
-        events.push({
-          type: 'redacted_thinking',
-          id: state.thinkingId || `tk-${index}`,
-          signature: delta.signature,
-        });
-      }
-      break;
-    }
-
-    case 'content_block_stop': {
-      const index: number = rawChunk.index;
-      const blockInfo = blockTypes.get(index);
-      if (blockInfo?.type === 'thinking') {
-        const elapsed = state.thinkingStartTime ? Date.now() - state.thinkingStartTime : 0;
-        events.push({ type: 'thinking_stop', id: blockInfo.id, elapsedMs: elapsed });
-        state.thinkingId = null;
-        state.thinkingStartTime = null;
-        state.thinkingAccumulated = '';
-      } else if (blockInfo?.type === 'text') {
-        events.push({ type: 'text_stop', id: blockInfo.id });
-        state.textBlockId = null;
-      } else if (blockInfo?.type === 'tool_use') {
-        events.push({ type: 'tool_stop', id: blockInfo.id, result: null, durationMs: 0 });
-      }
-      blockTypes.delete(index);
-      break;
-    }
-
-    case 'message_delta': {
-      if (rawChunk.usage) {
-        const tokensOut = rawChunk.usage.output_tokens || 0;
-        const pricing = ANTHROPIC_PRICING[state.model] || DEFAULT_PRICING;
-        const cost = (state.inputTokens / 1_000_000) * pricing.input
-                   + (tokensOut / 1_000_000) * pricing.output;
-        events.push({
-          type: 'usage',
-          tokensIn: state.inputTokens,
-          tokensOut,
-          cost,
-          contextUsed: 0,
-          contextMax: 0,
-        });
-      }
-      break;
-    }
-
-    case 'message_stop': {
-      events.push({ type: 'stream_end', finishReason: 'stop', totalDurationMs: 0 });
-      break;
-    }
-
-    default:
-      // Unknown event type — return empty array
-      break;
-  }
-
-  return events;
 }
 
 export default AnthropicProvider;

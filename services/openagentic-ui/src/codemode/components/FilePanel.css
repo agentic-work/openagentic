@@ -1,0 +1,561 @@
+/* ============================================================================
+   FilePanel.css — lifted from mocks/codemode-file-panel/index.html <style>
+   CSS variables (--cm-*) auto-adapt when the cm-theme changes.
+   ============================================================================ */
+
+/* ───── Panel root layout ───── */
+.fp-panel-root {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  outline: none;
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   TOP CHROME BAR (Files | Search soon | Source Control soon | Extensions soon)
+   ════════════════════════════════════════════════════════════════ */
+.fp-chrome {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  background: var(--cm-bg-tertiary);
+  border-bottom: 1px solid var(--cm-border);
+  font-family: var(--cm-mono-font);
+  font-size: 11.5px;
+}
+.fp-chrome .brand {
+  color: var(--cm-accent);
+  letter-spacing: 0.16em;
+  margin-right: 18px;
+  font-size: 10px;
+  opacity: 0.8;
+  font-weight: 600;
+}
+.fp-chrome-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: var(--cm-text-secondary);
+  cursor: pointer;
+}
+.fp-chrome-tab.active {
+  background: color-mix(in srgb, var(--cm-accent) 16%, transparent);
+  color: var(--cm-text);
+  border: 1px solid color-mix(in srgb, var(--cm-accent) 30%, transparent);
+}
+.fp-chrome-tab .glyph { font-size: 13px; }
+.fp-chrome-tab .soon {
+  font-size: 9px;
+  background: var(--cm-surface);
+  border: 1px solid var(--cm-border);
+  color: var(--cm-text-muted);
+  padding: 0 4px;
+  border-radius: 3px;
+  letter-spacing: 0.08em;
+}
+.fp-chrome .right {
+  margin-left: auto;
+  color: var(--cm-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   BODY GRID — 2-column default (left + right); 3-column with children
+   LEFT 224px · [CENTER 1fr] · RIGHT 360px
+   2026-05-05: trimmed left 280→224 (−56) and right 520→360 (−160)
+   to give the chat/output center column ~+20% width vs the prior
+   layout. Mirrors claude.ai/code's chat-first proportioning.
+   ════════════════════════════════════════════════════════════════ */
+.fp-body {
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr);
+  overflow: hidden;
+  min-height: 0;
+  position: relative;
+}
+
+.fp-body.fp-body-3col {
+  grid-template-columns: 224px minmax(0, 1fr) 360px;
+}
+
+/* ─── CENTER COLUMN — wraps CodeModeLayoutV2 or other chat UI ─── */
+.fp-center {
+  flex: 1 1 auto;
+  min-width: 0;       /* allow chat composer to shrink */
+  display: flex;
+  flex-direction: column;
+  background: var(--cm-bg, #0d1117);
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   LEFT RAIL — file tree
+   ════════════════════════════════════════════════════════════════ */
+.fp-left {
+  background: var(--cm-bg-secondary, #1e1e2e);
+  border-right: 1px solid var(--cm-border, #45475a);
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  /* User feedback 2026-05-02: tree was sizing to content, leaving the
+     bottom of the sidebar empty AND pushing CollectionsSection out of
+     view. Make the tree section fill its parent flex column so the
+     `1fr` track inside the grid actually has a height to expand into.
+     Collections section sits below as a peer; keeping CollectionsSection
+     `flex: 0 0 auto` prevents it from clipping. */
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.fp-left-hdr {
+  padding: 10px 12px 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--cm-border);
+}
+.fp-left-hdr .label {
+  font-family: var(--cm-mono-font);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cm-text-muted);
+  flex: 1;
+}
+.fp-left-hdr .iconbtn {
+  color: var(--cm-text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.fp-left-hdr .iconbtn:hover { color: var(--cm-accent); background: rgba(255,255,255,0.04); }
+
+.fp-workspace {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--cm-border);
+  font-family: var(--cm-mono-font);
+  font-size: 11px;
+  color: var(--cm-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fp-workspace .glyph { color: var(--cm-warning); }
+.fp-workspace .name { color: var(--cm-text); font-weight: 600; }
+
+/* ─── Tree error state ─── */
+.fp-tree-error {
+  padding: 12px;
+  color: var(--cm-error, #f38ba8);
+  font-family: var(--cm-mono-font);
+  font-size: 12px;
+}
+
+/* ─── Tree styles (already in FileTree.tsx scope; mirror here for scoped import) ─── */
+.fp-tree {
+  overflow-y: scroll;
+  padding: 4px 0;
+  font-family: var(--cm-mono-font);
+  font-size: 12.5px;
+  min-height: 0;
+}
+.fp-tree::-webkit-scrollbar { width: 8px; }
+.fp-tree::-webkit-scrollbar-thumb { background: var(--cm-border); border-radius: 4px; }
+.fp-tree::-webkit-scrollbar-thumb:hover { background: var(--cm-text-muted); }
+
+.fp-node {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 12px 2px 8px;
+  color: var(--cm-text-secondary);
+  cursor: pointer;
+  line-height: 1.55;
+  position: relative;
+}
+.fp-node:hover { background: rgba(255,255,255,0.04); }
+.fp-node.active {
+  background: color-mix(in srgb, var(--cm-accent) 14%, transparent);
+  color: var(--cm-text);
+  border-left: 2px solid var(--cm-accent);
+  padding-left: 6px;
+}
+.fp-node .twisty { width: 10px; color: var(--cm-text-muted); font-size: 9px; flex-shrink: 0; text-align: center; }
+.fp-node .twisty.empty { visibility: hidden; }
+.fp-node .icon { width: 16px; flex-shrink: 0; text-align: center; }
+.fp-node .icon.folder { color: var(--cm-warning); }
+.fp-node .icon.file-py { color: var(--cm-success); }
+.fp-node .icon.file-tsx { color: var(--cm-info); }
+.fp-node .icon.file-css { color: var(--cm-prompt); }
+.fp-node .icon.file-md { color: var(--cm-text-secondary); }
+.fp-node .icon.file-json { color: var(--cm-warning); }
+.fp-node .icon.file-yaml { color: var(--cm-error); }
+.fp-node .name { flex: 1; }
+.fp-node.lvl-1 { padding-left: 22px; }
+.fp-node.lvl-2 { padding-left: 36px; }
+.fp-node.lvl-3 { padding-left: 50px; }
+.fp-node.lvl-4 { padding-left: 64px; }
+
+.fp-node .ind {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.fp-node .ind.editing {
+  background: var(--cm-success);
+  box-shadow: 0 0 6px rgba(166,227,161,0.8), 0 0 0 0 rgba(166,227,161,0.55);
+  animation: fp-pulse 1.4s ease-out infinite;
+}
+.fp-node .ind.recent { background: var(--cm-warning); box-shadow: 0 0 4px rgba(249,226,175,0.6); }
+.fp-node .ind.dirty { background: var(--cm-accent); }
+@keyframes fp-pulse {
+  0%   { box-shadow: 0 0 6px rgba(166,227,161,0.7), 0 0 0 0 rgba(166,227,161,0.55); }
+  100% { box-shadow: 0 0 6px rgba(166,227,161,0.7), 0 0 0 8px rgba(166,227,161,0); }
+}
+.fp-node.flash { animation: fp-flash 1.6s ease-out infinite alternate; }
+@keyframes fp-flash {
+  0%   { background: color-mix(in srgb, var(--cm-success) 12%, transparent); }
+  100% { background: color-mix(in srgb, var(--cm-success) 28%, transparent); }
+}
+.fp-node.active.flash {
+  animation: fp-flash-active 1.6s ease-out infinite alternate;
+}
+@keyframes fp-flash-active {
+  0%   { background: color-mix(in srgb, var(--cm-success) 22%, transparent); }
+  100% { background: color-mix(in srgb, var(--cm-success) 36%, transparent); }
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   RIGHT PANE — tabs + editor + status
+   ════════════════════════════════════════════════════════════════ */
+.fp-right {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  min-height: 0;
+  background: var(--cm-bg);
+}
+
+.fp-tabs {
+  display: flex;
+  align-items: stretch;
+  background: var(--cm-bg-secondary);
+  border-bottom: 1px solid var(--cm-border);
+  height: 36px;
+  overflow-x: auto;
+}
+.fp-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-right: 1px solid var(--cm-border);
+  color: var(--cm-text-secondary);
+  cursor: pointer;
+  font-family: var(--cm-mono-font);
+  font-size: 12px;
+  position: relative;
+  background: var(--cm-bg-tertiary);
+  flex-shrink: 0;
+}
+.fp-tab:hover { background: var(--cm-surface); color: var(--cm-text); }
+.fp-tab.active {
+  background: var(--cm-bg);
+  color: var(--cm-text);
+}
+.fp-tab.active::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2px;
+  background: var(--cm-success);
+  box-shadow: 0 0 8px rgba(166,227,161,0.6);
+}
+.fp-tab .icon { font-size: 12px; }
+.fp-tab .icon.py { color: var(--cm-success); }
+.fp-tab .icon.tsx { color: var(--cm-info); }
+.fp-tab .close {
+  margin-left: 6px;
+  width: 16px; height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cm-text-muted);
+  border-radius: 3px;
+  font-size: 11px;
+}
+.fp-tab .close:hover { background: var(--cm-surface); color: var(--cm-text); }
+.fp-tabs-spacer { flex: 1; }
+.fp-tabs-action {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  color: var(--cm-text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--cm-mono-font);
+}
+.fp-tabs-action:hover { color: var(--cm-accent); }
+.fp-tabs-empty {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  color: var(--cm-text-muted);
+  font-family: var(--cm-mono-font);
+  font-size: 11px;
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   CROSS-COLUMN VISUAL HINT — dotted "live-sync" arrow overlay
+   ════════════════════════════════════════════════════════════════ */
+.fp-livesync {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  overflow: hidden;
+}
+.fp-livesync svg { width: 100%; height: 100%; }
+.fp-livesync path {
+  stroke: var(--cm-success);
+  stroke-width: 1.4;
+  stroke-dasharray: 4 4;
+  fill: none;
+  opacity: 0.55;
+  animation: fp-dashpan 1.4s linear infinite;
+}
+.fp-livesync circle {
+  fill: var(--cm-success);
+  opacity: 0.85;
+  filter: drop-shadow(0 0 4px rgba(166,227,161,0.8));
+}
+@keyframes fp-dashpan {
+  to { stroke-dashoffset: -16; }
+}
+@media (max-width: 1280px) {
+  .fp-livesync { display: none; }
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   COLLAPSED STATE — thin vertical toggle bar
+   ════════════════════════════════════════════════════════════════ */
+.fp-collapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 16px;
+  width: 28px;
+  height: 100%;
+  background: var(--cm-bg-secondary);
+  border-right: 1px solid var(--cm-border);
+  cursor: pointer;
+  color: var(--cm-text-muted);
+  font-size: 16px;
+  user-select: none;
+}
+.fp-collapsed:hover { color: var(--cm-accent); }
+
+/* ═════════════════════════════════════════════════════════════════
+   CONTEXT MENU
+   ════════════════════════════════════════════════════════════════ */
+.fp-ctx-menu {
+  background: var(--cm-bg-secondary, #1e1e2e);
+  border: 1px solid var(--cm-border, #45475a);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  padding: 4px 0;
+  min-width: 160px;
+  font-family: var(--cm-mono-font);
+  font-size: 12.5px;
+  color: var(--cm-text);
+  outline: none;
+}
+.fp-ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+  color: var(--cm-text-secondary);
+  justify-content: space-between;
+}
+.fp-ctx-item:hover:not(.disabled) {
+  background: color-mix(in srgb, var(--cm-accent) 12%, transparent);
+  color: var(--cm-text);
+}
+.fp-ctx-item.disabled {
+  color: var(--cm-text-muted);
+  cursor: default;
+  opacity: 0.5;
+}
+.fp-ctx-label { flex: 1; }
+.fp-ctx-shortcut {
+  color: var(--cm-text-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   TOAST
+   ════════════════════════════════════════════════════════════════ */
+.fp-toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--cm-bg-secondary, #1e1e2e);
+  border: 1px solid var(--cm-border, #45475a);
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-family: var(--cm-mono-font);
+  font-size: 12.5px;
+  color: var(--cm-text);
+  z-index: 2000;
+  pointer-events: none;
+  animation: fp-toast-in 0.15s ease-out;
+}
+@keyframes fp-toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   CLICK-TO-OPEN TOOL PATH LINKS — used by Part.tsx tool renderers
+   ════════════════════════════════════════════════════════════════ */
+.cm-tool-path-link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.cm-tool-path-link:hover { text-decoration: underline; }
+
+/* =============================================================================
+   Theme overrides — auto-adapt to [data-cm-theme="<id>"] attribute on <html>.
+   The CSS variables (--cm-text, --cm-text-muted, --cm-bg, --cm-accent, etc.)
+   are already set per-theme by the global theme stylesheet. The rules below are
+   placeholders so per-theme adjustments can be added without selector rewrites.
+   ============================================================================= */
+
+/* ═════════════════════════════════════════════════════════════════
+   A.22 Phase 1 — image / PDF preview
+   ════════════════════════════════════════════════════════════════ */
+/* Base editor container — gives Monaco / image / pdf / loading wrappers a
+ * constrained height so internal scrollbars actually work. User feedback
+ * 2026-05-06: "file explorer in the right panel- you cant scroll to see
+ * more of the file". The .fp-right grid sets row 2 to 1fr, but without
+ * height:100% + min-height:0 here, .fp-editor was sizing to content,
+ * which broke Monaco's internal scrollbar for files longer than the
+ * viewport. */
+.fp-editor {
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* The Monaco wrapper inside .fp-editor needs flex:1 so it fills
+ * remaining height after the optional status strip. Monaco's own
+ * .monaco-editor element handles the scrollbar. */
+.fp-editor > [data-mprt],
+.fp-editor > .monaco-editor,
+.fp-editor > div:not(.fp-editor-status-strip):not(.fp-editor-empty-msg):not(.fp-editor-error-banner):not(.fp-editor-loading) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.fp-editor-image-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: var(--cm-bg, #1e1e1e);
+}
+.fp-editor-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+}
+.fp-editor-pdf-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--cm-bg, #1e1e1e);
+}
+.fp-editor-pdf-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--cm-border, rgba(255, 255, 255, 0.08));
+  font-size: 12px;
+  background: var(--cm-bg-elev, rgba(255, 255, 255, 0.02));
+}
+.fp-editor-pdf-toolbar button {
+  background: transparent;
+  border: 1px solid var(--cm-border, rgba(255, 255, 255, 0.12));
+  color: var(--cm-text, #e6e6e6);
+  font: inherit;
+  padding: 2px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  line-height: 1;
+}
+.fp-editor-pdf-toolbar button:hover:not(:disabled) {
+  background: var(--cm-accent-soft, rgba(255, 255, 255, 0.06));
+}
+.fp-editor-pdf-toolbar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.fp-editor-pdf-toolbar-sep {
+  color: var(--cm-text-muted, #888);
+  margin: 0 4px;
+}
+.fp-editor-pdf-page-indicator,
+.fp-editor-pdf-zoom-indicator {
+  color: var(--cm-text-muted, #aaa);
+  min-width: 44px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.fp-editor-pdf-canvas-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 16px;
+}
+.fp-editor-pdf-canvas {
+  background: white;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+.fp-editor-pdf-error {
+  padding: 16px;
+  color: var(--cm-error, #ff6b6b);
+}
+
+[data-cm-theme="macchiato"] .fp-panel-root { /* macchiato tokens apply via --cm-* vars */ }
+[data-cm-theme="mocha"]     .fp-panel-root { }
+[data-cm-theme="latte"]     .fp-panel-root { }
+[data-cm-theme="frappe"]    .fp-panel-root { }
+[data-cm-theme="nord"]      .fp-panel-root { }
+[data-cm-theme="dracula"]   .fp-panel-root { }
+[data-cm-theme="default"]   .fp-panel-root { }

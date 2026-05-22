@@ -27,8 +27,8 @@ RENAMES = [
     ('services/agenticwork-workflows',     'services/openagentic-workflows'),
     ('services/agenticwork-mcp-proxy',     'services/openagentic-mcp-proxy'),
     ('services/agenticwork-ollama',        'services/openagentic-ollama'),
-    ('services/agenticode-exec',           'services/openagentic-exec'),
-    ('services/agenticode-manager',        None),                        # deleted — single-user
+    ('services/agenticode-exec',           None),                        # Code Mode is OSS-out
+    ('services/agenticode-manager',        None),                        # Code Mode is OSS-out
     ('services/agenticode-server',         'services/openagentic-server'),
     ('services/agent-proxy',               'services/openagentic-proxy'),
     ('services/oat-executor',              'services/openagentic-synth'),
@@ -62,13 +62,20 @@ SKIP_PREFIXES = (
     '.github/workflows/claude-code-review', '.github/workflows/sonar',
     '.github/workflows/trivy', '.github/workflows/gitleaks',
     '.github/workflows/dependency-review', '.github/workflows/helm-publish',
+    '.github/workflows/e2e-int-test', '.github/workflows/flows-harness',
     '.github/arc/', '.github/install-arc', '.github/arc-runner-',
     '.github/SETUP.md', '.github/setup-arc-aks',
     'gitops/', 'helm/values/',
-    # Companion repos (pulled at build time, not synced)
+    # Companion repos / customer-specific / internal worktrees — never OSS
     'agenticode-cli/', 'ghostpilot/', 'sdk/', 'oat/',
+    'brainbow/', 'peraton/', 'mocks/', 'infra/',
+    'parity-evidence/', 'helm_old_do_not_use/',
+    'synth/', 'companions/',
+    'agenticwork-sdk/', 'agenticwork-agenticode-sdk/',
+    '.worktrees/', '.worktree/',
     # Test results / UAT reports live only in the internal upstream
     'tests/MCP_', 'tests/uat',
+    'test-results/', 'testing/', 'reports/',
     # Build artifacts / editor state / internal workspace
     'node_modules/', 'dist/', 'build/', '.next/', '.astro/', '__pycache__/',
     '.venv/', 'venv/', '.turbo/',
@@ -78,6 +85,31 @@ SKIP_PREFIXES = (
     '.git/', '.playwright-mcp/', 'playwright-report/',
     # Internal deploy scripts (keep scripts/ dir but not these)
     'scripts/buildx/', 'scripts/e2e-test-suite/', 'scripts/load-tests/',
+    # Code Mode is OSS-out — service, UI, API, helm, tests, mcp bridge
+    'services/openagentic-exec/', 'services/agenticode-exec/',
+    'services/agenticode-manager/',
+    'services/openagentic-api/src/routes/code-mode/',
+    'services/openagentic-api/src/routes/admin/codemode',
+    'services/openagentic-api/src/routes/admin/code-mode-config',
+    'services/openagentic-api/src/routes/admin/coding-adapters',
+    'services/openagentic-api/src/services/coding-adapters/',
+    'services/openagentic-api/src/tests/codemode/',
+    'services/openagentic-ui/src/features/code/',
+    'services/openagentic-ui/src/features/admin/components/CodeMode/',
+    'services/openagentic-ui/src/features/admin/components/Code/',
+    'services/mcps/awp-agenticode-mcp/', 'services/mcps/oap-code-mcp/',
+    'helm/openagentic/templates/code-manager/',
+    'helm/agenticwork/templates/code-manager/',
+    # Agenticwork-branded helm chart copy (we ship helm/openagentic only)
+    'helm/agenticwork/',
+    # Upstream session notes / dev-only audit dumps
+    'services/audit/',
+    # Code Mode e2e specs and load scenarios
+    'tests/e2e/ui/codemode', 'tests/e2e/codemode',
+    'tests/load/scenarios/codemode/',
+    # Playwright reports (generated artifacts)
+    'services/openagentic-ui/playwright-report/',
+    'services/openagentic-ui/tests/e2e/playwright-report-tests-e2e/',
 )
 
 # Exact filename bans (anywhere in tree)
@@ -94,6 +126,18 @@ SKIP_NAMES = {
     'sonar-project.properties',
     'test_models.sh', 'test-sse-events.sh', 'test-interleave.html',
     'API', 'app.py', 'tutorial_issues.md', 'FILE_THUMBNAILS_README.md',
+    # Root-level session-note artifacts that the upstream leaves around
+    'ccr-console-full.log', 'codemode-network.txt', 'codemode-snapshot.md',
+    'login-snap.yml', 'knip.config.js', 'playwright.config.ts',
+    'add-bedrock-form.md', 'add-model-bedrock.md', 'add-model-dialog.md',
+    'add-model-vertex.md', 'add-prov-dialog.md',
+    'admin-llm-0618.md', 'admin-llm-providers-overview.md', 'admin-open-0618.md',
+    'after-add-imagen.md', 'after-add-to-platform.md', 'after-add2.md',
+    'config-imagen.md', 'creds-pasted.md', 'dialog-current.md',
+    'models-state2.md', 'models-view.md',
+    'pm-0618.md', 'post-login-0618.md',
+    'provider-mgmt.md', 'providers-after-add.md', 'registry-refreshed.md',
+    'test-gemini.md', 'vertex-expanded.md', 'vertex-image-models.md',
     # Internal deploy scripts
     'aks-test.sh', 'backup.sh', 'deploy-aks.sh', 'deploy-helm-aks.sh',
     'fix-k3s-secret-cache.sh', 'k8s-bedrock-test-job.yaml', 'omhs-sync.sh',
@@ -102,10 +146,18 @@ SKIP_NAMES = {
     'k6-ollama-stress.js', 'version.sh', 'BUILD.md', 'BUILD_SYSTEM.md',
     'build-local-k8s.sh', 'create-uat-workflows.sh', 'migrate-toolargs.sh',
     'model-routing-audit.sh', 'post-upgrade-verify.sh', 'validate-flows.sh',
+    # Code Mode bundle (filename-level bans for the parts not covered by prefix)
+    'CodeModeProvisioningService.ts', 'CodeModeSyncService.ts', 'CodeModeMilvusService.ts',
+    'code-mode-provisioning.ts', 'code-plugins.ts', 'admin-code.ts',
+    'CodeModeMetricsDashboard.tsx', 'useCodeModeStore.ts',
+    'CodeModePage.tsx', 'AdminCodeModePage.tsx',
+    'CodeSessionsPanel.tsx', 'code-mode.gen.ts',
+    'agenticwork-code-mode.json', 'openagentic-code-mode.json',
+    'CodingCli.tsx',
 }
 
 # Extension-level bans (screenshots, archives, ad-hoc mockups)
-SKIP_EXTS = {'.png','.jpg','.jpeg','.webp','.gif','.pdf','.tgz','.tar','.zip','.bak'}
+SKIP_EXTS = {'.png','.jpg','.jpeg','.webp','.gif','.pdf','.tgz','.tar','.zip','.bak','.mp4','.mov','.avi','.mkv'}
 SKIP_SUFFIX = ('-mockup.html', '-mockup.js', '.bak', '.bak.1', '.bak.2')
 
 # Agenticode-specific patterns — user won't ship these
@@ -114,6 +166,8 @@ SKIP_CONTENT_HINTS = (
     'agenticode-cli', 'managedSettings.json', 'managed-mcp.json',
     # Upstream ghostpilot bits — we removed all of these
     'GhostPilot', 'ghostpilot', 'GHOSTPILOT',
+    # Code Mode markers — drop any file dominated by them
+    'CodeModeProvisioning', 'CodeModeSession', 'useCodeModeWebSocket',
 )
 
 # Stale filename patterns left behind by past renames — filter by path, not content.
@@ -122,6 +176,7 @@ SKIP_PATH_HINTS = (
     'doc-generators/oat-executor.gen.ts',
     'doc-generators/oat-synth.gen.ts',
     'doc-generators/oat-framework.gen.ts',
+    'doc-generators/code-mode.gen.ts',
 )
 
 # ─── Preserve: our local fixes (never overwrite) ─────────────────────────────
@@ -164,22 +219,13 @@ PRESERVE = {
     'docker-compose.yml',  # log rotation + compose-env (duplicates earlier entry)
     'services/openagentic-api/src/routes/chat/pipeline/validation.stage.ts',
     'services/openagentic-api/src/services/llm-providers/OllamaProvider.ts',
-    'services/openagentic-api/src/routes/admin/codemode.ts',
-    'services/openagentic-exec/src/index.ts',
-    'services/openagentic-exec/src/userSandbox.ts',
-    'services/openagentic-exec/src/ptyManager.ts',
-    'services/openagentic-exec/Dockerfile',
     'services/openagentic-ui/docker-entrypoint.sh',
     'services/openagentic-api/docker-entrypoint.sh',  # we added prisma migrate deploy here
     'services/openagentic-ui/nginx.conf.template',
     'services/openagentic-ui/Dockerfile',
     'services/openagentic-ui/src/features/chat/components/SettingsMenu.tsx',
     'services/openagentic-ui/src/features/auth/components/Login.tsx',
-    'services/openagentic-ui/src/features/code/components/EditorPanel.tsx',
-    'services/openagentic-ui/src/features/admin/components/CodeMode/CodeModeSettingsView.tsx',
     'services/openagentic-ui/src/features/admin/components/Shell/AdminPortal.tsx',
-    'services/openagentic-ui/src/features/code/components/chat-messages/toolRenderers.ts',
-    'services/openagentic-ui/src/features/code/hooks/useCodeModeWebSocket.ts',
     'services/openagentic-ui/scripts/doc-generators/index.ts',
     'services/openagentic-ui/scripts/generate-docs.ts',
     'services/openagentic-synth/Dockerfile',
@@ -249,7 +295,9 @@ def main():
     for dp, dirs, files in os.walk(UPSTREAM):
         dirs[:] = [d for d in dirs if d not in (
             '.git','node_modules','dist','build','.next','__pycache__',
-            '.venv','venv','.turbo','@eaDir'
+            '.venv','venv','.turbo','@eaDir',
+            '.worktrees','.worktree','.serena','.superpowers','.claude',
+            '.playwright-mcp','playwright-report','coverage',
         )]
         for fn in files:
             abs_up = os.path.join(dp, fn)

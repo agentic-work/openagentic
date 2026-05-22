@@ -11,6 +11,7 @@ import { PrismaClient } from '@prisma/client';
 import type { Logger } from 'pino';
 import type { ExtendedTaskRequirements } from './ModelCapabilitiesService.js';
 import { prisma } from '../utils/prisma.js';
+import { ModelConfigurationService } from './ModelConfigurationService.js';
 
 export class CapabilityIntegration {
   private static instance: CapabilityIntegration;
@@ -32,7 +33,8 @@ export class CapabilityIntegration {
         concurrencyLimit: 3,
         testTimeout: 10000,
         retryAttempts: 2,
-        fallbackModel: process.env.AZURE_OPENAI_DEPLOYMENT || process.env.DEFAULT_MODEL
+        // fallbackModel resolved at request-time via DB (see selectModelForMessage catch block).
+        fallbackModel: undefined
       },
       logger
     );
@@ -227,10 +229,9 @@ export class CapabilityIntegration {
     } catch (error) {
       this.logger.error({ error }, 'Failed to select model, using fallback');
       
-      // Fallback to default model
-      const fallbackModel = await this.dynamicSelector.getBestModel() || 
-                           process.env.AZURE_OPENAI_DEPLOYMENT || 
-                           process.env.DEFAULT_MODEL;
+      // DB is SoT — fallback reads from ModelConfigurationService, not env.
+      const fallbackModel = await this.dynamicSelector.getBestModel() ||
+                           await ModelConfigurationService.getDefaultChatModel().catch(() => '');
       
       return {
         model: fallbackModel,

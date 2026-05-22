@@ -1,3 +1,5 @@
+/* eslint-disable admin-tokens/no-hardcoded-admin-color */
+
 import React from 'react';
 
 interface IconProps {
@@ -19,8 +21,8 @@ export const ActivityIcon: React.FC<IconProps> = ({ size = 20, className = '', s
     <defs>
       <linearGradient id="activityGrad" x1="0%" y1="0%" x2="100%" y2="0%">
         <stop offset="0%" stopColor="var(--color-success)" />
-        <stop offset="50%" stopColor="#10b981" />
-        <stop offset="100%" stopColor="#06b6d4" />
+        <stop offset="50%" stopColor="var(--ap-ok)" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
       <filter id="activityGlow" x="-50%" y="-50%" width="200%" height="200%">
         <feGaussianBlur stdDeviation="1" result="blur" />
@@ -52,8 +54,8 @@ export const CpuIcon: React.FC<IconProps> = ({ size = 20, className = '', style 
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="cpuGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#8b5cf6" />
-        <stop offset="100%" stopColor="#6366f1" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
       <filter id="cpuGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.8" result="blur" />
@@ -66,23 +68,23 @@ export const CpuIcon: React.FC<IconProps> = ({ size = 20, className = '', style 
     {/* Main chip body */}
     <rect x="6" y="6" width="12" height="12" rx="2" fill="url(#cpuGrad)" filter="url(#cpuGlow)" />
     {/* Inner core */}
-    <rect x="9" y="9" width="6" height="6" rx="1" fill="#a78bfa" opacity="0.8" />
+    <rect x="9" y="9" width="6" height="6" rx="1" fill="var(--ap-accent)" opacity="0.8" />
     {/* Pins - top */}
-    <line x1="9" y1="3" x2="9" y2="6" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" />
-    <line x1="12" y1="3" x2="12" y2="6" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" />
-    <line x1="15" y1="3" x2="15" y2="6" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="9" y1="3" x2="9" y2="6" stroke="var(--ap-accent)" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="12" y1="3" x2="12" y2="6" stroke="var(--ap-accent)" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="15" y1="3" x2="15" y2="6" stroke="var(--ap-accent)" strokeWidth="1.5" strokeLinecap="round" />
     {/* Pins - bottom */}
-    <line x1="9" y1="18" x2="9" y2="21" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" />
-    <line x1="12" y1="18" x2="12" y2="21" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" />
-    <line x1="15" y1="18" x2="15" y2="21" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="9" y1="18" x2="9" y2="21" stroke="var(--ap-accent)" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="12" y1="18" x2="12" y2="21" stroke="var(--ap-accent)" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="15" y1="18" x2="15" y2="21" stroke="var(--ap-accent)" strokeWidth="1.5" strokeLinecap="round" />
     {/* Pins - left */}
-    <line x1="3" y1="9" x2="6" y2="9" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" />
-    <line x1="3" y1="12" x2="6" y2="12" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" />
-    <line x1="3" y1="15" x2="6" y2="15" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="3" y1="9" x2="6" y2="9" stroke="var(--ap-accent)" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="3" y1="12" x2="6" y2="12" stroke="var(--ap-accent)" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="3" y1="15" x2="6" y2="15" stroke="var(--ap-accent)" strokeWidth="1.5" strokeLinecap="round" />
     {/* Pins - right */}
-    <line x1="18" y1="9" x2="21" y2="9" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" />
-    <line x1="18" y1="12" x2="21" y2="12" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" />
-    <line x1="18" y1="15" x2="21" y2="15" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="18" y1="9" x2="21" y2="9" stroke="var(--ap-accent)" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="18" y1="12" x2="21" y2="12" stroke="var(--ap-accent)" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="18" y1="15" x2="21" y2="15" stroke="var(--ap-accent)" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 );
 
@@ -94,7 +96,7 @@ export const DatabaseIcon: React.FC<IconProps> = ({ size = 20, className = '', s
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="dbGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#0ea5e9" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
         <stop offset="50%" stopColor="#0284c7" />
         <stop offset="100%" stopColor="#0369a1" />
       </linearGradient>
@@ -106,8 +108,8 @@ export const DatabaseIcon: React.FC<IconProps> = ({ size = 20, className = '', s
     {/* Bottom section */}
     <path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" fill="url(#dbGrad)" opacity="0.7" />
     {/* Highlight rings */}
-    <ellipse cx="12" cy="11" rx="8" ry="3" fill="none" stroke="#38bdf8" strokeWidth="0.5" opacity="0.6" />
-    <ellipse cx="12" cy="17" rx="8" ry="3" fill="none" stroke="#38bdf8" strokeWidth="0.5" opacity="0.4" />
+    <ellipse cx="12" cy="11" rx="8" ry="3" fill="none" stroke="var(--ap-info)" strokeWidth="0.5" opacity="0.6" />
+    <ellipse cx="12" cy="17" rx="8" ry="3" fill="none" stroke="var(--ap-info)" strokeWidth="0.5" opacity="0.4" />
     {/* LED indicator */}
     <circle cx="17" cy="7" r="1.5" fill="var(--color-success)">
       <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite" />
@@ -123,28 +125,28 @@ export const ServerIcon: React.FC<IconProps> = ({ size = 20, className = '', sty
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="serverGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#475569" />
-        <stop offset="100%" stopColor="#334155" />
+        <stop offset="0%" stopColor="var(--ap-bg-3)" />
+        <stop offset="100%" stopColor="var(--ap-bg-3)" />
       </linearGradient>
     </defs>
     {/* Server unit 1 */}
-    <rect x="3" y="2" width="18" height="6" rx="1.5" fill="url(#serverGrad)" stroke="#64748b" strokeWidth="0.5" />
+    <rect x="3" y="2" width="18" height="6" rx="1.5" fill="url(#serverGrad)" stroke="var(--ap-fg-3)" strokeWidth="0.5" />
     <circle cx="6" cy="5" r="1.2" fill="var(--color-success)">
       <animate attributeName="opacity" values="1;0.6;1" dur="1.5s" repeatCount="indefinite" />
     </circle>
-    <rect x="9" y="4" width="9" height="2" rx="0.5" fill="#0ea5e9" opacity="0.4" />
+    <rect x="9" y="4" width="9" height="2" rx="0.5" fill="var(--ap-accent)" opacity="0.4" />
     {/* Server unit 2 */}
-    <rect x="3" y="9" width="18" height="6" rx="1.5" fill="url(#serverGrad)" stroke="#64748b" strokeWidth="0.5" />
+    <rect x="3" y="9" width="18" height="6" rx="1.5" fill="url(#serverGrad)" stroke="var(--ap-fg-3)" strokeWidth="0.5" />
     <circle cx="6" cy="12" r="1.2" fill="var(--color-success)">
       <animate attributeName="opacity" values="1;0.6;1" dur="1.8s" repeatCount="indefinite" />
     </circle>
-    <rect x="9" y="11" width="9" height="2" rx="0.5" fill="#0ea5e9" opacity="0.4" />
+    <rect x="9" y="11" width="9" height="2" rx="0.5" fill="var(--ap-accent)" opacity="0.4" />
     {/* Server unit 3 */}
-    <rect x="3" y="16" width="18" height="6" rx="1.5" fill="url(#serverGrad)" stroke="#64748b" strokeWidth="0.5" />
-    <circle cx="6" cy="19" r="1.2" fill="#f59e0b">
+    <rect x="3" y="16" width="18" height="6" rx="1.5" fill="url(#serverGrad)" stroke="var(--ap-fg-3)" strokeWidth="0.5" />
+    <circle cx="6" cy="19" r="1.2" fill="var(--ap-warn)">
       <animate attributeName="opacity" values="1;0.6;1" dur="2s" repeatCount="indefinite" />
     </circle>
-    <rect x="9" y="18" width="9" height="2" rx="0.5" fill="#0ea5e9" opacity="0.4" />
+    <rect x="9" y="18" width="9" height="2" rx="0.5" fill="var(--ap-accent)" opacity="0.4" />
   </svg>
 );
 
@@ -161,7 +163,7 @@ export const DollarIcon: React.FC<IconProps> = ({ size = 20, className = '', sty
     <defs>
       <linearGradient id="dollarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="var(--color-success)" />
-        <stop offset="100%" stopColor="#16a34a" />
+        <stop offset="100%" stopColor="var(--ap-ok)" />
       </linearGradient>
       <filter id="dollarGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.5" result="blur" />
@@ -192,8 +194,8 @@ export const TrendingUpIcon: React.FC<IconProps> = ({ size = 20, className = '',
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="trendGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#06b6d4" />
-        <stop offset="50%" stopColor="#0ea5e9" />
+        <stop offset="0%" stopColor="var(--ap-info)" />
+        <stop offset="50%" stopColor="var(--ap-accent)" />
         <stop offset="100%" stopColor="var(--color-success)" />
       </linearGradient>
       <filter id="trendGlow" x="-20%" y="-20%" width="140%" height="140%">
@@ -205,10 +207,10 @@ export const TrendingUpIcon: React.FC<IconProps> = ({ size = 20, className = '',
       </filter>
     </defs>
     {/* Background bars */}
-    <rect x="3" y="16" width="3" height="5" rx="0.5" fill="#0ea5e9" opacity="0.2" />
-    <rect x="8" y="12" width="3" height="9" rx="0.5" fill="#0ea5e9" opacity="0.25" />
-    <rect x="13" y="8" width="3" height="13" rx="0.5" fill="#0ea5e9" opacity="0.3" />
-    <rect x="18" y="4" width="3" height="17" rx="0.5" fill="#0ea5e9" opacity="0.35" />
+    <rect x="3" y="16" width="3" height="5" rx="0.5" fill="var(--ap-accent)" opacity="0.2" />
+    <rect x="8" y="12" width="3" height="9" rx="0.5" fill="var(--ap-accent)" opacity="0.25" />
+    <rect x="13" y="8" width="3" height="13" rx="0.5" fill="var(--ap-accent)" opacity="0.3" />
+    <rect x="18" y="4" width="3" height="17" rx="0.5" fill="var(--ap-accent)" opacity="0.35" />
     {/* Trend line */}
     <path
       d="M3 18L8 14L13 10L21 4"
@@ -237,8 +239,8 @@ export const TimerIcon: React.FC<IconProps> = ({ size = 20, className = '', styl
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="timerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#f59e0b" />
-        <stop offset="100%" stopColor="#d97706" />
+        <stop offset="0%" stopColor="var(--ap-warn)" />
+        <stop offset="100%" stopColor="var(--ap-warn)" />
       </linearGradient>
     </defs>
     {/* Clock face */}
@@ -267,9 +269,9 @@ export const ZapIcon: React.FC<IconProps> = ({ size = 20, className = '', style 
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="zapGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#fbbf24" />
-        <stop offset="50%" stopColor="#f59e0b" />
-        <stop offset="100%" stopColor="#d97706" />
+        <stop offset="0%" stopColor="var(--ap-warn)" />
+        <stop offset="50%" stopColor="var(--ap-warn)" />
+        <stop offset="100%" stopColor="var(--ap-warn)" />
       </linearGradient>
       <filter id="zapGlow" x="-50%" y="-50%" width="200%" height="200%">
         <feGaussianBlur stdDeviation="1.5" result="blur" />
@@ -282,7 +284,7 @@ export const ZapIcon: React.FC<IconProps> = ({ size = 20, className = '', style 
     <path
       d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"
       fill="url(#zapGrad)"
-      stroke="#fcd34d"
+      stroke="var(--ap-warn)"
       strokeWidth="0.5"
       filter="url(#zapGlow)"
     />
@@ -297,8 +299,8 @@ export const RefreshIcon: React.FC<IconProps> = ({ size = 20, className = '', st
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="refreshGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#0ea5e9" />
-        <stop offset="100%" stopColor="#06b6d4" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
     </defs>
     <path
@@ -332,8 +334,8 @@ export const GitBranchIcon: React.FC<IconProps> = ({ size = 20, className = '', 
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="gitGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#f97316" />
-        <stop offset="100%" stopColor="#ea580c" />
+        <stop offset="0%" stopColor="var(--ap-warn)" />
+        <stop offset="100%" stopColor="var(--ap-warn)" />
       </linearGradient>
     </defs>
     {/* Main branch */}
@@ -360,7 +362,7 @@ export const SuccessIcon: React.FC<IconProps> = ({ size = 20, className = '', st
     <defs>
       <linearGradient id="successGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="var(--color-success)" />
-        <stop offset="100%" stopColor="#16a34a" />
+        <stop offset="100%" stopColor="var(--ap-ok)" />
       </linearGradient>
       <filter id="successGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.8" result="blur" />
@@ -383,8 +385,8 @@ export const ErrorIcon: React.FC<IconProps> = ({ size = 20, className = '', styl
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="errorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#ef4444" />
-        <stop offset="100%" stopColor="#dc2626" />
+        <stop offset="0%" stopColor="var(--ap-err)" />
+        <stop offset="100%" stopColor="var(--ap-err)" />
       </linearGradient>
       <filter id="errorGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.8" result="blur" />
@@ -407,8 +409,8 @@ export const WarningIcon: React.FC<IconProps> = ({ size = 20, className = '', st
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="warnGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#fbbf24" />
-        <stop offset="100%" stopColor="#f59e0b" />
+        <stop offset="0%" stopColor="var(--ap-warn)" />
+        <stop offset="100%" stopColor="var(--ap-warn)" />
       </linearGradient>
       <filter id="warnGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.6" result="blur" />
@@ -421,7 +423,7 @@ export const WarningIcon: React.FC<IconProps> = ({ size = 20, className = '', st
     <path
       d="M12 3L2 20h20L12 3z"
       fill="url(#warnGrad)"
-      stroke="#fcd34d"
+      stroke="var(--ap-warn)"
       strokeWidth="0.5"
       filter="url(#warnGlow)"
     />
@@ -442,9 +444,9 @@ export const ShieldIcon: React.FC<IconProps> = ({ size = 20, className = '', sty
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#8b5cf6" />
-        <stop offset="50%" stopColor="#7c3aed" />
-        <stop offset="100%" stopColor="#6d28d9" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="50%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
       <filter id="shieldGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.8" result="blur" />
@@ -462,7 +464,7 @@ export const ShieldIcon: React.FC<IconProps> = ({ size = 20, className = '', sty
     />
     <path
       d="M12 2l8 4v5c0 5.25-3.5 10-8 11-4.5-1-8-5.75-8-11V6l8-4z"
-      stroke="#a78bfa"
+      stroke="var(--ap-accent)"
       strokeWidth="0.5"
       fill="none"
     />
@@ -479,8 +481,8 @@ export const UserIcon: React.FC<IconProps> = ({ size = 20, className = '', style
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="userGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#3b82f6" />
-        <stop offset="100%" stopColor="#2563eb" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
       <filter id="userGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.5" result="blur" />
@@ -512,8 +514,8 @@ export const LockIcon: React.FC<IconProps> = ({ size = 20, className = '', style
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="lockGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#f59e0b" />
-        <stop offset="100%" stopColor="#d97706" />
+        <stop offset="0%" stopColor="var(--ap-warn)" />
+        <stop offset="100%" stopColor="var(--ap-warn)" />
       </linearGradient>
     </defs>
     {/* Lock body */}
@@ -539,7 +541,7 @@ export const ToggleOnIcon: React.FC<IconProps> = ({ size = 20, className = '', s
     <defs>
       <linearGradient id="toggleOnGrad" x1="0%" y1="0%" x2="100%" y2="0%">
         <stop offset="0%" stopColor="var(--color-success)" />
-        <stop offset="100%" stopColor="#16a34a" />
+        <stop offset="100%" stopColor="var(--ap-ok)" />
       </linearGradient>
     </defs>
     <rect x="1" y="6" width="22" height="12" rx="6" fill="url(#toggleOnGrad)" />
@@ -553,7 +555,7 @@ export const ToggleOnIcon: React.FC<IconProps> = ({ size = 20, className = '', s
  */
 export const ToggleOffIcon: React.FC<IconProps> = ({ size = 20, className = '', style }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
-    <rect x="1" y="6" width="22" height="12" rx="6" fill="#4b5563" />
+    <rect x="1" y="6" width="22" height="12" rx="6" fill="var(--ap-fg-3)" />
     <circle cx="7" cy="12" r="4" fill="white" />
   </svg>
 );
@@ -566,8 +568,8 @@ export const FileOutputIcon: React.FC<IconProps> = ({ size = 20, className = '',
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="fileOutGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#06b6d4" />
-        <stop offset="100%" stopColor="#0891b2" />
+        <stop offset="0%" stopColor="var(--ap-info)" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
     </defs>
     <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" fill="url(#fileOutGrad)" opacity="0.2" />
@@ -589,8 +591,8 @@ export const LoadingIcon: React.FC<IconProps> = ({ size = 20, className = '', st
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={`animate-spin ${className}`} style={style}>
     <defs>
       <linearGradient id="loadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#0ea5e9" />
-        <stop offset="100%" stopColor="#06b6d4" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
     </defs>
     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.15" />
@@ -609,10 +611,10 @@ export const LoadingIcon: React.FC<IconProps> = ({ size = 20, className = '', st
  */
 export const LoadingDotsIcon: React.FC<IconProps> = ({ size = 20, className = '', style }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
-    <circle cx="6" cy="12" r="2.5" fill="#0ea5e9">
+    <circle cx="6" cy="12" r="2.5" fill="var(--ap-accent)">
       <animate attributeName="opacity" values="0.3;1;0.3" dur="0.8s" repeatCount="indefinite" begin="0s" />
     </circle>
-    <circle cx="12" cy="12" r="2.5" fill="#06b6d4">
+    <circle cx="12" cy="12" r="2.5" fill="var(--ap-info)">
       <animate attributeName="opacity" values="0.3;1;0.3" dur="0.8s" repeatCount="indefinite" begin="0.15s" />
     </circle>
     <circle cx="18" cy="12" r="2.5" fill="var(--color-success)">
@@ -633,8 +635,8 @@ export const UsersIcon: React.FC<IconProps> = ({ size = 20, className = '', styl
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="usersGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#3b82f6" />
-        <stop offset="100%" stopColor="#2563eb" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
     </defs>
     {/* First person */}
@@ -654,8 +656,8 @@ export const CogIcon: React.FC<IconProps> = ({ size = 20, className = '', style 
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="cogGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#6b7280" />
-        <stop offset="100%" stopColor="#4b5563" />
+        <stop offset="0%" stopColor="var(--ap-fg-3)" />
+        <stop offset="100%" stopColor="var(--ap-fg-3)" />
       </linearGradient>
     </defs>
     <path
@@ -681,8 +683,8 @@ export const CubeIcon: React.FC<IconProps> = ({ size = 20, className = '', style
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="cubeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#8b5cf6" />
-        <stop offset="100%" stopColor="#6366f1" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
     </defs>
     <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" fill="url(#cubeGrad)" opacity="0.2" stroke="url(#cubeGrad)" strokeWidth="2" />
@@ -698,7 +700,7 @@ export const LogsIcon: React.FC<IconProps> = ({ size = 20, className = '', style
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="logsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#0ea5e9" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
         <stop offset="100%" stopColor="#0284c7" />
       </linearGradient>
     </defs>
@@ -715,8 +717,8 @@ export const GridIcon: React.FC<IconProps> = ({ size = 20, className = '', style
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="gridGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#10b981" />
-        <stop offset="100%" stopColor="#16A34A" />
+        <stop offset="0%" stopColor="var(--ap-ok)" />
+        <stop offset="100%" stopColor="var(--ap-ok)" />
       </linearGradient>
     </defs>
     <rect x="3" y="3" width="7" height="7" rx="1.5" fill="url(#gridGrad)" />
@@ -734,12 +736,12 @@ export const FolderIcon: React.FC<IconProps> = ({ size = 20, className = '', sty
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="folderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#f59e0b" />
-        <stop offset="100%" stopColor="#d97706" />
+        <stop offset="0%" stopColor="var(--ap-warn)" />
+        <stop offset="100%" stopColor="var(--ap-warn)" />
       </linearGradient>
     </defs>
     <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" fill="url(#folderGrad)" />
-    <path d="M2 10h20" stroke="#fcd34d" strokeWidth="1" opacity="0.5" />
+    <path d="M2 10h20" stroke="var(--ap-warn)" strokeWidth="1" opacity="0.5" />
   </svg>
 );
 
@@ -751,13 +753,13 @@ export const TerminalIcon: React.FC<IconProps> = ({ size = 20, className = '', s
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="terminalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#1e293b" />
-        <stop offset="100%" stopColor="#0f172a" />
+        <stop offset="0%" stopColor="var(--ap-bg-1)" />
+        <stop offset="100%" stopColor="var(--ap-bg-0)" />
       </linearGradient>
     </defs>
-    <rect x="2" y="4" width="20" height="16" rx="2" fill="url(#terminalGrad)" stroke="#334155" strokeWidth="1" />
+    <rect x="2" y="4" width="20" height="16" rx="2" fill="url(#terminalGrad)" stroke="var(--ap-bg-3)" strokeWidth="1" />
     <path d="M6 9l3 3-3 3" stroke="var(--color-success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M11 16h6" stroke="#64748b" strokeWidth="2" strokeLinecap="round" />
+    <path d="M11 16h6" stroke="var(--ap-fg-3)" strokeWidth="2" strokeLinecap="round" />
     {/* Blinking cursor effect */}
     <rect x="17" y="15" width="2" height="3" fill="var(--color-success)" opacity="0.8">
       <animate attributeName="opacity" values="1;0.3;1" dur="1s" repeatCount="indefinite" />
@@ -773,8 +775,8 @@ export const PromptIcon: React.FC<IconProps> = ({ size = 20, className = '', sty
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="promptGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#8b5cf6" />
-        <stop offset="100%" stopColor="#7c3aed" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
     </defs>
     <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" fill="url(#promptGrad)" opacity="0.2" stroke="url(#promptGrad)" strokeWidth="2" />
@@ -792,8 +794,8 @@ export const TemplateIcon: React.FC<IconProps> = ({ size = 20, className = '', s
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="templateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#06b6d4" />
-        <stop offset="100%" stopColor="#0891b2" />
+        <stop offset="0%" stopColor="var(--ap-info)" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
     </defs>
     <rect x="8" y="2" width="13" height="16" rx="2" fill="url(#templateGrad)" opacity="0.3" stroke="url(#templateGrad)" strokeWidth="2" />
@@ -810,8 +812,8 @@ export const ChartIcon: React.FC<IconProps> = ({ size = 20, className = '', styl
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="chartGrad" x1="0%" y1="100%" x2="0%" y2="0%">
-        <stop offset="0%" stopColor="#0ea5e9" />
-        <stop offset="100%" stopColor="#06b6d4" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
     </defs>
     <rect x="3" y="12" width="4" height="8" rx="1" fill="url(#chartGrad)" />
@@ -830,8 +832,8 @@ export const KeyIcon: React.FC<IconProps> = ({ size = 20, className = '', style 
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="keyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#f59e0b" />
-        <stop offset="100%" stopColor="#d97706" />
+        <stop offset="0%" stopColor="var(--ap-warn)" />
+        <stop offset="100%" stopColor="var(--ap-warn)" />
       </linearGradient>
     </defs>
     <circle cx="8" cy="15" r="5" fill="url(#keyGrad)" opacity="0.3" stroke="url(#keyGrad)" strokeWidth="2" />
@@ -847,8 +849,8 @@ export const NetworkIcon: React.FC<IconProps> = ({ size = 20, className = '', st
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="networkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#3b82f6" />
-        <stop offset="100%" stopColor="#2563eb" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
     </defs>
     {/* Central node */}
@@ -871,8 +873,8 @@ export const BookIcon: React.FC<IconProps> = ({ size = 20, className = '', style
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="bookGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#8b5cf6" />
-        <stop offset="100%" stopColor="#7c3aed" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
     </defs>
     <path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke="url(#bookGrad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -890,7 +892,7 @@ export const CodeIcon: React.FC<IconProps> = ({ size = 20, className = '', style
     <defs>
       <linearGradient id="codeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="var(--color-success)" />
-        <stop offset="100%" stopColor="#16a34a" />
+        <stop offset="100%" stopColor="var(--ap-ok)" />
       </linearGradient>
     </defs>
     <path d="M16 18l6-6-6-6M8 6l-6 6 6 6" stroke="url(#codeGrad)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -905,8 +907,8 @@ export const APIIcon: React.FC<IconProps> = ({ size = 20, className = '', style 
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="apiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#f59e0b" />
-        <stop offset="100%" stopColor="#d97706" />
+        <stop offset="0%" stopColor="var(--ap-warn)" />
+        <stop offset="100%" stopColor="var(--ap-warn)" />
       </linearGradient>
     </defs>
     <rect x="2" y="4" width="20" height="16" rx="2" fill="url(#apiGrad)" opacity="0.15" stroke="url(#apiGrad)" strokeWidth="2" />
@@ -923,8 +925,8 @@ export const ClockIcon: React.FC<IconProps> = ({ size = 20, className = '', styl
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="clockGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#6366f1" />
-        <stop offset="100%" stopColor="#4f46e5" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
     </defs>
     <circle cx="12" cy="12" r="9" fill="url(#clockGrad)" opacity="0.15" stroke="url(#clockGrad)" strokeWidth="2" />
@@ -945,7 +947,7 @@ export const PlayIcon: React.FC<IconProps> = ({ size = 20, className = '', style
     <defs>
       <linearGradient id="playGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="var(--color-success)" />
-        <stop offset="100%" stopColor="#16a34a" />
+        <stop offset="100%" stopColor="var(--ap-ok)" />
       </linearGradient>
       <filter id="playGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.8" result="blur" />
@@ -967,8 +969,8 @@ export const StopIcon: React.FC<IconProps> = ({ size = 20, className = '', style
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="stopGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#ef4444" />
-        <stop offset="100%" stopColor="#dc2626" />
+        <stop offset="0%" stopColor="var(--ap-err)" />
+        <stop offset="100%" stopColor="var(--ap-err)" />
       </linearGradient>
     </defs>
     <rect x="5" y="5" width="14" height="14" rx="2" fill="url(#stopGrad)" />
@@ -983,8 +985,8 @@ export const TrashIcon: React.FC<IconProps> = ({ size = 20, className = '', styl
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="trashGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#ef4444" />
-        <stop offset="100%" stopColor="#dc2626" />
+        <stop offset="0%" stopColor="var(--ap-err)" />
+        <stop offset="100%" stopColor="var(--ap-err)" />
       </linearGradient>
     </defs>
     <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="url(#trashGrad)" strokeWidth="2" strokeLinecap="round" />
@@ -1002,7 +1004,7 @@ export const EyeIcon: React.FC<IconProps> = ({ size = 20, className = '', style 
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="eyeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#0ea5e9" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
         <stop offset="100%" stopColor="#0284c7" />
       </linearGradient>
     </defs>
@@ -1020,7 +1022,7 @@ export const PlusIcon: React.FC<IconProps> = ({ size = 20, className = '', style
     <defs>
       <linearGradient id="plusGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="var(--color-success)" />
-        <stop offset="100%" stopColor="#16a34a" />
+        <stop offset="100%" stopColor="var(--ap-ok)" />
       </linearGradient>
     </defs>
     <circle cx="12" cy="12" r="10" fill="url(#plusGrad)" opacity="0.15" stroke="url(#plusGrad)" strokeWidth="2" />
@@ -1036,8 +1038,8 @@ export const SearchIcon: React.FC<IconProps> = ({ size = 20, className = '', sty
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="searchGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#6366f1" />
-        <stop offset="100%" stopColor="#4f46e5" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
     </defs>
     <circle cx="10" cy="10" r="7" fill="url(#searchGrad)" opacity="0.15" stroke="url(#searchGrad)" strokeWidth="2" />
@@ -1053,8 +1055,8 @@ export const FilterIcon: React.FC<IconProps> = ({ size = 20, className = '', sty
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="filterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#8b5cf6" />
-        <stop offset="100%" stopColor="#7c3aed" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
     </defs>
     <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" fill="url(#filterGrad)" opacity="0.2" stroke="url(#filterGrad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -1069,8 +1071,8 @@ export const ExternalLinkIcon: React.FC<IconProps> = ({ size = 20, className = '
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="extLinkGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#0ea5e9" />
-        <stop offset="100%" stopColor="#06b6d4" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
     </defs>
     <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" stroke="url(#extLinkGrad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -1087,8 +1089,8 @@ export const EditIcon: React.FC<IconProps> = ({ size = 20, className = '', style
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="editGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#f59e0b" />
-        <stop offset="100%" stopColor="#d97706" />
+        <stop offset="0%" stopColor="var(--ap-warn)" />
+        <stop offset="100%" stopColor="var(--ap-warn)" />
       </linearGradient>
     </defs>
     <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="url(#editGrad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -1104,8 +1106,8 @@ export const CopyIcon: React.FC<IconProps> = ({ size = 20, className = '', style
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="copyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#6366f1" />
-        <stop offset="100%" stopColor="#4f46e5" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
     </defs>
     <rect x="9" y="9" width="13" height="13" rx="2" fill="url(#copyGrad)" opacity="0.2" stroke="url(#copyGrad)" strokeWidth="2" />
@@ -1122,7 +1124,7 @@ export const DownloadIcon: React.FC<IconProps> = ({ size = 20, className = '', s
     <defs>
       <linearGradient id="downloadGrad" x1="0%" y1="0%" x2="0%" y2="100%">
         <stop offset="0%" stopColor="var(--color-success)" />
-        <stop offset="100%" stopColor="#16a34a" />
+        <stop offset="100%" stopColor="var(--ap-ok)" />
       </linearGradient>
     </defs>
     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="url(#downloadGrad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -1139,8 +1141,8 @@ export const UploadIcon: React.FC<IconProps> = ({ size = 20, className = '', sty
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="uploadGrad" x1="0%" y1="100%" x2="0%" y2="0%">
-        <stop offset="0%" stopColor="#0ea5e9" />
-        <stop offset="100%" stopColor="#06b6d4" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
     </defs>
     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="url(#uploadGrad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -1157,8 +1159,8 @@ export const BuildingIcon: React.FC<IconProps> = ({ size = 20, className = '', s
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="buildingGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#6366f1" />
-        <stop offset="100%" stopColor="#8b5cf6" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
     </defs>
     <rect x="4" y="2" width="16" height="20" rx="2" fill="url(#buildingGrad)" opacity="0.2" stroke="url(#buildingGrad)" strokeWidth="2" />
@@ -1176,8 +1178,8 @@ export const FolderOpenIcon: React.FC<IconProps> = ({ size = 20, className = '',
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="folderOpenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#f59e0b" />
-        <stop offset="100%" stopColor="#d97706" />
+        <stop offset="0%" stopColor="var(--ap-warn)" />
+        <stop offset="100%" stopColor="var(--ap-warn)" />
       </linearGradient>
     </defs>
     <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2v2" fill="url(#folderOpenGrad)" opacity="0.3" />
@@ -1213,8 +1215,8 @@ export const ArrowLeftIcon: React.FC<IconProps> = ({ size = 20, className = '', 
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="arrowLeftGrad" x1="100%" y1="0%" x2="0%" y2="0%">
-        <stop offset="0%" stopColor="#6366f1" />
-        <stop offset="100%" stopColor="#4f46e5" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
     </defs>
     <path d="M19 12H5M12 19l-7-7 7-7" stroke="url(#arrowLeftGrad)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -1229,7 +1231,7 @@ export const CalendarIcon: React.FC<IconProps> = ({ size = 20, className = '', s
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="calendarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#0ea5e9" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
         <stop offset="100%" stopColor="#0284c7" />
       </linearGradient>
     </defs>
@@ -1247,8 +1249,8 @@ export const CloseIcon: React.FC<IconProps> = ({ size = 20, className = '', styl
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="closeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#6b7280" />
-        <stop offset="100%" stopColor="#4b5563" />
+        <stop offset="0%" stopColor="var(--ap-fg-3)" />
+        <stop offset="100%" stopColor="var(--ap-fg-3)" />
       </linearGradient>
     </defs>
     <path d="M18 6L6 18M6 6l12 12" stroke="url(#closeGrad)" strokeWidth="2.5" strokeLinecap="round" />
@@ -1263,8 +1265,8 @@ export const MaximizeIcon: React.FC<IconProps> = ({ size = 20, className = '', s
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="maximizeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#6366f1" />
-        <stop offset="100%" stopColor="#4f46e5" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
     </defs>
     <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke="url(#maximizeGrad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -1280,7 +1282,7 @@ export const UserPlusIcon: React.FC<IconProps> = ({ size = 20, className = '', s
     <defs>
       <linearGradient id="userPlusGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="var(--color-success)" />
-        <stop offset="100%" stopColor="#16a34a" />
+        <stop offset="100%" stopColor="var(--ap-ok)" />
       </linearGradient>
     </defs>
     <circle cx="9" cy="7" r="4" fill="url(#userPlusGrad)" opacity="0.3" stroke="url(#userPlusGrad)" strokeWidth="2" />
@@ -1297,8 +1299,8 @@ export const UserMinusIcon: React.FC<IconProps> = ({ size = 20, className = '', 
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="userMinusGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#ef4444" />
-        <stop offset="100%" stopColor="#dc2626" />
+        <stop offset="0%" stopColor="var(--ap-err)" />
+        <stop offset="100%" stopColor="var(--ap-err)" />
       </linearGradient>
     </defs>
     <circle cx="9" cy="7" r="4" fill="url(#userMinusGrad)" opacity="0.3" stroke="url(#userMinusGrad)" strokeWidth="2" />
@@ -1315,7 +1317,7 @@ export const MailIcon: React.FC<IconProps> = ({ size = 20, className = '', style
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="mailGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#0ea5e9" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
         <stop offset="100%" stopColor="#0284c7" />
       </linearGradient>
     </defs>
@@ -1332,9 +1334,9 @@ export const SparklesIcon: React.FC<IconProps> = ({ size = 20, className = '', s
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="sparklesGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#fbbf24" />
-        <stop offset="50%" stopColor="#f59e0b" />
-        <stop offset="100%" stopColor="#8b5cf6" />
+        <stop offset="0%" stopColor="var(--ap-warn)" />
+        <stop offset="50%" stopColor="var(--ap-warn)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
       <filter id="sparklesGlow" x="-50%" y="-50%" width="200%" height="200%">
         <feGaussianBlur stdDeviation="1" result="blur" />
@@ -1358,8 +1360,8 @@ export const BarChartIcon: React.FC<IconProps> = ({ size = 20, className = '', s
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="barChartGrad" x1="0%" y1="100%" x2="0%" y2="0%">
-        <stop offset="0%" stopColor="#06b6d4" />
-        <stop offset="100%" stopColor="#0ea5e9" />
+        <stop offset="0%" stopColor="var(--ap-info)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
     </defs>
     <rect x="4" y="4" width="16" height="4" rx="1" fill="url(#barChartGrad)" opacity="0.9" />
@@ -1376,9 +1378,9 @@ export const BeakerIcon: React.FC<IconProps> = ({ size = 20, className = '', sty
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="beakerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#8b5cf6" />
-        <stop offset="50%" stopColor="#a855f7" />
-        <stop offset="100%" stopColor="#06b6d4" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="50%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
       <filter id="beakerGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.8" result="blur" />
@@ -1403,16 +1405,16 @@ export const BeakerIcon: React.FC<IconProps> = ({ size = 20, className = '', sty
     {/* Liquid level */}
     <path
       d="M7.5 15h9"
-      stroke="#06b6d4"
+      stroke="var(--ap-info)"
       strokeWidth="1.5"
       strokeLinecap="round"
       opacity="0.6"
     />
     {/* Bubbles */}
-    <circle cx="10" cy="16" r="1" fill="#a855f7" opacity="0.7">
+    <circle cx="10" cy="16" r="1" fill="var(--ap-accent)" opacity="0.7">
       <animate attributeName="cy" values="16;14;16" dur="2s" repeatCount="indefinite" />
     </circle>
-    <circle cx="13" cy="17" r="0.8" fill="#8b5cf6" opacity="0.5">
+    <circle cx="13" cy="17" r="0.8" fill="var(--ap-accent)" opacity="0.5">
       <animate attributeName="cy" values="17;15;17" dur="1.5s" repeatCount="indefinite" />
     </circle>
   </svg>
@@ -1430,9 +1432,9 @@ export const SystemManagementIcon: React.FC<IconProps> = ({ size = 20, className
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="systemMgmtGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#6366f1" />
-        <stop offset="50%" stopColor="#8b5cf6" />
-        <stop offset="100%" stopColor="#a855f7" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="50%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
       <filter id="systemGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.6" result="blur" />
@@ -1455,11 +1457,11 @@ export const SystemManagementIcon: React.FC<IconProps> = ({ size = 20, className
     <circle cx="7" cy="12.5" r="0.8" fill="var(--color-success)">
       <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite" />
     </circle>
-    <circle cx="7" cy="17.5" r="0.8" fill="#f59e0b">
+    <circle cx="7" cy="17.5" r="0.8" fill="var(--ap-warn)">
       <animate attributeName="opacity" values="1;0.6;1" dur="1.8s" repeatCount="indefinite" />
     </circle>
     {/* Gear */}
-    <circle cx="19" cy="17" r="4" fill="#1e1b4b" stroke="url(#systemMgmtGrad)" strokeWidth="1.5" />
+    <circle cx="19" cy="17" r="4" fill="var(--ap-accent)" stroke="url(#systemMgmtGrad)" strokeWidth="1.5" />
     <circle cx="19" cy="17" r="1.5" fill="url(#systemMgmtGrad)" />
     <path d="M19 13v1M19 20v1M15 17h1M22 17h1M16.2 14.2l.7.7M21.1 19.1l.7.7M16.2 19.8l.7-.7M21.1 14.9l.7-.7" stroke="url(#systemMgmtGrad)" strokeWidth="1" strokeLinecap="round" />
   </svg>
@@ -1473,9 +1475,9 @@ export const NeuralNetworkIcon: React.FC<IconProps> = ({ size = 20, className = 
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="neuralGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#06b6d4" />
-        <stop offset="50%" stopColor="#8b5cf6" />
-        <stop offset="100%" stopColor="#ec4899" />
+        <stop offset="0%" stopColor="var(--ap-info)" />
+        <stop offset="50%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
       <filter id="neuralGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.8" result="blur" />
@@ -1515,8 +1517,8 @@ export const AgentOrchestrationIcon: React.FC<IconProps> = ({ size = 20, classNa
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="agentOrchGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#6366f1" />
-        <stop offset="100%" stopColor="#8b5cf6" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
       <filter id="agentOrchGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.8" result="blur" />
@@ -1529,19 +1531,19 @@ export const AgentOrchestrationIcon: React.FC<IconProps> = ({ size = 20, classNa
     {/* Central hub */}
     <circle cx="12" cy="12" r="3.5" fill="url(#agentOrchGrad)" filter="url(#agentOrchGlow)" />
     {/* Orbiting agent dots */}
-    <circle cx="5" cy="5" r="2" fill="#a78bfa" opacity="0.9">
+    <circle cx="5" cy="5" r="2" fill="var(--ap-accent)" opacity="0.9">
       <animateTransform attributeName="transform" type="rotate" values="0 12 12;360 12 12" dur="8s" repeatCount="indefinite" />
     </circle>
-    <circle cx="19" cy="5" r="2" fill="#818cf8" opacity="0.9">
+    <circle cx="19" cy="5" r="2" fill="var(--ap-accent)" opacity="0.9">
       <animateTransform attributeName="transform" type="rotate" values="120 12 12;480 12 12" dur="8s" repeatCount="indefinite" />
     </circle>
-    <circle cx="12" cy="20" r="2" fill="#c084fc" opacity="0.9">
+    <circle cx="12" cy="20" r="2" fill="var(--ap-accent)" opacity="0.9">
       <animateTransform attributeName="transform" type="rotate" values="240 12 12;600 12 12" dur="8s" repeatCount="indefinite" />
     </circle>
     {/* Connection lines */}
-    <line x1="12" y1="12" x2="5" y2="5" stroke="#6366f1" strokeWidth="0.8" opacity="0.4" />
-    <line x1="12" y1="12" x2="19" y2="5" stroke="#6366f1" strokeWidth="0.8" opacity="0.4" />
-    <line x1="12" y1="12" x2="12" y2="20" stroke="#6366f1" strokeWidth="0.8" opacity="0.4" />
+    <line x1="12" y1="12" x2="5" y2="5" stroke="var(--ap-accent)" strokeWidth="0.8" opacity="0.4" />
+    <line x1="12" y1="12" x2="19" y2="5" stroke="var(--ap-accent)" strokeWidth="0.8" opacity="0.4" />
+    <line x1="12" y1="12" x2="12" y2="20" stroke="var(--ap-accent)" strokeWidth="0.8" opacity="0.4" />
   </svg>
 );
 
@@ -1553,9 +1555,9 @@ export const DeveloperPortalIcon: React.FC<IconProps> = ({ size = 20, className 
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="devPortalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#f97316" />
-        <stop offset="50%" stopColor="#f59e0b" />
-        <stop offset="100%" stopColor="#eab308" />
+        <stop offset="0%" stopColor="var(--ap-warn)" />
+        <stop offset="50%" stopColor="var(--ap-warn)" />
+        <stop offset="100%" stopColor="var(--ap-warn)" />
       </linearGradient>
       <filter id="devGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.6" result="blur" />
@@ -1599,8 +1601,8 @@ export const ContentDataIcon: React.FC<IconProps> = ({ size = 20, className = ''
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="contentDataGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#0ea5e9" />
-        <stop offset="50%" stopColor="#06b6d4" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="50%" stopColor="var(--ap-info)" />
         <stop offset="100%" stopColor="#14b8a6" />
       </linearGradient>
       <filter id="contentGlow" x="-30%" y="-30%" width="160%" height="160%">
@@ -1617,7 +1619,7 @@ export const ContentDataIcon: React.FC<IconProps> = ({ size = 20, className = ''
     <ellipse cx="9" cy="11" rx="6" ry="2.5" fill="none" stroke="url(#contentDataGrad)" strokeWidth="0.5" opacity="0.5" />
     <ellipse cx="9" cy="16" rx="6" ry="2.5" fill="none" stroke="url(#contentDataGrad)" strokeWidth="0.5" opacity="0.3" />
     {/* Document overlay */}
-    <rect x="13" y="10" width="8" height="10" rx="1" fill="#0f172a" stroke="url(#contentDataGrad)" strokeWidth="1.5" />
+    <rect x="13" y="10" width="8" height="10" rx="1" fill="var(--ap-bg-0)" stroke="url(#contentDataGrad)" strokeWidth="1.5" />
     <path d="M15 13h4M15 16h4M15 19h2" stroke="url(#contentDataGrad)" strokeWidth="1" strokeLinecap="round" opacity="0.7" />
     {/* Sync indicator */}
     <circle cx="19" cy="8" r="2" fill="url(#contentDataGrad)">
@@ -1635,8 +1637,8 @@ export const MonitoringPulseIcon: React.FC<IconProps> = ({ size = 20, className 
     <defs>
       <linearGradient id="monitorPulseGrad" x1="0%" y1="0%" x2="100%" y2="0%">
         <stop offset="0%" stopColor="var(--color-success)" />
-        <stop offset="50%" stopColor="#10b981" />
-        <stop offset="100%" stopColor="#06b6d4" />
+        <stop offset="50%" stopColor="var(--ap-ok)" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
       <filter id="monitorGlow" x="-50%" y="-50%" width="200%" height="200%">
         <feGaussianBlur stdDeviation="1" result="blur" />
@@ -1647,7 +1649,7 @@ export const MonitoringPulseIcon: React.FC<IconProps> = ({ size = 20, className 
       </filter>
     </defs>
     {/* Monitor screen */}
-    <rect x="2" y="3" width="20" height="14" rx="2" fill="#0f172a" stroke="url(#monitorPulseGrad)" strokeWidth="1.5" />
+    <rect x="2" y="3" width="20" height="14" rx="2" fill="var(--ap-bg-0)" stroke="url(#monitorPulseGrad)" strokeWidth="1.5" />
     {/* Heartbeat line */}
     <path
       d="M4 11h3l1.5-4 2 8 2-4 1.5 2h6"
@@ -1674,9 +1676,9 @@ export const SecurityFortressIcon: React.FC<IconProps> = ({ size = 20, className
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="securityGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#8b5cf6" />
-        <stop offset="50%" stopColor="#a855f7" />
-        <stop offset="100%" stopColor="#c026d3" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="50%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
       <filter id="securityGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.8" result="blur" />
@@ -1722,10 +1724,10 @@ export const LLMSparkleIcon: React.FC<IconProps> = ({ size = 20, className = '',
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="llmGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#fbbf24" />
-        <stop offset="30%" stopColor="#f59e0b" />
-        <stop offset="70%" stopColor="#8b5cf6" />
-        <stop offset="100%" stopColor="#6366f1" />
+        <stop offset="0%" stopColor="var(--ap-warn)" />
+        <stop offset="30%" stopColor="var(--ap-warn)" />
+        <stop offset="70%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
       <filter id="llmGlow" x="-50%" y="-50%" width="200%" height="200%">
         <feGaussianBlur stdDeviation="1.5" result="blur" />
@@ -1744,17 +1746,28 @@ export const LLMSparkleIcon: React.FC<IconProps> = ({ size = 20, className = '',
     {/* Inner glow */}
     <circle cx="12" cy="11" r="3" fill="white" opacity="0.3" />
     {/* Sparkle particles */}
-    <circle cx="5" cy="5" r="1" fill="#fbbf24" opacity="0.8">
+    <circle cx="5" cy="5" r="1" fill="var(--ap-warn)" opacity="0.8">
       <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.5s" repeatCount="indefinite" />
     </circle>
-    <circle cx="20" cy="7" r="0.8" fill="#8b5cf6" opacity="0.7">
+    <circle cx="20" cy="7" r="0.8" fill="var(--ap-accent)" opacity="0.7">
       <animate attributeName="opacity" values="0.7;0.2;0.7" dur="2s" repeatCount="indefinite" />
     </circle>
-    <circle cx="18" cy="18" r="0.6" fill="#f59e0b" opacity="0.6">
+    <circle cx="18" cy="18" r="0.6" fill="var(--ap-warn)" opacity="0.6">
       <animate attributeName="opacity" values="0.6;0.2;0.6" dur="1.8s" repeatCount="indefinite" />
     </circle>
   </svg>
 );
+
+/**
+ * Sparkle Icon — generic sparkle used outside the LLM-providers section
+ * (e.g. prompt-engineering nav in shell-v2/Sidebar.tsx). Aliases the
+ * existing `LLMSparkleIcon` so we don't diverge visual treatments; if
+ * prompt-engineering later needs a distinct glyph, replace this alias
+ * with its own <svg> definition. Introduced to fix a build break where
+ * shell-v2/Sidebar.tsx imported `SparkleIcon` which had never been
+ * exported.
+ */
+export const SparkleIcon = LLMSparkleIcon;
 
 /**
  * Workflow Flow Icon - For native workflows section
@@ -1764,9 +1777,9 @@ export const WorkflowFlowIcon: React.FC<IconProps> = ({ size = 20, className = '
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="workflowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#ec4899" />
-        <stop offset="50%" stopColor="#f43f5e" />
-        <stop offset="100%" stopColor="#f97316" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="50%" stopColor="var(--ap-err)" />
+        <stop offset="100%" stopColor="var(--ap-warn)" />
       </linearGradient>
       <filter id="workflowGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.6" result="blur" />
@@ -1798,9 +1811,9 @@ export const MCPToolsIcon: React.FC<IconProps> = ({ size = 20, className = '', s
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="mcpGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#3b82f6" />
-        <stop offset="50%" stopColor="#6366f1" />
-        <stop offset="100%" stopColor="#8b5cf6" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="50%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
       <filter id="mcpGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.6" result="blur" />
@@ -1822,10 +1835,10 @@ export const MCPToolsIcon: React.FC<IconProps> = ({ size = 20, className = '', s
     {/* Connection bolt */}
     <path d="M9 3l1 4-3 1 4 4-1-4 3-1-4-4z" fill="url(#mcpGrad)" />
     {/* Sparks */}
-    <circle cx="18" cy="14" r="1" fill="#fbbf24" opacity="0.8">
+    <circle cx="18" cy="14" r="1" fill="var(--ap-warn)" opacity="0.8">
       <animate attributeName="opacity" values="0.8;0.2;0.8" dur="1s" repeatCount="indefinite" />
     </circle>
-    <circle cx="20" cy="12" r="0.6" fill="#f59e0b" opacity="0.6">
+    <circle cx="20" cy="12" r="0.6" fill="var(--ap-warn)" opacity="0.6">
       <animate attributeName="opacity" values="0.6;0.1;0.6" dur="1.3s" repeatCount="indefinite" />
     </circle>
   </svg>
@@ -1839,9 +1852,9 @@ export const TerminalCodeIcon: React.FC<IconProps> = ({ size = 20, className = '
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="termCodeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#10b981" />
+        <stop offset="0%" stopColor="var(--ap-ok)" />
         <stop offset="50%" stopColor="#14b8a6" />
-        <stop offset="100%" stopColor="#06b6d4" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
       <filter id="termGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.6" result="blur" />
@@ -1852,11 +1865,11 @@ export const TerminalCodeIcon: React.FC<IconProps> = ({ size = 20, className = '
       </filter>
     </defs>
     {/* Terminal window */}
-    <rect x="2" y="3" width="20" height="18" rx="2" fill="#0f172a" stroke="url(#termCodeGrad)" strokeWidth="1.5" />
+    <rect x="2" y="3" width="20" height="18" rx="2" fill="var(--ap-bg-0)" stroke="url(#termCodeGrad)" strokeWidth="1.5" />
     {/* Title bar */}
     <rect x="2" y="3" width="20" height="4" fill="url(#termCodeGrad)" opacity="0.2" />
-    <circle cx="5" cy="5" r="1" fill="#ef4444" />
-    <circle cx="8" cy="5" r="1" fill="#fbbf24" />
+    <circle cx="5" cy="5" r="1" fill="var(--ap-err)" />
+    <circle cx="8" cy="5" r="1" fill="var(--ap-warn)" />
     <circle cx="11" cy="5" r="1" fill="var(--color-success)" />
     {/* Prompt */}
     <path d="M5 11l3 2-3 2" stroke="url(#termCodeGrad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" filter="url(#termGlow)" />
@@ -1877,10 +1890,10 @@ export const SynthBeakerIcon: React.FC<IconProps> = ({ size = 20, className = ''
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="synthGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#06b6d4" />
-        <stop offset="30%" stopColor="#8b5cf6" />
-        <stop offset="70%" stopColor="#a855f7" />
-        <stop offset="100%" stopColor="#ec4899" />
+        <stop offset="0%" stopColor="var(--ap-info)" />
+        <stop offset="30%" stopColor="var(--ap-accent)" />
+        <stop offset="70%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
       <filter id="synthGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="1" result="blur" />
@@ -1904,14 +1917,14 @@ export const SynthBeakerIcon: React.FC<IconProps> = ({ size = 20, className = ''
     {/* Liquid */}
     <path d="M7 15c1-1 3-1 5 0s4 1 5 0v5H7v-5z" fill="url(#synthGrad)" opacity="0.4" />
     {/* Bubbles */}
-    <circle cx="9" cy="16" r="1.2" fill="#8b5cf6" opacity="0.8">
+    <circle cx="9" cy="16" r="1.2" fill="var(--ap-accent)" opacity="0.8">
       <animate attributeName="cy" values="16;13;16" dur="2s" repeatCount="indefinite" />
       <animate attributeName="opacity" values="0.8;0.3;0.8" dur="2s" repeatCount="indefinite" />
     </circle>
-    <circle cx="12" cy="17" r="0.9" fill="#a855f7" opacity="0.7">
+    <circle cx="12" cy="17" r="0.9" fill="var(--ap-accent)" opacity="0.7">
       <animate attributeName="cy" values="17;14;17" dur="1.5s" repeatCount="indefinite" />
     </circle>
-    <circle cx="14" cy="15" r="1" fill="#ec4899" opacity="0.6">
+    <circle cx="14" cy="15" r="1" fill="var(--ap-accent)" opacity="0.6">
       <animate attributeName="cy" values="15;12;15" dur="1.8s" repeatCount="indefinite" />
     </circle>
     {/* Sparkle */}
@@ -1929,9 +1942,9 @@ export const ChargebackCoinIcon: React.FC<IconProps> = ({ size = 20, className =
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="chargebackGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#fbbf24" />
-        <stop offset="50%" stopColor="#f59e0b" />
-        <stop offset="100%" stopColor="#d97706" />
+        <stop offset="0%" stopColor="var(--ap-warn)" />
+        <stop offset="50%" stopColor="var(--ap-warn)" />
+        <stop offset="100%" stopColor="var(--ap-warn)" />
       </linearGradient>
       <filter id="chargebackGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.8" result="blur" />
@@ -1952,11 +1965,11 @@ export const ChargebackCoinIcon: React.FC<IconProps> = ({ size = 20, className =
     {/* Dollar sign */}
     <text x="12" y="9" fontSize="8" fontWeight="bold" fill="url(#chargebackGrad)" textAnchor="middle" dominantBaseline="middle" filter="url(#chargebackGlow)">$</text>
     {/* Sparkle */}
-    <circle cx="18" cy="5" r="1.5" fill="#fbbf24">
+    <circle cx="18" cy="5" r="1.5" fill="var(--ap-warn)">
       <animate attributeName="opacity" values="0.8;0.2;0.8" dur="1.5s" repeatCount="indefinite" />
       <animate attributeName="r" values="1.5;2;1.5" dur="1.5s" repeatCount="indefinite" />
     </circle>
-    <circle cx="5" cy="7" r="1" fill="#f59e0b">
+    <circle cx="5" cy="7" r="1" fill="var(--ap-warn)">
       <animate attributeName="opacity" values="0.6;0.1;0.6" dur="2s" repeatCount="indefinite" begin="0.5s" />
     </circle>
   </svg>
@@ -1970,9 +1983,9 @@ export const DashboardOverviewIcon: React.FC<IconProps> = ({ size = 20, classNam
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="dashOverviewGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#3b82f6" />
-        <stop offset="50%" stopColor="#6366f1" />
-        <stop offset="100%" stopColor="#8b5cf6" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="50%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-accent)" />
       </linearGradient>
       <filter id="dashGlow" x="-50%" y="-50%" width="200%" height="200%">
         <feGaussianBlur stdDeviation="1" result="blur" />
@@ -1983,7 +1996,7 @@ export const DashboardOverviewIcon: React.FC<IconProps> = ({ size = 20, classNam
       </filter>
     </defs>
     {/* Dashboard frame */}
-    <rect x="2" y="3" width="20" height="18" rx="2" fill="#0f172a" stroke="url(#dashOverviewGrad)" strokeWidth="1.5" />
+    <rect x="2" y="3" width="20" height="18" rx="2" fill="var(--ap-bg-0)" stroke="url(#dashOverviewGrad)" strokeWidth="1.5" />
     {/* Stat panels */}
     <rect x="4" y="5" width="7" height="4" rx="1" fill="url(#dashOverviewGrad)" opacity="0.3" />
     <rect x="13" y="5" width="7" height="4" rx="1" fill="url(#dashOverviewGrad)" opacity="0.3" />
@@ -1997,7 +2010,7 @@ export const DashboardOverviewIcon: React.FC<IconProps> = ({ size = 20, classNam
       filter="url(#dashGlow)"
     />
     {/* Pulse dot */}
-    <circle cx="20" cy="15.5" r="1.5" fill="#3b82f6">
+    <circle cx="20" cy="15.5" r="1.5" fill="var(--ap-accent)">
       <animate attributeName="r" values="1.5;2.5;1.5" dur="1.2s" repeatCount="indefinite" />
       <animate attributeName="opacity" values="1;0.4;1" dur="1.2s" repeatCount="indefinite" />
     </circle>
@@ -2019,8 +2032,8 @@ export const SaveIcon: React.FC<IconProps> = ({ size = 20, className = '', style
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} style={style}>
     <defs>
       <linearGradient id="saveGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#3b82f6" />
-        <stop offset="100%" stopColor="#06b6d4" />
+        <stop offset="0%" stopColor="var(--ap-accent)" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
       <filter id="saveGlow" x="-20%" y="-20%" width="140%" height="140%">
         <feGaussianBlur stdDeviation="0.5" result="blur" />

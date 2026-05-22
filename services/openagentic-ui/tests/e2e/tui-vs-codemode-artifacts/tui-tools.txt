@@ -1,0 +1,50 @@
+   /tmp
+   /? help  •  ctrl+c cancel  •  /exit quit
+   ────────────────────────────────────────────────────────────────────────────
+  ⎿  openagentic — 56 tools available
+
+     Usage:  /tools                        list every tool and its config
+             /tools                  show one tool in detail
+             /tools      set a config option
+             /tools   reset     reset a config option to default
+
+     ── READ-ONLY ──
+     Glob  —  read-only (read-only)
+         no config options
+     Grep  —  read-only (read-only)
+         no config options
+     Read  —  read-only (read-only)
+         no config options
+
+     ── SHELL ──
+     Bash  —  shell
+         no config options
+
+     ── EDIT / WRITE ──
+     Edit  —  edit / write
+         no config options
+     EditTransaction  —  edit / write
+         no config options
+     NotebookEdit  —  edit / write
+         no config options
+     Write  —  edit / write
+         no config options
+
+     ── WEB ──
+     WebFetch  —  web (read-only)
+         no config options
+     WebSearch  —  web (read-only)
+         no config options
+
+     ── DISPATCH ──
+     Agent  —  dispatch (read-only)
+         no config options
+
+     ── VERIFICATION ──
+     Bench  —  verification
+         defaultIterations = 10  — Default measured iterations when not specified in the call [min 1, max 100]
+         defaultTimeoutMs = 60000ms  — Default per-iteration timeout [min 1000, max 600000]
+     Lint  —  verification (read-only)
+         preferredLinter = auto  — Preferred linter when auto-detection has more than one valid pick [one of: auto, eslint, tsc, ruff, mypy]
+         defaultTimeoutMs = 120000ms  — Default lint timeout when not specified in the call [min 1000, max 600000]                             ● high · /effort
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

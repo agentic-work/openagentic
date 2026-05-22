@@ -68,9 +68,64 @@ const UNCACHEABLE_TOOLS_PATTERNS = [
  * These are tools where semantic similarity matching leads to incorrect results
  * because the output is highly dependent on specific parameters (location, time, URL, etc.)
  */
-function isUncacheableTool(toolName: string): boolean {
+export function isUncacheableTool(toolName: string): boolean {
   const normalized = toolName.toLowerCase();
   return UNCACHEABLE_TOOLS_PATTERNS.some(pattern => pattern.test(normalized));
+}
+
+/**
+ * Determine whether a successful MCP tool result should be marked is_shared=true
+ * for cross-user caching. A result is shareable when:
+ *   1. A resource scope can be extracted (azure:sub-x, aws:account-y, gcp:proj-z, k8s:cluster:ns).
+ *   2. The tool is a read-only resource operation (list/get/describe/probe/show/query)
+ *      — write/create/delete/update mutations are NEVER shared.
+ *
+ * RBAC enforcement is enforced separately at search-time via `searchCache` (Milvus
+ * filter + `checkMCPAccess()`); this helper only governs the write-time flag.
+ */
+export function shouldBeShared(toolName: string, resourceScope: string | null): boolean {
+  if (!resourceScope) return false;
+  const normalized = toolName.toLowerCase();
+
+  // Hard deny — never share mutations.
+  if (
+    normalized.includes('create') ||
+    normalized.includes('delete') ||
+    normalized.includes('update') ||
+    normalized.includes('modify') ||
+    normalized.includes('put') ||
+    normalized.includes('patch') ||
+    normalized.includes('post') ||
+    normalized.includes('write') ||
+    normalized.includes('set') ||
+    normalized.includes('apply') ||
+    normalized.includes('execute') ||
+    normalized.includes('exec') ||
+    normalized.includes('run') ||
+    normalized.includes('start') ||
+    normalized.includes('stop') ||
+    normalized.includes('restart') ||
+    normalized.includes('deploy') ||
+    normalized.includes('upload') ||
+    normalized.includes('remove')
+  ) {
+    return false;
+  }
+
+  // Allow read-shapes — list / get / describe / probe / show / query / inspect / fetch / read.
+  return (
+    normalized.includes('list') ||
+    normalized.includes('get') ||
+    normalized.includes('describe') ||
+    normalized.includes('probe') ||
+    normalized.includes('show') ||
+    normalized.includes('query') ||
+    normalized.includes('inspect') ||
+    normalized.includes('fetch') ||
+    normalized.includes('read') ||
+    normalized.includes('select') ||
+    normalized.includes('view')
+  );
 }
 
 /**

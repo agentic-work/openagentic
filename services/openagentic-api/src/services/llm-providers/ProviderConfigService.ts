@@ -40,12 +40,27 @@ export class ProviderConfigService {
     // Sort by priority (lower number = higher priority)
     providers.sort((a, b) => a.priority - b.priority);
 
-    // Load global settings
+    // Load global settings.
+    //
+    // defaultProvider reads ONLY from DB priority ordering — env vars must
+    // not override admin-configured state. Global failover/load-balancing
+    // flags are still env-tunable because they are deploy-level knobs, not
+    // registry state (see CLAUDE.md "database is SoT" rule).
+    const imageGenTimeout = parseInt(process.env.LLM_IMAGE_GEN_TIMEOUT || '180000'); // 3 min default
+    if (!Number.isFinite(imageGenTimeout) || imageGenTimeout <= 0) {
+      throw new Error(
+        `LLM_IMAGE_GEN_TIMEOUT must be a positive integer (ms); got "${process.env.LLM_IMAGE_GEN_TIMEOUT}". ` +
+        `Image generation needs its own budget — DALL-E / Imagen inference reliably exceeds the 30s chat timeout.`
+      );
+    }
+
     const config: ProviderManagerConfig = {
       providers,
-      defaultProvider: process.env.DEFAULT_LLM_PROVIDER || providers[0]?.name,
+      defaultProvider: providers[0]?.name,
       enableFailover: process.env.LLM_ENABLE_FAILOVER !== 'false', // Default true
-      failoverTimeout: parseInt(process.env.LLM_FAILOVER_TIMEOUT || '30000'), // 30s default
+      failoverTimeout: parseInt(process.env.LLM_FAILOVER_TIMEOUT || '30000'), // 30s default (stream TTFB)
+      nonStreamFailoverTimeout: parseInt(process.env.LLM_NONSTREAM_TIMEOUT_MS || '0') || undefined, // env override; ProviderManager defaults to 10x failoverTimeout
+      imageGenTimeout, // 180s default (image gen — separate budget)
       enableLoadBalancing: process.env.LLM_ENABLE_LOAD_BALANCING === 'true', // Default false
       loadBalancingStrategy: (process.env.LLM_LOAD_BALANCING_STRATEGY || 'priority') as 'round-robin' | 'least-latency' | 'priority'
     };
@@ -86,9 +101,15 @@ export class ProviderConfigService {
   }
 
   /**
-   * Convert database LLMProvider to ProviderConfig
+   * Convert database LLMProvider to ProviderConfig.
+   *
+   * Public so callers that want to validate inline form-data (without
+   * persisting) can build a synthetic dbProvider-shaped object and run
+   * it through the same auth-config decryption + auth-type inference +
+   * UI-name → canonical-name remap pipeline as a saved row. The "Test
+   * Connection" endpoint for unsaved providers (#287) is the use case.
    */
-  private convertDatabaseProvider(dbProvider: any): ProviderConfig {
+  convertDatabaseProvider(dbProvider: any): ProviderConfig {
     // SECURITY: Decrypt encrypted credential fields from auth_config
     const authConfig = decryptAuthConfig(dbProvider.auth_config as any);
     const providerConfig = dbProvider.provider_config as any;
@@ -192,220 +213,6 @@ export class ProviderConfigService {
   }
 
   /**
-   * Load provider configurations from environment variables only
-   */
-  private loadEnvironmentProviders(): ProviderConfig[] {
-    const providers: ProviderConfig[] = [];
-
-    // Azure OpenAI Provider
-    const azureConfig = this.loadAzureOpenAIConfig();
-    if (azureConfig) {
-      providers.push(azureConfig);
-    }
-
-    // AWS Bedrock Provider
-    const bedrockConfig = this.loadBedrockConfig();
-    if (bedrockConfig) {
-      providers.push(bedrockConfig);
-    }
-
-    // Google Vertex AI Provider
-    const vertexConfig = this.loadVertexAIConfig();
-    if (vertexConfig) {
-      providers.push(vertexConfig);
-    }
-
-    // Ollama Provider
-    const ollamaConfig = this.loadOllamaConfig();
-    if (ollamaConfig) {
-      providers.push(ollamaConfig);
-    }
-
-    // Azure AI Foundry Provider
-    const aifConfig = this.loadAzureAIFoundryConfig();
-    if (aifConfig) {
-      providers.push(aifConfig);
-    }
-
-    return providers;
-  }
-
-  /**
-   * Load Azure OpenAI provider configuration
-   */
-  private loadAzureOpenAIConfig(): ProviderConfig | null {
-    const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-    const tenantId = process.env.AZURE_TENANT_ID;
-    const clientId = process.env.AZURE_CLIENT_ID;
-    const clientSecret = process.env.AZURE_CLIENT_SECRET;
-    const deployment = process.env.AZURE_OPENAI_DEPLOYMENT;
-
-    // Check if Azure OpenAI is configured
-    if (!endpoint || !tenantId || !clientId || !clientSecret || !deployment) {
-      this.logger.debug('Azure OpenAI provider not fully configured');
-      return null;
-    }
-
-    // Require explicit enable - database providers should be primary
-    const enabled = process.env.AZURE_OPENAI_ENABLED === 'true'; // Must explicitly enable
-
-    return {
-      name: 'azure-openai',
-      type: 'azure-openai',
-      enabled,
-      priority: parseInt(process.env.AZURE_OPENAI_PRIORITY || '1'), // Highest priority by default
-      config: {
-        endpoint,
-        tenantId,
-        clientId,
-        clientSecret,
-        deployment,
-        apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2025-01-01-preview',
-        maxTokens: parseInt(process.env.AZURE_OPENAI_MAX_TOKENS || '16000'),
-        temperature: parseFloat(process.env.AZURE_OPENAI_TEMPERATURE || '1.0')
-      }
-    };
-  }
-
-  /**
-   * Load AWS Bedrock provider configuration
-   * Supports standardized model config: AWS_BEDROCK_CHAT_MODEL, AWS_BEDROCK_EMBEDDING_MODEL, etc.
-   *
-   * CRITICAL: Supports IRSA (IAM Roles for Service Accounts) in Kubernetes
-   * When running in K8s with IRSA, explicit credentials (accessKeyId/secretAccessKey) are NOT needed.
-   * The AWS SDK will automatically use the projected service account token for authentication.
-   */
-  private loadBedrockConfig(): ProviderConfig | null {
-    const region = process.env.AWS_REGION;
-    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-    const enabled = process.env.AWS_BEDROCK_ENABLED === 'true';
-
-    // Region is always required
-    if (!region) {
-      this.logger.debug('AWS Bedrock provider not configured: AWS_REGION not set');
-      return null;
-    }
-
-    // IRSA Support: If AWS_BEDROCK_ENABLED=true, allow initialization even without explicit credentials
-    // The AWS SDK will use IRSA/instance profile/ECS task role for authentication
-    const hasExplicitCredentials = !!(accessKeyId && secretAccessKey);
-
-    if (!enabled && !hasExplicitCredentials) {
-      this.logger.debug('AWS Bedrock provider not fully configured (no credentials and not explicitly enabled)');
-      return null;
-    }
-
-    if (enabled && !hasExplicitCredentials) {
-      this.logger.info('AWS Bedrock enabled without explicit credentials - using IRSA/IAM role authentication');
-    }
-
-    // Standardized model configuration
-    const chatModel = process.env.AWS_BEDROCK_CHAT_MODEL || process.env.AWS_BEDROCK_MODEL_ID;
-    const embeddingModel = process.env.AWS_BEDROCK_EMBEDDING_MODEL;
-    const visionModel = process.env.AWS_BEDROCK_VISION_MODEL;
-    const imageModel = process.env.AWS_BEDROCK_IMAGE_MODEL;
-    const compactionModel = process.env.AWS_BEDROCK_COMPACTION_MODEL;
-
-    // Custom endpoint (optional) - for VPC endpoints or proxies like CDC (bedrock-dev.cdc.gov)
-    const endpoint = process.env.AWS_BEDROCK_ENDPOINT;
-
-    this.logger.info({
-      chatModel,
-      embeddingModel,
-      visionModel,
-      imageModel,
-      compactionModel,
-      region,
-      endpoint: endpoint || 'default',
-      authType: hasExplicitCredentials ? 'explicit-credentials' : 'IRSA/IAM-role',
-      enabled
-    }, 'AWS Bedrock provider configuration loaded');
-
-    return {
-      name: 'aws-bedrock',
-      type: 'aws-bedrock',
-      enabled,
-      priority: parseInt(process.env.AWS_BEDROCK_PRIORITY || '2'), // Second priority by default
-      config: {
-        region,
-        // Only include credentials if explicitly provided (IRSA doesn't need them)
-        ...(hasExplicitCredentials && { accessKeyId, secretAccessKey }),
-        // Custom endpoint for VPC endpoints or proxies (e.g., https://bedrock-dev.cdc.gov)
-        ...(endpoint && { endpoint }),
-        // Standardized model config
-        chatModel,
-        embeddingModel,
-        visionModel,
-        imageModel,
-        compactionModel,
-        // Legacy compat
-        modelId: chatModel,
-        maxTokens: parseInt(process.env.AWS_BEDROCK_MAX_TOKENS || '16000'),
-        temperature: parseFloat(process.env.AWS_BEDROCK_TEMPERATURE || '1.0')
-      }
-    };
-  }
-
-  /**
-   * Load Google Vertex AI provider configuration
-   * Supports standardized model config: VERTEX_AI_CHAT_MODEL, VERTEX_AI_EMBEDDING_MODEL, etc.
-   */
-  private loadVertexAIConfig(): ProviderConfig | null {
-    const projectId = process.env.VERTEX_AI_PROJECT || process.env.GCP_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
-    const location = process.env.VERTEX_AI_LOCATION || process.env.GCP_LOCATION || process.env.GOOGLE_CLOUD_LOCATION;
-    const serviceAccountJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || process.env.GCP_SERVICE_ACCOUNT_JSON;
-
-    // Check if Vertex AI is configured
-    if (!projectId || !location) {
-      this.logger.debug('Google Vertex AI provider not fully configured (missing projectId or location)');
-      return null;
-    }
-
-    // Standardized model configuration
-    const chatModel = process.env.VERTEX_AI_CHAT_MODEL || process.env.VERTEX_DEFAULT_MODEL || process.env.DEFAULT_MODEL;
-    const embeddingModel = process.env.VERTEX_AI_EMBEDDING_MODEL;
-    const visionModel = process.env.VERTEX_AI_VISION_MODEL;
-    const imageModel = process.env.VERTEX_AI_IMAGE_MODEL;
-    const compactionModel = process.env.VERTEX_AI_COMPACTION_MODEL;
-
-    // Require explicit enable - database providers should be primary
-    const enabled = process.env.VERTEX_AI_ENABLED === 'true'; // Must explicitly enable
-
-    this.logger.info({
-      chatModel,
-      embeddingModel,
-      visionModel,
-      imageModel,
-      compactionModel,
-      projectId,
-      location
-    }, 'Google Vertex AI provider configuration loaded');
-
-    return {
-      name: 'vertex-ai',
-      type: 'google-vertex',
-      enabled,
-      priority: parseInt(process.env.VERTEX_AI_PRIORITY || '3'), // Third priority by default
-      config: {
-        projectId,
-        location,
-        serviceAccountJson,
-        // Standardized model config
-        chatModel,
-        embeddingModel,
-        visionModel,
-        imageModel,
-        compactionModel,
-        // Legacy compat
-        modelId: chatModel,
-        maxTokens: parseInt(process.env.VERTEX_AI_MAX_TOKENS || '8192'),
-        temperature: parseFloat(process.env.VERTEX_AI_TEMPERATURE || '1.0')
-      }
-    };
-  }
-
-  /**
    * Validate provider configuration
    */
   validateConfig(config: ProviderManagerConfig): { valid: boolean; errors: string[] } {
@@ -445,129 +252,13 @@ export class ProviderConfigService {
       errors.push('Failover timeout must be greater than 0');
     }
 
+    if (!Number.isFinite(config.imageGenTimeout) || config.imageGenTimeout <= 0) {
+      errors.push('Image gen timeout must be a positive integer (ms)');
+    }
+
     return {
       valid: errors.length === 0,
       errors
-    };
-  }
-
-  /**
-   * Load Ollama provider configuration
-   * Supports standardized model config: OLLAMA_CHAT_MODEL, OLLAMA_EMBEDDING_MODEL, etc.
-   */
-  private loadOllamaConfig(): ProviderConfig | null {
-    // Check if explicitly enabled first (OLLAMA_ENABLED must be 'true')
-    if (process.env.OLLAMA_ENABLED !== 'true') {
-      this.logger.debug('Ollama provider disabled (OLLAMA_ENABLED is not true)');
-      return null;
-    }
-
-    const baseUrl = process.env.OLLAMA_BASE_URL;
-
-    // Standardized model configuration
-    const chatModel = process.env.OLLAMA_CHAT_MODEL || process.env.OLLAMA_MODEL;
-    const embeddingModel = process.env.OLLAMA_EMBEDDING_MODEL;
-    const visionModel = process.env.OLLAMA_VISION_MODEL;
-
-    // Check if Ollama is configured
-    if (!baseUrl || !chatModel) {
-      this.logger.debug('Ollama provider not fully configured (missing baseUrl or chatModel)');
-      return null;
-    }
-
-    const enabled = true; // Already checked above
-
-    this.logger.info({
-      chatModel,
-      embeddingModel,
-      visionModel,
-      baseUrl
-    }, 'Ollama provider configuration loaded');
-
-    return {
-      name: 'ollama',
-      type: 'ollama',
-      enabled,
-      priority: parseInt(process.env.OLLAMA_PRIORITY || '10'), // Low priority by default (local fallback)
-      config: {
-        baseUrl,
-        // Standardized model config
-        chatModel,
-        embeddingModel,
-        visionModel,
-        // Legacy compat
-        healthCheckModel: chatModel
-      }
-    };
-  }
-
-  /**
-   * Load Azure AI Foundry provider configuration
-   * Supports standardized model config: AIF_CHAT_MODEL, AIF_EMBEDDING_MODEL, etc.
-   */
-  private loadAzureAIFoundryConfig(): ProviderConfig | null {
-    const endpointUrl = process.env.AIF_ENDPOINT_URL;
-    const apiKey = process.env.AIF_API_KEY;
-
-    // Standardized model configuration (matching other providers)
-    const chatModel = process.env.AIF_CHAT_MODEL || process.env.AIF_MODEL;
-    const embeddingModel = process.env.AIF_EMBEDDING_MODEL;
-    const visionModel = process.env.AIF_VISION_MODEL;
-    const imageModel = process.env.AIF_IMAGE_MODEL;
-    const compactionModel = process.env.AIF_COMPACTION_MODEL;
-
-    // Smart model selection configuration
-    const functionCallingModel = process.env.AIF_FUNCTION_CALLING_MODEL;
-    const preferSpecificModel = process.env.AIF_PREFER_SPECIFIC_MODEL === 'true';
-
-    // Check for Entra ID credentials (optional)
-    const tenantId = process.env.AIF_TENANT_ID;
-    const clientId = process.env.AIF_CLIENT_ID;
-    const clientSecret = process.env.AIF_CLIENT_SECRET;
-
-    // Check if AIF is configured (either with API key OR Entra ID)
-    const hasAuth = apiKey || (tenantId && clientId && clientSecret);
-    if (!endpointUrl || !hasAuth) {
-      this.logger.debug('Azure AI Foundry provider not fully configured (missing endpoint or auth)');
-      return null;
-    }
-
-    // Check if explicitly disabled
-    const enabled = process.env.AIF_ENABLED !== 'false'; // Default enabled
-
-    this.logger.info({
-      chatModel,
-      embeddingModel,
-      visionModel,
-      imageModel,
-      compactionModel,
-      functionCallingModel,
-      preferSpecificModel,
-      hasEntraAuth: !!(tenantId && clientId && clientSecret)
-    }, 'Azure AI Foundry provider configuration loaded');
-
-    return {
-      name: 'azure-ai-foundry',
-      type: 'azure-ai-foundry',
-      enabled,
-      priority: parseInt(process.env.AIF_PRIORITY || '5'), // Medium priority by default
-      config: {
-        endpointUrl,
-        apiKey,
-        // Standardized model config
-        chatModel,
-        embeddingModel,
-        visionModel,
-        imageModel,
-        compactionModel,
-        // Legacy compat
-        model: chatModel,
-        functionCallingModel,
-        preferSpecificModel,
-        tenantId,
-        clientId,
-        clientSecret
-      }
     };
   }
 
@@ -581,6 +272,7 @@ export class ProviderConfigService {
     lines.push(`  Providers: ${config.providers.length} total, ${config.providers.filter(p => p.enabled).length} enabled`);
     lines.push(`  Default: ${config.defaultProvider || 'none'}`);
     lines.push(`  Failover: ${config.enableFailover ? 'enabled' : 'disabled'} (timeout: ${config.failoverTimeout}ms)`);
+    lines.push(`  Image gen timeout: ${config.imageGenTimeout}ms`);
     lines.push(`  Load Balancing: ${config.enableLoadBalancing ? 'enabled' : 'disabled'} (strategy: ${config.loadBalancingStrategy})`);
     lines.push('');
 

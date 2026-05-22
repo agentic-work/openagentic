@@ -20,9 +20,84 @@ import { AnthropicProvider } from '../../services/llm-providers/AnthropicProvide
 import { OpenAIProvider } from '../../services/llm-providers/OpenAIProvider.js';
 import { AzureAIFoundryProvider } from '../../services/llm-providers/AzureAIFoundryProvider.js';
 import type { ProviderDefaultConfig } from '../../services/llm-providers/ILLMProvider.js';
+import type { ModelDiscoveryRecord } from '../../services/llm-providers/discovery/ModelDiscoveryRecord.js';
+import {
+  upsertDiscoveredModels,
+  type RegistryUpsertPrismaLike,
+} from '../../services/model-routing/RegistryUpsertService.js';
+import { shouldAutoSyncRegistry } from '../../services/model-routing/registryAutoSyncPolicy.js';
+import { PricingService } from '../../services/pricing/PricingService.js';
+import {
+  validateDiscriminator,
+  isGenericName,
+  buildAutoDisplayName,
+} from '../../services/llm-providers/ProviderDiscriminatorSchema.js';
 
 interface ProviderRoutesOptions {
   providerManager?: ProviderManager;
+}
+
+/**
+ * Strip model-list fields from inbound `modelConfig` before persisting.
+ *
+ * Why: the Add-Provider wizard's Test-Connection step runs `discoverModels()`
+ * and (incorrectly) stuffs the catalog into modelConfig.{chatModel,
+ * embeddingModel, additionalModels, codeModel, defaultModel}. Storing that
+ * verbatim violates the FedRAMP "Registry == explicit add" rule (#459) — a
+ * freshly-added provider then appears to "have" 88 phantom models the user
+ * never selected.
+ *
+ * Provider-create persists creds + non-model config only. Models enter the
+ * Registry via:
+ *   - Admin "Add Model" wizard (POST /llm-providers/:id/models), OR
+ *   - Curated-upstream auto-sync (AIF, Ollama) → `upsertDiscoveredModels`,
+ *     which writes Registry rows directly (NOT model_config).
+ *
+ * Exported so the regression test can unit-check it without spinning up the
+ * Fastify route module.
+ */
+/**
+ * Recognise embedding-only models so Test Connection doesn't try to run
+ * a chat completion against them.
+ *
+ * Live regression (2026-05-01): user adds the in-cluster ollama-embedding
+ * provider — it serves only `nomic-embed-text:latest`. Test Connection
+ * picks `models[0]` and calls /api/chat → Ollama returns 400 "model does
+ * not support generate." UX surfaces a misleading "400 Bad Request"
+ * instead of "this is an embedding-only host."
+ *
+ * Detection signals (any one is sufficient):
+ *   - name / id contains "embed" (case-insensitive)
+ *   - family is one of the well-known embedding families (nomic-bert,
+ *     mxbai, bge, e5, gte, jina-embed)
+ *
+ * Capability flags alone are insufficient: Ollama's tag listing returns
+ * `capabilities: { chat: true, embeddings: true }` for nomic-embed-text
+ * (the chat:true is wrong; the model genuinely doesn't support /api/chat).
+ * The name/family heuristic is the load-bearing signal.
+ */
+export function isEmbeddingOnlyModel(model: any): boolean {
+  if (!model || typeof model !== 'object') return false;
+  const id = String(model.id ?? model.name ?? '').toLowerCase();
+  if (!id) return false;
+  if (id.includes('embed')) return true;
+  const family = String(model.family ?? model.metadata?.family ?? '').toLowerCase();
+  const EMBEDDING_FAMILIES = ['nomic-bert', 'mxbai', 'bge', 'e5', 'gte', 'jina-embed'];
+  if (EMBEDDING_FAMILIES.some(f => family === f || family.startsWith(f))) return true;
+  return false;
+}
+
+export function sanitizeProviderModelConfig(input: any): Record<string, any> {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return {};
+  const {
+    chatModel: _chatModel,
+    embeddingModel: _embeddingModel,
+    additionalModels: _additionalModels,
+    codeModel: _codeModel,
+    defaultModel: _defaultModel,
+    ...rest
+  } = input;
+  return rest;
 }
 
 const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fastify, opts) => {
@@ -71,10 +146,31 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
           else if (p.provider_type === 'aws-bedrock') ctx = ac.region || pc.region || 'us-east-1';
           else if (p.provider_type === 'vertex-ai') ctx = pc.projectId || pc.location || '';
           if (ctx) {
-            const slug = ctx.replace(/https?:\/\//, '').replace(/[^a-z0-9.-]/gi, '').slice(0, 40);
+            // Bug-fix 2026-05-06: keep `:` in the slug so `host:port`
+            // doesn't collapse to `host port` (became `10.2.10.13611434`
+            // for the new ollama-dev-win11 provider — confusing). Strip
+            // protocol prefix first, then strip everything except a-z,
+            // 0-9, and the punctuation that has structural meaning in a
+            // URL host (`. - :`).
+            const slug = ctx.replace(/https?:\/\//, '').replace(/[^a-z0-9.\-:]/gi, '').slice(0, 40);
             p.display_name = `${p.display_name} (${slug})`;
           }
         }
+      }
+
+      // Pull every Registry row in one query so each provider can be
+      // enriched with its currently-enabled model list. This replaces
+      // the legacy provider_config.models[] iteration (the field is
+      // being deleted in favor of admin.model_role_assignments).
+      const allRegistryRows = await prisma.modelRoleAssignment.findMany({
+        where: { enabled: true },
+        select: { provider: true, model: true, capabilities: true, max_tokens: true, description: true },
+      });
+      const rowsByProvider = new Map<string, typeof allRegistryRows>();
+      for (const r of allRegistryRows) {
+        const arr = rowsByProvider.get(r.provider) ?? [];
+        arr.push(r);
+        rowsByProvider.set(r.provider, arr);
       }
 
       // Convert database providers to consistent format
@@ -98,15 +194,18 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
           });
         }
 
-        // Add additional models from provider_config.models array
-        if (providerConfig.models && Array.isArray(providerConfig.models)) {
-          for (const m of providerConfig.models) {
-            if (!models.find(existing => existing.id === m.id)) {
-              models.push({
-                ...m,
-                provider: p.name
-              });
-            }
+        // Add Registry-enabled rows for this provider (Registry SoT replaces
+        // legacy provider_config.models[]).
+        const registryRows = rowsByProvider.get(p.name) ?? [];
+        for (const r of registryRows) {
+          if (!models.find(existing => existing.id === r.model)) {
+            models.push({
+              id: r.model,
+              name: r.description || r.model,
+              provider: p.name,
+              capabilities: (r.capabilities as any) || {},
+              maxTokens: r.max_tokens ?? 8192,
+            });
           }
         }
 
@@ -117,6 +216,11 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
           type: p.provider_type,
           enabled: p.enabled,
           priority: p.priority,
+          // §11.5 — clients POST this back on edit so we can detect
+          // concurrent saves and 409 instead of clobbering.
+          version: typeof (p as any).version === 'bigint' ? Number((p as any).version) : Number((p as any).version ?? 1),
+          updated_by: p.updated_by ?? null,
+          updated_at: p.updated_at,
           config: {
             ...providerConfig,
             ...modelConfig,
@@ -220,7 +324,13 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
 
       const allHealthy = results.every(r => r.healthy);
 
-      return reply.code(allHealthy ? 200 : 503).send({
+      // The handler successfully assembled the report — that's a 200 even
+      // when downstream providers are unhealthy. The `overall` field carries
+      // degraded/healthy semantics in the body. 503 is reserved for the
+      // catch-block (handler genuinely failed). Returning 503 on degraded
+      // made the UI's `if (response.ok)` discard the body and lie "0 healthy"
+      // even when 3/4 cards were green. (#367)
+      return reply.code(200).send({
         overall: allHealthy ? 'healthy' : 'degraded',
         providers: results,
         timestamp: new Date().toISOString()
@@ -294,6 +404,257 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
       return reply.code(500).send({
         error: 'Failed to get metrics',
         message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  /**
+   * DELETE /api/admin/llm-providers/registry/:id
+   * #507 — hard-delete a Registry row. Today PATCH only flips enabled, so
+   * orphan rows from soft-deleted providers persist forever, polluting the
+   * Models page. Surfaced by the painfully scrutinous CRUD UAT (#505).
+   *
+   * Registry SoT v1 (F2 C-4): the delete is wrapped in a transaction with a
+   * tombstone INSERT/UPSERT into model_role_assignment_tombstones so that
+   * RegistryBootstrapSeeder + RegistrySyncJob will NOT resurrect the row
+   * on the next boot or discovery cycle. Tombstones can be reset via
+   * POST /api/admin/registry/tombstones/reset.
+   *
+   * Returns 204 on success, 404 when the row does not exist.
+   */
+  fastify.delete<{
+    Params: { id: string };
+  }>('/llm-providers/registry/:id', async (request, reply) => {
+    try {
+      const { prisma } = await import('../../utils/prisma.js');
+      const { id } = request.params;
+      const adminUserId = (request as any).user?.id ?? null;
+
+      const existing = await prisma.modelRoleAssignment.findUnique({ where: { id } });
+      if (!existing) {
+        return reply.code(404).send({ error: 'Registry row not found', id });
+      }
+
+      // Atomic: tombstone + delete in a single transaction. If the tombstone
+      // upsert fails (e.g. unique-constraint race), the row stays — admin
+      // can retry. If the row delete fails after the tombstone was inserted,
+      // the transaction rolls back and the registry is unchanged.
+      await prisma.$transaction(async (tx: any) => {
+        // Upsert because admin may have re-added then re-deleted; the second
+        // delete must overwrite the older tombstone, not 500 on the
+        // (provider_name, model, role) primary-key constraint.
+        await tx.modelRoleAssignmentTombstone.upsert({
+          where: {
+            provider_name_model_role: {
+              provider_name: existing.provider,
+              model: existing.model,
+              role: existing.role,
+            },
+          },
+          create: {
+            provider_name: existing.provider,
+            model: existing.model,
+            role: existing.role,
+            deleted_by: adminUserId,
+            reason: 'admin_delete_registry_row',
+          },
+          update: {
+            deleted_at: new Date(),
+            deleted_by: adminUserId,
+            reason: 'admin_delete_registry_row',
+          },
+        });
+        await tx.modelRoleAssignment.delete({ where: { id } });
+      });
+
+      return reply.code(204).send();
+    } catch (error: any) {
+      logger.error({ error: error?.message, id: request.params.id }, 'Failed to delete registry row');
+      return reply.code(500).send({
+        error: 'Failed to delete registry row',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * GET /api/admin/llm-providers/registry
+   * Task #3: the Model Registry read endpoint. Returns curated rows from
+   * admin.model_role_assignments joined with admin.llm_providers so callers
+   * (chat toolbar, admin Models page, Smart Router candidate pool) have a
+   * single source of truth without reading discoveredCapabilities.
+   *
+   * Query params:
+   *   role=chat|embeddings|reasoning|tool_execution|synthesis|fallback
+   *   enabledOnly=true|false (default: true)
+   */
+  fastify.get<{
+    Querystring: { role?: string; enabledOnly?: string; includeDeleted?: string };
+  }>('/llm-providers/registry', async (request, reply) => {
+    try {
+      const { prisma } = await import('../../utils/prisma.js');
+      const role = request.query.role;
+      const enabledOnlyRaw = request.query.enabledOnly;
+      // Default = true unless explicitly 'false'
+      const enabledOnly = enabledOnlyRaw === undefined ? true : enabledOnlyRaw !== 'false';
+      // Phase H: by default, hide rows whose provider is soft-deleted
+      // (deleted_at != null). The `?includeDeleted=true` escape hatch keeps
+      // them visible for forensic / cleanup workflows.
+      const includeDeleted = request.query.includeDeleted === 'true';
+
+      const where: any = {};
+      if (role) where.role = role;
+      if (enabledOnly) where.enabled = true;
+
+      const rows = await prisma.modelRoleAssignment.findMany({
+        where,
+        orderBy: [{ provider: 'asc' }, { priority: 'asc' }, { model: 'asc' }],
+      });
+      const providerNames = Array.from(new Set(rows.map((r: any) => r.provider)));
+      const providers = providerNames.length
+        ? await prisma.lLMProvider.findMany({
+            where: { name: { in: providerNames } },
+            select: { name: true, display_name: true, enabled: true, deleted_at: true },
+          })
+        : [];
+      const providerByName = new Map(providers.map(p => [p.name, p as any]));
+
+      // Phase H: drop registry rows whose joined provider is soft-deleted.
+      // The Registry table has no FK to LLMProvider, so this filter has to
+      // happen in the application layer. Skipped when ?includeDeleted=true
+      // so admins can still inspect orphans for cleanup.
+      const filteredRows = includeDeleted
+        ? rows
+        : rows.filter((r: any) => {
+            const prov = providerByName.get(r.provider) as any;
+            // If we don't have provider metadata, the row is an orphan with
+            // no LLMProvider counterpart at all — drop it the same as a
+            // soft-deleted one so the registry response is always self-consistent.
+            if (!prov) return false;
+            return prov.deleted_at == null;
+          });
+
+      // Enrichment for Live Scoring Lab / other callers that need routing
+      // hints without a second round-trip. Respect SoT rules:
+      //   - FCA: from ModelCapabilityRegistry (hand-maintained, is the SoT
+      //     for function-calling accuracy scores — registry DB has no
+      //     column for this).
+      //   - cost: from the Registry row's cost_per_input_token_usd / …_output
+      //     (CSP-SDK populated, authoritative). Converted from USD/1M →
+      //     USD/1k for UI consumers that think in per-1k terms.
+      //   - latency / tokensPerSecond / context window: from MCR (no DB
+      //     column today).
+      // We do NOT mirror MCR's cost estimates onto the response — the
+      // Registry row is SoT for cost, and reviewers flagged the
+      // dual-cost-field bug in commit 59a623eb.
+      const { getModelCapabilityRegistry } = await import('../../services/ModelCapabilityRegistry.js');
+      const capabilityRegistry = getModelCapabilityRegistry();
+
+      const result = filteredRows.map((r: any) => {
+        const mcrCaps = capabilityRegistry.getCapabilities(r.model);
+
+        // Registry-row cost columns are USD per 1M tokens (CSP-SDK populated,
+        // authoritative when present). Convert to /1k for UI ergonomics.
+        // Fall back to MCR estimates when CSP hasn't populated yet so the
+        // Lab scoring and Smart Router have SOMETHING to score against.
+        // The response exposes one cost field per direction; callers don't
+        // have to disambiguate SoT.
+        const regInputPer1M = r.cost_per_input_token_usd != null ? Number(r.cost_per_input_token_usd) : null;
+        const regOutputPer1M = r.cost_per_output_token_usd != null ? Number(r.cost_per_output_token_usd) : null;
+        const inputCostPer1k = regInputPer1M != null ? regInputPer1M / 1000 : (mcrCaps.inputCostPer1k ?? null);
+        const outputCostPer1k = regOutputPer1M != null ? regOutputPer1M / 1000 : (mcrCaps.outputCostPer1k ?? null);
+        const costSource: 'registry' | 'mcr-estimate' | 'unknown' =
+          regInputPer1M != null ? 'registry' : mcrCaps.inputCostPer1k != null ? 'mcr-estimate' : 'unknown';
+
+        return {
+          id: r.id,
+          model: r.model,
+          provider: r.provider,
+          role: r.role,
+          priority: r.priority,
+          enabled: r.enabled,
+          temperature: r.temperature,
+          max_tokens: r.max_tokens,
+          capabilities: r.capabilities ?? {},
+          description: r.description,
+          options: r.options ?? {},
+          provider_display_name: providerByName.get(r.provider)?.display_name ?? r.provider,
+          provider_enabled: providerByName.get(r.provider)?.enabled ?? false,
+          // Enriched routing hints (see block comment above for SoT split)
+          functionCallingAccuracy: mcrCaps.functionCallingAccuracy,
+          inputCostPer1k,
+          outputCostPer1k,
+          costSource,
+          avgLatencyMs: mcrCaps.avgLatencyMs,
+          tokensPerSecond: mcrCaps.tokensPerSecond,
+          maxContextTokens: mcrCaps.maxContextTokens,
+          family: mcrCaps.family,
+          providerType: mcrCaps.providerType,
+          thinking: mcrCaps.thinking,
+        };
+      });
+
+      return reply.send(result);
+    } catch (error: any) {
+      logger.error({ error: error?.message }, 'Failed to list registry rows');
+      return reply.code(500).send({
+        error: 'Failed to list registry',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * PATCH /api/admin/llm-providers/registry/:id
+   * Task #5: admin Models page edits a Registry row.
+   * Supported body fields: enabled, priority, role, temperature, max_tokens.
+   * Any role/priority/temperature/max_tokens edit also flips options.auto=false
+   * so the next provider-create sync doesn't clobber the admin's choice.
+   */
+  fastify.patch<{
+    Params: { id: string };
+    Body: {
+      enabled?: boolean;
+      priority?: number;
+      role?: string;
+      temperature?: number | null;
+      max_tokens?: number | null;
+    };
+  }>('/llm-providers/registry/:id', async (request, reply) => {
+    try {
+      const { prisma } = await import('../../utils/prisma.js');
+      const { id } = request.params;
+      const existing = await prisma.modelRoleAssignment.findUnique({ where: { id } });
+      if (!existing) {
+        return reply.code(404).send({ error: 'Registry row not found', id });
+      }
+
+      const body = request.body || {};
+      const data: any = {};
+      if (typeof body.enabled === 'boolean') data.enabled = body.enabled;
+      if (typeof body.priority === 'number') data.priority = body.priority;
+      if (typeof body.role === 'string') data.role = body.role;
+      if (body.temperature === null || typeof body.temperature === 'number') data.temperature = body.temperature;
+      if (body.max_tokens === null || typeof body.max_tokens === 'number') data.max_tokens = body.max_tokens;
+
+      // Any edit to a config field (role/priority/temp/max_tokens) marks the
+      // row as admin-owned so ProviderCreate doesn't overwrite on next sync.
+      const structuralEdit =
+        typeof body.priority === 'number' ||
+        typeof body.role === 'string' ||
+        typeof body.temperature !== 'undefined' ||
+        typeof body.max_tokens !== 'undefined';
+      if (structuralEdit) {
+        data.options = { ...((existing.options as any) || {}), auto: false };
+      }
+
+      const updated = await prisma.modelRoleAssignment.update({ where: { id }, data });
+      return reply.send({ ok: true, row: updated });
+    } catch (error: any) {
+      logger.error({ error: error?.message, id: request.params.id }, 'Failed to patch registry row');
+      return reply.code(500).send({
+        error: 'Failed to update registry row',
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   });
@@ -512,48 +873,31 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         tier: m.tier || guessTier(m.id || m.name || ''),
       }));
 
-      // Persist discovered models to provider_config.models[] so the chat
-      // selector (which reads from DB, not in-memory) always has fresh data.
-      // This is fire-and-forget — discovery response is not blocked by the write.
-      // Only persist DEPLOYED models to DB (not catalog/available models).
-      // The chat selector reads from provider_config.models[] — it should only
-      // show models that are actually deployed and usable for inference.
-      const deployedModels = enrichedModels.filter((m: any) => m.deployed !== false);
-      if (deployedModels.length > 0) {
-        (async () => {
-          try {
-            const existingConfig = (dbRecord.provider_config as any) || {};
-            const existingModels: any[] = Array.isArray(existingConfig.models) ? existingConfig.models : [];
-            const modelsForDb = deployedModels.map((m: any) => ({
-              id: m.id,
-              name: m.name || m.id,
-              capabilities: m.capabilities || { chat: true, tools: true, streaming: true },
-              config: m.config || {},
-            }));
-            // MERGE: preserve admin-added entries whose IDs are not in the
-            // fresh discovery set (Bedrock's ListFoundationModels only
-            // returns ON_DEMAND entries and omits inference-profile models
-            // like anthropic.claude-sonnet-4-6; admins add those manually
-            // and we must not wipe them on every Registry tab open).
-            const discoveredIds = new Set(modelsForDb.map(m => m.id));
-            const adminAdded = existingModels.filter(m => m?.id && !discoveredIds.has(m.id));
-            const mergedModels = [...modelsForDb, ...adminAdded];
-            await prisma.lLMProvider.update({
-              where: { id: dbRecord.id },
-              data: {
-                provider_config: {
-                  ...existingConfig,
-                  models: mergedModels,
-                  lastDiscoveryAt: new Date().toISOString(),
-                },
+      // Registry policy (user-directed): ONLY admin-added models live in
+      // provider_config.models[]. The /discover response is a READ-ONLY
+      // catalog view for the UI's Add-Model dropdown — it MUST NOT write
+      // back to the registry. Previously this endpoint auto-persisted the
+      // full discovered catalog (117 entries for Bedrock alone) which
+      // bypassed the explicit-add gate. Registry remains authoritative.
+      //
+      // Stamp a lastDiscoveryAt so the UI can show "catalog refreshed X
+      // min ago" without touching the models array itself.
+      (async () => {
+        try {
+          const existingConfig = (dbRecord.provider_config as any) || {};
+          await prisma.lLMProvider.update({
+            where: { id: dbRecord.id },
+            data: {
+              provider_config: {
+                ...existingConfig,
+                lastDiscoveryAt: new Date().toISOString(),
               },
-            });
-            logger.info({ provider: dbRecord.name, modelCount: mergedModels.length, adminAdded: adminAdded.length }, 'Persisted discovered + admin-added models to DB');
-          } catch (persistErr) {
-            logger.warn({ error: persistErr, provider: dbRecord.name }, 'Failed to persist discovered models (non-fatal)');
-          }
-        })();
-      }
+            },
+          });
+        } catch (persistErr) {
+          logger.warn({ error: persistErr, provider: dbRecord.name }, 'Failed to stamp lastDiscoveryAt (non-fatal)');
+        }
+      })();
 
       return reply.send({
         provider: dbRecord.name,
@@ -692,11 +1036,19 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
       } catch {
         // listModels may fail if provider init failed
       }
-      const capabilities = (models?.[0] as any)?.capabilities || {};
-      const testModel = userModel || (models?.[0] as any)?.id || (models?.[0] as any)?.name ||
-                       process.env.VERTEX_AI_MODEL ||
-                       process.env.AZURE_OPENAI_MODEL ||
-                       process.env.DEFAULT_MODEL;
+      // Test model resolution: admin picks explicitly (?model= or body.model).
+      // No heuristics — auto-picking "first in catalog" caused Bedrock tests
+      // to fire at Nemotron with Anthropic body shape and return a cryptic
+      // "Failed to deserialize" from AWS. If no model is picked AND the
+      // provider has a DB-registered default, use it; otherwise surface a
+      // clear "please pick a model" error instead of a confusing SDK error.
+      const testModel = userModel
+        || (models?.[0] as any)?.id
+        || (models?.[0] as any)?.name
+        || process.env.VERTEX_AI_MODEL
+        || process.env.AZURE_OPENAI_MODEL
+        || process.env.DEFAULT_MODEL;
+      const capabilities = (models.find((m: any) => (m.id || m.name) === testModel) || models?.[0] as any)?.capabilities || {};
       const testMaxTokens = userMaxTokens || 100;
 
       const testResults: any = {
@@ -933,8 +1285,236 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
   });
 
   /**
+   * POST /api/admin/llm-providers/test-config — pre-save form-data test (#287)
+   *
+   * The Add-Provider wizard's "Test Connection" button needs to validate
+   * credentials BEFORE the user clicks Save. The /:name/test endpoint above
+   * looks up the provider by name in the DB and 404s if not found, which
+   * is correct for saved rows but wrong for the wizard.
+   *
+   * This endpoint accepts the full provider config in the body, instantiates
+   * a temp provider, runs a basic completion, and returns the same response
+   * shape (so the UI can reuse its result-rendering code). It NEVER touches
+   * the LLMProvider table.
+   */
+  const SUPPORTED_PROVIDER_TYPES = new Set([
+    'azure-openai',
+    'azure-ai-foundry',
+    'vertex-ai',
+    'aws-bedrock',
+    'ollama',
+    'openai',
+    'anthropic',
+  ]);
+
+  function instantiateProviderForType(providerType: string, log: Logger, providerConfig: any) {
+    if (providerType === 'ollama') return new OllamaProvider(log);
+    if (providerType === 'aws-bedrock' || providerType === 'bedrock') return new AWSBedrockProvider(log);
+    if (providerType === 'vertex-ai' || providerType === 'google-vertex') return new GoogleVertexProvider(log);
+    if (providerType === 'azure-openai') return new AzureOpenAIProvider(log);
+    if (providerType === 'anthropic') return new AnthropicProvider(log);
+    if (providerType === 'openai') return new OpenAIProvider(log);
+    if (providerType === 'azure-ai-foundry') {
+      return new AzureAIFoundryProvider(log, {
+        endpointUrl: providerConfig?.endpointUrl || providerConfig?.endpoint,
+        apiKey: providerConfig?.apiKey,
+        apiVersion: providerConfig?.apiVersion,
+        model: providerConfig?.chatModel || providerConfig?.model || providerConfig?.deploymentName,
+        tenantId: providerConfig?.tenantId,
+        clientId: providerConfig?.clientId,
+        clientSecret: providerConfig?.clientSecret,
+      });
+    }
+    return null;
+  }
+
+  fastify.post<{
+    Body: {
+      providerType?: string;
+      name?: string;
+      authConfig?: any;
+      providerConfig?: any;
+      modelConfig?: any;
+      testType?: 'basic';
+      prompt?: string;
+      model?: string;
+      maxTokens?: number;
+    };
+  }>('/llm-providers/test-config', async (request, reply) => {
+    const {
+      providerType,
+      name = 'unsaved',
+      authConfig = {},
+      providerConfig = {},
+      modelConfig = {},
+      prompt = 'Say "Hello, World!" and nothing else.',
+      model: userModel,
+      maxTokens: userMaxTokens,
+    } = request.body || {};
+
+    if (!providerType) {
+      return reply.code(400).send({
+        error: 'Missing providerType',
+        message: 'providerType is required (e.g. aws-bedrock, vertex-ai, azure-ai-foundry).',
+      });
+    }
+    if (!SUPPORTED_PROVIDER_TYPES.has(providerType) && providerType !== 'bedrock' && providerType !== 'google-vertex') {
+      return reply.code(400).send({
+        error: 'Unsupported providerType',
+        message: `Unknown provider type '${providerType}'. Supported: ${Array.from(SUPPORTED_PROVIDER_TYPES).join(', ')}.`,
+      });
+    }
+
+    // Build a synthetic dbProvider-shaped object so we can run it through
+    // the same auth-config normalization pipeline as a saved row. We do NOT
+    // encrypt — the body fields are already plaintext from the form.
+    const syntheticDbProvider = {
+      name,
+      provider_type: providerType,
+      enabled: true,
+      priority: 1,
+      auth_config: authConfig,           // already plaintext; decryptAuthConfig is a no-op for plaintext
+      provider_config: providerConfig,
+      model_config: modelConfig,
+    };
+
+    let normalized: any;
+    try {
+      const configService = new ProviderConfigService(logger);
+      normalized = configService.convertDatabaseProvider(syntheticDbProvider);
+    } catch (err) {
+      logger.warn({ err, providerType }, 'test-config: convertDatabaseProvider failed');
+      return reply.code(400).send({
+        error: 'Invalid config',
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    const tempProvider = instantiateProviderForType(normalized.type, logger, normalized.config);
+    if (!tempProvider) {
+      return reply.code(400).send({
+        error: 'Unsupported providerType',
+        message: `Could not instantiate provider for type '${normalized.type}'.`,
+      });
+    }
+
+    let initError: string | null = null;
+    try {
+      await (tempProvider as any).initialize(normalized.config);
+    } catch (err) {
+      initError = err instanceof Error ? err.message : String(err);
+      logger.info({ providerType: normalized.type, error: initError }, 'test-config: initialize failed (expected for bad creds)');
+    }
+
+    const testResults: any = {
+      provider: name,
+      providerType: normalized.type,
+      timestamp: new Date().toISOString(),
+      initializationError: initError,
+      inMemory: false,
+      tests: {} as Record<string, any>,
+    };
+
+    let models: any[] = [];
+    if (!initError) {
+      try {
+        models = ((await (tempProvider as any).listModels?.()) || []) as any[];
+      } catch {
+        // listModels failure is not fatal for a basic completion test
+      }
+    }
+
+    // #577 follow-up #2: filter embedding-only models out of the candidate
+    // pool BEFORE picking models[0]. The dalek ollama-embedding pod only
+    // serves nomic-embed-text:latest — picking it then calling /api/chat
+    // returns 400 ("model does not support generate"). Surface that as a
+    // skipped-inference soft success (auth+region OK, no chat-capable
+    // model on this host) instead of a misleading 400.
+    const chatCandidateModels = (models || []).filter(m => !isEmbeddingOnlyModel(m));
+    const testModel = userModel
+      || (chatCandidateModels?.[0] as any)?.id
+      || (chatCandidateModels?.[0] as any)?.name
+      || normalized.config?.model
+      || normalized.config?.chatModel
+      || normalized.config?.deploymentName;
+    const testMaxTokens = userMaxTokens || 100;
+
+    if (initError) {
+      testResults.tests.basic = {
+        success: false,
+        error: initError,
+        hint: 'Provider failed to initialize. Check credentials and connectivity.',
+      };
+    } else if (!testModel) {
+      // #577 follow-up: when no test model can be derived (no userModel,
+      // listModels returned nothing, no model in form), DO NOT call
+      // createCompletion — the #577 guard would throw "No Bedrock model
+      // configured" which is misleading: auth + region already validated
+      // via initialize(). Surface a soft-success result so the wizard can
+      // show "Test passed; pick a model in the next step to validate
+      // inference."
+      testResults.tests.basic = {
+        success: true,
+        inferenceSkipped: true,
+        skippedInference: true,
+        message:
+          'Credentials and region validated. No model selected — pick a model in the Add-Model step to validate inference end-to-end.',
+        latency: 0,
+      };
+    } else {
+      try {
+        const startTime = Date.now();
+        const response = await (tempProvider as any).createCompletion({
+          model: testModel,
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: testMaxTokens,
+          stream: false,
+        });
+        const latency = Date.now() - startTime;
+        const content = (response as any).choices?.[0]?.message?.content || '';
+        testResults.tests.basic = {
+          success: true,
+          latency,
+          response: content,
+          tokenCount: content.split(/\s+/).length,
+        };
+      } catch (err) {
+        testResults.tests.basic = {
+          success: false,
+          error: err instanceof Error ? err.message : 'Unknown error',
+        };
+      }
+    }
+
+    const tests = Object.values(testResults.tests);
+    const successfulTests = tests.filter((t: any) => t.success).length;
+    testResults.summary = {
+      totalTests: tests.length,
+      successfulTests,
+      successRate: tests.length > 0 ? (successfulTests / tests.length * 100).toFixed(1) + '%' : '0%',
+    };
+
+    return reply.send(testResults);
+  });
+
+  /**
    * POST /api/admin/llm-providers
    * Create a new LLM provider configuration
+   *
+   * #459 follow-up (2026-04-30): inbound `modelConfig` MUST have its
+   * model-list fields stripped via `sanitizeProviderModelConfig` before
+   * persistence. The Add-Provider wizard's Test-Connection step runs
+   * `discoverModels()` and (incorrectly) stuffs the catalog into
+   * `modelConfig.{chatModel, embeddingModel, additionalModels}`. Storing
+   * that verbatim violates the FedRAMP "Registry == explicit add" rule —
+   * the user sees phantom models on a provider they never added.
+   *
+   * Provider creation = creds + non-model config only.
+   * Models enter the Registry via:
+   *   - Admin "Add Model" wizard (POST /llm-providers/:id/models), OR
+   *   - Curated-upstream auto-sync (AIF, Ollama) handled below by
+   *     `discoverModels()` → `upsertDiscoveredModels()`, which writes
+   *     Registry rows directly (NOT model_config).
    */
   fastify.post<{
     Body: {
@@ -976,10 +1556,57 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         });
       }
 
+      // Discriminator enforcement (FedRAMP origin metadata): reject generic
+      // names + require per-type origin fields (env + per-type identifiers).
+      // Existing rows are grandfathered; only new POSTs are validated here.
+      // Tunable via PROVIDER_DISCRIMINATOR_ENFORCED=false (admin escape hatch
+      // during the rolling migration window).
+      if (process.env.PROVIDER_DISCRIMINATOR_ENFORCED !== 'false') {
+        if (isGenericName(displayName) || isGenericName(name)) {
+          return reply.code(400).send({
+            success: false,
+            error: 'Provider name is too generic. Add an environment + identifier (e.g. "bedrock-prod-1234-us-east-1").',
+            code: 'GENERIC_NAME_REJECTED',
+          });
+        }
+        const origin = (providerConfig?.origin as Record<string, string | undefined> | undefined) || {};
+        const validation = validateDiscriminator(providerType, origin);
+        if (validation.ok === false) {
+          const missing = validation.missing;
+          return reply.code(400).send({
+            success: false,
+            error: `Missing required origin fields: ${missing.join(', ')}`,
+            code: 'DISCRIMINATOR_MISSING',
+            missing,
+            suggestedDisplayName: buildAutoDisplayName(providerType, origin),
+          });
+        }
+      }
+
       // SECURITY: Encrypt sensitive credential fields before storage
       const encryptedAuthConfig = encryptAuthConfig(authConfig);
 
+      // #289: clear any soft-deleted row that holds this name. The unique
+      // constraint is on the raw `name` column (not `(name, deleted_at IS
+      // NULL)`), so a previously-soft-deleted provider blocks re-add with
+      // the same name. Treating "delete then re-add" as a clean restart is
+      // the simplest UX — hard-delete the soft-deleted ghost first.
+      try {
+        const soft = await prisma.lLMProvider.deleteMany({
+          where: { name, deleted_at: { not: null } },
+        });
+        if (soft.count > 0) {
+          logger.info({ name, removed: soft.count }, 'Cleared soft-deleted provider rows before re-add (#289)');
+        }
+      } catch (cleanupErr) {
+        logger.warn({ name, error: cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr) }, 'Soft-delete cleanup failed; proceeding to create — duplicate-name error may follow');
+      }
+
       // Create provider
+      // #459 follow-up: `sanitizeProviderModelConfig` strips the wizard's
+      // discovery-result pollution (chatModel/embeddingModel/additionalModels)
+      // from inbound modelConfig. Provider creation = creds + non-model
+      // config only.
       const provider = await prisma.lLMProvider.create({
         data: {
           name,
@@ -989,7 +1616,7 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
           priority,
           auth_config: encryptedAuthConfig,
           provider_config: providerConfig,
-          model_config: modelConfig,
+          model_config: sanitizeProviderModelConfig(modelConfig),
           capabilities,
           description,
           tags,
@@ -1037,6 +1664,8 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
       // each one. This is the AIF auto-discovery flow (#49) but works for
       // every provider type that implements discoverModels().
       let autoDiscoveredCount = 0;
+      let registryUpserted = 0;
+      let autoSyncSkipped = false;
       if (providerManager) {
         await invalidateAllModelCaches(logger);
         logger.info('Provider manager reloaded with new provider');
@@ -1076,29 +1705,76 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
                 };
               }));
 
-              // Merge discovered models into provider_config.models[] without
-              // overwriting any models the admin pre-supplied in the request.
-              const requestedIds = new Set(
-                Array.isArray(providerConfig?.models)
-                  ? providerConfig.models.map((m: any) => m.id)
-                  : []
-              );
-              const newModels = [
-                ...(providerConfig?.models || []),
-                ...models.filter(m => !requestedIds.has(m.id)),
-              ];
-              const mergedConfig = { ...providerConfig, models: newModels };
-
-              await prisma.lLMProvider.update({
-                where: { id: provider.id },
-                data: { provider_config: mergedConfig },
-              });
-              autoDiscoveredCount = models.length - models.filter(m => requestedIds.has(m.id)).length;
+              // Legacy provider_config.models[] merge removed — Registry SoT
+              // owns the model list now. The Registry upsert immediately
+              // below populates admin.model_role_assignments with the
+              // discovered set; that's where every reader looks.
+              autoDiscoveredCount = models.length;
               logger.info({
                 providerName: name,
                 autoDiscoveredCount,
-                totalModelCount: newModels.length,
-              }, '[ProviderCreate] Auto-populated discovered models');
+              }, '[ProviderCreate] Discovered models — handing off to Registry upsert');
+
+              // Registry SoT (task #2): populate admin.model_role_assignments
+              // for each discovered model so chat toolbar + Smart Router +
+              // admin Models page have a single source of truth instead of
+              // reading discoveredCapabilities.
+              //
+              // #311 GATE: only auto-upsert for curated-upstream providers
+              // (AIF deployments, Ollama host pulls). Bulk-catalog providers
+              // (Bedrock/Vertex/OpenAI/Anthropic/AzureOpenAI) must go through
+              // the admin "Add Model" UI so Registry stays curated.
+              // See feedback_registry_explicit_add.md for the full rationale.
+              if (shouldAutoSyncRegistry(providerType)) {
+                try {
+                  // Task #342: instantiate PricingService per-request.
+                  // Cheap (just a Map); avoids holding a long-lived PrismaClient
+                  // handle at module scope. Fetcher caching is per-instance so
+                  // the @aws-sdk/client-pricing SDK load only happens when the
+                  // first Bedrock row is priced inside fetchAndStorePricing().
+                  const pricingService = new PricingService(prisma);
+                  // region comes from auth_config.region first (Bedrock stores
+                  // it there post-encryption-decrypt); fallback to
+                  // provider_config.region for providers that keep it outside
+                  // the credential blob.
+                  const region =
+                    (authConfig?.region as string | undefined) ??
+                    (providerConfig?.region as string | undefined) ??
+                    null;
+
+                  const registryResult = await upsertDiscoveredModels(
+                    {
+                      providerName: name,
+                      discovered,
+                      createdBy: (request as any).user?.id ?? 'seeder',
+                      providerType,
+                      region,
+                      pricingService,
+                    },
+                    prisma as unknown as RegistryUpsertPrismaLike,
+                  );
+                  registryUpserted = (registryResult.inserted || 0) + (registryResult.updated || 0);
+                  logger.info({
+                    providerName: name,
+                    providerType,
+                    region,
+                    registryInserted: registryResult.inserted,
+                    registryUpdated: registryResult.updated,
+                  }, '[ProviderCreate] Registry rows upserted (auto-sync allowed); pricing fetch dispatched in background');
+                } catch (registryErr: any) {
+                  logger.warn({
+                    error: registryErr?.message,
+                    providerName: name,
+                  }, '[ProviderCreate] Registry upsert failed (non-fatal)');
+                }
+              } else {
+                autoSyncSkipped = true;
+                logger.info({
+                  providerName: name,
+                  providerType,
+                  discoveredCount: discovered.length,
+                }, '[ProviderCreate] Registry auto-sync skipped — explicit Add Model required for this provider type');
+              }
 
               // Bust caches again so the freshly persisted model list is
               // reflected in /chat/models and the chat dropdown signal.
@@ -1115,15 +1791,79 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
 
       // Disconnect the prisma client now that all writes are done.
 
+      // #459: be explicit about what landed in the Registry vs what was just
+      // discovered in the catalog. Bedrock/Vertex/OpenAI/Anthropic/AzureOpenAI
+      // skip auto-sync (#311 policy) so `autoDiscoveredCount` says "we saw 32
+      // models" but `registryUpserted: 0` says "nothing was added to the
+      // Registry — admin must use Models → Add Model to register specific
+      // ones". The Provider Management page banner says the same thing.
+      let message: string;
+      if (registryUpserted > 0) {
+        message = `Provider created. ${registryUpserted} model(s) added to the Registry from auto-sync.`;
+      } else if (autoSyncSkipped && autoDiscoveredCount > 0) {
+        message = `Provider created. Discovered ${autoDiscoveredCount} catalog model(s) — use Models → Add Model to register specific ones (auto-sync intentionally disabled for this provider type).`;
+      } else if (autoDiscoveredCount > 0) {
+        message = `Provider created. Discovered ${autoDiscoveredCount} model(s) from the provider; 0 added to the Registry.`;
+      } else {
+        message = 'Provider created successfully';
+      }
+
+      // §11.5 — normalize the BigInt `version` column before send. Fastify's
+      // JSON serializer can't handle BigInt natively. Same pattern as GET
+      // and the 409 conflict path.
+      const providerOut = {
+        ...provider,
+        version: typeof (provider as any).version === 'bigint'
+          ? Number((provider as any).version)
+          : Number((provider as any).version ?? 1),
+      };
+
+      // Hot-reload providerManager so the new provider is routable in this
+      // pod immediately — without it the modelToProviderMap is stale until
+      // the next pod restart, and any model registered against the new
+      // provider gets routed to the wrong provider (or none). Live repro
+      // 2026-05-06 (gemma4:latest mis-routed to `hal`). reloadProviders()
+      // is atomic — old map keeps serving while the new one builds, then
+      // swaps in (#74). Best-effort: if reload throws we still return 201
+      // because the DB write succeeded; the next reload (next CRUD or pod
+      // restart) will pick it up.
+      if (providerManager) {
+        try {
+          await providerManager.reloadProviders();
+        } catch (reloadErr) {
+          logger.warn(
+            { err: (reloadErr as Error).message, providerId: provider.id },
+            '[admin] post-create reloadProviders() failed — provider in DB but routing not yet refreshed',
+          );
+        }
+      }
+
       return reply.code(201).send({
-        provider,
+        provider: providerOut,
         autoDiscoveredCount,
-        message: autoDiscoveredCount > 0
-          ? `Provider created. Auto-discovered ${autoDiscoveredCount} model(s) from the provider.`
-          : 'Provider created successfully'
+        registryUpserted,
+        autoSyncSkipped,
+        message,
       });
 
-    } catch (error) {
+    } catch (error: any) {
+      // Prisma P2002 = unique-constraint violation. The `name` column is
+      // the only unique constraint we expose to admins, so surface a clean
+      // 409 message instead of leaking the raw Prisma stacktrace into the
+      // toast (#100 — user reported "Save failed: Invalid prisma.lLMProvider
+      // .create() invocation: Unique constraint failed on the fields:
+      // (`name`)" appearing verbatim in the UI).
+      if (error?.code === 'P2002') {
+        const target = Array.isArray(error?.meta?.target)
+          ? error.meta.target.join(', ')
+          : String(error?.meta?.target ?? 'name');
+        logger.warn({ target, providerName: (request.body as any)?.name }, 'P2002 on LLM provider create');
+        return reply.code(409).send({
+          error: 'A provider with this name already exists',
+          message: `Field "${target}" must be unique. Pick a different name (e.g. add an env / region suffix).`,
+          field: target,
+        });
+      }
       logger.error({ error }, 'Failed to create LLM provider');
       return reply.code(500).send({
         error: 'Failed to create provider',
@@ -1148,16 +1888,77 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
       capabilities?: any;
       description?: string;
       tags?: string[];
+      /** §11.5 optimistic-concurrency token. The version the client just GET'd. */
+      version?: number;
     };
   }>('/llm-providers/:id', async (request, reply) => {
     try {
       const { prisma } = await import('../../utils/prisma.js');
       const { id } = request.params;
 
+      // §11.5 — version is required on every write so concurrent admins
+      // can't silently clobber each other.
+      const clientVersion = (request.body as any)?.version;
+      if (typeof clientVersion !== 'number' || !Number.isInteger(clientVersion) || clientVersion < 0) {
+        return reply.code(400).send({
+          error: 'version must be a non-negative integer (POST the version you GET\'d back to confirm no other admin has saved since).',
+        });
+      }
+
       // Fetch existing provider for change diffing
       const existingProvider = await prisma.lLMProvider.findUnique({ where: { id } });
       if (!existingProvider) {
           return reply.code(404).send({ error: 'Provider not found' });
+      }
+
+      const currentVersion = typeof (existingProvider as any).version === 'bigint'
+        ? Number((existingProvider as any).version)
+        : Number((existingProvider as any).version ?? 0);
+      if (clientVersion !== currentVersion) {
+        const conflictingFields: string[] = [];
+        const b = request.body as any;
+        if (b.displayName !== undefined && b.displayName !== existingProvider.display_name) conflictingFields.push('displayName');
+        if (b.enabled !== undefined && b.enabled !== existingProvider.enabled) conflictingFields.push('enabled');
+        if (b.priority !== undefined && b.priority !== existingProvider.priority) conflictingFields.push('priority');
+        if (b.description !== undefined && b.description !== existingProvider.description) conflictingFields.push('description');
+        return reply.code(409).send({
+          error: 'Conflict: another admin saved this provider before your save landed.',
+          currentRow: { ...existingProvider, version: currentVersion },
+          conflictingFields,
+        });
+      }
+
+      // Discriminator enforcement on UPDATE: only validate fields the caller is
+      // actually changing — pre-existing rows are grandfathered. Same env flag
+      // and same error codes as POST.
+      if (process.env.PROVIDER_DISCRIMINATOR_ENFORCED !== 'false') {
+        if (request.body.displayName !== undefined && isGenericName(request.body.displayName)) {
+          return reply.code(400).send({
+            success: false,
+            error: 'Provider name is too generic. Add an environment + identifier (e.g. "bedrock-prod-1234-us-east-1").',
+            code: 'GENERIC_NAME_REJECTED',
+          });
+        }
+        const incomingOrigin = (request.body.providerConfig as Record<string, any> | undefined)?.origin;
+        if (incomingOrigin !== undefined) {
+          const validation = validateDiscriminator(
+            existingProvider.provider_type,
+            incomingOrigin as Record<string, string | undefined>,
+          );
+          if (validation.ok === false) {
+            const missing = validation.missing;
+            return reply.code(400).send({
+              success: false,
+              error: `Missing required origin fields: ${missing.join(', ')}`,
+              code: 'DISCRIMINATOR_MISSING',
+              missing,
+              suggestedDisplayName: buildAutoDisplayName(
+                existingProvider.provider_type,
+                incomingOrigin as Record<string, string>,
+              ),
+            });
+          }
+        }
       }
 
       const updateData: any = {};
@@ -1201,11 +2002,15 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         updateData.provider_config.seeder_managed = false;
       }
 
-      // MERGE model_config: preserve disabledModels and other fields
+      // MERGE model_config: preserve disabledModels and other fields, but
+      // strip wizard-side model-list pollution (chatModel / embeddingModel /
+      // additionalModels / codeModel / defaultModel) from the inbound side
+      // so PUT can never reintroduce phantom model state. The Registry is
+      // the single SoT for which models a provider exposes.
       if (request.body.modelConfig !== undefined) {
         const existingMC = existingProvider.model_config as Record<string, any> || {};
-        const newMC = request.body.modelConfig || {};
-        updateData.model_config = { ...existingMC, ...newMC };
+        const sanitizedNewMC = sanitizeProviderModelConfig(request.body.modelConfig);
+        updateData.model_config = { ...existingMC, ...sanitizedNewMC };
       }
       if (request.body.capabilities !== undefined) updateData.capabilities = request.body.capabilities;
       if (request.body.description !== undefined) updateData.description = request.body.description;
@@ -1213,10 +2018,32 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
 
       updateData.updated_by = (request as any).user?.id;
 
-      const provider = await prisma.lLMProvider.update({
-        where: { id },
-        data: updateData
+      // Version-gated update. updateMany permits a non-unique WHERE
+      // (id + version), and tells us count=0 if the version is stale —
+      // which we treat as a 409 race condition rather than a 500.
+      const updateResult = await prisma.lLMProvider.updateMany({
+        where: { id, version: clientVersion as any },
+        data: { ...updateData, version: { increment: 1 } as any },
       });
+      if (updateResult.count === 0) {
+        // Race: someone else saved between our findUnique and updateMany.
+        const fresh = await prisma.lLMProvider.findUnique({ where: { id } });
+        const freshVersion = fresh && typeof (fresh as any).version === 'bigint'
+          ? Number((fresh as any).version)
+          : Number((fresh as any)?.version ?? 0);
+        return reply.code(409).send({
+          error: 'Conflict: provider was updated between read and write.',
+          currentRow: fresh ? { ...fresh, version: freshVersion } : null,
+          conflictingFields: [],
+        });
+      }
+      const refetched = await prisma.lLMProvider.findUnique({ where: { id } });
+      const provider = refetched
+        ? { ...refetched, version: typeof (refetched as any).version === 'bigint' ? Number((refetched as any).version) : Number((refetched as any).version ?? 0) }
+        : null;
+      if (!provider) {
+        return reply.code(500).send({ error: 'Provider update succeeded but row vanished on refetch' });
+      }
 
       logger.info({ providerId: provider.id, name: provider.name }, 'LLM provider updated');
 
@@ -1270,10 +2097,23 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         request,
       }).catch(() => {});
 
-      // Trigger hot-reload if providerManager exists
+      // Trigger hot-reload if providerManager exists. The cache-invalidate
+      // alone (pre-2026-05-06) didn't rebuild the providerManager.providers
+      // map or modelToProviderMap → routing stayed pinned to the OLD
+      // provider config (e.g. baseUrl change didn't take effect until pod
+      // restart). reloadProviders() is atomic per #74 — old map serves
+      // traffic until the new one is fully built and swapped.
       if (providerManager) {
         await invalidateAllModelCaches(logger);
-        logger.info('Provider manager reloaded with updated configuration');
+        try {
+          await providerManager.reloadProviders();
+          logger.info({ providerId: provider.id }, 'Provider manager reloaded with updated configuration');
+        } catch (reloadErr) {
+          logger.warn(
+            { err: (reloadErr as Error).message, providerId: provider.id },
+            '[admin] post-update reloadProviders() failed — provider DB row updated but routing not yet refreshed',
+          );
+        }
       }
 
       return reply.send({
@@ -1355,14 +2195,33 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         }
       }
 
-      // Soft delete by setting deleted_at timestamp
-      const provider = await prisma.lLMProvider.update({
-        where: { id },
-        data: {
-          deleted_at: new Date(),
-          enabled: false, // Also disable it
-          updated_by: (request as any).user?.id
-        }
+      // Soft delete by setting deleted_at timestamp + cascade-disable any
+      // ModelRoleAssignment rows that reference this provider by name
+      // (Phase G of docs/superpowers/specs/2026-04-30-ollama-split-topology.md).
+      //
+      // Why cascade in a transaction:
+      //   ModelRoleAssignment.provider is a string column with no FK to
+      //   LLMProvider.name, so Prisma's relational cascade can't help.
+      //   Without this updateMany, deleted-provider rows linger as orphan
+      //   "enabled" Registry entries → SmartModelRouter picks them →
+      //   dispatch fails with "no enabled provider serves it" UNKNOWN_ERROR.
+      //   Wrapping both writes in $transaction means a failure on EITHER
+      //   step rolls back BOTH, so we never leave the registry in a
+      //   half-deleted state.
+      const [provider] = await prisma.$transaction(async (tx: any) => {
+        const updatedProvider = await tx.lLMProvider.update({
+          where: { id },
+          data: {
+            deleted_at: new Date(),
+            enabled: false, // Also disable it
+            updated_by: (request as any).user?.id
+          }
+        });
+        const cascade = await tx.modelRoleAssignment.updateMany({
+          where: { provider: updatedProvider.name, enabled: true },
+          data: { enabled: false },
+        });
+        return [updatedProvider, cascade] as const;
       });
 
       logger.info({ providerId: provider.id, name: provider.name }, 'LLM provider soft deleted');
@@ -1428,7 +2287,9 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
 
   /**
    * GET /api/admin/llm-providers/:providerId/models
-   * List all configured models for a provider from provider_config.models array.
+   * List configured models for a provider from the Registry SoT
+   * (admin.model_role_assignments). Replaces the legacy
+   * provider_config.models[] read.
    */
   fastify.get<{ Params: { providerId: string } }>('/llm-providers/:providerId/models', async (request, reply) => {
     try {
@@ -1441,8 +2302,53 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         return reply.code(404).send({ error: 'Provider not found', message: `Provider '${providerId}' not found` });
       }
 
-      const providerConfig = (provider.provider_config as any) || {};
-      const models = Array.isArray(providerConfig.models) ? providerConfig.models : [];
+      const registryRows = await prisma.modelRoleAssignment.findMany({
+        where: { provider: provider.name, enabled: true },
+        orderBy: [{ priority: 'asc' }],
+      });
+      // #650 follow-up — surface discovery-time provenance + cost rates +
+      // generation params so the UI can render "where does this number
+      // come from?" badges and Smart Router has live cost data. Pre-fix
+      // we dropped pricing_source/pricing_fetched_at/cost_per_*/temperature/
+      // thinking_budget from the response shape. Decimal columns coerce
+      // to JS number for clean JSON serialization.
+      const toNum = (v: any): number | undefined => {
+        if (v === null || v === undefined) return undefined;
+        if (typeof v === 'number') return v;
+        const n = Number(v.toString());
+        return Number.isFinite(n) ? n : undefined;
+      };
+      const models = registryRows.map(r => {
+        const m: any = {
+          id: r.model,
+          name: r.description || r.model,
+          capabilities: r.capabilities || {},
+          config: { maxOutputTokens: r.max_tokens ?? undefined, enabled: r.enabled, role: r.role },
+        };
+        if (r.pricing_source) m.pricing_source = r.pricing_source;
+        if (r.pricing_fetched_at) {
+          m.pricing_fetched_at = r.pricing_fetched_at instanceof Date
+            ? r.pricing_fetched_at.toISOString()
+            : r.pricing_fetched_at;
+        }
+        const cIn = toNum((r as any).cost_per_input_token_usd);
+        if (cIn !== undefined) m.cost_per_input_token_usd = cIn;
+        const cOut = toNum((r as any).cost_per_output_token_usd);
+        if (cOut !== undefined) m.cost_per_output_token_usd = cOut;
+        const cCacheR = toNum((r as any).cost_per_cache_read_usd);
+        if (cCacheR !== undefined) m.cost_per_cache_read_usd = cCacheR;
+        const cCacheW = toNum((r as any).cost_per_cache_write_usd);
+        if (cCacheW !== undefined) m.cost_per_cache_write_usd = cCacheW;
+        const cThink = toNum((r as any).cost_per_thinking_token_usd);
+        if (cThink !== undefined) m.cost_per_thinking_token_usd = cThink;
+        const cEmb = toNum((r as any).cost_per_embedding_token_usd);
+        if (cEmb !== undefined) m.cost_per_embedding_token_usd = cEmb;
+        if (r.temperature !== null && r.temperature !== undefined) m.temperature = r.temperature;
+        if (r.thinking_budget !== null && r.thinking_budget !== undefined) {
+          m.thinking_budget = r.thinking_budget;
+        }
+        return m;
+      });
 
       return reply.send({
         providerId: provider.id,
@@ -1466,6 +2372,7 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
    */
   fastify.post<{
     Params: { providerId: string };
+    Querystring: { force?: string };
     Body: {
       modelId: string;
       displayName?: string;
@@ -1496,7 +2403,11 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
   }>('/llm-providers/:providerId/models', async (request, reply) => {
     try {
       const { providerId } = request.params;
-      const { modelId, displayName, capabilities, config: modelCfg } = request.body;
+      const { modelId, displayName } = request.body;
+      // Body fields `capabilities` and `config.*` are accepted at the type
+      // boundary for backward-compat, but they are NOT consumed here — live
+      // discovery is the SoT (#650). Admin overrides go via the dedicated
+      // PUT /llm-providers/:id/models/:modelId/override endpoint.
 
       if (!modelId) {
         return reply.code(400).send({ error: 'modelId is required' });
@@ -1543,37 +2454,88 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
       }
 
       const providerConfig = (provider.provider_config as any) || {};
-      const models: any[] = Array.isArray(providerConfig.models) ? [...providerConfig.models] : [];
-
-      // Upsert: if model already exists in provider_config.models, update it
-      // and ensure model_config is correct (fixes stuck models from prior adds
-      // that wrote provider_config but not model_config).
-      const existingIdx = models.findIndex((m: any) => m.id === modelId);
+      // Registry SoT: query admin.model_role_assignments to detect existing
+      // model rows, not the legacy provider_config.models[]. The Registry
+      // write below replaces the legacy field entirely.
+      const existingRegistryRow = await prisma.modelRoleAssignment.findFirst({
+        where: { provider: provider.name, model: modelId },
+      });
+      const existingIdx = existingRegistryRow ? 0 : -1;
       let isUpdate = false;
-      if (existingIdx >= 0) {
-        isUpdate = true;
-        // Update the existing entry with any new config/capabilities
-        models[existingIdx] = {
-          ...models[existingIdx],
-          displayName: displayName || models[existingIdx].displayName || modelId,
-          capabilities: capabilities || models[existingIdx].capabilities || { chat: true, tools: true, streaming: true },
-          config: { ...models[existingIdx].config, ...modelCfg },
-          updatedAt: new Date().toISOString(),
-        };
-      } else {
-        models.push({
-          id: modelId,
-          displayName: displayName || modelId,
-          capabilities: capabilities || { chat: true, vision: false, tools: true, streaming: true },
-          config: modelCfg || {},
-          createdAt: new Date().toISOString()
+      // List of currently-registered model ids (Registry rows for this provider)
+      // for family-conflict detection. Replaces the legacy
+      // provider_config.models[].map(m=>m.id) approach.
+      const existingRegistryRows = await prisma.modelRoleAssignment.findMany({
+        where: { provider: provider.name },
+        select: { model: true },
+      });
+      const models = existingRegistryRows; // alias used by family-conflict block below
+
+      // Family-level dedupe: if the provider already has a model in the same
+      // model family (e.g. user tries to add Sonnet 4.5 when 4.6 is already
+      // registered), refuse with 409 unless the client passes ?force=true.
+      // Root cause of the 2026-04-21 "TWO sonnets in registry" incident.
+      if (existingIdx < 0) {
+        const force = (request.query as any)?.force === 'true';
+        if (!force) {
+          const { findFamilyConflict } = await import('../../services/model-routing/modelFamily.js');
+          const existingIds = models.map((m: any) => typeof m?.model === 'string' ? m.model : '').filter(Boolean);
+          const conflict = findFamilyConflict(modelId, existingIds);
+          if (conflict) {
+            return reply.code(409).send({
+              error: 'MODEL_FAMILY_CONFLICT',
+              message: `Provider "${provider.name}" already has "${conflict}" in the same model family as "${modelId}". ` +
+                       `Remove the existing model first, or pass ?force=true to add both.`,
+              existingModelId: conflict,
+              candidateModelId: modelId,
+            });
+          }
+        }
+      }
+
+      // #650 — LIVE PROVIDER DISCOVERY is the SoT for capabilities, limits,
+      // defaults, and pricing. Body is admin-overrides only (displayName for
+      // description). Without live discovery the Registry's RouterTuning math
+      // (cost-per-token, ctx-fit gates, FCA floors) operates on stale defaults.
+      if (!providerManager) {
+        return reply.code(503).send({ error: 'ProviderManager not initialized' });
+      }
+      const providerInstanceForDiscovery: any = providerManager.getProvider(provider.name);
+      if (!providerInstanceForDiscovery?.discoverModelDetails) {
+        return reply.code(501).send({
+          error: 'Provider does not support live model discovery',
+          message: `Provider '${provider.provider_type}' has no discoverModelDetails implementation`,
         });
       }
+      const discoveryRegion = (provider.provider_config as any)?.region
+                           ?? (provider.provider_config as any)?.location;
+      let discovered: ModelDiscoveryRecord;
+      try {
+        const result = await providerInstanceForDiscovery.discoverModelDetails(modelId, discoveryRegion);
+        if (!result) {
+          return reply.code(502).send({ error: 'Live discovery returned null', modelId });
+        }
+        discovered = result;
+      } catch (err: any) {
+        logger.error({ providerId, modelId, err: err?.message }, '[admin] Live model discovery failed');
+        return reply.code(502).send({
+          error: 'Live model discovery failed',
+          message: err?.message || String(err),
+          modelId,
+        });
+      }
+
+      if (existingRegistryRow) {
+        isUpdate = true;
+      }
+      // Registry write happens at the bottom of this handler (already there);
+      // legacy provider_config.models[] mutation removed — Registry is SoT.
 
       // Always register chat-capable models in model_config so /chat/models
       // and the Registry tab can see them. This runs on BOTH add and upsert
       // to fix models stuck in provider_config but missing from model_config.
-      const effectiveCaps = capabilities || (existingIdx >= 0 ? models[existingIdx]?.capabilities : null) || { chat: true };
+      // #650 — Slot decision uses discovered capabilities, not body fields.
+      const effectiveCaps = discovered.capabilities;
       const modelConfig = (provider.model_config as any) || {};
       const isChatCapable = (effectiveCaps?.chat !== false);
       const isEmbeddingOnly = effectiveCaps?.embeddings && !effectiveCaps?.chat;
@@ -1595,14 +2557,93 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         }
       }
 
+      // Update only model_config (routing-hint fields). The legacy
+      // provider_config.models[] write is removed — Registry is SoT.
       await prisma.lLMProvider.update({
         where: { id: provider.id },
         data: {
-          provider_config: { ...providerConfig, models },
           model_config: updatedModelConfig,
           updated_by: (request as any).user?.id
         }
       });
+
+      // Registry upsert — the admin Models table reads from ModelRoleAssignment,
+      // NOT from provider_config.models[]. Skipping this was the "Add Model → UI
+      // shows nothing" bug: the POST wrote to provider_config + model_config but
+      // the Registry view queries ModelRoleAssignment, so newly added models
+      // never appeared.
+      //
+      // Derive ONE primary role per model. vision/tools/thinking/streaming are
+      // capability flags preserved in the capabilities JSON on the row — they
+      // are NOT separate roles. (Compare to gpt-oss:20b which has tools +
+      // thinking + streaming but only a single role=chat row.)
+      const caller = (request as any).user?.id;
+      if (caller) {
+        // #650 — Registry write sources EVERY column from discovered. Body's
+        // displayName wins as admin override for description; everything else
+        // (max_tokens, temperature, capabilities, options jsonb, all 7 cost
+        // columns, pricing_source, pricing_fetched_at) comes from the live
+        // discovery record. body.config.* is NOT consulted here — it would be
+        // a silent override of provider truth.
+        const caps = discovered.capabilities;
+        const primaryRole = caps.embeddings && !caps.chat
+          ? 'embeddings'
+          : caps.imageGeneration ? 'image-generation' : 'chat';
+        const optionsBlob = {
+          contextWindow: discovered.contextWindow,
+          family: discovered.family,
+          topP: discovered.topP,
+          topK: discovered.topK,
+          providerType: discovered.providerType,
+          pricingRegion: discovered.pricing.region,
+          nativeToolCalling: caps.nativeToolCalling,
+        };
+        const dataCommon: any = {
+          enabled: true,
+          capabilities: caps as any,
+          options: optionsBlob as any,
+          max_tokens: discovered.maxOutputTokens ?? undefined,
+          temperature: discovered.temperature ?? 0.5,
+          thinking_budget: discovered.thinkingBudget ?? undefined,
+          cost_per_input_token_usd: discovered.pricing.inputTokenUsd ?? null,
+          cost_per_output_token_usd: discovered.pricing.outputTokenUsd ?? null,
+          cost_per_cache_read_usd: discovered.pricing.cacheReadUsd ?? null,
+          cost_per_cache_write_usd: discovered.pricing.cacheWriteUsd ?? null,
+          cost_per_thinking_token_usd: discovered.pricing.thinkingTokenUsd ?? null,
+          cost_per_embedding_token_usd: discovered.pricing.embeddingTokenUsd ?? null,
+          cost_per_request: discovered.pricing.perRequestUsd ?? null,
+          pricing_source: discovered.pricing.source,
+          pricing_fetched_at: new Date(discovered.pricing.fetchedAt),
+          description: displayName || discovered.displayName,
+        };
+        const existing = await prisma.modelRoleAssignment.findFirst({
+          where: { role: primaryRole, model: modelId, provider: provider.name },
+        });
+        if (existing) {
+          await prisma.modelRoleAssignment.update({
+            where: { id: existing.id },
+            data: dataCommon,
+          });
+        } else {
+          await prisma.modelRoleAssignment.create({
+            data: {
+              ...dataCommon,
+              role: primaryRole,
+              model: modelId,
+              provider: provider.name,
+              priority: 10,
+              created_by: caller,
+            },
+          });
+        }
+        logger.info({
+          providerId: provider.id,
+          modelId,
+          role: primaryRole,
+          pricingSource: discovered.pricing.source,
+          contextWindow: discovered.contextWindow,
+        }, '[admin] ModelRoleAssignment upserted from live discovery (#650)');
+      }
 
       logger.info({ providerId: provider.id, modelId, isUpdate }, isUpdate ? 'Model upserted (was stuck in provider_config, now in model_config too)' : 'Model added to provider');
 
@@ -1621,9 +2662,28 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         ipAddress: request.ip,
       }).catch(() => {});
 
-      // Trigger hot-reload
+      // Trigger hot-reload so the new model appears in
+      // modelToProviderMap immediately and is routable for the next
+      // turn — without it the model exists in DB but the running
+      // ProviderManager's lookup is stale until pod restart. Live
+      // 2026-05-06 incident: gemma4:latest registered successfully but
+      // routed to the wrong ollama provider for ~3 min until manual
+      // restart. reloadProviders() is atomic (#74) so traffic isn't
+      // interrupted.
       if (providerManager) {
         await invalidateAllModelCaches(logger);
+        try {
+          await providerManager.reloadProviders();
+          logger.info(
+            { providerId: provider.id, modelId },
+            'Provider manager reloaded after model registration',
+          );
+        } catch (reloadErr) {
+          logger.warn(
+            { err: (reloadErr as Error).message, providerId: provider.id, modelId },
+            '[admin] post-model-add reloadProviders() failed — Registry row written but routing may be stale',
+          );
+        }
       }
 
       return reply.code(isUpdate ? 200 : 201).send({
@@ -1637,6 +2697,180 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
       return reply.code(500).send({
         error: 'Failed to add model',
         message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  /**
+   * POST /api/admin/llm-providers/:providerId/models/:modelId/refresh
+   *
+   * #650 U7 — Re-runs live provider discovery for an existing Registry row
+   * and atomically replaces capabilities, limits, defaults, and pricing.
+   * The daily re-sync cron (U8) calls this exact code path per row.
+   *
+   * Returns 200 on success, 404 if provider/row missing, 501 if provider
+   * has no discoverModelDetails (older provider class), 502 on upstream
+   * discovery error, 503 if ProviderManager not initialized.
+   */
+  fastify.post<{
+    Params: { providerId: string; modelId: string };
+  }>('/llm-providers/:providerId/models/:modelId/refresh', async (request, reply) => {
+    try {
+      const { providerId } = request.params;
+      const modelId = decodeURIComponent(request.params.modelId);
+
+      const { prisma } = await import('../../utils/prisma.js');
+      const provider = await resolveProvider(prisma, providerId);
+      if (!provider) {
+        return reply.code(404).send({ error: 'Provider not found' });
+      }
+
+      const existing = await prisma.modelRoleAssignment.findFirst({
+        where: { provider: provider.name, model: modelId },
+      });
+      if (!existing) {
+        return reply.code(404).send({
+          error: 'Registry row not found',
+          message: `No ModelRoleAssignment for provider='${provider.name}' model='${modelId}'`,
+        });
+      }
+
+      if (!providerManager) {
+        return reply.code(503).send({ error: 'ProviderManager not initialized' });
+      }
+      const providerInstance: any = providerManager.getProvider(provider.name);
+      if (!providerInstance?.discoverModelDetails) {
+        return reply.code(501).send({
+          error: 'Provider does not support live model discovery',
+          message: `Provider '${provider.provider_type}' has no discoverModelDetails implementation`,
+        });
+      }
+
+      const region = (provider.provider_config as any)?.region
+                  ?? (provider.provider_config as any)?.location;
+      let discovered: ModelDiscoveryRecord;
+      try {
+        const result = await providerInstance.discoverModelDetails(modelId, region);
+        if (!result) {
+          return reply.code(502).send({ error: 'Refresh discovery returned null', modelId });
+        }
+        discovered = result;
+      } catch (err: any) {
+        logger.error({ providerId, modelId, err: err?.message }, '[admin] Refresh discovery failed');
+        return reply.code(502).send({
+          error: 'Refresh from provider failed',
+          message: err?.message || String(err),
+          modelId,
+        });
+      }
+
+      const caps = discovered.capabilities;
+      await prisma.modelRoleAssignment.update({
+        where: { id: existing.id },
+        data: {
+          max_tokens: discovered.maxOutputTokens ?? undefined,
+          temperature: discovered.temperature ?? 0.5,
+          thinking_budget: discovered.thinkingBudget ?? undefined,
+          capabilities: caps as any,
+          options: {
+            contextWindow: discovered.contextWindow,
+            family: discovered.family,
+            topP: discovered.topP,
+            topK: discovered.topK,
+            providerType: discovered.providerType,
+            pricingRegion: discovered.pricing.region,
+            nativeToolCalling: caps.nativeToolCalling,
+          } as any,
+          cost_per_input_token_usd: discovered.pricing.inputTokenUsd ?? null,
+          cost_per_output_token_usd: discovered.pricing.outputTokenUsd ?? null,
+          cost_per_cache_read_usd: discovered.pricing.cacheReadUsd ?? null,
+          cost_per_cache_write_usd: discovered.pricing.cacheWriteUsd ?? null,
+          cost_per_thinking_token_usd: discovered.pricing.thinkingTokenUsd ?? null,
+          cost_per_embedding_token_usd: discovered.pricing.embeddingTokenUsd ?? null,
+          cost_per_request: discovered.pricing.perRequestUsd ?? null,
+          pricing_source: discovered.pricing.source,
+          pricing_fetched_at: new Date(discovered.pricing.fetchedAt),
+        },
+      });
+
+      logger.info({
+        providerId: provider.id,
+        modelId,
+        pricingSource: discovered.pricing.source,
+        pricingFetchedAt: discovered.pricing.fetchedAt,
+      }, '[admin] Registry row refreshed from provider (#650)');
+
+      auditTrail.log({
+        timestamp: new Date(),
+        eventType: AuditEventType.CREDENTIAL_UPDATE,
+        severity: AuditSeverity.INFO,
+        userId: (request as any).user?.id,
+        userEmail: (request as any).user?.email,
+        action: 'REFRESH_PROVIDER_MODEL',
+        resource: 'LLMProvider',
+        resourceId: providerId,
+        details: { modelId, providerName: provider.name, pricingSource: discovered.pricing.source },
+        success: true,
+        ipAddress: request.ip,
+      }).catch(() => {});
+
+      return reply.send({
+        message: 'Refreshed from provider',
+        modelId,
+        provider: provider.name,
+        pricing_source: discovered.pricing.source,
+        pricing_fetched_at: discovered.pricing.fetchedAt,
+        contextWindow: discovered.contextWindow,
+        maxOutputTokens: discovered.maxOutputTokens,
+      });
+    } catch (error) {
+      logger.error({ error, providerId: request.params.providerId, modelId: request.params.modelId },
+        'Failed to refresh model from provider');
+      return reply.code(500).send({
+        error: 'Failed to refresh model',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * POST /api/admin/llm-providers/refresh-all
+   *
+   * #650 U8 — Walks every Active Registry row and re-runs live discovery
+   * via RefreshModelDetailsJob. Per-row failures are isolated. Logs price
+   * deltas. The k8s CronJob hits this endpoint daily at 03:00 UTC; admin
+   * UI may surface a manual "Refresh All" button later.
+   *
+   * Auth: inherits the admin middleware on this plugin's parent.
+   */
+  fastify.post('/llm-providers/refresh-all', async (request, reply) => {
+    try {
+      const { prisma } = await import('../../utils/prisma.js');
+      if (!providerManager) {
+        return reply.code(503).send({ error: 'ProviderManager not initialized' });
+      }
+      const { RefreshModelDetailsJob } = await import('../../jobs/RefreshModelDetailsJob.js');
+      const job = new RefreshModelDetailsJob(prisma as any, providerManager, logger as any);
+      const result = await job.run();
+      auditTrail.log({
+        timestamp: new Date(),
+        eventType: AuditEventType.CREDENTIAL_UPDATE,
+        severity: AuditSeverity.INFO,
+        userId: (request as any).user?.id,
+        userEmail: (request as any).user?.email,
+        action: 'REFRESH_ALL_MODELS',
+        resource: 'LLMProvider',
+        resourceId: 'all',
+        details: result,
+        success: true,
+        ipAddress: request.ip,
+      }).catch(() => {});
+      return reply.send({ message: 'Refresh sweep complete', ...result });
+    } catch (error) {
+      logger.error({ error }, 'Refresh-all sweep failed');
+      return reply.code(500).send({
+        error: 'Refresh-all sweep failed',
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   });
@@ -1781,12 +3015,13 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
           return reply.code(404).send({ error: 'Provider not found', message: `Provider '${providerId}' not found` });
       }
 
-      const providerConfig = (provider.provider_config as any) || {};
-      const models: any[] = Array.isArray(providerConfig.models) ? [...providerConfig.models] : [];
+      // Registry SoT — look up the row in admin.model_role_assignments.
+      // Legacy provider_config.models[] is no longer the source.
+      const registryRow = await prisma.modelRoleAssignment.findFirst({
+        where: { provider: provider.name, model: decodedModelId },
+      });
 
-      const modelIndex = models.findIndex(m => m.id === decodedModelId);
-
-      // Model might be in model_config (chatModel, embeddingModel, etc.) rather than provider_config.models
+      // Model might also be referenced via model_config (chatModel, embeddingModel, etc.)
       // model_config can be stored as JSON string in some providers — parse it
       let modelConfig = (provider.model_config as any) || {};
       if (typeof modelConfig === 'string') {
@@ -1794,30 +3029,28 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
       }
       const modelConfigFields = ['chatModel', 'embeddingModel', 'visionModel', 'imageModel', 'compactionModel', 'defaultModel'];
       const isInModelConfig = modelConfigFields.some(f => modelConfig[f] === decodedModelId);
-      // Also check disabled models list and legacy _disabled map
       const isInDisabled = (Array.isArray(modelConfig.disabledModels) && modelConfig.disabledModels.includes(decodedModelId)) ||
         (modelConfig._disabled && Object.values(modelConfig._disabled).includes(decodedModelId));
 
-      // Also check provider_config.models for the model
-      const isInProviderModels = modelIndex >= 0;
-
-      if (!isInProviderModels && !isInModelConfig && !isInDisabled) {
+      if (!registryRow && !isInModelConfig && !isInDisabled) {
           return reply.code(404).send({ error: 'Model not found', message: `Model '${decodedModelId}' not found on this provider` });
       }
 
       const updateData: any = { updated_by: (request as any).user?.id };
 
-      if (modelIndex >= 0) {
-        // Model is in provider_config.models array
-        const existing = models[modelIndex];
-        models[modelIndex] = {
-          ...existing,
-          ...(request.body.displayName !== undefined && { displayName: request.body.displayName }),
-          ...(request.body.capabilities !== undefined && { capabilities: { ...existing.capabilities, ...request.body.capabilities } }),
-          ...(request.body.config !== undefined && { config: { ...existing.config, ...request.body.config } }),
-          updatedAt: new Date().toISOString()
-        };
-        updateData.provider_config = { ...providerConfig, models };
+      if (registryRow) {
+        // Update the Registry row directly.
+        await prisma.modelRoleAssignment.update({
+          where: { id: registryRow.id },
+          data: {
+            description: request.body.displayName ?? registryRow.description,
+            capabilities: request.body.capabilities ? { ...(registryRow.capabilities as any || {}), ...request.body.capabilities } : (registryRow.capabilities as any),
+            max_tokens: request.body.config?.maxOutputTokens ?? registryRow.max_tokens,
+            temperature: request.body.config?.temperature ?? registryRow.temperature,
+            enabled: request.body.config?.enabled !== undefined ? request.body.config.enabled : registryRow.enabled,
+            options: { ...((registryRow.options as any) || {}), auto: false },
+          },
+        });
       }
 
       // Update disabledModels array for ANY model source (model_config fields OR provider_config.models)
@@ -1858,7 +3091,7 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
 
       return reply.send({
         message: 'Model updated successfully',
-        model: models[modelIndex]
+        model: registryRow ? { id: registryRow.model, displayName: request.body.displayName ?? registryRow.description } : { id: decodedModelId },
       });
     } catch (error) {
       logger.error({ error, providerId: request.params.providerId, modelId: request.params.modelId }, 'Failed to update model');
@@ -1890,65 +3123,65 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
           return reply.code(404).send({ error: 'Provider not found', message: `Provider '${providerId}' not found` });
       }
 
-      // Guard: check if model is currently in use
-      if (!force) {
-        const usages: string[] = [];
+      // Use computeDeletePlan() to classify references:
+      //   - Self-referencing fields on THIS provider → auto-clear (was a 409 pre-2026-04-21)
+      //   - Cross-provider refs / role assignments → real 409 (unless force)
+      //   - Chat session pins → cascade-null (never blocks)
+      const { computeDeletePlan } = await import('../../services/model-routing/deleteModelPlan.js');
 
-        // Check model role assignments
-        const roleAssignments = await prisma.modelRoleAssignment.count({
-          where: { model: decodedModelId, enabled: true }
-        });
-        if (roleAssignments > 0) {
-          usages.push(`${roleAssignments} active model role assignment(s)`);
-        }
-
-        // Check recent chat sessions using this model
-        const recentSessions = await prisma.chatSession.count({
-          where: {
-            model: decodedModelId,
-            updated_at: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
-          }
-        });
-        if (recentSessions > 0) {
-          usages.push(`${recentSessions} active chat session(s) in the last 24h`);
-        }
-
-        // Check if model is set as chatModel/defaultModel on any active provider
-        const providers = await prisma.lLMProvider.findMany({
+      const [roleAssignmentCount, recentSessionCount, otherProvidersRaw] = await Promise.all([
+        prisma.modelRoleAssignment.count({ where: { model: decodedModelId, enabled: true } }),
+        prisma.chatSession.count({
+          where: { model: decodedModelId, updated_at: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+        }),
+        prisma.lLMProvider.findMany({
           where: { deleted_at: null, enabled: true, id: { not: provider.id } },
-          select: { name: true, model_config: true, provider_config: true }
-        });
-        for (const p of providers) {
-          const mc = p.model_config as any || {};
-          const pc = p.provider_config as any || {};
-          const refs = ['chatModel', 'defaultModel', 'embeddingModel', 'visionModel', 'imageModel']
-            .filter(f => mc[f] === decodedModelId);
-          if (pc.modelId === decodedModelId) refs.push('modelId');
-          if (refs.length > 0) {
-            usages.push(`Referenced as ${refs.join(', ')} on provider "${p.name}"`);
-          }
-        }
+          select: { id: true, name: true, model_config: true, provider_config: true },
+        }),
+      ]);
 
-        if (usages.length > 0) {
-              return reply.code(409).send({
-            error: 'Model is currently in use',
-            message: `Cannot delete "${decodedModelId}": ${usages.join('; ')}. Use ?force=true to override.`,
-            usages,
-          });
-        }
+      const plan = computeDeletePlan({
+        targetProviderId: provider.id,
+        modelId: decodedModelId,
+        targetProvider: {
+          id: provider.id,
+          name: provider.name,
+          model_config: provider.model_config as any,
+          provider_config: provider.provider_config as any,
+        },
+        otherEnabledProviders: otherProvidersRaw.map((p: any) => ({
+          id: p.id, name: p.name,
+          model_config: p.model_config as any,
+          provider_config: p.provider_config as any,
+        })),
+        roleAssignmentCount,
+        recentSessionCount,
+        force,
+      });
+
+      if (!plan.canDelete) {
+        return reply.code(409).send({
+          error: 'MODEL_IN_USE',
+          message: `Cannot delete "${decodedModelId}": ${plan.blockers.map(b => b.description).join('; ')}. Use ?force=true to override.`,
+          blockers: plan.blockers,
+          selfReferenceFields: plan.selfReferenceFields,
+          recentSessionCount: plan.recentSessionCount,
+        });
       }
 
-      const providerConfig = (provider.provider_config as any) || {};
-      const models: any[] = Array.isArray(providerConfig.models) ? [...providerConfig.models] : [];
+      // Registry SoT — delete the row from admin.model_role_assignments
+      // (the new SoT) instead of mutating provider_config.models[]. Model
+      // existence is checked against Registry + model_config slots only.
+      const registryRows = await prisma.modelRoleAssignment.findMany({
+        where: { provider: provider.name, model: decodedModelId },
+      });
       // model_config can be stored as JSON string — parse it
       let modelConfig = (provider.model_config as any) || {};
       if (typeof modelConfig === 'string') {
         try { modelConfig = JSON.parse(modelConfig); } catch { modelConfig = {}; }
       }
 
-      // Check all locations where the model might exist
-      const filtered = models.filter(m => m.id !== decodedModelId);
-      const wasInProviderModels = filtered.length < models.length;
+      const wasInRegistry = registryRows.length > 0;
 
       // Check model_config fields
       const modelConfigFields = ['chatModel', 'embeddingModel', 'visionModel', 'imageModel', 'compactionModel', 'defaultModel'];
@@ -1956,7 +3189,7 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
       const wasInDisabled = Array.isArray(modelConfig.disabledModels) && modelConfig.disabledModels.includes(decodedModelId);
       const wasInAdditional = Array.isArray(modelConfig.additionalModels) && modelConfig.additionalModels.includes(decodedModelId);
 
-      if (!wasInProviderModels && !wasInModelConfig && !wasInDisabled && !wasInAdditional) {
+      if (!wasInRegistry && !wasInModelConfig && !wasInDisabled && !wasInAdditional) {
           return reply.code(404).send({ error: 'Model not found', message: `Model '${decodedModelId}' not found on this provider` });
       }
 
@@ -1976,16 +3209,36 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         updatedModelConfig.disabledModels = updatedModelConfig.disabledModels.filter((m: string) => m !== decodedModelId);
       }
 
+      // Delete Registry rows for this (provider, model) pair.
+      if (wasInRegistry) {
+        await prisma.modelRoleAssignment.deleteMany({
+          where: { provider: provider.name, model: decodedModelId },
+        });
+      }
+      // Update model_config only (no provider_config.models[] write — Registry is SoT).
       await prisma.lLMProvider.update({
         where: { id: provider.id },
         data: {
-          provider_config: { ...providerConfig, models: filtered },
           model_config: updatedModelConfig,
           updated_by: (request as any).user?.id
         }
       });
 
-      logger.info({ providerId: provider.id, modelId: decodedModelId }, 'Model removed from provider');
+      // Cascade: null chat_sessions.model for any session pinned to the deleted model
+      // so the next send falls through to the tenant default (or the router's "unknown
+      // model" error) instead of silently trying to route a dangling pin.
+      let sessionsCleared = 0;
+      try {
+        const r = await prisma.chatSession.updateMany({
+          where: { model: decodedModelId },
+          data: { model: null },
+        });
+        sessionsCleared = r.count;
+      } catch (cascadeErr: any) {
+        logger.warn({ error: cascadeErr?.message, modelId: decodedModelId }, '[admin] chat session cascade failed — non-fatal');
+      }
+
+      logger.info({ providerId: provider.id, modelId: decodedModelId, sessionsCleared }, 'Model removed from provider');
 
       // Audit log
       auditTrail.log({
@@ -2007,10 +3260,15 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         await invalidateAllModelCaches(logger);
       }
 
+      const remainingRegistryRows = await prisma.modelRoleAssignment.count({
+        where: { provider: provider.name },
+      });
       return reply.send({
         message: 'Model removed successfully',
         modelId: decodedModelId,
-        remainingModels: filtered.length
+        remainingModels: remainingRegistryRows,
+        selfReferencesCleared: plan.selfReferenceFields,
+        sessionsCleared,
       });
     } catch (error) {
       logger.error({ error, providerId: request.params.providerId, modelId: request.params.modelId }, 'Failed to remove model');
@@ -2124,7 +3382,10 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
             sanitized[k] = v;
           }
         }
-        return { ...p, auth_config: sanitized };
+        // Normalize BigInt → Number so the response JSON-serializes cleanly,
+        // and the UI's §11.5 useOptimisticVersion gets an integer it can POST back.
+        const version = typeof p.version === 'bigint' ? Number(p.version) : Number(p.version ?? 1);
+        return { ...p, auth_config: sanitized, version };
       });
       // SINGLE SOURCE OF TRUTH: Database is authoritative.
       // Env providers only shown if NOT already in DB (to avoid duplicates).
@@ -2154,7 +3415,8 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
         else if (type === 'aws-bedrock') ctx = ac.region || pc.region || '';
         else if (type === 'vertex-ai') ctx = pc.projectId || pc.location || '';
         if (ctx && !(p as any).display_name?.includes(ctx.slice(0, 10))) {
-          const slug = ctx.replace(/https?:\/\//, '').replace(/[^a-z0-9.-]/gi, '').slice(0, 30);
+          // Keep `:` so host:port stays readable (see same pattern at line ~149)
+          const slug = ctx.replace(/https?:\/\//, '').replace(/[^a-z0-9.\-:]/gi, '').slice(0, 30);
           if (slug) (p as any).display_name = `${(p as any).display_name} (${slug})`;
         }
       }
@@ -3148,39 +4410,11 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
     }
   });
 
-  /**
-   * GET /api/admin/llm-providers/slider-tiers
-   * Get model recommendations for each intelligence slider tier
-   * Used by SystemSettingsView to show tier configurations
-   */
-  fastify.get('/llm-providers/slider-tiers', async (request, reply) => {
-    try {
-      const { getModelCapabilityRegistry } = await import('../../services/ModelCapabilityRegistry.js');
-      const registry = getModelCapabilityRegistry();
-
-      if (!registry) {
-        return reply.code(503).send({
-          error: 'ModelCapabilityRegistry not initialized',
-          message: 'The model capability registry is not available'
-        });
-      }
-
-      // Get tier recommendations from registry
-      const tiers = registry.getSliderTierRecommendations();
-
-      return reply.send({
-        tiers,
-        timestamp: new Date().toISOString()
-      });
-
-    } catch (error) {
-      logger.error({ error }, 'Failed to get slider tier recommendations');
-      return reply.code(500).send({
-        error: 'Failed to get slider tiers',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
+  // /llm-providers/slider-tiers endpoint removed in 0.6.7 — slider rip
+  // (task #144 + umbrella #210). Was only consumed by SystemSettingsView's
+  // tier recommendation strip; removed along with the rest of slider
+  // residue. registry.getSliderTierRecommendations() may still exist
+  // in ModelCapabilityRegistry but is unreferenced after this edit.
 
   /**
    * GET /api/admin/llm-providers/discovery/status
@@ -4458,6 +5692,75 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
 
   // NOTE: Ollama multi-host admin endpoints are in admin-ollama.ts,
   // registered at /api/admin/ollama/* via admin.plugin.ts.
+
+  // ==========================================================================
+  // Tenant default_models (admin.system_configuration.default_models)
+  //
+  // Reads/writes the single tenant-default model per mode that ModelRouter
+  // falls back to when a chat request has no per-session pin. Source of
+  // truth is the DB; helm values seed this on first boot via
+  // LLMProviderSeeder, but the admin UI owns live edits.
+  // ==========================================================================
+  fastify.get('/llm-providers/default-models', async (_request, reply) => {
+    try {
+      const { prisma } = await import('../../utils/prisma.js');
+      const { getDefaults } = await import('../../services/model-routing/defaultModelsAdmin.js');
+      const defaults = await getDefaults(prisma as any);
+      return reply.send({ defaults });
+    } catch (error) {
+      logger.error({ error }, '[admin] failed to read default_models');
+      return reply.code(500).send({
+        error: 'Failed to read default models',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  fastify.put<{
+    Querystring: { force?: string };
+    Body: { chat?: string | null; code?: string | null; embedding?: string | null; vision?: string | null; imageGen?: string | null };
+  }>('/llm-providers/default-models', async (request, reply) => {
+    try {
+      const { prisma } = await import('../../utils/prisma.js');
+      const { putDefaults } = await import('../../services/model-routing/defaultModelsAdmin.js');
+      const force = (request.query as any)?.force === 'true';
+
+      const result = await putDefaults(prisma as any, logger, request.body || {}, {
+        allowUnregistered: force,
+      });
+
+      if (result.ok !== true) {
+        return reply.code(result.code).send({ error: result.error, message: result.message, details: result.details });
+      }
+
+      // Hot-reload the registry so new chats see the change immediately.
+      if (result.changed.length > 0 && providerManager) {
+        await invalidateAllModelCaches(logger);
+      }
+
+      auditTrail.log({
+        timestamp: new Date(),
+        eventType: AuditEventType.CREDENTIAL_UPDATE,
+        severity: AuditSeverity.INFO,
+        userId: (request as any).user?.id,
+        userEmail: (request as any).user?.email,
+        action: 'UPDATE_DEFAULT_MODELS',
+        resource: 'SystemConfiguration',
+        resourceId: 'default_models',
+        details: { changed: result.changed, defaults: result.defaults, force },
+        success: true,
+        ipAddress: request.ip,
+      }).catch(() => {});
+
+      return reply.send({ ok: true, defaults: result.defaults, changed: result.changed });
+    } catch (error) {
+      logger.error({ error }, '[admin] failed to update default_models');
+      return reply.code(500).send({
+        error: 'Failed to update default models',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
 
 };
 

@@ -23,8 +23,14 @@ import {
 } from 'recharts';
 import { apiRequest } from '../../../../utils/api';
 import { useTheme } from '../../../../contexts/ThemeContext';
-import { LLMSankeyModal } from '../LLM/LLMSankeyModal';
+import {
+  LLMSankeyModal,
+  SankeyChartHost,
+  buildSankeyData,
+  formatTokensCompact,
+} from '../LLM/LLMSankeyModal';
 import { AdminMetricCard, AdminFilterBar, InfoTooltip } from '../Shared';
+import { PageHeader } from '../../primitives-v2';
 
 interface DashboardOverviewProps {
   theme: string; // Kept for backwards compat but we use resolvedTheme from context
@@ -62,6 +68,11 @@ interface MetricsData {
     totalApiRequests?: number;
     apiErrorRate?: number;
     apiAvgResponseTime?: number;
+    // Distribution / breakdown wires for "API & Rate Limits" tab
+    responseTimeDistribution?: { bucket: string; count: number }[];
+    topEndpoints?: { endpoint: string; count: number }[];
+    authMethods?: { method: string; count: number }[];
+    sessionDuration?: { bucket: string; count: number }[];
   };
   timeSeries: {
     sessions: { timestamp: string; value: number }[];
@@ -499,60 +510,134 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
     );
   };
 
-  // Bar chart for model usage
+  // LLM Model Usage — INLINE LIVE SANKEY (B'-12).
+  // Was: horizontal BarChart with "Click to explore" pill that
+  // opened the modal. User: "make THIS graph in Dashboard overview a
+  // LIVE fucking sankey with ALL REAL DATA - LLM Model Usage - and
+  // ditch the CLICK TO EXPLORE". Card now embeds the same sankey
+  // engine the modal uses, fed the same metrics.modelUsage payload,
+  // height-shrunk to 320px to fit the dashboard grid.
   const ModelUsageChart = ({
     data,
-    onTitleClick
   }: {
-    data: { model: string; count: number; cost: number }[];
-    onTitleClick?: () => void;
-  }) => (
-    <div
-      className="rounded-xl p-4"
-      style={{
-        background: colors.cardBg,
-        border: `1px solid ${colors.cardBorder}`,
-        backdropFilter: 'blur(8px)'
-      }}
-    >
-      <h3
-        className="text-sm font-medium mb-4 cursor-pointer hover:underline transition-all inline-flex items-center gap-2"
-        style={{ color: colors.textSecondary }}
-        onClick={onTitleClick}
-        title="Click for interactive Sankey diagram"
+    data: { model: string; count: number; tokens?: number; cost: number }[];
+    onTitleClick?: () => void; // legacy prop tolerated by callers; ignored
+  }) => {
+    const modelUsage = data.map((d) => ({
+      model: d.model,
+      count: d.count ?? 0,
+      tokens: (d as any).tokens ?? 0,
+      cost: d.cost ?? 0,
+    }));
+    const sankeyData = buildSankeyData(modelUsage);
+    const sankeyColors = {
+      background: 'var(--color-background)',
+      cardBg: 'var(--color-surface)',
+      glassBg: 'var(--color-surfaceSecondary)',
+      border: 'var(--color-border)',
+      textPrimary: 'var(--color-text)',
+      textSecondary: 'var(--color-textSecondary)',
+      textMuted: 'var(--color-textMuted)',
+      accent: 'var(--color-primary)',
+    };
+    return (
+      <div
+        className="rounded-xl p-4"
+        style={{
+          background: colors.cardBg,
+          border: `1px solid ${colors.cardBorder}`,
+          backdropFilter: 'blur(8px)'
+        }}
       >
-        LLM Model Usage
-        <span
-          className="text-xs px-2 py-0.5 rounded-full"
+        <h3
+          className="text-sm font-medium mb-3"
+          style={{ color: colors.textSecondary }}
+        >
+          LLM Model Usage
+        </h3>
+        <SankeyChartHost
+          modelUsage={modelUsage}
+          sankeyData={sankeyData}
+          colors={sankeyColors}
+          isDark={resolvedTheme === 'dark'}
+          formatTokens={formatTokensCompact}
+          height={320}
+          flush
+        />
+      </div>
+    );
+  };
+
+  // Provider / Model usage histogram — horizontal bars sorted by call count.
+  // Complement to the sankey (which shows flow): this surfaces RAW VOLUME per
+  // model + cost-per-call inline, so operators can spot expensive low-volume
+  // models or high-volume cheap ones at a glance.
+  const ProviderModelHistogram = ({
+    data,
+  }: {
+    data: { model: string; count: number; tokens?: number; cost: number }[];
+  }) => {
+    const top = [...(data || [])]
+      .sort((a, b) => (b.count || 0) - (a.count || 0))
+      .slice(0, 8)
+      .map((d) => ({
+        model: d.model,
+        count: d.count || 0,
+        tokens: (d as any).tokens || 0,
+        cost: d.cost || 0,
+      }));
+    if (top.length === 0) {
+      return (
+        <div
+          className="rounded-xl p-4"
           style={{
-            background: 'color-mix(in srgb, var(--color-primary) 15%, transparent)',
-            color: colors.primary
+            background: colors.cardBg,
+            border: `1px solid ${colors.cardBorder}`,
+            backdropFilter: 'blur(8px)',
           }}
         >
-          Click to explore
-        </span>
-      </h3>
-      <div className="h-48">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data.slice(0, 6)} layout="vertical">
-            <CartesianGrid strokeDasharray="3 3" stroke={colors.gridLine} horizontal={false} />
-            <XAxis
-              type="number"
-              tickFormatter={formatNumber}
-              tick={{ fill: colors.axisTick, fontSize: 10 }}
-              axisLine={{ stroke: colors.axisLine }}
-            />
-            <YAxis
-              type="category"
-              dataKey="model"
-              width={100}
-              tick={{ fill: colors.axisTick, fontSize: 10 }}
-              axisLine={{ stroke: colors.axisLine }}
-            />
-            <Tooltip
-              content={({ active, payload }) => {
-                if (active && payload && payload.length) {
-                  const d = payload[0].payload;
+          <h3 className="text-sm font-medium mb-3" style={{ color: colors.textSecondary }}>
+            Provider / Model Usage
+          </h3>
+          <p className="text-xs" style={{ color: colors.textMuted }}>
+            No model usage in window — try widening the time range.
+          </p>
+        </div>
+      );
+    }
+    return (
+      <div
+        className="rounded-xl p-4"
+        style={{
+          background: colors.cardBg,
+          border: `1px solid ${colors.cardBorder}`,
+          backdropFilter: 'blur(8px)',
+        }}
+      >
+        <h3
+          className="text-sm font-medium mb-3 flex items-center gap-2"
+          style={{ color: colors.textSecondary }}
+        >
+          Provider / Model Usage
+          <InfoTooltip content="Top 8 models by request count. Bar = calls, label shows total cost in window." />
+        </h3>
+        <div className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={top} layout="vertical" margin={{ left: 60, right: 40 }}>
+              <CartesianGrid horizontal={false} stroke={colors.cardBorder} strokeOpacity={0.4} />
+              <XAxis type="number" stroke={colors.textMuted} fontSize={10} />
+              <YAxis
+                type="category"
+                dataKey="model"
+                stroke={colors.textMuted}
+                fontSize={10}
+                width={140}
+                tick={{ fill: colors.textPrimary }}
+              />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload || !payload.length) return null;
+                  const r = payload[0].payload as { model: string; count: number; tokens: number; cost: number };
                   return (
                     <div
                       style={{
@@ -560,123 +645,175 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                         border: `1px solid ${colors.tooltipBorder}`,
                         borderRadius: '8px',
                         padding: '8px 12px',
-                        boxShadow: colors.tooltipShadow
+                        boxShadow: colors.tooltipShadow,
                       }}
                     >
-                      <p style={{ color: colors.textPrimary, fontWeight: 600, fontSize: '13px' }}>{d.model}</p>
-                      <p style={{ color: colors.textSecondary, fontSize: 'var(--text-xs)' }}>Requests: {formatNumber(d.count)}</p>
-                      <p style={{ color: colors.primary, fontSize: 'var(--text-xs)' }}>Cost: ${d.cost.toFixed(2)}</p>
+                      <p style={{ color: colors.textPrimary, fontWeight: 600, fontSize: '13px' }}>{r.model}</p>
+                      <p style={{ color: colors.textSecondary, fontSize: 'var(--text-xs)' }}>{formatNumber(r.count)} calls</p>
+                      <p style={{ color: colors.textSecondary, fontSize: 'var(--text-xs)' }}>{formatNumber(r.tokens)} tokens</p>
+                      <p style={{ color: colors.textSecondary, fontSize: 'var(--text-xs)' }}>${r.cost.toFixed(2)}</p>
                     </div>
                   );
-                }
-                return null;
-              }}
-            />
-            <Bar dataKey="count" fill={colors.chartColors[0]} radius={[0, 4, 4, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-
-  // Pie chart for MCP tool usage
-  const MCPToolChart = ({ data }: { data: { tool: string; count: number }[] }) => (
-    <div
-      className="rounded-xl p-4"
-      style={{
-        background: colors.cardBg,
-        border: `1px solid ${colors.cardBorder}`,
-        backdropFilter: 'blur(8px)'
-      }}
-    >
-      <h3 className="text-sm font-medium mb-4 flex items-center gap-2" style={{ color: colors.textSecondary }}>
-        MCP Tool Usage
-        <InfoTooltip content="Most frequently called MCP tools across all chat sessions in the selected time range." />
-      </h3>
-      <div className="h-48 flex items-center">
-        <ResponsiveContainer width="50%" height="100%">
-          <PieChart>
-            <Pie
-              data={data.slice(0, 5)}
-              cx="50%"
-              cy="50%"
-              innerRadius={40}
-              outerRadius={70}
-              paddingAngle={2}
-              dataKey="count"
-            >
-              {data.slice(0, 5).map((_, index) => (
-                <Cell key={`cell-${index}`} fill={colors.chartColors[index % colors.chartColors.length]} />
-              ))}
-            </Pie>
-            <Tooltip
-              content={({ active, payload }) => {
-                if (active && payload && payload.length) {
-                  return (
-                    <div
-                      style={{
-                        background: colors.tooltipBg,
-                        border: `1px solid ${colors.tooltipBorder}`,
-                        borderRadius: '8px',
-                        padding: '8px 12px',
-                        boxShadow: colors.tooltipShadow
-                      }}
-                    >
-                      <p style={{ color: colors.textPrimary, fontWeight: 600, fontSize: '13px' }}>{payload[0].name}</p>
-                      <p style={{ color: colors.textSecondary, fontSize: 'var(--text-xs)' }}>{payload[0].value} calls</p>
-                    </div>
-                  );
-                }
-                return null;
-              }}
-            />
-          </PieChart>
-        </ResponsiveContainer>
-        <div className="flex-1 space-y-2">
-          {data.slice(0, 5).map((item, i) => (
-            <div key={item.tool} className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: colors.chartColors[i % colors.chartColors.length] }}
-                />
-                <span className="text-xs truncate max-w-[120px]" style={{ color: colors.textMuted }}>
-                  {item.tool}
-                </span>
-              </div>
-              <span className="text-xs font-medium" style={{ color: colors.textPrimary }}>{item.count}</span>
-            </div>
-          ))}
+                }}
+              />
+              <Bar dataKey="count" radius={[0, 1, 1, 0]}>
+                {top.map((_, i) => (
+                  <Cell key={`pmh-${i}`} fill={colors.chartColors[i % colors.chartColors.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
-    </div>
+    );
+  };
+
+  // Generic donut/ring chart for {label, count}[] payloads. Renders an
+  // explicit empty state when the data is missing or all-zero so the
+  // panel reads "no calls in window" instead of going blank — the
+  // user's complaint that the rings "don't work" was the empty payload.
+  const RingChart = ({
+    title,
+    tooltip,
+    data,
+    valueLabel = 'calls',
+    emptyHint = 'No data in selected time range — try widening the window.',
+  }: {
+    title: string;
+    tooltip: string;
+    data: { name: string; count: number }[];
+    valueLabel?: string;
+    emptyHint?: string;
+  }) => {
+    const slices = (data || []).filter((d) => (d.count || 0) > 0).slice(0, 5);
+    return (
+      <div
+        className="rounded-xl p-4"
+        style={{
+          background: colors.cardBg,
+          border: `1px solid ${colors.cardBorder}`,
+          backdropFilter: 'blur(8px)',
+        }}
+      >
+        <h3 className="text-sm font-medium mb-4 flex items-center gap-2" style={{ color: colors.textSecondary }}>
+          {title}
+          <InfoTooltip content={tooltip} />
+        </h3>
+        {slices.length === 0 ? (
+          <div className="h-48 flex flex-col items-center justify-center gap-2 text-center" style={{ color: colors.textMuted, fontSize: 12 }}>
+            <Activity size={28} style={{ opacity: 0.3 }} />
+            <p style={{ maxWidth: 240 }}>{emptyHint}</p>
+          </div>
+        ) : (
+          <div className="h-48 flex items-center">
+            <ResponsiveContainer width="50%" height="100%">
+              <PieChart>
+                <Pie
+                  data={slices}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={40}
+                  outerRadius={70}
+                  paddingAngle={2}
+                  dataKey="count"
+                  nameKey="name"
+                >
+                  {slices.map((_, i) => (
+                    <Cell key={`cell-${i}`} fill={colors.chartColors[i % colors.chartColors.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div style={{ background: colors.tooltipBg, border: `1px solid ${colors.tooltipBorder}`, borderRadius: '8px', padding: '8px 12px', boxShadow: colors.tooltipShadow }}>
+                          <p style={{ color: colors.textPrimary, fontWeight: 600, fontSize: '13px' }}>{payload[0].name}</p>
+                          <p style={{ color: colors.textSecondary, fontSize: 'var(--text-xs)' }}>{payload[0].value} {valueLabel}</p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="flex-1 space-y-2">
+              {slices.map((item, i) => (
+                <div key={item.name} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.chartColors[i % colors.chartColors.length] }} />
+                    <span className="text-xs truncate max-w-[120px]" style={{ color: colors.textMuted }}>{item.name}</span>
+                  </div>
+                  <span className="text-xs font-medium" style={{ color: colors.textPrimary }}>{item.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Adapters preserving the legacy call sites. MCPToolChart is also called
+  // from the MCP & Tools tab below, so keep the old prop shape.
+  const MCPToolChart = ({ data }: { data: { tool: string; count: number }[] }) => (
+    <RingChart
+      title="MCP Tool Usage"
+      tooltip="Most frequently called MCP tools across all chat sessions in the selected time range."
+      data={(data || []).map((d) => ({ name: d.tool, count: d.count }))}
+      valueLabel="calls"
+      emptyHint="No MCP tool calls yet — make a request that uses tools to populate this."
+    />
+  );
+
+  const AgentUsageChart = ({ data }: { data: { name: string; count: number }[] }) => (
+    <RingChart
+      title="Agent Usage"
+      tooltip="Most frequently invoked agents across workflows + flows in the selected time range."
+      data={data}
+      valueLabel="runs"
+      emptyHint="No agent runs in window — flows / workflows haven't dispatched any agents yet."
+    />
   );
 
   if (error) {
     return (
-      <div className="p-8 text-center">
-        <Activity size={48} className="mx-auto mb-4" style={{ color: colors.danger }} />
-        <h3 className="text-lg font-medium mb-2" style={{ color: colors.textPrimary }}>Failed to load metrics</h3>
-        <p className="mb-4" style={{ color: colors.textSecondary }}>{error}</p>
-        <button
-          onClick={fetchMetrics}
-          className="px-4 py-2 rounded-lg transition-colors"
-          style={{ background: colors.primary, color: 'var(--color-text)' }}
-        >
-          Retry
-        </button>
+      <div className="space-y-6">
+        <PageHeader
+          crumbs={['Admin', 'Overview']}
+          title="Dashboard Overview"
+          explainer="Real-time system performance metrics across all platform modes: Chat, Code, Flows, and Agents."
+        />
+        <div className="p-8 text-center">
+          <Activity size={48} className="mx-auto mb-4" style={{ color: colors.danger }} />
+          <h3 className="text-lg font-medium mb-2" style={{ color: colors.textPrimary }}>Failed to load metrics</h3>
+          <p className="mb-4" style={{ color: colors.textSecondary }}>{error}</p>
+          <button
+            onClick={fetchMetrics}
+            className="px-4 py-2 rounded-lg transition-colors"
+            style={{ background: colors.primary, color: 'var(--color-text)' }}
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Overview']}
+        title="Dashboard Overview"
+        explainer="Real-time system performance metrics across all platform modes: Chat, Code, Flows, and Agents."
+        actions={[
+          { label: 'Refresh', onClick: fetchMetrics },
+        ]}
+      />
+
+      {/* Filter bar */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-bold" style={{ color: colors.textPrimary }}>Dashboard Overview</h2>
-          <InfoTooltip content="Real-time system performance metrics across all platform modes: Chat, Code, Flows, and Agents." />
-        </div>
         <AdminFilterBar
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -706,6 +843,74 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
 
       {metrics && (
         <>
+          {/*
+            Tab Bar — moved to TOP of dashboard content (B'-10).
+            Uses the v3 admin shell signature: uppercase 11px tracked
+            telemetry typography, hairline 1px border below, sticky to
+            the scroll container so it stays reachable from any depth.
+          */}
+          <div
+            className="aw-dash-tabs"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0,
+              padding: '0 4px',
+              borderBottom: '1px solid var(--line-1, var(--color-border))',
+              background: 'var(--bg-1, var(--color-surface))',
+              position: 'sticky',
+              top: 0,
+              zIndex: 5,
+              overflowX: 'auto',
+            }}
+          >
+            {DASHBOARD_TABS
+              .filter(tab => tab.id !== 'openagentic' || (metrics.openagenticMetrics?.totalRequests ?? 0) > 0)
+              .map((tab) => {
+                const TabIcon = tab.icon;
+                const isActive = dashTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setDashTab(tab.id)}
+                    style={{
+                      appearance: 'none',
+                      background: 'none',
+                      border: 0,
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-v3-tele, var(--font-v3-body, inherit))',
+                      fontSize: 11,
+                      letterSpacing: '0.18em',
+                      textTransform: 'uppercase',
+                      padding: '10px 14px',
+                      color: isActive ? 'var(--accent, var(--color-primary))' : 'var(--fg-3, var(--text-tertiary))',
+                      position: 'relative',
+                      whiteSpace: 'nowrap',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <TabIcon size={12} />
+                    {tab.label}
+                    {isActive && (
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          position: 'absolute',
+                          left: 14,
+                          right: 14,
+                          bottom: -1,
+                          height: 1,
+                          background: 'var(--accent, var(--color-primary))',
+                        }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+          </div>
+
           {/* Primary Stats: All Platform Modes */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
             <StatCard icon={Users} label="Total Users" value={metrics.summary.totalUsers} subValue={`${metrics.summary.activeUsers} active`} />
@@ -750,36 +955,29 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
             </div>
           </div>
 
-          {/* Tab Bar */}
-          <div
-            className="flex items-center gap-1 rounded-lg p-1 overflow-x-auto"
-            style={{ background: 'color-mix(in srgb, var(--color-text) 5%, transparent)' }}
-          >
-            {DASHBOARD_TABS
-              .filter(tab => tab.id !== 'openagentic' || (metrics.openagenticMetrics?.totalRequests ?? 0) > 0)
-              .map((tab) => {
-                const TabIcon = tab.icon;
-                const isActive = dashTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setDashTab(tab.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap"
-                    style={{
-                      background: isActive ? colors.primary : 'transparent',
-                      color: isActive ? 'var(--color-text)' : colors.textSecondary
-                    }}
-                  >
-                    <TabIcon size={13} />
-                    {tab.label}
-                  </button>
-                );
-              })}
-          </div>
+          {/* (Tab bar moved to top — see above; legacy second copy removed in B'-10.) */}
 
           {/* === TAB: Overview — All Platform Activity === */}
           {dashTab === 'overview' && (
             <div className="space-y-4">
+              {/* AT-A-GLANCE VISUALIZATIONS — the most important graphs surface first.
+                  Per user direction: cards are secondary; sankey + MCP ring + per-model
+                  histogram are what operators look at to read system state. */}
+
+              {/* LLM Model Usage — full-width inline sankey */}
+              <ModelUsageChart data={metrics.modelUsage} />
+
+              {/* Provider / Model Usage — line graph (timeseries by model)
+                  matches the visual language of the other timeseries cards
+                  on this tab instead of the prior bar histogram. */}
+              <MultiLineChart title="Cost by Model" series={metrics.costByModel} />
+
+              {/* 2-column: MCP Tool Usage ring + Agent Usage ring */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <MCPToolChart data={metrics.mcpToolUsage} />
+                <AgentUsageChart data={(metrics.agentMetrics?.byAgent ?? []).map(a => ({ name: a.name, count: a.count }))} />
+              </div>
+
               {/* Row 1: Activity charts */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <MetricChart title="Chat Sessions" data={metrics.timeSeries.sessions} chartColor={colors.chartColors[0]} />
@@ -947,16 +1145,16 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                         className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
                         style={{
                           background: isEstimated
-                            ? 'color-mix(in srgb, var(--color-warning, #f59e0b) 15%, transparent)'
+                            ? 'color-mix(in srgb, var(--color-warning) 15%, transparent)'
                             : 'color-mix(in srgb, var(--color-success) 15%, transparent)',
                           color: isEstimated
-                            ? 'var(--color-warning, #f59e0b)'
+                            ? 'var(--ap-warn)'
                             : 'var(--color-success)',
-                          border: `1px solid ${isEstimated ? 'color-mix(in srgb, var(--color-warning, #f59e0b) 30%, transparent)' : 'color-mix(in srgb, var(--color-success) 30%, transparent)'}`,
+                          border: `1px solid ${isEstimated ? 'color-mix(in srgb, var(--color-warning, var(--ap-warn)) 30%, transparent)' : 'color-mix(in srgb, var(--color-success) 30%, transparent)'}`,
                         }}
                       >
                         <span className="w-1.5 h-1.5 rounded-full" style={{
-                          background: isEstimated ? 'var(--color-warning, #f59e0b)' : 'var(--color-success)',
+                          background: isEstimated ? 'var(--ap-warn)' : 'var(--color-success)',
                         }} />
                         {ps.source}: {ps.count} requests (${ps.totalCost.toFixed(2)})
                         {isEstimated && ' — estimated'}
@@ -1272,191 +1470,216 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
           {/* === TAB: API & Rate Limits === */}
           {dashTab === 'api' && (
             <div className="space-y-4">
-              {/* API Metric Cards */}
+              {/* API Metric Cards — REAL DATA ONLY (B'-10).
+                  Previously contained fabricated trends (12, -0.1) +
+                  hardcoded fallbacks (`* 12`, `|| 137`). Now strict —
+                  reads only api-surfaced fields; missing values render
+                  '—' not a fabrication. */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <AdminMetricCard
                   label="API Requests"
-                  value={(metrics.summary.totalApiRequests || metrics.summary.totalSessions * 12 || 0).toLocaleString()}
+                  value={metrics.summary.totalApiRequests != null ? metrics.summary.totalApiRequests.toLocaleString() : '—'}
                   icon={<Key size={18} />}
                   subtext={`${timeRange} period`}
-                  trend={{ value: 12, direction: 'up' }}
                 />
                 <AdminMetricCard
                   label="Error Rate"
-                  value={`${(metrics.summary.apiErrorRate || 0.3).toFixed(1)}%`}
+                  value={metrics.summary.apiErrorRate != null ? `${metrics.summary.apiErrorRate.toFixed(1)}%` : '—'}
                   icon={<AlertTriangle size={18} />}
                   subtext="4xx + 5xx responses"
-                  trend={{ value: 0.1, direction: 'down' }}
                 />
                 <AdminMetricCard
                   label="Avg Response"
-                  value={`${(metrics.summary.apiAvgResponseTime || 137).toFixed(0)}ms`}
+                  value={metrics.summary.apiAvgResponseTime != null ? `${metrics.summary.apiAvgResponseTime.toFixed(0)}ms` : '—'}
                   icon={<Clock size={18} />}
                   subtext="p50 latency"
                 />
                 <AdminMetricCard
                   label="Rate Limited (429)"
-                  value="0"
+                  value={(metrics.summary as any).rateLimited429 != null ? String((metrics.summary as any).rateLimited429) : '—'}
                   icon={<Gauge size={18} />}
                   subtext="Blocked requests"
-                  trend={{ value: 0, direction: 'neutral' }}
                 />
               </div>
 
-              {/* API Requests Over Time Chart */}
+              {/* API Requests Over Time Chart — REAL DATA ONLY (B'-10).
+                  Previous fallback fabricated values via `s.value * 8 +
+                  Math.random()*20`; that violated the no-mock-data rule.
+                  When the timeseries is missing, surface an empty-state
+                  pointing operators at the underlying endpoint. */}
               <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
                 <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
                   API Requests Over Time
                 </h3>
-                <ResponsiveContainer width="100%" height={240}>
-                  <AreaChart data={metrics.timeSeries.apiRequests || metrics.timeSeries.sessions.map(s => ({
-                    ...s,
-                    value: s.value * 8 + Math.floor(Math.random() * 20),
-                    errors: Math.floor(s.value * 0.02),
-                  }))}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                    <XAxis dataKey="timestamp" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }}
-                      tickFormatter={(v: string) => { try { const d = new Date(v); return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`; } catch { return v; } }}
-                    />
-                    <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'var(--color-surfaceSecondary)',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 8,
-                        fontSize: 12,
-                        color: 'var(--text-primary)',
-                      }}
-                    />
-                    <Area type="monotone" dataKey="value" stroke="#6366f1" fill="#6366f1" fillOpacity={0.08} strokeWidth={2} name="Requests" />
-                    <Area type="monotone" dataKey="errors" stroke="#ef4444" fill="#ef4444" fillOpacity={0.15} strokeWidth={1.5} name="Errors" />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {metrics.timeSeries.apiRequests && metrics.timeSeries.apiRequests.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <AreaChart data={metrics.timeSeries.apiRequests}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                      <XAxis dataKey="timestamp" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }}
+                        tickFormatter={(v: string) => { try { const d = new Date(v); return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`; } catch { return v; } }}
+                      />
+                      <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--color-surfaceSecondary)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: 8,
+                          fontSize: 12,
+                          color: 'var(--text-primary)',
+                        }}
+                      />
+                      <Area type="monotone" dataKey="value" stroke="var(--ap-accent)" fill="var(--ap-accent)" fillOpacity={0.08} strokeWidth={2} name="Requests" />
+                      <Area type="monotone" dataKey="errors" stroke="var(--ap-err)" fill="var(--ap-err)" fillOpacity={0.15} strokeWidth={1.5} name="Errors" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-v3-mono, monospace)', fontSize: 12 }}>
+                    no api-request timeseries — wire <code>timeSeries.apiRequests</code> in <code>/api/admin/dashboard/metrics</code>
+                  </div>
+                )}
               </div>
 
               {/* Two charts side by side */}
               <div className="grid grid-cols-2 gap-4">
-                {/* Response Time Distribution */}
+                {/* Response Time Distribution — REAL DATA ONLY (B'-10).
+                    Previously hardcoded a 6-bucket histogram. Now uses
+                    metrics.summary.responseTimeDistribution if the api
+                    surfaces it; otherwise renders an empty-state. */}
                 <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
                   <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
                     Response Time (ms)
                   </h3>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <BarChart data={[
-                      { range: '<50ms', count: 45 },
-                      { range: '50-100', count: 30 },
-                      { range: '100-250', count: 15 },
-                      { range: '250-500', count: 7 },
-                      { range: '500-1s', count: 2 },
-                      { range: '>1s', count: 1 },
-                    ]}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                      <XAxis dataKey="range" tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} />
-                      <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} unit="%" />
-                      <Tooltip contentStyle={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
-                      <Bar dataKey="count" fill="#6366f1" radius={[3, 3, 0, 0]} name="% of requests" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {Array.isArray(metrics.summary.responseTimeDistribution)
+                    && metrics.summary.responseTimeDistribution.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={180}>
+                      <BarChart data={metrics.summary.responseTimeDistribution}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                        <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} />
+                        <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
+                        <Tooltip contentStyle={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
+                        <Bar dataKey="count" fill="var(--ap-accent)" radius={[3, 3, 0, 0]} name="Requests" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-v3-mono, monospace)', fontSize: 12, textAlign: 'center', padding: 8 }}>
+                      no response-time histogram — wire <code>summary.responseTimeDistribution</code> in <code>/api/admin/dashboard/metrics</code>
+                    </div>
+                  )}
                 </div>
 
-                {/* Requests by Endpoint */}
+                {/* Requests by Endpoint — REAL DATA ONLY (B'-10).
+                    Previously hardcoded 5 endpoints. Wires to /admin/api-requests/top-endpoints
+                    which the metrics endpoint may surface as summary.topEndpoints. */}
                 <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
                   <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
                     Top Endpoints
                   </h3>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <BarChart data={[
-                      { endpoint: '/chat', requests: 450 },
-                      { endpoint: '/workflows', requests: 120 },
-                      { endpoint: '/mcp', requests: 95 },
-                      { endpoint: '/agents', requests: 80 },
-                      { endpoint: '/admin', requests: 45 },
-                    ]} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                      <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
-                      <YAxis dataKey="endpoint" type="category" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} width={80} />
-                      <Tooltip contentStyle={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
-                      <Bar dataKey="requests" fill="#00D26A" radius={[0, 3, 3, 0]} name="Requests" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {Array.isArray(metrics.summary.topEndpoints)
+                    && metrics.summary.topEndpoints.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={180}>
+                      <BarChart data={metrics.summary.topEndpoints} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                        <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
+                        <YAxis dataKey="endpoint" type="category" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} width={80} />
+                        <Tooltip contentStyle={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
+                        <Bar dataKey="count" fill="var(--ap-ok)" radius={[0, 3, 3, 0]} name="Requests" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-v3-mono, monospace)', fontSize: 12, textAlign: 'center', padding: 8 }}>
+                      no top-endpoints data — wire <code>summary.topEndpoints</code> in <code>/api/admin/dashboard/metrics</code>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Status codes breakdown */}
+              {/* Status codes breakdown — REAL DATA ONLY (B'-10).
+                  Previously 5 hardcoded percentages. Pulls from
+                  metrics.summary.statusCodes when available. */}
               <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
                 <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>HTTP Status Codes</h3>
-                <div className="grid grid-cols-5 gap-3">
-                  {[
-                    { code: '2xx', pct: 96.5, color: '#00D26A', label: 'Success' },
-                    { code: '3xx', pct: 1.2, color: '#6366f1', label: 'Redirect' },
-                    { code: '4xx', pct: 1.8, color: '#f59e0b', label: 'Client Error' },
-                    { code: '429', pct: 0.0, color: '#ef4444', label: 'Rate Limited' },
-                    { code: '5xx', pct: 0.5, color: '#ef4444', label: 'Server Error' },
-                  ].map(s => (
-                    <div key={s.code} className="text-center p-3 rounded-lg" style={{ backgroundColor: 'var(--color-surfaceSecondary)' }}>
-                      <div className="text-lg font-bold" style={{ color: s.color }}>{s.pct}%</div>
-                      <div className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{s.code}</div>
-                      <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{s.label}</div>
-                    </div>
-                  ))}
-                </div>
+                {Array.isArray((metrics.summary as any).statusCodes)
+                  && (metrics.summary as any).statusCodes.length > 0 ? (
+                  <div className="grid grid-cols-5 gap-3">
+                    {((metrics.summary as any).statusCodes as Array<{ code: string; pct: number; color?: string; label?: string }>).map((s) => (
+                      <div key={s.code} className="text-center p-3 rounded-lg" style={{ backgroundColor: 'var(--color-surfaceSecondary)' }}>
+                        <div className="text-lg font-bold" style={{ color: s.color ?? 'var(--ap-accent)' }}>{s.pct}%</div>
+                        <div className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{s.code}</div>
+                        <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{s.label ?? ''}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ padding: '24px 8px', textAlign: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-v3-mono, monospace)', fontSize: 12 }}>
+                    no http-status-code breakdown — wire <code>summary.statusCodes</code> in <code>/api/admin/dashboard/metrics</code>
+                  </div>
+                )}
               </div>
 
-              {/* Auth & Session Metrics */}
+              {/* Auth & Session Metrics — REAL DATA ONLY (B'-10).
+                  Previously contained hardcoded fallbacks (`|| 5`,
+                  `* 12`, fake auth-method math). Now strictly uses
+                  fields the api surfaces; missing values render '—'. */}
               <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
                 <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Authentication & Sessions</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                   {[
-                    { label: 'Active Sessions', value: metrics.summary.activeUsers || 3, icon: <UserCheck size={16} />, color: 'var(--color-success)' },
-                    { label: 'Logins (24h)', value: Math.max(metrics.summary.totalSessions || 0, 5), icon: <Key size={16} />, color: 'var(--color-primary)' },
-                    { label: 'Failed Logins', value: 0, icon: <AlertTriangle size={16} />, color: 'var(--color-error)' },
-                    { label: 'Token Validations', value: (metrics.summary.totalApiRequests || metrics.summary.totalSessions * 12 || 0), icon: <CheckCircle size={16} />, color: 'var(--color-info, var(--color-primary))' },
+                    { label: 'Active Sessions', value: metrics.summary.activeUsers, icon: <UserCheck size={16} />, color: 'var(--color-success)' },
+                    { label: 'Logins (24h)', value: (metrics.summary as any).logins24h ?? metrics.summary.totalSessions, icon: <Key size={16} />, color: 'var(--color-primary)' },
+                    { label: 'Failed Logins', value: (metrics.summary as any).failedLogins24h, icon: <AlertTriangle size={16} />, color: 'var(--color-error)' },
+                    { label: 'Token Validations', value: (metrics.summary as any).tokenValidations24h ?? metrics.summary.totalApiRequests, icon: <CheckCircle size={16} />, color: 'var(--color-info, var(--color-primary))' },
                   ].map(m => (
                     <div key={m.label} className="p-3 rounded-lg" style={{ backgroundColor: 'var(--color-surfaceSecondary)' }}>
                       <div className="flex items-center gap-2 mb-1">
                         <span style={{ color: m.color }}>{m.icon}</span>
                         <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{m.label}</span>
                       </div>
-                      <div className="text-xl font-bold" style={{ color: m.color }}>{typeof m.value === 'number' ? m.value.toLocaleString() : m.value}</div>
+                      <div className="text-xl font-bold" style={{ color: m.color }}>
+                        {typeof m.value === 'number' ? m.value.toLocaleString() : (m.value ?? '—')}
+                      </div>
                     </div>
                   ))}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  {/* Auth Method Breakdown */}
+                  {/* Auth Method Breakdown — wires to summary.authMethods */}
                   <div>
                     <h4 className="text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Auth Method</h4>
-                    <ResponsiveContainer width="100%" height={140}>
-                      <BarChart data={[
-                        { method: 'Azure AD SSO', count: Math.max(metrics.summary.totalSessions || 0, 4) },
-                        { method: 'API Key', count: Math.floor((metrics.summary.totalApiRequests || 100) * 0.15) },
-                        { method: 'Session Token', count: Math.floor((metrics.summary.totalApiRequests || 100) * 0.8) },
-                      ]}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                        <XAxis dataKey="method" tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} />
-                        <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
-                        <Tooltip contentStyle={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
-                        <Bar dataKey="count" fill="#6366f1" radius={[3, 3, 0, 0]} name="Authentications" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    {Array.isArray(metrics.summary.authMethods)
+                      && metrics.summary.authMethods.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={140}>
+                        <BarChart data={metrics.summary.authMethods}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                          <XAxis dataKey="method" tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} />
+                          <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
+                          <Tooltip contentStyle={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
+                          <Bar dataKey="count" fill="var(--ap-accent)" radius={[3, 3, 0, 0]} name="Authentications" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-v3-mono, monospace)', fontSize: 11, textAlign: 'center' }}>
+                        no auth-method breakdown — wire <code>summary.authMethods</code>
+                      </div>
+                    )}
                   </div>
-                  {/* Session Duration */}
+                  {/* Session Duration — wires to summary.sessionDuration */}
                   <div>
                     <h4 className="text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Session Duration</h4>
-                    <ResponsiveContainer width="100%" height={140}>
-                      <BarChart data={[
-                        { range: '<5m', count: 15 },
-                        { range: '5-30m', count: 35 },
-                        { range: '30m-1h', count: 25 },
-                        { range: '1-4h', count: 18 },
-                        { range: '>4h', count: 7 },
-                      ]}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                        <XAxis dataKey="range" tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} />
-                        <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} unit="%" />
-                        <Tooltip contentStyle={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
-                        <Bar dataKey="count" fill="#00D26A" radius={[3, 3, 0, 0]} name="% of sessions" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    {Array.isArray(metrics.summary.sessionDuration)
+                      && metrics.summary.sessionDuration.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={140}>
+                        <BarChart data={metrics.summary.sessionDuration}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                          <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} />
+                          <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
+                          <Tooltip contentStyle={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
+                          <Bar dataKey="count" fill="var(--ap-ok)" radius={[3, 3, 0, 0]} name="Sessions" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-v3-mono, monospace)', fontSize: 11, textAlign: 'center' }}>
+                        no session-duration breakdown — wire <code>summary.sessionDuration</code>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

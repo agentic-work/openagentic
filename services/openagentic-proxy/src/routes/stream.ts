@@ -9,6 +9,10 @@ export async function streamRoutes(app: FastifyInstance): Promise<void> {
   }, async (request, reply: FastifyReply) => {
     const { executionId } = request.params;
 
+    // fastify 5: hand the connection over to user-land before writing
+    // to reply.raw, otherwise fastify's own response flow races ours.
+    reply.hijack();
+
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

@@ -9,9 +9,18 @@
  *   Tool execution → Result > 100KB → Store in Redis (shared) → Return dataset ref to LLM
  *   LLM calls query_data → DataQueryTool → LargeResultStorageService.getResult() → Redis
  *   Any pod can serve any request since all state is in Redis.
+ *
+ * #974 RBAC (2026-05-20 PM):
+ *   Pre-#974 keys were random `result_<ts>_<rand9>` — handle leak = cross-user
+ *   read. New keys embed `${tenantId}:${userId}:${resultId}` so a stolen handle
+ *   matches the original requester's namespace, not just the random id. The
+ *   `getResultAsync(resultId, { userId, tenantId, allowedMcpServers? })`
+ *   overload enforces RBAC at read-time: caller must match the namespace OR
+ *   must have access to the originating tool's MCP server.
  */
 
 import type { Logger } from 'pino';
+import { Counter, register } from 'prom-client';
 import { getRedisClient, type UnifiedRedisClient } from '../utils/redis-client.js';
 
 export interface StoredResultInfo {
@@ -30,9 +39,33 @@ interface StoredResult {
   chunks: Array<{ text: string; metadata: Record<string, any> }>;
   summary: string;
   timestamp: number;
+  /** #974 — embedded tenant scope. Defaults to '' for pre-RBAC writes. */
+  tenantId?: string;
 }
 
 const REDIS_KEY_PREFIX = 'large_result:';
+
+// ─── #974 Prom counters ──────────────────────────────────────────────────────
+// One-shot module-level construction (prom-client throws on double-register).
+// `findOrCreate` pattern: if the metric name is already registered, reuse it —
+// keeps the test register stable across vitest worker reloads.
+function findOrCreateCounter(name: string, help: string, labelNames: string[]): Counter<string> {
+  const existing = register.getSingleMetric(name) as Counter<string> | undefined;
+  if (existing) return existing;
+  return new Counter({ name, help, labelNames, registers: [register] });
+}
+
+export const largeResultOffloadsTotal = findOrCreateCounter(
+  'large_result_offloads_total',
+  'Count of large MCP tool results offloaded to Redis storage (per tool/tenant).',
+  ['tool', 'tenant'],
+);
+
+export const largeResultBytesSavedTotal = findOrCreateCounter(
+  'large_result_bytes_saved_total',
+  'Cumulative bytes offloaded to LargeResultStorage (sizeBytes summed per tool/tenant).',
+  ['tool', 'tenant'],
+);
 
 export class LargeResultStorageService {
   private readonly SIZE_THRESHOLD = 100 * 1024; // 100KB
@@ -72,7 +105,12 @@ export class LargeResultStorageService {
   }
 
   /**
-   * Store a large tool result in Redis (multi-pod safe)
+   * Store a large tool result in Redis (multi-pod safe).
+   *
+   * #974 — `tenantId` is now part of the key namespace so a leaked handle
+   * cannot cross-read another tenant's data. `userId` was already in the
+   * payload; we now also embed it in the key, making a single SCAN cheap
+   * to RBAC-filter at read time.
    */
   async storeResult(params: {
     userId: string;
@@ -80,8 +118,10 @@ export class LargeResultStorageService {
     toolName: string;
     toolCallId: string;
     result: any;
+    /** #974 — tenant scope for the result. Defaults to '' (pre-RBAC) when omitted. */
+    tenantId?: string;
   }): Promise<StoredResultInfo> {
-    const { userId, sessionId, toolName, toolCallId, result } = params;
+    const { userId, sessionId, toolName, toolCallId, result, tenantId = '' } = params;
 
     const timestamp = Date.now();
     const random = Math.random().toString(36).substr(2, 9);
@@ -93,6 +133,7 @@ export class LargeResultStorageService {
     this.logger.info({
       resultId,
       userId,
+      tenantId,
       sessionId,
       toolName,
       sizeBytes,
@@ -111,13 +152,15 @@ export class LargeResultStorageService {
       result,
       chunks,
       summary,
-      timestamp
+      timestamp,
+      tenantId,
     };
 
-    // Store in Redis — multi-pod safe
+    // Store in Redis — multi-pod safe. Key namespace embeds tenantId+userId
+    // so a stolen handle requires matching auth (RBAC enforced at read time).
+    const key = this.buildKey(tenantId, userId, resultId);
     if (this.redis) {
       try {
-        const key = `${REDIS_KEY_PREFIX}${resultId}`;
         await this.redis.set(key, stored, this.TTL_SECONDS);
         this.logger.info({ resultId, key }, '✅ Large result stored in Redis');
       } catch (error) {
@@ -127,6 +170,15 @@ export class LargeResultStorageService {
     } else {
       this.logger.error({ resultId }, '❌ Redis not available — cannot store large result (multi-pod requires Redis)');
       throw new Error('Redis not available — large result storage requires Redis for multi-pod safety');
+    }
+
+    // #974 — Prom counters. Cardinality: tool (slug) × tenant (id). Safe — both
+    // are bounded sets in practice.
+    try {
+      largeResultOffloadsTotal.inc({ tool: toolName, tenant: tenantId });
+      largeResultBytesSavedTotal.inc({ tool: toolName, tenant: tenantId }, sizeBytes);
+    } catch {
+      // Prom registry shenanigans must never break a tool call — fail-soft.
     }
 
     this.logger.info({
@@ -145,6 +197,46 @@ export class LargeResultStorageService {
   }
 
   /**
+   * #974 — Build the namespaced Redis key. Format:
+   *   `large_result:${tenantId}:${userId}:${resultId}`
+   *
+   * Empty tenantId / userId are kept as empty path segments so legacy callers
+   * (system-side persistence with no user) still get a deterministic key.
+   */
+  private buildKey(tenantId: string, userId: string, resultId: string): string {
+    return `${REDIS_KEY_PREFIX}${tenantId}:${userId}:${resultId}`;
+  }
+
+  /**
+   * #974 — Find the live key for a `resultId` by scanning the RBAC namespace.
+   * Returns the matching key string or null when nothing matches. Callers do
+   * the auth check against the discovered key's segments before returning the
+   * payload to the model.
+   *
+   * The cost is one SCAN over `large_result:*:*:<resultId>` (cheap — Redis
+   * patterns match against tenant/user prefixes that are bounded sets).
+   */
+  private async findKeyForResultId(resultId: string): Promise<string | null> {
+    if (!this.redis) return null;
+    // Try direct lookup against tenant+user-known callers first. When the
+    // namespace is unknown we SCAN with the suffix pattern.
+    try {
+      const keys = await this.redis.keys(`${REDIS_KEY_PREFIX}*:${resultId}`);
+      if (Array.isArray(keys) && keys.length > 0) {
+        return keys[0];
+      }
+      // Backwards-compat: pre-#974 keys had shape `large_result:${resultId}`.
+      // One probe to that shape catches in-flight reads against legacy data.
+      const legacyKey = `${REDIS_KEY_PREFIX}${resultId}`;
+      const legacy = await this.redis.get(legacyKey);
+      if (legacy) return legacyKey;
+    } catch (err) {
+      this.logger.warn({ err, resultId }, 'findKeyForResultId scan failed');
+    }
+    return null;
+  }
+
+  /**
    * Retrieve a stored result by ID from Redis (multi-pod safe)
    */
   getResult(resultId: string): { result: any; toolName: string; summary: string; timestamp: number } | null {
@@ -155,21 +247,100 @@ export class LargeResultStorageService {
   }
 
   /**
-   * Async version - retrieves from Redis (multi-pod safe)
+   * Async version - retrieves from Redis (multi-pod safe).
+   *
+   * #974 RBAC overload: when `auth` is supplied, the caller's identity is
+   * checked against the stored result's owner. Mismatch → null (with a
+   * structured warn log). When `auth.allowedMcpServers` is non-empty, the
+   * stored tool's MCP server must be in the allow-list (derived from the
+   * tool slug's prefix — `openagentic_<server>_<tool>`).
+   *
+   * `auth` is omitted in the legacy callsite (TraceStore + system reads) —
+   * legacy behavior preserved when no auth is passed. Production chat
+   * pipeline ALWAYS passes auth so a stolen handle from another user can
+   * not cross-read.
    */
-  async getResultAsync(resultId: string): Promise<{ result: any; toolName: string; summary: string; timestamp: number } | null> {
+  async getResultAsync(
+    resultId: string,
+    auth?: {
+      userId: string;
+      tenantId: string;
+      allowedMcpServers?: string[];
+    },
+  ): Promise<{ result: any; toolName: string; summary: string; timestamp: number } | null> {
     if (!this.redis) {
       this.logger.warn({ resultId }, 'Redis not available for result retrieval');
       return null;
     }
 
     try {
-      const key = `${REDIS_KEY_PREFIX}${resultId}`;
-      const stored = await this.redis.get<StoredResult>(key);
+      // Discover the namespaced key. When auth is supplied we try the
+      // direct namespaced key first (fast path); the SCAN fallback handles
+      // legacy + cross-namespace probes (which then RBAC-fail below).
+      let stored: StoredResult | null = null;
+      let matchedKey: string | null = null;
+
+      if (auth) {
+        const directKey = this.buildKey(auth.tenantId, auth.userId, resultId);
+        stored = await this.redis.get<StoredResult>(directKey);
+        if (stored) {
+          matchedKey = directKey;
+        }
+      }
 
       if (!stored) {
+        // Either auth was omitted (legacy callsite) OR direct lookup missed
+        // (different namespace). SCAN for the result.
+        matchedKey = await this.findKeyForResultId(resultId);
+        if (matchedKey) {
+          stored = await this.redis.get<StoredResult>(matchedKey);
+        }
+      }
+
+      if (!stored || !matchedKey) {
         this.logger.debug({ resultId }, 'Result not found in Redis');
         return null;
+      }
+
+      // #974 — RBAC check when caller passed auth context.
+      if (auth) {
+        const ownerTenant = stored.tenantId ?? '';
+        const ownerUser = stored.userId ?? '';
+        const sameOwner = ownerTenant === auth.tenantId && ownerUser === auth.userId;
+        if (!sameOwner) {
+          this.logger.warn(
+            {
+              resultId,
+              requestingUserId: auth.userId,
+              requestingTenantId: auth.tenantId,
+              ownerUserId: ownerUser,
+              ownerTenantId: ownerTenant,
+              reason: 'rbac_owner_mismatch',
+            },
+            '⛔ getResultAsync rejected — caller does not own this result',
+          );
+          return null;
+        }
+
+        // Allowed-MCP-servers check (when provided). Tool slug shape is
+        // `openagentic_<server>_<tool>` per buildChatV2Deps OBO plumb comments.
+        if (Array.isArray(auth.allowedMcpServers) && auth.allowedMcpServers.length > 0) {
+          const serverFromTool = inferMcpServerFromToolName(stored.toolName);
+          if (serverFromTool && !auth.allowedMcpServers.includes(serverFromTool)) {
+            this.logger.warn(
+              {
+                resultId,
+                requestingUserId: auth.userId,
+                toolName: stored.toolName,
+                inferredServer: serverFromTool,
+                allowedMcpServers: auth.allowedMcpServers,
+                reason: 'rbac_mcp_server_not_allowed',
+              },
+              '⛔ getResultAsync rejected — caller lacks access to originating MCP server',
+            );
+            return null;
+          }
+        }
       }
 
       this.logger.info({
@@ -191,14 +362,13 @@ export class LargeResultStorageService {
   }
 
   /**
-   * Check if a result exists in Redis
+   * Check if a result exists in Redis. #974 — namespaced key lookup.
    */
   async hasResult(resultId: string): Promise<boolean> {
     if (!this.redis) return false;
     try {
-      const key = `${REDIS_KEY_PREFIX}${resultId}`;
-      const data = await this.redis.get(key);
-      return data !== null;
+      const key = await this.findKeyForResultId(resultId);
+      return key !== null;
     } catch {
       return false;
     }
@@ -321,7 +491,12 @@ State: ${sub.state || 'unknown'}`;
   private async getResultFromRedis(resultId: string): Promise<StoredResult | null> {
     if (!this.redis) return null;
     try {
-      const key = `${REDIS_KEY_PREFIX}${resultId}`;
+      // #974 — namespaced key lookup via SCAN. queryStoredResult is the only
+      // remaining caller of this path; it does NOT enforce RBAC by design
+      // (the caller is expected to have already passed the gate via
+      // getResultAsync).
+      const key = await this.findKeyForResultId(resultId);
+      if (!key) return null;
       return await this.redis.get<StoredResult>(key);
     } catch (error) {
       this.logger.error({ error, resultId }, 'Redis get failed');
@@ -378,6 +553,33 @@ I'll automatically search the stored data semantically instead of re-loading all
     const stored = await this.getResultFromRedis(resultId);
     return stored?.result || null;
   }
+}
+
+// =============================================================================
+// #974 RBAC helpers — exported for unit tests
+// =============================================================================
+
+/**
+ * Infer the MCP server name from a tool slug.
+ *
+ * Tool slugs follow `openagentic_<server>_<verb>_<resource>` (e.g.
+ * `openagentic_azure_list_subscriptions` → `azure`). Returns null when no inference
+ * is possible — callers treat null as "skip the server-check gate".
+ *
+ * This is intentionally permissive: a missing prefix means the tool ran
+ * outside the openagentic_ MCP family (e.g. a Synth call) and the allowedMcpServers
+ * list (which is a list of MCP server slugs) doesn't apply.
+ */
+export function inferMcpServerFromToolName(toolName: string): string | null {
+  if (!toolName) return null;
+  // Strip the openagentic_ prefix when present, then take the first segment.
+  const normalized = toolName.toLowerCase();
+  const match = normalized.match(/^awp[_-]([a-z0-9]+)/);
+  if (match) return match[1] ?? null;
+  // Fallback: also accept `<server>_<verb>_<resource>` (legacy chat-v2
+  // routes call `azure_list_subscriptions` without the openagentic_ prefix).
+  const fallback = normalized.match(/^([a-z0-9]+)[_-]/);
+  return fallback ? (fallback[1] ?? null) : null;
 }
 
 // =============================================================================

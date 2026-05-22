@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import type { Logger } from 'pino';
 import { ModelRole, getDefaultMultiModelConfig, MultiModelConfig } from '../../services/multi-model/index.js';
+import { getProviderManager } from '../../services/llm-providers/ProviderManager.js';
 
 interface MultiModelRoutesOptions {
   // Options can be extended as needed
@@ -57,10 +58,6 @@ const multiModelRoutes: FastifyPluginAsync<MultiModelRoutesOptions> = async (fas
         routing: {
           ...defaultConfig.routing,
           ...(runtimeConfig?.routing || {})
-        },
-        sliderOverrides: {
-          ...defaultConfig.sliderOverrides,
-          ...(runtimeConfig?.sliderOverrides || {})
         }
       };
 
@@ -118,10 +115,6 @@ const multiModelRoutes: FastifyPluginAsync<MultiModelRoutesOptions> = async (fas
         routing: {
           ...existingConfig.routing,
           ...config.routing
-        },
-        sliderOverrides: {
-          ...existingConfig.sliderOverrides,
-          ...config.sliderOverrides
         },
         updatedAt: new Date().toISOString(),
         updatedBy: (request as any).user?.id || 'admin'
@@ -252,8 +245,8 @@ const multiModelRoutes: FastifyPluginAsync<MultiModelRoutesOptions> = async (fas
 
       logger.info({ modelCount: availableModels.length }, 'Generating AI multi-model configuration');
 
-      // Get the provider manager from global reference (set during server initialization)
-      const providerManager = (global as any).providerManager;
+      // Get the provider manager from singleton accessor
+      const providerManager = getProviderManager();
 
       if (!providerManager) {
         return reply.code(503).send({
@@ -338,10 +331,6 @@ Respond with a JSON object in this exact format:
       "alwaysMultiModelPatterns": ["analyze", "compare", "audit", "comprehensive", "investigate"],
       "preferCheaperToolModel": <boolean>,
       "maxHandoffs": <number>
-    },
-    "sliderOverrides": {
-      "enableAbovePosition": <number>,
-      "scaleBySlider": true
     }
   },
   "reasoning": "<your reasoning explaining the choices>",
@@ -353,27 +342,34 @@ Respond with a JSON object in this exact format:
   ]
 }`;
 
+      // M17h: model from registry SoT, not env. Replaces a
+      // `process.env.DEFAULT_MODEL!` bypass that pinned this admin
+      // recommendation call to whatever the env had at boot.
+      const { ModelConfigurationService } = await import('../../services/ModelConfigurationService.js');
+      const recommendModel = await ModelConfigurationService.getDefaultChatModel().catch(() => null);
+      if (!recommendModel) {
+        return reply.code(503).send({
+          error: 'No chat model configured',
+          message: 'Add a chat-role row to admin.model_role_assignments before requesting AI recommendations.',
+        });
+      }
+
       // Call the LLM
-      const response = await providerManager.chat({
+      const completionResult = await providerManager.createCompletion({
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        model: process.env.DEFAULT_MODEL!,
+        model: recommendModel,
         temperature: 0.3,
         max_tokens: 4000
       });
 
-      // Extract the response content
+      // Extract the response content (createCompletion returns CompletionResponse with choices)
       let responseText = '';
-      if (response.content && Array.isArray(response.content)) {
-        for (const block of response.content) {
-          if (block.type === 'text') {
-            responseText += block.text;
-          }
-        }
-      } else if (typeof response.content === 'string') {
-        responseText = response.content;
+      if (completionResult && typeof completionResult === 'object' && !('next' in completionResult)) {
+        const completion = completionResult as import('../../services/llm-providers/ILLMProvider.js').CompletionResponse;
+        responseText = completion.choices?.[0]?.message?.content ?? '';
       }
 
       // Parse the JSON from the response
@@ -622,11 +618,38 @@ Respond with a JSON object in this exact format:
         });
       }
 
-      await prisma.modelRoleAssignment.delete({
-        where: { id }
+      // M11: mirror the canonical delete in routes/admin/llm-providers.ts:440-461 —
+      // write a tombstone row BEFORE removing the live row so #508 lifecycle
+      // controllers don't resurrect this assignment on the next discovery
+      // sync. Without this the route was a registry-bypass: hard delete with
+      // no audit trace, no tombstone, lifecycle restoration on next sync.
+      const adminUserId = (request as any).user?.id || 'admin';
+      await prisma.$transaction(async (tx: any) => {
+        await tx.modelRoleAssignmentTombstone.upsert({
+          where: {
+            provider_name_model_role: {
+              provider_name: existing.provider,
+              model: existing.model,
+              role: existing.role,
+            },
+          },
+          create: {
+            provider_name: existing.provider,
+            model: existing.model,
+            role: existing.role,
+            deleted_by: adminUserId,
+            reason: 'admin_delete_via_multi_model_route',
+          },
+          update: {
+            deleted_at: new Date(),
+            deleted_by: adminUserId,
+            reason: 'admin_delete_via_multi_model_route',
+          },
+        });
+        await tx.modelRoleAssignment.delete({ where: { id } });
       });
 
-      logger.info({ roleId: id, role: existing.role, model: existing.model }, 'Model role assignment deleted');
+      logger.info({ roleId: id, role: existing.role, model: existing.model }, 'Model role assignment deleted (with tombstone)');
 
       return reply.send({
         message: 'Role assignment deleted',

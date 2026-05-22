@@ -14,3 +14,9 @@
 
 export { default as authPlugin } from './auth.plugin.js';
 export { default as adminPlugin } from './admin.plugin.js';
+// Phase 3.7: admin-extras domain plugins
+export { adminExtrasRoutesPlugin } from './admin-extras.plugin.js';
+export { adminAuditRoutesPlugin } from './admin-audit.plugin.js';
+export { adminMcpRoutesPlugin } from './admin-mcp.plugin.js';
+export { adminObservabilityRoutesPlugin } from './admin-observability.plugin.js';
+export { adminMiscRoutesPlugin } from './admin-misc.plugin.js';

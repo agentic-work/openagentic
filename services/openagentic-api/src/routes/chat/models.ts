@@ -14,6 +14,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthenticatedRequest } from '../../middleware/unifiedAuth.js';
 import { IChatStorageService } from './index.js';
 import { logger } from '../../utils/logger.js';
+import { getProviderManager } from '../../services/llm-providers/ProviderManager.js';
 
 interface ModelInfo {
   id: string;
@@ -42,7 +43,7 @@ export async function getModelsHandler(
 ): Promise<void> {
   try {
     const models: ModelInfo[] = [];
-    const providerManager = (global as any).providerManager;
+    const providerManager = getProviderManager();
     let providerStatus = 'not_configured';
 
     // =========================================================================
@@ -53,10 +54,14 @@ export async function getModelsHandler(
     try {
       const { prisma } = await import('../../utils/prisma.js');
 
+      // Skip providers with status='error' so the UI model picker doesn't
+      // list models that will 404 at dispatch. Admin sees the error in
+      // Provider Management; chat users only see models that can actually run.
       const dbProviders = await prisma.lLMProvider.findMany({
         where: {
           enabled: true,
-          deleted_at: null
+          deleted_at: null,
+          NOT: { status: 'error' },
         },
         orderBy: {
           priority: 'asc'
@@ -79,55 +84,30 @@ export async function getModelsHandler(
           if (capabilities.chat === false) continue;
 
           // =====================================================================
-          // BUILD MODEL LIST FROM DATABASE ONLY — not provider.listModels()
-          // Sources (in order of precedence, deduped):
-          //   1. model_config routing slots (chatModel, premium, reasoning, ...)
-          //   2. model_config.additionalModels[] (admin-added via Model Registry)
-          //   3. provider_config.modelId (primary configured model)
-          //   4. provider_config.models[] — models auto-discovered from the
-          //      upstream provider's ARM/API (e.g. Azure AI Foundry deployments).
-          //      Embedding + image-gen models are filtered out below.
-          //      Previously excluded as "could be 50+" which concerned the OpenAI
-          //      public model catalog; in practice the AIF discovery only returns
-          //      deployments the user actually provisioned (usually 2-5), so
-          //      surfacing them is desirable — otherwise a user has to manually
-          //      Add Model for every single new foundry deployment.
+          // SINGLE SOURCE OF TRUTH: admin.model_role_assignments (Registry)
+          //
+          // The Smart Router and chat selector now both source from the
+          // Registry table. Auto-discovery (AIF ARM / Ollama /api/tags)
+          // upserts deployed models into the Registry via
+          // upsertDiscoveredModels(). Admin enables/disables via the
+          // Models page (PATCH /admin/llm-providers/registry/:id).
+          // The legacy provider_config.models[] field is going away — do
+          // not read it here.
+          //
+          // We deliberately IGNORE the routing-hint fields:
+          //   - model_config.{chatModel,defaultModel,premiumModel,...}
+          //   - model_config.additionalModels[]
+          //   - provider_config.modelId
+          // These are routing decisions, NOT registry entries.
           // =====================================================================
-          const registryModelIds: string[] = [];
-          const mc = modelConfig;
-          const configFields = [
-            'chatModel', 'defaultModel', 'thinkingModel',
-            'premiumModel', 'ultraPremiumModel', 'economicalModel',
-            'visionModel', 'toolModel', 'reasoningModel',
-          ];
-          for (const field of configFields) {
-            if (mc[field] && typeof mc[field] === 'string') {
-              registryModelIds.push(mc[field]);
-            }
-          }
-          // Include additionalModels from model_config (admin-added via Model Registry)
-          if (Array.isArray(mc.additionalModels)) {
-            for (const m of mc.additionalModels) {
-              if (typeof m === 'string') registryModelIds.push(m);
-              else if (m?.id) registryModelIds.push(m.id);
-            }
-          }
-          // Fallback: provider_config.modelId (primary configured model)
-          if (providerConfig.modelId) {
-            registryModelIds.push(providerConfig.modelId);
-          }
-          // Auto-discovered models from provider_config.models[] (AIF ARM discovery,
-          // Bedrock foundation-model list, OpenAI /v1/models, etc.). Filtered
-          // for embedding/image-gen below.
-          if (Array.isArray(providerConfig.models)) {
-            for (const m of providerConfig.models) {
-              if (typeof m === 'string') registryModelIds.push(m);
-              else if (m?.id) registryModelIds.push(m.id);
-            }
-          }
+          const registryRows = await prisma.modelRoleAssignment.findMany({
+            where: { provider: dbProvider.name, enabled: true },
+            select: { model: true },
+          });
+          const registryModelIds: string[] = registryRows.map(r => r.model);
 
-          // Deduplicate and filter
-          const uniqueRegistryModels = [...new Set(registryModelIds)].filter(id => {
+          // Deduplicate and apply admin-chosen disable list + filetype filter
+          let uniqueRegistryModels = [...new Set(registryModelIds)].filter(id => {
             if (!id) return false;
             if (disabledModels.includes(id)) return false;
             const lower = id.toLowerCase();
@@ -135,6 +115,31 @@ export async function getModelsHandler(
             if (lower.startsWith('imagen') || lower.includes('image-generation')) return false;
             return true;
           });
+
+          // Curated mode (?curated=true): further restrict to models that
+          // are explicitly named in the provider's model_config routing
+          // hints — chatModel, defaultModel, premiumModel, economicalModel,
+          // ultraPremiumModel, thinkingModel, or additionalModels[]. This
+          // matches the admin Model Registry view exactly and is used by
+          // codemode's /model picker so users don't see every
+          // auto-discovered upstream catalog entry.
+          const curated = (request.query as any)?.curated === 'true' || (request.query as any)?.curated === '1';
+          if (curated) {
+            const mcHints = new Set<string>([
+              modelConfig.chatModel,
+              modelConfig.defaultModel,
+              modelConfig.premiumModel,
+              modelConfig.economicalModel,
+              modelConfig.ultraPremiumModel,
+              modelConfig.thinkingModel,
+              modelConfig.toolModel,
+              modelConfig.visionModel,
+              ...(Array.isArray(modelConfig.additionalModels) ? modelConfig.additionalModels : []),
+            ].filter((x: any): x is string => typeof x === 'string' && x.length > 0));
+            if (mcHints.size > 0) {
+              uniqueRegistryModels = uniqueRegistryModels.filter(id => mcHints.has(id));
+            }
+          }
 
           // Get enriched model info from ProviderManager if available
           let providerModelMap = new Map<string, any>();
@@ -179,193 +184,76 @@ export async function getModelsHandler(
             });
           }
 
-          // FALLBACK: If no models were found from registry, try provider_config.modelId directly
-          if (uniqueRegistryModels.length === 0 && providerConfig.modelId) {
-            const modelId = providerConfig.modelId;
-            if (!addedModelIds.has(modelId) && !modelId.includes('embed') && !modelId.includes('embedding') && !disabledModels.includes(modelId)) {
-              addedModelIds.add(modelId);
-              request.log.info({
-                provider: dbProvider.name,
-                modelId
-              }, '[CHAT-MODELS] Using configured modelId from database as fallback');
-
-              models.push({
-                id: modelId,
-                name: modelId,
-                description: `${dbProvider.display_name || dbProvider.name} - ${modelId}`,
-                provider: dbProvider.provider_type,
-                contextWindow: providerConfig.contextWindow || modelConfig.contextWindow || 128000,
-                maxOutputTokens: providerConfig.maxTokens || modelConfig.maxOutputTokens || 8192,
-                capabilities: [
-                  'text',
-                  'chat',
-                  capabilities.tools !== false ? 'function-calling' : null,
-                  capabilities.vision ? 'vision' : null,
-                ].filter(Boolean) as string[],
-                isAvailable: true, // Mark as available since it's configured in database
-                type: 'chat',
-                thinking: modelConfig.thinking || modelId.includes('claude') || modelId.includes('gemini')
-              });
-            }
-          }
         }
       }
     } catch (dbError) {
-      request.log.warn({ error: dbError }, '[CHAT-MODELS] Failed to load from database, continuing with other sources');
+      request.log.warn({ error: dbError }, '[CHAT-MODELS] Failed to load from admin DB');
     }
 
-    // =========================================================================
-    // PRIORITY 2: Load models from ProviderManager (runtime discovery)
-    // Only if database returned no models
-    // =========================================================================
-    if (models.length === 0 && providerManager) {
-      request.log.info('[CHAT-MODELS] No database providers, fetching from ProviderManager');
-      providerStatus = 'provider_manager';
+    // No legacy unions: env-var seeds and runtime auto-discovery write into
+    // admin DB (provider_config.models[]) on startup. The admin console
+    // (LLM Providers + Model Garden) is the single edit/read point.
+    // If DB is empty, the response is empty — admin needs to add a provider.
+
+    // Default model resolution, in priority order:
+    //   1. Tenant-level SystemConfiguration key `default_model` — explicit
+    //      operator choice, overrides provider heuristics.
+    //   2. Top-priority HEALTHY enabled provider's model_config.defaultModel
+    //      or chatModel. `status='error'` providers are skipped so we never
+    //      hand users a default that will 404 on dispatch (root-cause of the
+    //      "resource not found" after Bedrock IAM test failed while still
+    //      enabled).
+    //   3. First model in the registry list.
+    let defaultModelId: string | null = null;
+    try {
+      const { prisma } = await import('../../utils/prisma.js');
+      // 1. Tenant default (one explicit point)
       try {
-        const providers = providerManager.getProviders?.() || [];
-        request.log.info({ providerCount: providers.length }, '[CHAT-MODELS] Getting models from ProviderManager');
-
-        for (const [providerName, provider] of providers) {
-          try {
-            if (typeof provider.listModels === 'function') {
-              const providerModels = await provider.listModels();
-              request.log.info({
-                provider: providerName,
-                modelCount: providerModels?.length || 0
-              }, '[CHAT-MODELS] Got models from provider');
-
-              for (const model of providerModels || []) {
-                models.push({
-                  id: model.id,
-                  name: model.name || model.id,
-                  description: `${providerName} - ${model.name || model.id}`,
-                  provider: providerName,
-                  contextWindow: model.contextWindow || 128000,
-                  maxOutputTokens: model.maxOutputTokens || 8192,
-                  capabilities: model.capabilities || ['chat', 'function-calling'],
-                  isAvailable: true,
-                  type: 'chat',
-                  thinking: model.thinking || false
-                });
-              }
-            }
-          } catch (error) {
-            request.log.warn({
-              provider: providerName,
-              error: error instanceof Error ? error.message : String(error)
-            }, '[CHAT-MODELS] Failed to get models from provider');
-          }
+        const row = await prisma.systemConfiguration.findUnique({ where: { key: 'default_model' } });
+        if (row?.value) {
+          const v = row.value as any;
+          const m = typeof v === 'string' ? v : (v?.model ?? null);
+          if (typeof m === 'string' && m) defaultModelId = m;
         }
-      } catch (error) {
-        request.log.error({ error: error instanceof Error ? error.message : String(error) },
-          '[CHAT-MODELS] Failed to get providers from ProviderManager');
+      } catch { /* ignore — fall through to provider heuristic */ }
+
+      // 2. Provider heuristic (skip status=error)
+      if (!defaultModelId) {
+        const topProvider = await prisma.lLMProvider.findFirst({
+          where: {
+            enabled: true,
+            deleted_at: null,
+            NOT: { status: 'error' },
+          },
+          orderBy: { priority: 'asc' },
+        });
+        const mc = (topProvider?.model_config as any) || {};
+        defaultModelId = (typeof mc.defaultModel === 'string' && mc.defaultModel)
+          || (typeof mc.chatModel === 'string' && mc.chatModel)
+          || models[0]?.id
+          || null;
       }
+    } catch {
+      defaultModelId = models[0]?.id || null;
     }
 
-    // =========================================================================
-    // PRIORITY 3: Legacy fallback to environment variables
-    // Only if no database providers AND no ProviderManager models
-    // =========================================================================
-    if (models.length === 0) {
-      request.log.info('[CHAT-MODELS] No models from database or ProviderManager, using environment config');
-      providerStatus = 'env_fallback';
-
-      // AWS Bedrock models - ONLY add models that are explicitly configured in env vars
-      // NO HARDCODED MODEL IDs - they must come from environment configuration
-      if (process.env.AWS_BEDROCK_ENABLED === 'true') {
-        const bedrockModels = [
-          process.env.AWS_BEDROCK_CHAT_MODEL && { id: process.env.AWS_BEDROCK_CHAT_MODEL, name: 'Bedrock Default' },
-          process.env.ECONOMICAL_MODEL && { id: process.env.ECONOMICAL_MODEL, name: 'Economical' },
-          process.env.DEFAULT_MODEL && { id: process.env.DEFAULT_MODEL, name: 'Default' },
-          process.env.PREMIUM_MODEL && { id: process.env.PREMIUM_MODEL, name: 'Premium' },
-          process.env.ULTRA_PREMIUM_MODEL && { id: process.env.ULTRA_PREMIUM_MODEL, name: 'Ultra Premium' },
-          process.env.SECONDARY_MODEL && { id: process.env.SECONDARY_MODEL, name: 'Secondary' },
-        ].filter(Boolean) as { id: string; name: string }[];
-
-        for (const model of bedrockModels) {
-          if (model.id) {
-            models.push({
-              id: model.id,
-              name: model.name,
-              description: `AWS Bedrock - ${model.name}`,
-              provider: 'aws-bedrock',
-              contextWindow: 200000,
-              maxOutputTokens: 16000,
-              capabilities: ['chat', 'function-calling', 'vision'],
-              isAvailable: true,
-              type: 'chat',
-              thinking: model.id.includes('claude')
-            });
-          }
-        }
-      }
-
-      // Google Vertex AI models - ONLY add models explicitly configured in env vars
-      // NO HARDCODED MODEL IDs - they must come from environment configuration
-      if (process.env.VERTEX_AI_ENABLED === 'true') {
-        const vertexModels = [
-          process.env.VERTEX_AI_CHAT_MODEL && { id: process.env.VERTEX_AI_CHAT_MODEL, name: 'Vertex AI Default' },
-          process.env.VERTEX_AI_MODEL && { id: process.env.VERTEX_AI_MODEL, name: 'Vertex AI' },
-          process.env.VERTEX_DEFAULT_MODEL && { id: process.env.VERTEX_DEFAULT_MODEL, name: 'Vertex Default' },
-        ].filter(Boolean) as { id: string; name: string }[];
-
-        for (const model of vertexModels) {
-          models.push({
-            id: model.id,
-            name: model.name,
-            description: `Google Vertex AI - ${model.name}`,
-            provider: 'vertex-ai',
-            contextWindow: 1000000,
-            maxOutputTokens: 65536,
-            capabilities: ['chat', 'function-calling', 'vision', 'thinking'],
-            isAvailable: true,
-            type: 'chat',
-            thinking: true
-          });
-        }
-      }
-
-      // Azure AI Foundry models
-      if (process.env.AIF_ENABLED === 'true') {
-        const aifModel = process.env.AIF_MODEL || process.env.DEFAULT_MODEL!;
-        models.push({
-          id: aifModel,
-          name: 'Model Router',
-          description: 'Azure AI Foundry - Intelligent Model Router',
-          provider: 'azure-ai-foundry',
-          contextWindow: 128000,
-          maxOutputTokens: 16000,
-          capabilities: ['chat', 'function-calling'],
-          isAvailable: true,
-          type: 'chat'
-        });
-      }
-
-      // Ollama models
-      if (process.env.OLLAMA_ENABLED === 'true') {
-        const ollamaModel = process.env.OLLAMA_CHAT_MODEL || process.env.OLLAMA_MODEL || process.env.DEFAULT_MODEL!;
-        models.push({
-          id: ollamaModel,
-          name: ollamaModel,
-          description: `Ollama - ${ollamaModel} (Local)`,
-          provider: 'ollama',
-          contextWindow: 128000,
-          maxOutputTokens: 8192,
-          capabilities: ['chat'],
-          isAvailable: true,
-          type: 'chat'
-        });
-      }
+    // Codemode default. Reads from default_models.code (SOT) → default_models.chat fallback.
+    // Managed via GET/PUT /api/admin/default-models.
+    // Falls back to first available Ollama model or chat default if unset.
+    let codemodeDefault: string | null = null;
+    try {
+      const { ModelConfigurationService } = await import('../../services/ModelConfigurationService.js');
+      codemodeDefault = await ModelConfigurationService.getDefaultCodeModel();
+    } catch { /* ignore — fall through */ }
+    if (!codemodeDefault) {
+      const firstOllama = models.find(m => m.provider === 'ollama' && m.isAvailable);
+      codemodeDefault = firstOllama?.id || defaultModelId;
     }
-
-    // Determine default model
-    const defaultModelId = process.env.DEFAULT_MODEL ||
-                          process.env.VERTEX_AI_MODEL ||
-                          models[0]?.id || null;
 
     request.log.info({
       totalModels: models.length,
       defaultModel: defaultModelId,
+      codemodeDefault,
       providers: [...new Set(models.map(m => m.provider))],
       providerStatus
     }, '[CHAT-MODELS] Returning available models');
@@ -373,9 +261,10 @@ export async function getModelsHandler(
     reply.send({
       models,
       defaultModel: defaultModelId,
+      codemodeDefault,
       count: models.length,
       availableCount: models.filter(m => m.isAvailable).length,
-      capabilities: [...new Set(models.flatMap(m => m.capabilities))].sort(),
+      capabilities: [...new Set(models.flatMap(m => m.capabilities))].sort((a, b) => a.localeCompare(b)),
       providers: [...new Set(models.map(m => m.provider))],
       lastUpdated: new Date(),
       provider_status: providerStatus,

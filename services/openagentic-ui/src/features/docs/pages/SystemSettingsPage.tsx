@@ -22,9 +22,9 @@ const settingCategories = [
   {
     category: 'Models & Routing',
     settings: [
-      { name: 'Intelligence Tiers', desc: 'Map intelligence slider positions to specific models and providers.' },
+      // 2026-04-19 — "Intelligence Tiers" row removed (task #144, slider rip).
       { name: 'Fallback Chains', desc: 'Define model fallback order when a provider is unavailable or rate-limited.' },
-      { name: 'Cost Budgets', desc: 'Set monthly cost caps per user, team, or organization. Alerts at 80% and 95%.' },
+      { name: 'Cost Budgets', desc: 'Set monthly cost caps per user, team, or organization. Per-user × per-model caps via UserModelBudgetService.' },
     ],
   },
   {

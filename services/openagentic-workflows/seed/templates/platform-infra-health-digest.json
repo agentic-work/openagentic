@@ -1,0 +1,166 @@
+{
+  "slug": "platform-infra-health-digest",
+  "name": "Platform Infra Health Digest",
+  "description": "Pull live health of the platform data services (PostgreSQL, Redis, Milvus) in parallel via openagentic_admin.admin_system_<svc>_health_check, normalize the per-service native-dict response shapes (Dict[str, Any] -> FastMCP-serialized JSON text via the mcp-proxy content-block joiner), pre-compute per-service status rows + an overall_status flag in a single analyze transform, ask the platform LLM for a 2-3 bullet narrative highlighting any degraded service (or stating 'all healthy' concisely if all are up), strip any chain-of-thought preamble, then render an HTML digest via webhook_response with per-service cards + narrative + raw payloads. Empty-degraded case (all-healthy, the operational default in stable clusters) renders an explicit 'all services healthy' banner instead of an empty alert section.",
+  "category": "aiops",
+  "template": true,
+  "meta": {
+    "purpose": "Snapshot the platform's core data-service health (PostgreSQL, Redis, Milvus) and produce a single-page operator digest with per-service cards plus an LLM-written degraded-service narrative.",
+    "how_it_works": [
+      "1. Fans the trigger out to three parallel openagentic_admin.admin_system_<svc>_health_check calls (PostgreSQL, Redis, Milvus).",
+      "2. A labeled-merge converges the three native-dict responses keyed by service.",
+      "3. A normalize transform unwraps the FastMCP-serialized content blocks, computes per-service status rows, and sets an overall_status flag.",
+      "4. The platform LLM writes a 2-3 bullet narrative highlighting any degraded service (or a concise 'all healthy' line).",
+      "5. A CoT-stripper transform removes any LLM preamble.",
+      "6. webhook_response renders the HTML digest with per-service status cards, narrative, and raw payloads. All-healthy short-circuit shows an explicit banner instead of an empty alert section."
+    ],
+    "expected_output": "HTML digest with: per-service status card (PG/Redis/Milvus), overall_status banner, 2-3 bullet LLM narrative, and raw per-service health JSON for diagnostics.",
+    "useful_when": "Morning platform-health check before deploys, post-Helm-upgrade verification, or when chat/Flows feels slow and you need 'is Postgres/Redis/Milvus actually OK?' in one shot.",
+    "tools_used": ["openagentic_admin.admin_system_postgres_health_check", "openagentic_admin.admin_system_redis_health_check", "openagentic_admin.admin_system_milvus_health_check", "llm_completion", "merge", "transform", "webhook_response"],
+    "version": "1.0",
+    "tags": ["aiops", "observability", "platform", "postgres", "redis", "milvus"]
+  },
+  "defaultInputs": {},
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "data": {
+          "triggerType": "manual",
+          "label": "Platform Infra Health Digest",
+          "input_schema": {}
+        }
+      },
+      {
+        "id": "postgres_health",
+        "type": "mcp_tool",
+        "data": {
+          "label": "postgres_health",
+          "toolServer": "openagentic_admin",
+          "toolName": "admin_system_postgres_health_check",
+          "arguments": {}
+        }
+      },
+      {
+        "id": "redis_health",
+        "type": "mcp_tool",
+        "data": {
+          "label": "redis_health",
+          "toolServer": "openagentic_admin",
+          "toolName": "admin_system_redis_health_check",
+          "arguments": {}
+        }
+      },
+      {
+        "id": "milvus_health",
+        "type": "mcp_tool",
+        "data": {
+          "label": "milvus_health",
+          "toolServer": "openagentic_admin",
+          "toolName": "admin_system_milvus_health_check",
+          "arguments": {}
+        }
+      },
+      {
+        "id": "merge_health",
+        "type": "merge",
+        "data": {
+          "label": "Merge Per-Service Health",
+          "mergeStrategy": "object"
+        }
+      },
+      {
+        "id": "analyze",
+        "type": "transform",
+        "data": {
+          "label": "analyze",
+          "operations": [
+            {
+              "op": "set",
+              "target": "per_service",
+              "value": "{{ (() => { const extract = (text) => { if (!text) return null; let parsed = null; try { parsed = JSON.parse(text); if (parsed && typeof parsed === 'object' && typeof parsed.healthy === 'boolean') return parsed; } catch (e) {} const ri = text.indexOf('\"result\"'); if (ri !== -1) { let depth = 0; let start = -1; for (let i = ri; i < text.length; i++) { const ch = text[i]; if (ch === '{') { if (depth === 0 && start === -1) start = i; depth++; } else if (ch === '}') { depth--; if (depth === 0 && start !== -1) { const candidate = text.slice(start, i + 1); try { const obj = JSON.parse(candidate); if (obj && typeof obj === 'object' && obj.result && typeof obj.result === 'object') return obj.result; if (obj && typeof obj === 'object' && typeof obj.healthy === 'boolean') return obj; } catch (e) {} start = -1; } } } } const m = text.match(/\"healthy\"\\s*:\\s*(true|false)/); if (m) { const msgMatch = text.match(/\"message\"\\s*:\\s*\"([^\"]+)\"/); return { healthy: m[1] === 'true', message: msgMatch ? msgMatch[1] : '' }; } return null; }; const parseSvc = (key, displayName) => { const raw = input && input[key]; const text = String((raw && raw.content) || ''); const parsed = extract(text); if (!parsed || typeof parsed !== 'object') { return { name: displayName, status: 'unknown', message: 'no response from openagentic_admin', extras: {} }; } const healthy = parsed.healthy === true; const status = healthy ? 'healthy' : 'unhealthy'; const message = String(parsed.message || (healthy ? 'OK' : 'no message')); const extras = {}; if (typeof parsed.version === 'string') extras.version = parsed.version; if (typeof parsed.table_count === 'number') extras.table_count = parsed.table_count; if (typeof parsed.database_size_mb === 'number') extras.database_size_mb = parsed.database_size_mb; if (parsed.details && typeof parsed.details === 'object') { if (typeof parsed.details.collection_count === 'number') extras.collection_count = parsed.details.collection_count; } return { name: displayName, status: status, message: message, extras: extras }; }; return [parseSvc('postgres_health', 'postgres'), parseSvc('redis_health', 'redis'), parseSvc('milvus_health', 'milvus')]; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "healthy_count",
+              "value": "{{ (() => { const arr = Array.isArray(input.per_service) ? input.per_service : []; return arr.filter(s => s && s.status === 'healthy').length; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "degraded_count",
+              "value": "{{ (() => { const arr = Array.isArray(input.per_service) ? input.per_service : []; return arr.filter(s => s && s.status !== 'healthy').length; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "overall_status",
+              "value": "{{ (() => { const arr = Array.isArray(input.per_service) ? input.per_service : []; if (arr.length === 0) return 'unknown'; const anyDown = arr.some(s => s && s.status !== 'healthy'); return anyDown ? 'degraded' : 'healthy'; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "rows_html",
+              "value": "{{ (() => { const arr = Array.isArray(input.per_service) ? input.per_service : []; if (arr.length === 0) return '<tr><td colspan=\"3\">No service responses captured.</td></tr>'; const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); return arr.map(s => { const name = String(s.name || ''); const status = String(s.status || 'unknown'); const message = String(s.message || ''); const ex = s.extras || {}; const exParts = []; if (ex.version) exParts.push('version=' + String(ex.version).slice(0, 60)); if (typeof ex.table_count === 'number') exParts.push('tables=' + ex.table_count); if (typeof ex.database_size_mb === 'number') exParts.push('size_mb=' + ex.database_size_mb); if (typeof ex.collection_count === 'number') exParts.push('collections=' + ex.collection_count); const extrasText = exParts.length ? ' (' + exParts.join(', ') + ')' : ''; const cls = status === 'healthy' ? 'svc-healthy' : 'svc-degraded'; return `<tr class=\"${cls}\"><td>${esc(name)}</td><td><strong>${esc(status)}</strong></td><td>${esc(message)}${esc(extrasText)}</td></tr>`; }).join(''); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "banner_html",
+              "value": "{{ (() => { const overall = String(input.overall_status || 'unknown'); const dc = (typeof input.degraded_count === 'number') ? input.degraded_count : 0; const hc = (typeof input.healthy_count === 'number') ? input.healthy_count : 0; if (overall === 'healthy') return '<p class=\"all-healthy\"><strong>All ' + hc + ' platform data services are healthy.</strong></p>'; if (overall === 'degraded') return '<p class=\"degraded\"><strong>' + dc + ' of ' + (hc + dc) + ' platform data service(s) DEGRADED.</strong> See details below.</p>'; return '<p class=\"unknown\"><strong>Health status unknown.</strong></p>'; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "raw_payloads",
+              "value": "{{ (() => { const arr = Array.isArray(input.per_service) ? input.per_service : []; return arr.map(s => ({ name: s.name, status: s.status, message: s.message, extras: s.extras })); })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "narrative",
+        "type": "llm_completion",
+        "data": {
+          "label": "Narrative",
+          "prompt": "You are an SRE writing a 2-3 bullet operator-facing narrative on the health of the OpenAgentic platform data services (PostgreSQL, Redis, Milvus).\n\nOverall status: {{steps.analyze.overall_status}} ({{steps.analyze.healthy_count}} healthy, {{steps.analyze.degraded_count}} degraded)\n\nPer-service results (JSON array of { name, status, message, extras }):\n{{steps.analyze.raw_payloads}}\n\nOutput rules (MUST follow):\n1. Start the response with a single `-` character — no preamble, no \"Here is\", no \"The user wants\", no thinking out loud.\n2. 2-3 short bullets, each on its own line, each beginning with `-`.\n3. Highlight any degraded service first with its message verbatim and a concrete next-action.\n4. If all services are healthy, say so concisely in one bullet and recommend a routine future check in the second.\n5. Reference service names verbatim (postgres / redis / milvus).",
+          "model": "auto",
+          "temperature": 0.2,
+          "maxTokens": 400
+        }
+      },
+      {
+        "id": "clean_narrative",
+        "type": "transform",
+        "data": {
+          "label": "Strip CoT Preamble",
+          "operations": [
+            {
+              "op": "set",
+              "target": "clean_content",
+              "value": "{{ (() => { const raw = String(input.content || ''); const inlineMatch = raw.match(/([\\.\\!\\?\\:]|\\n)\\s*(-\\s+\\S)/); const lines = raw.split(/\\r?\\n/); let firstBulletIdx = -1; for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (t.startsWith('-') || t.startsWith('•') || t.startsWith('*')) { firstBulletIdx = i; break; } } if (firstBulletIdx !== -1) { const fromLineIdx = lines.slice(firstBulletIdx).join('\\n').trim(); if (inlineMatch && inlineMatch.index !== undefined) { const fromInline = raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); if (fromInline.length < fromLineIdx.length || lines[firstBulletIdx].trim().length > 8 === false) { return fromInline; } } return fromLineIdx; } if (inlineMatch && inlineMatch.index !== undefined) { return raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); } return raw.trim(); })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "report",
+        "type": "webhook_response",
+        "data": {
+          "label": "HTML Health Digest",
+          "statusCode": 200,
+          "headers": { "Content-Type": "text/html" },
+          "bodyTemplate": "<div class=\"platform-infra-health-digest\"><h2>Platform Infra Health Digest</h2><p><strong>Overall:</strong> {{steps.analyze.overall_status}} &middot; <strong>Healthy:</strong> {{steps.analyze.healthy_count}} &middot; <strong>Degraded:</strong> {{steps.analyze.degraded_count}}</p>{{steps.analyze.banner_html}}<h3>Operator Narrative</h3><pre class=\"narrative\">{{steps.clean_narrative.clean_content}}</pre><h3>Per-Service Status</h3><table class=\"services-table\"><thead><tr><th>Service</th><th>Status</th><th>Detail</th></tr></thead><tbody>{{steps.analyze.rows_html}}</tbody></table></div>"
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "trigger", "target": "postgres_health" },
+      { "id": "e2", "source": "trigger", "target": "redis_health" },
+      { "id": "e3", "source": "trigger", "target": "milvus_health" },
+      { "id": "e4", "source": "postgres_health", "target": "merge_health" },
+      { "id": "e5", "source": "redis_health", "target": "merge_health" },
+      { "id": "e6", "source": "milvus_health", "target": "merge_health" },
+      { "id": "e7", "source": "merge_health", "target": "analyze" },
+      { "id": "e8", "source": "analyze", "target": "narrative" },
+      { "id": "e9", "source": "narrative", "target": "clean_narrative" },
+      { "id": "e10", "source": "clean_narrative", "target": "report" }
+    ]
+  }
+}

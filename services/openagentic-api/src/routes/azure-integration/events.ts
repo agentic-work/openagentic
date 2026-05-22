@@ -55,7 +55,7 @@ function broadcastEventToConnections(event: AzureEvent) {
 export const azureEventsRoutes: FastifyPluginAsync = async (fastify) => {
   // Azure events SSE endpoint
   fastify.get('/azure', {
-    preHandler: [authMiddleware],
+    onRequest: authMiddleware,
     schema: {
     }
   }, (request, reply) => {
@@ -149,7 +149,7 @@ export const azureEventsRoutes: FastifyPluginAsync = async (fastify) => {
       data?: any;
     };
   }>('/azure/trigger', {
-    preHandler: [adminAuth],
+    onRequest: adminAuth,
     schema: {
       body: {
         type: 'object',
@@ -204,7 +204,7 @@ export const azureEventsRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Get active connections info (admin only)
   fastify.get('/azure/connections', {
-    preHandler: [adminAuth],
+    onRequest: adminAuth,
     schema: {
     }
   }, async (request, reply) => {

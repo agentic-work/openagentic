@@ -9,13 +9,29 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Chat from '@/features/chat/components/ChatContainer';
-import Settings from '@/features/settings/components/Settings';
 import Login from '@/features/auth/components/Login';
 import LoginDev from '@/features/auth/components/LoginDev';
 import AuthCallback from '@/features/auth/components/AuthCallback';
 import AccessDenied from '@/features/auth/components/AccessDenied';
+import { OpenagenticWindowPage } from '@/features/code/OpenagenticWindowPage';
+// Phase-0 visual mock for the codemode slash-command rewrite. Loaded
+// only outside production so the bundle doesn't pay for it in prod.
+// Vite swaps `import.meta.env.PROD` to a literal at build time so the
+// dev-only branch DCE's away in prod bundles.
+// See plan: ~/.claude/plans/sprightly-percolating-brook.md
+const SlashMocksPage = !import.meta.env.PROD
+  ? React.lazy(() => import('@/features/code/dev-mocks/SlashMocksPage'))
+  : null;
+// #502 v2 primitives showcase — visual smoke test for every mock-parity
+// primitive shipped under @/features/chat/components/v2. Dev-only,
+// lazy-loaded, gated by !import.meta.env.PROD so prod bundles DCE it out.
+const PrimitivesShowcase = !import.meta.env.PROD
+  ? React.lazy(() => import('@/pages/PrimitivesShowcase'))
+  : null;
 // AdminPortal removed - lazy loaded in ChatContainer
-import { WorkflowsPage } from '@/features/workflows/components/WorkflowsPage';
+// WorkflowsPage removed from App.tsx routes — Flows is reached only via
+// the in-app sidebar Flows tab (embedded inside ChatContainer). Direct
+// /workflows navigation is now a 404. Mirrors the Code Mode entry path.
 import ErrorBoundary from '@/shared/components/ErrorBoundary';
 import { AuthProvider, useAuth } from './providers/AuthContext';
 import { useTheme, ThemeProvider } from '@/contexts/ThemeContext';
@@ -238,6 +254,29 @@ function AppContent(): React.ReactElement {
       <div className="relative z-10 min-h-screen">
         <div className="min-h-screen">
           <Routes>
+            {/* Phase-0 visual mock — NO auth, NO app shell. Just the static
+                mock page so the user can review the design directly.
+                Plan: ~/.claude/plans/sprightly-percolating-brook.md */}
+            {SlashMocksPage && (
+              <Route
+                path="/dev/codemode-slash-mocks"
+                element={
+                  <React.Suspense fallback={<div style={{ padding: 24, color: '#8b949e' }}>Loading mock…</div>}>
+                    <SlashMocksPage />
+                  </React.Suspense>
+                }
+              />
+            )}
+            {PrimitivesShowcase && (
+              <Route
+                path="/dev/v2-primitives"
+                element={
+                  <React.Suspense fallback={<div style={{ padding: 24, color: '#8b949e' }}>Loading showcase…</div>}>
+                    <PrimitivesShowcase />
+                  </React.Suspense>
+                }
+              />
+            )}
             <Route path="/login" element={
               isAuthenticated ? <Navigate to="/" replace /> : <LoginComponent />
             } />
@@ -263,20 +302,50 @@ function AppContent(): React.ReactElement {
                       showMetricsPanel={showMetricsPanel}
                     />
                   } />
-                  <Route path="/settings" element={<Settings />} />
+                  {/* 2026-05-07 — /admin{/*} renders the chat shell which
+                      mounts AdminPortalHost. Triggers `showAdminPortal=true`
+                      on mount via ChatContainer's pathname effect, so direct
+                      links like /admin#integrations or /admin/llm/models
+                      land on the admin pane instead of the 404 page. Hash
+                      fragment is consumed by AdminShellV2 sidebar router. */}
+                  <Route path="/admin/*" element={
+                    <Chat
+                      theme={themes[resolvedTheme]}
+                      onThemeChange={handleThemeChange}
+                      onFunctionsReady={setChatFunctions}
+                      showMetricsPanel={showMetricsPanel}
+                    />
+                  } />
+                  <Route path="/admin" element={
+                    <Chat
+                      theme={themes[resolvedTheme]}
+                      onThemeChange={handleThemeChange}
+                      onFunctionsReady={setChatFunctions}
+                      showMetricsPanel={showMetricsPanel}
+                    />
+                  } />
+                  {/* 2026-05-07 — legacy /settings page ripped (1135-line
+                      "OpenAgenticCode" Settings.tsx). Tenant config moves to
+                      /admin#integrations; per-user GitHub OAuth bounces back
+                      there via api github.ts:DEFAULT_LANDING. Any direct
+                      /settings link 404s, which is correct now. */}
+
+                  {/* Openagentic pop-out window — chrome-free standalone chat for an
+                      existing codemode session. Opened via window.open() from the
+                      codemode header pop-out button. Requires the user to already
+                      be logged in (same-origin localStorage auth_token). */}
+                  <Route path="/openagentic-window" element={<OpenagenticWindowPage />} />
 
                   {/* Code Mode is reached via the in-app sidebar toggle
                       (appMode='code' inside ChatContainer), not as a public
                       URL. Direct /code navigation is intentionally a 404 so
                       the entry path is always: log in → click Code Mode. */}
 
-                  {/* OpenAgentic Flows - Native Workflow Builder */}
-                  <Route path="/workflows" element={
-                    <WorkflowsPage />
-                  } />
-                  <Route path="/workflows/:workflowId" element={
-                    <WorkflowsPage />
-                  } />
+                  {/* OpenAgentic Flows is reached via the in-app sidebar Flows
+                      tab (rendered embedded inside ChatContainer), not as a
+                      public URL. Direct /workflows navigation is intentionally
+                      a 404 so the entry path is always: log in → click Flows.
+                      Mirrors the Code Mode entry pattern above. */}
 
                   <Route path="*" element={<NotFound />} />
                 </Routes>
@@ -292,6 +361,51 @@ function AppContent(): React.ReactElement {
     </div>
   );
 }
+
+// B'-14 (2026-05-07): catch dynamic-import failures from stale chunk
+// references and trigger a one-time index.html reload so the user
+// gets the new chunk-hash mapping. Vite content-hashes every lazy
+// chunk, so after a deploy the OLD index.html in the user's tab
+// references chunks that no longer exist on the server, leading to
+// "Failed to fetch dynamically imported module" 404s. The browser
+// retains the stale index.html in memory until a navigation; this
+// handler forces the reload.
+//
+// Guard: store a session-flag so we don't loop-reload if a real
+// network outage is the actual cause. One reload per browser tab,
+// then we let the error surface so the user can see it.
+function installStaleChunkHandler() {
+  if (typeof window === 'undefined') return;
+  const RELOAD_FLAG = 'aw-stale-chunk-reload-v1';
+  const isStaleChunkError = (msg: unknown): boolean => {
+    const s = String(msg ?? '').toLowerCase();
+    return (
+      s.includes('failed to fetch dynamically imported module') ||
+      s.includes('failed to load module') ||
+      s.includes('importing a module script failed') ||
+      s.includes("'text/html' is not a valid javascript")
+    );
+  };
+  const tryReload = () => {
+    if (sessionStorage.getItem(RELOAD_FLAG) === '1') return; // already retried
+    try { sessionStorage.setItem(RELOAD_FLAG, '1'); } catch { /* ignore */ }
+    // Force-bypass cache via cache-busting query string + reload.
+    const url = new URL(window.location.href);
+    url.searchParams.set('_v', String(Date.now()));
+    window.location.replace(url.toString());
+  };
+  window.addEventListener('error', (e) => {
+    if (isStaleChunkError(e?.message) || isStaleChunkError((e?.error as any)?.message)) {
+      tryReload();
+    }
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    if (isStaleChunkError((e?.reason as any)?.message) || isStaleChunkError(e?.reason)) {
+      tryReload();
+    }
+  });
+}
+installStaleChunkHandler();
 
 function App(): React.ReactElement {
   // Check for maintenance mode flag from runtime configuration

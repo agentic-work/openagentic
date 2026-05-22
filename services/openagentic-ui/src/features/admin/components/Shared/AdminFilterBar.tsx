@@ -93,7 +93,7 @@ export const AdminFilterBar: React.FC<AdminFilterBarProps> = ({
               className="px-2.5 py-1.5 text-xs font-medium transition-colors"
               style={{
                 backgroundColor: isActive ? 'var(--color-primary)' : 'var(--color-surface)',
-                color: isActive ? '#FFFFFF' : 'var(--text-secondary)',
+                color: isActive ? 'var(--ap-fg-0)' : 'var(--text-secondary)',
                 borderRight: '1px solid var(--color-border)',
               }}
               onMouseEnter={(e) => {

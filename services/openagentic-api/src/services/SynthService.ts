@@ -15,11 +15,13 @@ import { EventEmitter } from 'events';
 import type { Logger } from 'pino';
 import { prisma } from '../utils/prisma.js';
 import { SynthExecutorClient, getSynthExecutorClient } from './SynthExecutorClient.js';
-import SliderService from './SliderService.js';
-import { ProviderManager } from './llm-providers/ProviderManager.js';
+// 2026-04-19 — SliderService import removed (task #144, slider rip).
+import { ProviderManager, getProviderManager } from './llm-providers/ProviderManager.js';
 import type { CompletionRequest, CompletionResponse } from './llm-providers/ILLMProvider.js';
-import ToolSemanticCacheService from './ToolSemanticCacheService.js';
+import ToolSemanticCacheService, { getToolSemanticCache } from './ToolSemanticCacheService.js';
 import { LLMMetricsService } from './LLMMetricsService.js';
+import { SynthAbuseClassifier } from './SynthAbuseClassifier.js';
+import { AuditLogger, type SynthAuditEntry } from './AuditLogger.js';
 
 /**
  * Synth Configuration
@@ -48,8 +50,6 @@ export interface SynthConfig {
   synthesisTemperature?: number;
   /** Maximum tokens for synthesis output */
   maxSynthesisTokens?: number;
-  /** Use slider-based model selection (when true, ignores explicit model and uses slider) */
-  useSliderModelSelection?: boolean;
 
   // ===========================================
   // EXECUTION SETTINGS
@@ -207,6 +207,26 @@ export class SynthService extends EventEmitter {
   private activeExecutions: Map<string, AbortController> = new Map();
   private dailyUsage: Map<string, number> = new Map();
   private executorClient: SynthExecutorClient;
+  private abuseClassifier: SynthAbuseClassifier = new SynthAbuseClassifier();
+  private auditLoggerInstance: AuditLogger | null = null;
+
+  private getAuditLogger(): AuditLogger {
+    if (!this.auditLoggerInstance) {
+      this.auditLoggerInstance = new AuditLogger(this.logger);
+    }
+    return this.auditLoggerInstance;
+  }
+
+  /**
+   * Fire-and-forget audit write. Never blocks the synth code path.
+   * SynthAuditEntry.code is sha256-hashed inside AuditLogger; credentials
+   * are dropped by the type (only env key names accepted).
+   */
+  private auditSynth(entry: SynthAuditEntry): void {
+    void this.getAuditLogger().logSynthExecution(entry).catch((err) => {
+      this.logger.warn({ err, executionId: entry.executionId }, '[SYNTH] audit write failed (non-fatal)');
+    });
+  }
 
   private constructor(
     private logger: Logger,
@@ -229,7 +249,6 @@ export class SynthService extends EventEmitter {
       baseUrl: initialConfig?.baseUrl || process.env.SYNTH_LLM_BASE_URL,
       synthesisTemperature: initialConfig?.synthesisTemperature ?? parseFloat(process.env.SYNTH_SYNTHESIS_TEMPERATURE || '0.2'),
       maxSynthesisTokens: initialConfig?.maxSynthesisTokens ?? parseInt(process.env.SYNTH_MAX_SYNTHESIS_TOKENS || '4096'),
-      useSliderModelSelection: initialConfig?.useSliderModelSelection ?? (process.env.SYNTH_USE_SLIDER_MODEL_SELECTION === 'true'),
 
       // Execution Settings
       timeoutSeconds: initialConfig?.timeoutSeconds ?? parseInt(process.env.SYNTH_MAX_TIMEOUT_SECONDS || '60'),
@@ -275,33 +294,26 @@ export class SynthService extends EventEmitter {
         visibleToLLM: this.config.visibleToLLM,
         provider: this.config.provider,
         model: this.config.model,
-        useSliderModelSelection: this.config.useSliderModelSelection,
-      }, '[SYNTH] Service initialized with configuration (DB config loaded)');
+}, '[SYNTH] Service initialized with configuration (DB config loaded)');
     }).catch(() => {
       this.logger.info({
         enabled: this.config.enabled,
         visibleToLLM: this.config.visibleToLLM,
         provider: this.config.provider,
         model: this.config.model,
-        useSliderModelSelection: this.config.useSliderModelSelection,
-      }, '[SYNTH] Service initialized with configuration (env defaults)');
+}, '[SYNTH] Service initialized with configuration (env defaults)');
     });
   }
 
   /**
-   * Get the ProviderManager from global scope (set up in server.ts)
+   * Get the ProviderManager via singleton accessor (Phase 4: replaced global read)
    */
   private getProviderManager(): ProviderManager | null {
-    return (global as any).providerManager || null;
+    return getProviderManager();
   }
 
-  /**
-   * Get SliderService instance
-   */
-  private getSliderService(): SliderService {
-    // SliderService uses Prisma directly, create instance with logger
-    return new SliderService(prisma, this.logger);
-  }
+  // 2026-04-19 — getSliderService() removed (task #144, slider rip).
+  // Synth picks the premium model directly from ModelConfigurationService.
 
   /**
    * Get LLMMetricsService instance
@@ -411,6 +423,39 @@ export class SynthService extends EventEmitter {
     // Increment daily usage
     this.dailyUsage.set(request.userId, dailyCount + 1);
 
+    // Pre-synthesis abuse gate: reject obvious policy violations on the
+    // raw intent before spending LLM tokens. Mirrors the abuse policy the
+    // model sees in the `oat-guidance` prompt module.
+    const preCheck = this.abuseClassifier.classify({ intent: request.intent });
+    if (preCheck.category) {
+      this.logger.warn({
+        userId: request.userId,
+        category: preCheck.category,
+        confidence: preCheck.confidence,
+        matchedPatterns: preCheck.matchedPatterns,
+      }, '[SYNTH] Intent matches abuse policy — refusing pre-synthesis');
+      const execId = `synth-refused-${Date.now()}`;
+      this.auditSynth({
+        userId: request.userId,
+        userEmail: (request as any).userEmail,
+        executionId: execId,
+        intent: request.intent,
+        capabilities: request.capabilities || [],
+        cloudTargets: [],
+        riskLevel: 'critical',
+        outcome: 'refused',
+        executionTimeMs: Date.now() - startTime,
+      });
+      return {
+        success: false,
+        toolId: 'policy-refused',
+        intent: request.intent,
+        error: `Refused by policy: request matches "${preCheck.category}" category. ` +
+               `Synth cannot be used for content/actions in the prohibited list.`,
+        metrics: this.emptyMetrics(startTime),
+      };
+    }
+
     // Build environment with user credentials
     const env = this.buildExecutionEnvironment(request);
 
@@ -434,6 +479,51 @@ export class SynthService extends EventEmitter {
           toolId: 'synthesis-failed',
           intent: request.intent,
           error: `Failed to synthesize code: ${synthesis.riskReasoning}`,
+          metrics: {
+            synthesisTimeMs: synthesis.synthesisMetrics.totalMs,
+            executionTimeMs: 0,
+            totalTimeMs: Date.now() - startTime,
+            inputTokens: synthesis.synthesisMetrics.inputTokens,
+            outputTokens: synthesis.synthesisMetrics.outputTokens,
+            costUsd: synthesis.synthesisMetrics.costUsd,
+            ttftMs: synthesis.synthesisMetrics.ttftMs,
+          },
+        };
+      }
+
+      // Post-synthesis abuse gate: re-check the classifier with the
+      // generated code. Catches the case where the LLM accepted a benign-
+      // sounding intent but produced a payload in the prohibited set.
+      const postCheck = this.abuseClassifier.classify({
+        intent: request.intent,
+        code: synthesis.code,
+      });
+      if (postCheck.category) {
+        this.logger.warn({
+          userId: request.userId,
+          category: postCheck.category,
+          confidence: postCheck.confidence,
+          matchedPatterns: postCheck.matchedPatterns,
+        }, '[SYNTH] Generated code matches abuse policy — refusing post-synthesis');
+        const execId = `synth-refused-${Date.now()}`;
+        this.auditSynth({
+          userId: request.userId,
+          userEmail: (request as any).userEmail,
+          executionId: execId,
+          intent: request.intent,
+          code: synthesis.code,
+          capabilities: request.capabilities || [],
+          cloudTargets: [],
+          riskLevel: 'critical',
+          outcome: 'refused',
+          executionTimeMs: Date.now() - startTime,
+        });
+        return {
+          success: false,
+          toolId: 'policy-refused-code',
+          intent: request.intent,
+          error: `Refused by policy: synthesized code matches "${postCheck.category}" category. ` +
+                 'The request was blocked after code generation.',
           metrics: {
             synthesisTimeMs: synthesis.synthesisMetrics.totalMs,
             executionTimeMs: 0,
@@ -487,6 +577,18 @@ export class SynthService extends EventEmitter {
 
       if (needsApproval) {
         const toolId = `synth-${Date.now()}`;
+        this.auditSynth({
+          userId: request.userId,
+          userEmail: (request as any).userEmail,
+          executionId: toolId,
+          intent: request.intent,
+          code: synthesis.code,
+          capabilities: request.capabilities || [],
+          cloudTargets: (request.capabilities || []).filter((c) => ['aws', 'azure', 'gcp'].includes(c)),
+          riskLevel: synthesis.riskLevel,
+          outcome: 'approval_pending',
+          executionTimeMs: Date.now() - startTime,
+        });
         const tool = {
           code: synthesis.code,
           explanation: synthesis.riskReasoning,
@@ -615,7 +717,6 @@ export class SynthService extends EventEmitter {
 
     // Get platform services
     const providerManager = this.getProviderManager();
-    const sliderService = this.getSliderService();
     const metricsService = this.getMetricsService();
 
     // Default response for failures
@@ -646,22 +747,17 @@ export class SynthService extends EventEmitter {
     }, '[SYNTH] Starting code synthesis with platform integration');
 
     try {
-      // Step 1: Get slider config for cost/quality tradeoff
-      const sliderConfig = await sliderService.getSliderConfig(request.userId);
-
-      this.logger.debug({
-        userId: request.userId,
-        sliderPosition: sliderConfig.position,
-        source: sliderConfig.source,
-      }, '[SYNTH] Resolved slider config');
+      // Step 1 removed 2026-04-19 — slider ripped (task #144). Synth always
+      // uses the premium model from ModelConfigurationService; per-user
+      // spend caps are enforced at dispatch time by UserModelBudgetService.
 
       // Step 2: Find relevant existing MCP tools via semantic search
       let existingTools: Array<{ name: string; description: string; server: string }> = [];
 
       if (this.config.useSemanticToolSearch) {
         try {
-          // Get ToolSemanticCacheService from global scope if available
-          const toolCache: ToolSemanticCacheService | undefined = (global as any).toolSemanticCache;
+          // Get ToolSemanticCacheService via singleton accessor
+          const toolCache: ToolSemanticCacheService | null = getToolSemanticCache();
 
           if (toolCache && toolCache.isInitialized) {
             const searchResults = await toolCache.searchTools(request.intent, 10);
@@ -725,7 +821,7 @@ export class SynthService extends EventEmitter {
       if (!model) {
         try {
           const { ModelConfigurationService: mcs } = await import('./ModelConfigurationService.js');
-          const tiers = await mcs.getSliderTiers();
+          const tiers = await mcs.getTierModels();
           model = tiers.premium;
           this.logger.debug({ model }, '[SYNTH] Using premium model from registry for synthesis');
         } catch { /* fall through to provider defaults */ }
@@ -757,7 +853,6 @@ export class SynthService extends EventEmitter {
         userId: request.userId,
         model,
         targetProvider,
-        sliderPosition: sliderConfig.position,
         maxTokens: this.config.maxSynthesisTokens,
       }, '[SYNTH] Calling LLM for synthesis');
 
@@ -825,7 +920,6 @@ export class SynthService extends EventEmitter {
           synth: true,
           synth_intent: request.intent.substring(0, 200),
           synth_capabilities: request.capabilities || [],
-          synth_slider_position: sliderConfig.position,
           synth_existing_tools_found: existingTools.length,
           synth_risk_level: riskLevel,
         },
@@ -1635,6 +1729,123 @@ print(json.dumps({"status": "success", "file_output": encoded, "file_name": "out
     return args;
   }
 
+  /**
+   * #482 — direct code execution (skips LLM synthesis).
+   *
+   * Used by the T3 compose_app iframe path: the model has already authored
+   * Python (with boto3 / azure-mgmt-* / google-cloud-* available in the
+   * synth-executor image), and the iframe POSTs to /api/synth/exec from
+   * inside the sandboxed iframe. The /api/synth/* OBO preHandler has
+   * already populated `credentials` with the AD user's ARM + Graph tokens,
+   * so the executed code runs AS the authenticated user — same identity
+   * boundary as the chatmode synth_execute tool.
+   *
+   * Returns the raw executor response so the caller can decide whether to
+   * stream stdout or wrap it. No approval gate here — T3 mini-apps run
+   * pre-validated code in the same distroless sandbox; LOW risk by design.
+   */
+  async executeCode(req: {
+    userId: string;
+    userEmail?: string;
+    sessionId?: string;
+    code: string;
+    capabilities?: string[];
+    credentials?: SynthRequest['credentials'];
+    timeoutSeconds?: number;
+    maxMemoryMb?: number;
+  }): Promise<{
+    success: boolean;
+    result?: unknown;
+    stdout?: string;
+    stderr?: string;
+    error?: string;
+    executionTimeMs?: number;
+    executionId: string;
+  }> {
+    const startTime = Date.now();
+    const executionId = `${req.userId}-exec-${Date.now()}`;
+
+    const credentials: Record<string, string> = {};
+    if (req.credentials?.aws) {
+      credentials.AWS_ACCESS_KEY_ID = req.credentials.aws.accessKeyId;
+      credentials.AWS_SECRET_ACCESS_KEY = req.credentials.aws.secretAccessKey;
+      if (req.credentials.aws.sessionToken) {
+        credentials.AWS_SESSION_TOKEN = req.credentials.aws.sessionToken;
+      }
+      credentials.AWS_DEFAULT_REGION = req.credentials.aws.region || 'us-east-1';
+    }
+    if (req.credentials?.azure) {
+      credentials.AZURE_ACCESS_TOKEN = req.credentials.azure.accessToken;
+      credentials.AZURE_TENANT_ID = req.credentials.azure.tenantId;
+    }
+    if (req.credentials?.gcp) {
+      credentials.GOOGLE_OAUTH_ACCESS_TOKEN = req.credentials.gcp.accessToken;
+      if (req.credentials.gcp.projectId) {
+        credentials.GCLOUD_PROJECT = req.credentials.gcp.projectId;
+      }
+    }
+    if (req.credentials?.github) {
+      credentials.GITHUB_TOKEN = req.credentials.github.token;
+    }
+
+    const isReady = await this.executorClient.isReady();
+    if (!isReady) {
+      return {
+        success: false,
+        executionId,
+        error: 'Synth Executor service is not available.',
+      };
+    }
+
+    try {
+      const response = await this.executorClient.execute({
+        executionId,
+        code: req.code,
+        intent: '[T3-iframe-direct-exec]',
+        userId: req.userId,
+        sessionId: req.sessionId ?? executionId,
+        userEmail: req.userEmail,
+        timeoutSeconds: req.timeoutSeconds ?? this.config.timeoutSeconds,
+        maxMemoryMb: req.maxMemoryMb ?? this.config.maxMemoryMb,
+        credentials: Object.keys(credentials).length > 0 ? credentials : undefined,
+        capabilities: req.capabilities || this.config.allowedCapabilities,
+      });
+
+      const caps = req.capabilities || [];
+      this.auditSynth({
+        userId: req.userId,
+        userEmail: req.userEmail,
+        executionId,
+        intent: '[T3-iframe-direct-exec]',
+        code: req.code,
+        capabilities: caps,
+        cloudTargets: caps.filter((c) => ['aws', 'azure', 'gcp'].includes(c)),
+        riskLevel: 'low',
+        outcome: response.success ? 'success' : 'error',
+        executionTimeMs: response.executionTimeMs ?? (Date.now() - startTime),
+        injectedEnvKeys: Object.keys(credentials),
+      });
+
+      return {
+        success: response.success,
+        result: response.result,
+        stdout: response.stdout,
+        stderr: response.stderr,
+        error: response.error,
+        executionTimeMs: response.executionTimeMs,
+        executionId,
+      };
+    } catch (err) {
+      this.logger.error({ err, executionId }, '[SYNTH] executeCode failed');
+      return {
+        success: false,
+        executionId,
+        error: err instanceof Error ? err.message : String(err),
+        executionTimeMs: Date.now() - startTime,
+      };
+    }
+  }
+
   private async executeSynth(
     _args: string[],
     _env: NodeJS.ProcessEnv,
@@ -1695,6 +1906,7 @@ print(json.dumps({"status": "success", "file_output": encoded, "file_name": "out
         code: synthesizedCode,
         intent: request.intent,
         userId: request.userId,
+        sessionId: request.sessionId ?? executionId,
         userEmail: request.userEmail,
         timeoutSeconds: this.config.timeoutSeconds,
         maxMemoryMb: this.config.maxMemoryMb,
@@ -1727,6 +1939,24 @@ print(json.dumps({"status": "success", "file_output": encoded, "file_name": "out
 
       // Use executor result, falling back to stdout if result is null
       const executionResult = response.result ?? (response.stdout ? { output: response.stdout } : null);
+
+      // Audit: one row per execution, success or error. code_hash + intent
+      // + cloud_targets + outcome + execution_time_ms are persisted;
+      // stdout/result are NOT.
+      const caps = request.capabilities || [];
+      this.auditSynth({
+        userId: request.userId,
+        userEmail: (request as any).userEmail,
+        executionId,
+        intent: request.intent,
+        code: synthesizedCode,
+        capabilities: caps,
+        cloudTargets: caps.filter((c) => ['aws', 'azure', 'gcp'].includes(c)),
+        riskLevel: (request as any)._riskLevel || 'low',
+        outcome: response.success ? 'success' : 'error',
+        executionTimeMs: response.executionTimeMs,
+        injectedEnvKeys: Object.keys((request as any).credentials || {}),
+      });
 
       return {
         success: response.success,

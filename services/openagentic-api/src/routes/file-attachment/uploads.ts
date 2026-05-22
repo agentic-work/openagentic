@@ -22,6 +22,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { prisma } from '../../utils/prisma.js';
 import * as jwt from 'jsonwebtoken';
+import { validateAnyToken, extractBearerToken } from '../../auth/tokenValidator.js';
 import { pipeline } from 'stream/promises';
 import fs from 'fs';
 import path from 'path';
@@ -37,6 +38,13 @@ import archiver from 'archiver';
 import unzipper from 'unzipper';
 import { createReadStream, createWriteStream } from 'fs';
 import { Readable } from 'stream';
+import { getDocumentIndexingService } from '../../services/DocumentIndexingService.js';
+import { BlobStorageService } from '../../services/BlobStorageService.js';
+import {
+  planUpload,
+  DEFAULT_ALLOWED_MIME_TYPES,
+  DEFAULT_MAX_UPLOAD_BYTES,
+} from './uploadToBlob.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SIGNING_SECRET;
 if (!JWT_SECRET) {
@@ -52,15 +60,26 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
     fs.mkdirSync(UPLOAD_DIR, { recursive: true });
   }
 
-  // Helper to get user from token
-  const getUserFromToken = (request: any): string | null => {
-    const authHeader = request.headers.authorization;
-    if (!authHeader) return null;
+  // Helper to get user from token. Accepts BOTH Azure AD (SSO) and locally
+  // minted JWTs via validateAnyToken — chat-stream uses the same validator,
+  // so /api/files/upload now matches that contract instead of jwt.verify-ing
+  // raw with JWT_SECRET (which only worked for the local-account path and
+  // 401'd every SSO user, falling back to inline-base64 → 413 downstream).
+  const getUserFromToken = async (request: any): Promise<string | null> => {
+    const token =
+      (request.headers['x-api-key'] as string | undefined) ||
+      extractBearerToken(request.headers.authorization) ||
+      (request.cookies?.openagentic_token as string | undefined) ||
+      null;
+    if (!token) return null;
 
     try {
-      const token = authHeader.replace('Bearer ', '');
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
-      return decoded.userId || decoded.id || decoded.oid;
+      const result = await validateAnyToken(token, { logger });
+      if (!result.isValid || !result.user) {
+        logger.warn({ reason: result.error }, 'Failed to validate user token');
+        return null;
+      }
+      return result.user.userId || (result.user as any).id || (result.user as any).oid;
     } catch (error) {
       logger.warn({ error }, 'Failed to decode user token');
       return null;
@@ -73,7 +92,7 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.post('/upload', async (request, reply) => {
     try {
-      const userId = getUserFromToken(request);
+      const userId = await getUserFromToken(request);
       if (!userId) {
         return reply.code(401).send({ error: 'Authentication required' });
       }
@@ -83,86 +102,84 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.code(400).send({ error: 'No file provided' });
       }
 
-      // Validate file type and size
-      const allowedTypes = [
-        'text/plain',
-        'text/csv',
-        'application/json',
-        'application/pdf',
-        'image/png',
-        'image/jpeg',
-        'image/gif',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      ];
+      // Buffer the upload into memory — multipart stream → Buffer in one shot
+      // so we never touch disk. @fastify/multipart exposes toBuffer() on the
+      // file part; it respects the fastify bodyLimit (100 MB post-2026-04-24).
+      const buffer: Buffer = await (data as any).toBuffer();
 
-      const maxSize = 10 * 1024 * 1024; // 10MB
-      
-      if (!allowedTypes.includes(data.mimetype)) {
-        return reply.code(400).send({ 
-          error: 'File type not supported',
-          allowedTypes
+      // Validate (mime allow-list + size cap) + compute blob key + sha256
+      // in one pass via the pure helper. Throws a descriptive Error on reject.
+      let plan;
+      try {
+        plan = planUpload({
+          userId,
+          originalFilename: data.filename,
+          mimeType: data.mimetype,
+          buffer,
+        });
+      } catch (planErr: any) {
+        return reply.code(400).send({
+          error: planErr.message,
+          allowedTypes: DEFAULT_ALLOWED_MIME_TYPES,
+          maxBytes: DEFAULT_MAX_UPLOAD_BYTES,
         });
       }
 
-      // Generate unique filename
-      const fileExt = path.extname(data.filename);
-      const fileHash = createHash('md5').update(`${userId}_${Date.now()}_${data.filename}`).digest('hex');
-      const filename = `${fileHash}${fileExt}`;
-      const filepath = path.join(UPLOAD_DIR, filename);
-
-      // Save file to disk
-      await pipeline(data.file, fs.createWriteStream(filepath));
-
-      // Get file stats
-      const stats = fs.statSync(filepath);
-      
-      if (stats.size > maxSize) {
-        fs.unlinkSync(filepath); // Clean up
-        return reply.code(400).send({ error: 'File size exceeds limit (10MB)' });
+      // Dedup check: same user + same sha256 → return the existing row and
+      // skip the MinIO put. Avoids burning bucket space on repeat drops.
+      const existingFile = await prisma.fileAttachment.findFirst({
+        where: {
+          user_id: userId,
+          metadata: { path: ['sha256'], equals: plan.sha256 },
+          deleted_at: null,
+        },
+      });
+      if (existingFile) {
+        return reply.send({
+          file: {
+            id: existingFile.id,
+            filename: existingFile.filename,
+            originalName: existingFile.original_name,
+            mimeType: existingFile.mime_type,
+            size: existingFile.file_size ?? existingFile.size,
+            uploadedAt: existingFile.created_at,
+            status: existingFile.upload_status,
+          },
+          isDuplicate: true,
+        });
       }
 
-      // Extract content based on file type
+      // Persist bytes to MinIO — bucket `openagentic-uploads`, key
+      // YYYY/MM/<userId>/<fileId>.<ext>.
+      const blobStorage = new BlobStorageService(request.log, { bucket: 'openagentic-uploads' });
+      await blobStorage.init();
+      await blobStorage.store(buffer, plan.blobKey, plan.mimeType);
+
+      // Extract content in-memory for LLM context / semantic search. Best
+      // effort — failures are logged, not fatal.
       let extractedContent = '';
       let extractedMetadata: any = {};
-      let previewUrl: string | null = null;
-
       try {
-        // PDF content extraction
-        if (data.mimetype === 'application/pdf') {
-          const pdfBuffer = fs.readFileSync(filepath);
-          // Dynamic import to avoid module load issue
-          const pdfParse = await import('pdf-parse').then(m => m.default);
-          const pdfData = await pdfParse(pdfBuffer);
-          extractedContent = pdfData.text;
+        if (plan.mimeType === 'application/pdf') {
+          const { PDFParse } = await import('pdf-parse');
+          const parser = new PDFParse({ data: new Uint8Array(buffer) });
+          const pdfData: any = await parser.getText();
+          extractedContent = pdfData.text || '';
           extractedMetadata = {
-            pages: pdfData.numpages,
+            pages: pdfData.pages || pdfData.numpages || 0,
             info: pdfData.info,
-            metadata: pdfData.metadata
+            metadata: pdfData.metadata,
           };
-        }
-        
-        // Word document extraction
-        else if (data.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-                 data.mimetype === 'application/msword') {
-          const result = await mammoth.extractRawText({ path: filepath });
+        } else if (
+          plan.mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+          plan.mimeType === 'application/msword'
+        ) {
+          const result = await mammoth.extractRawText({ buffer });
           extractedContent = result.value;
           extractedMetadata = { messages: result.messages };
-        }
-        
-        // Image processing and OCR
-        else if (data.mimetype.startsWith('image/')) {
-          // Generate thumbnail
-          const thumbnailPath = path.join(UPLOAD_DIR, `thumb_${fileHash}.jpg`);
-          await sharp(filepath)
-            .resize(200, 200, { fit: 'inside' })
-            .jpeg({ quality: 80 })
-            .toFile(thumbnailPath);
-          
-          previewUrl = `/api/files/preview/${fileHash}`;
-          
-          // Extract image metadata
-          const imageMetadata = await sharp(filepath).metadata();
+        } else if (plan.mimeType.startsWith('image/') && plan.mimeType !== 'image/svg+xml') {
+          // SVG is text; sharp can't read it as a raster source for metadata.
+          const imageMetadata = await sharp(buffer).metadata();
           extractedMetadata = {
             width: imageMetadata.width,
             height: imageMetadata.height,
@@ -171,105 +188,75 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
             channels: imageMetadata.channels,
             depth: imageMetadata.depth,
             density: imageMetadata.density,
-            hasAlpha: imageMetadata.hasAlpha
+            hasAlpha: imageMetadata.hasAlpha,
           };
-
-          // OCR would go here if we had Tesseract installed
-          // const { data: { text } } = await Tesseract.recognize(filepath, 'eng');
-          // extractedContent = text;
-        }
-        
-        // Plain text files
-        else if (data.mimetype === 'text/plain' || 
-                 data.mimetype === 'text/csv' ||
-                 data.mimetype === 'application/json') {
-          extractedContent = fs.readFileSync(filepath, 'utf-8');
+        } else if (
+          plan.mimeType === 'text/plain' ||
+          plan.mimeType === 'text/markdown' ||
+          plan.mimeType === 'text/csv' ||
+          plan.mimeType === 'text/html' ||
+          plan.mimeType === 'text/xml' ||
+          plan.mimeType === 'application/json'
+        ) {
+          extractedContent = buffer.toString('utf-8');
         }
       } catch (extractError) {
-        logger.warn({ extractError, filepath }, 'Failed to extract content from file');
+        logger.warn({ extractError, fileId: plan.fileId }, 'Failed to extract content from file');
       }
 
-      // Calculate file hash for deduplication
-      const fileBuffer = fs.readFileSync(filepath);
-      const sha256Hash = createHash('sha256').update(fileBuffer).digest('hex');
-
-      // Check for duplicates
-      const existingFile = await prisma.fileAttachment.findFirst({
-        where: {
-          user_id: userId,
-          metadata: {
-            path: ['sha256'],
-            equals: sha256Hash
-          }
-        }
-      });
-
-      if (existingFile) {
-        fs.unlinkSync(filepath); // Remove duplicate
-        return reply.send({
-          id: existingFile.id,
-          filename: existingFile.filename,
-          size: existingFile.size,
-          mimeType: existingFile.mime_type,
-          isDuplicate: true,
-          message: 'File already exists'
-        });
-      }
-
-      // Save file record to database with enhanced metadata
+      // Write row. upload_path now holds the MinIO blob key (formerly a
+      // /tmp filesystem path). storage_backend='minio' lives in metadata
+      // so downstream readers know how to fetch.
       const fileRecord = await prisma.fileAttachment.create({
         data: {
-          id: fileHash,
+          id: plan.fileId,
           user_id: userId,
           filename: data.filename,
           original_name: data.filename,
-          mime_type: data.mimetype,
-          size: stats.size,
-          upload_path: filepath,
-          file_size: stats.size,
-          file_path: filepath,
+          mime_type: plan.mimeType,
+          size: plan.size,
+          upload_path: plan.blobKey,
+          file_size: plan.size,
+          file_path: plan.blobKey,
           upload_status: 'completed',
-          // extracted_text and preview_url stored in metadata instead
           metadata: {
             uploadedAt: new Date().toISOString(),
-            hash: fileHash,
-            sha256: sha256Hash,
+            sha256: plan.sha256,
             extracted: extractedMetadata,
             contentLength: extractedContent.length,
             extractedText: extractedContent ? extractedContent.substring(0, 10000) : null,
-            previewUrl: previewUrl
-          }
-        }
+            storage_backend: 'minio',
+            bucket: 'openagentic-uploads',
+          },
+        },
       });
 
-      // Trigger async document indexing for semantic search (if service is available)
+      // Async indexing for semantic search. Non-blocking.
       if (extractedContent && extractedContent.length > 0) {
-        const documentIndexingService = (global as any).documentIndexingService;
+        const documentIndexingService = getDocumentIndexingService();
         if (documentIndexingService) {
-          // Run in background - don't block upload response
           setImmediate(async () => {
             try {
-              await documentIndexingService.indexDocument(fileHash);
-              logger.info({ fileId: fileHash }, 'Document indexed for semantic search');
+              await documentIndexingService.indexDocument(plan.fileId);
+              logger.info({ fileId: plan.fileId }, 'Document indexed for semantic search');
             } catch (indexError) {
-              logger.warn({ err: indexError, fileId: fileHash }, 'Failed to index document');
+              logger.warn({ err: indexError, fileId: plan.fileId }, 'Failed to index document');
             }
           });
         }
       }
 
-      // Basic content analysis for text files
-      let contentPreview = null;
-      if (data.mimetype.startsWith('text/')) {
-        try {
-          const content = fs.readFileSync(filepath, 'utf-8');
+      // Tiny preview for text files — the UI uses this for the
+      // "x lines, y chars" card before the full content loads.
+      let contentPreview: { lines: number; characters: number; preview: string } | null = null;
+      if (plan.mimeType.startsWith('text/') || plan.mimeType === 'application/json') {
+        const text = extractedContent;
+        if (text) {
           contentPreview = {
-            lines: content.split('\n').length,
-            characters: content.length,
-            preview: content.substring(0, 500) + (content.length > 500 ? '...' : '')
+            lines: text.split('\n').length,
+            characters: text.length,
+            preview: text.substring(0, 500) + (text.length > 500 ? '...' : ''),
           };
-        } catch (error) {
-          logger.warn({ error }, 'Failed to analyze text file content');
         }
       }
 
@@ -282,8 +269,9 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
           size: fileRecord.file_size,
           uploadedAt: fileRecord.created_at,
           status: fileRecord.upload_status,
-          contentPreview
-        }
+          blobKey: plan.blobKey,
+          contentPreview,
+        },
       });
     } catch (error) {
       logger.error({ error }, 'Failed to upload file');
@@ -297,7 +285,7 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.get('/:id', async (request, reply) => {
     try {
-      const userId = getUserFromToken(request);
+      const userId = await getUserFromToken(request);
       if (!userId) {
         return reply.code(401).send({ error: 'Authentication required' });
       }
@@ -360,7 +348,7 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.get('/', async (request, reply) => {
     try {
-      const userId = getUserFromToken(request);
+      const userId = await getUserFromToken(request);
       if (!userId) {
         return reply.code(401).send({ error: 'Authentication required' });
       }
@@ -437,7 +425,7 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.post('/:id/process', async (request, reply) => {
     try {
-      const userId = getUserFromToken(request);
+      const userId = await getUserFromToken(request);
       if (!userId) {
         return reply.code(401).send({ error: 'Authentication required' });
       }
@@ -571,7 +559,7 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.get('/:id/download', async (request, reply) => {
     try {
-      const userId = getUserFromToken(request);
+      const userId = await getUserFromToken(request);
       if (!userId) {
         return reply.code(401).send({ error: 'Authentication required' });
       }
@@ -609,7 +597,7 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.delete('/:id', async (request, reply) => {
     try {
-      const userId = getUserFromToken(request);
+      const userId = await getUserFromToken(request);
       if (!userId) {
         return reply.code(401).send({ error: 'Authentication required' });
       }
@@ -654,7 +642,7 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.post('/analyze', async (request, reply) => {
     try {
-      const userId = getUserFromToken(request);
+      const userId = await getUserFromToken(request);
       if (!userId) {
         return reply.code(401).send({ error: 'Authentication required' });
       }
@@ -760,7 +748,7 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.get('/metadata', async (request, reply) => {
     try {
-      const userId = getUserFromToken(request);
+      const userId = await getUserFromToken(request);
       if (!userId) {
         return reply.code(401).send({ error: 'Authentication required' });
       }
@@ -846,7 +834,7 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
   // POST version of metadata endpoint for large lists of file IDs
   fastify.post('/metadata', async (request, reply) => {
     try {
-      const userId = getUserFromToken(request);
+      const userId = await getUserFromToken(request);
       if (!userId) {
         return reply.code(401).send({ error: 'Authentication required' });
       }
@@ -975,7 +963,7 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.post('/search', async (request, reply) => {
     try {
-      const userId = getUserFromToken(request);
+      const userId = await getUserFromToken(request);
       if (!userId) {
         return reply.code(401).send({ error: 'Authentication required' });
       }
@@ -1032,7 +1020,7 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.get('/indexing-stats', async (request, reply) => {
     try {
-      const userId = getUserFromToken(request);
+      const userId = await getUserFromToken(request);
       if (!userId) {
         return reply.code(401).send({ error: 'Authentication required' });
       }
@@ -1065,7 +1053,7 @@ export const fileUploadRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.post('/:id/reindex', async (request, reply) => {
     try {
-      const userId = getUserFromToken(request);
+      const userId = await getUserFromToken(request);
       if (!userId) {
         return reply.code(401).send({ error: 'Authentication required' });
       }

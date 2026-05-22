@@ -1,13 +1,14 @@
 /**
  * Model Management and Discovery Routes
  *
- * Discovers and manages available AI models from DATABASE FIRST, then ProviderManager.
- * The llm_providers table is the source of truth for available models.
+ * SoT: `model_role_assignments` (the model registry) + `llm_providers` (the
+ * provider registry). Per #915, this route enumerates the model SoT, joins
+ * provider metadata, and groups multi-role rows into one entry per (model,
+ * provider) with `roles[]` populated.
  *
- * Priority Order:
- * 1. Database llm_providers table (admin-configured providers)
- * 2. ProviderManager (runtime-discovered models)
- * 3. Environment variables (legacy fallback only)
+ * Fallback order (only when registry is empty):
+ *   1. ProviderManager runtime discovery (legacy compat)
+ *   2. Environment variables (oldest legacy path)
  *
  * @see {@link https://docs.openagentic.io/api/ai-ml-services/models}
  */
@@ -19,81 +20,107 @@ export interface ModelsRouteOptions {
   providerManager?: ProviderManager;
 }
 
+interface ModelRowGrouped {
+  id: string;
+  name: string;
+  provider: string;
+  providerId?: string;
+  providerName?: string;
+  providerType?: string;
+  type: string;
+  roles?: string[];
+  capabilities: string[];
+  status: string;
+  description: string;
+  config?: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+}
+
 export const modelsRoutes: FastifyPluginAsync<ModelsRouteOptions> = async (fastify, options) => {
   const logger = fastify.log;
   const providerManager = options.providerManager;
 
   /**
-   * GET /models - Returns chat models available for the model selector
+   * GET /models - Returns the active model SoT.
    *
-   * Priority: Database > ProviderManager > Environment Variables
-   * This ensures admin-configured providers are always shown first.
+   * Reads model_role_assignments (the model SoT) and groups by (model,
+   * provider). Each output row carries `roles[]` populated from the
+   * grouped rows. Provider metadata joined from llm_providers by name.
    */
   fastify.get('/', async (request, reply) => {
     try {
-      const models: any[] = [];
+      const models: ModelRowGrouped[] = [];
       let providerStatus = 'not_configured';
 
       // =========================================================================
-      // PRIORITY 1: Load models from DATABASE (llm_providers table)
-      // This is the source of truth for admin-configured providers
+      // PRIORITY 1: Load models from model_role_assignments (the model SoT)
+      // Group by (model, provider) and join llm_providers for metadata.
       // =========================================================================
       try {
         const { prisma } = await import('../../utils/prisma.js');
 
-        const dbProviders = await prisma.lLMProvider.findMany({
-          where: {
-            enabled: true,
-            deleted_at: null
-          },
-          orderBy: {
-            priority: 'asc'
-          }
+        const assignments = await (prisma as any).modelRoleAssignment.findMany({
+          where: { enabled: true },
+          orderBy: { priority: 'asc' },
         });
 
-        if (dbProviders.length > 0) {
-          logger.info({ count: dbProviders.length }, '[MODELS] Loading models from database llm_providers table');
-          providerStatus = 'database';
+        if (assignments.length > 0) {
+          const dbProviders = await prisma.lLMProvider.findMany({
+            where: { enabled: true, deleted_at: null },
+          });
+          const providerByName = new Map<string, typeof dbProviders[number]>();
+          for (const p of dbProviders) providerByName.set(p.name, p);
 
-          for (const dbProvider of dbProviders) {
-            const providerConfig = dbProvider.provider_config as any || {};
-            const capabilities = dbProvider.capabilities as any || {};
-            const modelConfig = dbProvider.model_config as any || {};
-
-            // Get model ID from provider config
-            const modelId = providerConfig.modelId ||
-                           providerConfig.model ||
-                           providerConfig.deployment ||
-                           dbProvider.name;
-
-            // Check if this provider has chat capability
-            if (capabilities.chat !== false) {
-              models.push({
-                id: modelId,
-                name: dbProvider.display_name || modelId,
-                provider: dbProvider.provider_type,
-                providerId: dbProvider.id,
-                providerName: dbProvider.name,
-                type: 'chat',
-                capabilities: [
-                  'text',
-                  'chat',
-                  capabilities.tools !== false ? 'function_calling' : null,
-                  capabilities.vision ? 'vision' : null,
-                  capabilities.tools !== false ? 'tool_use' : null,
-                ].filter(Boolean),
-                status: 'active',
-                description: dbProvider.description || `${dbProvider.display_name} (${dbProvider.provider_type})`,
-                config: modelConfig,
-                metadata: {
-                  created: dbProvider.created_at?.getTime() || Date.now(),
-                  owned_by: dbProvider.provider_type,
-                  model_id: modelId,
-                  source: 'database'
-                }
-              });
+          // Group assignments by (provider, model). Each (provider, model)
+          // pair becomes ONE output row with roles[] collected.
+          const grouped = new Map<string, ModelRowGrouped>();
+          for (const a of assignments as Array<{
+            role: string;
+            model: string;
+            provider: string;
+            capabilities?: any;
+          }>) {
+            const provRow = providerByName.get(a.provider);
+            if (!provRow) continue; // skip orphaned model rows
+            const key = `${a.provider}::${a.model}`;
+            const caps = (a.capabilities || {}) as Record<string, unknown>;
+            const existing = grouped.get(key);
+            if (existing) {
+              if (!existing.roles.includes(a.role)) existing.roles.push(a.role);
+              continue;
             }
+            const capList = [
+              'text',
+              'chat',
+              caps.tools !== false ? 'function_calling' : null,
+              caps.vision ? 'vision' : null,
+              caps.tools !== false ? 'tool_use' : null,
+              caps.embeddings ? 'embeddings' : null,
+              caps.streaming ? 'streaming' : null,
+            ].filter((v): v is string => Boolean(v));
+            grouped.set(key, {
+              id: a.model,
+              name: a.model,
+              provider: provRow.provider_type,
+              providerId: provRow.id,
+              providerName: provRow.name,
+              providerType: provRow.provider_type,
+              type: 'chat',
+              roles: [a.role],
+              capabilities: capList,
+              status: 'active',
+              description: `${provRow.display_name || provRow.name} :: ${a.model}`,
+              config: (provRow.model_config as Record<string, unknown>) || {},
+              metadata: {
+                created: provRow.created_at?.getTime() || Date.now(),
+                owned_by: provRow.provider_type,
+                model_id: a.model,
+                source: 'registry',
+              },
+            });
           }
+          for (const row of grouped.values()) models.push(row);
+          if (models.length > 0) providerStatus = 'database';
         }
       } catch (dbError) {
         logger.warn({ error: dbError }, '[MODELS] Failed to load from database, continuing with other sources');

@@ -251,7 +251,19 @@ const SUMMARIZERS: Record<string, Summarizer> = {
   azure_storage_account_set_public_access: (args) => text(`Public access ${args?.allow_public_access === false ? 'disabled' : 'enabled'} on ${args?.name || args?.account_name || '?'}`),
   azure_list_subscriptions: (_a, r) => {
     const data = unwrapResult(r);
-    const n = countArray(data, ['subscriptions', 'value']) ?? 0;
+    // SoT precedence: array length > count field. The oap-azure-mcp
+    // server always sets `count = len(subscriptions)`; if the envelope/
+    // wire path drops the array but keeps count, trust count rather
+    // than emitting a misleading "0 subscriptions" badge.
+    let n = countArray(data, ['subscriptions', 'value']);
+    if (n == null && typeof data?.count === 'number') n = data.count;
+    if (n == null && typeof data?.total === 'number') n = data.total;
+    // If we couldn't determine count from any payload field (the tool
+    // result didn't flow through to the badge — see contentBlocks
+    // contains tool_use only, no tool_result blocks; 2026-05-12 live),
+    // return an empty summary rather than a misleading "0 subscriptions"
+    // when the model body text shows N>0 subs.
+    if (n == null) return { kind: 'none' };
     return text(`${n} subscription${n === 1 ? '' : 's'}`);
   },
   azure_list_resource_groups: (_a, r) => {

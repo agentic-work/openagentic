@@ -10,8 +10,27 @@
 import { EventEmitter } from 'events';
 import { prisma } from '../utils/prisma.js';
 import { loggers } from '../utils/logger.js';
-import { MODELS } from '../config/models.js';
+import { canAutoApprove } from './approvalGate.js';
+import { createApprovalRecord } from './approvalRecord.js';
+import { redactSecrets, redactLogMeta, type RedactionMap } from './secretRedaction.js';
 import axios from 'axios';
+import { abortableAxiosPost, abortableAxiosGet, abortableAxios } from './abortableAxios.js';
+import { ModelConfigurationService } from './ModelConfigurationService.js';
+import { subscribeAgentProgressForWorkflowNode } from './workflowAgentProgressBridge.js';
+import { runSandboxed } from './sandbox.js';
+// Schema-driven plugin registry (Task #41 — closes the api fallback gap on
+// outputAssertions). Migrated nodes go through the registry so the same
+// refusal-detection / fake-success protections apply when the api engine runs
+// a flow directly (WORKFLOW_SERVICE_URL unset OR forwarding fails).
+import {
+  registry as nodeRegistry,
+  runWithAssertions,
+} from '@openagentic/workflow-engine/nodes/registry';
+import {
+  OutputAssertionError,
+  type NodeExecutionContext as SharedNodeCtx,
+  type NodePlugin as SharedNodePlugin,
+} from '@openagentic/workflow-engine/nodes/types';
 
 const logger = loggers.services;
 
@@ -44,16 +63,29 @@ export interface ExecutionContext {
   executionId: string;
   workflowId: string;
   userId: string;
+  /**
+   * Caller's tenant id (Azure AD `azure_tenant_id`). Theme A / S1-1.
+   * Threaded from the API request layer (`request.tenantId`) into the
+   * engine; the engine in turn copies it onto every NodeExecutionContext
+   * it constructs so executors inherit the same tenant scoping.
+   */
+  tenantId?: string | null;
   authToken?: string;
   /** Azure AD ID token for AWS/Azure OBO federation */
   idToken?: string;
   /** User email for MCP workspace isolation */
   userEmail?: string;
+  /** Trigger initiating this execution: webhook|schedule|manual|event|api|test. Used to gate test-only behavior. */
+  triggerType?: string;
+  /** Permissions of the caller. Used by approvalGate / per-node ACLs. */
+  userPermissions?: readonly string[];
   input: Record<string, any>;
   variables: Map<string, any>;
   nodeResults: Map<string, any>;
   startTime: number;
   agenticExecutionId?: string;
+  /** Resolved secret values keyed by secret name. Populated at execution start. */
+  resolvedSecrets?: Map<string, string>;
 }
 
 export interface NodeExecutionResult {
@@ -288,8 +320,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
               logger.warn({ err, secretName: name }, '[WorkflowEngine] Failed to resolve secret');
             }
           }
-          (this.context as any).resolvedSecrets = resolvedSecrets;
-          logger.debug({ count: resolvedSecrets.size }, '[WorkflowEngine] Pre-loaded workflow secrets');
+          this.context.resolvedSecrets = resolvedSecrets;
+          logger.debug({ count: resolvedSecrets.size }, '[WorkflowEngine] Pre-loaded workflow secrets'); // metadata only — no secret interpolation
         }
       } catch (err) {
         logger.warn({ err }, '[WorkflowEngine] Failed to pre-load secrets (non-fatal)');
@@ -497,7 +529,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
         );
         for (const br of branchResults) {
           if (br.status === 'rejected') {
-            logger.warn({ nodeId, error: br.reason?.message }, '[WorkflowEngine] Branch execution failed (disabled passthrough)');
+            this.safeLog('warn', { nodeId, error: br.reason?.message }, '[WorkflowEngine] Branch execution failed (disabled passthrough)'); // error.message may contain secret-interpolated content
           }
         }
       } else if (outgoing.length === 1) {
@@ -523,7 +555,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
         );
         for (const br of branchResults) {
           if (br.status === 'rejected') {
-            logger.warn({ nodeId, error: br.reason?.message }, '[WorkflowEngine] Branch execution failed (pinned data)');
+            this.safeLog('warn', { nodeId, error: br.reason?.message }, '[WorkflowEngine] Branch execution failed (pinned data)'); // error.message may contain secret-interpolated content
           }
         }
       } else if (outgoing.length === 1) {
@@ -604,7 +636,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
         }
 
         // Store result
-        logger.info({ nodeId, resultType: typeof result, resultPreview: JSON.stringify(result)?.substring(0, 100) }, '[WorkflowEngine] Storing node result');
+        this.safeLog('info', { nodeId, resultType: typeof result, resultPreview: JSON.stringify(result)?.substring(0, 100) } as Record<string, unknown>, '[WorkflowEngine] Storing node result');
         this.context.nodeResults.set(nodeId, result);
 
         const executionTimeMs = Date.now() - startTime;
@@ -676,9 +708,11 @@ export class WorkflowExecutionEngine extends EventEmitter {
         // The resumeExecution() method handles continuing from checkpoint after approval
         if (result?.status === 'awaiting_approval' &&
             (node.type === 'approval' || node.type === 'human_approval')) {
-          // Auto-approve mode for automated testing (requires autoApprove in execution input)
-          if (this.context.input?.autoApprove) {
-            logger.info({ nodeId }, '[WorkflowEngine] Auto-approving for automated test');
+          // Auto-approve gate: only when trigger_type='test' AND caller has the
+          // flows:test:auto-approve permission. The legacy `input.autoApprove`
+          // flag alone is no longer sufficient — see approvalGate.ts.
+          if (canAutoApprove(this.context)) {
+            logger.info({ nodeId, executionId: this.context.executionId }, '[WorkflowEngine] Auto-approving for automated test (gated)');
             result.status = 'approved';
             result.autoApproved = true;
             this.context.nodeResults.set(nodeId, result);
@@ -766,7 +800,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
               );
               for (const br of branchResults) {
                 if (br.status === 'rejected') {
-                  logger.warn({ nodeId, error: br.reason?.message }, '[WorkflowEngine] Branch execution failed (fallback)');
+                  this.safeLog('warn', { nodeId, error: br.reason?.message }, '[WorkflowEngine] Branch execution failed (fallback)'); // error.message may contain secret-interpolated content
                 }
               }
             } else if (outgoing.length === 1) {
@@ -826,27 +860,37 @@ export class WorkflowExecutionEngine extends EventEmitter {
    * Execute the core logic of a node (without retry/fallback handling)
    */
   private async executeNodeCore(node: WorkflowNode, input: any): Promise<any> {
+    // Schema-driven plugin path (Task #41) — migrated nodes go through the
+    // shared registry so the api engine applies the same outputAssertions
+    // (refusal detection, "fake success" catches) as workflows-service.
+    // Falls through to the legacy switch for unmigrated types.
+    const plugin = nodeRegistry.get(node.type);
+    if (plugin) {
+      return this.runRegistryNode(plugin as SharedNodePlugin, node, input);
+    }
+
     // Execute based on node type
     switch (node.type) {
-      case 'trigger':
-        return this.executeTrigger(node, input);
+      // (trigger — now schema-driven via nodes/trigger/, see registry above)
       case 'llm_completion':
         return this.executeLLMNode(node, input);
       case 'mcp_tool':
         return this.executeMCPToolNode(node, input);
-      case 'code':
-        return this.executeCodeNode(node, input);
-      case 'condition':
-        return this.executeConditionNode(node, input);
-      case 'loop':
-        return this.executeLoopNode(node, input);
+      // (code — now schema-driven via shared nodes/code/, see registry above.
+      //  Legacy executeCodeNode is dead code retained for now (Task #46))
+      // (condition — now schema-driven via shared nodes/condition/, see
+      //  registry above. Legacy executeConditionNode is dead code retained
+      //  for now (Task #45))
+      // (loop — now schema-driven via shared nodes/loop/, see registry above.
+      //  Legacy executeLoopNode is dead code retained for now (Task #45))
       case 'transform':
         return this.executeTransformNode(node, input);
       case 'merge':
         return this.executeMergeNode(node, input);
-      case 'approval':
-      case 'human_approval':
-        return this.executeApprovalNode(node, input);
+      // (approval / human_approval — now schema-driven via shared
+      //  nodes/human_approval/ (with 'approval' as a registered alias),
+      //  see registry. Legacy executeApprovalNode is dead code retained
+      //  for now)
       case 'wait':
         return this.executeWaitNode(node, input);
       case 'agent_spawn':
@@ -862,12 +906,10 @@ export class WorkflowExecutionEngine extends EventEmitter {
       // HTTP Request
       case 'http_request':
         return this.executeHTTPRequestNode(node, input);
-      // Synth (Tool Synthesis) - Dynamic tool synthesis
-      case 'synth_synthesize':
-      case 'synth':
-      case 'oat_synthesize': // backwards compat
-      case 'oat': // backwards compat
-        return this.executeSynthNode(node, input);
+      // (synth + synth_synthesize + oat + oat_synthesize — now schema-driven
+      //  via shared nodes/synth/ (with the three legacy strings registered as
+      //  aliases), see registry above. Legacy executeSynthNode is dead code
+      //  retained for now (Task #46))
       // Unified OpenAgentic LLM node - routes through platform provider system
       case 'openagentic_llm':
         return this.executeOpenAgenticLLMNode(node, input);
@@ -881,9 +923,9 @@ export class WorkflowExecutionEngine extends EventEmitter {
         return this.executeVertexNode(node, input);
       case 'azure_ai':
         return this.executeAzureAINode(node, input);
-      // Code execution via openagentic
-      case 'openagentic':
-        return this.executeOpenagenticNode(node, input);
+      // (openagentic — now schema-driven via shared nodes/openagentic/, see
+      //  registry above. Legacy executeOpenagenticNode is dead code retained
+      //  for now (Task #46))
       // Integration nodes — notifications, ticketing, messaging
       case 'slack_message':
         return this.executeSlackNode(node, input);
@@ -903,12 +945,271 @@ export class WorkflowExecutionEngine extends EventEmitter {
       // Error handler node — receives routed errors
       case 'error_handler':
         return this.executeErrorHandlerNode(node, input);
-      // User context node — injects user context from various sources
-      case 'user_context':
-        return this.executeUserContextNode(node, input);
+      // (user_context — now schema-driven via nodes/user_context/, see registry above)
       default:
         throw new Error(`Unknown node type: ${node.type}`);
     }
+  }
+
+  /**
+   * Execute a registry-backed node and validate the output against its
+   * schema.outputAssertions. Mirrors workflows-service runRegistryNode.
+   * On OutputAssertionError, emits a node_error with reason + failedAssertion
+   * so the UI can distinguish a "fake success" catch from a generic failure
+   * — then rethrows so executeNodeWithRecovery's retry/fallback path runs.
+   */
+  private async runRegistryNode(
+    plugin: SharedNodePlugin,
+    node: WorkflowNode,
+    input: any,
+  ): Promise<any> {
+    const ctx: SharedNodeCtx = {
+      signal: this.abortController.signal,
+      executionId: this.context.executionId,
+      workflowId: this.context.workflowId,
+      // Theme A / S1-1 — forward the caller's tenant onto every node ctx
+      // so executors that touch Prisma inherit tenant scoping.
+      tenantId: this.context.tenantId ?? undefined,
+      apiUrl: this.apiUrl,
+      mcpProxyUrl: this.mcpProxyUrl,
+      openagenticProxyUrl: process.env.OPENAGENTIC_PROXY_URL || 'http://openagentic-proxy:3300',
+      openagenticProxyInternalKey: process.env.OPENAGENTIC_PROXY_INTERNAL_KEY,
+      userId: this.context.userId,
+      authToken: this.context.authToken,
+      idToken: this.context.idToken,
+      interpolateTemplate: (t, i) => this.interpolateTemplate(t, i),
+      getInternalAuthHeaders: () => this.getInternalAuthHeaders(),
+      logger,
+      // webhook_response stash hook — same pattern as workflows-service.
+      setWebhookResponse: (response) => {
+        (this.context as any).webhookResponse = response;
+      },
+      // merge node fan-in hook.
+      getIncomingResults: (nodeId) => {
+        const incoming = this.incomingEdges.get(nodeId) || [];
+        const results: Array<{ sourceId: string; label: string; value: unknown }> = [];
+        for (const edge of incoming) {
+          const value = this.context.nodeResults.get(edge.source);
+          if (value !== undefined) {
+            const sourceNode = this.nodeMap.get(edge.source);
+            const label = (sourceNode?.data?.label || sourceNode?.id || edge.source)
+              .replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
+            results.push({ sourceId: edge.source, label, value });
+          }
+        }
+        return results;
+      },
+
+      // Control-flow plugins (Task #45). The api engine never had a
+      // notifySkippedBranch helper or as-sophisticated parallel impl as
+      // workflows-service; both are added here as same-shape inline impls
+      // so condition / switch / parallel / loop can run on the schema-
+      // driven path when the api engine is the fallback executor.
+      getOutgoingEdges: (nodeId) => {
+        const outgoing = this.outgoingEdges.get(nodeId) || [];
+        return outgoing.map(e => ({
+          target: e.target,
+          label: e.label,
+          sourceHandle: e.sourceHandle,
+        }));
+      },
+
+      // condition + switch routing. The api engine's legacy
+      // executeConditionNode/executeSwitchNode never carried the
+      // notifySkippedBranch wiring (workflows-service alone owned the
+      // switch→merge fix). Mirror the same notify-skip-then-execute order
+      // here for parity, but the no-op fallback path stays correct because
+      // Task #45's executors only push targets onto skip[] for actual
+      // unchosen branches.
+      routeBranches: async (_fromNodeId, decision, branchInput) => {
+        // The api engine doesn't track merge gates separately — but routing
+        // still needs to happen. Skipped branches have no work; followed
+        // branches execute sequentially. (Note: if we ever back-port the
+        // notifySkippedBranch logic from workflows-service, this is the
+        // call site that would invoke it.)
+        for (const followedTarget of decision.follow) {
+          await this.executeNode(followedTarget, branchInput);
+        }
+      },
+
+      // parallel fan-out. Same Promise.allSettled pattern that
+      // workflows-service uses, just inline here.
+      fanOutBranches: async (fromNodeId, branchInput) => {
+        const outgoing = this.outgoingEdges.get(fromNodeId) || [];
+        const settled = await Promise.allSettled(
+          outgoing.map(edge => this.executeNode(edge.target, branchInput)),
+        );
+        return settled.map((s, i) => ({
+          targetId: outgoing[i].target,
+          status: s.status,
+          value: s.status === 'fulfilled' ? s.value : undefined,
+          reason:
+            s.status === 'rejected'
+              ? s.reason instanceof Error
+                ? s.reason.message
+                : String(s.reason)
+              : undefined,
+        }));
+      },
+
+      // loop per-iteration subgraph execution.
+      iterateOver: async (fromNodeId, items, itemVariable, baseInput) => {
+        const outgoing = this.outgoingEdges.get(fromNodeId) || [];
+        const results: unknown[] = [];
+        for (let i = 0; i < items.length; i++) {
+          const currentItem = items[i];
+          let loopInput: unknown;
+          if (typeof currentItem !== 'object' || currentItem === null) {
+            loopInput = currentItem;
+          } else {
+            loopInput = {
+              ...(typeof baseInput === 'object' && baseInput !== null ? baseInput : {}),
+              ...(currentItem as Record<string, unknown>),
+              [itemVariable]: currentItem,
+              __loopIndex: i,
+              __loopTotal: items.length,
+            };
+          }
+          for (const edge of outgoing) {
+            const result = await this.executeNode(edge.target, loopInput);
+            results.push(result);
+          }
+        }
+        return results;
+      },
+
+      // trigger node hook — publish first-event payload onto the execution
+      // context so {{trigger.body.*}} resolves for downstream nodes.
+      setTriggerData: (triggerData) => {
+        this.context.nodeResults.set('__trigger__', triggerData);
+      },
+
+      // synth (Task #46): resolve the calling user's email so synth can pass
+      // it to the synthesis API for credential lookup. Mirrors the legacy
+      // executeSynthNode prisma lookup; returns null on miss.
+      getUserEmail: async () => {
+        if (!this.context.userId) return null;
+        try {
+          const user = await prisma.user.findUnique({
+            where: { id: this.context.userId },
+            select: { email: true },
+          });
+          return user?.email ?? null;
+        } catch {
+          return null;
+        }
+      },
+
+      // code / openagentic (Task #46): run user-supplied JS in the shared
+      // isolated-vm sandbox. Mirrors the legacy executeJavaScript helper.
+      runIsolatedCode: async (code, language, codeInput, timeoutMs) => {
+        if (language !== 'javascript') {
+          throw new Error(
+            `Language ${language} execution not supported in the in-process sandbox.`,
+          );
+        }
+        const result = await runSandboxed(code, {
+          timeoutMs: timeoutMs ?? 5000,
+          memoryCapMb: 256,
+          input: codeInput,
+        });
+        if (!result.ok) {
+          throw new Error(`Code execution error (${result.errorType}): ${result.error}`);
+        }
+        return result.value;
+      },
+
+      // Openagentic-manager URL — forwarded onto ctx so the openagentic
+      // executor can reach the spawn-isolated-session endpoint without
+      // re-reading process.env on every node execution.
+      openagenticManagerUrl: this.openagenticManagerUrl,
+
+      // sub_workflow hook — the api copy never historically supported the
+      // sub_workflow legacy switch case, but the schema-driven plugin now
+      // works in either engine. Returns "not supported" so any flow that
+      // routes a sub_workflow node through the api engine surfaces a clear
+      // error rather than a silent no-op.
+      executeSubWorkflow: async (workflowId, _subInput) => ({
+        success: false,
+        output: undefined,
+        error: `Sub-workflow execution not supported in api engine; route through openagentic-workflows. workflowId=${workflowId}`,
+      }),
+
+      // human_approval / approval — persist approval row, checkpoint
+      // execution state, emit `approval_required`, and dispatch
+      // notifications. Mirrors the workflows-service hook; both engine
+      // copies must stay byte-identical until S0-11 dedup completes.
+      pauseForApproval: async (payload) => {
+        const approval = await createApprovalRecord(prisma, {
+          executionId: this.context.executionId,
+          nodeId: payload.nodeId,
+          approvers: payload.approvers,
+          requiredCount: payload.requiredCount,
+          timeoutSeconds: payload.timeoutSeconds,
+          timeoutAction: payload.timeoutAction,
+          message: payload.message,
+          contextData: {
+            input: payload.input,
+            nodeResults: Object.fromEntries(this.context.nodeResults),
+            notificationChannels: payload.notificationChannels,
+          },
+          notificationChannels: payload.notificationChannels,
+        });
+
+        await prisma.workflowExecution.update({
+          where: { id: this.context.executionId },
+          data: {
+            status: 'awaiting_approval',
+            current_node_id: payload.nodeId,
+            state: {
+              nodeResults: Object.fromEntries(this.context.nodeResults),
+              variables: Object.fromEntries(this.context.variables),
+              pendingApprovalId: approval.id,
+              input: payload.input as any,
+            } as any,
+          },
+        });
+
+        this.emitEvent('approval_required', {
+          approvalId: approval.id,
+          nodeId: payload.nodeId,
+          approvers: payload.approvers,
+          message: approval.message || payload.message,
+          expiresAt: approval.timeout_at,
+        });
+
+        await this.sendApprovalNotifications(
+          approval.id,
+          payload.approvers,
+          payload.message,
+          payload.notificationChannels,
+        );
+
+        return {
+          id: approval.id,
+          message: (approval.message as string) || payload.message,
+          timeout_at: approval.timeout_at as Date | string,
+        };
+      },
+    };
+
+    let result: any;
+    try {
+      result = await runWithAssertions(plugin, node, input, ctx);
+    } catch (err) {
+      if (err instanceof OutputAssertionError) {
+        this.emitEvent('node_error', {
+          nodeId: node.id,
+          nodeType: node.type,
+          error: err.message,
+          reason: err.reason,
+          failedAssertion: err.failedAssertion,
+        });
+      }
+      throw err;
+    }
+
+    return result;
   }
 
   // ===========================================================================
@@ -942,7 +1243,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     if (config.skipOn) {
       for (const pattern of config.skipOn) {
         if (errorMessage.includes(pattern.toLowerCase())) {
-          logger.debug({ error: error.message, pattern }, '[WorkflowEngine] Error matches skip pattern, not retrying');
+          this.safeLog('debug', { error: error.message, pattern }, '[WorkflowEngine] Error matches skip pattern, not retrying'); // error.message may contain secret-interpolated content
           return false;
         }
       }
@@ -1093,7 +1394,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
    * Execute LLM completion node
    */
   private async executeLLMNode(node: WorkflowNode, input: any): Promise<any> {
-    const { model, temperature, maxTokens, prompt, systemPrompt } = node.data;
+    const { model, temperature, maxTokens, prompt, systemPrompt, stream: nodeStream } = node.data;
 
     // Interpolate variables in prompt
     const resolvedPrompt = this.interpolateTemplate(prompt || '', input);
@@ -1126,11 +1427,34 @@ export class WorkflowExecutionEngine extends EventEmitter {
 
     messages.push({ role: 'user', content: userContent });
 
-    // Call the OpenAI-compatible endpoint
-    const response = await axios.post(
+    // Phase E₂.2 — stream LLM deltas into `node_stream` events interleaved
+    // between `node_start` and `node_complete`. The inner payload is a
+    // canonical `AnthropicStreamEvent` (content_block_start/delta/stop)
+    // so the flow UI can render live thinking / text inside the node
+    // card before `node_complete` fires. Stream-mode can be disabled
+    // per node via `node.data.stream === false` for backward compat
+    // with flows that expect the legacy non-streaming path.
+    const wantsStream = nodeStream !== false && this.hasListenerForStream();
+    if (wantsStream) {
+      try {
+        return await this.executeLLMNodeStreaming(node, messages, model, temperature, maxTokens);
+      } catch (streamErr: any) {
+        // If streaming fails (e.g. downstream endpoint doesn't support
+        // the stream flag), fall back to the non-streaming path so the
+        // flow doesn't hard-fail on migrations.
+        logger.warn({
+          err: streamErr?.message,
+          nodeId: node.id,
+        }, '[WorkflowEngine] LLM streaming failed, falling back to non-stream');
+      }
+    }
+
+    // Legacy non-streaming path — unchanged from pre-E₂ behaviour.
+    const response = await abortableAxiosPost(
+      this,
       `${this.apiUrl}/api/v1/chat/completions`,
       {
-        model: model || MODELS.default,
+        model: model || (await ModelConfigurationService.getDefaultChatModel().catch(() => '')),
         messages,
         temperature: temperature ?? 0.7,
         max_tokens: maxTokens || 2000,
@@ -1152,6 +1476,121 @@ export class WorkflowExecutionEngine extends EventEmitter {
       content,
       model: response.data?.model,
       usage: response.data?.usage
+    };
+  }
+
+  /**
+   * Return true if any consumer is listening for `event` emits — the
+   * streaming path is only worth the overhead when there's a UI on the
+   * other end of the NDJSON pipe.
+   */
+  private hasListenerForStream(): boolean {
+    return this.listenerCount('event') > 0;
+  }
+
+  /**
+   * Phase E₂.2: execute an LLM node in streaming mode. Calls the
+   * internal OpenAI-compatible endpoint with `stream: true`, consumes
+   * the NDJSON response line-by-line, and re-emits each canonical
+   * event as a `node_stream` ExecutionEvent scoped to this node. The
+   * accumulated text is returned as the node output so downstream
+   * nodes see the same shape they used to.
+   */
+  private async executeLLMNodeStreaming(
+    node: WorkflowNode,
+    messages: Array<{ role: string; content: string }>,
+    model: string | undefined,
+    temperature: number | undefined,
+    maxTokens: number | undefined,
+  ): Promise<{ content: string; model?: string; usage?: any }> {
+    const response = await abortableAxiosPost(
+      this,
+      `${this.apiUrl}/api/v1/chat/completions`,
+      {
+        model: model || (await ModelConfigurationService.getDefaultChatModel().catch(() => '')),
+        messages,
+        temperature: temperature ?? 0.7,
+        max_tokens: maxTokens || 2000,
+        stream: true,
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/x-ndjson',
+          ...this.getInternalAuthHeaders(),
+          'X-Workflow-Execution': this.context.executionId,
+        },
+        timeout: 600000,
+        responseType: 'stream',
+      },
+    );
+
+    let accumulatedText = '';
+    let finalModel: string | undefined = undefined;
+    let finalUsage: any = undefined;
+    let buffer = '';
+
+    const processLine = (line: string): void => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      let parsed: any;
+      try {
+        parsed = JSON.parse(trimmed);
+      } catch {
+        return; // skip malformed lines
+      }
+      // Re-emit every streamed event as `node_stream` scoped to this node.
+      // The inner event retains its `type` so the UI can discriminate on
+      // `content_block_delta` / `content_block_start` / etc. exactly as
+      // it does for chat.
+      this.emitEvent('node_stream', {
+        nodeId: node.id,
+        nodeType: node.type,
+        event: parsed,
+      });
+
+      // Opportunistically extract text/model/usage so the node's return
+      // value still matches the non-streaming shape.
+      const eventType = parsed.type as string | undefined;
+      if (eventType === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
+        accumulatedText += parsed.delta.text || '';
+      } else if (eventType === 'stream' && typeof parsed.content === 'string') {
+        // Chat pipeline remaps `content_delta` → `stream` on the wire.
+        accumulatedText += parsed.content;
+      } else if (eventType === 'content_delta' && typeof parsed.content === 'string') {
+        accumulatedText += parsed.content;
+      } else if (eventType === 'message_delta' && parsed.usage) {
+        finalUsage = { ...(finalUsage || {}), ...parsed.usage };
+      } else if (eventType === 'message_start' && parsed.message?.model) {
+        finalModel = parsed.message.model;
+      } else if (eventType === 'model_info' && parsed.model) {
+        finalModel = parsed.model;
+      }
+    };
+
+    await new Promise<void>((resolve, reject) => {
+      const stream = response.data as NodeJS.ReadableStream;
+      stream.on('data', (chunk: Buffer) => {
+        buffer += chunk.toString('utf8');
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) processLine(line);
+      });
+      stream.on('end', () => {
+        if (buffer.trim()) processLine(buffer);
+        resolve();
+      });
+      stream.on('error', (err: Error) => reject(err));
+      this.abortController.signal.addEventListener('abort', () => {
+        try { (stream as any).destroy?.(); } catch { /* noop */ }
+        reject(new Error('Workflow aborted'));
+      });
+    });
+
+    return {
+      content: accumulatedText,
+      model: finalModel,
+      usage: finalUsage,
     };
   }
 
@@ -1187,7 +1626,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
     }, '[WorkflowEngine] Executing MCP tool node');
 
     // Call MCP Proxy — authToken is already the real Azure AD token (loaded in workflows.ts)
-    const response = await axios.post(
+    const response = await abortableAxiosPost(
+      this,
       `${this.mcpProxyUrl}/call`,
       {
         server: normalizedServer,
@@ -1207,7 +1647,6 @@ export class WorkflowExecutionEngine extends EventEmitter {
         },
         timeout: 60000,
         validateStatus: () => true,
-        signal: this.abortController.signal,
       }
     );
 
@@ -1463,7 +1902,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     }, '[WorkflowEngine] Executing HTTP request node');
 
     try {
-      const response = await axios({
+      const response = await abortableAxios(this, {
         method: method.toLowerCase(),
         url: resolvedUrl,
         headers: resolvedHeaders,
@@ -1510,7 +1949,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     if (channel) payload.channel = this.interpolateTemplate(channel, input);
     if (blocks && blocks.length > 0) payload.blocks = blocks;
 
-    const response = await axios.post(resolvedUrl, payload, { timeout: 15000, validateStatus: () => true });
+    const response = await abortableAxiosPost(this, resolvedUrl, payload, { timeout: 15000, validateStatus: () => true });
     return { status: response.status, sent: response.status === 200, channel: channel || 'default' };
   }
 
@@ -1548,7 +1987,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       payload = { text: resolvedMsg };
     }
 
-    const response = await axios.post(resolvedUrl, payload, { timeout: 15000, validateStatus: () => true });
+    const response = await abortableAxiosPost(this, resolvedUrl, payload, { timeout: 15000, validateStatus: () => true });
     return { status: response.status, sent: response.status === 200 || response.status === 202 };
   }
 
@@ -1571,7 +2010,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       // Try platform email service
       const emailServiceUrl = process.env.EMAIL_SERVICE_URL;
       if (emailServiceUrl) {
-        const response = await axios.post(emailServiceUrl, {
+        const response = await abortableAxiosPost(this, emailServiceUrl, {
           to: resolvedTo, cc: cc ? this.interpolateTemplate(cc, input) : undefined,
           subject: resolvedSubject, body: resolvedBody, isHtml: isHtml !== false,
         }, { timeout: 30000, validateStatus: () => true });
@@ -1630,7 +2069,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
 
     if (dedupKey) payload.dedup_key = this.interpolateTemplate(dedupKey, input);
 
-    const response = await axios.post('https://events.pagerduty.com/v2/enqueue', payload, {
+    const response = await abortableAxiosPost(this, 'https://events.pagerduty.com/v2/enqueue', payload, {
       headers: { 'Content-Type': 'application/json' },
       timeout: 15000,
       validateStatus: () => true,
@@ -1670,7 +2109,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       headers['Authorization'] = 'Basic ' + Buffer.from(`${process.env.SERVICENOW_USERNAME}:${process.env.SERVICENOW_PASSWORD}`).toString('base64');
     }
 
-    const response = await axios.post(apiUrl, resolvedFields, { headers, timeout: 30000, validateStatus: () => true });
+    const response = await abortableAxiosPost(this, apiUrl, resolvedFields, { headers, timeout: 30000, validateStatus: () => true });
     return { status: response.status, created: response.status === 201, sysId: response.data?.result?.sys_id, number: response.data?.result?.number };
   }
 
@@ -1709,7 +2148,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       if (resolvedDesc) payload.fields.description = { type: 'doc', version: 1, content: [{ type: 'paragraph', content: [{ type: 'text', text: resolvedDesc }] }] };
       if (assignee) payload.fields.assignee = { accountId: this.interpolateTemplate(assignee, input) };
 
-      const response = await axios.post(`${baseUrl}/rest/api/3/issue`, payload, { headers, timeout: 30000, validateStatus: () => true });
+      const response = await abortableAxiosPost(this, `${baseUrl}/rest/api/3/issue`, payload, { headers, timeout: 30000, validateStatus: () => true });
       return { status: response.status, created: response.status === 201, key: response.data?.key, id: response.data?.id };
     }
 
@@ -1731,7 +2170,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     const payload: any = { content: resolvedContent, username };
     if (embeds && embeds.length > 0) payload.embeds = embeds;
 
-    const response = await axios.post(resolvedUrl, payload, {
+    const response = await abortableAxiosPost(this, resolvedUrl, payload, {
       headers: { 'Content-Type': 'application/json' },
       timeout: 15000,
       validateStatus: () => true,
@@ -1747,19 +2186,22 @@ export class WorkflowExecutionEngine extends EventEmitter {
     const action = node.data.errorAction || 'log';
     const errorData = input;
 
-    logger.info({ nodeId: node.id, action }, '[WorkflowEngine] Executing error handler node');
+    logger.info({ nodeId: node.id, action }, '[WorkflowEngine] Executing error handler node'); // metadata only — no secret interpolation
 
     if (action === 'log') {
-      logger.warn({ errorData, nodeId: node.id }, '[WorkflowEngine] Error handler: logging error');
+      this.safeLog('warn', { errorData, nodeId: node.id }, '[WorkflowEngine] Error handler: logging error'); // errorData is user input — may contain secrets
       return { action: 'logged', error: errorData };
     }
     if (action === 'transform' && node.data.transformExpression) {
-      try {
-        const fn = new Function('error', 'input', `return ${node.data.transformExpression}`);
-        return fn(errorData.error, errorData.input);
-      } catch (e) {
-        return { action: 'transform_failed', error: errorData, transformError: (e as Error).message };
+      // S0-2 / B1: was `new Function('error', 'input', ...)`. Now runs in isolate.
+      const result = await runSandboxed(`return ${node.data.transformExpression};`, {
+        globals: { error: errorData.error, input: errorData.input },
+        timeoutMs: 2000,
+      });
+      if (!result.ok) {
+        return { action: 'transform_failed', error: errorData, transformError: result.error };
       }
+      return result.value;
     }
     if (action === 'notify') {
       this.emitEvent('node_complete', {
@@ -1782,7 +2224,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
       const maxTokens = node.data.contextMaxTokens || 2000;
 
       const headers = this.getInternalAuthHeaders();
-      const resp = await axios.get(`${this.apiUrl}/api/user-context`, {
+      const resp = await abortableAxiosGet(this, `${this.apiUrl}/api/user-context`, {
         params: { userId: this.context.userId, sources: sources.join(','), query, maxTokens },
         headers,
         timeout: 10000,
@@ -1806,9 +2248,9 @@ export class WorkflowExecutionEngine extends EventEmitter {
       codeLength: code?.length
     }, '[WorkflowEngine] Executing code node');
 
-    // For JavaScript, execute in a sandboxed function
+    // For JavaScript, execute in a sandboxed isolate (S0-2 / B1).
     if (language === 'javascript' || !language) {
-      return this.executeJavaScript(code, input);
+      return this.executeJavaScript(code, input, node.data.timeoutMs, node.data.memoryCapMb);
     }
 
     // For Python, would route to openagentic-manager
@@ -1817,50 +2259,24 @@ export class WorkflowExecutionEngine extends EventEmitter {
   }
 
   /**
-   * Execute JavaScript code in sandbox
+   * Execute JavaScript code in a true V8 isolate sandbox (S0-2 / B1).
+   *
+   * Replaces the previous `new Function(...)` pattern, which let user code
+   * escape via `Function.prototype.constructor.constructor("...")`,
+   * `globalThis.process`, and similar tricks. The new sandbox runs each
+   * snippet in a fresh `isolated-vm` context with hard CPU and memory caps
+   * and zero access to host globals.
    */
-  private async executeJavaScript(code: string, input: any): Promise<any> {
-    // Create a sandbox with limited globals
-    const sandbox = {
+  private async executeJavaScript(code: string, input: any, timeoutMs?: number, memoryCapMb?: number): Promise<any> {
+    const result = await runSandboxed(code, {
+      timeoutMs: timeoutMs ?? 5000,
+      memoryCapMb: memoryCapMb ?? 256,
       input,
-      result: undefined as any,
-      console: {
-        log: (...args: any[]) => logger.info({ args }, '[WorkflowCode] console.log'),
-        error: (...args: any[]) => logger.error({ args }, '[WorkflowCode] console.error'),
-      },
-      fetch: globalThis.fetch,
-      JSON,
-      Math,
-      Date,
-      Array,
-      Object,
-      String,
-      Number,
-      Boolean,
-      RegExp,
-      Map,
-      Set,
-      Promise,
-      setTimeout,
-      URL,
-      URLSearchParams,
-      // Utility functions
-      parseJSON: (str: string) => JSON.parse(str),
-      stringify: (obj: any) => JSON.stringify(obj, null, 2),
-    };
-
-    // Wrap code in async function to support await
-    // NOTE: wrappedCode must NOT start with newline -- ASI would make `return\n(async...)` return undefined
-    const wrappedCode = `(async function(input) { ${code} })(input)`;
-
-    try {
-      // Execute with Function constructor (safer than eval)
-      const fn = new Function(...Object.keys(sandbox), `return ${wrappedCode}`);
-      const result = await fn(...Object.values(sandbox));
-      return result;
-    } catch (error: any) {
-      throw new Error(`Code execution error: ${error.message}`);
+    });
+    if (!result.ok) {
+      throw new Error(`Code execution error (${result.errorType}): ${result.error}`);
     }
+    return result.value;
   }
 
   /**
@@ -1878,7 +2294,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     }, '[WorkflowEngine] Executing condition node');
 
     // Evaluate condition - returns string or boolean for flexible edge matching
-    const result = this.evaluateCondition(condition, operator, input);
+    const result = await this.evaluateCondition(condition, operator, input);
 
     // Store result
     this.context.nodeResults.set(node.id, result);
@@ -1930,10 +2346,10 @@ export class WorkflowExecutionEngine extends EventEmitter {
   /**
    * Evaluate a condition expression - returns string or boolean for flexible routing
    */
-  private evaluateCondition(condition: string, operator: string, input: any): any {
-    // Workflow condition expressions are authored by authenticated admins via the UI.
-    // Dynamic evaluation via Function constructor is the standard pattern used by
-    // workflow engines (n8n, Flowise, Temporal) for user-defined expressions.
+  private async evaluateCondition(condition: string, operator: string, input: any): Promise<any> {
+    // S0-2 / B1: condition expressions previously ran via `new Function`,
+    // which let user-authored workflow code escape via Function.prototype.constructor.
+    // Now evaluated inside a true V8 isolate via runSandboxed().
     try {
       // Resolve {{steps.X.output}} as named JS variables instead of inline text.
       // Prevents "Long text....includes('critical')" invalid JS from template expansion.
@@ -1972,20 +2388,24 @@ export class WorkflowExecutionEngine extends EventEmitter {
       });
 
       if (operator === 'expression' || !operator) {
-        try {
-          const varNames = Object.keys(stepVars);
-          const varValues = Object.values(stepVars);
-          const fn = new Function('input', ...varNames, `return (${varCondition})`); // eslint-disable-line no-new-func
-          return fn(input, ...varValues);
-        } catch {
-          try {
-            const resolved = this.interpolateTemplate(condition, input);
-            const fn2 = new Function('input', `return (${resolved})`); // eslint-disable-line no-new-func
-            return fn2(input);
-          } catch {
-            return this.interpolateTemplate(condition, input);
-          }
-        }
+        // First attempt: evaluate as JS expression with step vars exposed.
+        const sandboxed = await runSandboxed(`return (${varCondition});`, {
+          input,
+          globals: stepVars,
+          timeoutMs: 2000,
+        });
+        if (sandboxed.ok) return sandboxed.value;
+
+        // Fallback 1: re-resolve raw template inline and evaluate again.
+        const resolved = this.interpolateTemplate(condition, input);
+        const sandboxed2 = await runSandboxed(`return (${resolved});`, {
+          input,
+          timeoutMs: 2000,
+        });
+        if (sandboxed2.ok) return sandboxed2.value;
+
+        // Fallback 2: pure template interpolation (legacy compat for non-JS conditions).
+        return this.interpolateTemplate(condition, input);
       }
 
       const resolvedCondition = this.interpolateTemplate(condition, input);
@@ -2075,40 +2495,66 @@ export class WorkflowExecutionEngine extends EventEmitter {
     // Get input array
     const items = Array.isArray(input) ? input : [input];
 
+    // S0-2 / B1: transform expressions now run inside a V8 isolate.
+    // Each item-level call is one isolate creation, so map/filter/reduce loops
+    // pay an isolate-spawn cost per item — acceptable for typical < 100-item
+    // workloads. For very large arrays, use a code node instead.
     switch (transformType) {
-      case 'map':
-        return items.map(item => {
-          const fn = new Function('item', 'index', `return ${transformExpression}`);
-          return fn(item, items.indexOf(item));
-        });
+      case 'map': {
+        const out: any[] = [];
+        for (let i = 0; i < items.length; i++) {
+          const result = await runSandboxed(`return (${transformExpression});`, {
+            input: items[i],
+            globals: { item: items[i], index: i },
+            timeoutMs: 2000,
+          });
+          if (!result.ok) throw new Error(`Transform map error (${result.errorType}): ${result.error}`);
+          out.push(result.value);
+        }
+        return out;
+      }
 
-      case 'filter':
-        return items.filter(item => {
-          const fn = new Function('item', 'index', `return !!(${transformExpression})`);
-          return fn(item, items.indexOf(item));
-        });
+      case 'filter': {
+        const out: any[] = [];
+        for (let i = 0; i < items.length; i++) {
+          const result = await runSandboxed(`return !!(${transformExpression});`, {
+            input: items[i],
+            globals: { item: items[i], index: i },
+            timeoutMs: 2000,
+          });
+          if (!result.ok) throw new Error(`Transform filter error (${result.errorType}): ${result.error}`);
+          if (result.value) out.push(items[i]);
+        }
+        return out;
+      }
 
-      case 'reduce':
-        return items.reduce((acc, item, index) => {
-          const fn = new Function('acc', 'item', 'index', `return ${transformExpression}`);
-          return fn(acc, item, index);
-        }, null);
+      case 'reduce': {
+        let acc: any = null;
+        for (let i = 0; i < items.length; i++) {
+          const result = await runSandboxed(`return (${transformExpression});`, {
+            input: items[i],
+            globals: { acc, item: items[i], index: i },
+            timeoutMs: 2000,
+          });
+          if (!result.ok) throw new Error(`Transform reduce error (${result.errorType}): ${result.error}`);
+          acc = result.value;
+        }
+        return acc;
+      }
 
       case 'extract': {
         // Extract a field from input using JS expression evaluation
-        // This is intentional dynamic code execution for workflow user-defined expressions
-        // eslint-disable-next-line no-new-func
-        try {
-          const extractFn = new Function('input', `return (${transformExpression})`);
-          return extractFn(input);
-        } catch {
-          // Fallback: treat as dot-path accessor
-          let value: any = input;
-          for (const key of (transformExpression || '').split('.')) {
-            value = value?.[key];
-          }
-          return value ?? input;
+        const result = await runSandboxed(`return (${transformExpression});`, {
+          input,
+          timeoutMs: 2000,
+        });
+        if (result.ok) return result.value;
+        // Fallback: treat as dot-path accessor (legacy compat)
+        let value: any = input;
+        for (const key of (transformExpression || '').split('.')) {
+          value = value?.[key];
         }
+        return value ?? input;
       }
 
       default:
@@ -2182,25 +2628,21 @@ export class WorkflowExecutionEngine extends EventEmitter {
       timeout
     }, '[WorkflowEngine] Executing approval node - pausing workflow');
 
-    // Create approval record in database
-    const approval = await prisma.workflowApproval.create({
-      data: {
-        execution_id: this.context.executionId,
-        node_id: node.id,
-        required_approvers: approvers,
-        required_count: requiredCount,
-        timeout_seconds: timeout,
-        timeout_action: timeoutAction,
-        status: 'pending',
-        message: message || `Approval required for workflow step: ${node.id}`,
-        context_data: {
-          input,
-          nodeResults: Object.fromEntries(this.context.nodeResults),
-          notificationChannels
-        },
-        notification_channels: notificationChannels,
-        timeout_at: new Date(Date.now() + timeout * 1000)
-      }
+    // Create approval record in database — throws on any DB error (fail-closed).
+    const approval = await createApprovalRecord(prisma, {
+      executionId: this.context.executionId,
+      nodeId: node.id,
+      approvers,
+      requiredCount,
+      timeoutSeconds: timeout,
+      timeoutAction,
+      message: message || `Approval required for workflow step: ${node.id}`,
+      contextData: {
+        input,
+        nodeResults: Object.fromEntries(this.context.nodeResults),
+        notificationChannels
+      },
+      notificationChannels
     });
 
     // Update execution status to 'awaiting_approval'
@@ -2388,7 +2830,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
 
     try {
       // Try openagentic-proxy via the API's /api/agents/:id/execute route
-      const executeResponse = await axios.post(
+      const executeResponse = await abortableAxiosPost(
+        this,
         `${this.apiUrl}/api/agents/${agentId}/execute`,
         {
           task: resolvedTask,
@@ -2474,7 +2917,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
 
       void (async () => {
         try {
-          const response = await axios.get(
+          const response = await abortableAxiosGet(
+            this,
             `${this.apiUrl}/api/agents/stream/${executionId}`,
             {
               headers: {
@@ -2549,7 +2993,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
       { role: 'user', content: task },
     ];
 
-    const response = await axios.post(
+    const response = await abortableAxiosPost(
+      this,
       `${this.apiUrl}/api/v1/chat/completions`,
       {
         messages,
@@ -2596,7 +3041,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
 
     while (Date.now() - startTime < timeout) {
       try {
-        const response = await axios.get(
+        const response = await abortableAxiosGet(
+          this,
           `${this.apiUrl}/api/agents/${agentId}/status`,
           {
             headers: {
@@ -2715,15 +3161,18 @@ export class WorkflowExecutionEngine extends EventEmitter {
   // ===========================================================================
 
   /**
-   * Execute an OpenAgentic LLM node - routes through platform's provider system
-   * Uses the intelligence slider or explicit model override
+   * Execute an OpenAgentic LLM node - routes through platform's provider system.
+   * 2026-04-19 — slider removed (task #144); model selection via SmartModelRouter
+   * unless an explicit modelOverride is provided on the node.
    */
   private async executeOpenAgenticLLMNode(node: WorkflowNode, input: any): Promise<any> {
-    const { prompt, systemPrompt, temperature, maxTokens, modelOverride, sliderOverride, enableThinking, thinkingBudget } = node.data;
+    // 2026-04-19 — sliderOverride removed (task #144). SmartModelRouter +
+    // UserModelBudgetService handle model selection / spend caps.
+    const { prompt, systemPrompt, temperature, maxTokens, modelOverride, enableThinking, thinkingBudget } = node.data;
     const resolvedPrompt = this.interpolateTemplate(prompt || '', input);
     const resolvedSystemPrompt = this.interpolateTemplate(systemPrompt || '', input);
 
-    logger.info({ nodeId: node.id, modelOverride, sliderOverride }, '[WorkflowEngine] Executing OpenAgentic LLM node');
+    logger.info({ nodeId: node.id, modelOverride }, '[WorkflowEngine] Executing OpenAgentic LLM node');
 
     const messages: Array<{ role: string; content: string }> = [];
     if (resolvedSystemPrompt) {
@@ -2742,15 +3191,13 @@ export class WorkflowExecutionEngine extends EventEmitter {
     if (modelOverride) {
       requestBody.model = modelOverride;
     }
-    if (sliderOverride !== null && sliderOverride !== undefined) {
-      requestBody.sliderPosition = sliderOverride;
-    }
     if (enableThinking) {
       requestBody.enableThinking = true;
       requestBody.thinkingBudget = thinkingBudget || 8000;
     }
 
-    const response = await axios.post(
+    const response = await abortableAxiosPost(
+      this,
       `${this.apiUrl}/api/v1/chat/completions`,
       requestBody,
       {
@@ -2814,7 +3261,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
             messages.push({ role: 'user', content: agentTask.taskDescription });
           }
 
-          const response = await axios.post(
+          const response = await abortableAxiosPost(
+            this,
             `${this.apiUrl}/api/v1/chat/completions`,
             { messages, max_tokens: 4096, stream: false },
             {
@@ -2889,7 +3337,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
     }
     messages.push({ role: 'user', content: resolvedPrompt });
 
-    const response = await axios.post(
+    const response = await abortableAxiosPost(
+      this,
       `${this.apiUrl}/api/v1/chat/completions`,
       {
         model: model || process.env.AWS_BEDROCK_CHAT_MODEL || process.env.DEFAULT_MODEL,
@@ -2933,10 +3382,11 @@ export class WorkflowExecutionEngine extends EventEmitter {
     }
     messages.push({ role: 'user', content: resolvedPrompt });
 
-    const response = await axios.post(
+    const response = await abortableAxiosPost(
+      this,
       `${this.apiUrl}/api/v1/chat/completions`,
       {
-        model: model || MODELS.vertexChat,
+        model: model || (await ModelConfigurationService.getDefaultChatModel().catch(() => '')),
         messages,
         temperature: temperature ?? 0.7,
         max_tokens: maxTokens || 4096,
@@ -2977,10 +3427,11 @@ export class WorkflowExecutionEngine extends EventEmitter {
     }
     messages.push({ role: 'user', content: resolvedPrompt });
 
-    const response = await axios.post(
+    const response = await abortableAxiosPost(
+      this,
       `${this.apiUrl}/api/v1/chat/completions`,
       {
-        model: model || deploymentName || MODELS.azureOpenai,
+        model: model || deploymentName || (await ModelConfigurationService.getDefaultChatModel().catch(() => '')),
         messages,
         temperature: temperature ?? 0.7,
         max_tokens: maxTokens || 4096,
@@ -3019,7 +3470,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
     }, '[WorkflowEngine] Executing Openagentic node');
 
     try {
-      const response = await axios.post(
+      const response = await abortableAxiosPost(
+        this,
         `${this.openagenticManagerUrl}/api/execute`,
         {
           language: language || 'python',
@@ -3120,14 +3572,40 @@ export class WorkflowExecutionEngine extends EventEmitter {
       }
     }
 
+    // Phase C.3 (2026-04-23) — pre-subscribe to the in-proc AgentEventStore
+    // keyed on `executionId` so sub-agent progress envelopes POSTed back
+    // by openagentic-proxy's HTTP callback (Phase C) surface as `node_stream`
+    // ExecutionEvents. Unsubscribe in `finally` so we don't leak
+    // listeners across executions. The flows SSE handler (Phase C.4)
+    // re-emits these `node_stream` envelopes as `agent_progress` NDJSON
+    // frames — same wire shape as chat.
+    const unsubscribeAgentProgress = subscribeAgentProgressForWorkflowNode(
+      this.context.executionId,
+      node.id,
+      (progressEvent) => {
+        this.emitEvent('node_stream', {
+          nodeId: node.id,
+          nodeType: node.type,
+          event: progressEvent,
+        });
+      },
+    );
+
     try {
-      const response = await axios.post(
+      const response = await abortableAxiosPost(
+        this,
         `${openagenticProxyUrl}/api/agents/execute-sync`,
         {
           agents,
           orchestration,
           aggregation: nodeData.aggregation || 'merge',
           sessionId: this.context.executionId,
+          // Phase C.3: pass executionId as `turnId` so openagentic-proxy's
+          // AgentProgressContext binds its HTTP callback publisher to
+          // that key. The chat-side agent-event route handler then
+          // publishes each callback into getAgentEventStore() — and
+          // our pre-subscription above picks them up.
+          turnId: this.context.executionId,
           userId: this.context.userId,
           userMessage: typeof input === 'string' ? input : (input?.message || JSON.stringify(input)),
           totalBudgetCents: nodeData.totalBudget || 200,
@@ -3157,6 +3635,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
         throw new Error(`Agent-proxy service is not reachable at ${openagenticProxyUrl}. Ensure the openagentic-proxy deployment is running.`);
       }
       throw new Error(`Agent-proxy execution failed: ${error.response?.data?.error || error.message}`);
+    } finally {
+      unsubscribeAgentProgress();
     }
   }
 
@@ -3226,19 +3706,30 @@ export class WorkflowExecutionEngine extends EventEmitter {
         return '';
       }
 
-      // {{env.<VAR>}} - environment variables
+      // {{env.<VAR>}} - engine-controlled allow-list ONLY.
+      //
+      // P0b sev-0 fix (audit AUDIT-2026-05-03): the prior `?? process.env[envVar]`
+      // fallback let any workflow author exfil the pod's process.env by
+      // writing {{env.WORKFLOW_SECRET_KEY}}, {{env.AWS_SECRET_ACCESS_KEY}},
+      // {{env.JWT_SECRET}}, etc. into a node field. After this change,
+      // {{env.X}} only resolves when the engine has explicitly seeded
+      // `env.X` into context.variables. Workflow authors must use
+      // {{secret:NAME}} for credentials.
       if (trimmedPath.startsWith('env.')) {
         const envVar = trimmedPath.slice(4);
-        const value = this.context.variables.get(`env.${envVar}`) ?? process.env[envVar];
+        const value = this.context.variables.get(`env.${envVar}`);
         if (value !== undefined) return String(value);
-        logger.warn({ variable: trimmedPath }, '[WorkflowEngine] Env variable unresolved');
+        logger.warn(
+          { variable: trimmedPath },
+          '[WorkflowEngine] {{env.*}} blocked — pod env exfil is disabled (P0b). Use {{secret:NAME}} for credentials.'
+        );
         return '';
       }
 
       // {{secret:<name>}} - resolved workflow secrets (pre-loaded in execute())
       if (trimmedPath.startsWith('secret:')) {
         const secretName = trimmedPath.slice(7);
-        const resolved = (this.context as any).resolvedSecrets?.get(secretName);
+        const resolved = this.context.resolvedSecrets?.get(secretName);
         if (resolved !== undefined) return String(resolved);
         logger.warn({ secretName }, '[WorkflowEngine] Secret not found in resolved secrets');
         return match;
@@ -3325,12 +3816,23 @@ export class WorkflowExecutionEngine extends EventEmitter {
   /**
    * Emit an execution event
    */
+  /**
+   * Log helper that redacts resolved secret values from the meta object before
+   * writing to pino. Use this instead of `logger.info(...)` at any call site
+   * that includes node input, output, prompt, or other interpolated content.
+   */
+  private safeLog(level: 'info' | 'warn' | 'debug' | 'error', meta: Record<string, unknown>, msg: string): void {
+    const safeMeta = redactLogMeta(meta, this.context);
+    logger[level](safeMeta, msg);
+  }
+
   private emitEvent(type: ExecutionEvent['type'], data?: any): void {
+    const safeData = redactSecrets(data, this.context);
     const event: ExecutionEvent = {
       type,
       executionId: this.context.executionId,
       timestamp: new Date().toISOString(),
-      ...data
+      ...safeData
     };
 
     this.emit('event', event);
@@ -3349,8 +3851,8 @@ export class WorkflowExecutionEngine extends EventEmitter {
     input?: any,
   ): Promise<void> {
     try {
-      const safeOutput = output ? JSON.parse(JSON.stringify(output)) : null;
-      const safeInput = input ? JSON.parse(JSON.stringify(input)) : null;
+      const safeOutput = redactSecrets(output ? JSON.parse(JSON.stringify(output)) : null, this.context);
+      const safeInput = redactSecrets(input ? JSON.parse(JSON.stringify(input)) : null, this.context);
 
       // Write node-level log
       await prisma.workflowExecutionLog.create({
@@ -3422,12 +3924,14 @@ export class WorkflowExecutionEngine extends EventEmitter {
     }
 
     try {
+      const safeOutput = redactSecrets(output ? JSON.parse(JSON.stringify(output)) : null, this.context);
+      const safeNodeOutputs = redactSecrets(nodeOutputs, this.context);
       await prisma.workflowExecution.update({
         where: { id: this.context.executionId },
         data: {
           status,
-          output: output ? JSON.parse(JSON.stringify(output)) : null,
-          node_outputs: Object.keys(nodeOutputs).length > 0 ? nodeOutputs : undefined,
+          output: safeOutput,
+          node_outputs: Object.keys(safeNodeOutputs).length > 0 ? safeNodeOutputs : undefined,
           error,
           completed_nodes: completedNodes,
           execution_time_ms: executionTimeMs,
@@ -3494,15 +3998,18 @@ export async function executeWorkflow(
   userId: string,
   authToken?: string,
   onEvent?: (event: ExecutionEvent) => void,
-  opts?: { userEmail?: string; idToken?: string }
+  opts?: { userEmail?: string; idToken?: string; triggerType?: string; userPermissions?: readonly string[]; tenantId?: string | null }
 ): Promise<{ success: boolean; output: any; error?: string }> {
   const context: ExecutionContext = {
     executionId,
     workflowId,
     userId,
+    tenantId: opts?.tenantId ?? null,
     authToken,
     idToken: opts?.idToken,
     userEmail: opts?.userEmail,
+    triggerType: opts?.triggerType,
+    userPermissions: opts?.userPermissions,
     input,
     variables: new Map(),
     nodeResults: new Map(),

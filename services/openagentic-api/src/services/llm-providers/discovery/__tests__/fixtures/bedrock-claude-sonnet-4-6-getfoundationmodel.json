@@ -1,0 +1,14 @@
+{
+  "modelDetails": {
+    "modelArn": "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-6-v1:0",
+    "modelId": "anthropic.claude-sonnet-4-6-v1:0",
+    "modelName": "Claude Sonnet 4.6",
+    "providerName": "Anthropic",
+    "inputModalities": ["TEXT", "IMAGE"],
+    "outputModalities": ["TEXT"],
+    "responseStreamingSupported": true,
+    "customizationsSupported": [],
+    "inferenceTypesSupported": ["ON_DEMAND"],
+    "modelLifecycle": { "status": "ACTIVE" }
+  }
+}

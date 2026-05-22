@@ -17,25 +17,45 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
+// Wire-shape types (re-exports of @agentic-work/llm-sdk shapes).
 import type {
-  StreamingEvent,
-  UIState,
-  ToolStep,
-  StepsContainer,
-  ConversationMessage,
+  RawMessageStreamEvent as StreamingEvent,
   TextDelta,
   ToolInputDelta,
   ThinkingDelta,
   StopReason,
-} from '../types/anthropic-blocks';
+} from '../types/_sdk-bindings';
+// UI render-state types.
+import type {
+  UIState,
+  ToolStep,
+  StepsContainer,
+  ConversationMessage,
+} from '../types/uiState';
+// Tool-name → display + icon helpers.
 import {
   getToolDisplayName,
   getToolIcon,
   getInputPreview,
-} from '../types/anthropic-blocks';
+} from '../types/toolDisplay';
 
-// Re-export the helper functions
-export * from '../types/anthropic-blocks';
+// Re-export the helper functions for downstream consumers that imported
+// them indirectly via `useStreamingParser`'s wildcard.
+export {
+  TOOL_DISPLAY_NAMES,
+  TOOL_ICONS,
+  getToolDisplayName,
+  getToolIcon,
+  getInputPreview,
+} from '../types/toolDisplay';
+export type {
+  UIState,
+  ToolStep,
+  ToolStepStatus,
+  ToolIcon,
+  StepsContainer,
+  ConversationMessage,
+} from '../types/uiState';
 
 interface StreamingState {
   /** Current UI state */

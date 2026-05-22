@@ -129,11 +129,11 @@ export const ProviderDetailPanel: React.FC<{
         {!isEnv && (
           <div className="relative">
             {isPaused ? (
-              <button onClick={() => onPauseResume()} className={btnSecondary} style={{ borderColor: '#00D26A40', color: '#00D26A' }}>
+              <button onClick={() => onPauseResume()} className={btnSecondary} style={{ borderColor: 'color-mix(in srgb, var(--ap-ok) 25%, transparent)', color: 'var(--ap-ok)' }}>
                 <Play size={14} className="inline mr-1" /> Resume
               </button>
             ) : (
-              <button onClick={() => setShowPausePicker(!showPausePicker)} className={btnSecondary} style={{ borderColor: '#f59e0b40', color: '#f59e0b' }}>
+              <button onClick={() => setShowPausePicker(!showPausePicker)} className={btnSecondary} style={{ borderColor: 'color-mix(in srgb, var(--ap-warn) 25%, transparent)', color: 'var(--ap-warn)' }}>
                 <span className="inline mr-1">||</span> Pause <ChevronDown size={12} className="inline ml-0.5" />
               </button>
             )}

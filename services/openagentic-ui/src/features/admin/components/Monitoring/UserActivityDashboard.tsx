@@ -27,6 +27,7 @@ import { apiRequest } from '@/utils/api';
 import SlideInPanel, {
   SlideInPanelSection,
 } from '@/shared/components/SlideInPanel';
+import { PageHeader, LogRow } from '../../primitives-v2';
 
 // ── Interfaces ────────────────────────────────────────────────────────
 
@@ -221,9 +222,9 @@ const UserActivityDashboard: React.FC<{ theme?: string }> = () => {
   const getStatusColor = (activityType: string) => {
     switch (activityType) {
       case 'chatting': return 'var(--color-success, var(--color-success))';
-      case 'code_mode': return 'var(--color-primary, #3b82f6)';
-      case 'browsing': return 'var(--color-warning, #eab308)';
-      default: return 'var(--color-text-secondary, #888)';
+      case 'code_mode': return 'var(--color-primary)';
+      case 'browsing': return 'var(--color-warning)';
+      default: return 'var(--color-text-secondary)';
     }
   };
 
@@ -282,11 +283,16 @@ const UserActivityDashboard: React.FC<{ theme?: string }> = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>User Activity</h2>
-        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Live presence monitoring and per-user resource usage</p>
-      </div>
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Monitoring', 'User Activity']}
+        title="User Activity"
+        explainer="Live presence monitoring, per-user resource usage, cost-by-provider breakdown, and an activity-trend snapshot. Click a user for the full usage panel."
+        actions={[
+          { label: 'Refresh', onClick: fetchData, primary: true, disabled: loading },
+        ]}
+        sticky
+      />
 
       {/* Filter bar */}
       <AdminFilterBar
@@ -622,27 +628,36 @@ const UserActivityDashboard: React.FC<{ theme?: string }> = () => {
 
             {userUsage.queryAudit?.recent?.length > 0 && (
               <SlideInPanelSection title="Recent Activity">
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {userUsage.queryAudit.recent.slice(0, 20).map(q => (
-                    <div key={q.id} className="p-2 rounded text-xs" style={{ backgroundColor: 'var(--color-surfaceSecondary, var(--color-surface))', border: '1px solid var(--color-border)' }}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span style={{ color: 'var(--text-secondary)' }}>{new Date(q.createdAt).toLocaleString()}</span>
-                        <div className="flex items-center gap-2">
-                          {q.mcpServer && (
-                            <span className="px-1.5 py-0.5 rounded" style={{ backgroundColor: 'rgba(59,130,246,0.12)', color: 'rgb(96,165,250)', fontSize: 'var(--text-xs)' }}>
-                              {q.mcpServer}
-                            </span>
-                          )}
-                          <span className="px-1.5 py-0.5 rounded" style={{
-                            backgroundColor: q.success ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
-                            color: q.success ? 'rgb(34,197,94)' : 'rgb(248,113,113)',
-                            fontSize: 'var(--text-xs)',
-                          }}>{q.success ? 'OK' : 'FAIL'}</span>
-                        </div>
-                      </div>
-                      <p className="truncate" style={{ color: 'var(--text-primary)' }}>{q.intent || q.queryType}</p>
-                    </div>
-                  ))}
+                <div className="max-h-60 overflow-y-auto" style={{ border: '1px solid var(--color-border)', borderRadius: 6 }}>
+                  {userUsage.queryAudit.recent.slice(0, 20).map(q => {
+                    const message = (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: 'var(--ap-fg-1, var(--fg-1))' }}>{q.intent || q.queryType}</span>
+                        {q.mcpServer && (
+                          <span style={{ color: 'var(--ap-accent, var(--accent))' }}>· {q.mcpServer}</span>
+                        )}
+                      </span>
+                    );
+                    const meta = (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontFamily: 'var(--font-mono)' }}>{q.responseTimeMs}ms</span>
+                        <span style={{ color: q.success ? 'var(--ap-ok, var(--ok))' : 'var(--ap-err, var(--err))' }}>
+                          {q.success ? 'OK' : 'FAIL'}
+                        </span>
+                      </span>
+                    );
+                    return (
+                      <LogRow
+                        key={q.id}
+                        severity={q.success ? 'ok' : 'err'}
+                        timestamp={new Date(q.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        source={q.modelUsed || q.queryType}
+                        sourceAccent={false}
+                        message={message}
+                        meta={meta}
+                      />
+                    );
+                  })}
                 </div>
               </SlideInPanelSection>
             )}

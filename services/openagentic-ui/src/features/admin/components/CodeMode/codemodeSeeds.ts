@@ -169,6 +169,13 @@ export interface SeedMcpServer {
   enabled: boolean;
 }
 
+// Codemode seed = what ships out of the box; users add/remove via
+// slash commands inside openagentic (`/mcp add`, `/plugin install`,
+// `/skills`) exactly like running claude-code / openagentic locally.
+// We intentionally keep this SHORT — built-in tools (Read/Write/Edit/
+// Glob/Grep/Bash/WebFetch/Agent/etc.) come from the openagentic CLI
+// itself; MCPs here are only the ones whose capability is NOT
+// already in the built-ins.
 export const SEED_MCP_SERVERS: SeedMcpServer[] = [
   {
     id: 'mcp-context7',
@@ -188,17 +195,18 @@ export const SEED_MCP_SERVERS: SeedMcpServer[] = [
     command: 'npx',
     args: ['@playwright/mcp@latest'],
     pluginSource: 'playwright',
-    enabled: false,
+    enabled: true,
   },
   {
     id: 'mcp-github',
     name: 'github',
-    description: 'GitHub MCP — repos, issues, PRs, code search, actions. Requires GITHUB_PERSONAL_ACCESS_TOKEN.',
-    type: 'http',
-    url: 'https://api.githubcopilot.com/mcp/',
-    headers: { 'Authorization': 'Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}' },
+    description: 'GitHub MCP — repos, issues, PRs, code search, actions. Uses the pod-injected GH_TOKEN.',
+    type: 'stdio',
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-github'],
+    env: { 'GITHUB_PERSONAL_ACCESS_TOKEN': '${GH_TOKEN}' },
     pluginSource: 'github',
-    enabled: false,
+    enabled: true,
   },
 ];
 

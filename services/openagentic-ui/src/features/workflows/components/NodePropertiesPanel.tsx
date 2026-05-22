@@ -10,28 +10,13 @@ import { X, Save, Trash2, AlertCircle, Info, ChevronDown, Check } from '@/shared
 import type { Node } from 'reactflow';
 import type { NodeData } from '../types/workflow.types';
 import { isFieldRequired } from '../utils/workflowValidator';
-
-// Cache for agent registry (60s TTL)
-let _agentRegistryCache: { agents: Array<{ id: string; display_name: string; agent_type: string; model?: string }>; ts: number } | null = null;
-async function fetchAgentRegistry(): Promise<Array<{ id: string; display_name: string; agent_type: string; model?: string }>> {
-  if (_agentRegistryCache && Date.now() - _agentRegistryCache.ts < 60000) return _agentRegistryCache.agents;
-  try {
-    let res = await fetch('/api/workflows/agents');
-    if (!res.ok) res = await fetch('/api/admin/agents');
-    if (res.ok) {
-      const data = await res.json();
-      const agents = (data.agents || []).map((a: any) => ({
-        id: a.id,
-        display_name: a.display_name || a.name || a.id,
-        agent_type: a.agent_type || a.role || 'custom',
-        model: a.model_config?.primaryModel || a.model || '',
-      }));
-      _agentRegistryCache = { agents, ts: Date.now() };
-      return agents;
-    }
-  } catch { /* ignore */ }
-  return [];
-}
+// Schema-driven settings — exposes required-field markers, enum values, defaults
+// from the /node-schemas registry. UI agent #3 consumes this for full UX.
+import { useNodeSchemaSettings } from '../hooks/useNodeSchemaSettings';
+import { useNodeSchemas } from '../hooks/useNodeSchemas';
+import { NodeDocsPanel } from './NodeDocsPanel';
+import { fetchAgents as fetchAgentRegistry } from '../services/agentRegistryApi';
+import { MultiAgentSlotEditor } from './MultiAgentSlotEditor';
 
 // Fetch full agent config from the DB (SOT) — includes system_prompt, tools, model_config, thinking
 const _agentConfigCache = new Map<string, { data: any; ts: number }>();
@@ -161,16 +146,18 @@ const FormInput: React.FC<{
       placeholder={placeholder}
       min={min}
       max={max}
+      data-required-field={required ? 'true' : undefined}
+      data-field-error={error ? 'true' : undefined}
       className="w-full px-3 py-2.5 rounded-lg border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500"
       style={{
         backgroundColor: 'var(--color-bg-secondary)',
-        borderColor: error ? '#f59e0b' : 'var(--color-border)',
+        borderColor: error ? '#ef4444' : 'var(--color-border)',
         color: 'var(--color-text)',
-        ...(error ? { boxShadow: '0 0 0 1px rgba(245,158,11,0.3)' } : {}),
+        ...(error ? { boxShadow: '0 0 0 1px rgba(239,68,68,0.3)' } : {}),
       }}
     />
     {error && !value && (
-      <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#f59e0b' }}>
+      <p className="text-xs mt-1 flex items-center gap-1" data-testid="required-field-error" style={{ color: '#ef4444' }}>
         <AlertCircle style={{ width: 10, height: 10 }} /> Required
       </p>
     )}
@@ -204,12 +191,14 @@ const FormTextarea: React.FC<{
       onChange={(e) => onChange(e.target.value)}
       rows={rows}
       placeholder={placeholder}
+      data-required-field={required ? 'true' : undefined}
+      data-field-error={error ? 'true' : undefined}
       className={`w-full px-3 py-2.5 rounded-lg border text-sm transition-all resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 ${monospace ? 'font-mono' : ''}`}
       style={{
         backgroundColor: 'var(--color-bg-secondary)',
-        borderColor: error ? '#f59e0b' : 'var(--color-border)',
+        borderColor: error ? '#ef4444' : 'var(--color-border)',
         color: 'var(--color-text)',
-        ...(error ? { boxShadow: '0 0 0 1px rgba(245,158,11,0.3)' } : {}),
+        ...(error ? { boxShadow: '0 0 0 1px rgba(239,68,68,0.3)' } : {}),
       }}
     />
     {helpText && (
@@ -282,6 +271,13 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showUniversalAdvanced, setShowUniversalAdvanced] = useState(false);
 
+  // Schema-driven settings — available for downstream consumers and future
+  // required-field marker rendering. Falls back gracefully for legacy node types.
+  const schemaSettings = useNodeSchemaSettings(node?.type as string ?? '');
+  // Full schema object (for the Docs panel) keyed by the same node type.
+  const { byType: schemasByType } = useNodeSchemas();
+  const fullSchema = schemasByType[node?.type as string ?? ''] ?? null;
+
   // Agent ID dropdown state (must be at component level for hooks rules)
   const [agentOptions, setAgentOptions] = useState<Array<{ id: string; display_name: string; agent_type: string; model?: string }>>([]);
   const [agentSearchQuery, setAgentSearchQuery] = useState('');
@@ -297,7 +293,12 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
   // Fetch agents when panel opens for agent node types
   useEffect(() => {
-    if (node?.type === 'agent_single' || node?.type === 'agent_supervisor' || node?.type === 'agent_pool') {
+    if (
+      node?.type === 'agent_single' ||
+      node?.type === 'agent_supervisor' ||
+      node?.type === 'agent_pool' ||
+      node?.type === 'multi_agent'
+    ) {
       fetchAgentRegistry().then(setAgentOptions);
     }
   }, [node?.type]);
@@ -962,21 +963,14 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         )}
       </div>
 
-      {/* Model & Intelligence */}
-      <SectionLabel label="Model & Intelligence" />
-      <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-          Intelligence Level: {(nodeData as any).intelligenceLevel ?? 50}%
-        </label>
-        <input type="range" min="0" max="100" step="5" value={(nodeData as any).intelligenceLevel ?? 50}
-          onChange={(e) => updateData('intelligenceLevel' as any, parseInt(e.target.value))} className="w-full" />
-        <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
-          <span>Economical</span><span>Balanced</span><span>Premium</span>
-        </div>
-      </div>
+      {/* Model */}
+      {/* 2026-04-19 — Intelligence slider removed (task #144). Model is
+          chosen by SmartModelRouter; per-user × per-model spend caps live
+          in UserModelBudgetService. Leave Model field for explicit override. */}
+      <SectionLabel label="Model" />
       <FormInput label="Model Override" value={(nodeData as any).model || ''}
         onChange={(v) => updateData('model' as any, v)} placeholder="Leave empty for auto routing"
-        helpText="Override intelligence slider with a specific model." />
+        helpText="Pin a specific model for this node; leave blank for Smart Router." />
       <FormInput label="Max Turns" value={(nodeData as any).maxIterations || 10}
         onChange={(v) => updateData('maxIterations' as any, parseInt(v) || 10)} type="number" min={1} max={50}
         helpText="Maximum reasoning/tool-use turns." />
@@ -1413,39 +1407,12 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
     </div>
   );
 
-  const getSliderTierLabel = (value: number) => {
-    if (value <= 40) return { label: 'Economical', desc: 'Fast, low-cost (Haiku, GPT-4o-mini)', color: '#22c55e' };
-    if (value <= 60) return { label: 'Balanced', desc: 'Quality + speed (Sonnet, GPT-4o)', color: '#2196f3' };
-    return { label: 'Premium', desc: 'Maximum quality (Opus, o1)', color: '#7c4dff' };
-  };
-
   const renderOpenagenticLLMConfig = () => {
-    const sliderValue = (nodeData as any).intelligenceSlider ?? 50;
-    const tier = getSliderTierLabel(sliderValue);
-    const useModelOverride = (nodeData as any).modelOverride && (nodeData as any).modelOverride !== 'auto';
-
     return (
     <div className="space-y-4">
-      {/* Intelligence Slider */}
-      <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-          Intelligence Level: <span style={{ color: tier.color, fontWeight: 700 }}>{tier.label}</span>
-          <span className="ml-1 text-xs" style={{ color: 'var(--color-text-tertiary)' }}>({sliderValue}%)</span>
-        </label>
-        <input
-          type="range" min="0" max="100" step="5" value={sliderValue}
-          onChange={(e) => updateData('intelligenceSlider' as any, parseInt(e.target.value))}
-          className="w-full"
-          disabled={useModelOverride}
-          style={{ accentColor: tier.color }}
-        />
-        <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
-          <span>Economical</span><span>Balanced</span><span>Premium</span>
-        </div>
-        <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
-          {tier.desc}. {useModelOverride ? '(Overridden by model selection below)' : 'Platform routes to the best model at this tier.'}
-        </p>
-      </div>
+      {/* 2026-04-19 — Intelligence slider removed (task #144). Model
+          selection goes through SmartModelRouter; admin configures
+          per-user × per-model budgets in the User Permissions view. */}
       <FormTextarea
         label="System Prompt"
         value={nodeData.systemPrompt || ''}
@@ -1471,11 +1438,11 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         value={(nodeData as any).modelOverride || 'auto'}
         onChange={(v) => updateData('modelOverride' as any, v)}
         options={[
-          { value: 'auto', label: 'Auto (use intelligence slider)' },
+          { value: 'auto', label: 'Auto (Smart Router)' },
           ...availableModels.map(m => ({ value: m, label: m })),
         ]}
         isDark={isDark}
-        helpText="Override the intelligence slider with a specific model"
+        helpText="Pin a specific model for this node; leave on Auto for Smart Router."
       />
       <AdvancedToggle>
         <div>
@@ -1515,56 +1482,102 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
   );
   };
 
-  const renderMultiAgentConfig = () => (
-    <div className="space-y-4">
-      <div className="p-2.5 rounded-lg text-xs" style={{ background: 'rgba(255,152,0,0.08)', color: '#ff9800', border: '1px solid rgba(255,152,0,0.2)' }}>
-        Spawns multiple concurrent sub-agents with shared context. Each agent runs independently with its own LLM call.
-      </div>
-      <FormInput label="Concurrency" value={(nodeData as any).maxConcurrency || 3}
-        onChange={(v) => updateData('maxConcurrency' as any, parseInt(v) || 3)} type="number" isDark={isDark}
-        min={1} max={20} helpText="Maximum agents running in parallel." />
-      <FormSelect
-        label="Aggregation Strategy"
-        value={(nodeData as any).aggregationStrategy || 'merge'}
-        onChange={(v) => updateData('aggregationStrategy' as any, v)}
-        options={[
-          { value: 'first', label: 'First - Fastest agent wins' },
-          { value: 'vote', label: 'Vote - Majority consensus' },
-          { value: 'merge', label: 'Merge - Combine all outputs' },
-          { value: 'supervisor_synthesis', label: 'Supervisor Synthesis - LLM combines results' },
-        ]}
-        isDark={isDark}
-        helpText="How to combine outputs from all agents."
-      />
-      <FormInput label="Timeout Per Agent (s)" value={(nodeData as any).timeoutPerAgent || 60}
-        onChange={(v) => updateData('timeoutPerAgent' as any, parseInt(v) || 60)} type="number" isDark={isDark}
-        min={5} max={600} helpText="Maximum time each agent can run." />
-      <FormTextarea
-        label="Agents (JSON array)"
-        value={(nodeData as any).agents ? JSON.stringify((nodeData as any).agents, null, 2) : '[\n  { "role": "researcher", "task": "Research the topic" },\n  { "role": "writer", "task": "Write the report" }\n]'}
-        onChange={(v) => { try { updateData('agents' as any, JSON.parse(v)); } catch { /* wait for valid JSON */ } }}
-        rows={6}
-        placeholder='[{ "role": "...", "task": "..." }]'
-        isDark={isDark}
-        monospace
-        helpText="Each agent needs: role (string), task (string). Optional: model, tools, maxTurns."
-      />
-      <AdvancedToggle>
-        <FormTextarea
-          label="Shared Context"
-          value={(nodeData as any).sharedContext || ''}
-          onChange={(v) => updateData('sharedContext' as any, v)}
-          rows={3}
-          placeholder="Context shared with all agents..."
+  const renderMultiAgentConfig = () => {
+    const agents: any[] = Array.isArray((nodeData as any).agents) ? (nodeData as any).agents : [];
+    const pattern: string = (nodeData as any).pattern || 'parallel';
+    const updateAgents = (next: any[]) => updateData('agents' as any, next);
+    const addAgent = () => updateAgents([...agents, { agentId: '', taskDescription: '' }]);
+    const removeAgent = (i: number) => updateAgents(agents.filter((_, idx) => idx !== i));
+    const updateAgent = (i: number, patch: Partial<any>) =>
+      updateAgents(agents.map((a, idx) => (idx === i ? { ...a, ...patch } : a)));
+
+    return (
+      <div className="space-y-4">
+        <div className="p-2.5 rounded-lg text-xs" style={{ background: 'rgba(33,150,243,0.08)', color: '#2196f3', border: '1px solid rgba(33,150,243,0.2)' }}>
+          Multi-agent orchestration. Pick a <strong>pattern</strong> below, then add registered agents from the SOT registry. Each slot accepts an <code>agentId</code>; inline ghost agents are deprecated — register agents in the Admin console first.
+        </div>
+
+        <FormSelect
+          label="Orchestration Pattern"
+          value={pattern}
+          onChange={(v) => updateData('pattern' as any, v)}
+          options={[
+            { value: 'parallel', label: 'Parallel — fan out, aggregate' },
+            { value: 'sequential', label: 'Sequential — handoff chain' },
+            { value: 'supervisor', label: 'Supervisor — manager + workers' },
+            { value: 'debate', label: 'Debate — pro/con/judge' },
+          ]}
           isDark={isDark}
-          helpText="Background information or instructions provided to every agent in the pool."
+          helpText="Maps to openagentic-proxy orchestration mode. Debate routes through sequential with explicit framing."
         />
-        <FormInput label="Total Timeout (ms)" value={(nodeData as any).timeoutMs || 60000}
-          onChange={(v) => updateData('timeoutMs' as any, parseInt(v) || 60000)} type="number" isDark={isDark}
-          min={5000} max={600000} helpText="Maximum time to wait for all agents combined." />
-      </AdvancedToggle>
-    </div>
-  );
+
+        <div>
+          <label className="block text-xs font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+            Agents ({agents.length})
+          </label>
+          {agents.length === 0 && (
+            <div className="text-xs italic mb-2" style={{ color: 'var(--color-text-tertiary, #999)' }}>
+              No agents yet — click <strong>+ Add agent</strong> below.
+            </div>
+          )}
+          <div className="space-y-2">
+            {agents.map((spec, i) => (
+              <MultiAgentSlotEditor
+                key={i}
+                index={i}
+                spec={spec}
+                agentOptions={agentOptions}
+                availableModels={availableModels}
+                onChange={(patch) => updateAgent(i, patch)}
+                onRemove={() => removeAgent(i)}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={addAgent}
+            className="mt-2 text-xs"
+            style={{ padding: '6px 10px', background: 'rgba(33,150,243,0.12)', color: '#2196f3', border: '1px solid rgba(33,150,243,0.3)', borderRadius: 4, cursor: 'pointer' }}
+          >
+            + Add agent
+          </button>
+        </div>
+
+        <FormInput label="Max Concurrency" value={(nodeData as any).maxConcurrency || 5}
+          onChange={(v) => updateData('maxConcurrency' as any, parseInt(v) || 5)} type="number" isDark={isDark}
+          min={1} max={20} helpText="Cap on simultaneous agents (parallel pattern only)." />
+
+        <FormSelect
+          label="Aggregation Strategy"
+          value={(nodeData as any).aggregationStrategy || 'merge'}
+          onChange={(v) => updateData('aggregationStrategy' as any, v)}
+          options={[
+            { value: 'merge', label: 'Merge — combine all outputs' },
+            { value: 'first', label: 'First — fastest agent wins' },
+            { value: 'vote', label: 'Vote — majority consensus' },
+          ]}
+          isDark={isDark}
+          helpText="How to combine outputs across agents."
+        />
+
+        <AdvancedToggle>
+          <FormInput label="Total Timeout (ms)" value={(nodeData as any).timeoutMs || 120000}
+            onChange={(v) => updateData('timeoutMs' as any, parseInt(v) || 120000)} type="number" isDark={isDark}
+            min={5000} max={600000} helpText="Wall-clock cap across all agents." />
+          <FormSelect
+            label="Share context across agents"
+            value={(nodeData as any).sharedContext === false ? 'false' : 'true'}
+            onChange={(v) => updateData('sharedContext' as any, v === 'true')}
+            options={[
+              { value: 'true', label: 'Yes — prepend upstream input as context' },
+              { value: 'false', label: 'No — agents see only their task' },
+            ]}
+            isDark={isDark}
+          />
+        </AdvancedToggle>
+      </div>
+    );
+  };
 
   // ─── Agent-Proxy Node Config ───────────────────────────────────────
   const [showPersona, setShowPersona] = useState(false);
@@ -1716,22 +1729,15 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         )}
       </div>
 
-      {/* Model & Intelligence */}
-      <SectionLabel label="Model & Intelligence" />
-      <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-          Intelligence Level: {(nodeData as any).intelligenceLevel ?? 50}%
-        </label>
-        <input type="range" min="0" max="100" step="5" value={(nodeData as any).intelligenceLevel ?? 50}
-          onChange={(e) => updateData('intelligenceLevel' as any, parseInt(e.target.value))} className="w-full" />
-        <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
-          <span>Economical</span><span>Balanced</span><span>Premium</span>
-        </div>
-      </div>
+      {/* Model */}
+      {/* 2026-04-19 — Intelligence slider removed (task #144). Model is
+          chosen by SmartModelRouter unless an override is set; per-user
+          × per-model spend caps live in UserModelBudgetService. */}
+      <SectionLabel label="Model" />
       <FormInput label="Model Override" value={(nodeData as any).model || ''}
         onChange={(v) => updateData('model' as any, v)}
         placeholder="Leave empty for auto routing"
-        helpText="Override intelligence slider with a specific model." />
+        helpText="Pin a specific model for this node; leave blank for Smart Router." />
       <FormInput label="Max Turns" value={(nodeData as any).maxTurns || 5}
         onChange={(v) => updateData('maxTurns' as any, parseInt(v) || 5)} type="number" min={1} max={50}
         helpText="Maximum reasoning/tool-use turns before returning." />
@@ -2666,8 +2672,174 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       case 'reasoning':
         return renderReasoningConfig();
       default:
-        return null;
+        // Generic schema-driven renderer — fires for any node type that's
+        // migrated to the schema registry but doesn't have an explicit
+        // case above. Loops schema.settings[] and emits an input per
+        // setting based on its declared type, with required-field markers
+        // pulled from the schema (NOT the legacy NODE_REQUIRED_FIELDS map).
+        // Closes the gap users hit when a node says "X is required" via
+        // the validator but the panel has no input for X.
+        return renderSchemaDrivenConfig();
     }
+  };
+
+  /** Generic schema-driven settings renderer. Used as the fallback for
+   *  any node type without an explicit case above. */
+  const renderSchemaDrivenConfig = () => {
+    if (!schemaSettings.hasSchema || schemaSettings.settings.length === 0) {
+      return (
+        <div style={{
+          padding: '12px',
+          background: 'var(--color-bg-secondary)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 8,
+          fontSize: 12,
+          color: 'var(--color-text-tertiary)',
+        }}>
+          No schema definition available for <code>{node.type}</code>. This
+          node type isn't yet migrated to the schema-driven plugin
+          registry — its data fields can still be edited via the JSON
+          inspector below.
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {schemaSettings.settings.map((setting) => {
+          const value = (nodeData as any)[setting.name] ?? '';
+          const isRequired = setting.required === true;
+          const hasError = isRequired && (value === '' || value == null);
+          const labelText = setting.label || setting.name;
+          const helpText = setting.description;
+
+          if (setting.type === 'enum' && Array.isArray(setting.values)) {
+            return (
+              <FormSelect
+                key={setting.name}
+                label={labelText + (isRequired ? ' *' : '')}
+                value={String(value || setting.default || '')}
+                onChange={(v) => updateData(setting.name as any, v)}
+                options={setting.values.map((v) => ({ value: v, label: v }))}
+                helpText={helpText}
+              />
+            );
+          }
+          if (setting.type === 'boolean') {
+            return (
+              <div key={setting.name} className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
+                <div>
+                  <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{labelText}</div>
+                  {helpText && <div className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>{helpText}</div>}
+                </div>
+                <input
+                  type="checkbox"
+                  checked={!!value}
+                  onChange={(e) => updateData(setting.name as any, e.target.checked)}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }}
+                />
+              </div>
+            );
+          }
+          if (setting.type === 'number') {
+            return (
+              <FormInput
+                key={setting.name}
+                label={labelText}
+                value={value as number}
+                onChange={(v) => updateData(setting.name as any, Number(v))}
+                type="number"
+                placeholder={setting.placeholder}
+                helpText={helpText}
+                min={setting.min}
+                max={setting.max}
+                required={isRequired}
+                error={hasError}
+              />
+            );
+          }
+          if (setting.type === 'json' || setting.type === 'object') {
+            return (
+              <FormTextarea
+                key={setting.name}
+                label={labelText}
+                value={typeof value === 'string' ? value : JSON.stringify(value ?? {}, null, 2)}
+                onChange={(v) => updateData(setting.name as any, v)}
+                rows={6}
+                placeholder={setting.placeholder || '{ }'}
+                helpText={helpText}
+                monospace
+                required={isRequired}
+                error={hasError}
+              />
+            );
+          }
+          if (setting.type === 'code') {
+            return (
+              <FormTextarea
+                key={setting.name}
+                label={labelText}
+                value={String(value || '')}
+                onChange={(v) => updateData(setting.name as any, v)}
+                rows={8}
+                placeholder={setting.placeholder}
+                helpText={helpText}
+                monospace
+                required={isRequired}
+                error={hasError}
+              />
+            );
+          }
+          if (setting.type === 'secret_ref') {
+            return (
+              <FormInput
+                key={setting.name}
+                label={labelText}
+                value={String(value || '')}
+                onChange={(v) => updateData(setting.name as any, v)}
+                placeholder={setting.placeholder || '{{secret:NAME}}'}
+                helpText={helpText || 'Reference a secret with `{{secret:NAME}}` syntax — never paste literal credentials.'}
+                required={isRequired}
+                error={hasError}
+              />
+            );
+          }
+          // Default: plain string input. Long fields go to a textarea
+          // so the user can edit prompts comfortably.
+          const isLong = (setting.placeholder || '').length > 80
+            || setting.name.toLowerCase().includes('prompt')
+            || setting.name.toLowerCase().includes('description')
+            || setting.name.toLowerCase().includes('query');
+          if (isLong) {
+            return (
+              <FormTextarea
+                key={setting.name}
+                label={labelText}
+                value={String(value || '')}
+                onChange={(v) => updateData(setting.name as any, v)}
+                rows={4}
+                placeholder={setting.placeholder}
+                helpText={helpText}
+                required={isRequired}
+                error={hasError}
+              />
+            );
+          }
+          return (
+            <FormInput
+              key={setting.name}
+              label={labelText}
+              value={String(value || '')}
+              onChange={(v) => updateData(setting.name as any, v)}
+              placeholder={setting.placeholder}
+              helpText={helpText}
+              required={isRequired}
+              error={hasError}
+            />
+          );
+        })}
+      </div>
+    );
   };
 
   return (
@@ -2676,6 +2848,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 320, opacity: 0 }}
       className="w-80 border-l overflow-y-auto"
+      data-has-schema={schemaSettings.hasSchema ? 'true' : 'false'}
+      data-node-type={node?.type}
       style={{
         backgroundColor: 'var(--color-surface)',
         borderColor: 'var(--color-border)',
@@ -2836,6 +3010,24 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           </h4>
           {renderNodeConfig()}
         </div>
+
+        {/* Schema-driven docs panel — shows ai.shortDescription, whenToUse,
+         * I/O ports, and outputAssertions for any node whose type is
+         * registered in the schema-driven plugin registry. Pulled from the
+         * same useNodeSchemas hook used by the schema-driven settings
+         * fallback above; renders nothing when the type isn't registered. */}
+        {schemaSettings.hasSchema && (
+          <div
+            className="border-t pt-4"
+            style={{ borderColor: 'var(--color-border)' }}
+            data-testid="node-docs-section"
+          >
+            <h4 className="text-sm font-semibold mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+              Docs
+            </h4>
+            <NodeDocsPanel schema={fullSchema} />
+          </div>
+        )}
 
         {/* Universal Advanced Configuration */}
         {renderUniversalAdvancedConfig()}

@@ -86,7 +86,7 @@ const adminUsageAnalyticsRoutes: FastifyPluginAsync = async (fastify) => {
    * Supports time range filtering: 7d, 30d, 90d, all
    */
   fastify.get('/api/admin/analytics/usage', {
-    preHandler: adminMiddleware
+    onRequest: adminMiddleware
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { timeRange = '7d' } = request.query as any;
 
@@ -583,7 +583,7 @@ const adminUsageAnalyticsRoutes: FastifyPluginAsync = async (fastify) => {
    * Get detailed usage for a specific user
    */
   fastify.get('/api/admin/analytics/usage/:userId', {
-    preHandler: adminMiddleware
+    onRequest: adminMiddleware
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { userId } = request.params as any;
     const { timeRange = '30d' } = request.query as any;
@@ -694,7 +694,7 @@ const adminUsageAnalyticsRoutes: FastifyPluginAsync = async (fastify) => {
   // ─────────────────────────────────────────────────────────────────────
 
   fastify.get('/api/admin/workflows/cost', {
-    preHandler: adminMiddleware
+    onRequest: adminMiddleware
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { groupBy = 'workflow', period = '30d' } = request.query as any;
 

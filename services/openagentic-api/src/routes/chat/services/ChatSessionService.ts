@@ -24,6 +24,37 @@ export class ChatSessionService {
   }
 
   /**
+   * Sev-0 #777 fix — read messages straight from the storage layer
+   * (DB-authoritative) instead of relying on the cached session payload's
+   * `.messages` projection. The chat stream pipeline persists via
+   * `chatStorage.addMessageToSession` directly, which bypasses the
+   * `ChatSessionService.addMessage` cache invalidation. Result: a cached
+   * session payload can stay frozen with `messages: []` while the DB
+   * actually holds the row.
+   *
+   * The handler must source `messages[]` from this method, not from
+   * `session.messages` after `getSession(...)`.
+   */
+  async getMessages(
+    sessionId: string,
+    options?: { limit?: number; offset?: number; cursor?: string },
+  ): Promise<ChatMessage[]> {
+    if (!this.chatStorage || typeof this.chatStorage.getMessages !== 'function') {
+      return [];
+    }
+    try {
+      const rows = await this.chatStorage.getMessages(sessionId, options);
+      return Array.isArray(rows) ? rows : [];
+    } catch (error: any) {
+      this.logger.error({
+        sessionId,
+        error: error?.message,
+      }, 'ChatSessionService.getMessages failed');
+      return [];
+    }
+  }
+
+  /**
    * Get session by ID and user ID
    */
   async getSession(sessionId: string, userId: string): Promise<ChatSession | null> {
@@ -109,6 +140,13 @@ export class ChatSessionService {
       title: string;
       model: string;
       metadata?: Record<string, any>;
+      // Sev-0 Bug A — pass through user identity hints so ChatStorageService
+      // can defensively upsert when token-oid does not match an existing
+      // `users.id` row (e.g. helm-bootstrapped admin user vs SSO oid).
+      userEmail?: string;
+      userName?: string;
+      azureOid?: string;
+      azureTenantId?: string;
     }
   ): Promise<string> {
     const startTime = Date.now();
@@ -132,7 +170,12 @@ export class ChatSessionService {
         title: options.title,
         model: options.model,
         metadata: options.metadata || {},
-        settings: { model: options.model }
+        settings: { model: options.model },
+        // Sev-0 Bug A — passthrough.
+        userEmail: options.userEmail,
+        userName: options.userName,
+        azureOid: options.azureOid,
+        azureTenantId: options.azureTenantId,
       });
 
       this.logger.info({
@@ -186,13 +229,28 @@ export class ChatSessionService {
 
     try {
       // Call chatStorage.addMessageToSession with the correct signature
+      // DB is SoT — read persisted session.model before falling back to the
+      // admin-configured default. Never process.env.
+      const { resolveChatModel } = await import('../resolveChatModel.js');
+      let sessionModel: string | undefined;
+      try {
+        const existingSession = await this.chatStorage.getSession(sessionId, userId);
+        sessionModel = (existingSession as any)?.model;
+      } catch {
+        sessionModel = undefined;
+      }
+      const resolvedModel = await resolveChatModel({
+        explicitModel: (message as any).model,
+        sessionModel,
+      });
+
       await this.chatStorage.addMessageToSession(
         sessionId,
         userId, // Pass the userId from the caller
         message.role, // This is where the role was getting lost!
         message.content || '',
         {
-          model: (message as any).model || process.env.DEFAULT_MODEL,
+          model: resolvedModel,
           tokenCount: message.tokenUsage?.total_tokens,
           toolCalls: message.toolCalls,
           toolResults: (message as any).toolResults,

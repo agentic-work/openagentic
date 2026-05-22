@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiRequest } from '@/utils/api';
+import { SoTBanner, PageHeader } from '../../primitives-v2';
 import {
   Search,
   Trash2,
@@ -130,9 +131,14 @@ export const AdminWorkflowsView: React.FC<AdminWorkflowsViewProps> = ({ theme })
 
   return (
     <div className="p-6 space-y-6">
-      <h2 className="text-xl font-bold" style={{ color: 'var(--color-text, #333)' }}>
-        Workflow Management
-      </h2>
+      <PageHeader
+        crumbs={['Admin', 'Flows', 'All Workflows']}
+        title="Workflows"
+        explainer="Manage all workflows across users — search, filter, and inspect ownership, visibility, and execution metrics."
+      />
+
+      {/* Mission Control · SoT enforcement banner */}
+      <SoTBanner context="Workflow nodes that pick a model use the registry; pinning a non-registry model in a node fails build-time AND surfaces a 503 with retry-from-fallback at runtime." />
 
       {/* Stats cards */}
       {stats && (
@@ -149,7 +155,7 @@ export const AdminWorkflowsView: React.FC<AdminWorkflowsViewProps> = ({ theme })
               style={{ background: 'var(--wf-node-bg)', borderColor: 'var(--wf-node-border)' }}
             >
               <div className="text-2xl font-bold" style={{ color: card.color }}>{card.value}</div>
-              <div className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary, #999)' }}>{card.label}</div>
+              <div className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>{card.label}</div>
             </div>
           ))}
         </div>
@@ -158,28 +164,28 @@ export const AdminWorkflowsView: React.FC<AdminWorkflowsViewProps> = ({ theme })
       {/* Filter bar */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-text-tertiary, #999)' }} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--color-text-tertiary)' }} />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search workflows..."
             className="w-full pl-10 pr-4 py-2 rounded-lg border text-sm"
-            style={{ background: 'var(--wf-node-bg)', borderColor: 'var(--wf-node-border)', color: 'var(--color-text, #333)' }}
+            style={{ background: 'var(--wf-node-bg)', borderColor: 'var(--wf-node-border)', color: 'var(--color-text)' }}
           />
         </div>
         <select
           value={visibilityFilter}
           onChange={e => setVisibilityFilter(e.target.value)}
           className="px-3 py-2 rounded-lg border text-sm"
-          style={{ background: 'var(--wf-node-bg)', borderColor: 'var(--wf-node-border)', color: 'var(--color-text, #333)' }}
+          style={{ background: 'var(--wf-node-bg)', borderColor: 'var(--wf-node-border)', color: 'var(--color-text)' }}
         >
           <option value="all">All Visibility</option>
           <option value="private">Private</option>
           <option value="team">Team</option>
           <option value="public">Public</option>
         </select>
-        <span className="text-sm" style={{ color: 'var(--color-text-tertiary, #999)' }}>{total} total</span>
+        <span className="text-sm" style={{ color: 'var(--color-text-tertiary)' }}>{total} total</span>
       </div>
 
       {/* Table */}
@@ -187,21 +193,21 @@ export const AdminWorkflowsView: React.FC<AdminWorkflowsViewProps> = ({ theme })
         <table className="w-full text-sm">
           <thead>
             <tr style={{ background: 'rgba(0,0,0,0.03)', borderBottom: '1px solid var(--wf-node-border)' }}>
-              <th className="text-left px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary, #666)' }}>Name</th>
-              <th className="text-left px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary, #666)' }}>Owner</th>
-              <th className="text-center px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary, #666)' }}>Visibility</th>
-              <th className="text-center px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary, #666)' }}>Nodes</th>
-              <th className="text-center px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary, #666)' }}>Runs</th>
-              <th className="text-right px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary, #666)' }}>Updated</th>
-              <th className="text-right px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary, #666)' }}>Actions</th>
+              <th className="text-left px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Name</th>
+              <th className="text-left px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Owner</th>
+              <th className="text-center px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Visibility</th>
+              <th className="text-center px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Nodes</th>
+              <th className="text-center px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Runs</th>
+              <th className="text-right px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Updated</th>
+              <th className="text-right px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--color-text-tertiary, #999)' }}>Loading...</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--color-text-tertiary)' }}>Loading...</td></tr>
             )}
             {!loading && workflows.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--color-text-tertiary, #999)' }}>No workflows found</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center" style={{ color: 'var(--color-text-tertiary)' }}>No workflows found</td></tr>
             )}
             {!loading && workflows.map(wf => (
               <tr
@@ -210,23 +216,23 @@ export const AdminWorkflowsView: React.FC<AdminWorkflowsViewProps> = ({ theme })
                 style={{ borderBottom: '1px solid var(--wf-node-border)' }}
               >
                 <td className="px-4 py-3">
-                  <div className="font-medium" style={{ color: 'var(--color-text, #333)' }}>{wf.name}</div>
+                  <div className="font-medium" style={{ color: 'var(--color-text)' }}>{wf.name}</div>
                   {wf.description && (
-                    <div className="text-xs truncate max-w-[200px]" style={{ color: 'var(--color-text-tertiary, #999)' }}>{wf.description}</div>
+                    <div className="text-xs truncate max-w-[200px]" style={{ color: 'var(--color-text-tertiary)' }}>{wf.description}</div>
                   )}
                 </td>
-                <td className="px-4 py-3 text-xs" style={{ color: 'var(--color-text-secondary, #666)' }}>
+                <td className="px-4 py-3 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                   {wf.user?.email || wf.user_id?.substring(0, 8)}
                 </td>
                 <td className="px-4 py-3 text-center">{visibilityBadge(wf.visibility)}</td>
-                <td className="px-4 py-3 text-center" style={{ color: 'var(--color-text-secondary, #666)' }}>{wf.nodeCount}</td>
+                <td className="px-4 py-3 text-center" style={{ color: 'var(--color-text-secondary)' }}>{wf.nodeCount}</td>
                 <td className="px-4 py-3 text-center">
-                  <span style={{ color: wf.failedExecutions > 0 ? 'var(--color-error)' : 'var(--color-text-secondary, #666)' }}>
+                  <span style={{ color: wf.failedExecutions > 0 ? 'var(--color-error)' : 'var(--color-text-secondary)' }}>
                     {wf.totalExecutions}
                     {wf.failedExecutions > 0 && <span className="text-xs"> ({wf.failedExecutions} failed)</span>}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-right text-xs" style={{ color: 'var(--color-text-tertiary, #999)' }}>
+                <td className="px-4 py-3 text-right text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
                   {wf.updated_at ? format(new Date(wf.updated_at), 'MMM d, HH:mm') : '-'}
                 </td>
                 <td className="px-4 py-3 text-right">
@@ -242,7 +248,7 @@ export const AdminWorkflowsView: React.FC<AdminWorkflowsViewProps> = ({ theme })
                       value={wf.visibility}
                       onChange={e => handleVisibilityChange(wf.id, e.target.value)}
                       className="text-xs px-1 py-0.5 rounded border"
-                      style={{ background: 'var(--wf-node-bg)', borderColor: 'var(--wf-node-border)', color: 'var(--color-text, #333)' }}
+                      style={{ background: 'var(--wf-node-bg)', borderColor: 'var(--wf-node-border)', color: 'var(--color-text)' }}
                     >
                       <option value="private">Private</option>
                       <option value="team">Team</option>

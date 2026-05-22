@@ -15,8 +15,11 @@ export type ContentBlockType =
   | 'tool_call'
   | 'tool_use'     // Added for Anthropic API compatibility
   | 'tool_result'
+  | 'tool_round'   // Wire-in D (#82) — parallel fan-out container
   | 'task_update'
-  | 'summary';
+  | 'summary'
+  | 'viz_render'   // Typed-block artifact path (compose_visual + render_artifact svg)
+  | 'app_render';  // Typed-block artifact path (compose_app + render_artifact react/html/python_plot)
 
 export interface ContentBlock {
   id: string;
@@ -35,6 +38,53 @@ export interface ContentBlock {
   duration?: number;      // ms elapsed from startTime to isComplete
   result?: unknown;       // For tool_use — the resolved tool result JSON
   error?: string;         // For tool_use — error message if the tool failed
+  /**
+   * Task #131 (Phase F₂) — parallel tool-call round grouping key.
+   * When the backend's executeToolCalls helper fires N tool_executing
+   * events in a tight burst (one parallel fan-out), useChatStream stamps
+   * the same integer on all of them so AgenticActivityStream can route
+   * the group to the premium ToolCallGroup under UnifiedAgentActivity/.
+   * Optional so existing paths that don't stamp it still type-check.
+   */
+  toolCallRound?: number;
+  /**
+   * Task #131 — stable slot index within a parallel round. Used by
+   * ToolCallGroup to preserve DOM emit-order (cards don't reorder when
+   * tool_result events arrive out of order; the visual completion-order
+   * reveal comes from each card flipping its own isComplete flag).
+   */
+  parallelSlotIndex?: number;
+  /**
+   * Wire-in D (#82) — tool_round container fields. Populated only for
+   * blocks of type 'tool_round' so AgenticActivityStream can render
+   * them via ToolParallelGroup. Optional here so every other block path
+   * keeps type-checking without change.
+   */
+  roundId?: string;
+  toolIds?: string[];
+  children?: ContentBlock[];
+  durationMs?: number;
+  succeeded?: number;
+  failed?: number;
+  // ─────────────────────────────────────────────────────────────────────
+  // Typed-block artifact path. Kept in sync with the hooks/useChatStream
+  // ContentBlock so the AgenticActivityStream render switch can read these
+  // optional fields without a type-cast.
+  // ─────────────────────────────────────────────────────────────────────
+  index?: number;
+  input?: unknown;
+  resultRaw?: unknown;
+  outputTemplate?: string;
+  toolUseId?: string;
+  groupId?: string;
+  template?: string;
+  kind?: 'svg' | 'html' | 'reactflow_arch' | 'arch_diagram' | 'chart' | 'react' | 'python_plot';
+  title?: string;
+  caption?: string;
+  loadingMessages?: string[];
+  html?: string;
+  pyodideRequired?: boolean;
+  nonce?: string | null;
 }
 
 export interface ContentBlockMetadata {
@@ -196,6 +246,134 @@ export interface AgenticActivityStreamProps {
 
   // Additional class names
   className?: string;
+
+  /**
+   * #646 Option B — sub-agent lifecycle entries (sub_agent_started /
+   * sub_agent_completed). When an agent block in the timeline has an
+   * `agentRole` matching one of these entries, AgenticActivityStream
+   * renders the rich SubAgentCard at THAT timeline position (matching
+   * mock 01:1077-1140) instead of the lightweight inline agent badge.
+   *
+   * Falls through to the legacy inline render when the list is empty
+   * or the role doesn't match — so existing behaviour is preserved
+   * for chats without sub-agents.
+   */
+  subAgents?: ReadonlyArray<SubAgentEntry>;
+
+  /**
+   * Sev-1 #922 — HITL approval entries scoped to THIS assistant turn.
+   * Each entry's `toolName` correlates to one tool_use block in
+   * `contentBlocks`. AAS renders the approval card INLINE immediately
+   * after the matching tool_use, in chronological order. The previous
+   * footer-strip render in `ChatMessages` was ripped because it
+   * "appeared to move" — as the model streamed more content after a
+   * tool fired, the strip stayed anchored to the message footer while
+   * the tool card scrolled up out of view.
+   *
+   * Correlation strategy: earliest-unrendered-pending. Server does not
+   * emit `toolUseId` on the hitl_approval frame; we pair the i-th
+   * pending approval with `toolName=T` against the i-th tool_use block
+   * with `toolName=T` in the activity stream. Orphan approvals (no
+   * matching tool_use yet — race with tool_executing) render at the
+   * end of the stream so the user can always act on them.
+   */
+  hitlApprovals?: ReadonlyArray<HitlApprovalEntry>;
+  onApproveHitl?: (requestId: string) => void;
+  onDenyHitl?: (requestId: string) => void;
+
+  /**
+   * Sev-0 dup-render rip (2026-05-21) — structured streaming-table data
+   * scoped to THIS message. When a `viz_render` ContentBlock has
+   * `template:'table'` AND a matching `StreamingTable` lives here keyed
+   * by `artifactId === block.id`, AAS renders the native React
+   * `<StreamingTable>` INLINE at the wire-emit position instead of the
+   * iframe-srcdoc HTML table. This kills three duplicate renders in one
+   * shot:
+   *   (a) the iframe-with-baked-HTML path (CLAUDE.md rule 8b violation —
+   *       iframe doesn't inherit `--cm-*` theme tokens),
+   *   (b) the sibling `<StreamingTable>` strip that used to render below
+   *       the message bubble in ChatMessages.tsx,
+   *   (c) the ToolCard auto-expand JSON wall (collapsed by default when
+   *       `outputTemplate` is table/streaming_table — see ToolCard.tsx).
+   *
+   * Live DOM evidence:
+   *   reports/verify-cadence/one-shot-redeploy-2026-05-21/07-table-dup-fullpage.png
+   *
+   * Lightweight clone of `StreamingTable` from `useChatStream` so this
+   * types file doesn't pull in the hook layer. Field set kept in sync.
+   */
+  streamingTables?: ReadonlyArray<StreamingTableEntry>;
+}
+
+/**
+ * Sev-0 dup-render rip — clone of `StreamingTable` shape from
+ * `useChatStream`. Field set kept in sync; AAS reads only these fields
+ * when correlating a `viz_render(template=table)` block to its native
+ * `<StreamingTable>` render.
+ */
+export interface StreamingTableEntry {
+  artifactId: string;
+  title: string;
+  countText?: string;
+  columns: ReadonlyArray<{
+    key: string;
+    label: string;
+    align?: 'left' | 'right';
+    cellClass?: 'mono' | 'tnum';
+    colorize?: 'delta-currency';
+    dim?: boolean;
+  }>;
+  rows: ReadonlyArray<Record<string, unknown>>;
+  filter?: { column: string; default?: string };
+}
+
+/**
+ * Sev-1 #922 — HITL approval entry passed through to AgenticActivityStream.
+ * Field set mirrors `hitlApprovalsByMessageId` in `ChatMessages` props
+ * (kept in sync; that table is the single point of truth populated by
+ * the `hitl_approval` / `mcp_approval_required` envelope in
+ * `useChatStream`).
+ */
+export interface HitlApprovalEntry {
+  requestId: string;
+  toolName: string;
+  serverName?: string;
+  reason: string;
+  timeoutMs: number;
+  arguments?: unknown;
+  status: 'pending' | 'approved' | 'denied' | 'expired';
+  /**
+   * HITL.3 — the tool_use_id of the Task (sub-agent delegation) block that
+   * spawned the sub-agent which triggered this approval. Set when the
+   * mcp_approval_required frame arrives from openagentic-proxy via the
+   * stream.handler bridge (HITL.2). Used by AAS for refined HITL chip
+   * positioning: when present, prefer to render the chip adjacent to
+   * the matching sub-agent's tool card rather than any tool_use with
+   * the same toolName.
+   */
+  parentToolUseId?: string;
+}
+
+/**
+ * Lightweight clone of `SubAgentEntry` from `useChatStream` so the type
+ * file doesn't pull in the hook layer. Field set must stay in sync
+ * with `services/openagentic-ui/src/features/chat/hooks/useChatStream.ts`
+ * `SubAgentEntry` — the SubAgentCard render in AgenticActivityStream
+ * reads only these fields.
+ */
+export interface SubAgentEntry {
+  role: string;
+  description?: string;
+  model?: string | null;
+  status: 'running' | 'ok' | 'error';
+  stats?: {
+    turns: number;
+    tokens: number;
+    wallMs: number;
+    toolsUsed?: string[];
+  };
+  error?: string | null;
+  output?: string;
 }
 
 export interface ThinkingSectionProps {
@@ -233,6 +411,19 @@ export interface ToolCallCardProps {
   onToggle?: () => void;
   theme?: 'light' | 'dark';
   className?: string;
+  /**
+   * v0.6.7 fix 4 — partial JSON stream (input_json_delta). When present
+   * and status === 'calling', the card shows a character-by-character
+   * typing cursor on the live args pane. Replaced by `toolInput` once
+   * the block stops.
+   */
+  inputDeltaContent?: string;
+  /**
+   * Audit L1-2 / Phase A3 — FrameRendererRegistry slug from the wire
+   * `_meta.outputTemplate`. When present and the slug is registered,
+   * ToolCard renders the resolved component instead of raw JsonView.
+   */
+  outputTemplate?: string;
 }
 
 export interface ResponseSummaryProps {

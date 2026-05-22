@@ -10,6 +10,7 @@ import {
   RefreshIcon, EyeIcon, SuccessIcon as ThumbsUpIcon, ErrorIcon as ThumbsDownIcon
 } from '../Shared/AdminIcons';
 import { apiRequest } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 
 interface PendingApproval {
   id: string;
@@ -118,24 +119,15 @@ export const SynthApprovalsView: React.FC<SynthApprovalsViewProps> = ({ theme })
 
   return (
     <div className={`${bgColor} ${textColor} p-6`}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <ClockIcon size={24} className="text-orange-500" />
-            Pending Approvals
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Review and approve/reject Synth tool synthesis requests
-          </p>
-        </div>
-        <button
-          onClick={fetchApprovals}
-          className="p-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-        >
-          <RefreshIcon size={16} />
-        </button>
-      </div>
+      <PageHeader
+        crumbs={['Admin', 'Tools', 'Synthesis Approvals']}
+        title="Synthesis Approvals"
+        explainer="Review and approve or reject Synth tool synthesis requests."
+        actions={[
+          { label: 'Refresh', onClick: fetchApprovals },
+        ]}
+      />
+      <div className="mt-6" />
 
       {/* Error Message */}
       {error && (

@@ -1,8 +1,5 @@
 import React from 'react';
 import {
-  Cpu,
-  Folder,
-  Coins,
   ArrowUpRight,
   ArrowDownRight,
   ExternalLink,
@@ -128,6 +125,22 @@ export const TerminalHeaderBar: React.FC<TerminalHeaderBarProps> = ({
     >
       {themeSlot}
       <div className="flex-1" />
+      {(inTokens > 0 || outTokens > 0) && (
+        <div
+          className="flex items-center gap-2 text-xs text-[var(--cm-text-secondary,var(--color-textMuted))] tabular-nums"
+          title="Session totals — cumulative input (↑) and output (↓) tokens across all turns"
+          data-testid="codemode-session-token-chips"
+        >
+          <span className="inline-flex items-center gap-1">
+            <ArrowUpRight size={12} className="opacity-70" />
+            {formatTokens(inTokens)}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <ArrowDownRight size={12} className="opacity-70" />
+            {formatTokens(outTokens)}
+          </span>
+        </div>
+      )}
       <button
         onClick={handleFitToScreen}
         className="p-1.5 rounded hover:bg-[var(--cm-bg-tertiary,var(--color-surfaceSecondary))] text-[var(--cm-text-secondary,var(--color-textMuted))]"

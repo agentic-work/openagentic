@@ -13,7 +13,7 @@ const WelcomePage = React.lazy(() => import('../pages/WelcomePage'));
 const QuickStartPage = React.lazy(() => import('../pages/QuickStartPage'));
 const KeyConceptsPage = React.lazy(() => import('../pages/KeyConceptsPage'));
 const ChatModePage = React.lazy(() => import('../pages/ChatModePage'));
-const IntelligenceSliderPage = React.lazy(() => import('../pages/IntelligenceSliderPage'));
+// 2026-04-19 — IntelligenceSliderPage deleted (task #144, slider rip).
 const AgentDelegationPage = React.lazy(() => import('../pages/AgentDelegationPage'));
 const ArtifactsPage = React.lazy(() => import('../pages/ArtifactsPage'));
 const CodeModePage = React.lazy(() => import('../pages/CodeModePage'));
@@ -48,6 +48,7 @@ const SystemSettingsPage = React.lazy(() => import('../pages/SystemSettingsPage'
 // Architecture & DevOps
 const ArchitecturePage = React.lazy(() => import('../pages/ArchitecturePage').catch(() => ({ default: () => null as any })));
 const DeploymentGuidePage = React.lazy(() => import('../pages/DeploymentGuidePage').catch(() => ({ default: () => null as any })));
+const DeployedServicesPage = React.lazy(() => import('../pages/DeployedServicesPage').catch(() => ({ default: () => null as any })));
 const SecurityArchPage = React.lazy(() => import('../pages/SecurityArchPage').catch(() => ({ default: () => null as any })));
 const RoadmapPage = React.lazy(() => import('../pages/RoadmapPage').catch(() => ({ default: () => null as any })));
 // Reference
@@ -64,7 +65,7 @@ const PAGE_COMPONENTS: Record<string, React.LazyExoticComponent<React.FC<any>>> 
   'key-concepts': KeyConceptsPage,
   // Chat Mode
   'chat-mode': ChatModePage,
-  'intelligence-slider': IntelligenceSliderPage,
+  // 2026-04-19 — intelligence-slider route removed (task #144).
   'agents-delegation': AgentDelegationPage,
   'artifacts': ArtifactsPage,
   // Code Mode
@@ -97,6 +98,7 @@ const PAGE_COMPONENTS: Record<string, React.LazyExoticComponent<React.FC<any>>> 
   'admin-settings': SystemSettingsPage,
   // Architecture & DevOps
   'architecture': ArchitecturePage,
+  'deployed-services': DeployedServicesPage,
   'deployment-guide': DeploymentGuidePage,
   'security-architecture': SecurityArchPage,
   'roadmap': RoadmapPage,
@@ -140,7 +142,7 @@ export const docsNavigation: DocsNavCategory[] = [
     icon: 'brain',
     pages: [
       { id: 'chat-mode', title: 'How Chat Works', description: 'The AI conversation pipeline' },
-      { id: 'intelligence-slider', title: 'Intelligence & Models', description: 'Model routing and quality' },
+      // 2026-04-19 — intelligence-slider nav entry removed (task #144).
       { id: 'agents-delegation', title: 'Agent Delegation', description: 'Multi-agent orchestration' },
       { id: 'artifacts', title: 'Artifacts', description: 'HTML visualizations and dashboards' },
     ],
@@ -207,6 +209,7 @@ export const docsNavigation: DocsNavCategory[] = [
     title: 'Architecture',
     icon: 'infra',
     pages: [
+      { id: 'deployed-services', title: 'Deployed Services', description: 'Live cluster topology + image SHAs per service' },
       { id: 'architecture', title: 'System Architecture', description: 'Services, databases, protocols' },
       { id: 'security-architecture', title: 'Security Architecture', description: 'Auth, DLP, audit, encryption' },
       { id: 'deployment-guide', title: 'Deployment Guide', description: 'Build, Helm, Kubernetes', adminOnly: true },

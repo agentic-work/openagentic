@@ -22,6 +22,44 @@ import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import fp from 'fastify-plugin';
 import { adminMiddleware } from '../middleware/unifiedAuth.js';
 import { loggers } from '../utils/logger.js';
+import { featureFlags } from '../config/featureFlags.js';
+import { adminRoutes } from '../routes/admin.js';
+import { adminPortalEnhancedRoutes } from '../routes/admin-portal-enhanced.js';
+import { adminMissingRoutes, capabilitiesRoutes } from '../routes/admin-missing-routes.js';
+import { adminSystemRoutes } from '../routes/admin-system.js';
+import testHarnessRoutes from '../routes/admin-test-harness.js';
+import testHarnessRunE2eRoutes from '../routes/admin-test-harness-run-e2e.js';
+import dlpRoutes from '../routes/admin/dlp.js';
+import agentMetricsRoutes from '../routes/admin/agent-metrics.js';
+import { adminRateLimitsRoutes } from '../routes/admin-rate-limits.js';
+import { adminChargebackRoutes } from '../routes/admin-chargeback.js';
+import { adminTieredFunctionCallingRoutes } from '../routes/admin-tiered-fc.js';
+// adminPromptsRoutes RIPPED 2026-05-11 — depended on PromptTemplate +
+// UserPromptAssignment models (chatmode-rip Phase E final cleanup).
+// RBAC admin route below is the only prompt-admin surface now.
+import { adminRbacSystemPromptsRoutes } from '../routes/admin-rbac-system-prompts.js';
+// Sprint W Phase P2.1 (2026-05-19) — PromptEffectiveness read route.
+import { adminPromptAnalyticsRoutes } from '../routes/admin-prompt-analytics.js';
+// Sprint W (2026-05-19) — named service prompt keys (Slack, title gen, codemode, memory).
+import { adminServicePromptsRoutes } from '../routes/admin-service-prompts.js';
+import adminAuditChatRoutes from '../routes/admin-audit-chat.js';
+import adminLLMMetricsRoutes from '../routes/admin-llm-metrics.js';
+import adminMCPLogsRoutes from '../routes/admin-mcp-logs.js';
+import adminContextMetricsRoutes from '../routes/admin-context-metrics.js';
+import adminMCPToolsRoutes from '../routes/admin-mcp-tools.js';
+// adminUsageAnalyticsRoutes removed; new analytics-monitoring plugin owns /api/admin/analytics/usage
+import { adminFeedbackRoutes } from '../routes/admin-feedback.js';
+import { adminMCPToolAccessRoutes } from '../routes/admin-mcp-tool-access.js';
+import { adminNetworkRoutes } from '../routes/admin-network.js';
+import { adminWebhookSecurityRoutes } from '../routes/admin-webhook-security.js';
+import { adminWorkflowSecretsRoutes } from '../routes/admin-workflow-secrets.js';
+import { adminUserActivityRoutes } from '../routes/admin-user-activity.js';
+import adminUserContextRoutes from '../routes/admin-user-context.js';
+import registryTombstonesRoutes from '../routes/admin/registry-tombstones.js';
+import adminV3ExtrasRoutes from '../routes/admin/v3-extras.js';
+import adminV3ExtrasMutationsRoutes from '../routes/admin/v3-extras-mutations.js';
+import adminV3ExtrasMiscRoutes from '../routes/admin/v3-extras-misc.js';
+import adminPermissionsRoutes from '../routes/admin/permissions.js';
 
 interface AdminPluginOptions {
   ollamaEnabled?: boolean;
@@ -31,7 +69,7 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
   fastify: FastifyInstance,
   options: AdminPluginOptions
 ) => {
-  const ollamaEnabled = options.ollamaEnabled ?? process.env.OLLAMA_ENABLED === 'true';
+  const ollamaEnabled = options.ollamaEnabled ?? featureFlags.ollamaEnabled;
 
   // Track registration success/failure for summary
   let successCount = 0;
@@ -60,7 +98,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Admin routes
   try {
-    const { adminRoutes } = await import('../routes/admin.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminRoutes);
@@ -74,7 +111,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Admin Portal Enhanced routes
   try {
-    const { adminPortalEnhancedRoutes } = await import('../routes/admin-portal-enhanced.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminPortalEnhancedRoutes);
@@ -86,25 +122,23 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
     failCount++;
   }
 
-  // Register Admin Ollama routes for Ollama model management (only if enabled)
-  if (ollamaEnabled) {
-    try {
-      const { adminOllamaRoutes } = await import('../routes/admin-ollama.js');
-      await fastify.register(async (instance) => {
-        instance.addHook('preHandler', adminMiddleware);
-        await instance.register(adminOllamaRoutes);
-      }, { prefix: '/api/admin' });
-      loggers.routes.info('Admin Ollama routes registered at /api/admin/ollama/* with admin middleware');
-    } catch (error) {
-      loggers.routes.error({ err: error }, 'Failed to register admin Ollama routes');
-    }
-  } else {
-    loggers.routes.info('Ollama routes skipped - OLLAMA_ENABLED is false');
+  // Register Admin Ollama routes UNCONDITIONALLY — admin must be able to view/manage
+  // configured Ollama hosts even when the runtime feature flag is disabled (otherwise
+  // the LLM Extras > Ollama Hosts pane fires "upstream endpoint failed" 404 banners).
+  // Routes themselves return empty arrays when no ollama providers are configured.
+  try {
+    const { adminOllamaRoutes } = await import('../routes/admin-ollama.js');
+    await fastify.register(async (instance) => {
+      instance.addHook('preHandler', adminMiddleware);
+      await instance.register(adminOllamaRoutes);
+    }, { prefix: '/api/admin' });
+    loggers.routes.info({ ollamaEnabled }, 'Admin Ollama routes registered at /api/admin/ollama/* with admin middleware');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin Ollama routes');
   }
 
   // Register Admin Missing Routes (MCP health, tools status)
   try {
-    const { adminMissingRoutes, capabilitiesRoutes } = await import('../routes/admin-missing-routes.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminMissingRoutes);
@@ -122,7 +156,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Admin System routes for real-time system monitoring
   try {
-    const { adminSystemRoutes } = await import('../routes/admin-system.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminSystemRoutes);
@@ -136,12 +169,15 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Admin Test Harness routes for system-wide testing
   try {
-    const { default: testHarnessRoutes } = await import('../routes/admin-test-harness.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(testHarnessRoutes);
+      // E2E integration sweep — same prefix so the static API key + admin
+      // gate both flow through the same auth contract as `/run`. Exposes
+      // POST /api/admin/test-harness/run-e2e (NDJSON stream).
+      await instance.register(testHarnessRunE2eRoutes);
     }, { prefix: '/api/admin/test-harness' });
-    loggers.routes.info('Admin Test Harness routes registered at /api/admin/test-harness/*');
+    loggers.routes.info('Admin Test Harness routes registered at /api/admin/test-harness/* (including /run-e2e)');
     successCount++;
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register admin test harness routes');
@@ -150,7 +186,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Admin DLP routes for Data Loss Prevention rule management
   try {
-    const { default: dlpRoutes } = await import('../routes/admin/dlp.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(dlpRoutes);
@@ -164,7 +199,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Agent Metrics routes
   try {
-    const { default: agentMetricsRoutes } = await import('../routes/admin/agent-metrics.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(agentMetricsRoutes);
@@ -176,23 +210,12 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
     failCount++;
   }
 
-  // Register Admin Slider routes for intelligence slider management
-  try {
-    const { adminSliderRoutes } = await import('../routes/admin-slider.js');
-    await fastify.register(async (instance) => {
-      instance.addHook('preHandler', adminMiddleware);
-      await instance.register(adminSliderRoutes);
-    }, { prefix: '/api/admin/slider' });
-    loggers.routes.info('Admin Slider routes registered at /api/admin/slider/* with admin middleware');
-    successCount++;
-  } catch (error) {
-    loggers.routes.error({ err: error }, 'Failed to register admin slider routes');
-    failCount++;
-  }
+  // 2026-04-19 — admin-slider routes deleted (task #144, slider rip).
+  // Per-user × per-model budget caps are owned by UserModelBudgetService
+  // and exposed on the user-permissions admin endpoints.
 
   // Register Admin Rate Limits routes for rate limit configuration
   try {
-    const { adminRateLimitsRoutes } = await import('../routes/admin-rate-limits.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminRateLimitsRoutes);
@@ -206,7 +229,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Admin Chargeback routes for enterprise cost allocation
   try {
-    const { adminChargebackRoutes } = await import('../routes/admin-chargeback.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminChargebackRoutes);
@@ -220,7 +242,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Tiered Function Calling routes for configurable model selection
   try {
-    const { adminTieredFunctionCallingRoutes } = await import('../routes/admin-tiered-fc.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminTieredFunctionCallingRoutes);
@@ -232,23 +253,60 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
     failCount++;
   }
 
-  // Register Admin Prompts & Templates management routes
+  // Admin Prompts & Templates routes RIPPED 2026-05-11 — depended on
+  // PromptTemplate + UserPromptAssignment schema models that no longer
+  // exist. RBAC system prompts have their own admin route below.
+
+  // P-Live-6: Admin RBAC System Prompts CRUD — admins edit role-keyed
+  // chatmode prompt bodies LIVE without container rebuild; writes
+  // publish on the redis `prompt:invalidate` channel so every replica
+  // re-reads from DB on the next chat turn.
   try {
-    const { adminPromptsRoutes } = await import('../routes/admin-prompts.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
-      await instance.register(adminPromptsRoutes);
-    }, { prefix: '/api/admin/prompts' });
-    loggers.routes.info('Admin Prompts & Templates routes registered at /api/admin/prompts/* with admin middleware');
+      await instance.register(adminRbacSystemPromptsRoutes);
+    }, { prefix: '/api/admin/rbac-system-prompts' });
+    loggers.routes.info(
+      'Admin RBAC System Prompts routes registered at /api/admin/rbac-system-prompts/* with admin middleware',
+    );
     successCount++;
   } catch (error) {
-    loggers.routes.error({ err: error }, 'Failed to register admin prompts routes');
+    loggers.routes.error({ err: error }, 'Failed to register admin rbac-system-prompts routes');
+    failCount++;
+  }
+
+  // Sprint W (2026-05-19) — service prompt keys (Slack, title gen, codemode, memory).
+  try {
+    await fastify.register(async (instance) => {
+      instance.addHook('preHandler', adminMiddleware);
+      await instance.register(adminServicePromptsRoutes);
+    }, { prefix: '/api/admin/service-prompts' });
+    loggers.routes.info(
+      'Admin Service Prompts routes registered at /api/admin/service-prompts/* with admin middleware',
+    );
+    successCount++;
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin service-prompts routes');
+    failCount++;
+  }
+
+  // Sprint W Phase P2.1 (2026-05-19) — PromptEffectiveness aggregate read.
+  try {
+    await fastify.register(async (instance) => {
+      instance.addHook('preHandler', adminMiddleware);
+      await instance.register(adminPromptAnalyticsRoutes);
+    }, { prefix: '/api/admin/prompts/effectiveness' });
+    loggers.routes.info(
+      'Admin Prompt Analytics routes registered at /api/admin/prompts/effectiveness with admin middleware',
+    );
+    successCount++;
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin prompt-analytics routes');
     failCount++;
   }
 
   // Register Admin Audit Chat routes for AI-powered log querying
   try {
-    const { default: adminAuditChatRoutes } = await import('../routes/admin-audit-chat.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminAuditChatRoutes);
@@ -262,7 +320,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Admin LLM Metrics routes for real-time token usage and cost analytics
   try {
-    const { default: adminLLMMetricsRoutes } = await import('../routes/admin-llm-metrics.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminLLMMetricsRoutes);
@@ -276,7 +333,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Admin MCP Logs routes for tracking tool executions
   try {
-    const { default: adminMCPLogsRoutes } = await import('../routes/admin-mcp-logs.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminMCPLogsRoutes);
@@ -290,7 +346,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Admin Context Window Metrics routes
   try {
-    const { default: adminContextMetricsRoutes } = await import('../routes/admin-context-metrics.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminContextMetricsRoutes);
@@ -304,7 +359,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Admin MCP Tools routes for tool cache management
   try {
-    const { default: adminMCPToolsRoutes } = await import('../routes/admin-mcp-tools.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminMCPToolsRoutes);
@@ -316,23 +370,14 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
     failCount++;
   }
 
-  // Register Admin Usage Analytics routes for usage metrics
-  try {
-    const { default: adminUsageAnalyticsRoutes } = await import('../routes/admin-usage-analytics.js');
-    await fastify.register(async (instance) => {
-      instance.addHook('preHandler', adminMiddleware);
-      await instance.register(adminUsageAnalyticsRoutes);
-    });
-    loggers.routes.info('Admin Usage Analytics routes registered at /api/admin/analytics/usage with admin middleware');
-    successCount++;
-  } catch (error) {
-    loggers.routes.error({ err: error }, 'Failed to register admin usage analytics routes');
-    failCount++;
-  }
+  // (admin-usage-analytics removed) — bf17089a registered the new
+  // analytics-monitoring plugin in server.ts at the same /api/admin/analytics
+  // prefix without removing the legacy registration here, causing a
+  // FST_ERR_DUPLICATED_ROUTE crash on /api/admin/analytics/usage that
+  // killed the api on every boot. The new plugin owns this endpoint now.
 
   // Register Admin Feedback Analytics routes
   try {
-    const { adminFeedbackRoutes } = await import('../routes/admin-feedback.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminFeedbackRoutes);
@@ -346,7 +391,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Admin MCP Tool Access routes for per-tool granular access control
   try {
-    const { adminMCPToolAccessRoutes } = await import('../routes/admin-mcp-tool-access.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminMCPToolAccessRoutes);
@@ -360,7 +404,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Admin Network Security routes for K8s NetworkPolicy management
   try {
-    const { adminNetworkRoutes } = await import('../routes/admin-network.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminNetworkRoutes);
@@ -374,7 +417,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Admin Webhook Security routes for enterprise webhook security management
   try {
-    const { adminWebhookSecurityRoutes } = await import('../routes/admin-webhook-security.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminWebhookSecurityRoutes);
@@ -388,7 +430,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Admin Workflow Secrets routes for encrypted secret management
   try {
-    const { adminWorkflowSecretsRoutes } = await import('../routes/admin-workflow-secrets.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminWorkflowSecretsRoutes);
@@ -402,7 +443,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Admin User Activity routes for real-time presence and usage monitoring
   try {
-    const { adminUserActivityRoutes } = await import('../routes/admin-user-activity.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminUserActivityRoutes);
@@ -419,7 +459,6 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
 
   // Register Admin User Context (Memory) routes for adaptive memory admin view
   try {
-    const { default: adminUserContextRoutes } = await import('../routes/admin-user-context.js');
     await fastify.register(async (instance) => {
       instance.addHook('preHandler', adminMiddleware);
       await instance.register(adminUserContextRoutes);
@@ -428,6 +467,125 @@ const adminPlugin: FastifyPluginAsync<AdminPluginOptions> = async (
     successCount++;
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register admin user context routes');
+    failCount++;
+  }
+
+  // Register Registry Tombstone routes — F2.6 Registry SoT v1
+  // GET  /api/admin/registry/tombstones       — list current tombstones
+  // POST /api/admin/registry/tombstones/reset — destructive wipe + audit trail
+  try {
+    await fastify.register(async (instance) => {
+      instance.addHook('preHandler', adminMiddleware);
+      await instance.register(registryTombstonesRoutes);
+    }, { prefix: '/api/admin' });
+    loggers.routes.info('Registry Tombstone routes registered at /api/admin/registry/tombstones/* with admin middleware');
+    successCount++;
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register registry tombstone routes');
+    failCount++;
+  }
+
+  // Register Admin V3 Extras routes — 14 read-only endpoints the v3 admin
+  // pages reference but which previously didn't exist (router decisions,
+  // mcp/llm health histories, api-request analytics, openagentic api keys,
+  // per-workflow cost, per-MCP permissions, audit log detail).
+  try {
+    await fastify.register(async (instance) => {
+      instance.addHook('preHandler', adminMiddleware);
+      await instance.register(adminV3ExtrasRoutes);
+    }, { prefix: '/api/admin' });
+    loggers.routes.info('Admin V3 Extras routes registered at /api/admin/* (14 endpoints) with admin middleware');
+    successCount++;
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin v3 extras routes');
+    failCount++;
+  }
+
+  // Register Admin V3 Extras Mutations — 5 endpoints that close the
+  // "wire-up pending" Banner gaps in the v3 admin UI:
+  //   - POST  /integrations/:platform/oauth-start
+  //   - PATCH /chargeback/reports/:id
+  //   - POST  /codemode/skills + DELETE /codemode/skills/:id
+  //   - POST  /codemode/plugins + DELETE /codemode/plugins/:id
+  //   - PUT   /codemode/mcp-policy
+  //   - POST  /llm-providers/registry/refresh-all
+  try {
+    await fastify.register(async (instance) => {
+      instance.addHook('preHandler', adminMiddleware);
+      await instance.register(adminV3ExtrasMutationsRoutes);
+    }, { prefix: '/api/admin' });
+    loggers.routes.info('Admin V3 Extras Mutations registered at /api/admin/* (5 endpoints) with admin middleware');
+    successCount++;
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin v3 extras mutations routes');
+    failCount++;
+  }
+
+  // Register Admin V3 Extras Misc — 6 read-only endpoints DashboardV3
+  // references but that previously had no server-side handler:
+  //   - GET /cluster/health                   (Prometheus)
+  //   - GET /storage                          (milvus + pgvector + redis)
+  //   - GET /mcp-logs/histogram               (mcp_usage)
+  //   - GET /api-requests/throttles           (rate_limit_violations + llm_request_logs)
+  //   - GET /perf/throughput                  (llm_request_logs)
+  //   - GET /router/escalation-triggers       (model_routing_decisions)
+  try {
+    await fastify.register(async (instance) => {
+      instance.addHook('preHandler', adminMiddleware);
+      await instance.register(adminV3ExtrasMiscRoutes);
+    }, { prefix: '/api/admin' });
+    loggers.routes.info('Admin V3 Extras Misc registered at /api/admin/* (6 endpoints) with admin middleware');
+    successCount++;
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin v3 extras misc routes');
+    failCount++;
+  }
+
+  // Register Admin Tool Permissions — Claude-Code-style allow/deny/ask glob
+  // rule CRUD (replaces the old regex-tier tool_risk_overrides endpoint).
+  // Mounted at /api/admin/tool-permissions to avoid collision with the legacy
+  // user-permission CRUD at /api/admin/permissions/* in admin-misc.plugin.
+  try {
+    await fastify.register(async (instance) => {
+      instance.addHook('preHandler', adminMiddleware);
+      await instance.register(adminPermissionsRoutes, { prefix: '/tool-permissions' });
+    }, { prefix: '/api/admin' });
+    loggers.routes.info('Admin Tool Permissions routes registered at /api/admin/tool-permissions with admin middleware');
+    successCount++;
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin tool-permissions routes');
+    failCount++;
+  }
+
+  // Sev-1 (2026-05-17) — global READ-ONLY mode UI calls
+  // /api/admin/permissions/read-only-mode (the canonical path per
+  // permissions.test.ts:208 + UI's SettingsPane.tsx + PermissionsPage.tsx).
+  // Register ONLY the read-only-mode pair directly at /api/admin/permissions/
+  // — registering the full adminPermissionsRoutes plugin a second time at
+  // /permissions collides with v3-extras.ts's `GET /permissions` (FST_ERR_DUPLICATED_ROUTE).
+  try {
+    const { getPermissionService } = await import('../services/PermissionService.js');
+    await fastify.register(async (instance) => {
+      instance.addHook('preHandler', adminMiddleware);
+      instance.get('/api/admin/permissions/read-only-mode', async () => {
+        const svc = getPermissionService(loggers.services as any);
+        await svc.loadConfig();
+        return { success: true, readOnlyMode: svc.getReadOnlyMode() };
+      });
+      instance.put('/api/admin/permissions/read-only-mode', async (request, reply) => {
+        const body = request.body as { readOnlyMode?: unknown } | null;
+        if (!body || typeof body.readOnlyMode !== 'boolean') {
+          return reply.code(400).send({ success: false, error: 'readOnlyMode (boolean) required' });
+        }
+        const svc = getPermissionService(loggers.services as any);
+        await svc.setReadOnlyMode(body.readOnlyMode);
+        return { success: true, readOnlyMode: svc.getReadOnlyMode() };
+      });
+    });
+    loggers.routes.info('Admin read-only-mode endpoints registered at /api/admin/permissions/read-only-mode');
+    successCount++;
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin read-only-mode endpoints');
     failCount++;
   }
 

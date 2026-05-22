@@ -37,7 +37,7 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =>
    * List all MCP servers with their status
    */
   fastify.get('/servers', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['MCP'],
       summary: 'List all MCP servers',
@@ -94,7 +94,7 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =>
    * List all available tools from all MCP servers
    */
   fastify.get('/tools', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['MCP'],
       summary: 'List all MCP tools',
@@ -153,7 +153,7 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =>
    * MCP system health status
    */
   fastify.get('/health', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['MCP'],
       summary: 'MCP health status',
@@ -201,7 +201,7 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =>
    * UAT Requirements: UC-030, UC-021
    */
   fastify.get('/stats', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['MCP'],
       summary: 'MCP statistics',
@@ -266,7 +266,7 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =>
    * Detailed MCP status for chat
    */
   fastify.get('/status', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['MCP'],
       summary: 'MCP status for chat',
@@ -314,7 +314,7 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =>
    * Add a new MCP server
    */
   fastify.post('/servers', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['MCP'],
       summary: 'Add MCP server',
@@ -375,7 +375,7 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =>
    * Start an MCP server
    */
   fastify.post<{ Params: MCPServerParams }>('/servers/:id/start', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['MCP'],
       summary: 'Start MCP server',
@@ -415,7 +415,7 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =>
    * Stop an MCP server
    */
   fastify.post<{ Params: MCPServerParams }>('/servers/:id/stop', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['MCP'],
       summary: 'Stop MCP server',
@@ -455,7 +455,7 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =>
    * Restart an MCP server
    */
   fastify.post<{ Params: MCPServerParams }>('/servers/:id/restart', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['MCP'],
       summary: 'Restart MCP server',
@@ -495,7 +495,7 @@ export const mcpRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =>
    * Remove an MCP server
    */
   fastify.delete<{ Params: MCPServerParams }>('/servers/:id', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['MCP'],
       summary: 'Remove MCP server',

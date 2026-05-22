@@ -89,6 +89,8 @@ const descTextStyle: React.CSSProperties = { fontSize: '13px', color: 'var(--col
 // COMPONENT
 // ============================================================================
 
+import { SedimentaryComposerPanel } from './SedimentaryComposerPanel';
+
 const AdminPromptPage: React.FC = () => {
   const fadeUp = useMemo(
     () => ({
@@ -130,6 +132,22 @@ const AdminPromptPage: React.FC = () => {
           showControls
           showMiniMap={false}
         />
+      </motion.section>
+
+      {/* SEDIMENTARY COMPOSER — animated turn-by-turn view of which modules
+          settle for a given user request. Cycles through 4 example prompts
+          so the gating (mode / capability / intent) becomes visible. */}
+      <motion.section style={sectionStyle} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15, duration: 0.5 }}>
+        <p style={sectionHeadingStyle}>Live Composition</p>
+        <h2 style={sectionTitleStyle}>Sedimentary Strata</h2>
+        <p style={{ ...bodyTextStyle, marginBottom: '8px' }}>
+          The bedrock identity layer is always present. Every always-on core layer
+          stacks above it. Mode, capability, and domain modules settle on top only
+          when their <code>injection</code> rule matches the request — exactly
+          what an admin edits at <code>/admin#prompt-modules</code>. Watch the
+          stack change as the example prompt cycles.
+        </p>
+        <SedimentaryComposerPanel />
       </motion.section>
 
       {/* MODULE TYPES */}

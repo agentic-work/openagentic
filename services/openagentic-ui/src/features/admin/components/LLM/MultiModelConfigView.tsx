@@ -567,7 +567,8 @@ export const MultiModelConfigView: React.FC = () => {
           <button
             onClick={handleGenerateAIConfig}
             disabled={generatingConfig || availableModels.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: 'var(--ap-accent)', color: 'var(--ap-fg-on-accent)' }}
             title="Use AI to generate optimal model configuration"
           >
             {generatingConfig ? (
@@ -788,7 +789,7 @@ export const MultiModelConfigView: React.FC = () => {
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-white/10">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-gradient-to-r from-purple-500/20 to-pink-500/20">
+                <div className="p-2 rounded-lg" style={{ background: 'var(--ap-accent-soft)' }}>
                   <Sparkles size={20} className="ap-text-info" />
                 </div>
                 <div>
@@ -890,7 +891,8 @@ export const MultiModelConfigView: React.FC = () => {
               </button>
               <button
                 onClick={handleApplyAISuggestion}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all text-sm"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-sm"
+                style={{ background: 'var(--ap-accent)', color: 'var(--ap-fg-on-accent)' }}
               >
                 <CheckCircle size={16} />
                 Apply Configuration

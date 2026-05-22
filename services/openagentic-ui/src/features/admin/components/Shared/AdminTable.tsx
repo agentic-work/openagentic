@@ -153,7 +153,7 @@ export function AdminTable<T>({
     <div>
       <div
         ref={parentRef}
-        className="w-full rounded-lg overflow-hidden"
+        className="w-full rounded-table overflow-hidden"
         style={{
           border: '1px solid color-mix(in srgb, var(--color-primary) 15%, transparent)',
           maxHeight: maxHeight,
@@ -178,7 +178,7 @@ export function AdminTable<T>({
                   style={{
                     width: col.width,
                     textAlign: col.align || 'left',
-                    color: '#FFFFFF',
+                    color: 'var(--ap-fg-0)',
                     fontSize: 'var(--text-sm)',
                     borderRight: '1px solid rgba(255, 255, 255, 0.1)',
                     cursor: col.sortable !== false ? 'pointer' : undefined,

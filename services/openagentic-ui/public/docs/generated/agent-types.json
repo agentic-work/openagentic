@@ -1,869 +1,841 @@
 {
   "domain": "agent-types",
-  "title": "Agent System",
-  "description": "Agent types, model configurations, execution metrics, and admin settings for the OpenAgentic multi-agent platform.",
+  "title": "Agent Types",
+  "description": "AgentRegistry types",
   "icon": "agent",
   "category": "agents",
-  "generatedAt": "2026-04-06T02:45:19.331Z",
+  "generatedAt": "2026-05-13T20:48:20.629Z",
   "sourceFiles": [
     "services/openagentic-api/src/services/AgentRegistry.ts"
   ],
   "sections": [
     {
-      "id": "agent-types",
-      "title": "Agent Types",
-      "description": "OpenAgentic supports 13 agent types, each optimized for specific task patterns.",
+      "id": "AgentModelConfig",
+      "title": "AgentModelConfig",
+      "description": "Interface AgentModelConfig",
       "adminOnly": false,
       "items": [
         {
-          "id": "data_query",
-          "name": "data_query",
-          "description": "Queries stored datasets (fast, simple)",
-          "type": "agent-type",
-          "sourceLine": 37,
-          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 2048,
-            "temperature": 0,
-            "thinkingEnabled": false,
-            "costBudgetPerCall": 5,
-            "timeoutMs": 10000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "data_extraction",
-          "name": "data_extraction",
-          "description": "Extracts/filters data from large responses",
-          "type": "agent-type",
-          "sourceLine": 38,
-          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 4096,
-            "temperature": 0,
-            "thinkingEnabled": false,
-            "costBudgetPerCall": 20,
-            "timeoutMs": 30000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "tool_orchestration",
-          "name": "tool_orchestration",
-          "description": "Decides which tools to call",
-          "type": "agent-type",
-          "sourceLine": 39,
-          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 4096,
-            "temperature": 0.1,
-            "thinkingEnabled": true,
-            "thinkingBudget": 4096,
-            "costBudgetPerCall": 50,
-            "timeoutMs": 60000,
-            "retryAttempts": 3
-          }
-        },
-        {
-          "id": "reasoning",
-          "name": "reasoning",
-          "description": "Complex multi-step reasoning",
-          "type": "agent-type",
-          "sourceLine": 40,
-          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 8192,
-            "temperature": 0.3,
-            "thinkingEnabled": true,
-            "thinkingBudget": 16384,
-            "costBudgetPerCall": 100,
-            "timeoutMs": 120000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "summarization",
-          "name": "summarization",
-          "description": "Summarizes large content",
-          "type": "agent-type",
-          "sourceLine": 41,
-          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 4096,
-            "temperature": 0,
-            "thinkingEnabled": false,
-            "costBudgetPerCall": 10,
-            "timeoutMs": 30000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "code_execution",
-          "name": "code_execution",
-          "description": "Code generation/execution",
-          "type": "agent-type",
-          "sourceLine": 42,
-          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 8192,
-            "temperature": 0,
-            "thinkingEnabled": true,
-            "thinkingBudget": 8192,
-            "costBudgetPerCall": 75,
-            "timeoutMs": 180000,
-            "retryAttempts": 1
-          }
-        },
-        {
-          "id": "planning",
-          "name": "planning",
-          "description": "Plans multi-step tasks",
-          "type": "agent-type",
-          "sourceLine": 43,
-          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 8192,
-            "temperature": 0.2,
-            "thinkingEnabled": true,
-            "thinkingBudget": 16384,
-            "costBudgetPerCall": 100,
-            "timeoutMs": 120000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "validation",
-          "name": "validation",
-          "description": "Validates tool outputs",
-          "type": "agent-type",
-          "sourceLine": 44,
-          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 2048,
-            "temperature": 0,
-            "thinkingEnabled": false,
-            "costBudgetPerCall": 5,
-            "timeoutMs": 15000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "synthesis",
-          "name": "synthesis",
-          "description": "Synthesizes final response",
-          "type": "agent-type",
-          "sourceLine": 45,
-          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 8192,
-            "temperature": 0.3,
-            "thinkingEnabled": true,
-            "thinkingBudget": 8192,
-            "costBudgetPerCall": 50,
-            "timeoutMs": 60000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "artifact_creation",
-          "name": "artifact_creation",
-          "description": "Visual artifact generation (dashboards, reports, diagrams)",
-          "type": "agent-type",
-          "sourceLine": 46,
-          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 16384,
-            "temperature": 0.7,
-            "thinkingEnabled": false,
-            "costBudgetPerCall": 75,
-            "timeoutMs": 120000,
-            "retryAttempts": 1
-          }
-        },
-        {
-          "id": "docs_assistant",
-          "name": "docs_assistant",
-          "description": "Documentation RAG chat assistant",
-          "type": "agent-type",
-          "sourceLine": 47,
-          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 4096,
-            "temperature": 0.7,
-            "thinkingEnabled": true,
-            "thinkingBudget": 4096,
-            "costBudgetPerCall": 25,
-            "timeoutMs": 30000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "flows_agent",
-          "name": "flows_agent",
-          "description": "Workflow/flows execution agent",
-          "type": "agent-type",
-          "sourceLine": 48,
-          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 8192,
-            "temperature": 0.2,
-            "thinkingEnabled": true,
-            "thinkingBudget": 8192,
-            "costBudgetPerCall": 75,
-            "timeoutMs": 120000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "oat_function_builder",
-          "name": "oat_function_builder",
-          "description": "OAT function builder agent",
-          "type": "agent-type",
-          "sourceLine": 49,
-          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 8192,
-            "temperature": 0.1,
-            "thinkingEnabled": true,
-            "thinkingBudget": 8192,
-            "costBudgetPerCall": 50,
-            "timeoutMs": 60000,
-            "retryAttempts": 2
-          }
-        }
-      ]
-    },
-    {
-      "id": "default-model-configs",
-      "title": "Default Model Configurations",
-      "description": "Each agent type has a default model configuration controlling temperature, token limits, thinking behavior, cost budgets, and timeouts.",
-      "adminOnly": true,
-      "items": [
-        {
-          "id": "config-data_query",
-          "name": "data_query",
-          "description": "Default model configuration for data_query agents",
-          "type": "model-config",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 2048,
-            "temperature": 0,
-            "thinkingEnabled": false,
-            "costBudgetPerCall": 5,
-            "timeoutMs": 10000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "config-data_extraction",
-          "name": "data_extraction",
-          "description": "Default model configuration for data_extraction agents",
-          "type": "model-config",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 4096,
-            "temperature": 0,
-            "thinkingEnabled": false,
-            "costBudgetPerCall": 20,
-            "timeoutMs": 30000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "config-tool_orchestration",
-          "name": "tool_orchestration",
-          "description": "Default model configuration for tool_orchestration agents",
-          "type": "model-config",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 4096,
-            "temperature": 0.1,
-            "thinkingEnabled": true,
-            "thinkingBudget": 4096,
-            "costBudgetPerCall": 50,
-            "timeoutMs": 60000,
-            "retryAttempts": 3
-          }
-        },
-        {
-          "id": "config-reasoning",
-          "name": "reasoning",
-          "description": "Default model configuration for reasoning agents",
-          "type": "model-config",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 8192,
-            "temperature": 0.3,
-            "thinkingEnabled": true,
-            "thinkingBudget": 16384,
-            "costBudgetPerCall": 100,
-            "timeoutMs": 120000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "config-summarization",
-          "name": "summarization",
-          "description": "Default model configuration for summarization agents",
-          "type": "model-config",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 4096,
-            "temperature": 0,
-            "thinkingEnabled": false,
-            "costBudgetPerCall": 10,
-            "timeoutMs": 30000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "config-code_execution",
-          "name": "code_execution",
-          "description": "Default model configuration for code_execution agents",
-          "type": "model-config",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 8192,
-            "temperature": 0,
-            "thinkingEnabled": true,
-            "thinkingBudget": 8192,
-            "costBudgetPerCall": 75,
-            "timeoutMs": 180000,
-            "retryAttempts": 1
-          }
-        },
-        {
-          "id": "config-planning",
-          "name": "planning",
-          "description": "Default model configuration for planning agents",
-          "type": "model-config",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 8192,
-            "temperature": 0.2,
-            "thinkingEnabled": true,
-            "thinkingBudget": 16384,
-            "costBudgetPerCall": 100,
-            "timeoutMs": 120000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "config-validation",
-          "name": "validation",
-          "description": "Default model configuration for validation agents",
-          "type": "model-config",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 2048,
-            "temperature": 0,
-            "thinkingEnabled": false,
-            "costBudgetPerCall": 5,
-            "timeoutMs": 15000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "config-synthesis",
-          "name": "synthesis",
-          "description": "Default model configuration for synthesis agents",
-          "type": "model-config",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 8192,
-            "temperature": 0.3,
-            "thinkingEnabled": true,
-            "thinkingBudget": 8192,
-            "costBudgetPerCall": 50,
-            "timeoutMs": 60000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "config-artifact_creation",
-          "name": "artifact_creation",
-          "description": "Default model configuration for artifact_creation agents",
-          "type": "model-config",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 16384,
-            "temperature": 0.7,
-            "thinkingEnabled": false,
-            "costBudgetPerCall": 75,
-            "timeoutMs": 120000,
-            "retryAttempts": 1
-          }
-        },
-        {
-          "id": "config-docs_assistant",
-          "name": "docs_assistant",
-          "description": "Default model configuration for docs_assistant agents",
-          "type": "model-config",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 4096,
-            "temperature": 0.7,
-            "thinkingEnabled": true,
-            "thinkingBudget": 4096,
-            "costBudgetPerCall": 25,
-            "timeoutMs": 30000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "config-flows_agent",
-          "name": "flows_agent",
-          "description": "Default model configuration for flows_agent agents",
-          "type": "model-config",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 8192,
-            "temperature": 0.2,
-            "thinkingEnabled": true,
-            "thinkingBudget": 8192,
-            "costBudgetPerCall": 75,
-            "timeoutMs": 120000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "config-oat_function_builder",
-          "name": "oat_function_builder",
-          "description": "Default model configuration for oat_function_builder agents",
-          "type": "model-config",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 8192,
-            "temperature": 0.1,
-            "thinkingEnabled": true,
-            "thinkingBudget": 8192,
-            "costBudgetPerCall": 50,
-            "timeoutMs": 60000,
-            "retryAttempts": 2
-          }
-        },
-        {
-          "id": "config-custom",
-          "name": "custom",
-          "description": "Default model configuration for custom agents",
-          "type": "model-config",
-          "properties": {
-            "primaryModel": "auto",
-            "fallbackModel": "auto",
-            "maxTokens": 4096,
-            "temperature": 0.2,
-            "thinkingEnabled": false,
-            "costBudgetPerCall": 50,
-            "timeoutMs": 60000,
-            "retryAttempts": 2
-          }
-        }
-      ]
-    },
-    {
-      "id": "model-config-schema",
-      "title": "Model Configuration Schema",
-      "description": "The AgentModelConfig interface defines all configurable parameters for agent model routing.",
-      "adminOnly": true,
-      "items": [
-        {
-          "id": "field-agentType",
-          "name": "agentType",
-          "description": "AgentType field",
-          "type": "interface-field",
-          "properties": {
-            "type": "AgentType",
-            "optional": false
-          }
-        },
-        {
-          "id": "field-primaryModel",
-          "name": "primaryModel",
-          "description": "e.g., 'claude-3-5-sonnet-20241022'",
-          "type": "interface-field",
-          "properties": {
-            "type": "string",
-            "optional": false
-          }
-        },
-        {
-          "id": "field-fallbackModel",
-          "name": "fallbackModel",
-          "description": "e.g., 'gpt-4o'",
-          "type": "interface-field",
-          "properties": {
-            "type": "string",
-            "optional": true
-          }
-        },
-        {
-          "id": "field-maxTokens",
-          "name": "maxTokens",
-          "description": "number field",
-          "type": "interface-field",
-          "properties": {
-            "type": "number",
-            "optional": false
-          }
-        },
-        {
-          "id": "field-temperature",
-          "name": "temperature",
-          "description": "number field",
-          "type": "interface-field",
-          "properties": {
-            "type": "number",
-            "optional": false
-          }
-        },
-        {
-          "id": "field-thinkingEnabled",
-          "name": "thinkingEnabled",
-          "description": "boolean field",
-          "type": "interface-field",
-          "properties": {
-            "type": "boolean",
-            "optional": false
-          }
-        },
-        {
-          "id": "field-thinkingBudget",
-          "name": "thinkingBudget",
-          "description": "Max thinking tokens",
-          "type": "interface-field",
-          "properties": {
-            "type": "number",
-            "optional": true
-          }
-        },
-        {
-          "id": "field-costBudgetPerCall",
-          "name": "costBudgetPerCall",
-          "description": "Max cost in cents per call",
-          "type": "interface-field",
-          "properties": {
-            "type": "number",
-            "optional": false
-          }
-        },
-        {
-          "id": "field-timeoutMs",
-          "name": "timeoutMs",
-          "description": "number field",
-          "type": "interface-field",
-          "properties": {
-            "type": "number",
-            "optional": false
-          }
-        },
-        {
-          "id": "field-retryAttempts",
-          "name": "retryAttempts",
-          "description": "number field",
-          "type": "interface-field",
-          "properties": {
-            "type": "number",
-            "optional": false
-          }
-        }
-      ]
-    },
-    {
-      "id": "execution-metrics",
-      "title": "Execution Metrics",
-      "description": "Every agent execution records detailed metrics for observability and cost tracking.",
-      "adminOnly": true,
-      "items": [
-        {
-          "id": "metric-agentType",
+          "id": "AgentModelConfig.agentType",
           "name": "agentType",
           "description": "AgentType",
-          "type": "metric-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "AgentType"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "metric-executionId",
-          "name": "executionId",
+          "id": "AgentModelConfig.primaryModel",
+          "name": "primaryModel",
           "description": "string",
-          "type": "metric-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "metric-sessionId",
-          "name": "sessionId",
+          "id": "AgentModelConfig.fallbackModel",
+          "name": "fallbackModel",
           "description": "string",
-          "type": "metric-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "metric-userId",
-          "name": "userId",
-          "description": "string",
-          "type": "metric-field"
-        },
-        {
-          "id": "metric-startTime",
-          "name": "startTime",
-          "description": "Date",
-          "type": "metric-field"
-        },
-        {
-          "id": "metric-endTime",
-          "name": "endTime",
-          "description": "Date",
-          "type": "metric-field"
-        },
-        {
-          "id": "metric-durationMs",
-          "name": "durationMs",
+          "id": "AgentModelConfig.maxTokens",
+          "name": "maxTokens",
           "description": "number",
-          "type": "metric-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "metric-queueTimeMs",
-          "name": "queueTimeMs",
+          "id": "AgentModelConfig.temperature",
+          "name": "temperature",
           "description": "number",
-          "type": "metric-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "metric-modelUsed",
-          "name": "modelUsed",
-          "description": "string",
-          "type": "metric-field"
-        },
-        {
-          "id": "metric-modelFallbackUsed",
-          "name": "modelFallbackUsed",
+          "id": "AgentModelConfig.thinkingEnabled",
+          "name": "thinkingEnabled",
           "description": "boolean",
-          "type": "metric-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "metric-inputTokens",
-          "name": "inputTokens",
+          "id": "AgentModelConfig.thinkingBudget",
+          "name": "thinkingBudget",
           "description": "number",
-          "type": "metric-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "metric-outputTokens",
-          "name": "outputTokens",
+          "id": "AgentModelConfig.costBudgetPerCall",
+          "name": "costBudgetPerCall",
           "description": "number",
-          "type": "metric-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "metric-thinkingTokens",
-          "name": "thinkingTokens",
+          "id": "AgentModelConfig.timeoutMs",
+          "name": "timeoutMs",
           "description": "number",
-          "type": "metric-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "metric-totalTokens",
-          "name": "totalTokens",
+          "id": "AgentModelConfig.retryAttempts",
+          "name": "retryAttempts",
           "description": "number",
-          "type": "metric-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "metric-estimatedCostCents",
-          "name": "estimatedCostCents",
+          "id": "AgentModelConfig.preferredTier",
+          "name": "preferredTier",
+          "description": "ModelTierPreference",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "ModelTierPreference"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentModelConfig.contextWindowMin",
+          "name": "contextWindowMin",
           "description": "number",
-          "type": "metric-field"
-        },
-        {
-          "id": "metric-success",
-          "name": "success",
-          "description": "boolean",
-          "type": "metric-field"
-        },
-        {
-          "id": "metric-error",
-          "name": "error",
-          "description": "string",
-          "type": "metric-field"
-        },
-        {
-          "id": "metric-errorCode",
-          "name": "errorCode",
-          "description": "string",
-          "type": "metric-field"
-        },
-        {
-          "id": "metric-resultSize",
-          "name": "resultSize",
-          "description": "number",
-          "type": "metric-field"
-        },
-        {
-          "id": "metric-toolCallsInvolved",
-          "name": "toolCallsInvolved",
-          "description": "string[]",
-          "type": "metric-field"
-        },
-        {
-          "id": "metric-datasetIdsAccessed",
-          "name": "datasetIdsAccessed",
-          "description": "string[]",
-          "type": "metric-field"
-        },
-        {
-          "id": "metric-traceId",
-          "name": "traceId",
-          "description": "string",
-          "type": "metric-field"
-        },
-        {
-          "id": "metric-spanId",
-          "name": "spanId",
-          "description": "string",
-          "type": "metric-field"
-        },
-        {
-          "id": "metric-parentSpanId",
-          "name": "parentSpanId",
-          "description": "string",
-          "type": "metric-field"
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         }
       ]
     },
     {
-      "id": "admin-configuration",
-      "title": "Admin Configuration",
-      "description": "Per-agent-type admin settings: rate limits, alerts, and logging.",
-      "adminOnly": true,
+      "id": "AgentExecutionMetrics",
+      "title": "AgentExecutionMetrics",
+      "description": "Interface AgentExecutionMetrics",
+      "adminOnly": false,
       "items": [
         {
-          "id": "admin-rateLimit-maxPerMinute",
-          "name": "rateLimit.maxPerMinute",
-          "description": "number setting",
-          "type": "admin-config",
+          "id": "AgentExecutionMetrics.agentType",
+          "name": "agentType",
+          "description": "AgentType",
+          "type": "ts-field",
           "properties": {
-            "section": "rateLimit",
-            "type": "number"
-          }
+            "tsType": "AgentType"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "admin-rateLimit-maxPerHour",
-          "name": "rateLimit.maxPerHour",
-          "description": "number setting",
-          "type": "admin-config",
+          "id": "AgentExecutionMetrics.executionId",
+          "name": "executionId",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "rateLimit",
-            "type": "number"
-          }
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "admin-rateLimit-maxConcurrent",
-          "name": "rateLimit.maxConcurrent",
-          "description": "number setting",
-          "type": "admin-config",
+          "id": "AgentExecutionMetrics.sessionId",
+          "name": "sessionId",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "rateLimit",
-            "type": "number"
-          }
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "admin-alerts-errorRateThreshold",
-          "name": "alerts.errorRateThreshold",
-          "description": "Alert if error rate > X%",
-          "type": "admin-config",
+          "id": "AgentExecutionMetrics.userId",
+          "name": "userId",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "alerts",
-            "type": "number"
-          }
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "admin-alerts-latencyThreshold",
-          "name": "alerts.latencyThreshold",
-          "description": "Alert if p95 latency > X ms",
-          "type": "admin-config",
+          "id": "AgentExecutionMetrics.startTime",
+          "name": "startTime",
+          "description": "Date",
+          "type": "ts-field",
           "properties": {
-            "section": "alerts",
-            "type": "number"
-          }
+            "tsType": "Date"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "admin-alerts-costThreshold",
-          "name": "alerts.costThreshold",
-          "description": "Alert if daily cost > X cents",
-          "type": "admin-config",
+          "id": "AgentExecutionMetrics.endTime",
+          "name": "endTime",
+          "description": "Date",
+          "type": "ts-field",
           "properties": {
-            "section": "alerts",
-            "type": "number"
-          }
+            "tsType": "Date"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "admin-logging-verboseLogging",
-          "name": "logging.verboseLogging",
-          "description": "boolean setting",
-          "type": "admin-config",
+          "id": "AgentExecutionMetrics.durationMs",
+          "name": "durationMs",
+          "description": "number",
+          "type": "ts-field",
           "properties": {
-            "section": "logging",
-            "type": "boolean"
-          }
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "admin-logging-logInputs",
-          "name": "logging.logInputs",
-          "description": "boolean setting",
-          "type": "admin-config",
+          "id": "AgentExecutionMetrics.queueTimeMs",
+          "name": "queueTimeMs",
+          "description": "number",
+          "type": "ts-field",
           "properties": {
-            "section": "logging",
-            "type": "boolean"
-          }
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "admin-logging-logOutputs",
-          "name": "logging.logOutputs",
-          "description": "boolean setting",
-          "type": "admin-config",
+          "id": "AgentExecutionMetrics.modelUsed",
+          "name": "modelUsed",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "section": "logging",
-            "type": "boolean"
-          }
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         },
         {
-          "id": "admin-logging-sampleRate",
-          "name": "logging.sampleRate",
-          "description": "0.0 to 1.0 for sampling",
-          "type": "admin-config",
+          "id": "AgentExecutionMetrics.modelFallbackUsed",
+          "name": "modelFallbackUsed",
+          "description": "boolean",
+          "type": "ts-field",
           "properties": {
-            "section": "logging",
-            "type": "number"
-          }
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentExecutionMetrics.inputTokens",
+          "name": "inputTokens",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentExecutionMetrics.outputTokens",
+          "name": "outputTokens",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentExecutionMetrics.thinkingTokens",
+          "name": "thinkingTokens",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentExecutionMetrics.totalTokens",
+          "name": "totalTokens",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentExecutionMetrics.estimatedCostCents",
+          "name": "estimatedCostCents",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentExecutionMetrics.success",
+          "name": "success",
+          "description": "boolean",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentExecutionMetrics.error",
+          "name": "error",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentExecutionMetrics.errorCode",
+          "name": "errorCode",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentExecutionMetrics.resultSize",
+          "name": "resultSize",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentExecutionMetrics.toolCallsInvolved",
+          "name": "toolCallsInvolved",
+          "description": "string[]",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string[]"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentExecutionMetrics.datasetIdsAccessed",
+          "name": "datasetIdsAccessed",
+          "description": "string[]",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string[]"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentExecutionMetrics.traceId",
+          "name": "traceId",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentExecutionMetrics.spanId",
+          "name": "spanId",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentExecutionMetrics.parentSpanId",
+          "name": "parentSpanId",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        }
+      ]
+    },
+    {
+      "id": "AgentStats",
+      "title": "AgentStats",
+      "description": "Interface AgentStats",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "AgentStats.agentType",
+          "name": "agentType",
+          "description": "AgentType",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "AgentType"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.period",
+          "name": "period",
+          "description": "'hour' | 'day' | 'week' | 'month'",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "'hour' | 'day' | 'week' | 'month'"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.totalExecutions",
+          "name": "totalExecutions",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.successfulExecutions",
+          "name": "successfulExecutions",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.failedExecutions",
+          "name": "failedExecutions",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.successRate",
+          "name": "successRate",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.avgDurationMs",
+          "name": "avgDurationMs",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.p50DurationMs",
+          "name": "p50DurationMs",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.p95DurationMs",
+          "name": "p95DurationMs",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.p99DurationMs",
+          "name": "p99DurationMs",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.totalInputTokens",
+          "name": "totalInputTokens",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.totalOutputTokens",
+          "name": "totalOutputTokens",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.totalThinkingTokens",
+          "name": "totalThinkingTokens",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.avgTokensPerCall",
+          "name": "avgTokensPerCall",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.totalCostCents",
+          "name": "totalCostCents",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.avgCostPerCallCents",
+          "name": "avgCostPerCallCents",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.errorBreakdown",
+          "name": "errorBreakdown",
+          "description": "Record<string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "Record<string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentStats.modelUsageBreakdown",
+          "name": "modelUsageBreakdown",
+          "description": "Record<string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "Record<string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        }
+      ]
+    },
+    {
+      "id": "AgentAdminConfig",
+      "title": "AgentAdminConfig",
+      "description": "Interface AgentAdminConfig",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "AgentAdminConfig.agentType",
+          "name": "agentType",
+          "description": "AgentType",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "AgentType"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentAdminConfig.enabled",
+          "name": "enabled",
+          "description": "boolean",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentAdminConfig.modelConfig",
+          "name": "modelConfig",
+          "description": "AgentModelConfig",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "AgentModelConfig"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentAdminConfig.rateLimit",
+          "name": "rateLimit",
+          "description": "{",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "{"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentAdminConfig.maxPerMinute",
+          "name": "maxPerMinute",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentAdminConfig.maxPerHour",
+          "name": "maxPerHour",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentAdminConfig.maxConcurrent",
+          "name": "maxConcurrent",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentAdminConfig.alerts",
+          "name": "alerts",
+          "description": "{",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "{"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentAdminConfig.errorRateThreshold",
+          "name": "errorRateThreshold",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentAdminConfig.latencyThreshold",
+          "name": "latencyThreshold",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentAdminConfig.costThreshold",
+          "name": "costThreshold",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentAdminConfig.logging",
+          "name": "logging",
+          "description": "{",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "{"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentAdminConfig.verboseLogging",
+          "name": "verboseLogging",
+          "description": "boolean",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentAdminConfig.logInputs",
+          "name": "logInputs",
+          "description": "boolean",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentAdminConfig.logOutputs",
+          "name": "logOutputs",
+          "description": "boolean",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "AgentAdminConfig.sampleRate",
+          "name": "sampleRate",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        }
+      ]
+    },
+    {
+      "id": "RegisteredAgent",
+      "title": "RegisteredAgent",
+      "description": "Interface RegisteredAgent",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "RegisteredAgent.id",
+          "name": "id",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "RegisteredAgent.type",
+          "name": "type",
+          "description": "AgentType",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "AgentType"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "RegisteredAgent.name",
+          "name": "name",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "RegisteredAgent.description",
+          "name": "description",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "RegisteredAgent.version",
+          "name": "version",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "RegisteredAgent.config",
+          "name": "config",
+          "description": "AgentAdminConfig",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "AgentAdminConfig"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "RegisteredAgent.createdAt",
+          "name": "createdAt",
+          "description": "Date",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "Date"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "RegisteredAgent.updatedAt",
+          "name": "updatedAt",
+          "description": "Date",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "Date"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
+        },
+        {
+          "id": "RegisteredAgent.status",
+          "name": "status",
+          "description": "'active' | 'disabled' | 'deprecated'",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "'active' | 'disabled' | 'deprecated'"
+          },
+          "sourceFile": "services/openagentic-api/src/services/AgentRegistry.ts"
         }
       ]
     }

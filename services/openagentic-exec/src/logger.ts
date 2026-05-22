@@ -31,6 +31,5 @@ export const loggers = {
   websocket: logger.child({ component: 'websocket' }),
   shell: logger.child({ component: 'shell' }),
   security: logger.child({ component: 'security' }),
-  codeServer: logger.child({ component: 'code-server' }),
   sandbox: logger.child({ component: 'sandbox' }),
 };

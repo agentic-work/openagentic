@@ -16,14 +16,15 @@ import { AdminMetricCard } from '../Shared/AdminMetricCard';
 import { AdminCard } from '../Shared/AdminCard';
 import { AdminFilterBar } from '../Shared/AdminFilterBar';
 import { InfoTooltip } from '../Shared/AdminTooltip';
+import { PageHeader } from '../../primitives-v2';
 
 // ── Chart colors ──────────────────────────────────────────────────────────────
 const COLORS = {
-  indigo: '#6366f1',
-  success: '#00D26A',
-  amber: '#f59e0b',
-  red: '#ef4444',
-  purple: '#8b5cf6',
+  indigo: 'var(--ap-accent)',
+  success: 'var(--ap-ok)',
+  amber: 'var(--ap-warn)',
+  red: 'var(--ap-err)',
+  purple: 'var(--ap-accent)',
 };
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
@@ -338,14 +339,18 @@ export const ContextWindowMetrics: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header + Filter Bar */}
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Monitoring', 'Context Window']}
+        title="Context Window Metrics"
+        explainer="Monitor context window usage and compaction effectiveness across sessions."
+        actions={[
+          { label: 'Refresh', onClick: () => { fetchMetrics(); fetchCompactionMetrics(); } },
+        ]}
+      />
+
+      {/* Filter Bar */}
       <div>
-        <h2 className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-          Context Window Metrics
-        </h2>
-        <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-          Monitor context window usage and compaction effectiveness across sessions
-        </p>
         <AdminFilterBar
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -400,7 +405,7 @@ export const ContextWindowMetrics: React.FC = () => {
               : ''
           }`}
           style={activeTab === 'sessions'
-            ? { backgroundColor: 'var(--color-primary)', color: '#fff' }
+            ? { backgroundColor: 'var(--color-primary)', color: 'var(--ap-fg-0)' }
             : { color: 'var(--text-secondary)' }
           }
         >
@@ -414,7 +419,7 @@ export const ContextWindowMetrics: React.FC = () => {
               : ''
           }`}
           style={activeTab === 'compaction'
-            ? { backgroundColor: 'var(--color-primary)', color: '#fff' }
+            ? { backgroundColor: 'var(--color-primary)', color: 'var(--ap-fg-0)' }
             : { color: 'var(--text-secondary)' }
           }
         >

@@ -137,26 +137,29 @@ const ChatInput: React.FC<ChatInputProps> = ({
   // Check if user is admin
   const isAdmin = user?.groups?.includes('OpenAgenticAdmins') || user?.is_admin || false;
   
-  // Load available models
+  // Load available models — task #4 (registry SoT): source = Registry endpoint
   const loadAvailableModels = useCallback(async () => {
     if (!isAuthenticated) return;
-    
+
     try {
       const token = await getAccessToken(['User.Read']);
-      const response = await fetch(apiEndpoint('/chat/models'), {
+      const { mapRegistryRowToToolbarModel } = await import('../hooks/useRegistryModels');
+      const response = await fetch(apiEndpoint('/admin/llm-providers/registry?enabledOnly=true'), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setAvailableModels(data.models || []);
-        
+        const registryRows = await response.json();
+        const mapped: ModelInfo[] = Array.isArray(registryRows)
+          ? registryRows.map((r: any) => mapRegistryRowToToolbarModel(r) as ModelInfo)
+          : [];
+        setAvailableModels(mapped);
+
         // Set default model if none selected and we have models
-        if (!selectedModel && data.models && data.models.length > 0) {
-          const defaultModel = data.models.find((m: ModelInfo) => m.id === data.defaultModel) || data.models[0];
-          onModelChange?.(defaultModel.id);
+        if (!selectedModel && mapped.length > 0) {
+          onModelChange?.(mapped[0].id);
         }
       } else {
         console.error('Failed to load models:', response.statusText);

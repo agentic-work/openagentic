@@ -9,6 +9,7 @@
 import type { FastifyBaseLogger } from 'fastify';
 import { randomUUID } from 'crypto';
 import type { ProviderManager } from './llm-providers/ProviderManager.js';
+import { ModelConfigurationService } from './ModelConfigurationService.js';
 
 interface ModelHealthResult {
   healthy: boolean;
@@ -73,12 +74,8 @@ export class ModelHealthCheckService {
 
     const startTime = Date.now();
 
-    // Use configured model from environment for health checks
-    // This ensures we're testing the actual default model that users will get
-    const model = process.env.VERTEX_AI_MODEL ||
-                  process.env.AZURE_OPENAI_MODEL ||
-                  process.env.BEDROCK_MODEL ||
-                  process.env.DEFAULT_MODEL;
+    // Use DB-configured default chat model for health checks (DB is SoT).
+    const model = await ModelConfigurationService.getDefaultChatModel().catch(() => '');
 
     this.logger.debug({ model }, 'Using model for health check');
 

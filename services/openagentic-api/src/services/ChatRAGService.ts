@@ -11,6 +11,7 @@
 
 import { MilvusClient } from '@zilliz/milvus2-sdk-node';
 import type { Logger } from 'pino';
+import { getMilvusClient } from '../utils/MilvusConnectionManager.js';
 
 interface RAGResult {
   content: string;
@@ -28,14 +29,13 @@ interface RAGContext {
 export class ChatRAGService {
   private logger: Logger;
   private milvusClient: MilvusClient;
-  private embeddingUrl: string;
-  private embeddingModel: string;
   private embeddingDim: number;
+  private universalEmbedding: any; // UniversalEmbeddingService (dynamic import to avoid circular)
 
   constructor(logger: Logger) {
     this.logger = logger;
-    // Get Milvus client from global scope or create a new connection
-    this.milvusClient = (global as any).milvusClient || (global as any).milvus;
+    // Get Milvus client from singleton accessor or create a new connection
+    this.milvusClient = getMilvusClient() ?? undefined!;
     if (!this.milvusClient) {
       const addr = process.env.MILVUS_ADDRESS || `${process.env.MILVUS_HOST || 'openagentic-milvus'}:${process.env.MILVUS_PORT || '19530'}`;
       this.milvusClient = new MilvusClient({
@@ -45,9 +45,10 @@ export class ChatRAGService {
       });
       this.logger.info({ address: addr }, '[ChatRAG] Created direct Milvus connection');
     }
-    this.embeddingUrl = process.env.OLLAMA_BASE_URL || process.env.EMBEDDING_OLLAMA_BASE_URL || 'http://10.2.10.142:11434';
-    this.embeddingModel = process.env.OLLAMA_EMBEDDING_MODEL || process.env.EMBEDDING_MODEL || 'nomic-embed-text';
-    this.embeddingDim = parseInt(process.env.EMBEDDING_DIMENSIONS || '768', 10);
+    // Embedding dim must match what UniversalEmbeddingService produces.
+    // Reads EMBEDDING_DIMENSIONS (3072 for Azure text-embedding-3-large in
+    // chat-dev; 768 for Ollama nomic-embed-text in self-hosted only setups).
+    this.embeddingDim = parseInt(process.env.EMBEDDING_DIMENSIONS || '3072', 10);
   }
 
   /**
@@ -354,14 +355,22 @@ export class ChatRAGService {
   }
 
   private async generateEmbedding(text: string): Promise<number[]> {
+    // Delegate to UniversalEmbeddingService so ingest and search use the
+    // SAME provider+dim. Pre-2026-05-15 ChatRAGService hardcoded a fetch to
+    // Ollama at a fixed URL while the search side (SharedKBService) used
+    // UniversalEmbeddingService — different providers, different dims —
+    // which meant ingested chunks were silently unreachable via the search
+    // path on chat-dev. See `[ChatRAG] DLP scan passed` / `Ingestion
+    // complete: ingested=1` + `Knowledge search completed: sharedResults=0`
+    // wire evidence from execution 83d527dc-0a26-4243-afeb-024e938c428a.
     try {
-      const resp = await fetch(`${this.embeddingUrl}/api/embeddings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: this.embeddingModel, prompt: text.substring(0, 4000) })
-      });
-      const data = await resp.json() as any;
-      return data.embedding || [];
+      if (!this.universalEmbedding) {
+        const { UniversalEmbeddingService } = await import('./UniversalEmbeddingService.js');
+        this.universalEmbedding = new UniversalEmbeddingService(this.logger);
+      }
+      const result = await this.universalEmbedding.generateEmbedding(text);
+      if (!result || !Array.isArray(result.embedding)) return [];
+      return result.embedding;
     } catch (err: any) {
       this.logger.error({ error: err.message }, '[ChatRAG] Embedding generation failed');
       return [];

@@ -30,7 +30,8 @@ export const systemConfigRoutes: FastifyPluginAsync = async (fastify, opts) => {
           // Optional services - require explicit enabling
           ollama: process.env.OLLAMA_ENABLED === 'true',
           multiModel: process.env.ENABLE_MULTI_MODEL === 'true',
-          slider: process.env.ENABLE_INTELLIGENCE_SLIDER !== 'false' // Default enabled
+          // slider feature flag removed in 0.6.7 — intelligence slider
+          // was fully ripped in task #144 and v0.6.7 simplification.
         },
         version: process.env.APP_VERSION || '1.0.0'
       });

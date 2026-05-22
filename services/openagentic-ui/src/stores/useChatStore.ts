@@ -42,6 +42,28 @@ export interface Message {
   tokenUsage?: any;            // Token usage details
   imageUrl?: string;           // Image URL for image messages
   error?: string;              // Error message
+  // Persistence Sev-1: inline render frames captured during streaming and
+  // written to chat_messages.visualizations. Each entry is one of:
+  //   { type: 'visual_render',    data: VisualRenderPayload }
+  //   { type: 'app_render',       data: AppRenderPayload }
+  //   { type: 'streaming_table',  data: StreamingTablePayload }
+  //   { type: 'inline_widget',    data: InlineWidgetPayload }
+  //   { type: 'sub_agent_complete', data: SubAgentCompletePayload }
+  // ChatMessages renders these as a fallback when the live per-message
+  // reducer maps are empty (i.e. on session reload after refresh).
+  visualizations?: Array<{ type: string; data: unknown }>;
+  /**
+   * Sev-0 #924/#925/#926 — canonical ContentBlock[] in wire-emit order.
+   * Carries the full chronology (thinking, text, tool_use, viz_render,
+   * app_render, streaming_table, follow_up, sub_agent, hitl_approval,
+   * tool_round, tool_result) from streaming through finalize, persist,
+   * and rehydration. MessageBubble prefers this over reconstructing
+   * from thinkingSteps[] + flat content when present.
+   *
+   * Persisted server-side to `chat_messages.content_blocks` Json column
+   * by ChatStorageService.addMessage.
+   */
+  content_blocks?: any[];
 }
 
 export interface ChatSession {
@@ -68,7 +90,7 @@ interface ChatStore {
   // Actions
   setActiveSession: (sessionId: string) => void;
   addMessage: (sessionId: string, message: Message) => void;
-  updateMessage: (sessionId: string, messageId: string, content: string, mcpCalls?: any[], metadata?: any, model?: string, thinkingSteps?: any[], reasoningTrace?: string, toolCalls?: any[], toolResults?: any[]) => void;
+  updateMessage: (sessionId: string, messageId: string, content: string, mcpCalls?: any[], metadata?: any, model?: string, thinkingSteps?: any[], reasoningTrace?: string, toolCalls?: any[], toolResults?: any[], contentBlocks?: any[]) => void;
   updateStreamingMessage: (sessionId: string, messageId: string, content: string) => void;
   finishStreamingMessage: (sessionId: string, messageId: string) => void;
   loadSession: (sessionId: string) => Promise<void>;
@@ -128,6 +150,8 @@ export const useChatStore = create<ChatStore>()(
             toolCalls: message.toolCalls || existing.toolCalls,
             toolResults: message.toolResults || existing.toolResults,
             model: message.model || existing.model,
+            // Sev-0 #924/#925/#926 — preserve content_blocks chronology on merge.
+            content_blocks: message.content_blocks || existing.content_blocks,
             metadata: { ...existing.metadata, ...message.metadata },
           };
         } else {
@@ -143,7 +167,7 @@ export const useChatStore = create<ChatStore>()(
         state.sessions[sessionId].updatedAt = new Date();
       }),
 
-      updateMessage: (sessionId, messageId, content, mcpCalls, metadata, model, thinkingSteps, reasoningTrace, toolCalls, toolResults) => set((state) => {
+      updateMessage: (sessionId, messageId, content, mcpCalls, metadata, model, thinkingSteps, reasoningTrace, toolCalls, toolResults, contentBlocks) => set((state) => {
         const session = state.sessions[sessionId];
         if (!session) return;
 
@@ -175,6 +199,10 @@ export const useChatStore = create<ChatStore>()(
           }
           if (toolResults !== undefined) {
             message.toolResults = toolResults;
+          }
+          // Sev-0 #924/#925/#926 — canonical content_blocks chronology.
+          if (contentBlocks !== undefined) {
+            message.content_blocks = contentBlocks;
           }
           session.updatedAt = new Date();
         }

@@ -1,6 +1,7 @@
 import type { FastifyBaseLogger } from 'fastify';
 import { randomUUID } from 'crypto';
 import { DefaultAzureCredential } from '@azure/identity';
+import { ModelConfigurationService } from './ModelConfigurationService.js';
 
 interface RAGHealthResult {
   healthy: boolean;
@@ -32,7 +33,9 @@ export class RAGHealthCheckService {
     }
 
     const startTime = Date.now();
-    const embeddingModel = process.env.EMBEDDING_MODEL || process.env.DEFAULT_EMBEDDING_MODEL || process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT || 'text-embedding-3-small';
+    // DB is SoT for embedding model — dropped env fallback chain and hardcoded literal.
+    const embeddingAssignment = await ModelConfigurationService.getServiceModel('embedding').catch(() => null);
+    const embeddingModel = embeddingAssignment?.modelId ?? '';
     
     // Generate unique UUID for each test to prevent caching
     const testUuid = randomUUID();

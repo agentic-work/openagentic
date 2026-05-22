@@ -516,3 +516,17 @@ export class DocumentIndexingService {
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Singleton accessor (Phase 4 — replaces (global as any).documentIndexingService)
+// ---------------------------------------------------------------------------
+
+let _documentIndexingServiceInstance: DocumentIndexingService | null = null;
+
+export function setDocumentIndexingService(svc: DocumentIndexingService | null): void {
+  _documentIndexingServiceInstance = svc;
+}
+
+export function getDocumentIndexingService(): DocumentIndexingService | null {
+  return _documentIndexingServiceInstance;
+}

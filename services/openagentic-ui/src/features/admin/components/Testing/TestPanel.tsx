@@ -19,12 +19,12 @@ export default function TestPanel({ label, icon, results, isActive, onClick }: P
   const total = results.length;
 
   const borderColor = failed > 0
-    ? 'var(--color-error, #ef4444)'
+    ? 'var(--color-error)'
     : passed > 0 && passed === total
-      ? 'var(--color-success, #00D26A)'
+      ? 'var(--color-success)'
       : running > 0
-        ? 'var(--accent-info, #06b6d4)'
-        : 'var(--color-border, #333)';
+        ? 'var(--accent-info)'
+        : 'var(--color-border)';
 
   return (
     <button
@@ -35,7 +35,7 @@ export default function TestPanel({ label, icon, results, isActive, onClick }: P
         alignItems: 'center',
         gap: 4,
         padding: '12px 16px',
-        background: isActive ? 'var(--color-surfaceSecondary, #1a1a1a)' : 'var(--color-surface, #111)',
+        background: isActive ? 'var(--color-surfaceSecondary)' : 'var(--color-surface)',
         border: `2px solid ${borderColor}`,
         borderRadius: 8,
         cursor: 'pointer',
@@ -49,7 +49,7 @@ export default function TestPanel({ label, icon, results, isActive, onClick }: P
       </div>
       <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
         {total === 0 ? (
-          <span style={{ color: 'var(--text-tertiary, #555)' }}>-</span>
+          <span style={{ color: 'var(--text-tertiary)' }}>-</span>
         ) : (
           <>
             <span style={{ color: 'var(--color-success)' }}>{passed}</span>

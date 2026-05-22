@@ -1,157 +1,129 @@
 /**
- * RagIntentGate
+ * RagIntentGate (V2 — explicit opt-in only)
  *
- * Decides whether the RAG retrieval stage should run for a given user
- * message. Without this gate, RAG fired unconditionally on every chat
- * request — wasting Milvus calls + bloating the system prompt with
- * irrelevant documentation excerpts on requests that just want a tool
- * to be invoked.
+ * The legacy V1 gate used a stack of keyword regex constants to GUESS
+ * whether a user message wanted platform docs. They false-positive'd
+ * on common prose ("show me cloud resources and give me a sankey cost
+ * diagram for the last 6 months") and bloated the system prompt with
+ * irrelevant doc excerpts.
  *
- * The decision is intent-based: only fetch documentation when the user
- * is asking ABOUT the platform (meta-questions, feature explanations,
- * "how do I…" tutorials, internal docs lookups). Skip when the user is
- * asking the platform to DO something for them (cloud queries, file
- * operations, web search, chart generation, etc).
+ * V2 model: RAG fires ONLY on EXPLICIT user opt-in markers:
+ *   1. `@docs` token (whitespace-bounded, case-insensitive)
+ *   2. `/rag`, `/docs`, `@kb`, `/kb` slash/at command at start
+ *   3. attachment with `kind === 'rag_collection'` (or `type === ...`)
  *
- * Strategy (cheap → expensive):
- *   1. Strong positive: explicit doc-seek phrases, platform-internal
- *      feature names, meta-question patterns ("what is X", "explain X",
- *      "how do I use X" combined with platform self-reference). Fire
- *      RAG immediately.
- *   2. Strong negative: tool-action signals (cloud verbs, web search,
- *      visualization requests). Skip immediately.
- *   3. Default: skip. Asymmetric — false negatives ("user wanted docs
- *      and got none") are recoverable by re-asking with the word
- *      "documentation" or a feature name; false positives ("we ran a
- *      Milvus query and bloated the prompt for no reason") cost time
- *      and tokens on every single chat.
+ * This is NOT regex intent classification — the user TYPED the marker
+ * explicitly; we're parsing it, the same shape Claude Code uses for
+ * slash commands. Per the architecture-test EXEMPT note: "tool-name
+ * prefix string-match is a contract, not routing".
  *
- * A future Phase B can add embedding-similarity matching against a small
- * set of "platform-meta-question" prototype embeddings for cases where
- * the keyword heuristics miss. The gate's IntentDecision.reason field is
- * already structured for that — log the reason at runtime so prototype
- * tuning has data to draw on.
- *
- * Background: openagentic-omhs#330 follow-up — user reported RAG was
- * firing on every chat and showing "RAG Knowledge (5 docs)" in the
- * activity stream even when their question (e.g. "what are my Azure
- * costs?") had nothing to do with platform documentation.
+ * Plan: docs/chatmode-ux-mock-parity/02-plan-canonical.md §150
+ * Task: 1.9 + 1.13 (Wave2-F trim)
  */
 
 export interface RagIntentDecision {
-  /** Whether to fire RAG retrieval for this message. */
   shouldFetchRag: boolean;
-  /** Stable, log-friendly reason string for debugging + future tuning. */
-  reason:
-    | 'explicit-doc-seek'
-    | 'platform-meta-question'
-    | 'internal-feature-name'
-    | 'tool-action-signal'
-    | 'web-search-action'
-    | 'visualization-action'
-    | 'no-positive-signal'
-    | 'empty-message';
-  /** When matched, the substring that triggered the decision. */
+  reason: 'explicit-opt-in' | 'no-opt-in' | 'empty-message';
   matched?: string;
 }
 
-// ─── Strong-positive patterns (fire RAG) ───────────────────────────────────
-
 /**
- * Words that explicitly request documentation. If any appears, RAG fires.
+ * Slash / at prefixes the user can type at the start of a message
+ * to explicitly request RAG retrieval. Whitespace before is tolerated.
+ * Matched case-insensitively.
  */
-const DOC_SEEK_RE = /\b(docs?|documentation|user[-\s]?guide|tutorial|how[-\s]to(?:\s|$)|reference\s+(guide|page|docs?)|manual|knowledge[-\s]?base|kb\b|readme|wiki)\b/i;
+const OPT_IN_PREFIXES = ['@docs', '/docs', '@kb', '/kb', '/rag'] as const;
 
 /**
- * Internal platform feature / component names. The user asking about
- * any of these is asking about the platform itself → fetch docs.
+ * Explicit opt-in detector for RAG retrieval.
  *
- * Keep this list tight — only true PRODUCT names, not every word the
- * platform uses internally. Adding generic terms like "tool" or "agent"
- * here would cause false positives on every tool-using request.
+ * Returns `true` ONLY when the user explicitly opts in via:
+ *   - `@docs` token anywhere in the message (whitespace-bounded, case-insensitive)
+ *   - any `OPT_IN_PREFIXES` entry at message start (whitespace-stripped)
+ *   - an attachment whose `kind` or `type` equals `'rag_collection'`
+ *
+ * This function does NOT infer intent from message content. Keyword
+ * stacks ("documentation", "knowledge base", platform feature names)
+ * are deliberately ignored — they were the V1 false-positive source.
+ *
+ * @param message - User-typed message text
+ * @param attachments - Optional attachment list (defensive: any shape)
+ * @returns `true` iff an explicit opt-in marker is present
  */
-const FEATURE_NAME_RE = /\b(openagentic|agentic\s?work|smart\s?router|prompt\s?(composer|module|stage)|capability\s?gate|code[-\s]?mode|chat[-\s]?mode|flow[-\s]?mode|mcp\s?(proxy|server|stage|orchestrator)|agentic\s?activity\s?stream|artifact[-\s]?creation|rag\s?(stage|service|module))\b/i;
-
-/**
- * Platform self-reference. When combined with a question word, the user
- * is asking ABOUT the platform (vs. asking it to DO something).
- */
-const PLATFORM_SELF_RE = /\b(this\s+platform|the\s+platform|this\s+system|the\s+system|this\s+tool|the\s+tool|this\s+app(?:lication)?|the\s+app(?:lication)?|your\s+(platform|system|tool|app)|openagentic)\b/i;
-
-/**
- * Meta-question lead-ins: "what is X", "how does X work", "explain X".
- * On their own these are too broad — they have to combine with platform
- * self-reference or a feature name to fire.
- */
-const META_QUESTION_RE = /^(what\s+(is|are|does)|how\s+(do(?:es)?|can|should)|why\s+(do(?:es)?|is|are)|where\s+(can|do(?:es)?)|when\s+(should|do(?:es)?)|explain|describe|tell\s+me\s+(about|how)|walk\s+me\s+through)\b/i;
-
-// ─── Strong-negative patterns (skip RAG) ───────────────────────────────────
-
-/**
- * Tool-action verbs combined with cloud nouns — the user wants to DO
- * something with their cloud, not read about the platform.
- */
-const CLOUD_ACTION_RE = /\b(create|delete|provision|deploy|build|launch|spin\s+up|tear\s+down|destroy|update|patch|restart|reboot|scale|list|show|get|find|fetch|enumerate|count|inventory|audit)\b.*\b(azure|aws|gcp|cloud|subscription|resource\s?group|vm|virtual\s?machine|storage|bucket|s3|cluster|aks|eks|gke|k8s|kubernetes|pod|deployment|namespace|node|cost|spend|billing|usage|application\s?gateway|load\s?balancer|key\s?vault|vnet|vpc|subnet|nsg|rds|sql|cosmos|lambda|function|key\s?vault|iam|role|policy)\b/i;
-
-/**
- * Explicit web-search asks — handled by web tools, not internal docs.
- */
-const WEB_SEARCH_RE = /\b(search\s+(the\s+)?web|google|bing|duckduckgo|web\s+search|find\s+online|look\s+(it|that)\s+up\s+online|browse\s+to|fetch\s+(the\s+)?(url|page|site)|scrape)\b/i;
-
-/**
- * Visualization-creation asks — handled by artifact-creation flow.
- */
-const VISUALIZATION_RE = /\b(create|build|make|generate|render|draw|show\s+me)\b.*\b(chart|graph|diagram|dashboard|sankey|plot|visualization|visualisation|artifact|infographic|mindmap|timeline|gantt)\b/i;
-
-/**
- * Bash / shell / file action signals — local agentic work, not docs.
- */
-const SHELL_FILE_ACTION_RE = /\b(run\s+(the\s+)?(bash|shell|command)|execute\s+(this|the)|cat\s+|grep\s+|read\s+(the\s+)?file|write\s+(to\s+)?(file|disk)|edit\s+(the\s+)?file|delete\s+(the\s+)?file|chmod|chown|kubectl|helm|az\s+|aws\s+|gcloud\s+|gh\s+|git\s+)\b/i;
-
-// ─── Public API ────────────────────────────────────────────────────────────
-
-export function evaluateRagIntent(message: string | undefined | null): RagIntentDecision {
-  const text = (message || '').trim();
-  if (!text) return { shouldFetchRag: false, reason: 'empty-message' };
-
-  // 1. Strong-negative checks first — short-circuit before paying for any
-  //    ambiguity resolution. These are the high-volume cases (every cloud
-  //    query, every web search, every chart) so checking them first keeps
-  //    the gate's per-call cost low.
-  let m = text.match(WEB_SEARCH_RE);
-  if (m) return { shouldFetchRag: false, reason: 'web-search-action', matched: m[0] };
-
-  m = text.match(VISUALIZATION_RE);
-  if (m) return { shouldFetchRag: false, reason: 'visualization-action', matched: m[0] };
-
-  m = text.match(CLOUD_ACTION_RE);
-  if (m) return { shouldFetchRag: false, reason: 'tool-action-signal', matched: m[0] };
-
-  m = text.match(SHELL_FILE_ACTION_RE);
-  if (m) return { shouldFetchRag: false, reason: 'tool-action-signal', matched: m[0] };
-
-  // 2. Strong-positive checks — fire RAG.
-  m = text.match(DOC_SEEK_RE);
-  if (m) return { shouldFetchRag: true, reason: 'explicit-doc-seek', matched: m[0] };
-
-  // Feature-name / platform-self-reference require a META-QUESTION lead-in.
-  // Standalone mentions ("I use OpenAgentic daily", "smart router is great")
-  // should NOT fire RAG — the user isn't asking about the thing, just
-  // mentioning it. Previously the gate fired on FEATURE_NAME alone which
-  // over-triggered on every message that named a platform component.
-  // User report 2026-04-17: "Still FIVE rag docs — all the same" on a
-  // simple TL;DR prompt because it mentioned "the OpenAgentic platform".
-  if (META_QUESTION_RE.test(text)) {
-    const featureMatch = text.match(FEATURE_NAME_RE);
-    if (featureMatch) {
-      return { shouldFetchRag: true, reason: 'internal-feature-name', matched: featureMatch[0] };
-    }
-    const selfMatch = text.match(PLATFORM_SELF_RE);
-    if (selfMatch) {
-      return { shouldFetchRag: true, reason: 'platform-meta-question', matched: selfMatch[0] };
+export function detectExplicitRagOptIn(
+  message: string | undefined | null,
+  attachments?: Array<{ kind?: string; type?: string } | null | undefined>,
+): boolean {
+  // Attachment-based opt-in (defensive: tolerate null entries / missing fields).
+  if (Array.isArray(attachments)) {
+    for (const a of attachments) {
+      if (a && (a.kind === 'rag_collection' || a.type === 'rag_collection')) {
+        return true;
+      }
     }
   }
 
-  // 3. Default: skip. Asymmetric cost (false positive >> false negative).
-  return { shouldFetchRag: false, reason: 'no-positive-signal' };
+  if (typeof message !== 'string') return false;
+  const text = message.trim();
+  if (!text) return false;
+
+  const lower = text.toLowerCase();
+
+  // Slash / at-prefix opt-in (whitespace-stripped via .trim() above).
+  for (const prefix of OPT_IN_PREFIXES) {
+    if (lower.startsWith(prefix)) return true;
+  }
+
+  // `@docs` token anywhere in the message (whitespace-bounded). We pad
+  // a leading space so the test matches when @docs is the very first
+  // token. Word-boundary on the right side prevents `@docsearch` from
+  // matching. This is parsing an explicit user marker, not classifying
+  // intent — the same shape as detecting a slash command.
+  if (/\s@docs\b/i.test(' ' + text)) return true;
+
+  return false;
+}
+
+/**
+ * Legacy V2 evaluator surface — kept for the rag.stage.ts consumer
+ * which expects `{ shouldFetchRag, reason, matched }`. New callers
+ * should use `detectExplicitRagOptIn` directly.
+ */
+export function evaluateRagIntent(
+  message: string | undefined | null,
+  attachments?: Array<{ kind?: string; type?: string } | null | undefined>,
+): RagIntentDecision {
+  const text = (message ?? '').trim();
+  if (!text && !(Array.isArray(attachments) && attachments.length > 0)) {
+    return { shouldFetchRag: false, reason: 'empty-message' };
+  }
+
+  // Attachment opt-in
+  if (Array.isArray(attachments)) {
+    for (const a of attachments) {
+      if (a && (a.kind === 'rag_collection' || a.type === 'rag_collection')) {
+        return {
+          shouldFetchRag: true,
+          reason: 'explicit-opt-in',
+          matched: 'attachment:rag_collection',
+        };
+      }
+    }
+  }
+
+  if (!text) return { shouldFetchRag: false, reason: 'empty-message' };
+
+  const lower = text.toLowerCase();
+
+  for (const prefix of OPT_IN_PREFIXES) {
+    if (lower.startsWith(prefix)) {
+      return { shouldFetchRag: true, reason: 'explicit-opt-in', matched: prefix };
+    }
+  }
+
+  if (/\s@docs\b/i.test(' ' + text)) {
+    return { shouldFetchRag: true, reason: 'explicit-opt-in', matched: '@docs' };
+  }
+
+  return { shouldFetchRag: false, reason: 'no-opt-in' };
 }

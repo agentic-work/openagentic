@@ -9,6 +9,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { authMiddleware, adminMiddleware } from '../middleware/unifiedAuth.js';
 import { loggers } from '../utils/logger.js';
 import { prisma } from '../utils/prisma.js';
+import { listAgentsFromSOT } from '../services/listAgentsFromSOT.js';
 
 // Lazy import to avoid circular dependency (same pattern as WorkflowExecutionEngine)
 async function invalidateRegistryCache() {
@@ -18,6 +19,21 @@ async function invalidateRegistryCache() {
     await registry.refreshCache();
   } catch {
     // Registry may not be initialized yet, safe to ignore
+  }
+  // Option B (2026-05-13) — also invalidate the chatmode DB-backed agent
+  // snapshot so admin-edited rows reach the chatmode Task tool without
+  // waiting for the 60s TTL. Mirrors the provider hot-reload pattern in
+  // [[feedback_provider_hot_reload_after_write]].
+  try {
+    const { invalidateAgentsFromDbCache, primeAgentsFromDbCache } = await import(
+      '../services/listAgentsFromDb.js'
+    );
+    invalidateAgentsFromDbCache();
+    // Best-effort prime so the next sync read returns the fresh snapshot
+    // immediately rather than the now-stale-but-not-yet-refreshed one.
+    await primeAgentsFromDbCache();
+  } catch {
+    // listAgentsFromDb module load failure shouldn't fail the admin write
   }
 }
 
@@ -30,94 +46,14 @@ export const adminAgentRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
   // ─── Agent Definitions (Agent table) ──────────────────────────
 
   /**
-   * GET /api/admin/agents - List all agent definitions
-   * Fetches from openagentic-proxy (built-in + DB agents), falls back to empty
+   * GET /api/admin/agents — list all agent definitions (full config).
+   * Calls the shared listAgentsFromSOT helper. /api/workflows/agents calls
+   * the same helper with redactSensitive=true; this is the SOT.
    */
   fastify.get('/', async (request, reply) => {
     try {
-      // Fetch from openagentic-proxy (runtime definitions)
-      const openagenticProxyUrl = process.env.OPENAGENTIC_PROXY_URL || 'http://openagentic-openagentic-proxy:3300';
-      const internalKey = process.env.OPENAGENTIC_PROXY_INTERNAL_KEY || '';
-      let proxyAgents: any[] = [];
-      try {
-        const res = await fetch(`${openagenticProxyUrl}/api/agents/definitions`, {
-          headers: {
-            'Authorization': `Bearer ${internalKey}`,
-            'X-Agent-Proxy': 'true',
-          },
-          signal: AbortSignal.timeout(5000),
-        });
-        if (res.ok) {
-          const data = await res.json() as { agents: any[] };
-          proxyAgents = data.agents || [];
-        }
-      } catch (err: any) {
-        logger.warn({ error: err.message }, '[AdminAgents] Failed to reach openagentic-proxy');
-      }
-
-      // Fetch from DB (SOT for agent configs)
-      const dbAgents = await prisma.agent.findMany({
-        include: { _count: { select: { executions: true } } },
-        orderBy: { created_at: 'asc' },
-      });
-
-      // Build maps of DB agents by name and agent_type for merging
-      const dbByName = new Map(dbAgents.map(a => [a.name, a]));
-      const dbByType = new Map(dbAgents.map(a => [a.agent_type, a]));
-
-      // Merge: proxy agents get enriched with DB id + fields
-      // Proxy uses: { id: 'research', role: 'reasoning', name: 'Research Agent' }
-      // DB uses: { id: UUID, name: 'reasoning', agent_type: 'reasoning', display_name: 'Reasoning Agent' }
-      const merged = proxyAgents.map(pa => {
-        const dbMatch = dbByName.get(pa.role) || dbByName.get(pa.agent_type) || dbByType.get(pa.role) || dbByType.get(pa.agent_type) || dbByName.get(pa.id);
-        if (dbMatch) {
-          return {
-            ...pa,
-            id: dbMatch.id, // Use DB UUID as the canonical ID
-            db_id: dbMatch.id,
-            prompt_strategy: dbMatch.prompt_strategy || pa.prompt_strategy,
-            prompt_modules: dbMatch.prompt_modules || pa.prompt_modules,
-            prompt_mode: dbMatch.prompt_mode || pa.prompt_mode,
-            max_spawn_depth: dbMatch.max_spawn_depth ?? pa.max_spawn_depth,
-            max_children: dbMatch.max_children ?? pa.max_children,
-            _count: (dbMatch as any)._count,
-          };
-        }
-        return pa;
-      });
-
-      // Add DB-only agents not in proxy
-      const proxyNames = new Set(proxyAgents.map((pa: any) => pa.agent_type || pa.id || pa.name));
-      for (const dba of dbAgents) {
-        if (!proxyNames.has(dba.name) && !proxyNames.has(dba.agent_type)) {
-          merged.push({
-            id: dba.id,
-            db_id: dba.id,
-            name: dba.name,
-            display_name: dba.display_name,
-            description: dba.description,
-            agent_type: dba.agent_type,
-            model_config: dba.model_config,
-            system_prompt: dba.system_prompt,
-            tools_whitelist: dba.tools_whitelist,
-            skills: dba.skills,
-            delegation: dba.delegation,
-            background: dba.background,
-            category: dba.category,
-            tags: dba.tags,
-            enabled: dba.enabled,
-            created_at: dba.created_at,
-            prompt_strategy: dba.prompt_strategy,
-            prompt_modules: dba.prompt_modules,
-            prompt_mode: dba.prompt_mode,
-            max_spawn_depth: dba.max_spawn_depth,
-            max_children: dba.max_children,
-            _count: (dba as any)._count,
-          });
-        }
-      }
-
-      return reply.send({ agents: merged });
+      const agents = await listAgentsFromSOT({ redactSensitive: false });
+      return reply.send({ agents });
     } catch (error: any) {
       logger.warn({ error: error.message }, '[AdminAgents] Error listing agents');
       return reply.send({ agents: [] });
@@ -191,7 +127,10 @@ export const adminAgentRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
           description: body.description,
           agent_type: body.agentType || body.agent_type || 'custom',
           category: body.category || 'custom',
-          model_config: body.modelConfig || body.model_config || { primaryModel: 'claude-sonnet-4-6' },
+          // M8: empty model_config means "use the registry default at runtime"
+          // (resolved via ModelConfigurationService.getDefaultChatModel).
+          // Pinning a literal here would shadow the operator's registry choice.
+          model_config: body.modelConfig || body.model_config || {},
           system_prompt: body.systemPrompt || body.system_prompt,
           graph_definition: body.graphDefinition || body.graph_definition || {},
           state_schema: body.stateSchema || body.state_schema || {},
@@ -863,10 +802,11 @@ export const adminAgentRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
 
       const CONTINUATION = '\n\nCRITICAL: You MUST keep working until your task is FULLY complete. After each tool result, evaluate if there are more steps needed. If yes, call the next tool immediately. Do NOT present partial results or stop early. Only provide your final response when ALL work is done.';
 
-      // NOTE: cloud_operations behavior is composed from prompt_modules (see
-      // ModuleSeeder.ts cloud-ops-*). The system_prompt below is a thin entry-point
-      // only — DO NOT inline behavioral rules here. Add new modules to ModuleSeeder
-      // and reference them via prompt_modules so they're admin-editable.
+      // NOTE: cloud_operations behavior was previously composed from prompt_modules
+      // (the legacy module seeder rip happened in Phase E.3-E.4, 2026-05-10).
+      // The system_prompt below is a thin entry-point only — behavioral rules
+      // now live in the RBAC `chat-system-{admin,member}.md` files in the
+      // services/openagentic-api/src/prompts/ tree.
       const SEED_AGENTS = [
         { name: 'reasoning', display_name: 'Reasoning Agent', agent_type: 'reasoning', system_prompt: 'You are a deep reasoning agent. Analyze thoroughly and provide well-reasoned conclusions.' + CONTINUATION, model_config: { primaryModel: 'auto', maxTokens: 8192, temperature: 0.7, preferredTier: 'premium' }, tools_whitelist: ['web_search', 'web_fetch', 'sequential_thinking'], max_turns: 3, prompt_modules: ['identity-default', 'safety', 'tool-calling', 'continuation'], prompt_strategy: 'composite' },
         { name: 'data_query', display_name: 'Data Query Agent', agent_type: 'data_query', system_prompt: 'You are a data query specialist. Extract and return structured data efficiently.' + CONTINUATION, model_config: { primaryModel: 'auto', maxTokens: 8192, temperature: 0.3, preferredTier: 'economical' }, tools_whitelist: ['admin_postgres_raw_query', 'query_data'], max_turns: 8, prompt_modules: ['identity-default', 'safety', 'tool-calling', 'data-efficiency', 'continuation'], prompt_strategy: 'composite' },
@@ -876,7 +816,7 @@ export const adminAgentRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
         { name: 'planning', display_name: 'Planning Agent', agent_type: 'planning', system_prompt: 'You are a planning agent. Break down tasks into clear steps with dependencies.' + CONTINUATION, model_config: { primaryModel: 'auto', maxTokens: 8192, temperature: 0.5, preferredTier: 'premium' }, tools_whitelist: [], max_turns: 5, prompt_modules: ['identity-default', 'safety', 'agent-delegation', 'continuation'], prompt_strategy: 'composite' },
         { name: 'validation', display_name: 'Validation Agent', agent_type: 'validation', system_prompt: 'You are a validation agent. Verify outputs and check for errors.' + CONTINUATION, model_config: { primaryModel: 'auto', maxTokens: 8192, temperature: 0.3, preferredTier: 'economical' }, tools_whitelist: ['web_search'], max_turns: 6, prompt_modules: ['identity-default', 'safety', 'tool-calling', 'grounding', 'continuation'], prompt_strategy: 'composite' },
         { name: 'synthesis', display_name: 'Synthesis Agent', agent_type: 'synthesis', system_prompt: 'You are a synthesis agent. Combine information into a coherent response.' + CONTINUATION, model_config: { primaryModel: 'auto', maxTokens: 8192, temperature: 0.5, preferredTier: 'balanced' }, tools_whitelist: [], max_turns: 3, prompt_modules: ['identity-default', 'safety', 'continuation'], prompt_strategy: 'composite' },
-        { name: 'artifact_creation', display_name: 'Artifact Creation Agent', agent_type: 'artifact_creation', system_prompt: null, model_config: { primaryModel: 'auto', maxTokens: 16384, temperature: 0.7, preferredTier: 'premium' }, tools_whitelist: ['generate_image', 'synth_synthesize', 'web_search', 'web_fetch'], max_turns: 8, prompt_modules: ['identity-default', 'safety', 'artifact-creation', 'continuation'], prompt_strategy: 'composite' },
+        { name: 'artifact_creation', display_name: 'Artifact Creation Agent', agent_type: 'artifact_creation', system_prompt: null, model_config: { primaryModel: 'auto', maxTokens: 16384, temperature: 0.7, preferredTier: 'premium' }, tools_whitelist: [], max_turns: 8, prompt_modules: ['identity-default', 'safety', 'artifact-creation', 'continuation'], prompt_strategy: 'composite' },
         { name: 'oat_function_builder', display_name: 'OAT Function Builder', agent_type: 'oat_function_builder', system_prompt: null, model_config: { primaryModel: 'auto', maxTokens: 8192, temperature: 0.3, preferredTier: 'balanced' }, tools_whitelist: [], max_turns: 5, prompt_modules: ['identity-default', 'safety', 'oat-guidance', 'continuation'], prompt_strategy: 'composite' },
         // cloud_operations: long-horizon multi-cloud agent.
         // - max_turns lives in model_config.maxTurns (read by /api/agents/resolve)

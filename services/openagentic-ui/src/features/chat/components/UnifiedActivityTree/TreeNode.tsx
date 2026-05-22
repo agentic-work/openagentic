@@ -8,22 +8,39 @@ interface TreeNodeProps {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  success: '#3fb950',
-  thinking: '#d29922',
-  running: '#58a6ff',
-  error: '#f85149',
-  artifact: '#bc8cff',
-  hitl: '#d29922',
+  success: 'var(--ok, #22c55e)',
+  thinking: 'var(--accent, #8b5cf6)',
+  running: 'var(--info, #38bdf8)',
+  error: 'var(--err, #ef4444)',
+  artifact: 'var(--accent, #8b5cf6)',
+  hitl: 'var(--warn, #f59e0b)',
 };
+
+/**
+ * v0.6.7 chat-polish fix 5 (task #166 remap) — depth-scaled left-border.
+ * Uses mockup --line-2/3 ramp (rgba white at 0.10 → 0.16) so nesting
+ * reads clearly against --bg-1 sub-agent surfaces.
+ */
+function depthBorderColor(depth: number): string {
+  // 0 → no border, 1 → line-2, 2+ → line-3.
+  if (depth <= 0) return 'transparent';
+  if (depth === 1) return 'var(--line-2, rgba(255,255,255,0.10))';
+  return 'var(--line-3, rgba(255,255,255,0.16))';
+}
 
 export function TreeNode({ status, children, isLast = false, depth = 0 }: TreeNodeProps) {
   return (
-    <div style={{
-      position: 'relative',
-      paddingLeft: depth > 0 ? 20 : 0,
-      marginLeft: depth > 0 ? 8 : 0,
-    }}>
-      {/* Vertical connector line */}
+    <div
+      data-testid="tree-node"
+      data-depth={depth}
+      style={{
+        position: 'relative',
+        paddingLeft: depth > 0 ? 20 : 0,
+        marginLeft: depth > 0 ? 8 : 0,
+        borderLeft: depth > 0 ? `2px solid ${depthBorderColor(depth)}` : 'none',
+      }}
+    >
+      {/* Vertical connector line (extra hair-line for finer detail) */}
       {depth > 0 && !isLast && (
         <div style={{
           position: 'absolute',

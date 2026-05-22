@@ -1,50 +1,12 @@
 /**
- * Rendering API Routes for Pure Frontend Architecture
- * Server-side rendering endpoints for charts, diagrams, code, etc.
+ * Rendering API Routes
+ * Only endpoints actually called by the UI are kept:
+ *   POST /api/render/export  — ExportButton.tsx (PDF/DOCX/MD/Text)
+ *   POST /api/render/svg     — SvgDiagram.tsx (placeholder)
  */
 
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { RenderingService } from '../services/RenderingService.js';
-
-// NOTE: MermaidRequest removed - diagrams now use React Flow client-side
-
-interface ChartRequest {
-  chartData: {
-    type: 'line' | 'bar' | 'pie' | 'area' | 'scatter' | 'radar' | 'doughnut' | 'bubble';
-    data: any[];
-    title?: string;
-    xAxis?: string;
-    yAxis?: string;
-    dataKeys?: string[];
-    colors?: string[];
-    options?: any;
-  };
-  theme: 'light' | 'dark';
-  height: number;
-  format: 'png' | 'svg';
-}
-
-interface PipelineRequest {
-  theme: 'light' | 'dark';
-  embedded: boolean;
-  format: 'svg' | 'png';
-}
-
-interface CodeRequest {
-  code: string;
-  language: string;
-  theme: 'light' | 'dark';
-  readOnly: boolean;
-  showLineNumbers: boolean;
-  format: 'png' | 'html';
-}
-
-interface MarkdownRequest {
-  markdown: string;
-  theme: 'light' | 'dark';
-  enableMath: boolean;
-  enableHighlight: boolean;
-}
 
 interface ExportRequest {
   messages: Array<{
@@ -57,7 +19,7 @@ interface ExportRequest {
     mcpCalls?: any[];
   }>;
   options: {
-    format: 'pdf' | 'docx' | 'markdown' | 'text';
+    format: 'docx' | 'markdown' | 'text';
     includeTimestamps?: boolean;
     includeMetadata?: boolean;
     title?: string;
@@ -76,7 +38,6 @@ export default async function renderRoutes(fastify: FastifyInstance) {
     isRenderingAvailable = true;
     fastify.log.info('Rendering service initialized successfully');
 
-    // Cleanup on shutdown
     fastify.addHook('onClose', async () => {
       if (renderingService) {
         await renderingService.destroy();
@@ -87,260 +48,12 @@ export default async function renderRoutes(fastify: FastifyInstance) {
     isRenderingAvailable = false;
   }
 
-  // Helper to check if rendering is available
   const checkRenderingAvailable = () => {
     if (!isRenderingAvailable || !renderingService) {
-      throw new Error('Rendering service not available - native dependencies missing');
+      throw new Error('Rendering service not available');
     }
   };
 
-  // NOTE: Mermaid rendering endpoint removed - diagrams now use React Flow client-side
-
-  /**
-   * Render charts
-   * POST /api/render/chart
-   */
-  fastify.post<{ Body: ChartRequest }>('/chart', async (request, reply): Promise<void> => {
-    try {
-      checkRenderingAvailable();
-      const { chartData, theme, height, format } = request.body;
-
-      if (!chartData?.data?.length) {
-        return reply.code(400).send({ error: 'Chart data is required' });
-      }
-
-      const buffer = await renderingService!.renderChart({
-        chartData,
-        theme: theme || 'light',
-        height: height || 400,
-        format: format || 'png'
-      });
-
-      reply
-        .header('Content-Type', 'image/png')
-        .header('Cache-Control', 'public, max-age=1800') // Cache for 30 minutes
-        .send(buffer);
-
-    } catch (error) {
-      fastify.log.error(`Chart rendering failed: ${error instanceof Error ? error.message : String(error)}`);
-      reply.code(500).send({ 
-        error: 'Failed to render chart',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  /**
-   * Render pipeline visualization
-   * POST /api/render/pipeline
-   */
-  fastify.post<{ Body: PipelineRequest }>('/pipeline', async (request, reply): Promise<void> => {
-    try {
-      checkRenderingAvailable();
-      const { theme, embedded, format } = request.body;
-
-      const buffer = await renderingService.renderPipelineVisualization({
-        theme: theme || 'dark',
-        embedded: embedded || false,
-        format: format || 'svg'
-      });
-
-      const contentType = format === 'svg' ? 'image/svg+xml' : 'image/png';
-      
-      reply
-        .header('Content-Type', contentType)
-        .header('Cache-Control', 'public, max-age=7200') // Cache for 2 hours
-        .send(buffer);
-
-    } catch (error) {
-      fastify.log.error(`Pipeline rendering failed: ${error instanceof Error ? error.message : String(error)}`);
-      reply.code(500).send({ 
-        error: 'Failed to render pipeline',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  /**
-   * Render Monaco code editor
-   * POST /api/render/code-editor
-   */
-  fastify.post<{ Body: CodeRequest }>('/code-editor', async (request, reply): Promise<void> => {
-    try {
-      checkRenderingAvailable();
-      const { code, language, theme, readOnly, showLineNumbers, format } = request.body;
-
-      if (!code?.trim()) {
-        return reply.code(400).send({ error: 'Code is required' });
-      }
-
-      const result = await renderingService.renderCodeEditor({
-        code: code.trim(),
-        language: language || 'javascript',
-        theme: theme || 'light',
-        readOnly: readOnly !== false,
-        showLineNumbers: showLineNumbers !== false,
-        format: format || 'png'
-      });
-
-      if (format === 'html') {
-        reply
-          .header('Content-Type', 'text/html')
-          .header('Cache-Control', 'public, max-age=1800')
-          .send(result);
-      } else {
-        reply
-          .header('Content-Type', 'image/png')
-          .header('Cache-Control', 'public, max-age=1800')
-          .send(result);
-      }
-
-    } catch (error) {
-      fastify.log.error(`Code editor rendering failed: ${error instanceof Error ? error.message : String(error)}`);
-      reply.code(500).send({ 
-        error: 'Failed to render code editor',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  /**
-   * Render markdown with math and syntax highlighting
-   * POST /api/render/markdown
-   */
-  fastify.post<{ Body: MarkdownRequest }>('/markdown', async (request, reply): Promise<void> => {
-    try {
-      checkRenderingAvailable();
-      const { markdown, theme, enableMath, enableHighlight } = request.body;
-
-      if (!markdown?.trim()) {
-        return reply.code(400).send({ error: 'Markdown content is required' });
-      }
-
-      const html = await renderingService.renderMarkdown({
-        markdown: markdown.trim(),
-        theme: theme || 'light',
-        enableMath: enableMath !== false,
-        enableHighlight: enableHighlight !== false
-      });
-
-      reply
-        .header('Content-Type', 'text/html')
-        .header('Cache-Control', 'public, max-age=1800')
-        .send(html);
-
-    } catch (error) {
-      fastify.log.error(`Markdown rendering failed: ${error instanceof Error ? error.message : String(error)}`);
-      reply.code(500).send({ 
-        error: 'Failed to render markdown',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  /**
-   * Render syntax-highlighted code block
-   * POST /api/render/code-block
-   */
-  fastify.post<{ Body: { code: string; language: string; theme: 'light' | 'dark' } }>('/code-block', async (request, reply): Promise<void> => {
-    try {
-      checkRenderingAvailable();
-      const { code, language, theme } = request.body;
-
-      if (!code?.trim()) {
-        return reply.code(400).send({ error: 'Code is required' });
-      }
-
-      const html = await renderingService.renderCodeBlock(
-        code.trim(),
-        language || 'javascript',
-        theme || 'light'
-      );
-
-      reply
-        .header('Content-Type', 'text/html')
-        .header('Cache-Control', 'public, max-age=3600')
-        .send(html);
-
-    } catch (error) {
-      fastify.log.error(`Code block rendering failed: ${error instanceof Error ? error.message : String(error)}`);
-      reply.code(500).send({ 
-        error: 'Failed to render code block',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  /**
-   * Render data table
-   * POST /api/render/table
-   */
-  fastify.post<{ Body: { data: any[]; theme: 'light' | 'dark' } }>('/table', async (request, reply): Promise<void> => {
-    try {
-      checkRenderingAvailable();
-      const { data, theme } = request.body;
-
-      if (!Array.isArray(data) || !data.length) {
-        return reply.code(400).send({ error: 'Table data array is required' });
-      }
-
-      const html = await renderingService.renderTable(data, theme || 'light');
-
-      reply
-        .header('Content-Type', 'text/html')
-        .header('Cache-Control', 'public, max-age=1800')
-        .send(html);
-
-    } catch (error) {
-      fastify.log.error(`Table rendering failed: ${error instanceof Error ? error.message : String(error)}`);
-      reply.code(500).send({ 
-        error: 'Failed to render table',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  /**
-   * Render complex document with mixed content
-   * POST /api/render/document
-   */
-  fastify.post<{ Body: { 
-    content: {
-      markdown?: string;
-      charts?: any[];
-      diagrams?: string[];
-      tables?: any[][];
-    };
-    theme: 'light' | 'dark' 
-  } }>('/document', async (request, reply): Promise<void> => {
-    try {
-      const { content, theme } = request.body;
-
-      if (!content || typeof content !== 'object') {
-        return reply.code(400).send({ error: 'Document content is required' });
-      }
-
-      const html = await renderingService.renderDocument(content, theme || 'light');
-
-      reply
-        .header('Content-Type', 'text/html')
-        .header('Cache-Control', 'public, max-age=1800')
-        .send(html);
-
-    } catch (error) {
-      fastify.log.error(`Document rendering failed: ${error instanceof Error ? error.message : String(error)}`);
-      reply.code(500).send({ 
-        error: 'Failed to render document',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  /**
-   * Render SVG from description (placeholder endpoint)
-   * POST /api/render/svg
-   * Note: This is a placeholder - actual SVG generation from text would require AI or a specialized library
-   */
   fastify.post<{ Body: { description: string; theme: 'light' | 'dark' } }>('/svg', async (request, reply): Promise<void> => {
     try {
       const { description, theme } = request.body;
@@ -349,8 +62,6 @@ export default async function renderRoutes(fastify: FastifyInstance) {
         return reply.code(400).send({ error: 'Description is required' });
       }
 
-      // For now, return a placeholder SVG indicating the feature is not yet implemented
-      // In the future, this could use an LLM to generate SVG from text descriptions
       const placeholderSvg = `
         <svg xmlns="http://www.w3.org/2000/svg" width="400" height="200" viewBox="0 0 400 200">
           <rect width="400" height="200" fill="${theme === 'dark' ? '#1a1a1a' : '#f5f5f5'}"/>
@@ -377,10 +88,6 @@ export default async function renderRoutes(fastify: FastifyInstance) {
     }
   });
 
-  /**
-   * Export conversation to various formats (PDF, DOCX, Markdown, Text)
-   * POST /api/render/export
-   */
   fastify.post<{ Body: ExportRequest }>('/export', async (request, reply): Promise<void> => {
     try {
       checkRenderingAvailable();
@@ -405,20 +112,8 @@ export default async function renderRoutes(fastify: FastifyInstance) {
       };
 
       switch (options.format) {
-        case 'pdf': {
-          const pdfBuffer = await renderingService!.exportToPDF(messages, exportOptions);
-
-          reply
-            .header('Content-Type', 'application/pdf')
-            .header('Content-Disposition', `attachment; filename="conversation-${Date.now()}.pdf"`)
-            .header('Cache-Control', 'no-cache')
-            .send(pdfBuffer);
-          break;
-        }
-
         case 'docx': {
           const docxBuffer = await renderingService!.exportToDOCX(messages, exportOptions);
-
           reply
             .header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
             .header('Content-Disposition', `attachment; filename="conversation-${Date.now()}.docx"`)
@@ -429,7 +124,6 @@ export default async function renderRoutes(fastify: FastifyInstance) {
 
         case 'markdown': {
           const markdown = await renderingService!.exportToMarkdown(messages, exportOptions);
-
           reply
             .header('Content-Type', 'text/markdown')
             .header('Content-Disposition', `attachment; filename="conversation-${Date.now()}.md"`)
@@ -440,7 +134,6 @@ export default async function renderRoutes(fastify: FastifyInstance) {
 
         case 'text': {
           const text = await renderingService!.exportToText(messages, exportOptions);
-
           reply
             .header('Content-Type', 'text/plain')
             .header('Content-Disposition', `attachment; filename="conversation-${Date.now()}.txt"`)
@@ -452,7 +145,7 @@ export default async function renderRoutes(fastify: FastifyInstance) {
         default:
           return reply.code(400).send({
             error: 'Invalid export format',
-            validFormats: ['pdf', 'docx', 'markdown', 'text']
+            validFormats: ['docx', 'markdown', 'text']
           });
       }
 
@@ -461,6 +154,78 @@ export default async function renderRoutes(fastify: FastifyInstance) {
       reply.code(500).send({
         error: 'Failed to export conversation',
         details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Sprint B (2026-05-18) — per-artifact XLSX export.
+  //
+  // Body shape:
+  //   { artifact: { type, ... }, format: 'xlsx', filename?: string }
+  //
+  // The artifact MUST be a streaming_table or compose_visual (or its
+  // synonyms artifact_render/compose_artifact/viz_render). Anything else
+  // returns 422 with a descriptive error so the UI surfaces a toast.
+  fastify.post<{
+    Body: {
+      artifact?: any;
+      format?: string;
+      filename?: string;
+      sheetName?: string;
+      title?: string;
+    };
+  }>('/export-artifact', async (request, reply): Promise<void> => {
+    try {
+      checkRenderingAvailable();
+
+      const { artifact, format, filename, sheetName, title } = request.body ?? {};
+
+      if (!artifact || typeof artifact !== 'object') {
+        return reply.code(400).send({ error: 'artifact is required' });
+      }
+      if (!format) {
+        return reply.code(400).send({ error: 'format is required' });
+      }
+      if (format !== 'xlsx') {
+        return reply.code(400).send({
+          error: `Unsupported export format "${format}" — only "xlsx" is supported on this route`,
+        });
+      }
+
+      let buf: Buffer;
+      try {
+        buf = await renderingService!.exportArtifactToXLSX(artifact, {
+          sheetName,
+          title,
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        // Unsupported artifact type → 422 (semantic), not 500 (server fault).
+        if (/unsupported|cannot export/i.test(msg)) {
+          return reply.code(422).send({ error: msg });
+        }
+        throw e;
+      }
+
+      const safeBase = (filename || 'artifact').replace(/[^a-z0-9_-]/gi, '-');
+      reply
+        .header(
+          'Content-Type',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        .header(
+          'Content-Disposition',
+          `attachment; filename="${safeBase}-${Date.now()}.xlsx"`,
+        )
+        .header('Cache-Control', 'no-cache')
+        .send(buf);
+    } catch (error) {
+      fastify.log.error(
+        `export-artifact failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      reply.code(500).send({
+        error: 'Failed to export artifact',
+        details: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   });

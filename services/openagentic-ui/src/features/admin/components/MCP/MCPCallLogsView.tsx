@@ -10,6 +10,7 @@ import {
   Server, Zap, Database, Cpu
 } from '../Shared/AdminIcons';
 import { useAuth } from '../../../../app/providers/AuthContext';
+import { PageHeader, LogRow, type LogSeverity } from '../../primitives-v2';
 
 interface MCPCallLog {
   id: string;
@@ -177,6 +178,15 @@ export const MCPCallLogsView: React.FC<MCPCallLogsViewProps> = ({ theme }) => {
     }
   };
 
+  const mapSeverity = (status: string): LogSeverity => {
+    switch (status) {
+      case 'success': return 'ok';
+      case 'error':   return 'err';
+      case 'timeout': return 'warn';
+      default:        return 'info';
+    }
+  };
+
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleString();
@@ -223,41 +233,17 @@ export const MCPCallLogsView: React.FC<MCPCallLogsViewProps> = ({ theme }) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold mb-2 text-text-primary">
-            MCP Call Logs
-          </h2>
-          <p className="text-text-secondary">
-            Complete request/response logs for all MCP tool executions
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={downloadLogsAsJSON}
-            className="px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-            style={{
-              backgroundColor: 'var(--color-surfaceSecondary)',
-              color: 'var(--color-text)'
-            }}
-          >
-            <Download className="w-4 h-4" />
-            Export JSON
-          </button>
-          <button
-            onClick={fetchLogs}
-            className="px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-            style={{
-              backgroundColor: 'var(--color-surfaceSecondary)',
-              color: 'var(--color-text)'
-            }}
-          >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </button>
-        </div>
-      </div>
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'MCP', 'Call Logs']}
+        title="MCP Call Logs"
+        explainer="Complete request/response audit stream for every MCP tool execution. Filter, expand, and export raw JSON for triage."
+        actions={[
+          { label: 'Export JSON', onClick: downloadLogsAsJSON },
+          { label: 'Refresh', onClick: fetchLogs, primary: true },
+        ]}
+        sticky
+      />
 
       {/* Stats Cards */}
       {stats && (
@@ -391,69 +377,62 @@ export const MCPCallLogsView: React.FC<MCPCallLogsViewProps> = ({ theme }) => {
             <div className="space-y-2 p-4">
               {logs.map((log) => {
                 const isExpanded = expandedLogs.has(log.id);
+                const sourceLabel = log.userEmail || log.userName || 'system';
+                const sourceAccent = Boolean(log.userEmail || log.userName);
+                const message = (
+                  <span className="flex items-center gap-2 flex-wrap">
+                    <span style={{ fontWeight: 600, color: 'var(--ap-fg-1, var(--fg-1))' }}>{log.toolName}</span>
+                    <span style={{ color: 'var(--ap-fg-3, var(--fg-3))' }}>· {log.serverId}</span>
+                    {log.method && (
+                      <span style={{ color: 'var(--ap-fg-3, var(--fg-3))' }}>· {log.method}</span>
+                    )}
+                    {log.modelUsed && (
+                      <span
+                        style={{ color: 'var(--ap-ok, var(--ok))', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <Brain className="w-3 h-3" />
+                        {log.modelUsed}
+                      </span>
+                    )}
+                  </span>
+                );
+                const meta = (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontFamily: 'var(--font-mono)' }}>{log.executionTime}ms</span>
+                    {(log.requestSize || log.responseSize) && (
+                      <span>{formatBytes(log.requestSize)} / {formatBytes(log.responseSize)}</span>
+                    )}
+                    {isExpanded ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
+                  </span>
+                );
                 return (
                   <div
                     key={log.id}
-                    className="border rounded-lg overflow-hidden"
+                    className="rounded-lg overflow-hidden"
                     style={{
                       backgroundColor: 'var(--color-surfaceSecondary)',
-                      borderColor: 'var(--color-border)'
+                      border: '1px solid var(--color-border)',
                     }}
                   >
-                    {/* Log Header */}
+                    {/* Unified log row */}
                     <div
-                      className="flex items-center justify-between p-4 cursor-pointer hover:opacity-80 transition-opacity"
                       onClick={() => toggleLog(log.id)}
+                      style={{ cursor: 'pointer' }}
+                      role="button"
+                      aria-expanded={isExpanded}
                     >
-                      <div className="flex items-center gap-4 flex-1">
-                        {getStatusIcon(log.status)}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-text-primary">{log.toolName}</span>
-                            <span className="px-2 py-0.5 text-xs rounded-full bg-info-500/10 ap-text-info">
-                              {log.serverId}
-                            </span>
-                            {log.method && (
-                              <span className="px-2 py-0.5 text-xs rounded-full bg-primary-500/10 text-primary-500">
-                                {log.method}
-                              </span>
-                            )}
-                            {log.modelUsed && (
-                              <span className="px-2 py-0.5 text-xs rounded-full bg-success-500/10 ap-text-success flex items-center gap-1">
-                                <Brain className="w-3 h-3" />
-                                {log.modelUsed}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3 text-sm text-text-secondary mt-1 flex-wrap">
-                            <span>{formatTimestamp(log.timestamp)}</span>
-                            <span className="font-mono">{log.executionTime}ms</span>
-                            {log.userName && (
-                              <span className="flex items-center gap-1">
-                                <User className="w-3 h-3" />
-                                {log.userName}
-                              </span>
-                            )}
-                            {log.userEmail && !log.userName && (
-                              <span className="flex items-center gap-1">
-                                <User className="w-3 h-3" />
-                                {log.userEmail}
-                              </span>
-                            )}
-                            {(log.requestSize || log.responseSize) && (
-                              <span className="flex items-center gap-1">
-                                <Database className="w-3 h-3" />
-                                {formatBytes(log.requestSize)} / {formatBytes(log.responseSize)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      {isExpanded ? (
-                        <ChevronDown className="w-5 h-5 text-text-secondary" />
-                      ) : (
-                        <ChevronRight className="w-5 h-5 text-text-secondary" />
-                      )}
+                      <LogRow
+                        severity={mapSeverity(log.status)}
+                        timestamp={formatTimestamp(log.timestamp)}
+                        source={sourceLabel}
+                        sourceAccent={sourceAccent}
+                        message={message}
+                        meta={meta}
+                      />
                     </div>
 
                     {/* Expanded Details */}

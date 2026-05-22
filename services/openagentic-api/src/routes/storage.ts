@@ -44,7 +44,7 @@ export const storageRoutes = async (fastify: FastifyInstance) => {
 
   // Store authentication token securely
   fastify.post('/api/storage/token', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       body: TokenStorageSchema
     }
@@ -91,7 +91,7 @@ export const storageRoutes = async (fastify: FastifyInstance) => {
 
   // Retrieve authentication token
   fastify.get('/api/storage/token', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       querystring: {
         type: 'object',
@@ -147,7 +147,7 @@ export const storageRoutes = async (fastify: FastifyInstance) => {
 
   // Delete authentication token
   fastify.delete('/api/storage/token', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       querystring: {
         type: 'object',
@@ -194,7 +194,7 @@ export const storageRoutes = async (fastify: FastifyInstance) => {
 
   // Store secure data
   fastify.post('/api/storage/secure', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       body: {
         type: 'object',
@@ -238,7 +238,7 @@ export const storageRoutes = async (fastify: FastifyInstance) => {
 
   // Retrieve secure data
   fastify.get('/api/storage/secure', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       querystring: {
         type: 'object',
@@ -280,7 +280,7 @@ export const storageRoutes = async (fastify: FastifyInstance) => {
 
   // Delete secure data
   fastify.delete('/api/storage/secure', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       querystring: {
         type: 'object',
@@ -357,7 +357,7 @@ export const storageRoutes = async (fastify: FastifyInstance) => {
 
   // Get Azure Key Vault secret (admin only)
   fastify.get('/api/storage/azure-secret/:vaultName/:secretName', {
-    preHandler: adminMiddleware
+    onRequest: adminMiddleware
   }, async (request: FastifyRequest<{ Params: { vaultName: string; secretName: string } }>, reply: FastifyReply) => {
     try {
 
@@ -381,7 +381,7 @@ export const storageRoutes = async (fastify: FastifyInstance) => {
 
   // Encrypt data using Transit engine
   fastify.post('/api/storage/encrypt', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       body: {
         type: 'object',
@@ -408,7 +408,7 @@ export const storageRoutes = async (fastify: FastifyInstance) => {
 
   // Decrypt data using Transit engine
   fastify.post('/api/storage/decrypt', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       body: {
         type: 'object',
@@ -436,7 +436,7 @@ export const storageRoutes = async (fastify: FastifyInstance) => {
   // ===== Object Storage Browsing (MinIO) =====
 
   fastify.get('/api/storage/buckets', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['Storage'],
       summary: 'List MinIO buckets',
@@ -456,7 +456,7 @@ export const storageRoutes = async (fastify: FastifyInstance) => {
   });
 
   fastify.get('/api/storage/objects', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['Storage'],
       summary: 'List objects in a bucket',

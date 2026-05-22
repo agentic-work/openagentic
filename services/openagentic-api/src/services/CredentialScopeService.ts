@@ -89,9 +89,11 @@ const DEFAULT_TOOL_SCOPES: Record<string, CredentialScope> = {
   'memory_recall': { type: 'internal_only' },
   'memory_forget': { type: 'internal_only' },
 
-  // Diagram tools → internal only
+  // Diagram tools → internal only. (`create_mermaid_diagram` was removed
+  // when mermaid was deprecated platform-wide; the canonical diagram path
+  // is `compose_visual` template:"arch_diagram" — server-emitted, not
+  // routed through CredentialScopeService.)
   'create_diagram': { type: 'internal_only' },
-  'create_mermaid_diagram': { type: 'internal_only' },
 
   // Admin tools → internal only (admin check happens elsewhere)
   'admin_system_health': { type: 'internal_only' },

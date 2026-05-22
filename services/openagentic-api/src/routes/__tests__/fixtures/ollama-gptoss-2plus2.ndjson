@@ -1,0 +1,31 @@
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.832113251Z","message":{"role":"assistant","content":"","thinking":"The"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.839651062Z","message":{"role":"assistant","content":"","thinking":" user"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.847329408Z","message":{"role":"assistant","content":"","thinking":" asks"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.854823012Z","message":{"role":"assistant","content":"","thinking":":"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.862293416Z","message":{"role":"assistant","content":"","thinking":" \""},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.869777745Z","message":{"role":"assistant","content":"","thinking":"What"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.877309486Z","message":{"role":"assistant","content":"","thinking":" is"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.884776283Z","message":{"role":"assistant","content":"","thinking":" "},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.892222518Z","message":{"role":"assistant","content":"","thinking":"2"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.899629767Z","message":{"role":"assistant","content":"","thinking":"+"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.906991801Z","message":{"role":"assistant","content":"","thinking":"2"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.914449097Z","message":{"role":"assistant","content":"","thinking":"?"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.921854033Z","message":{"role":"assistant","content":"","thinking":" Reply"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.929378938Z","message":{"role":"assistant","content":"","thinking":" with"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.936923514Z","message":{"role":"assistant","content":"","thinking":" only"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.944290833Z","message":{"role":"assistant","content":"","thinking":" the"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.9516319Z","message":{"role":"assistant","content":"","thinking":" number"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.959030945Z","message":{"role":"assistant","content":"","thinking":".\""},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.96637548Z","message":{"role":"assistant","content":"","thinking":" So"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.973693405Z","message":{"role":"assistant","content":"","thinking":" I"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.981086314Z","message":{"role":"assistant","content":"","thinking":" should"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.988493723Z","message":{"role":"assistant","content":"","thinking":" reply"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:18.995869068Z","message":{"role":"assistant","content":"","thinking":" \""},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:19.003209063Z","message":{"role":"assistant","content":"","thinking":"4"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:19.01052297Z","message":{"role":"assistant","content":"","thinking":"\"."},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:19.01785142Z","message":{"role":"assistant","content":"","thinking":" No"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:19.025237039Z","message":{"role":"assistant","content":"","thinking":" other"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:19.032596685Z","message":{"role":"assistant","content":"","thinking":" text"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:19.039978673Z","message":{"role":"assistant","content":"","thinking":"."},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:19.091783444Z","message":{"role":"assistant","content":"4"},"done":false}
+{"model":"gpt-oss:20b","created_at":"2026-04-23T11:54:19.099205868Z","message":{"role":"assistant","content":""},"done":true,"done_reason":"stop","total_duration":532554908,"load_duration":211702748,"prompt_eval_count":80,"prompt_eval_duration":28049831,"eval_count":40,"eval_duration":276555458}

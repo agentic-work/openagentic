@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiRequest } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -26,8 +27,9 @@ interface WorkflowSettings {
   defaultMonthlyBudgetPerUser: number;
   onBudgetExceeded: 'pause' | 'downgrade_model' | 'abort';
   // Model & Agent Restrictions
-  defaultIntelligenceLevel: number;
-  maxIntelligenceLevel: number;
+  // 2026-04-19 — defaultIntelligenceLevel / maxIntelligenceLevel removed
+  // (task #144, slider rip). Per-user × per-model budgets live in
+  // UserModelBudgetService (User Permissions view).
   maxAgentTurns: number;
   maxToolCallsPerAgent: number;
   agentCostBudgetCap: number;
@@ -58,8 +60,6 @@ const DEFAULT_SETTINGS: WorkflowSettings = {
   defaultDailyBudgetPerUser: 25.0,
   defaultMonthlyBudgetPerUser: 500.0,
   onBudgetExceeded: 'pause',
-  defaultIntelligenceLevel: 50,
-  maxIntelligenceLevel: 100,
   maxAgentTurns: 15,
   maxToolCallsPerAgent: 25,
   agentCostBudgetCap: 5.0,
@@ -221,28 +221,15 @@ export const AdminWorkflowSettingsView: React.FC = () => {
       <span
         className="absolute top-0.5 w-4 h-4 rounded-full transition-transform"
         style={{
-          backgroundColor: '#fff',
+          backgroundColor: 'var(--ap-fg-0)',
           left: settings[key] ? '22px' : '2px',
         }}
       />
     </button>
   );
 
-  const sliderInput = (key: keyof WorkflowSettings) => (
-    <div className="flex items-center gap-2">
-      <input
-        type="range"
-        min={0}
-        max={100}
-        value={settings[key] as number}
-        onChange={e => update(key, Number(e.target.value))}
-        className="w-32"
-      />
-      <span className="text-xs w-8 text-right" style={{ color: 'var(--text-secondary)' }}>
-        {settings[key] as number}
-      </span>
-    </div>
-  );
+  // 2026-04-19 — sliderInput helper deleted (task #144, slider rip); no
+  // longer needed now that Intelligence Level rows are gone.
 
   // ── Tab content renderers ─────────────────────────────────────
 
@@ -274,8 +261,8 @@ export const AdminWorkflowSettingsView: React.FC = () => {
 
   const renderModel = () => (
     <div>
-      {fieldRow('Default Intelligence Level', 'Default slider position for workflow LLM calls (0-100)', sliderInput('defaultIntelligenceLevel'))}
-      {fieldRow('Max Intelligence Level', 'Maximum allowed intelligence level (cap)', sliderInput('maxIntelligenceLevel'))}
+      {/* 2026-04-19 — Intelligence Level rows removed (task #144, slider
+          rip). Per-user × per-model budgets live in UserModelBudgetService. */}
       {fieldRow('Max Agent Turns', 'Maximum number of turns an agent can take per invocation', numberInput('maxAgentTurns', { min: 1 }))}
       {fieldRow('Max Tool Calls Per Agent', 'Maximum number of tool calls allowed per agent', numberInput('maxToolCallsPerAgent', { min: 1 }))}
       {fieldRow('Agent Cost Budget Cap', 'Maximum cost allowed per individual agent run', numberInput('agentCostBudgetCap', { min: 0, step: 0.5, prefix: '$' }))}
@@ -351,33 +338,31 @@ export const AdminWorkflowSettingsView: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center" style={{ color: 'var(--text-tertiary)' }}>
-        <div className="animate-pulse text-sm">Loading workflow settings...</div>
+      <div className="space-y-4">
+        <PageHeader
+          crumbs={['Admin', 'OpenAgentic Flows', 'Governance']}
+          title="Workflow Governance"
+          explainer="Organization-wide workflow defaults and restrictions."
+        />
+        <div className="p-6 flex items-center justify-center" style={{ color: 'var(--text-tertiary)' }}>
+          <div className="animate-pulse text-sm">Loading workflow settings...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-            Workflow Governance
-          </h2>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-            Organization-wide workflow defaults and restrictions
-          </p>
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-4 py-1.5 rounded-lg text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
-          style={{ backgroundColor: 'var(--color-accent, var(--color-accent-primary))', color: '#fff' }}
-        >
-          {saving ? 'Saving...' : 'Save Settings'}
-        </button>
-      </div>
+    <div className="space-y-4">
+      <PageHeader
+        crumbs={['Admin', 'OpenAgentic Flows', 'Governance']}
+        title="Workflow Governance"
+        explainer="Organization-wide workflow defaults and restrictions — limits, cost guards, model pins, error policy, and memory."
+        actions={[
+          { label: saving ? 'Saving…' : 'Save Settings', primary: true, onClick: () => { void handleSave(); }, disabled: saving },
+        ]}
+      />
+
+      <div className="p-4 pt-0 space-y-4">
 
       {/* Toast */}
       {toast && (
@@ -401,7 +386,7 @@ export const AdminWorkflowSettingsView: React.FC = () => {
             onClick={() => setActiveTab(tab.id)}
             className="px-3 py-1.5 text-xs rounded-md transition-colors"
             style={activeTab === tab.id
-              ? { backgroundColor: 'var(--color-accent, var(--color-accent-primary))', color: '#fff' }
+              ? { backgroundColor: 'var(--color-accent, var(--color-accent-primary))', color: 'var(--ap-fg-0)' }
               : { color: 'var(--color-text-secondary)' }
             }
           >
@@ -417,6 +402,7 @@ export const AdminWorkflowSettingsView: React.FC = () => {
         {activeTab === 'model' && renderModel()}
         {activeTab === 'errors' && renderErrors()}
         {activeTab === 'memory' && renderMemory()}
+      </div>
       </div>
     </div>
   );

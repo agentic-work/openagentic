@@ -1,320 +1,149 @@
 /**
- * Client-Side Chart Renderer using Recharts
- * Renders charts directly in the browser without server-side rendering
+ * ChartRenderer — chatmode message-content chart shim.
+ *
+ * Cutover 2026-05-14: dropped recharts. Translates legacy `chartSpec`
+ * payloads (recharts-shape: {type, data:[{name, ...}], xAxis, yAxis,
+ * dataKeys}) into the canonical shapes consumed by src/lib/charts/
+ * components and delegates rendering there. Public API + props
+ * preserved so InlineMCPCall + AgenticActivityStream keep working.
  */
-
 import React, { useMemo } from 'react';
-import {
-  PieChart, Pie, Cell,
-  LineChart, Line,
-  BarChart, Bar,
-  AreaChart, Area,
-  ScatterChart, Scatter,
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-} from 'recharts';
+import { Bar as AwBar, type BarData } from '../../../../lib/charts/components/Bar';
+import { Line as AwLine, type LineData } from '../../../../lib/charts/components/Line';
+import { Area as AwArea, type AreaData } from '../../../../lib/charts/components/Area';
+import { Donut as AwDonut, type DonutData } from '../../../../lib/charts/components/Donut';
+import { Scatter as AwScatter, type ScatterData } from '../../../../lib/charts/components/Scatter';
+import { useThemeTokens } from '../../../../lib/charts/hooks/useThemeTokens';
 
-interface ChartData {
+interface ChartSpec {
   type: 'line' | 'bar' | 'pie' | 'area' | 'scatter' | 'radar' | 'doughnut' | 'bubble';
-  data: any[];
+  data: Array<Record<string, any>>;
   title?: string;
   xAxis?: string;
   yAxis?: string;
   dataKeys?: string[];
   colors?: string[];
-  options?: any;
 }
 
 interface ChartRendererProps {
-  chartSpec: string | ChartData;
+  chartSpec: string | ChartSpec;
   theme: 'light' | 'dark';
   height?: number;
 }
 
-// Default color palette
-// eslint-disable-next-line no-restricted-syntax -- Chart visualization colors are intentional design choices
-const DEFAULT_COLORS = [
-  '#8b5cf6', // Purple
-  '#3b82f6', // Blue
-  '#10b981', // Green
-  '#f59e0b', // Amber
-  '#ef4444', // Red
-  '#ec4899', // Pink
-  '#06b6d4', // Cyan
-  '#84cc16', // Lime
-];
+function parseSpec(input: string | ChartSpec | undefined): ChartSpec | null {
+  if (!input) return null;
+  if (typeof input === 'object') return input;
+  try {
+    const fence = input.match(/```(?:json|chart)?\s*([\s\S]*?)```/);
+    return JSON.parse(fence ? fence[1] : input) as ChartSpec;
+  } catch {
+    return null;
+  }
+}
 
-const ChartRenderer: React.FC<ChartRendererProps> = ({
-  chartSpec,
-  theme,
-  height = 400
-}) => {
-  // Parse chart specification if it's a string
-  const chartData = useMemo(() => {
-    if (typeof chartSpec === 'string') {
-      try {
-        // Try to parse JSON block from the string
-        const jsonMatch = chartSpec.match(/```(?:json|chart)?\s*([\s\S]*?)```/);
-        if (jsonMatch) {
-          return JSON.parse(jsonMatch[1]);
-        }
-        // Try to parse as plain JSON
-        return JSON.parse(chartSpec);
-      } catch (error) {
-        console.error('Failed to parse chart specification:', error);
-        return null;
-      }
-    }
-    return chartSpec;
-  }, [chartSpec]);
+function detectKeys(spec: ChartSpec): string[] {
+  if (spec.dataKeys?.length) return spec.dataKeys;
+  const first = spec.data?.[0];
+  if (!first) return ['value'];
+  return Object.keys(first).filter(
+    (k) => typeof first[k] === 'number' && k !== spec.xAxis,
+  );
+}
 
-  // Get colors from spec or use defaults
-  const colors = chartData?.colors || DEFAULT_COLORS;
+const ChartRenderer: React.FC<ChartRendererProps> = ({ chartSpec, height = 360 }) => {
+  const spec = useMemo(() => parseSpec(chartSpec), [chartSpec]);
+  const tokens = useThemeTokens();
 
-  // Get data keys (for multi-series charts)
-  const dataKeys = useMemo(() => {
-    if (chartData?.dataKeys) return chartData.dataKeys;
-    if (chartData?.data?.length > 0) {
-      // Auto-detect numeric keys from first data item
-      const firstItem = chartData.data[0];
-      return Object.keys(firstItem).filter(key => {
-        const val = firstItem[key];
-        return typeof val === 'number' && key !== 'value';
-      });
-    }
-    return ['value'];
-  }, [chartData]);
-
-  // Theme-based styling
-  /* eslint-disable no-restricted-syntax -- Theme-conditional colors match Tailwind palette */
-  const textColor = theme === 'dark' ? '#e5e7eb' : '#374151';
-  const gridColor = theme === 'dark' ? '#374151' : '#e5e7eb';
-  const bgColor = theme === 'dark' ? '#1f2937' : '#ffffff';
-  /* eslint-enable no-restricted-syntax */
-
-  if (!chartData || !chartData.data) {
+  if (!spec || !Array.isArray(spec.data) || spec.data.length === 0) {
     return (
-      <div className="p-4 rounded-lg bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800">
-        <p className="text-sm text-red-600 dark:text-red-400">
-          Invalid chart data format
-        </p>
+      <div
+        style={{
+          padding: 16,
+          borderRadius: 8,
+          border: `1px solid ${tokens.warn}`,
+          background: tokens.bg1,
+          color: tokens.warn,
+          fontSize: 12,
+        }}
+      >
+        Invalid chart data
       </div>
     );
   }
 
-  const renderChart = () => {
-    const chartType = chartData.type?.toLowerCase() || 'bar';
+  const type = (spec.type ?? 'bar').toLowerCase();
+  const xKey = spec.xAxis ?? 'name';
+  const keys = detectKeys(spec);
+  const categories = spec.data.map((row) => String(row[xKey] ?? row.name ?? ''));
 
-    switch (chartType) {
-      case 'pie':
-      case 'doughnut':
-        return (
-          <ResponsiveContainer width="100%" height={height}>
-            <PieChart>
-              <Pie
-                data={chartData.data}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={chartType === 'doughnut' ? 120 : 140}
-                innerRadius={chartType === 'doughnut' ? 60 : 0}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
-                labelLine={true}
-              >
-                {chartData.data.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{ backgroundColor: bgColor, borderColor: gridColor }}
-                labelStyle={{ color: textColor }}
-              />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        );
-
-      case 'line':
-        return (
-          <ResponsiveContainer width="100%" height={height}>
-            <LineChart data={chartData.data}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-              <XAxis
-                dataKey={chartData.xAxis || 'name'}
-                stroke={textColor}
-                tick={{ fill: textColor }}
-              />
-              <YAxis
-                stroke={textColor}
-                tick={{ fill: textColor }}
-                label={chartData.yAxis ? { value: chartData.yAxis, angle: -90, position: 'insideLeft', fill: textColor } : undefined}
-              />
-              <Tooltip
-                contentStyle={{ backgroundColor: bgColor, borderColor: gridColor }}
-                labelStyle={{ color: textColor }}
-              />
-              <Legend />
-              {dataKeys.map((key, index) => (
-                <Line
-                  key={key}
-                  type="monotone"
-                  dataKey={key}
-                  stroke={colors[index % colors.length]}
-                  strokeWidth={2}
-                  dot={{ fill: colors[index % colors.length] }}
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        );
-
-      case 'area':
-        return (
-          <ResponsiveContainer width="100%" height={height}>
-            <AreaChart data={chartData.data}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-              <XAxis
-                dataKey={chartData.xAxis || 'name'}
-                stroke={textColor}
-                tick={{ fill: textColor }}
-              />
-              <YAxis
-                stroke={textColor}
-                tick={{ fill: textColor }}
-              />
-              <Tooltip
-                contentStyle={{ backgroundColor: bgColor, borderColor: gridColor }}
-                labelStyle={{ color: textColor }}
-              />
-              <Legend />
-              {dataKeys.map((key, index) => (
-                <Area
-                  key={key}
-                  type="monotone"
-                  dataKey={key}
-                  stroke={colors[index % colors.length]}
-                  fill={colors[index % colors.length]}
-                  fillOpacity={0.3}
-                />
-              ))}
-            </AreaChart>
-          </ResponsiveContainer>
-        );
-
-      case 'scatter':
-      case 'bubble':
-        return (
-          <ResponsiveContainer width="100%" height={height}>
-            <ScatterChart>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-              <XAxis
-                dataKey={chartData.xAxis || 'x'}
-                type="number"
-                stroke={textColor}
-                tick={{ fill: textColor }}
-              />
-              <YAxis
-                dataKey={chartData.yAxis || 'y'}
-                type="number"
-                stroke={textColor}
-                tick={{ fill: textColor }}
-              />
-              <Tooltip
-                contentStyle={{ backgroundColor: bgColor, borderColor: gridColor }}
-                labelStyle={{ color: textColor }}
-              />
-              <Legend />
-              <Scatter
-                name={chartData.title || 'Data'}
-                data={chartData.data}
-                fill={colors[0]}
-              />
-            </ScatterChart>
-          </ResponsiveContainer>
-        );
-
-      case 'radar':
-        return (
-          <ResponsiveContainer width="100%" height={height}>
-            <RadarChart data={chartData.data}>
-              <PolarGrid stroke={gridColor} />
-              <PolarAngleAxis dataKey="name" stroke={textColor} />
-              <PolarRadiusAxis stroke={textColor} />
-              <Tooltip
-                contentStyle={{ backgroundColor: bgColor, borderColor: gridColor }}
-                labelStyle={{ color: textColor }}
-              />
-              <Legend />
-              {dataKeys.map((key, index) => (
-                <Radar
-                  key={key}
-                  name={key}
-                  dataKey={key}
-                  stroke={colors[index % colors.length]}
-                  fill={colors[index % colors.length]}
-                  fillOpacity={0.3}
-                />
-              ))}
-            </RadarChart>
-          </ResponsiveContainer>
-        );
-
-      case 'bar':
-      default:
-        return (
-          <ResponsiveContainer width="100%" height={height}>
-            <BarChart data={chartData.data}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-              <XAxis
-                dataKey={chartData.xAxis || 'name'}
-                stroke={textColor}
-                tick={{ fill: textColor }}
-              />
-              <YAxis
-                stroke={textColor}
-                tick={{ fill: textColor }}
-                label={chartData.yAxis ? { value: chartData.yAxis, angle: -90, position: 'insideLeft', fill: textColor } : undefined}
-              />
-              <Tooltip
-                contentStyle={{ backgroundColor: bgColor, borderColor: gridColor }}
-                labelStyle={{ color: textColor }}
-              />
-              <Legend />
-              {dataKeys.map((key, index) => (
-                <Bar
-                  key={key}
-                  dataKey={key}
-                  fill={colors[index % colors.length]}
-                  radius={[4, 4, 0, 0]}
-                />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        );
-    }
+  const chrome: React.CSSProperties = {
+    padding: 16,
+    borderRadius: 8,
+    border: `1px solid ${tokens.line}`,
+    background: tokens.bg1,
+  };
+  const titleStyle: React.CSSProperties = {
+    fontSize: 14,
+    fontWeight: 600,
+    marginBottom: 12,
+    textAlign: 'center',
+    color: tokens.fg1,
   };
 
-  return (
-    <div
-      className="p-4 rounded-lg border"
-      style={{
-        backgroundColor: bgColor,
-        borderColor: gridColor
-      }}
-    >
-      {chartData?.title && (
-        <h3
-          className="text-lg font-semibold mb-4 text-center"
-          style={{ color: textColor }}
-        >
-          {chartData.title}
-        </h3>
-      )}
+  let body: React.ReactNode;
+  if (type === 'pie' || type === 'doughnut') {
+    const data: DonutData = {
+      slices: spec.data.map((row) => ({
+        name: String(row[xKey] ?? row.name ?? ''),
+        value: Number(row.value ?? row[keys[0]] ?? 0),
+      })),
+    };
+    body = <AwDonut data={data} height={height} />;
+  } else if (type === 'line') {
+    const data: LineData = {
+      series: keys.map((k) => ({
+        name: k,
+        data: spec.data.map((row) => ({ t: String(row[xKey] ?? row.name ?? ''), v: Number(row[k]) })),
+      })),
+      unit: spec.yAxis,
+    };
+    body = <AwLine data={data} height={height} />;
+  } else if (type === 'area') {
+    const data: AreaData = {
+      series: keys.map((k) => ({
+        name: k,
+        data: spec.data.map((row) => ({ t: String(row[xKey] ?? row.name ?? ''), v: Number(row[k]) })),
+      })),
+      mode: keys.length > 1 ? 'stacked' : 'overlay',
+      xLabels: categories,
+    };
+    body = <AwArea data={data} height={height} />;
+  } else if (type === 'scatter' || type === 'bubble') {
+    const xField = spec.xAxis ?? 'x';
+    const yField = spec.yAxis ?? 'y';
+    const data: ScatterData = {
+      points: spec.data.map((row, i) => ({
+        x: Number(row[xField] ?? row.x ?? i),
+        y: Number(row[yField] ?? row.y ?? row.value ?? 0),
+        label: String(row.name ?? ''),
+        size: type === 'bubble' ? Number(row.size ?? row.z ?? 1) : undefined,
+      })),
+    };
+    body = <AwScatter data={data} height={height} />;
+  } else {
+    const data: BarData = {
+      categories,
+      series: keys.map((k) => ({ name: k, values: spec.data.map((row) => Number(row[k])) })),
+      mode: keys.length > 1 ? 'stacked' : 'grouped',
+    };
+    body = <AwBar data={data} height={height} />;
+  }
 
-      <div style={{ width: '100%', height }}>
-        {renderChart()}
-      </div>
+  return (
+    <div style={chrome}>
+      {spec.title && <div style={titleStyle}>{spec.title}</div>}
+      <div style={{ width: '100%', height }}>{body}</div>
     </div>
   );
 };

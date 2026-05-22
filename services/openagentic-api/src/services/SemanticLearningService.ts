@@ -26,7 +26,9 @@ import { getPrismaVectorClient, type PrismaVectorClient } from './database/Prism
 // Constants
 const DEFAULT_SIMILARITY_THRESHOLD = 0.85; // Higher than cache (0.90) for verified results
 const DEFAULT_TOP_K = 5;
-const EMBEDDING_DIMENSION = 1536;
+// H10: removed dead embedding-dimension constant. Dimensions, when needed,
+// must come from embeddingService.getInfo().dimensions per
+// docs/rules/no-hardcoded-models.md.
 
 /**
  * Verified tool result for learning

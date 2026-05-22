@@ -10,8 +10,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useDocsStore } from '@/stores/useDocsStore';
 import { DocsSidebar } from './components/DocsSidebar';
 import DocsChatPanel from './components/DocsChatPanel';
-import { DocsBookIcon, DocsCloseIcon, DocsChatIcon } from './components/DocsIcons';
+import { DocsCloseIcon } from './components/DocsIcons';
 import { DocsPageRenderer, hasPageComponent } from './components/DocsPageRenderer';
+import { OpenAgenticWordmark } from '@/shared/components/OpenAgenticWordmark';
 
 // Lazy-load the old manifest renderer as fallback for reference pages
 const DocsContentLegacy = React.lazy(() =>
@@ -38,7 +39,6 @@ export const DocsViewer: React.FC<DocsViewerProps> = ({
     currentDomain,
     currentSectionId,
     loadIndex,
-    toggleChat,
     navigateTo,
   } = useDocsStore();
 
@@ -133,7 +133,8 @@ export const DocsViewer: React.FC<DocsViewerProps> = ({
       className="fixed inset-0 z-[1100] flex flex-col"
       style={{ backgroundColor: 'var(--color-background)' }}
     >
-      {/* Minimal header */}
+      {/* Minimal header — wordmark + version pill + Ask AI / close. The atlas
+          hero lives INSIDE the landing block (DocsContent.tsx) per design. */}
       <div
         className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b"
         style={{
@@ -141,32 +142,23 @@ export const DocsViewer: React.FC<DocsViewerProps> = ({
           backgroundColor: 'var(--color-surface)',
         }}
       >
-        <div className="flex items-center gap-3">
-          <DocsBookIcon size={20} />
+        <div className="flex items-center gap-3 min-w-0">
+          <OpenAgenticWordmark size={16} animate />
           <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
             Documentation
           </span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap truncate" style={{
             backgroundColor: 'var(--color-surfaceSecondary)',
             color: 'var(--color-textMuted)',
           }}>
-            v0.6.3
+            v{import.meta.env.VITE_APP_VERSION || import.meta.env.VITE_VERSION || '0.0.0'}
+            {import.meta.env.VITE_CODENAME ? ` · ${import.meta.env.VITE_CODENAME}` : ''}
           </span>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={toggleChat}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all"
-            style={{
-              backgroundColor: isChatOpen ? 'var(--color-primary)' : 'transparent',
-              color: isChatOpen ? 'white' : 'var(--color-textSecondary)',
-              border: isChatOpen ? 'none' : '1px solid var(--color-border)',
-            }}
-          >
-            <DocsChatIcon size={14} />
-            Ask AI
-          </button>
+          {/* "Ask AI" button removed — the documentation agent sidebar is
+              already open in this surface, so the button was redundant. */}
           <button
             onClick={onClose}
             className="p-1.5 rounded-md transition-colors hover:bg-[var(--color-surfaceHover)]"

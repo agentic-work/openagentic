@@ -24,10 +24,16 @@ const SENSITIVE_FIELDS = new Set([
 ]);
 
 /**
- * Check if a value is already encrypted (has local: prefix from VaultService)
+ * Check if a value is already encrypted. VaultService emits `local:` for the
+ * v1 format and `local2:` for the v2 AES-256-GCM format. Both must be
+ * treated as encrypted so decryptAuthConfig runs the right path.
+ *
+ * Prior bug: this only matched `local:`. DB values in `local2:` format
+ * were treated as plaintext → decrypt never ran → the ciphertext blob got
+ * sent upstream as a client secret → AADSTS7000215 invalid_client.
  */
 function isEncrypted(value: unknown): boolean {
-  return typeof value === 'string' && value.startsWith('local:');
+  return typeof value === 'string' && (value.startsWith('local:') || value.startsWith('local2:'));
 }
 
 /**
@@ -57,7 +63,12 @@ export function encryptAuthConfig(authConfig: any): any {
 
 /**
  * Decrypt sensitive fields in an auth_config object.
- * Values without the local: prefix are returned as-is (plaintext or not yet migrated).
+ * Values without the local:/local2: prefix are returned as-is (plaintext or not yet migrated).
+ * Fields that fail to decrypt (LOCAL_ENCRYPTION_KEY rotation, orphaned ciphertext from a
+ * wiped Vault, etc.) are DELETED from the result so callers fall through to env-var
+ * fallbacks instead of forwarding ciphertext as a credential (which upstream APIs
+ * reject with confusing errors — e.g. Entra AADSTS7000215 "invalid_client" when the
+ * caller is AzureAIFoundryProvider sending the bare local2: blob as clientSecret).
  */
 export function decryptAuthConfig(authConfig: any): any {
   if (!authConfig || typeof authConfig !== 'object') {
@@ -71,9 +82,11 @@ export function decryptAuthConfig(authConfig: any): any {
       try {
         decrypted[field] = vaultService.decryptLocal(value);
       } catch (err) {
-        logger.error({ field, error: err }, '[CredentialEncryption] Failed to decrypt field - key may have changed');
-        // Return the encrypted value rather than crashing; caller will get an unusable credential
-        // which is safer than silently failing
+        logger.error(
+          { field, error: err },
+          '[CredentialEncryption] Failed to decrypt field - key may have changed; dropping so env-var fallback applies',
+        );
+        delete decrypted[field];
       }
     }
   }

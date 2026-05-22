@@ -22,6 +22,7 @@ import { AdminFilterBar } from '../Shared/AdminFilterBar';
 import { InfoTooltip } from '../Shared/AdminTooltip';
 import { CHART_COLORS } from '../Shared/chartColors';
 import { apiRequest } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 
 // ── Interfaces ────────────────────────────────────────────────────────
 
@@ -197,32 +198,43 @@ export const MonitoringView: React.FC<MonitoringViewProps> = ({ theme }) => {
 
   if (loading && !mcpMetrics && !llmMetrics) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-8 h-8 animate-spin" style={{ color: 'var(--color-text)' }} />
+      <div className="space-y-6">
+        <PageHeader
+          crumbs={['Admin', 'Monitoring', 'Errors']}
+          title="Monitoring & Logs"
+          explainer="MCP tool execution and LLM usage metrics across all providers, plus debug-tool actions for cache invalidation and connectivity probes."
+          sticky
+        />
+        <div className="flex items-center justify-center h-64">
+          <RefreshCw className="w-8 h-8 animate-spin" style={{ color: 'var(--color-text)' }} />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header + Filter Bar */}
-      <div>
-        <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-          Monitoring & Logs
-        </h2>
-        <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-          MCP tool execution and LLM usage metrics
-        </p>
-        <AdminFilterBar
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          timeRange={timeRange}
-          onTimeRangeChange={setTimeRange}
-          timeRangeOptions={TIME_RANGES}
-          onRefresh={fetchMetrics}
-          refreshing={loading}
-        />
-      </div>
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Monitoring', 'Errors']}
+        title="Monitoring & Logs"
+        explainer="MCP tool execution and LLM usage metrics across all providers, plus debug-tool actions for cache invalidation and connectivity probes."
+        actions={[
+          { label: 'Refresh', onClick: fetchMetrics, primary: true, disabled: loading },
+        ]}
+        sticky
+      />
+
+      {/* Filter Bar */}
+      <AdminFilterBar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        timeRange={timeRange}
+        onTimeRangeChange={setTimeRange}
+        timeRangeOptions={TIME_RANGES}
+        onRefresh={fetchMetrics}
+        refreshing={loading}
+      />
 
       {/* MCP Metrics */}
       {mcpMetrics && (

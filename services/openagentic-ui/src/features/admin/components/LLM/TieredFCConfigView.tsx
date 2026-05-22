@@ -12,7 +12,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Settings,
-  RefreshCw,
   Trash2,
   Save,
   Zap,
@@ -29,6 +28,7 @@ import {
 } from '@/shared/icons';
 import { apiRequest } from '@/utils/api';
 import { useConfirm } from '@/shared/hooks/useConfirm';
+import { PageHeader } from '../../primitives-v2';
 import SlideInPanel, {
   SlideInPanelSection,
   SlideInPanelFooter,
@@ -36,7 +36,10 @@ import SlideInPanel, {
 } from '@/shared/components/SlideInPanel';
 
 interface TierConfig {
-  sliderRange: string;
+  // Post-slider-rip (0.6.6 task #144 + 0.6.7 umbrella #210): `triggers`
+  // is a human-readable label describing WHEN this tier fires
+  // (message complexity + tool count). No per-user override.
+  triggers: string;
   model: string;
   description: string;
   recommended: string[];
@@ -56,6 +59,13 @@ interface TieredFCConfig {
   toolStrippingEnabled: boolean;
   decisionCacheEnabled: boolean;
   decisionCacheTtlSeconds: number;
+}
+
+interface AvailableModel {
+  id: string;
+  name: string;
+  provider: string;
+  providerDisplay: string;
 }
 
 interface TieredFCData {
@@ -80,9 +90,54 @@ interface TestResult {
   cached: boolean;
 }
 
+interface ModelSelectProps {
+  id: string;
+  label: string;
+  hint: string;
+  value: string | null;
+  onChange: (next: string | null) => void;
+  availableModels: AvailableModel[];
+}
+
+function renderModelSelect({ id, label, hint, value, onChange, availableModels }: ModelSelectProps) {
+  const grouped = new Map<string, AvailableModel[]>();
+  for (const m of availableModels) {
+    const key = m.providerDisplay;
+    const bucket = grouped.get(key);
+    if (bucket) bucket.push(m);
+    else grouped.set(key, [m]);
+  }
+  const knownIds = new Set(availableModels.map(m => m.id));
+  const showOrphan = value && !knownIds.has(value);
+
+  return (
+    <SlideInPanelField label={label} htmlFor={id} hint={hint}>
+      <select
+        id={id}
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value || null)}
+        className="w-full px-3 py-2 border border-border rounded-lg bg-surface-primary text-text-primary"
+      >
+        <option value="">(Use system default)</option>
+        {showOrphan && (
+          <option value={value!}>{value} — not in current registry</option>
+        )}
+        {Array.from(grouped.entries()).map(([providerDisplay, models]) => (
+          <optgroup key={providerDisplay} label={providerDisplay}>
+            {models.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+    </SlideInPanelField>
+  );
+}
+
 const TieredFCConfigView: React.FC = () => {
   const confirm = useConfirm();
   const [data, setData] = useState<TieredFCData | null>(null);
+  const [availableModels, setAvailableModels] = useState<AvailableModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -93,10 +148,10 @@ const TieredFCConfigView: React.FC = () => {
   const [editForm, setEditForm] = useState<Partial<TieredFCConfig>>({});
 
   // Test state
+  // 2026-04-19 — testSliderPosition removed (task #144, slider rip).
   const [showTestPanel, setShowTestPanel] = useState(false);
   const [testMessage, setTestMessage] = useState('');
   const [testToolCount, setTestToolCount] = useState(10);
-  const [testSliderPosition, setTestSliderPosition] = useState(50);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [testLoading, setTestLoading] = useState(false);
 
@@ -111,8 +166,11 @@ const TieredFCConfigView: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiRequest('/admin/tiered-fc');
-      const result = await response.json();
+      const [cfgResp, provResp] = await Promise.all([
+        apiRequest('/admin/tiered-fc'),
+        apiRequest('/admin/llm-providers'),
+      ]);
+      const result = await cfgResp.json();
       setData(result);
       setEditForm({
         cheapModel: result.config.cheapModel,
@@ -122,6 +180,44 @@ const TieredFCConfigView: React.FC = () => {
         decisionCacheEnabled: result.config.decisionCacheEnabled,
         decisionCacheTtlSeconds: result.config.decisionCacheTtlSeconds,
       });
+
+      // Build the registry list from /admin/llm-providers. Backend already
+      // merges provider_config.models[] with model_config.{chatModel,defaultModel,...}
+      // and broadcasts invalidation via Redis pub/sub, so this response is
+      // always current — we just re-pull when admin changes providers.
+      if (provResp.ok) {
+        const provData = await provResp.json();
+        const seen = new Map<string, AvailableModel>();
+        const providers = Array.isArray(provData?.providers) ? provData.providers : [];
+        for (const p of providers) {
+          if (p.enabled === false) continue;
+          const chat = p.capabilities?.chat;
+          if (chat === false) continue;
+          const providerName = p.name || p.type || 'unknown';
+          const providerDisplay = p.displayName || providerName;
+          const modelsArr = Array.isArray(p.models) ? p.models : [];
+          for (const m of modelsArr) {
+            if (m?.capabilities?.chat === false) continue;
+            const id = m?.id || m?.name;
+            if (!id) continue;
+            const lower = String(id).toLowerCase();
+            if (lower.includes('embed') || lower.startsWith('imagen') || lower.includes('image-generation')) continue;
+            if (!seen.has(id)) {
+              seen.set(id, {
+                id,
+                name: m.name || id,
+                provider: providerName,
+                providerDisplay,
+              });
+            }
+          }
+        }
+        const sorted = Array.from(seen.values()).sort((a, b) => {
+          if (a.providerDisplay !== b.providerDisplay) return a.providerDisplay.localeCompare(b.providerDisplay);
+          return a.name.localeCompare(b.name);
+        });
+        setAvailableModels(sorted);
+      }
     } catch (err) {
       console.error('Failed to fetch tiered FC config:', err);
       setError(err instanceof Error ? err.message : 'Failed to load configuration');
@@ -132,6 +228,14 @@ const TieredFCConfigView: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+    const onRegistryChanged = () => { void fetchData(); };
+    const onFocus = () => { void fetchData(); };
+    window.addEventListener('llm-registry-changed', onRegistryChanged);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.removeEventListener('llm-registry-changed', onRegistryChanged);
+      window.removeEventListener('focus', onFocus);
+    };
   }, [fetchData]);
 
   const handleSaveConfig = async () => {
@@ -190,7 +294,6 @@ const TieredFCConfigView: React.FC = () => {
         body: JSON.stringify({
           message: testMessage,
           toolCount: testToolCount,
-          sliderPosition: testSliderPosition,
         }),
       });
       const result = await response.json();
@@ -246,34 +349,33 @@ const TieredFCConfigView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold mb-2 text-text-primary">
-            Tiered Function Calling
-          </h2>
-          <p className="text-text-secondary">
-            Configure model selection and optimization for function calling requests
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={fetchData}
-            disabled={actionLoading}
-            className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-text-secondary hover:bg-surface-secondary transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`h-4 w-4 ${actionLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-          <button
-            onClick={() => setShowEditPanel(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
-          >
-            <Settings className="h-4 w-4" />
-            Configure
-          </button>
-        </div>
-      </div>
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'LLM', 'Tiered Function Calling']}
+        title="Tiered Function Calling"
+        explainer="Configure cheap/balanced/premium tier models, tool-stripping thresholds, and decision cache."
+        actions={[
+          { label: 'Refresh', onClick: () => { void fetchData(); }, disabled: actionLoading },
+          { label: 'Configure', primary: true, onClick: () => setShowEditPanel(true) },
+        ]}
+      />
+
+      {/* Caption (replaced SoTBanner + ExplainerCard pair — see exposition audit 2026-05-05) */}
+      <p className="text-sm" style={{ color: 'var(--ap-text-secondary)', margin: '0 0 16px' }}>
+        Tier composition is the single largest cost lever — putting a premium model in
+        <b> economy</b> makes every &quot;what time?&quot; query pay premium prices.
+        <span
+          title="Tier composition reads from the model registry — assigning a non-routable model to a tier silently drops it from the candidate pool. The Smart Router only considers models within the request's tier when picking a winner."
+          style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: '16px', height: '16px', marginLeft: '6px',
+            fontSize: '10px', fontWeight: 700,
+            color: 'var(--ap-text-secondary)',
+            border: '1px solid var(--ap-border)', borderRadius: '50%',
+            cursor: 'help', verticalAlign: 'middle',
+          }}
+        >?</span>
+      </p>
 
       {/* Messages */}
       {error && (
@@ -311,7 +413,7 @@ const TieredFCConfigView: React.FC = () => {
                   <p className="text-lg font-semibold truncate" style={{ color: 'var(--ap-success)' }}>
                     {data.config.cheapModel || 'Default'}
                   </p>
-                  <p className="text-xs text-text-secondary">{data.tiers.cheap.sliderRange}</p>
+                  <p className="text-xs text-text-secondary">{data.tiers.cheap.triggers}</p>
                 </div>
                 <Zap className="h-8 w-8 opacity-50" style={{ color: 'var(--ap-success)' }} />
               </div>
@@ -324,7 +426,7 @@ const TieredFCConfigView: React.FC = () => {
                   <p className="text-lg font-semibold truncate" style={{ color: 'var(--ap-warning)' }}>
                     {data.config.balancedModel || 'Default'}
                   </p>
-                  <p className="text-xs text-text-secondary">{data.tiers.balanced.sliderRange}</p>
+                  <p className="text-xs text-text-secondary">{data.tiers.balanced.triggers}</p>
                 </div>
                 <Layers className="h-8 w-8 opacity-50" style={{ color: 'var(--ap-warning)' }} />
               </div>
@@ -337,7 +439,7 @@ const TieredFCConfigView: React.FC = () => {
                   <p className="text-lg font-semibold truncate" style={{ color: 'var(--ap-info)' }}>
                     {data.config.premiumModel || 'Default'}
                   </p>
-                  <p className="text-xs text-text-secondary">{data.tiers.premium.sliderRange}</p>
+                  <p className="text-xs text-text-secondary">{data.tiers.premium.triggers}</p>
                 </div>
                 <Activity className="h-8 w-8 opacity-50" style={{ color: 'var(--ap-info)' }} />
               </div>
@@ -386,9 +488,8 @@ const TieredFCConfigView: React.FC = () => {
                         <h4 className="font-semibold capitalize" style={getTierColorStyle(tierName)}>
                           {tierName} Tier
                         </h4>
-                        <span className="text-xs text-text-secondary">{tier.sliderRange}</span>
+                        <span className="text-xs text-text-secondary">{tier.triggers}</span>
                       </div>
-                      <p className="text-sm text-text-secondary mb-3">{tier.description}</p>
                       <div className="space-y-2">
                         <div>
                           <span className="text-xs text-text-secondary block">Current Model:</span>
@@ -429,7 +530,10 @@ const TieredFCConfigView: React.FC = () => {
               <div className="p-6 pt-0 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg border border-border">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-text-primary">Tool Stripping</h4>
+                    <h4
+                      className="font-medium text-text-primary"
+                      title={data.features.toolStripping.description}
+                    >Tool Stripping</h4>
                     <span className={`ap-badge ${
                       data.features.toolStripping.enabled
                         ? 'ap-badge-success'
@@ -438,14 +542,14 @@ const TieredFCConfigView: React.FC = () => {
                       {data.features.toolStripping.enabled ? 'Enabled' : 'Disabled'}
                     </span>
                   </div>
-                  <p className="text-sm text-text-secondary">
-                    {data.features.toolStripping.description}
-                  </p>
                 </div>
 
                 <div className="p-4 rounded-lg border border-border">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-text-primary">Decision Caching</h4>
+                    <h4
+                      className="font-medium text-text-primary"
+                      title={data.features.decisionCaching.description}
+                    >Decision Caching</h4>
                     <span className={`ap-badge ${
                       data.features.decisionCaching.enabled
                         ? 'ap-badge-success'
@@ -454,9 +558,6 @@ const TieredFCConfigView: React.FC = () => {
                       {data.features.decisionCaching.enabled ? 'Enabled' : 'Disabled'}
                     </span>
                   </div>
-                  <p className="text-sm text-text-secondary mb-2">
-                    {data.features.decisionCaching.description}
-                  </p>
                   {data.features.decisionCaching.enabled && (
                     <div className="flex items-center gap-2 text-xs text-text-secondary">
                       <Clock className="h-3 w-3" />
@@ -480,7 +581,10 @@ const TieredFCConfigView: React.FC = () => {
                   <thead>
                     <tr className="border-b border-border">
                       <th className="text-left py-2 px-3 text-text-secondary font-medium">Model Family</th>
-                      <th className="text-center py-2 px-3 text-text-secondary font-medium">FC Accuracy</th>
+                      <th
+                        className="text-center py-2 px-3 text-text-secondary font-medium"
+                        title="FC accuracy scores are derived from SmartModelRouter capability inference. Models below the minimum threshold (90%) are restricted to simple single-call tools."
+                      >FC Accuracy</th>
                       <th className="text-center py-2 px-3 text-text-secondary font-medium">Tier</th>
                       <th className="text-center py-2 px-3 text-text-secondary font-medium">Complexity</th>
                       <th className="text-right py-2 px-3 text-text-secondary font-medium">Est. Cost/Call</th>
@@ -522,9 +626,6 @@ const TieredFCConfigView: React.FC = () => {
                   </tbody>
                 </table>
               </div>
-              <p className="text-xs text-text-secondary mt-3">
-                FC accuracy scores are derived from SmartModelRouter capability inference. Models below the minimum threshold (90%) are restricted to simple single-call tools.
-              </p>
             </div>
           </div>
 
@@ -600,31 +701,18 @@ const TieredFCConfigView: React.FC = () => {
                           className="w-full px-3 py-2 border border-border rounded-lg bg-surface-primary text-text-primary placeholder-text-secondary resize-none"
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm text-text-secondary mb-1">Tool Count</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={testToolCount}
-                            onChange={(e) => setTestToolCount(parseInt(e.target.value) || 0)}
-                            className="w-full px-3 py-2 border border-border rounded-lg bg-surface-primary text-text-primary"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm text-text-secondary mb-1">
-                            Slider Position ({testSliderPosition}%)
-                          </label>
-                          <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={testSliderPosition}
-                            onChange={(e) => setTestSliderPosition(parseInt(e.target.value))}
-                            className="w-full"
-                          />
-                        </div>
+                      <div>
+                        <label className="block text-sm text-text-secondary mb-1">Tool Count</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={testToolCount}
+                          onChange={(e) => setTestToolCount(parseInt(e.target.value) || 0)}
+                          className="w-full px-3 py-2 border border-border rounded-lg bg-surface-primary text-text-primary"
+                        />
                       </div>
+                      {/* 2026-04-19 — Slider Position input removed (task #144);
+                          tier is derived from message complexity + tool count. */}
                       <button
                         onClick={handleTestDecision}
                         disabled={testLoading || !testMessage.trim()}
@@ -704,50 +792,30 @@ const TieredFCConfigView: React.FC = () => {
         }
       >
         <SlideInPanelSection title="Model Configuration" description="Configure models for each tier">
-          <SlideInPanelField
-            label="Cheap Tier Model"
-            htmlFor="cheapModel"
-            hint="Fast, low-cost model for simple requests (0-40% slider)"
-          >
-            <input
-              id="cheapModel"
-              type="text"
-              value={editForm.cheapModel || ''}
-              onChange={(e) => setEditForm({ ...editForm, cheapModel: e.target.value || null })}
-              placeholder="Leave empty for default"
-              className="w-full px-3 py-2 border border-border rounded-lg bg-surface-primary text-text-primary placeholder-text-secondary"
-            />
-          </SlideInPanelField>
-
-          <SlideInPanelField
-            label="Balanced Tier Model"
-            htmlFor="balancedModel"
-            hint="Good accuracy, moderate cost (41-60% slider)"
-          >
-            <input
-              id="balancedModel"
-              type="text"
-              value={editForm.balancedModel || ''}
-              onChange={(e) => setEditForm({ ...editForm, balancedModel: e.target.value || null })}
-              placeholder="Leave empty for default"
-              className="w-full px-3 py-2 border border-border rounded-lg bg-surface-primary text-text-primary placeholder-text-secondary"
-            />
-          </SlideInPanelField>
-
-          <SlideInPanelField
-            label="Premium Tier Model"
-            htmlFor="premiumModel"
-            hint="Best accuracy, higher cost (61-100% slider)"
-          >
-            <input
-              id="premiumModel"
-              type="text"
-              value={editForm.premiumModel || ''}
-              onChange={(e) => setEditForm({ ...editForm, premiumModel: e.target.value || null })}
-              placeholder="Leave empty for default"
-              className="w-full px-3 py-2 border border-border rounded-lg bg-surface-primary text-text-primary placeholder-text-secondary"
-            />
-          </SlideInPanelField>
+          {renderModelSelect({
+            id: 'cheapModel',
+            label: 'Cheap Tier Model',
+            hint: 'Fast, low-cost model for simple requests (<= 3 tools, short messages)',
+            value: editForm.cheapModel ?? null,
+            onChange: (v) => setEditForm({ ...editForm, cheapModel: v }),
+            availableModels,
+          })}
+          {renderModelSelect({
+            id: 'balancedModel',
+            label: 'Balanced Tier Model',
+            hint: 'Good accuracy, moderate cost (default tier)',
+            value: editForm.balancedModel ?? null,
+            onChange: (v) => setEditForm({ ...editForm, balancedModel: v }),
+            availableModels,
+          })}
+          {renderModelSelect({
+            id: 'premiumModel',
+            label: 'Premium Tier Model',
+            hint: 'Best accuracy, higher cost (> 8 tools, long messages, multi-step, multi-cloud)',
+            value: editForm.premiumModel ?? null,
+            onChange: (v) => setEditForm({ ...editForm, premiumModel: v }),
+            availableModels,
+          })}
         </SlideInPanelSection>
 
         <SlideInPanelSection title="Optimization Settings" description="Fine-tune performance and cost optimization">
@@ -760,10 +828,10 @@ const TieredFCConfigView: React.FC = () => {
                 className="w-4 h-4"
               />
               <div>
-                <span className="block text-text-primary font-medium">Enable Tool Stripping</span>
-                <span className="block text-sm text-text-secondary">
-                  Remove tools from requests that don't need function calling. Saves ~2000+ tokens per request.
-                </span>
+                <span
+                  className="block text-text-primary font-medium"
+                  title="Removes tools from requests that don't need function calling — saves ~2000+ tokens per request."
+                >Enable Tool Stripping</span>
               </div>
             </label>
 
@@ -776,9 +844,6 @@ const TieredFCConfigView: React.FC = () => {
               />
               <div>
                 <span className="block text-text-primary font-medium">Enable Decision Caching</span>
-                <span className="block text-sm text-text-secondary">
-                  Cache function calling decisions to avoid repeated analysis.
-                </span>
               </div>
             </label>
 

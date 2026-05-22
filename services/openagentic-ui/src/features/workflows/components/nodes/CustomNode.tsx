@@ -10,6 +10,7 @@ import {
   Trash2, Copy, Settings, CheckCircle, XCircle, Clock, AlertCircle, Play,
 } from '@/shared/icons';
 import { nodeTypeConfigs } from '../../utils/nodeConfigs';
+import { summarizeNodeRun } from '../../utils/nodeSummary';
 import { getNodeIcon } from './nodeIcons';
 
 // Category color map
@@ -535,6 +536,32 @@ const NodeHoverTooltip: React.FC<{ data: Record<string, any>; nodeType: string; 
             <span style={{ fontWeight: 700, textTransform: 'capitalize', color: '#e6edf3' }}>{status}</span>
           </div>
 
+          {/* Human-readable summary — per user 2026-05-14, completed-node
+           * hover MUST surface a node-type-aware sentence instead of
+           * dumping raw JSON. Renders for completed AND failed states; the
+           * summarizer is side-effect free + degrades to 'Completed' when
+           * the output shape is unrecognized. */}
+          {status === 'completed' && (() => {
+            const summary = summarizeNodeRun(nodeType, output);
+            if (!summary || summary === 'Completed') return null;
+            return (
+              <div style={{
+                margin: '0 0 6px',
+                padding: '6px 10px',
+                background: 'linear-gradient(135deg, rgba(46,160,67,0.10), rgba(46,160,67,0.04))',
+                border: '1px solid rgba(46,160,67,0.28)',
+                borderRadius: 6,
+                color: '#e6edf3',
+                fontWeight: 600,
+                fontSize: 12,
+                lineHeight: 1.35,
+                letterSpacing: 0.1,
+              }}>
+                {summary}
+              </div>
+            );
+          })()}
+
           {/* Metrics row: model · duration · tokens */}
           {(() => {
             const model = output?.model || output?.modelId;
@@ -609,12 +636,18 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
   const reactFlow = useReactFlow();
-  const nodeType = type || 'trigger';
+  // React Flow registers unmapped node types as 'default'. Fall back to
+  // data.type / data.nodeType (carried through by the workflow loader) so
+  // hover summaries + summarizer dispatch still see the logical type.
+  const nodeType = (type && type !== 'default')
+    ? type
+    : ((data?.type as string | undefined) || (data?.nodeType as string | undefined) || type || 'trigger');
 
   const rawExecutionState = data.executionState as string | undefined;
   const executionOutput = data.executionOutput;
   const executionTimeMs = data.executionTimeMs as number | undefined;
   const executionError = data.executionError as string | undefined;
+  const streamingText = data.streamingText as string | undefined;
   // Override completed→failed when output indicates a logical failure
   const outputIndicatesFailure = rawExecutionState === 'completed' && executionOutput && (
     executionOutput?.status === 'FAIL' ||
@@ -752,12 +785,16 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
     );
   }
 
+  const assertionFailed = data.assertionFailed as boolean | undefined;
+  const assertionErrorMessage = data.assertionErrorMessage as string | undefined;
+
   const validationState = data.validationState as string | undefined;
   const statusClass = validationState === 'checking' ? 'wf-status-validating'
     : validationState === 'invalid' ? 'wf-status-validation-failed'
     : validationState === 'valid' ? 'wf-status-validation-ok'
     : executionState === 'running' ? 'wf-status-running'
     : executionState === 'completed' ? 'wf-status-success'
+    : executionState === 'assertion_failed' ? 'wf-status-assertion-failed'
     : executionState === 'failed' ? 'wf-status-failed'
     : executionState === 'paused' ? 'wf-status-paused'
     : '';
@@ -784,6 +821,22 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
           ...(data.disabled ? { borderStyle: 'dashed' } : {}),
         }}
       >
+        {/* Category stripe — thin colored band on the left edge of every
+         * node so users can read the category at a glance even when the
+         * node is collapsed. Tracks catColor so legacy (data.color) and
+         * new (CATEGORY_COLORS lookup) nodes both light up correctly. */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute', left: 0, top: 0, bottom: 0,
+            width: 4,
+            background: catColor,
+            borderRadius: 'var(--wf-node-radius, 8px) 0 0 var(--wf-node-radius, 8px)',
+            opacity: data.disabled ? 0.4 : 0.85,
+            pointerEvents: 'none',
+          }}
+        />
+
         {/* Disabled badge */}
         {data.disabled && (
           <div style={{
@@ -799,15 +852,18 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
         )}
         {/* Validation warning badge (top-right, before execution) */}
         {hasValidationErrors && (
-          <div style={{
-            position: 'absolute', top: -8, right: -8, zIndex: 10,
-            width: 22, height: 22, borderRadius: '50%',
-            backgroundColor: '#f59e0b', color: '#000',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 11, fontWeight: 800,
-            boxShadow: '0 2px 6px rgba(245,158,11,0.4)',
-            border: '2px solid var(--color-bg-primary, #0d1117)',
-          }}>
+          <div
+            data-testid="validation-warning-badge"
+            style={{
+              position: 'absolute', top: -8, right: -8, zIndex: 10,
+              width: 22, height: 22, borderRadius: '50%',
+              backgroundColor: '#f59e0b', color: '#000',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 800,
+              boxShadow: '0 2px 6px rgba(245,158,11,0.4)',
+              border: '2px solid var(--color-bg-primary, #0d1117)',
+            }}
+          >
             {validationErrors!.length}
           </div>
         )}
@@ -920,9 +976,11 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
             {executionState === 'running' && <div className="wf-exec-spinner" />}
             {executionState === 'completed' && <CheckCircle style={{ width: 12, height: 12, color: '#22c55e' }} />}
             {executionState === 'failed' && <XCircle style={{ width: 12, height: 12, color: '#f44336' }} />}
+            {executionState === 'assertion_failed' && <AlertCircle style={{ width: 12, height: 12, color: '#f97316' }} />}
             <span style={{
               color: executionState === 'running' ? '#ff9800'
                 : executionState === 'completed' ? '#22c55e'
+                : executionState === 'assertion_failed' ? '#f97316'
                 : '#f44336',
               flex: 1,
             }}>
@@ -934,6 +992,94 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
                 {executionTimeMs}ms
               </span>
             )}
+          </div>
+        )}
+        {/* Assertion failure detail — shows the errorMessage from output assertion */}
+        {executionState === 'assertion_failed' && assertionErrorMessage && (
+          <div style={{
+            margin: '0 10px 6px',
+            padding: '5px 8px',
+            background: 'rgba(249,115,22,0.08)',
+            border: '1px solid rgba(249,115,22,0.25)',
+            borderRadius: 6,
+            fontSize: 10,
+            color: '#f97316',
+            lineHeight: 1.4,
+          }}>
+            <span style={{ fontWeight: 700 }}>Assertion failed: </span>{assertionErrorMessage}
+          </div>
+        )}
+
+        {/* Task #131 (Phase F₂) — parallel tool fan-out inside an LLM flow
+            node. When the inner LLM emits N tool_executing events in one
+            turn, WorkflowsContainer stashes them on data.parallelTools[];
+            render a compact flex-wrap grid of pills that update in-place
+            as each tool resolves (shimmer while running → check / X on
+            completion). Stays visible in the "completed" state so the
+            final fan-out remains inspectable. */}
+        {Array.isArray(data.parallelTools) && data.parallelTools.length > 0 && (
+          <div
+            data-testid="flow-node-parallel-tools"
+            data-tool-count={data.parallelTools.length}
+            style={{
+              margin: '0 10px 6px',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 4,
+              fontSize: 10,
+            }}
+          >
+            {data.parallelTools.map((t: any) => {
+              const running = t.status === 'running';
+              const errored = t.status === 'error';
+              const bg = running
+                ? 'rgba(124,77,255,0.08)'
+                : errored
+                  ? 'rgba(244,67,54,0.10)'
+                  : 'rgba(34,197,94,0.10)';
+              const border = running
+                ? 'rgba(124,77,255,0.35)'
+                : errored
+                  ? 'rgba(244,67,54,0.35)'
+                  : 'rgba(34,197,94,0.35)';
+              const fg = running ? '#c4b5fd' : errored ? '#f87171' : '#4ade80';
+              return (
+                <span
+                  key={t.toolCallId}
+                  data-tool-status={t.status}
+                  data-tool-name={t.name}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '2px 8px',
+                    borderRadius: 10,
+                    fontFamily: "'SF Mono', Monaco, monospace",
+                    fontSize: 10,
+                    background: bg,
+                    border: `1px solid ${border}`,
+                    color: fg,
+                  }}
+                >
+                  {running ? (
+                    <span
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        background: fg,
+                        animation: 'wf-agent-pulse 1.4s ease-in-out infinite',
+                      }}
+                    />
+                  ) : errored ? (
+                    <XCircle style={{ width: 9, height: 9 }} />
+                  ) : (
+                    <CheckCircle style={{ width: 9, height: 9 }} />
+                  )}
+                  {t.name}
+                </span>
+              );
+            })}
           </div>
         )}
 
@@ -967,6 +1113,39 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
                 calling {data.currentToolCall}
               </div>
             )}
+          </div>
+        )}
+
+        {/* S2: Live streaming text — shown only while node is running and has streaming tokens */}
+        {executionState === 'running' && streamingText && (
+          <div
+            data-testid="node-streaming-text"
+            style={{
+              padding: '0 12px 8px',
+              fontSize: 10,
+              fontFamily: "'SF Mono', Monaco, monospace",
+              color: '#c9d1d9',
+              lineHeight: 1.4,
+              wordBreak: 'break-word',
+              maxHeight: 60,
+              overflow: 'hidden',
+              display: '-webkit-box',
+              WebkitLineClamp: 4,
+              WebkitBoxOrient: 'vertical' as any,
+            }}
+          >
+            {streamingText.length > 200 ? streamingText.slice(-200) : streamingText}
+            <span
+              style={{
+                display: 'inline-block',
+                color: '#58a6ff',
+                animation: 'wf-cursor-blink 1s step-start infinite',
+                marginLeft: 1,
+                fontWeight: 400,
+              }}
+            >
+              ▎
+            </span>
           </div>
         )}
 
@@ -1101,58 +1280,24 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
           </div>
         )}
 
-        {/* Error badge - shown when node has execution error */}
-        {data.executionError && (
-          <div
-            className="wf-error-badge"
-            title={data.executionError}
-            style={{
-              position: 'absolute',
-              top: -6,
-              right: -6,
-              width: 20,
-              height: 20,
-              borderRadius: '50%',
-              backgroundColor: '#f85149',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 10,
-              cursor: 'help',
-              boxShadow: '0 2px 4px rgba(248,81,73,0.4)',
-            }}
-          >
-            <XCircle style={{ width: 12, height: 12, color: '#fff' }} />
-          </div>
-        )}
-
-        {/* Validation warning badge */}
-        {data.validationErrors && (data.validationErrors as any[]).length > 0 && !data.executionError && (
-          <div
-            className="wf-validation-badge"
-            title={(data.validationErrors as any[]).map((e: any) => e.message).join('\n')}
-            style={{
-              position: 'absolute',
-              top: -6,
-              right: -6,
-              minWidth: 20,
-              height: 20,
-              borderRadius: 10,
-              backgroundColor: '#f59e0b',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 10,
-              cursor: 'help',
-              padding: '0 4px',
-              boxShadow: '0 2px 4px rgba(245,158,11,0.4)',
-            }}
-          >
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>
-              {(data.validationErrors as any[]).length}
-            </span>
-          </div>
-        )}
+        {/* 2026-05-14: duplicate badge blocks removed.
+         *
+         *   Before: this component rendered TWO error badges (`wf-exec-badge`
+         *   above + standalone `wf-error-badge` here) AND TWO validation
+         *   badges (`validation-warning-badge` above + standalone
+         *   `wf-validation-badge` here) for the same conditional. Every
+         *   node with stale `validationErrors[]` or a failed run showed
+         *   two stacked circles in the top-right corner.
+         *
+         *   The wf-exec-badge block already handles running/completed/failed.
+         *   The validation-warning-badge block (gated on !executionState)
+         *   handles pre-run validation. A successfully completed node should
+         *   NOT keep yelling about stale config — if it ran, the warning
+         *   wasn't blocking; surface those at edit time only.
+         *
+         *   See reports/flows-two-errors-fix/2026-05-14/evidence.md
+         *   Regression test: __tests__/NodeBadgeDedup.test.tsx
+         */}
 
         {/* Input Handle */}
         <Handle

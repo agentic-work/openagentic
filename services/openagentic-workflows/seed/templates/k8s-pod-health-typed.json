@@ -1,0 +1,160 @@
+{
+  "slug": "k8s-pod-health-typed",
+  "name": "K8s Pod Health (Typed Chain)",
+  "description": "Typed-chain variant of K8s Pod Health Summary. Same audit (live openagentic_kubernetes MCP listing pods, flag unhealthy, LLM narrative, HTML report) but uses the typed processing primitives (filter_data + select_data) instead of JS-expression transforms — opens authoring to non-engineers.",
+  "category": "aiops",
+  "template": true,
+  "meta": {
+    "purpose": "Audit pod health in a Kubernetes namespace using the typed-chain pattern. Demonstrates filter_data + select_data replacing JS-expression transforms so non-engineer authors can build the same flow by clicking fields instead of writing JavaScript.",
+    "how_it_works": [
+      "1. Lists every pod in the chosen namespace via openagentic_kubernetes.k8s_list_pods (live cluster).",
+      "2. extract_key pulls the pods array out of the upstream MCP-tool output via dot-path 'pods' — typed extraction, no JS.",
+      "3. filter_data keeps only pods where status != 'Running' — typed predicate, no JS.",
+      "4. select_data picks { name, namespace, status, restarts, ready } from each unhealthy pod — typed projection, no JS.",
+      "5. A single transform computes the namespace label + total + unhealthy_count + assembles the LLM prompt input (this step still uses transform because llm_completion needs an aggregate input, which is the one case where a JS expression is genuinely the right primitive).",
+      "6. The platform LLM writes a 3-bullet operator narrative naming the worst offenders.",
+      "7. clean_narrative (transform) strips any chain-of-thought preamble.",
+      "8. webhook_response renders the final HTML report with the operator summary plus the typed unhealthy-pods table."
+    ],
+    "expected_output": "HTML report containing a 3-bullet operator summary at the top and a typed unhealthy-pods table underneath. Status code 200, Content-Type text/html. Functionally equivalent to k8s-pod-health-summary; visible difference is the intermediate primitives, not the rendered report.",
+    "useful_when": "Same scenarios as k8s-pod-health-summary (daily morning health check, oncall triage). Use this variant when a non-engineer needs to author or modify the predicate/projection without writing JavaScript in transform.",
+    "tools_used": ["openagentic_kubernetes.k8s_list_pods", "extract_key", "filter_data", "select_data", "transform", "llm_completion", "webhook_response"],
+    "version": "1.0",
+    "tags": ["aiops", "observability", "kubernetes", "k8s", "pods", "typed-chain", "no-code"],
+    "note": "Typed-chain variant of k8s-pod-health-summary. Shows filter_data + select_data replacing JS-expression transforms for non-engineer authoring. The single remaining transform aggregates fan-out state for the LLM prompt — the one case where a JS expression is genuinely the right primitive."
+  },
+  "defaultInputs": {
+    "namespace": "agentic-dev"
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "data": {
+          "triggerType": "manual",
+          "label": "Pod Health Audit",
+          "input_schema": {
+            "namespace": "string"
+          }
+        }
+      },
+      {
+        "id": "kubectl_pods",
+        "type": "mcp_tool",
+        "data": {
+          "label": "List Pods",
+          "toolServer": "openagentic_kubernetes",
+          "toolName": "k8s_list_pods",
+          "arguments": {
+            "namespace": "{{input.namespace || \"agentic-dev\"}}"
+          }
+        }
+      },
+      {
+        "id": "extract_pods",
+        "type": "extract_key",
+        "data": {
+          "label": "Extract: pods",
+          "path": "pods",
+          "default": "[]"
+        }
+      },
+      {
+        "id": "filter_unhealthy",
+        "type": "filter_data",
+        "data": {
+          "label": "Filter: status != Running",
+          "items": "{{input.value}}",
+          "field": "status",
+          "operator": "neq",
+          "value": "Running"
+        }
+      },
+      {
+        "id": "project_fields",
+        "type": "select_data",
+        "data": {
+          "label": "Select: name + namespace + status + restarts + ready",
+          "input": "{{input.filtered}}",
+          "fields": ["name", "namespace", "status", "restarts", "ready"],
+          "mode": "pick"
+        }
+      },
+      {
+        "id": "aggregate",
+        "type": "transform",
+        "data": {
+          "label": "Aggregate for LLM prompt",
+          "operations": [
+            {
+              "op": "set",
+              "target": "namespace_label",
+              "value": "{{ (() => { const rows = Array.isArray(input.input) ? input.input : (Array.isArray(input) ? input : []); for (const r of rows) { if (r && typeof r.namespace === 'string') return r.namespace; } return 'agentic-dev'; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "unhealthy_projected",
+              "value": "{{ (() => { if (Array.isArray(input.input)) return input.input; if (Array.isArray(input)) return input; return []; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "unhealthy_count",
+              "value": "{{ (() => { const rows = Array.isArray(input.input) ? input.input : (Array.isArray(input) ? input : []); return rows.length; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "rows_html",
+              "value": "{{ (() => { const rows = Array.isArray(input.input) ? input.input : (Array.isArray(input) ? input : []); if (rows.length === 0) return '<tr><td colspan=5><em>All pods Running — nothing to report.</em></td></tr>'; return rows.map(p => `<tr><td>${p.name||''}</td><td>${p.namespace||''}</td><td>${p.status||''}</td><td>${p.ready||''}</td><td>${p.restarts??''}</td></tr>`).join(''); })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "summary",
+        "type": "llm_completion",
+        "data": {
+          "label": "Summarize Findings",
+          "prompt": "Operator-facing 3-bullet summary of unhealthy Kubernetes pods in namespace {{input.namespace_label}}.\n\nUnhealthy pods (JSON array, may be empty):\n{{input.unhealthy_projected}}\n\nTotal unhealthy: {{input.unhealthy_count}}.\n\nOutput rules (MUST follow):\n1. Start the response with a single `-` character — no preamble, no \"Here is\", no \"The user wants\", no thinking out loud.\n2. Exactly 3 short bullets, each on its own line, each beginning with `-`.\n3. Reference pod names verbatim when applicable.\n4. If the unhealthy array is empty, state that all pods are healthy and recommend a routine future check.",
+          "model": "auto",
+          "temperature": 0.2,
+          "maxTokens": 400
+        }
+      },
+      {
+        "id": "clean_narrative",
+        "type": "transform",
+        "data": {
+          "label": "Strip CoT Preamble",
+          "operations": [
+            {
+              "op": "set",
+              "target": "clean_content",
+              "value": "{{ (() => { const raw = String(input.content || ''); const lines = raw.split(/\\r?\\n/); let firstBulletIdx = -1; for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (t.startsWith('-') || t.startsWith('•') || t.startsWith('*')) { firstBulletIdx = i; break; } } if (firstBulletIdx === -1) { return raw.trim(); } return lines.slice(firstBulletIdx).join('\\n').trim(); })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "report",
+        "type": "webhook_response",
+        "data": {
+          "label": "HTML Report",
+          "statusCode": 200,
+          "headers": { "Content-Type": "text/html" },
+          "bodyTemplate": "<div class=\"pod-health-report\"><h2>K8s Pod Health Report — namespace {{steps.aggregate.namespace_label}} (typed chain)</h2><h3>Operator Summary</h3><pre class=\"summary\">{{steps.clean_narrative.clean_content}}</pre><h3>Unhealthy Pods ({{steps.aggregate.unhealthy_count}})</h3><table class=\"unhealthy-pods\"><thead><tr><th>Name</th><th>Namespace</th><th>Status</th><th>Ready</th><th>Restarts</th></tr></thead><tbody>{{steps.aggregate.rows_html}}</tbody></table></div>"
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "trigger", "target": "kubectl_pods" },
+      { "id": "e2", "source": "kubectl_pods", "target": "extract_pods" },
+      { "id": "e3", "source": "extract_pods", "target": "filter_unhealthy" },
+      { "id": "e4", "source": "filter_unhealthy", "target": "project_fields" },
+      { "id": "e5", "source": "project_fields", "target": "aggregate" },
+      { "id": "e6", "source": "aggregate", "target": "summary" },
+      { "id": "e7", "source": "summary", "target": "clean_narrative" },
+      { "id": "e8", "source": "clean_narrative", "target": "report" }
+    ]
+  }
+}

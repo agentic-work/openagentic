@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../../../app/providers/AuthContext';
 import { useConfirm } from '@/shared/hooks/useConfirm';
+import { PageHeader } from '../../primitives-v2';
 
 // ============================================================================
 // CUSTOM SVG ICONS (replacing lucide-react)
@@ -430,6 +431,14 @@ interface MCPStageConfig {
   enableWebToolsInjection: boolean;
   maxToolsPerRequest: number;
   enableTieredFC: boolean;
+  /**
+   * V2 tool.stage knob — apply pgvector score-gap on the broad-routing
+   * path (no specific intent server). Default false: gives the model a
+   * wider menu for generic asks like "show me cloud resources". Set
+   * true to tighten back up if the model is wasting rounds on
+   * irrelevant tools.
+   */
+  applyScoreGapOnBroadPath?: boolean;
 }
 
 interface MessagePreparationStageConfig {
@@ -527,7 +536,7 @@ const STAGES: Array<{
   { id: 'mcp', label: 'MCP Tools', shortLabel: 'MCP', icon: Icons.Wrench, color: 'ap-text-warning bg-warning-500/10', description: 'Tool discovery and limits' },
   { id: 'messagePreparation', label: 'Msg Prep', shortLabel: 'Prep', icon: Icons.Layers, color: 'text-primary-500 bg-primary-500/10', description: 'Deduplication and validation' },
   { id: 'completion', label: 'Completion', shortLabel: 'LLM', icon: Icons.Zap, color: 'ap-text-warning bg-warning-500/10', description: 'Model and streaming settings' },
-  { id: 'multiModel', label: 'Multi-Model', shortLabel: 'Multi', icon: Icons.Layers, color: 'text-violet-500 bg-violet-500/10', description: 'Multi-model orchestration' },
+  { id: 'multiModel', label: 'Multi-Model', shortLabel: 'Multi', icon: Icons.Layers, color: 'text-[color:var(--ap-accent)] bg-[color:var(--ap-accent-soft)]', description: 'Multi-model orchestration' },
   { id: 'toolExecution', label: 'Tool Exec', shortLabel: 'Tools', icon: Icons.Settings, color: 'text-teal-500 bg-teal-500/10', description: 'Tool rounds and caching' },
   { id: 'response', label: 'Response', shortLabel: 'Resp', icon: Icons.FileOutput, color: 'text-emerald-500 bg-emerald-500/10', description: 'Response processing' },
 ];
@@ -1571,6 +1580,12 @@ export const PipelineSettingsView: React.FC = () => {
             {renderToggle('mcp', 'enableWebToolsInjection', mcp.enableWebToolsInjection, 'Enable Web Tools Injection')}
             {renderNumberInput('mcp', 'maxToolsPerRequest', mcp.maxToolsPerRequest, 'Max Tools Per Request', 1, 128)}
             {renderToggle('mcp', 'enableTieredFC', mcp.enableTieredFC, 'Enable Tiered Function Calling')}
+            {renderToggle(
+              'mcp',
+              'applyScoreGapOnBroadPath',
+              mcp.applyScoreGapOnBroadPath ?? false,
+              'Apply Score-Gap on Broad Path (tighter top-K)',
+            )}
           </div>
         );
 
@@ -1684,9 +1699,16 @@ export const PipelineSettingsView: React.FC = () => {
   // Loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Icons.Loader2 size={32} className="text-primary-500" />
-        <span className="ml-3 text-text-secondary">Loading pipeline configuration...</span>
+      <div className="space-y-4">
+        <PageHeader
+          crumbs={['Admin', 'Content', 'Pipeline Settings']}
+          title="Pipeline Settings"
+          explainer="Configure chat pipeline stages in order of execution (left → right)."
+        />
+        <div className="flex items-center justify-center h-64">
+          <Icons.Loader2 size={32} className="text-primary-500" />
+          <span className="ml-3 text-text-secondary">Loading pipeline configuration...</span>
+        </div>
       </div>
     );
   }
@@ -1695,50 +1717,20 @@ export const PipelineSettingsView: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-text-primary">Pipeline Settings</h2>
-          <p className="text-sm text-text-secondary">
-            Configure chat pipeline stages in order of execution (left → right)
-          </p>
-          {config && (
-            <p className="text-xs text-text-secondary mt-1">
-              v{config.version} | Updated: {new Date(config.updatedAt).toLocaleString()} by {config.updatedBy}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={fetchConfig}
-            disabled={loading}
-            className="px-3 py-2 rounded-lg bg-surface-secondary text-text-primary hover:bg-surface-hover transition-colors flex items-center gap-2"
-          >
-            <Icons.RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            Refresh
-          </button>
-          <button
-            onClick={resetToDefaults}
-            disabled={saving}
-            className="px-3 py-2 rounded-lg bg-warning-500/10 ap-text-warning hover:bg-warning-500/20 transition-colors flex items-center gap-2"
-          >
-            <Icons.RotateCcw size={16} />
-            Reset
-          </button>
-          <button
-            onClick={saveConfig}
-            disabled={saving || !hasChanges}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
-              hasChanges
-                ? 'bg-primary-500 text-white hover:bg-primary-600'
-                : 'bg-surface-secondary text-text-secondary cursor-not-allowed'
-            }`}
-          >
-            {saving ? <Icons.Loader2 size={16} /> : <Icons.Save size={16} />}
-            {saving ? 'Saving...' : 'Save'}
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        crumbs={['Admin', 'Content', 'Pipeline Settings']}
+        title="Pipeline Settings"
+        explainer={
+          config
+            ? `Configure chat pipeline stages in order of execution (left → right). v${config.version} · Updated ${new Date(config.updatedAt).toLocaleString()} by ${config.updatedBy}`
+            : 'Configure chat pipeline stages in order of execution (left → right).'
+        }
+        actions={[
+          { label: 'Refresh', onClick: () => { void fetchConfig(); }, disabled: loading },
+          { label: 'Reset', onClick: () => { void resetToDefaults(); }, disabled: saving },
+          { label: saving ? 'Saving…' : 'Save', primary: true, onClick: () => { void saveConfig(); }, disabled: saving || !hasChanges },
+        ]}
+      />
 
       {/* Status Messages */}
       {error && (

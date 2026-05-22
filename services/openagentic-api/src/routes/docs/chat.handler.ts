@@ -8,10 +8,9 @@
  */
 
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { MODELS } from '../../config/models.js';
 import { prisma } from '../../utils/prisma.js';
 import { loggers } from '../../utils/logger.js';
-import { ProviderManager } from '../../services/llm-providers/ProviderManager.js';
+import { ProviderManager, getProviderManager } from '../../services/llm-providers/ProviderManager.js';
 import type { CompletionRequest } from '../../services/llm-providers/ILLMProvider.js';
 import { getDocsRAGService, type DocsSearchResult } from '../../services/DocsRAGService.js';
 
@@ -345,7 +344,7 @@ export async function docsChatHandler(
   // ------------------------------------------------------------------
   // 4. Acquire ProviderManager
   // ------------------------------------------------------------------
-  const providerManager: ProviderManager | null = (global as any).providerManager ?? null;
+  const providerManager: ProviderManager | null = getProviderManager();
   if (!providerManager) {
     reply.code(503).send({ error: { code: 'SERVICE_UNAVAILABLE', message: 'LLM provider not ready' } });
     return;

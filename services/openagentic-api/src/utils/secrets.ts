@@ -5,7 +5,7 @@
  * Falls back to environment variables if Vault is not available.
  */
 
-import { VaultInitService } from '../services/VaultInitService.js';
+import { VaultInitService, getVaultService } from '../services/VaultInitService.js';
 import { loggers } from './logger.js';
 
 const logger = loggers.utils;
@@ -13,8 +13,8 @@ const logger = loggers.utils;
 /**
  * Get the Vault service instance
  */
-function getVaultService(): VaultInitService | null {
-  const vault = (global as any).vaultService;
+function getVaultServiceInstance(): VaultInitService | null {
+  const vault = getVaultServiceInstance();
   if (vault && vault.isInitialized()) {
     return vault;
   }
@@ -25,7 +25,7 @@ function getVaultService(): VaultInitService | null {
  * Get database connection string
  */
 export async function getDatabaseUrl(): Promise<string> {
-  const vault = getVaultService();
+  const vault = getVaultServiceInstance();
   
   if (vault) {
     try {
@@ -49,7 +49,7 @@ export async function getDatabaseCredentials(): Promise<{
   username: string;
   password: string;
 }> {
-  const vault = getVaultService();
+  const vault = getVaultServiceInstance();
   
   if (vault) {
     try {
@@ -77,7 +77,7 @@ export async function getAzureCredentials(): Promise<{
   clientSecret: string;
   subscriptionId: string;
 }> {
-  const vault = getVaultService();
+  const vault = getVaultServiceInstance();
   
   if (vault) {
     try {
@@ -99,7 +99,7 @@ export async function getAzureCredentials(): Promise<{
  * Get API secret key
  */
 export async function getAPISecretKey(): Promise<string> {
-  const vault = getVaultService();
+  const vault = getVaultServiceInstance();
   
   if (vault) {
     try {
@@ -118,7 +118,7 @@ export async function getAPISecretKey(): Promise<string> {
  * SECURITY: No hardcoded fallback. JWT_SECRET or SIGNING_SECRET must be configured.
  */
 export async function getJWTSecret(): Promise<string> {
-  const vault = getVaultService();
+  const vault = getVaultServiceInstance();
 
   if (vault) {
     try {
@@ -142,7 +142,7 @@ export async function getJWTSecret(): Promise<string> {
  * SECURITY: No hardcoded fallback. SIGNING_SECRET or JWT_SECRET must be configured.
  */
 export async function getSigningSecret(): Promise<string> {
-  const vault = getVaultService();
+  const vault = getVaultServiceInstance();
 
   if (vault) {
     try {
@@ -170,7 +170,7 @@ export async function getRedisConfig(): Promise<{
   password?: string;
   url: string;
 }> {
-  const vault = getVaultService();
+  const vault = getVaultServiceInstance();
   
   if (vault) {
     try {
@@ -204,7 +204,7 @@ export async function getMilvusConfig(): Promise<{
   username?: string;
   password?: string;
 }> {
-  const vault = getVaultService();
+  const vault = getVaultServiceInstance();
   
   if (vault) {
     try {

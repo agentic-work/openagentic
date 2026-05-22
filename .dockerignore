@@ -29,6 +29,26 @@ node_modules
 !openagentic-cli/node_modules/**
 !openagentic-cli/package.json
 
+# Exception: openagentic-openagentic-sdk vendored at repo root for UI's
+# `file:../../../openagentic-openagentic-sdk` dep. Without this re-include,
+# `**/dist` above would strip its dist/ output and pnpm install would
+# silently land a package without compiled entrypoints (vite then fails
+# on `@agentic-work/openagentic-sdk/constants`).
+!openagentic-openagentic-sdk
+!openagentic-openagentic-sdk/**
+
+# Exception: openagentic-sdk vendored at repo root by build.sh
+# (`./scripts/build.sh` rsync ~line 507). The canonical path renamed
+# from `./sdk` → `./openagentic-sdk` pre-2026-05-14 (build.sh comment
+# 497-500) but the dockerignore re-include kept the legacy `!sdk` only.
+# Without this re-include, `**/dist` strips the vendored dist/ and the
+# workflows / api Dockerfile COPY of `openagentic-sdk/dist` fails with
+# "not found" — which forces `SKIP_NPM=false` and a slow in-script
+# `npm install` rebuild every build. Adding `!openagentic-sdk/**` makes
+# `SKIP_NPM=true` viable, cutting builds from ~8 min to ~30s.
+!openagentic-sdk
+!openagentic-sdk/**
+
 # Development files - NEVER include .env in Docker builds
 # Prisma reads .env during 'prisma generate' and bakes values as defaults
 .env
@@ -74,3 +94,10 @@ node_modules
 *.md
 *.pdf
 docs/
+
+# Exception: release notes are scraped by the UI's unified docs generator
+# (scripts/docs/extractors/markdownDoc.ts → release-notes domain). Without
+# these, the build's release-notes:requireMinCount(2) invariant fails.
+!docs
+!docs/releases
+!docs/releases/*.md

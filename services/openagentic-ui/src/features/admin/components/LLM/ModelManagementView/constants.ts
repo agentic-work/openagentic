@@ -114,7 +114,7 @@ export const MODEL_ROLES = ['chat', 'embedding', 'vision', 'image-generation', '
 export const TIER_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   economy:  { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30' },
   balanced: { bg: 'bg-blue-500/10',    text: 'text-blue-400',    border: 'border-blue-500/30' },
-  premium:  { bg: 'bg-purple-500/10',  text: 'text-purple-400',  border: 'border-purple-500/30' },
+  premium:  { bg: 'bg-[color:var(--ap-accent-soft)]', text: 'text-[color:var(--ap-accent)]', border: 'border-[color:var(--ap-accent-line)]' },
 };
 
 export const COST_TIER_COLORS: Record<string, { bg: string; text: string; border: string }> = {
@@ -122,18 +122,18 @@ export const COST_TIER_COLORS: Record<string, { bg: string; text: string; border
   low:     { bg: 'bg-sky-500/10',     text: 'text-sky-400',     border: 'border-sky-500/30' },
   mid:     { bg: 'bg-blue-500/10',    text: 'text-blue-400',    border: 'border-blue-500/30' },
   high:    { bg: 'bg-amber-500/10',   text: 'text-amber-400',   border: 'border-amber-500/30' },
-  premium: { bg: 'bg-purple-500/10',  text: 'text-purple-400',  border: 'border-purple-500/30' },
+  premium: { bg: 'bg-[color:var(--ap-accent-soft)]', text: 'text-[color:var(--ap-accent)]', border: 'border-[color:var(--ap-accent-line)]' },
 };
 
 // Compact icon-only badges with tooltips (no text labels to save space)
 export const CAPABILITY_BADGES = [
-  { key: 'chat', label: 'Chat', icon: Brain, color: 'var(--cap-chat, #3b82f6)' },
-  { key: 'embeddings', label: 'Embeddings', icon: Layers, color: 'var(--cap-embeddings, #8b5cf6)' },
-  { key: 'tools', label: 'Tool Use', icon: Zap, color: 'var(--cap-tools, #f59e0b)' },
-  { key: 'vision', label: 'Vision', icon: Eye, color: 'var(--cap-vision, #10b981)' },
-  { key: 'thinking', label: 'Thinking/Reasoning', icon: Sparkles, color: 'var(--cap-thinking, #ec4899)' },
-  { key: 'imageGeneration', label: 'Image Generation', icon: Globe, color: 'var(--cap-image-gen, #06b6d4)' },
-  { key: 'streaming', label: 'Streaming', icon: Play, color: 'var(--cap-streaming, #6366f1)' },
+  { key: 'chat', label: 'Chat', icon: Brain, color: 'var(--cap-chat)' },
+  { key: 'embeddings', label: 'Embeddings', icon: Layers, color: 'var(--cap-embeddings)' },
+  { key: 'tools', label: 'Tool Use', icon: Zap, color: 'var(--cap-tools)' },
+  { key: 'vision', label: 'Vision', icon: Eye, color: 'var(--cap-vision)' },
+  { key: 'thinking', label: 'Thinking/Reasoning', icon: Sparkles, color: 'var(--cap-thinking)' },
+  { key: 'imageGeneration', label: 'Image Generation', icon: Globe, color: 'var(--cap-image-gen)' },
+  { key: 'streaming', label: 'Streaming', icon: Play, color: 'var(--cap-streaming)' },
 ] as const;
 
 // ── Utilities ────────────────────────────────────────────────────────────────

@@ -6,7 +6,7 @@
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { SynthService, type SynthConfig } from '../services/SynthService.js';
-import { ProviderManager } from '../services/llm-providers/ProviderManager.js';
+import { ProviderManager, getProviderManager as getProviderManagerSingleton } from '../services/llm-providers/ProviderManager.js';
 
 interface AdminSynthContext {
   synthService: SynthService;
@@ -36,9 +36,9 @@ export function broadcastSynthApprovalEvent(event: {
   }
 }
 
-// Get ProviderManager from global scope
+// Get ProviderManager via singleton accessor
 function getProviderManager(): ProviderManager | null {
-  return (global as any).providerManager || null;
+  return getProviderManagerSingleton();
 }
 
 /**
@@ -76,7 +76,6 @@ export async function registerAdminSynthRoutes(
                 baseUrl: { type: 'string', description: 'Base URL for LLM API' },
                 synthesisTemperature: { type: 'number', description: 'LLM temperature (0-1)' },
                 maxSynthesisTokens: { type: 'number', description: 'Max tokens for synthesis' },
-                useSliderModelSelection: { type: 'boolean', description: 'Use slider for model selection' },
                 // Execution Settings
                 timeoutSeconds: { type: 'number', description: 'Max execution timeout' },
                 executorUrl: { type: 'string', description: 'Synth Executor service URL' },
@@ -134,7 +133,6 @@ export async function registerAdminSynthRoutes(
           baseUrl: { type: 'string', description: 'Base URL for custom LLM endpoint' },
           synthesisTemperature: { type: 'number', minimum: 0, maximum: 1 },
           maxSynthesisTokens: { type: 'number', minimum: 256, maximum: 32768 },
-          useSliderModelSelection: { type: 'boolean', description: 'Use slider for dynamic model selection' },
           // Execution Settings
           timeoutSeconds: { type: 'number', minimum: 10, maximum: 600 },
           executorUrl: { type: 'string' },

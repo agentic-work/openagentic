@@ -49,7 +49,18 @@ const ALLOWED_TOPIC_KEYWORDS = [
   'staging', 'development', 'config', 'configuration', 'setting',
 ];
 
-// Topics that indicate off-scope requests
+// Topics that indicate off-scope requests.
+//
+// Keyword matching uses word-boundary regex (\b...\b) to prevent substring
+// false-positives (e.g. 'story' inside 'history', 'art' inside 'kubernetes').
+// Multi-word phrases (e.g. 'meaning of life') are matched with \s+ between
+// tokens and a boundary on each end.
+//
+// [scope-classifier TODO]: Replace this keyword list with an LLM-backed
+// classifier for better precision (fewer false positives) and recall (fewer
+// false negatives). The keyword approach is intentionally cheap — it catches
+// the most obvious off-topic patterns and blocks them before they reach the
+// model. The false-positive risk is documented per keyword where non-trivial.
 const PROHIBITED_TOPIC_KEYWORDS = [
   // Entertainment
   'movie', 'film', 'game', 'gaming', 'sport', 'music', 'song', 'celebrity',
@@ -57,7 +68,10 @@ const PROHIBITED_TOPIC_KEYWORDS = [
   // Personal
   'recipe', 'cook', 'food', 'restaurant', 'travel', 'vacation', 'hotel',
   'relationship', 'dating', 'health', 'diet', 'exercise', 'fitness',
-  // General knowledge
+  // General knowledge — word-boundary matched to prevent substring collisions
+  // (e.g. 'history' appears in 'history of kubernetes' but 'kubernetes' is
+  // a strong tech signal; word-boundary matching on 'story' prevents it from
+  // double-scoring inside 'history').
   'history', 'geography', 'trivia', 'quiz', 'weather', 'news',
   // Non-work finance
   'stock', 'crypto', 'bitcoin', 'investment', 'gambling', 'lottery', 'bet',
@@ -65,7 +79,43 @@ const PROHIBITED_TOPIC_KEYWORDS = [
   'story', 'poem', 'joke', 'riddle', 'essay', 'fiction',
   // Shopping
   'buy', 'shop', 'deal', 'discount', 'amazon', 'ebay',
+  // Philosophy / general knowledge gaps (Sev-1 2026-05-19)
+  // [scope-classifier TODO]: multi-word phrases need phrase-level matching;
+  // the word-boundary regex handles single words; 'meaning of life' is added
+  // as a phrase and matched with \s+ between tokens.
+  'philosophy', 'meaning of life', 'historical', 'politics', 'political',
+  'election', 'religion', 'religious', 'culture', 'cultural',
+  'current events', 'art', 'biography',
+  'fact', 'general knowledge',
+  // NOTE: 'trivia', 'news', 'weather' already in list above.
+  // NOTE: 'music', 'movie', 'film', 'book' already covered above.
+  // NOTE: 'art' — false-positive risk: "kubernetes restart" has no 'art' conflict;
+  //   "container" does not contain standalone \bart\b. Low risk.
 ];
+
+/**
+ * Build a word-boundary regex for a keyword.
+ * Multi-word phrases (containing spaces) get \s+ between tokens.
+ * Single words get \b...\b.
+ * This prevents substring false-positives like 'story' matching inside
+ * 'history', or 'art' matching inside 'kubernetes' (which it doesn't —
+ * 'kubernetes' doesn't contain \bart\b — but the guard is still correct
+ * practice). Allowed-keyword matching keeps includes() for performance
+ * since allowed keywords are generally longer tech terms with low collision
+ * risk.
+ */
+function buildKeywordRegex(keyword: string): RegExp {
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Replace spaces with \s+ to allow phrase matching across whitespace.
+  const pattern = escaped.replace(/ /g, '\\s+');
+  return new RegExp(`\\b${pattern}\\b`, 'i');
+}
+
+// Pre-compile prohibited keyword regexes at module load time.
+// Allowed keywords keep the fast includes() path (no substring collision risk
+// for typical tech terms like 'kubernetes', 'terraform', 'azure', etc.).
+const PROHIBITED_REGEXES: ReadonlyArray<{ keyword: string; regex: RegExp }> =
+  PROHIBITED_TOPIC_KEYWORDS.map((kw) => ({ keyword: kw, regex: buildKeywordRegex(kw) }));
 
 /**
  * Analyze if a user message is within scope for non-admin users
@@ -73,7 +123,10 @@ const PROHIBITED_TOPIC_KEYWORDS = [
 export function analyzeMessageScope(message: string): { isInScope: boolean; confidence: number; reason: string } {
   const lowerMessage = message.toLowerCase();
 
-  // Count matches for allowed and prohibited keywords
+  // Count matches for allowed and prohibited keywords.
+  // Allowed uses includes() (fast, no substring collision risk for tech terms).
+  // Prohibited uses pre-compiled word-boundary regexes to avoid false-positives
+  // like 'story' matching inside 'history'.
   let allowedMatches = 0;
   let prohibitedMatches = 0;
   const foundAllowed: string[] = [];
@@ -86,8 +139,8 @@ export function analyzeMessageScope(message: string): { isInScope: boolean; conf
     }
   }
 
-  for (const keyword of PROHIBITED_TOPIC_KEYWORDS) {
-    if (lowerMessage.includes(keyword)) {
+  for (const { keyword, regex } of PROHIBITED_REGEXES) {
+    if (regex.test(lowerMessage)) {
       prohibitedMatches++;
       foundProhibited.push(keyword);
     }

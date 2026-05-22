@@ -17,7 +17,12 @@
 import { FastifyInstance, FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import { loggers } from '../../utils/logger.js';
 import { prisma } from '../../utils/prisma.js';
-import { executeWorkflow, ExecutionEvent } from '../../services/WorkflowExecutionEngine.js';
+// Phase B (#15): webhook-triggered workflow execution goes through the
+// dedicated workflows-svc pod via this proxy instead of the in-process
+// api engine. Same signature; drop-in swap. ExecutionEvent type comes
+// from the shared package since the engine class is being retired.
+import { executeViaWorkflowsService as executeWorkflow } from '../../services/executeViaWorkflowsService.js';
+import type { ExecutionEvent } from '@openagentic/workflow-engine';
 import { WorkflowCompiler } from '../../services/WorkflowCompiler.js';
 import { webhookSecurityService } from '../../services/WebhookSecurityService.js';
 import { slackIntegrationService } from '../../services/SlackIntegrationService.js';
@@ -34,6 +39,32 @@ interface WebhookParams {
 export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   logger.info('Initializing webhook trigger routes...');
 
+  // ─── Slack scope (encapsulated) ────────────────────────────────────────────
+  // Wrapped in a plain (non-fp) child register so that the custom content-type
+  // parser is scoped ONLY to the Slack routes and does NOT propagate to the root
+  // Fastify instance via the fp()-wrapped parent chain.  Routes outside this
+  // scope (/teams, /alertmanager, /:key) continue to use the default JSON parser.
+  await fastify.register(async function slackScope(scope) {
+
+  // Capture raw body for Slack signature verification (#371).
+  // Scoped to `scope` only — does not leak to non-Slack routes.
+  // Fastify v5 child scopes inherit the parent's content-type-parser
+  // table. The api root scope already overrides `application/json` in
+  // src/config/fastify.config.ts, so we MUST remove the inherited entry
+  // before adding our own — otherwise addContentTypeParser throws
+  // FST_ERR_CTP_ALREADY_PRESENT and the entire v1 router fails to
+  // register at boot. Removing here only affects this scope's table.
+  scope.removeContentTypeParser('application/json');
+  scope.addContentTypeParser('application/json', { parseAs: 'string' }, function(_req: FastifyRequest, body: string | Buffer, done: (err: Error | null, body?: unknown) => void) {
+    const rawStr = typeof body === 'string' ? body : body.toString('utf8');
+    (_req as any).rawSlackBody = rawStr;
+    try {
+      done(null, rawStr ? JSON.parse(rawStr) : {});
+    } catch (err) {
+      done(err as Error, undefined);
+    }
+  });
+
   // ─── Slack Events API ───────────────────────────────────────────────
   // Public endpoint — no auth required. Slack verifies via signing secret.
   // Used for: URL verification challenge, message events, app_mention events.
@@ -42,20 +73,12 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
   //   https://chat-dev.openagentic.io/api/v1/hooks/slack
   // ────────────────────────────────────────────────────────────────────
 
-  // Capture raw body for Slack signature verification
-  fastify.addHook('preHandler', async (request: FastifyRequest) => {
-    if (request.url === '/api/v1/hooks/slack' || request.url === '/slack') {
-      // Raw body is needed for HMAC — store it before Fastify parses
-      // Fastify already parsed it, so we re-serialize consistently
-      (request as any).rawSlackBody = JSON.stringify(request.body);
-    }
-  });
-
-  fastify.post('/slack', async (request: FastifyRequest, reply: FastifyReply) => {
+  scope.post('/slack', async (request: FastifyRequest, reply: FastifyReply) => {
     const body = request.body as any;
 
     // 1. URL verification challenge — Slack sends this when you first set the Request URL.
     //    Must respond with { challenge } immediately, no signature check needed.
+    //    Slack sends this BEFORE any signing secret is configured.
     if (body?.type === 'url_verification' && body?.challenge) {
       logger.info('[Slack] URL verification challenge received');
       return reply.send({ challenge: body.challenge });
@@ -71,23 +94,34 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
       return reply.code(200).send({ ok: true }); // Slack retries on non-200
     }
 
-    // 3. Verify request signature (HMAC-SHA256)
-    // NOTE: Fastify re-serializes the body so HMAC may not match Slack's raw bytes.
-    // For now, log but don't block — the integration config check is sufficient security.
+    // 3. Enforce HMAC-SHA256 signature verification (S0-12).
+    //    Fail closed: any missing or invalid condition → 403.
     const config = integration.config as any;
     const signingSecret = config?.signingSecret;
-    if (signingSecret) {
-      const timestamp = request.headers['x-slack-request-timestamp'] as string;
-      const signature = request.headers['x-slack-signature'] as string;
-      const rawBody = (request as any).rawSlackBody || JSON.stringify(request.body);
 
-      if (!timestamp || !signature) {
-        logger.warn('[Slack] Missing timestamp or signature headers');
-        // Allow through — Slack event subscriptions are already URL-verified
-      } else if (!slackIntegrationService.verifySignature(signingSecret, timestamp, rawBody, signature)) {
-        // Log but don't block — Fastify body re-serialization causes HMAC mismatch
-        logger.warn({ timestamp, hasSignature: !!signature }, '[Slack] Signature mismatch (Fastify body parsing artifact — allowing through)');
-      }
+    if (!signingSecret) {
+      logger.warn('[Slack] No signing secret configured on integration');
+      return reply.code(403).send({ error: 'integration_misconfigured' });
+    }
+
+    const rawBody = (request as any).rawSlackBody as string | undefined;
+    if (!rawBody) {
+      // Content-type parser did not capture the raw body — fail closed.
+      logger.warn('[Slack] Raw body unavailable; cannot verify signature');
+      return reply.code(403).send({ error: 'raw_body_unavailable' });
+    }
+
+    const timestamp = request.headers['x-slack-request-timestamp'] as string;
+    const signature = request.headers['x-slack-signature'] as string;
+
+    if (!timestamp || !signature) {
+      logger.warn('[Slack] Missing timestamp or signature headers');
+      return reply.code(403).send({ error: 'missing_signature_headers' });
+    }
+
+    if (!slackIntegrationService.verifySignature(signingSecret, timestamp, rawBody, signature)) {
+      logger.warn({ timestamp, hasSignature: !!signature }, '[Slack] Signature verification failed');
+      return reply.code(403).send({ error: 'invalid_signature' });
     }
 
     // 4. Ignore bot messages (prevent loops)
@@ -105,7 +139,7 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
   // Handles /ask, /flow, /agent slash commands from Slack
   // ─────────────────────────────────────────────────────────────────────
 
-  fastify.post('/slack-command', async (request: FastifyRequest, reply: FastifyReply) => {
+  scope.post('/slack-command', async (request: FastifyRequest, reply: FastifyReply) => {
     const body = request.body as any;
 
     // Slash commands come as form-encoded: command, text, user_id, channel_id, response_url
@@ -161,6 +195,42 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
     }
   });
 
+  // ─── Generic Integration Webhook (Slack path needs raw body) ────────
+  // POST /api/v1/hooks/integration/:webhookId
+  // Routes to the appropriate service based on the integration's platform.
+  // Kept inside slackScope so Slack-routed calls have rawSlackBody available.
+  // ─────────────────────────────────────────────────────────────────────
+
+  scope.post<{ Params: { webhookId: string } }>('/integration/:webhookId', async (request, reply) => {
+    const { webhookId } = request.params;
+    const body = request.body as any;
+
+    // URL verification for Slack (in case they configure this URL instead)
+    if (body?.type === 'url_verification' && body?.challenge) {
+      return reply.send({ challenge: body.challenge });
+    }
+
+    const integration = await prisma.integration.findFirst({
+      where: { webhook_id: webhookId, deleted_at: null },
+    });
+
+    if (!integration) {
+      return reply.code(404).send({ error: 'Integration not found' });
+    }
+
+    if (integration.platform === 'slack') {
+      const result = await slackIntegrationService.handleEvent(integration.id, body);
+      return reply.code(result.statusCode).send(result.body);
+    } else if (integration.platform === 'teams') {
+      const result = await teamsService.handleActivity(integration.id, body);
+      return reply.code(result.statusCode).send(result.body);
+    }
+
+    return reply.code(400).send({ error: `Unsupported platform: ${integration.platform}` });
+  });
+
+  }); // end slackScope — parser isolation boundary
+
   // ─── Teams Bot Framework ─────────────────────────────────────────────
   // POST /api/v1/hooks/teams
   // Public endpoint — Teams verifies via Bot Framework JWT token.
@@ -192,39 +262,6 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
     // Handle the activity
     const result = await teamsService.handleActivity(integration.id, body);
     return reply.code(result.statusCode).send(result.body);
-  });
-
-  // ─── Generic Integration Webhook ─────────────────────────────────────
-  // POST /api/v1/hooks/integration/:webhookId
-  // Routes to the appropriate service based on the integration's platform.
-  // ─────────────────────────────────────────────────────────────────────
-
-  fastify.post<{ Params: { webhookId: string } }>('/integration/:webhookId', async (request, reply) => {
-    const { webhookId } = request.params;
-    const body = request.body as any;
-
-    // URL verification for Slack (in case they configure this URL instead)
-    if (body?.type === 'url_verification' && body?.challenge) {
-      return reply.send({ challenge: body.challenge });
-    }
-
-    const integration = await prisma.integration.findFirst({
-      where: { webhook_id: webhookId, deleted_at: null },
-    });
-
-    if (!integration) {
-      return reply.code(404).send({ error: 'Integration not found' });
-    }
-
-    if (integration.platform === 'slack') {
-      const result = await slackIntegrationService.handleEvent(integration.id, body);
-      return reply.code(result.statusCode).send(result.body);
-    } else if (integration.platform === 'teams') {
-      const result = await teamsService.handleActivity(integration.id, body);
-      return reply.code(result.statusCode).send(result.body);
-    }
-
-    return reply.code(400).send({ error: `Unsupported platform: ${integration.platform}` });
   });
 
   /**
@@ -478,6 +515,8 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
         };
 
         try {
+          // Task 1.3 (V3 Enterprise Chatmode S5): tenant from workflow row.
+          const tenantId = (workflow as any).tenant_id || null;
           const result = await executeWorkflow(
             workflow.id,
             execution.id,
@@ -485,7 +524,8 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
             webhookPayload,
             workflow.created_by,
             undefined, // No auth token for webhook-triggered executions
-            sendSSE
+            sendSSE,
+            { tenantId }
           );
 
           await prisma.workflow.update({
@@ -515,14 +555,18 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
       }
 
       // Async mode: return immediately, execute in background
-      // Fire-and-forget execution
+      // Fire-and-forget execution.
+      // Task 1.3 (V3 Enterprise Chatmode S5): tenant from workflow row.
+      const asyncTenantId = (workflow as any).tenant_id || null;
       executeWorkflow(
         workflow.id,
         execution.id,
         { nodes: definition.nodes, edges: definition.edges || [] },
         webhookPayload,
         workflow.created_by,
-        undefined
+        undefined,
+        undefined,
+        { tenantId: asyncTenantId }
       ).then(async (result) => {
         await prisma.workflow.update({
           where: { id: workflow.id },
@@ -671,14 +715,18 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
         },
       });
 
-      // Fire-and-forget execution
+      // Fire-and-forget execution.
+      // Task 1.3 (V3 Enterprise Chatmode S5): tenant from workflow row.
+      const tenantId = (workflow as any).tenant_id || null;
       executeWorkflow(
         workflow.id,
         execution.id,
         { nodes: definition.nodes, edges: definition.edges || [] },
         alertInput,
         workflow.created_by,
-        undefined
+        undefined,
+        undefined,
+        { tenantId }
       ).then(async (result) => {
         await prisma.workflow.update({
           where: { id: workflow.id },

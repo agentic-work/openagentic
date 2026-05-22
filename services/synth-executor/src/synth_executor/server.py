@@ -8,6 +8,7 @@ in isolated subprocesses with resource limits and full audit logging.
 """
 
 import os
+import sys
 import time
 import asyncio
 import hashlib
@@ -20,6 +21,10 @@ from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
+# Substrate fix S2 — service-JWT verification on /execute.
+# Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §3
+import jwt as pyjwt
 
 # Prometheus metrics
 from prometheus_client import (
@@ -39,8 +44,58 @@ from .telemetry import (
     memory_usage,
 )
 from .executor import SecureExecutor, ExecutionResult
+from .artifacts import scan_artifacts, SYNTH_OUTPUT_DIR
 
 logger = get_logger("synth-executor")
+
+# =============================================================================
+# Substrate fix S2 — service-JWT signing key boot validation
+# =============================================================================
+# Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §3 S2
+#
+# /execute previously had ZERO auth — only k8s NetworkPolicy `app=openagentic-api`
+# ingress label gated it. Anyone in the cluster who could label their pod got
+# free arbitrary-Python execution. Fix: every /execute call must carry an
+# Authorization: Bearer <service-jwt> signed by the api's chatmode internal key.
+#
+# JWT shape (all required, verified by middleware below):
+#   iss: "openagentic-api"
+#   aud: "synth-executor"
+#   sub: "<userId>"
+#   sid: "<sessionId>"
+#   exp: now + 5min   (verified by pyjwt.decode automatically)
+#
+# Boot fails CLOSED if:
+#   - SERVICE_JWT_KEY env unset or empty
+#   - SERVICE_JWT_KEY starts with "dev-secret"  (refuses to boot with the dev
+#     placeholder literal; deployments must rotate to a real key)
+
+class BootError(Exception):
+    """Raised when service boot config is invalid; we refuse to start."""
+
+_DEV_SECRET_PREFIX = "dev-secret"
+
+def _bootstrap_signing_key() -> str:
+    key = os.environ.get("SERVICE_JWT_KEY")
+    if not key:
+        raise BootError(
+            "SERVICE_JWT_KEY env var required at boot — refusing to start "
+            "synth-executor without a service-JWT signing key. The api side "
+            "mints JWTs with this key and synth-executor's middleware verifies "
+            "them on every /execute call."
+        )
+    if key.startswith(_DEV_SECRET_PREFIX):
+        raise BootError(
+            f"refusing to boot synth-executor with the dev-secret literal in "
+            f"SERVICE_JWT_KEY (got prefix '{_DEV_SECRET_PREFIX}*'). Rotate to a "
+            f"real key — deploys must inject a unique random secret per-cluster."
+        )
+    return key
+
+# Boot the signing key at module load so misconfig is caught at pod-start
+# (CrashLoopBackOff) rather than first-request-time. Tests reload this
+# module with monkeypatched env to assert the boot-CLOSED contract.
+SIGNING_KEY: str = _bootstrap_signing_key()
 
 # Helper: read a SYNTH_* env var with an OAT_* fallback so in-flight Helm
 # overrides keep working through the rename transition. Remove the fallback
@@ -124,6 +179,16 @@ class ExecutionResponse(BaseModel):
     started_at: str
     completed_at: str
 
+    # AC-D3 — artifacts written to /tmp/synth-output/ during execution.
+    # Each entry: {artifact_id, filename, content_type, size_bytes,
+    # data_b64}. The api side uploads each to MinIO via UserStorageService
+    # and emits an artifact_emit NDJSON frame so the UI's <DownloadTile>
+    # can resolve to a presigned URL.
+    artifacts: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description="Files emitted to /tmp/synth-output/ during execution",
+    )
+
 class HealthResponse(BaseModel):
     """Health check response."""
 
@@ -176,6 +241,119 @@ app = FastAPI(
 
 # Instrument with OpenTelemetry
 FastAPIInstrumentor.instrument_app(app)
+
+# =============================================================================
+# Substrate fix S2 — service-JWT verification middleware
+# =============================================================================
+# Every request EXCEPT k8s probes/metrics scraping must carry a valid
+# `Authorization: Bearer <service-jwt>` signed by SIGNING_KEY. The api side
+# mints these via its `mintSynthExecutorJwt` helper.
+#
+# Rejection bodies are structured `{"error": "<reason>"}` so the api caller
+# (and operator runbooks) can disambiguate misconfig (no header / wrong issuer)
+# from clock skew (expired) from key rotation lag (invalid_signature).
+
+# Paths exempt from JWT verification — k8s liveness/readiness/scrape never
+# carry user-flow auth. Keep this set narrow: every other route MUST require
+# a signed JWT.
+_AUTH_EXEMPT_PATHS = frozenset({"/health", "/healthz", "/ready", "/metrics"})
+
+@app.middleware("http")
+async def verify_service_jwt(request: Request, call_next):
+    """
+    Verify the bearer JWT on every non-probe request. Reject with 401 +
+    structured body on any failure mode. Stash claims onto request.state
+    for downstream handlers to use (user_id, session_id, full claims).
+    """
+    if request.url.path in _AUTH_EXEMPT_PATHS:
+        return await call_next(request)
+
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return JSONResponse(
+            status_code=401,
+            content={"error": "missing_authorization"},
+        )
+
+    token = auth[len("Bearer "):].strip()
+    if not token:
+        return JSONResponse(
+            status_code=401,
+            content={"error": "missing_authorization"},
+        )
+
+    if not SIGNING_KEY:
+        # Should be unreachable — boot validation rejects empty key — but
+        # guard belt-and-braces in case a future refactor breaks the contract.
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "service_misconfigured",
+                "detail": "SERVICE_JWT_KEY not set",
+            },
+        )
+
+    try:
+        claims = pyjwt.decode(
+            token,
+            SIGNING_KEY,
+            algorithms=["HS256"],
+            audience="synth-executor",
+            issuer="openagentic-api",
+            options={
+                "require": ["iss", "aud", "sub", "exp"],
+            },
+        )
+    except pyjwt.InvalidAudienceError:
+        return JSONResponse(
+            status_code=401,
+            content={"error": "invalid_audience"},
+        )
+    except pyjwt.InvalidIssuerError:
+        return JSONResponse(
+            status_code=401,
+            content={"error": "invalid_issuer"},
+        )
+    except pyjwt.ExpiredSignatureError:
+        return JSONResponse(
+            status_code=401,
+            content={"error": "expired"},
+        )
+    except pyjwt.InvalidSignatureError:
+        return JSONResponse(
+            status_code=401,
+            content={"error": "invalid_signature"},
+        )
+    except pyjwt.InvalidTokenError as e:
+        return JSONResponse(
+            status_code=401,
+            content={"error": "invalid_token", "detail": str(e)},
+        )
+    except Exception as e:  # noqa: BLE001 — JWT errors must always 401
+        return JSONResponse(
+            status_code=401,
+            content={"error": "invalid_token", "detail": str(e)},
+        )
+
+    request.state.user_id = claims.get("sub")
+    request.state.session_id = claims.get("sid")
+    request.state.claims = claims
+    return await call_next(request)
+
+# =============================================================================
+# /lib/* — vetted JS/WASM bundles for chatmode T3 mini-apps (#481)
+# =============================================================================
+# Same-pod alternative to a separate synth-cdn nginx service. The libs are
+# fetched + sha256-verified by build-libs.sh during image build (lib-manifest.json),
+# baked into /app/lib/, and served read-only via FastAPI's StaticFiles.
+# UI nginx reverse-proxies /api/cdn/lib/* → /lib/* (same-origin to the browser
+# so CSP `script-src 'self' /api/cdn/lib/` works without a third-party host).
+import os
+from fastapi.staticfiles import StaticFiles
+
+_LIB_ROOT = os.environ.get("SYNTH_LIB_DIR", "/app/lib")
+if os.path.isdir(_LIB_ROOT):
+    app.mount("/lib", StaticFiles(directory=_LIB_ROOT), name="lib")
 
 # =============================================================================
 # Endpoints
@@ -323,6 +501,26 @@ async def execute_code(
             span.set_attribute("synth.success", result.success)
             span.set_attribute("synth.execution_time_ms", execution_time_ms)
 
+            # AC-D3 — scan /tmp/synth-output/ for files written by the
+            # sandboxed code. Each entry becomes an artifact_emit frame
+            # on the api chat stream → <DownloadTile> in the UI.
+            try:
+                artifacts = scan_artifacts(SYNTH_OUTPUT_DIR)
+                if artifacts:
+                    logger.info(
+                        "synth_execution_artifacts_found",
+                        execution_id=request.execution_id,
+                        count=len(artifacts),
+                        names=[a['filename'] for a in artifacts],
+                    )
+            except Exception as e:  # noqa: BLE001 — artifact scan must never block /execute
+                logger.warning(
+                    "synth_execution_artifact_scan_failed",
+                    execution_id=request.execution_id,
+                    err=str(e),
+                )
+                artifacts = None
+
             response = ExecutionResponse(
                 execution_id=request.execution_id,
                 success=result.success,
@@ -335,6 +533,7 @@ async def execute_code(
                 code_hash=code_hash,
                 started_at=started_at.isoformat(),
                 completed_at=completed_at.isoformat(),
+                artifacts=artifacts,
             )
 
             # Send callback if configured

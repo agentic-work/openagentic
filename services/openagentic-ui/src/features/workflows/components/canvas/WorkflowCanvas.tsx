@@ -31,13 +31,21 @@ import { NodeType } from '../../types/workflow.types';
 // Register all node types — including 'default' fallback for unknown types
 const nodeTypes: Record<string, typeof CustomNode> = {
   trigger: CustomNode, mcp_tool: CustomNode, llm_completion: CustomNode,
-  code: CustomNode, condition: CustomNode, loop: CustomNode,
-  transform: CustomNode, merge: CustomNode, http_request: CustomNode,
+  code: CustomNode, condition: CustomNode, switch: CustomNode, loop: CustomNode,
+  transform: CustomNode, merge: CustomNode, parallel: CustomNode,
+  http_request: CustomNode, webhook_response: CustomNode,
   approval: CustomNode, human_approval: CustomNode, wait: CustomNode,
   agent_spawn: CustomNode, a2a: CustomNode,
   synth: CustomNode, openagentic: CustomNode,
   openagentic_llm: CustomNode, multi_agent: CustomNode,
-  text: CustomNode,
+  text: CustomNode, reasoning: CustomNode, structured_output: CustomNode,
+  rag_query: CustomNode, data_source_query: CustomNode, file_upload: CustomNode,
+  text_splitter: CustomNode, embedding: CustomNode, vector_store: CustomNode,
+  document_loader: CustomNode, sub_workflow: CustomNode, error_handler: CustomNode,
+  user_context: CustomNode, guardrails: CustomNode,
+  slack_message: CustomNode, teams_message: CustomNode, discord_message: CustomNode,
+  send_email: CustomNode, outlook_email: CustomNode,
+  pagerduty_incident: CustomNode, servicenow_ticket: CustomNode, jira_issue: CustomNode,
   // Agent proxy nodes
   agent_single: CustomNode, agent_pool: CustomNode, agent_supervisor: CustomNode,
   // Fallback for any unrecognized node type stored in DB
@@ -60,8 +68,20 @@ interface WorkflowCanvasProps {
   onDragOver: (event: React.DragEvent) => void;
   onNodeClick: (event: React.MouseEvent, node: Node) => void;
   onNodeDoubleClick?: (event: React.MouseEvent, node: Node) => void;
+  /** Right-click handler for canvas nodes — fires the platform's
+   *  context menu. The wrapper preventDefaults the native menu so
+   *  the floating NodeContextMenu can take over. */
+  onNodeContextMenu?: (event: React.MouseEvent, node: Node) => void;
   nodeColorFn: (node: Node) => string;
   wrapperRef: React.RefObject<HTMLDivElement>;
+  /**
+   * If provided, ReactFlow opens at this zoom/pan instead of running its
+   * own fitView. We persist the user's last viewport per workflow id so
+   * the camera state survives reload.
+   */
+  defaultViewport?: { x: number; y: number; zoom: number };
+  /** Fired when the user finishes a pan/zoom interaction. */
+  onMoveEnd?: (event: any, viewport: { x: number; y: number; zoom: number }) => void;
 }
 
 export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
@@ -75,8 +95,11 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
   onDragOver,
   onNodeClick,
   onNodeDoubleClick,
+  onNodeContextMenu,
   nodeColorFn,
   wrapperRef,
+  defaultViewport,
+  onMoveEnd,
 }) => {
   return (
     <div className="flex-1 relative" ref={wrapperRef}>
@@ -91,10 +114,18 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
         onDragOver={onDragOver}
         onNodeClick={onNodeClick}
         onNodeDoubleClick={onNodeDoubleClick}
+        onNodeContextMenu={(e, n) => {
+          // Suppress the browser's native context menu so the floating
+          // NodeContextMenu can render in its place.
+          e.preventDefault();
+          onNodeContextMenu?.(e, n);
+        }}
+        onMoveEnd={onMoveEnd}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         connectionMode={ConnectionMode.Loose}
-        fitView
+        defaultViewport={defaultViewport}
+        fitView={!defaultViewport}
         attributionPosition="bottom-right"
         deleteKeyCode="Delete"
         multiSelectionKeyCode="Shift"

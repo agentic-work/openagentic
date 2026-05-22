@@ -1,149 +1,46 @@
 /**
- * ToolCallCard - MCP Tool Call Visualization
+ * ToolCallCard — V2 thin adapter (mock 01 parity).
  *
- * Displays tool/MCP calls with:
- * - Tool name and status indicator
- * - Collapsible input/output sections
- * - Duration timing (live elapsed timer when calling)
- * - Error state handling
- * - Abandoned state for stream-death recovery
- * - Progress heartbeat display
+ * Replaces 447 LOC of bespoke chrome (framer-motion + custom collapsible
+ * + StatusIndicator + ToolResultSummary + portalLink helpers) with a
+ * pass-through to v2/ToolCard, which matches the canonical mock anatomy
+ * at mocks/UX/01-cloud-ops.html lines 271-355: `.cm-tool` + `.cm-t-head`
+ * + INPUT/RESULT `.cm-t-section` panels with JSON syntax tokens.
+ *
+ * Same input contract (ToolCallCardProps from activity.types.ts) so the
+ * surrounding ToolCallGroup / AgenticActivityStream don't change.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Wrench,
-  ChevronDown,
-  ChevronRight,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  Clock,
-  AlertTriangle,
-} from '@/shared/icons';
-
+import React from 'react';
+import { ToolCard, type ToolStatus } from '../../v2';
 import type { ToolCallCardProps, ToolCallStatus } from '../types/activity.types';
-import { ToolResultSummary } from './ToolResultSummary';
-import { deriveResourceLink } from '../utils/portalLink';
 
-// Format tool name for display
-const formatToolName = (name: string): string => {
-  // Convert snake_case or kebab-case to Title Case
-  return name
-    .replace(/[_-]/g, ' ')
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-};
-
-// Format duration
-const formatDuration = (ms: number): string => {
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  const minutes = Math.floor(ms / 60000);
-  const seconds = ((ms % 60000) / 1000).toFixed(0);
-  return `${minutes}m ${seconds}s`;
-};
-
-// Format live elapsed time (counting up)
-const formatElapsed = (ms: number): string => {
-  if (ms < 1000) return '0s';
-  if (ms < 60000) return `${Math.floor(ms / 1000)}s`;
-  const minutes = Math.floor(ms / 60000);
-  const seconds = Math.floor((ms % 60000) / 1000);
-  return `${minutes}m ${seconds}s`;
-};
-
-// Truncate long values for preview
-const truncateValue = (value: unknown, maxLength = 100): string => {
-  const str = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
-  if (str.length <= maxLength) return str;
-  return str.slice(0, maxLength) + '...';
-};
-
-// Status indicator component
-const StatusIndicator: React.FC<{ status: ToolCallStatus }> = ({ status }) => {
-  switch (status) {
+function mapStatus(s: ToolCallStatus): ToolStatus {
+  switch (s) {
     case 'success':
-      return (
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-        >
-          <CheckCircle2 className="w-4 h-4 text-[var(--color-success)]" />
-        </motion.div>
-      );
+      return 'ok';
     case 'error':
-      return <XCircle className="w-4 h-4 text-[var(--color-error)]" />;
-    case 'abandoned':
-      return <AlertTriangle className="w-4 h-4 text-amber-500" />;
+      return 'err';
     case 'calling':
+    case 'abandoned':
     default:
-      return <Loader2 className="w-4 h-4 text-[var(--color-primary)] animate-spin" />;
+      return 'running';
   }
-};
+}
 
-// JSON viewer for input/output
-const JsonViewer: React.FC<{
-  data: unknown;
-  label: string;
-  isCollapsed?: boolean;
-  onToggle?: () => void;
-}> = ({ data, label, isCollapsed = true, onToggle }) => {
-  const formattedData = useMemo(() => {
-    if (typeof data === 'string') return data;
-    return JSON.stringify(data, null, 2);
-  }, [data]);
-
-  const preview = useMemo(() => truncateValue(data, 50), [data]);
-  const lineCount = formattedData.split('\n').length;
-
-  return (
-    <div className="border-t border-[var(--color-border)]/20">
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--color-surfaceHover)]/30 transition-colors"
-      >
-        {isCollapsed ? (
-          <ChevronRight className="w-3 h-3 text-[var(--color-textMuted)]" />
-        ) : (
-          <ChevronDown className="w-3 h-3 text-[var(--color-textMuted)]" />
-        )}
-        <span className="text-xs font-medium text-[var(--color-textSecondary)]">
-          {label}
-        </span>
-        {isCollapsed && (
-          <span className="text-xs text-[var(--color-textMuted)] truncate flex-1">
-            {preview}
-          </span>
-        )}
-        {!isCollapsed && lineCount > 1 && (
-          <span className="text-xs text-[var(--color-textMuted)]">
-            {lineCount} lines
-          </span>
-        )}
-      </button>
-
-      <AnimatePresence initial={false}>
-        {!isCollapsed && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="overflow-hidden"
-          >
-            <pre className="px-3 pb-2 text-xs font-mono text-[var(--color-textSecondary)] whitespace-pre-wrap break-all max-h-[200px] overflow-auto">
-              {formattedData}
-            </pre>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
+function fmtDuration(ms?: number, startTime?: number): string | undefined {
+  // Prefer explicit duration; fall back to live elapsed when streaming.
+  let actual = ms;
+  if (actual === undefined && typeof startTime === 'number') {
+    actual = Date.now() - startTime;
+  }
+  if (typeof actual !== 'number' || !Number.isFinite(actual) || actual < 0) return undefined;
+  if (actual < 1000) return `${actual}ms`;
+  if (actual < 60_000) return `${(actual / 1000).toFixed(2)}s`;
+  const m = Math.floor(actual / 60_000);
+  const s = Math.floor((actual % 60_000) / 1000);
+  return `${m}m ${s}s`;
+}
 
 export const ToolCallCard: React.FC<ToolCallCardProps> = ({
   toolName,
@@ -154,232 +51,37 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
   duration,
   startTime,
   progressMessage,
-  collapsible = true,
-  isCollapsed = false,
-  onToggle,
-  theme = 'dark',
-  className = '',
+  inputDeltaContent,
+  className,
+  outputTemplate,
 }) => {
-  const [inputCollapsed, setInputCollapsed] = React.useState(true);
-  const [outputCollapsed, setOutputCollapsed] = React.useState(true);
-  const [elapsed, setElapsed] = useState(0);
+  const v2Status = mapStatus(status);
+  const durationLabel = fmtDuration(duration, startTime);
 
-  const formattedName = displayName || formatToolName(toolName);
+  // Prefer streaming partial JSON over toolInput while running.
+  const inputForRender =
+    v2Status === 'running' && inputDeltaContent
+      ? inputDeltaContent
+      : toolInput;
 
-  // BLOCKER-002 fix: derive the specific resource identifier + portal URL
-  // this tool call is touching, so the card header can show it inline
-  // (e.g. "Delete Resource Group → test-rg-uc-a14-20260418") with a
-  // click-through to the Azure/AWS/GCP console. For web MCP tools we
-  // show the destination's favicon + URL. Null when args lack an
-  // identifier — we just fall through to the old name-only header.
-  const resourceLink = useMemo(() => deriveResourceLink(toolName, toolInput), [toolName, toolInput]);
-
-  // Live elapsed timer when status is 'calling'
-  useEffect(() => {
-    if (status !== 'calling' || !startTime) {
-      setElapsed(0);
-      return;
-    }
-    // Set initial elapsed
-    setElapsed(Date.now() - startTime);
-    const interval = setInterval(() => {
-      setElapsed(Date.now() - startTime);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [status, startTime]);
-
-  const handleToggle = useCallback(() => {
-    if (collapsible) {
-      onToggle?.();
-    }
-  }, [collapsible, onToggle]);
-
-  const statusClass = useMemo(() => {
-    switch (status) {
-      case 'success':
-        return 'border-[var(--color-success)]/30';
-      case 'error':
-        return 'border-[var(--color-error)]/30';
-      case 'abandoned':
-        return 'border-amber-500/30';
-      default:
-        return 'border-[var(--color-primary)]/30';
-    }
-  }, [status]);
+  // 'abandoned' surfaces as err with progress as the message.
+  const errorMessage =
+    status === 'abandoned'
+      ? progressMessage || 'Tool execution abandoned (stream closed)'
+      : undefined;
 
   return (
-    <div
-      className={`
-        tool-call-card
-        bg-[var(--color-surfaceSecondary)]/30
-        backdrop-blur-sm
-        border ${statusClass}
-        rounded-lg
-        overflow-hidden
-        ${className}
-      `}
-      data-theme={theme}
-    >
-      {/* Header */}
-      <button
-        onClick={handleToggle}
-        disabled={!collapsible}
-        className={`
-          w-full flex items-center justify-between gap-2 px-3 py-2
-          ${collapsible ? 'hover:bg-[var(--color-surfaceHover)]/50 cursor-pointer' : 'cursor-default'}
-          transition-colors text-left
-        `}
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          <Wrench className="w-4 h-4 text-[var(--color-textMuted)] flex-shrink-0" />
-          <span className="text-sm font-medium text-[var(--color-text)] truncate">
-            {formattedName}
-          </span>
-          {/* Progress message from heartbeat */}
-          {status === 'calling' && progressMessage && (
-            <span className="text-xs text-[var(--color-textMuted)] truncate">
-              {progressMessage}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Live elapsed timer when calling */}
-          {status === 'calling' && startTime && elapsed > 0 && (
-            <span className="flex items-center gap-1 text-xs text-[var(--color-textMuted)] tabular-nums">
-              <Clock size={10} />
-              {formatElapsed(elapsed)}...
-            </span>
-          )}
-
-          {/* Final duration when complete */}
-          {duration && status !== 'calling' && (
-            <span className="flex items-center gap-1 text-xs text-[var(--color-textMuted)]">
-              <Clock size={10} />
-              {formatDuration(duration)}
-            </span>
-          )}
-
-          {/* Status indicator */}
-          <StatusIndicator status={status} />
-
-          {/* Collapse indicator */}
-          {collapsible && (
-            isCollapsed ? (
-              <ChevronRight className="w-4 h-4 text-[var(--color-textMuted)]" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-[var(--color-textMuted)]" />
-            )
-          )}
-        </div>
-      </button>
-
-      {/* Resource identifier + portal deep-link (BLOCKER-002). Sits under
-          the header so a user can see at a glance which RG / instance /
-          URL the model is touching, and click through to the provider
-          console. Web MCP tools render a favicon via the /api/favicon
-          proxy (shipped in 0.6.3). */}
-      {resourceLink && (
-        <div className="px-3 py-1.5 border-t border-[var(--color-border)]/10 flex items-center gap-2 min-w-0">
-          {resourceLink.provider === 'web' && resourceLink.faviconDomain && (
-            <img
-              src={`/api/favicon?domain=${encodeURIComponent(resourceLink.faviconDomain)}`}
-              alt=""
-              width={14}
-              height={14}
-              className="flex-shrink-0 rounded-sm"
-              loading="lazy"
-              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-            />
-          )}
-          {resourceLink.provider !== 'web' && (
-            <span
-              className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded flex-shrink-0 font-medium"
-              style={{
-                backgroundColor: 'var(--color-surfaceHover)',
-                color: 'var(--color-textMuted)',
-              }}
-            >
-              {resourceLink.provider}
-            </span>
-          )}
-          {resourceLink.href ? (
-            <a
-              href={resourceLink.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-[var(--color-accent)] hover:underline truncate min-w-0"
-              onClick={(e) => e.stopPropagation()}
-              title={resourceLink.identifier}
-            >
-              {resourceLink.identifier}
-            </a>
-          ) : (
-            <span
-              className="text-xs text-[var(--color-text)] truncate min-w-0"
-              title={resourceLink.identifier}
-            >
-              {resourceLink.identifier}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Abandoned state message */}
-      {status === 'abandoned' && (
-        <div className="px-3 py-1.5 border-t border-amber-500/20 bg-amber-500/5">
-          <span className="text-xs text-amber-500">
-            Stream ended — result unknown
-          </span>
-        </div>
-      )}
-
-      {/* Smart result summary for Azure ARM tools */}
-      {toolOutput && status !== 'calling' && (
-        <ToolResultSummary toolName={toolName} output={toolOutput} />
-      )}
-
-      {/* Expandable content */}
-      <AnimatePresence initial={false}>
-        {!isCollapsed && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
-            className="overflow-hidden"
-          >
-            {/* Input */}
-            {toolInput && (
-              <JsonViewer
-                data={toolInput}
-                label="Input"
-                isCollapsed={inputCollapsed}
-                onToggle={() => setInputCollapsed(!inputCollapsed)}
-              />
-            )}
-
-            {/* Output */}
-            {toolOutput && (
-              <JsonViewer
-                data={toolOutput}
-                label="Output"
-                isCollapsed={outputCollapsed}
-                onToggle={() => setOutputCollapsed(!outputCollapsed)}
-              />
-            )}
-
-            {/* Error message */}
-            {status === 'error' && !toolOutput && (
-              <div className="px-3 py-2 border-t border-[var(--color-border)]/20">
-                <span className="text-xs text-[var(--color-error)]">
-                  Tool call failed
-                </span>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className="cm-v2">
+      <ToolCard
+        name={displayName || toolName}
+        status={v2Status}
+        durationLabel={durationLabel}
+        input={inputForRender}
+        result={toolOutput}
+        errorMessage={errorMessage}
+        className={className}
+        outputTemplate={outputTemplate}
+      />
     </div>
   );
 };

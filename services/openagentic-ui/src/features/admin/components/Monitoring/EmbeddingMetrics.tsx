@@ -22,6 +22,7 @@ import { AdminFilterBar } from '../Shared/AdminFilterBar';
 import { InfoTooltip } from '../Shared/AdminTooltip';
 import { CHART_COLORS } from '../Shared/chartColors';
 import { useAuth } from '../../../../app/providers/AuthContext';
+import { PageHeader } from '../../primitives-v2';
 
 // ── Constants ─────────────────────────────────────────────────────────
 
@@ -172,13 +173,20 @@ const EmbeddingMetrics: React.FC<EmbeddingMetricsProps> = ({ theme = 'dark' }) =
   // Loading skeleton
   if (loading && !data) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 rounded w-1/3" style={{ backgroundColor: 'var(--color-border)' }} />
-          <div className="grid grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-24 rounded" style={{ backgroundColor: 'var(--color-border)' }} />
-            ))}
+      <div className="space-y-6">
+        <PageHeader
+          crumbs={['Admin', 'Monitoring', 'Embeddings']}
+          title="Embedding Metrics"
+          explainer="Token usage, request volume, and latency across all embedding deployments."
+        />
+        <div className="p-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 rounded w-1/3" style={{ backgroundColor: 'var(--color-border)' }} />
+            <div className="grid grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="h-24 rounded" style={{ backgroundColor: 'var(--color-border)' }} />
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -236,6 +244,16 @@ const EmbeddingMetrics: React.FC<EmbeddingMetricsProps> = ({ theme = 'dark' }) =
 
   return (
     <div className="p-6 space-y-6">
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Monitoring', 'Embeddings']}
+        title="Embedding Metrics"
+        explainer="Embedding usage statistics: request counts, tokens, costs, and latency."
+        actions={[
+          { label: 'Refresh', onClick: fetchData },
+        ]}
+      />
+
       {/* Filter Bar */}
       <AdminFilterBar
         searchTerm={searchTerm}
@@ -296,8 +314,8 @@ const EmbeddingMetrics: React.FC<EmbeddingMetricsProps> = ({ theme = 'dark' }) =
               <AreaChart data={trendData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="embedTrendGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+                    <stop offset="0%" stopColor="var(--ap-accent)" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="var(--ap-accent)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
@@ -307,11 +325,11 @@ const EmbeddingMetrics: React.FC<EmbeddingMetricsProps> = ({ theme = 'dark' }) =
                 <Area
                   type="monotone"
                   dataKey="Requests"
-                  stroke="#6366f1"
+                  stroke="var(--ap-accent)"
                   strokeWidth={2}
                   fill="url(#embedTrendGrad)"
                   dot={false}
-                  activeDot={{ r: 4, fill: '#6366f1', stroke: 'var(--color-surface)', strokeWidth: 2 }}
+                  activeDot={{ r: 4, fill: 'var(--ap-accent)', stroke: 'var(--color-surface)', strokeWidth: 2 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -368,7 +386,7 @@ const EmbeddingMetrics: React.FC<EmbeddingMetricsProps> = ({ theme = 'dark' }) =
                     </td>
                     <td className="py-2 text-right" style={{ color: 'var(--text-secondary)' }}>{formatNumber(provider.requests)}</td>
                     <td className="py-2 text-right" style={{ color: 'var(--text-secondary)' }}>{formatNumber(provider.tokens)}</td>
-                    <td className="py-2 text-right" style={{ color: '#00D26A' }}>{formatCost(provider.cost)}</td>
+                    <td className="py-2 text-right" style={{ color: 'var(--ap-ok)' }}>{formatCost(provider.cost)}</td>
                     <td className="py-2 text-right" style={{ color: 'var(--text-secondary)' }}>{provider.avgLatencyMs}ms</td>
                   </tr>
                 ))}
@@ -427,7 +445,7 @@ const EmbeddingMetrics: React.FC<EmbeddingMetricsProps> = ({ theme = 'dark' }) =
                     </td>
                     <td className="py-2 text-right" style={{ color: 'var(--text-secondary)' }}>{formatNumber(model.requests)}</td>
                     <td className="py-2 text-right" style={{ color: 'var(--text-secondary)' }}>{formatNumber(model.tokens)}</td>
-                    <td className="py-2 text-right" style={{ color: '#00D26A' }}>{formatCost(model.cost)}</td>
+                    <td className="py-2 text-right" style={{ color: 'var(--ap-ok)' }}>{formatCost(model.cost)}</td>
                     <td className="py-2 text-right" style={{ color: 'var(--text-secondary)' }}>{model.avgLatencyMs}ms</td>
                   </tr>
                 ))}

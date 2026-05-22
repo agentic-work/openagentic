@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import type { ChatMessage, AssistantChatMessage } from '../../types/streamJson';
+import type { ChatMessage, AssistantChatMessage } from '../../types/uiState';
+import { useEscToClose } from './CommandModals';
 
 const MONO =
   'var(--cm-mono-font, ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace)';
@@ -71,6 +72,8 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   onClose,
 }) => {
   const [tab, setTab] = useState<'overview' | 'models'>('overview');
+  // Document-level Esc (composer textarea swallows the dialog-bound listener).
+  useEscToClose(onClose);
 
   const turnData = useMemo((): TurnData[] => {
     const assistantMsgs = messages.filter(

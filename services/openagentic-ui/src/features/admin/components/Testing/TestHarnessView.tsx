@@ -7,19 +7,28 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { useTestHarness } from './useTestHarness';
 import TestPanel from './TestPanel';
 import TestLogStream from './TestLogStream';
+import E2eHarnessSection from './E2eHarnessSection';
+import { PageHeader } from '../../primitives-v2';
 
+// Order matches POST /api/admin/test-harness/run defaultCategories on the
+// server. Each tile gates the same-named test set; clicking LIGHT IT UP
+// runs every category sequentially and live-streams results into the tiles.
 const CATEGORIES = [
-  { id: 'health', label: 'System', icon: '🏥' },
-  { id: 'models', label: 'LLM Models', icon: '🧠' },
-  { id: 'chat', label: 'Chat', icon: '💬' },
-  { id: 'agents', label: 'Agents', icon: '🤖' },
-  { id: 'k8s', label: 'K8s Cluster', icon: '☸️' },
-  { id: 'mcp', label: 'MCP Servers', icon: '🔧' },
-  { id: 'workflows', label: 'Workflows', icon: '⚡' },
-  { id: 'code', label: 'Code Mode', icon: '💻' },
+  { id: 'health',    label: 'System Health',    icon: '🏥' },
+  { id: 'infra',     label: 'K8s Resources',    icon: '☸️' },
+  { id: 'milvus',    label: 'Milvus Collections', icon: '🧬' },
+  { id: 'mcp',       label: 'MCP Servers',      icon: '🔧' },
+  { id: 'models',    label: 'Model Registry',   icon: '🧠' },
+  { id: 'rbac',      label: 'RBAC + Permissions', icon: '🔐' },
+  { id: 'chat',      label: 'Chat Pipeline',    icon: '💬' },
+  { id: 'agents',    label: 'Sub-Agents',       icon: '🤖' },
+  { id: 'workflows', label: 'Workflows',        icon: '⚡' },
+  { id: 'code',      label: 'Code Mode',        icon: '💻' },
 ];
 
-const CHART_COLORS = ['#6366f1', '#00D26A', '#f59e0b', '#ef4444', '#06b6d4', '#a855f7', '#ec4899', '#14b8a6'];
+// Chart palette: teal #14b8a6 is an extended-series slot with no --ap-* equivalent.
+// eslint-disable-next-line admin-tokens/no-hardcoded-admin-color
+const CHART_COLORS = ['var(--ap-accent)', 'var(--ap-ok)', 'var(--ap-warn)', 'var(--ap-err)', 'var(--ap-info)', 'var(--ap-accent)', 'var(--ap-accent)', '#14b8a6'];
 
 export default function TestHarnessView() {
   const { results, logEntries, running, summary, startTests, stopTests, clearResults } = useTestHarness();
@@ -54,7 +63,7 @@ export default function TestHarnessView() {
     if (running) {
       stopTests();
     } else {
-      startTests(['health', 'models', 'chat', 'agents', 'k8s', 'mcp', 'workflows', 'code']);
+      startTests(['health', 'infra', 'milvus', 'mcp', 'models', 'rbac', 'chat', 'agents', 'workflows', 'code']);
     }
   };
 
@@ -64,50 +73,31 @@ export default function TestHarnessView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%', padding: 0 }}>
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Monitoring', 'Test Harness']}
+        title="Test Harness"
+        explainer={summary
+          ? `${summary.passed} passed · ${summary.failed} failed · ${summary.skipped} skipped · ${summary.totalTimeMs}ms total`
+          : 'System test harness — exercises providers, models, chat, agents, MCP, workflows, and code mode end-to-end.'}
+        actions={[
+          {
+            label: running ? `STOP (${totalTests} tests)` : 'LIGHT IT UP',
+            primary: true,
+            onClick: handleLightItUp,
+          },
+        ]}
+      />
+
       {/* Cost Warning */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
         padding: '8px 14px', borderRadius: 6,
         background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)',
-        fontSize: 12, color: 'var(--color-warning, #f59e0b)',
+        fontSize: 12, color: 'var(--color-warning)',
       }}>
         <span style={{ fontSize: 16 }}>&#9888;</span>
         Running tests will incur token usage costs for LLM model testing (completions sent to each provider). Chat and agent tests also consume tokens.
-      </div>
-
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>
-            System Test Harness
-          </h2>
-          {summary && (
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
-              {summary.passed} passed · {summary.failed} failed · {summary.skipped} skipped · {summary.totalTimeMs}ms total
-            </div>
-          )}
-        </div>
-        <button
-          onClick={handleLightItUp}
-          disabled={false}
-          style={{
-            padding: '10px 24px',
-            fontSize: 14,
-            fontWeight: 700,
-            color: '#fff',
-            background: running
-              ? 'linear-gradient(135deg, #ef4444, #dc2626)'
-              : 'linear-gradient(135deg, #f59e0b, #ef4444, #ec4899)',
-            border: 'none',
-            borderRadius: 8,
-            cursor: 'pointer',
-            boxShadow: running ? '0 0 20px rgba(239,68,68,0.4)' : '0 0 20px rgba(245,158,11,0.3)',
-            transition: 'all 0.3s',
-            letterSpacing: 0.5,
-          }}
-        >
-          {running ? `⏹ STOP (${totalTests} tests)` : '🔥 LIGHT IT UP'}
-        </button>
       </div>
 
       {/* Category Panels */}
@@ -219,7 +209,7 @@ export default function TestHarnessView() {
             </thead>
             <tbody>
               {activeResults.map((r, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid var(--color-border, #1a1a1a)' }}>
+                <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
                   <td style={{ padding: '6px 12px', color: 'var(--text-primary)' }}>{r.test}</td>
                   <td style={{ padding: '6px 12px', textAlign: 'center' }}>
                     <span style={{
@@ -246,6 +236,11 @@ export default function TestHarnessView() {
           </table>
         </div>
       )}
+
+      {/* REAL E2E integration sweep — exercises every provider, model,
+          T1 / T2 / T3 tool, and a flow. Used by GH Actions self-hosted
+          runners; mirrors the gates from CLAUDE.md rule 3a. */}
+      <E2eHarnessSection />
 
       {/* Live Log */}
       <div style={{ flex: 1, minHeight: 250 }}>

@@ -5,7 +5,10 @@
  * 1. Tiered Function Calling: Use cheap models (Gemini Flash, GPT-4o-mini) for function calling decisions
  * 2. Tool Stripping: Strip tools from requests when message doesn't need them (saves tokens)
  * 3. Function Call Decision Caching: Cache function calling decisions to avoid repeated analysis
- * 4. Slider-Aware Routing: Route based on intelligence slider (0-40% cheap, 41-60% balanced, 61-100% premium)
+ *
+ * 2026-04-19 — slider ripped (task #144). Routing is now capability-only
+ * (cheap/balanced/premium tiers chosen by message complexity), and the
+ * admin console picks the concrete model for each tier.
  *
  * All models are configurable via:
  * - Environment variables (buildtime)
@@ -15,7 +18,6 @@
 import { Logger } from 'pino';
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
-import { SliderConfig } from './SliderService.js';
 
 // Configuration keys for SystemConfiguration table
 const CONFIG_KEYS = {
@@ -238,7 +240,7 @@ export class TieredFunctionCallingService {
     if (!this.config.cheapModel || !this.config.balancedModel || !this.config.premiumModel) {
       try {
         const { ModelConfigurationService: mcs } = await import('./ModelConfigurationService.js');
-        const tiers = await mcs.getSliderTiers();
+        const tiers = await mcs.getTierModels();
         if (!this.config.cheapModel && tiers.economical) this.config.cheapModel = tiers.economical;
         if (!this.config.balancedModel && tiers.balanced) this.config.balancedModel = tiers.balanced;
         if (!this.config.premiumModel && tiers.premium) this.config.premiumModel = tiers.premium;
@@ -289,16 +291,15 @@ export class TieredFunctionCallingService {
   /**
    * Generate cache key for decision caching
    */
-  private generateCacheKey(message: string, toolCount: number, sliderPosition: number): string {
+  private generateCacheKey(message: string, toolCount: number, tier: 'cheap' | 'balanced' | 'premium'): string {
     // Hash the message to create a stable cache key
     const messageHash = crypto.createHash('sha256')
       .update(message.toLowerCase().trim())
       .digest('hex')
       .substring(0, 16);
 
-    // Include tool count and slider tier in key
-    const sliderTier = sliderPosition <= 40 ? 'cheap' : sliderPosition <= 60 ? 'balanced' : 'premium';
-    return `fc:${messageHash}:${toolCount}:${sliderTier}`;
+    // Include tool count and tier in key
+    return `fc:${messageHash}:${toolCount}:${tier}`;
   }
 
   /**
@@ -338,12 +339,21 @@ export class TieredFunctionCallingService {
   }
 
   /**
-   * Select model tier based on slider position
+   * Select model tier by message complexity + tool count.
+   * 2026-04-19 — slider ripped (task #144); tier comes from the request
+   * shape rather than a user-position knob.
+   *   • tier=cheap     — simple single-tool prompts (<= 3 tools, short msg)
+   *   • tier=balanced  — moderate prompts (default)
+   *   • tier=premium   — multi-tool + long / multi-step / multi-cloud
    */
-  private selectTier(sliderPosition: number): 'cheap' | 'balanced' | 'premium' {
-    if (sliderPosition <= 40) return 'cheap';
-    if (sliderPosition <= 60) return 'balanced';
-    return 'premium';
+  private selectTier(message: string, toolCount: number): 'cheap' | 'balanced' | 'premium' {
+    const msgLen = (message || '').length;
+    const lower = (message || '').toLowerCase();
+    const multiStepLike = /\b(then|after|next|step\s*\d|first[\s\S]{0,80}then)\b/i.test(lower);
+    const multiCloud = /\b(azure|aws|gcp|cloud)\b[\s\S]{0,200}\b(azure|aws|gcp|cloud|k8s|kubernetes)\b/i.test(lower);
+    if (toolCount > 8 || msgLen > 800 || multiStepLike || multiCloud) return 'premium';
+    if (toolCount <= 3 && msgLen < 200) return 'cheap';
+    return 'balanced';
   }
 
   /**
@@ -362,39 +372,39 @@ export class TieredFunctionCallingService {
   }
 
   /**
-   * Main entry point: Make function calling decision
+   * Main entry point: Make function calling decision.
+   *
+   * 2026-04-19 — slider ripped (task #144). Tier is picked from message
+   * complexity + tool count instead of a slider position.
    *
    * @param message - The user message
    * @param tools - Available tools
-   * @param sliderConfig - Intelligence slider configuration
    * @returns Decision about tools and model selection
    */
   async makeDecision(
     message: string,
     tools: any[] | undefined,
-    sliderConfig?: SliderConfig
   ): Promise<FunctionCallDecision> {
     // Ensure config is loaded
     await this.loadConfig();
 
-    const sliderPosition = sliderConfig?.position ?? 50;
     const toolCount = tools?.length ?? 0;
+
+    // Determine tier from message complexity + tool count
+    const tier = this.selectTier(message, toolCount);
 
     // Check cache first
     if (this.config.decisionCacheEnabled) {
-      const cacheKey = this.generateCacheKey(message, toolCount, sliderPosition);
+      const cacheKey = this.generateCacheKey(message, toolCount, tier);
       const cached = this.getCachedDecision(cacheKey);
       if (cached) {
-        this.logger.debug({ cacheKey }, '🎯 Function call decision cache HIT');
+        this.logger.debug({ cacheKey }, '[TieredFC] Function call decision cache HIT');
         return cached;
       }
     }
 
     // Analyze if message requires tools
     const toolAnalysis = this.messageRequiresTools(message);
-
-    // Determine tier from slider
-    const tier = this.selectTier(sliderPosition);
 
     // Should we strip tools?
     const stripTools = this.config.toolStrippingEnabled &&
@@ -415,7 +425,7 @@ export class TieredFunctionCallingService {
 
     // Cache the decision
     if (this.config.decisionCacheEnabled) {
-      const cacheKey = this.generateCacheKey(message, toolCount, sliderPosition);
+      const cacheKey = this.generateCacheKey(message, toolCount, tier);
       this.cacheDecision(cacheKey, decision);
     }
 
@@ -424,10 +434,9 @@ export class TieredFunctionCallingService {
       stripTools,
       requiresTools: toolAnalysis.required,
       selectedModel: selectedModel || '(use default)',
-      sliderPosition,
       toolCount,
       reasoning: toolAnalysis.reasoning,
-    }, '🎯 Function calling decision made');
+    }, '[TieredFC] Function calling decision made (slider removed)');
 
     return decision;
   }

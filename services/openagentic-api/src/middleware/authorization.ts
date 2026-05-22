@@ -17,7 +17,7 @@ export const authorize = (requiredRoles: string[] = []) => {
       const user = (request as any).user as UserContext;
 
       if (!user) {
-        reply.code(401).send({
+        await reply.code(401).send({
           error: 'Unauthorized',
           message: 'User not authenticated'
         });
@@ -32,7 +32,7 @@ export const authorize = (requiredRoles: string[] = []) => {
         );
 
         if (!hasRequiredRole) {
-          reply.code(403).send({
+          await reply.code(403).send({
             error: 'Forbidden',
             message: 'Insufficient permissions'
           });
@@ -43,7 +43,7 @@ export const authorize = (requiredRoles: string[] = []) => {
       return;
     } catch (error) {
       request.log.error({ error }, 'Authorization error');
-      reply.code(500).send({
+      await reply.code(500).send({
         error: 'Internal Server Error',
         message: 'Failed to authorize'
       });

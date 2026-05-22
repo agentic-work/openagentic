@@ -72,7 +72,7 @@ export const azureAdminRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: { subscriptionId?: string; resourceGroup?: string };
   }>('/resource-info', {
-    preHandler: [adminAuth],
+    onRequest: adminAuth,
     schema: {
       querystring: {
         type: 'object',
@@ -124,7 +124,7 @@ export const azureAdminRoutes: FastifyPluginAsync = async (fastify) => {
       deploymentName?: string;
     };
   }>('/metrics', {
-    preHandler: [adminAuth],
+    onRequest: adminAuth,
     schema: {
       querystring: {
         type: 'object',
@@ -209,7 +209,7 @@ export const azureAdminRoutes: FastifyPluginAsync = async (fastify) => {
       timeRange?: string;
     };
   }>('/metrics/export', {
-    preHandler: [adminAuth],
+    onRequest: adminAuth,
     schema: {
       querystring: {
         type: 'object',
@@ -287,7 +287,7 @@ export const azureAdminRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Get Azure cost alerts
   fastify.get('/cost-alerts', {
-    preHandler: [adminAuth],
+    onRequest: adminAuth,
     schema: {
     }
   }, async (request, reply) => {
@@ -320,7 +320,7 @@ export const azureAdminRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Get Azure quota information
   fastify.get('/quota', {
-    preHandler: [adminAuth],
+    onRequest: adminAuth,
     schema: {
     }
   }, async (request, reply) => {

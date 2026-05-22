@@ -42,7 +42,7 @@ export default async function adminApiTokenRoutes(fastify: FastifyInstance) {
   fastify.get<{
     Querystring: ListTokensQuery;
   }>('/api/admin/tokens', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       querystring: {
         type: 'object',
@@ -129,7 +129,7 @@ export default async function adminApiTokenRoutes(fastify: FastifyInstance) {
   fastify.post<{
     Body: CreateTokenBody;
   }>('/api/admin/tokens', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       body: {
         type: 'object',
@@ -276,7 +276,7 @@ export default async function adminApiTokenRoutes(fastify: FastifyInstance) {
   fastify.delete<{
     Params: RevokeTokenParams;
   }>('/api/admin/tokens/:tokenId', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       params: {
         type: 'object',
@@ -343,7 +343,7 @@ export default async function adminApiTokenRoutes(fastify: FastifyInstance) {
   fastify.delete<{
     Params: RevokeTokenParams;
   }>('/api/admin/tokens/:tokenId/permanent', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       params: {
         type: 'object',
@@ -415,7 +415,7 @@ export default async function adminApiTokenRoutes(fastify: FastifyInstance) {
   fastify.get<{
     Params: { tokenId: string };
   }>('/api/admin/tokens/:tokenId', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       params: {
         type: 'object',
@@ -480,7 +480,7 @@ export default async function adminApiTokenRoutes(fastify: FastifyInstance) {
    * Returns ALL users (including admins) for API token creation
    */
   fastify.get('/api/admin/tokens/users/available', {
-    preHandler: adminMiddleware
+    onRequest: adminMiddleware
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const users = await prisma.user.findMany({
@@ -524,7 +524,7 @@ export default async function adminApiTokenRoutes(fastify: FastifyInstance) {
    * Returns comprehensive metrics for all API tokens including request counts, endpoints, errors, etc.
    */
   fastify.get('/api/admin/tokens/metrics', {
-    preHandler: adminMiddleware
+    onRequest: adminMiddleware
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       // Get all API tokens

@@ -8,7 +8,7 @@
 export { CodeModePage } from './CodeModePage';
 
 // V2 Layout (Openagentic Style)
-export { CodeModeLayoutV2 } from './CodeModeLayoutV2';
+export { CodeModeLayout } from './CodeModeLayout';
 
 // V2 Components
 export { CodeModeStatusBar } from './CodeModeStatusBar';
@@ -33,4 +33,3 @@ export { PermissionApprovalDialog, type PermissionRequest, type PermissionDecisi
 
 // Utility components
 export { TodoList, TodoStatusBadge } from './TodoList';
-export { EditorPanel, type EditorPanelProps, type EditorPanelTab } from './EditorPanel';

@@ -55,13 +55,25 @@ export function useAdminQuery<T = any>(
 /**
  * Mutation hook for admin write operations (POST/PUT/DELETE).
  * Automatically invalidates related queries on success.
+ *
+ * `endpoint` may be a string (static path) OR a function (variables → path)
+ * for cases like PUT/DELETE /api/admin/foo/:id where the id lives on the
+ * variables payload.  When using the function form, the request body is
+ * controlled by `bodyOf` (default: omit `path`/`id` from the body).
  */
 export function useAdminMutation<TData = any, TVariables = any>(
-  endpoint: string,
+  endpoint: string | ((vars: TVariables) => string),
   options?: {
     method?: 'POST' | 'PUT' | 'DELETE' | 'PATCH';
     invalidateKeys?: string[][];
-    onSuccess?: (data: TData) => void;
+    onSuccess?: (data: TData, vars: TVariables) => void;
+    onError?: (err: Error, vars: TVariables) => void;
+    /**
+     * Map variables → request body. Default: pass variables straight through
+     * (or undefined for DELETE). Use this when the URL carries some ids and
+     * the body should only contain the remaining fields.
+     */
+    bodyOf?: (vars: TVariables) => unknown | undefined;
   }
 ) {
   const queryClient = useQueryClient();
@@ -69,24 +81,33 @@ export function useAdminMutation<TData = any, TVariables = any>(
 
   return useMutation<TData, Error, TVariables>({
     mutationFn: async (variables: TVariables) => {
-      const response = await apiRequest(endpoint, {
+      const path = typeof endpoint === 'function' ? endpoint(variables) : endpoint;
+      const body = options?.bodyOf
+        ? options.bodyOf(variables)
+        : method === 'DELETE'
+          ? undefined
+          : variables;
+      const response = await apiRequest(path, {
         method,
-        body: variables ? JSON.stringify(variables) : undefined,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
       });
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(`${method} ${endpoint} failed: ${response.status} - ${text}`);
+        throw new Error(`${method} ${path} failed: ${response.status} - ${text}`);
       }
       return response.status === 204 ? (undefined as TData) : response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data, vars) => {
       // Invalidate related queries so they refetch
       if (options?.invalidateKeys) {
         for (const key of options.invalidateKeys) {
           queryClient.invalidateQueries({ queryKey: ['admin', ...key] });
         }
       }
-      options?.onSuccess?.(data);
+      options?.onSuccess?.(data, vars);
+    },
+    onError: (err, vars) => {
+      options?.onError?.(err, vars);
     },
   });
 }

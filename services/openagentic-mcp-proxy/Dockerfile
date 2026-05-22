@@ -5,10 +5,11 @@ ARG SRC_PATH=services/openagentic-mcp-proxy
 WORKDIR /app
 
 # Install system dependencies including Node.js for MCP servers
-RUN apt-get update && apt-get install -y \
-    build-essential \
+# --no-install-recommends cuts Mesa/GL/Vulkan pulls that only CVE-flag us (mcp-proxy
+# never renders graphics). wget/build-essential removed — curl covers all download
+# needs, and our Python deps all have prebuilt wheels.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    wget \
     nodejs \
     npm \
     ca-certificates \
@@ -34,15 +35,6 @@ RUN ARCH=$(dpkg --print-architecture) && \
 # Install Helm v3 (required by OpenAgentic Kubernetes MCP for Helm operations)
 RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash \
     && helm version
-
-# Install kubectl (optional - for debugging, K8s MCP uses Python client)
-# Using specific version to avoid download failures from dynamic version lookup
-RUN ARCH=$(dpkg --print-architecture) && \
-    KUBECTL_VERSION="v1.32.0" && \
-    curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl" \
-    && install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl \
-    && rm kubectl \
-    && kubectl version --client
 
 # Install global Node.js dependencies for MCP servers
 RUN npm install -g @modelcontextprotocol/server-sequential-thinking
@@ -89,8 +81,6 @@ RUN cd /app/mcp-servers/oap-admin-mcp && pip install --no-cache-dir -r requireme
 # Install OpenAgentic Azure MCP server dependencies (ARM + Cost Management - consolidated)
 RUN cd /app/mcp-servers/oap-azure-mcp && pip install --no-cache-dir -r requirements.txt
 
-# REMOVED: oap-azure-cost-mcp - Cost tools now in oap-azure-mcp
-
 # Install OpenAgentic GCP MCP server dependencies (Platform-level GCP management via Service Account)
 RUN cd /app/mcp-servers/oap-gcp-mcp && pip install --no-cache-dir -r requirements.txt
 
@@ -115,8 +105,8 @@ RUN cd /app/mcp-servers/oap-agent-architect-mcp && pip install --no-cache-dir -r
 # Install OpenAgentic GitHub MCP server dependencies (GitHub API operations via user OAuth tokens)
 RUN cd /app/mcp-servers/oap-github-mcp && pip install --no-cache-dir -r requirements.txt
 
-# Install OpenAgentic Knowledge MCP server dependencies (Tool guidance and documentation for LLMs)
-RUN cd /app/mcp-servers/oap-knowledge-mcp && pip install --no-cache-dir -r requirements.txt
+# REMOVED: OpenAgentic Knowledge MCP — out of scope (2026-05-01).
+# Per-tool _meta cascade replaces the meta-MCP tool-guidance role.
 
 # Version build args
 ARG PLATFORM_VERSION=0.0.0

@@ -142,7 +142,7 @@ export const monitoringWebSocketRoutes: FastifyPluginAsync = async (fastify) => 
    */
   fastify.get('/ws', { 
     websocket: true,
-    preHandler: [authMiddleware as any] 
+    onRequest: authMiddleware as any 
   } as any, (connection: any, req: any) => {
     const ws = connection.socket;
     const userId = req.user?.id || 'anonymous';

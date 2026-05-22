@@ -19,7 +19,6 @@ interface SessionResponse {
   podIP?: string;
   status: string;
   wsUrl: string;
-  codeServerUrl?: string;
   isReconnect?: boolean;
   isNewPod?: boolean;
 }

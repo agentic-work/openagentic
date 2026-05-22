@@ -1,0 +1,134 @@
+{
+  "slug": "prometheus-active-alerts-digest",
+  "name": "Prometheus Active Alerts Digest",
+  "description": "Pull active Prometheus alerts via the live openagentic_prometheus.prometheus_alerts MCP, parse the formatted text payload into a structured alerts array (alertname, severity, state, summary), sort by severity (critical > warning > info) and slice the top N, ask the platform LLM for a 3-5 bullet operator-facing digest of the most critical issues focused on next actions, strip any chain-of-thought preamble, then render an HTML digest report via webhook_response. Empty-cluster case (zero active alerts) is handled — when the upstream payload is the literal 'No active alerts' string, the report explicitly says so instead of rendering an empty alert table.",
+  "category": "aiops",
+  "template": true,
+  "meta": {
+    "purpose": "Pull active Prometheus alerts, sort by severity, and produce an operator-facing digest of the most critical issues with recommended next actions.",
+    "how_it_works": [
+      "1. openagentic_prometheus.prometheus_alerts returns the current active alert set as a formatted text block.",
+      "2. A parse transform converts that text into a structured array (alertname, severity, state, summary, labels).",
+      "3. A sort+slice transform orders by severity (critical > warning > info) and keeps the top {{limit}}.",
+      "4. The platform LLM writes a 3-5 bullet digest focused on next actions, not just restating what's broken.",
+      "5. A CoT-stripper transform removes any LLM preamble.",
+      "6. webhook_response renders the HTML digest. Empty-cluster short-circuit: when upstream reports 'No active alerts' the report says so explicitly."
+    ],
+    "expected_output": "HTML digest with: top N alerts sorted by severity, LLM-generated next-action bullets, and the raw alert payload.",
+    "useful_when": "Shift handover, morning standup digest, paging-decision support before escalating, or as the daily 'are alerts clean?' check.",
+    "tools_used": ["openagentic_prometheus.prometheus_alerts", "llm_completion", "transform", "webhook_response"],
+    "version": "1.0",
+    "tags": ["aiops", "observability", "prometheus", "alerts", "incident"]
+  },
+  "defaultInputs": {
+    "severity": "all",
+    "limit": 10
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "data": {
+          "triggerType": "manual",
+          "label": "Active Alerts Digest",
+          "input_schema": {
+            "severity": "string",
+            "limit": "number"
+          }
+        }
+      },
+      {
+        "id": "alerts",
+        "type": "mcp_tool",
+        "data": {
+          "label": "Get Active Alerts",
+          "toolServer": "openagentic_prometheus",
+          "toolName": "prometheus_alerts",
+          "arguments": {}
+        }
+      },
+      {
+        "id": "filter",
+        "type": "transform",
+        "data": {
+          "label": "Parse + Sort + Slice",
+          "operations": [
+            {
+              "op": "set",
+              "target": "alerts",
+              "value": "{{ (() => { const raw = String(input.content || ''); if (!raw || /^\\s*no active alerts\\s*$/i.test(raw.trim())) return []; const lines = raw.split(/\\r?\\n/); const out = []; let section = ''; let current = null; for (const line of lines) { const t = line.trim(); if (!t) { if (current) { out.push(current); current = null; } continue; } const secMatch = t.match(/^(FIRING|PENDING|INACTIVE)\\s*\\(/i); if (secMatch) { section = secMatch[1].toLowerCase(); continue; } const nameMatch = t.match(/^-\\s+(.+)$/); if (nameMatch && (section === 'firing' || section === 'pending')) { if (current) out.push(current); current = { alertname: nameMatch[1].trim(), severity: 'info', state: section, summary: '' }; continue; } if (current) { const sevMatch = t.match(/^Severity:\\s*(.+)$/i); if (sevMatch) { current.severity = sevMatch[1].trim().toLowerCase(); continue; } const sumMatch = t.match(/^Summary:\\s*(.+)$/i); if (sumMatch) { current.summary = sumMatch[1].trim(); continue; } } } if (current) out.push(current); const rank = { critical: 3, warning: 2, info: 1 }; out.sort((a, b) => (rank[b.severity] || 0) - (rank[a.severity] || 0)); const lim = (typeof input.limit === 'number' && input.limit > 0) ? input.limit : 10; return out.slice(0, lim); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "alert_count",
+              "value": "{{ (() => { const raw = String(input.content || ''); if (!raw || /^\\s*no active alerts\\s*$/i.test(raw.trim())) return 0; const lines = raw.split(/\\r?\\n/); let count = 0; let section = ''; for (const line of lines) { const t = line.trim(); const secMatch = t.match(/^(FIRING|PENDING|INACTIVE)\\s*\\(/i); if (secMatch) { section = secMatch[1].toLowerCase(); continue; } const nameMatch = t.match(/^-\\s+(.+)$/); if (nameMatch && (section === 'firing' || section === 'pending')) count++; } return count; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "critical_count",
+              "value": "{{ (() => { const raw = String(input.content || ''); if (!raw) return 0; const matches = raw.match(/Severity:\\s*critical/gi); return matches ? matches.length : 0; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "warning_count",
+              "value": "{{ (() => { const raw = String(input.content || ''); if (!raw) return 0; const matches = raw.match(/Severity:\\s*warning/gi); return matches ? matches.length : 0; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "severity_filter",
+              "value": "{{ (typeof input.severity === 'string' && input.severity) ? input.severity : 'all' }}"
+            },
+            {
+              "op": "set",
+              "target": "limit_label",
+              "value": "{{ (typeof input.limit === 'number' && input.limit > 0) ? input.limit : 10 }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "summary",
+        "type": "llm_completion",
+        "data": {
+          "label": "Summarize Top Issues",
+          "prompt": "You are an SRE summarizing the most critical active Prometheus alerts for an operator.\n\nActive alerts (JSON array, sorted by severity desc — may be empty):\n{{input.alerts}}\n\nTotal active alerts: {{input.alert_count}} ({{input.critical_count}} critical, {{input.warning_count}} warning).\n\nOutput rules (MUST follow):\n1. Start the response with a single `-` character — no preamble, no \"Here is\", no \"The user wants\", no thinking out loud.\n2. Exactly 3 to 5 short bullets, each on its own line, each beginning with `-`.\n3. Each bullet describes ONE alert and proposes a concrete operator next-action (one short remediation hint).\n4. Reference the alertname verbatim and the severity in each bullet so the operator can grep.\n5. If the alerts array is empty, state that no active alerts were found and recommend a routine future check.",
+          "model": "auto",
+          "temperature": 0.2,
+          "maxTokens": 500
+        }
+      },
+      {
+        "id": "clean_summary",
+        "type": "transform",
+        "data": {
+          "label": "Strip CoT Preamble",
+          "operations": [
+            {
+              "op": "set",
+              "target": "clean_content",
+              "value": "{{ (() => { const raw = String(input.content || ''); const inlineMatch = raw.match(/([\\.\\!\\?\\:]|\\n)\\s*(-\\s+\\S)/); const lines = raw.split(/\\r?\\n/); let firstBulletIdx = -1; for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (t.startsWith('-') || t.startsWith('•') || t.startsWith('*')) { firstBulletIdx = i; break; } } if (firstBulletIdx !== -1) { const fromLineIdx = lines.slice(firstBulletIdx).join('\\n').trim(); if (inlineMatch && inlineMatch.index !== undefined) { const fromInline = raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); if (fromInline.length < fromLineIdx.length || lines[firstBulletIdx].trim().length > 8 === false) { return fromInline; } } return fromLineIdx; } if (inlineMatch && inlineMatch.index !== undefined) { return raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); } return raw.trim(); })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "report",
+        "type": "webhook_response",
+        "data": {
+          "label": "HTML Alerts Digest",
+          "statusCode": 200,
+          "headers": { "Content-Type": "text/html" },
+          "bodyTemplate": "<div class=\"prometheus-active-alerts-digest\"><h2>Prometheus Active Alerts Digest</h2><p><strong>Total active:</strong> {{steps.filter.alert_count}} &middot; <strong>Critical:</strong> {{steps.filter.critical_count}} &middot; <strong>Warning:</strong> {{steps.filter.warning_count}} &middot; <strong>Severity filter:</strong> {{steps.filter.severity_filter}} &middot; <strong>Limit:</strong> {{steps.filter.limit_label}}</p><h3>Operator Digest</h3><pre class=\"digest\">{{steps.clean_summary.clean_content}}</pre><h3>Active Alerts (sorted by severity)</h3><pre class=\"alerts-table\">{{steps.filter.alerts}}</pre><h3>Raw Prometheus Payload</h3><pre class=\"raw\">{{steps.alerts.content}}</pre></div>"
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "trigger", "target": "alerts" },
+      { "id": "e2", "source": "alerts", "target": "filter" },
+      { "id": "e3", "source": "filter", "target": "summary" },
+      { "id": "e4", "source": "summary", "target": "clean_summary" },
+      { "id": "e5", "source": "clean_summary", "target": "report" }
+    ]
+  }
+}

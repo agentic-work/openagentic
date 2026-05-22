@@ -84,18 +84,38 @@ export class BlobStorageService {
 
     const baseConfig: StorageConfig = {
       type,
-      bucket: override?.bucket || process.env.BLOB_STORAGE_BUCKET || 'openagentic-images',
+      bucket: override?.bucket || process.env.STORAGE_BUCKET || process.env.BLOB_STORAGE_BUCKET || 'openagentic-images',
     };
 
     switch (type) {
-      case 'minio':
+      case 'minio': {
+        // Prefer STORAGE_ENDPOINT (the canonical, cluster-wide env the helm
+        // chart sets on every workload — currently points at usermin-minio)
+        // over the historical MINIO_ENDPOINT default which referenced a
+        // `openagentic-minio` Service that never existed in this cluster.
+        // Falling back to a non-existent host made every image-gen invocation
+        // fail the Milvus-backed save with ECONNREFUSED to a public IP
+        // (DNS leaked upward to the internet resolver).
+        const rawEndpoint =
+          override?.endpoint ||
+          process.env.STORAGE_ENDPOINT ||
+          process.env.MINIO_ENDPOINT ||
+          'milvus-minio:9000';
+        // STORAGE_ENDPOINT often arrives as a full URL (http://host:port);
+        // BlobStorageService parses `host:port` downstream. Strip the scheme.
+        const endpoint = rawEndpoint.replace(/^https?:\/\//, '');
+        const useSSL =
+          override?.useSSL !== undefined
+            ? override.useSSL
+            : /^https:\/\//i.test(rawEndpoint) || process.env.MINIO_USE_SSL === 'true';
         return {
           ...baseConfig,
-          endpoint: override?.endpoint || process.env.MINIO_ENDPOINT || 'milvus-minio:9000',
-          accessKey: override?.accessKey || process.env.MINIO_ACCESS_KEY || 'minioadmin',
-          secretKey: override?.secretKey || process.env.MINIO_SECRET_KEY || 'minioadmin',
-          useSSL: override?.useSSL !== undefined ? override.useSSL : (process.env.MINIO_USE_SSL === 'true'),
+          endpoint,
+          accessKey: override?.accessKey || process.env.STORAGE_ACCESS_KEY || process.env.MINIO_ACCESS_KEY || 'minioadmin',
+          secretKey: override?.secretKey || process.env.STORAGE_SECRET_KEY || process.env.MINIO_SECRET_KEY || 'minioadmin',
+          useSSL,
         };
+      }
 
       case 'gcs':
         return {

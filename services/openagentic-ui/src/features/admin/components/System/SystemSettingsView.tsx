@@ -1,14 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { CogIcon as Settings, SaveIcon as Save, CloseIcon as X, SuccessIcon as Check } from '../Shared/AdminIcons';
-import { SliderControl } from '../Shared/SliderControl';
 import { useAuth } from '../../../../app/providers/AuthContext';
 import { apiRequest } from '@/utils/api';
-
-interface GlobalSliderData {
-  value: number;
-  setBy?: string;
-  setAt?: string;
-}
+import { PageHeader } from '../../primitives-v2';
 
 interface TieredFCConfig {
   enabled: boolean;
@@ -29,7 +23,6 @@ const SystemSettingsView: React.FC<SystemSettingsViewProps> = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [globalSlider, setGlobalSlider] = useState<GlobalSliderData | null>(null);
 
   // Tiered Function Calling state
   const [tieredFCConfig, setTieredFCConfig] = useState<TieredFCConfig>({
@@ -54,50 +47,23 @@ const SystemSettingsView: React.FC<SystemSettingsViewProps> = () => {
     try {
       const headers = getAuthHeaders();
 
-      // Fetch slider settings
-      const sliderResponse = await apiRequest('/admin/settings/slider', { headers });
-      const sliderData = await sliderResponse.json();
-      setGlobalSlider(sliderData);
-
-      // Fetch tiered function calling settings
-      try {
-        const fcResponse = await apiRequest('/admin/tiered-fc', { headers });
-        const fcData = await fcResponse.json();
-        setTieredFCConfig({
-          enabled: fcData.enabled ?? true,
-          toolStrippingEnabled: fcData.toolStrippingEnabled ?? true,
-          decisionCacheEnabled: fcData.decisionCacheEnabled ?? true,
-          decisionCacheTTL: fcData.decisionCacheTTL ?? 300,
-          cheapModel: fcData.cheapModel || '',
-          balancedModel: fcData.balancedModel || '',
-          premiumModel: fcData.premiumModel || ''
-        });
-      } catch {
-        console.log('Tiered FC config not found, using defaults');
-      }
+      const fcResponse = await apiRequest('/admin/tiered-fc', { headers });
+      const fcData = await fcResponse.json();
+      setTieredFCConfig({
+        enabled: fcData.enabled ?? true,
+        toolStrippingEnabled: fcData.toolStrippingEnabled ?? true,
+        decisionCacheEnabled: fcData.decisionCacheEnabled ?? true,
+        decisionCacheTTL: fcData.decisionCacheTTL ?? 300,
+        cheapModel: fcData.cheapModel || '',
+        balancedModel: fcData.balancedModel || '',
+        premiumModel: fcData.premiumModel || '',
+      });
     } catch (err) {
       console.error('Failed to fetch settings:', err);
       setError(err instanceof Error ? err.message : 'Failed to load settings');
-      setGlobalSlider({ value: 50 });
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSliderSave = async (value: number) => {
-    const headers = {
-      ...getAuthHeaders(),
-      'Content-Type': 'application/json'
-    };
-
-    await apiRequest('/admin/settings/slider', {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify({ value })
-    });
-
-    // Refetch to get updated data
-    await fetchSettings();
   };
 
   const handleTieredFCChange = (key: keyof TieredFCConfig, value: boolean | number | string) => {
@@ -134,31 +100,32 @@ const SystemSettingsView: React.FC<SystemSettingsViewProps> = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div
-          className="animate-spin rounded-full h-8 w-8"
-          style={{
-            border: '2px solid var(--color-border)',
-            borderTopColor: 'var(--color-primary)',
-          }}
+      <div className="space-y-6">
+        <PageHeader
+          crumbs={['Admin', 'System', 'Settings']}
+          title="System Settings"
+          explainer="Configure global system settings that apply to all users."
         />
+        <div className="flex items-center justify-center h-64">
+          <div
+            className="animate-spin rounded-full h-8 w-8"
+            style={{
+              border: '2px solid var(--color-border)',
+              borderTopColor: 'var(--color-primary)',
+            }}
+          />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2
-          className="text-2xl font-bold mb-2"
-          style={{ color: 'var(--text-primary)' }}
-        >
-          System Settings
-        </h2>
-        <p style={{ color: 'var(--text-secondary)' }}>
-          Configure global system settings that apply to all users
-        </p>
-      </div>
+      <PageHeader
+        crumbs={['Admin', 'System', 'Settings']}
+        title="System Settings"
+        explainer="Configure global system settings that apply to all users."
+      />
 
       {/* Error/Success Messages */}
       {error && (
@@ -192,109 +159,6 @@ const SystemSettingsView: React.FC<SystemSettingsViewProps> = () => {
           <span style={{ color: 'var(--color-success)' }}>{success}</span>
         </div>
       )}
-
-      {/* Global Intelligence Slider */}
-      <div
-        className="p-6 rounded-lg"
-        style={{
-          backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-        }}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3
-            className="text-xl font-semibold flex items-center gap-2"
-            style={{ color: 'var(--text-primary)' }}
-          >
-            <Settings size={20} style={{ color: 'var(--color-primary)' }} />
-            Global Intelligence Slider
-          </h3>
-        </div>
-
-        <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>
-          The global intelligence slider controls the default cost/quality tradeoff for all users.
-          Individual users can have custom overrides set in their permissions.
-        </p>
-
-        {/* Use the new SliderControl component */}
-        <SliderControl
-          value={globalSlider?.value ?? 50}
-          onSave={handleSliderSave}
-          label="Global Default Value"
-          source="System Configuration"
-          lastModified={
-            globalSlider?.setAt
-              ? {
-                  by: globalSlider.setBy,
-                  at: new Date(globalSlider.setAt).toLocaleString(),
-                }
-              : undefined
-          }
-        />
-
-        {/* Tier Configuration Summary */}
-        <div className="grid grid-cols-3 gap-4 mt-6">
-          <div
-            className="p-4 rounded-lg"
-            style={{
-              backgroundColor: 'color-mix(in srgb, var(--color-success) 10%, var(--color-surface))',
-              border: '1px solid color-mix(in srgb, var(--color-success) 30%, transparent)',
-            }}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <span className="font-medium" style={{ color: 'var(--color-success)' }}>
-                Economical
-              </span>
-            </div>
-            <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>0-40%</p>
-            <ul className="text-xs space-y-1" style={{ color: 'var(--text-secondary)' }}>
-              <li>No thinking mode</li>
-              <li>Fast models only</li>
-              <li>Lower token limits</li>
-            </ul>
-          </div>
-
-          <div
-            className="p-4 rounded-lg"
-            style={{
-              backgroundColor: 'color-mix(in srgb, var(--color-warning) 10%, var(--color-surface))',
-              border: '1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)',
-            }}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <span className="font-medium" style={{ color: 'var(--color-warning)' }}>
-                Balanced
-              </span>
-            </div>
-            <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>41-60%</p>
-            <ul className="text-xs space-y-1" style={{ color: 'var(--text-secondary)' }}>
-              <li>Thinking mode enabled</li>
-              <li>4K-8K thinking budget</li>
-              <li>Standard models</li>
-            </ul>
-          </div>
-
-          <div
-            className="p-4 rounded-lg"
-            style={{
-              backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, var(--color-surface))',
-              border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)',
-            }}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <span className="font-medium" style={{ color: 'var(--color-primary)' }}>
-                Premium
-              </span>
-            </div>
-            <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>61-100%</p>
-            <ul className="text-xs space-y-1" style={{ color: 'var(--text-secondary)' }}>
-              <li>Extended thinking</li>
-              <li>8K-32K budget</li>
-              <li>Premium models</li>
-            </ul>
-          </div>
-        </div>
-      </div>
 
       {/* Tiered Function Calling Settings */}
       <div
@@ -520,7 +384,7 @@ const SystemSettingsView: React.FC<SystemSettingsViewProps> = () => {
             className="px-6 py-2 rounded-lg flex items-center gap-2 transition-colors"
             style={{
               backgroundColor: hasTieredFCChanges ? 'var(--color-primary)' : 'var(--color-surfaceTertiary)',
-              color: hasTieredFCChanges ? '#FFFFFF' : 'var(--text-muted)',
+              color: hasTieredFCChanges ? 'var(--ap-fg-0)' : 'var(--text-muted)',
               cursor: hasTieredFCChanges && !savingTieredFC ? 'pointer' : 'not-allowed',
               opacity: savingTieredFC ? 0.7 : 1,
             }}

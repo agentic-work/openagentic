@@ -1,0 +1,561 @@
+/**
+ * Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
+ *
+ * Task #166 — v0.6.7 chat UX mockup application.
+ *
+ * This stylesheet applies the mockup palette + component visuals from
+ * `docs/release-plans/v0.6.7-ux-mockups/01-cloud-ops.html` to the live
+ * chat surface WITHOUT rewriting component event-wiring. It:
+ *
+ *   1. Declares the mockup token set (--bg-0..4, --fg-0..3, --line-*,
+ *      --accent-*, --agent-*) as root vars.
+ *   2. Overrides the existing --color-* token surface to align with
+ *      the mockup palette, so every component that reads those vars
+ *      (ToolCallCard, ExpandableToolItem, UnifiedActivityTree, etc.)
+ *      inherits the new visual language by default.
+ *   3. Targets specific component selectors / data-attributes to
+ *      apply shape + spacing rules that can't be reached via tokens
+ *      alone (terminal-style tool headers, 760px chat column, 22×22
+ *      violet avatar, etc.).
+ *
+ * Load order: imported from index.css AFTER design-tokens.css so
+ * mockup values take precedence on the dark theme. Light theme keeps
+ * its existing overrides.
+ */
+
+/* ============================================================
+   A. Mockup token set — full dark palette from 01-cloud-ops.html
+   ============================================================ */
+:root {
+  /* Mockup shade stack */
+  --bg-0: #09090b;
+  --bg-1: #0f1012;
+  --bg-2: #16181c;
+  --bg-3: #1c1f24;
+  --bg-4: #242831;
+
+  --line-1: rgba(255, 255, 255, 0.06);
+  --line-2: rgba(255, 255, 255, 0.10);
+  --line-3: rgba(255, 255, 255, 0.16);
+
+  --fg-0: #f8fafc;
+  --fg-1: #d4d4d8;
+  --fg-2: #a1a1aa;
+  --fg-3: #71717a;
+
+  /* Violet accent + sub-agent hash palette (4 anchors; colorHashForId
+     maps agent ids via djb2 → pick one of these four). */
+  --accent: #8b5cf6;
+  --accent-soft: rgba(139, 92, 246, 0.14);
+  --accent-line: rgba(139, 92, 246, 0.32);
+
+  --agent-c: #f59e0b;
+  --agent-g: #10b981;
+  --agent-s: #ef4444;
+  --agent-k: #3b82f6;
+
+  /* Status (kept alongside existing --color-success etc.) */
+  --ok:   #22c55e;
+  --warn: #f59e0b;
+  --err:  #ef4444;
+  --info: #38bdf8;
+
+  /* Mockup shape scale. The existing --radius-sm/md legacy aliases at
+     6/12 in design-tokens.css get narrowed here to 6/10/14 so the
+     "pill", "card", "message" visuals match the mockup. */
+  --mk-radius-sm: 6px;
+  --mk-radius-md: 10px;
+  --mk-radius-lg: 14px;
+
+  --mk-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --mk-shadow-md: 0 4px 20px rgba(0, 0, 0, 0.45);
+}
+
+/* ============================================================
+   A₂. Light theme overrides (task #182). The :root block above
+   declares the dark palette; without these overrides the mockup
+   tokens stay dark in light mode, producing white text on white
+   background for every inline-styled element that reads --fg-0
+   etc. Flip the scale — bg gets light, fg gets dark, lines get
+   darker low-alpha strokes, accent + agent hashes unchanged so
+   the brand stays violet either way. Shadows drop intensity.
+   ============================================================ */
+html[data-theme='light'] {
+  --bg-0: #ffffff;
+  --bg-1: #fafafa;
+  --bg-2: #f4f4f5;
+  --bg-3: #e4e4e7;
+  --bg-4: #d4d4d8;
+
+  --line-1: rgba(0, 0, 0, 0.06);
+  --line-2: rgba(0, 0, 0, 0.10);
+  --line-3: rgba(0, 0, 0, 0.16);
+
+  --fg-0: #09090b;
+  --fg-1: #3f3f46;
+  --fg-2: #52525b;
+  --fg-3: #71717a;
+
+  /* Accent + agent colors are saturated and work on both grounds,
+     but accent-soft + accent-line use white-alpha in dark; swap to
+     violet-alpha-on-white for proper bg tint. */
+  --accent-soft: rgba(139, 92, 246, 0.10);
+  --accent-line: rgba(139, 92, 246, 0.28);
+
+  --mk-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --mk-shadow-md: 0 4px 20px rgba(0, 0, 0, 0.10);
+}
+
+/* ============================================================
+   B. Re-wire the legacy --color-* semantic vars so every existing
+   component picks up the mockup skin automatically. Only applies
+   on the dark theme (light keeps its overrides from index.css).
+   ============================================================ */
+:root,
+html[data-theme='dark'] {
+  --color-background:       var(--bg-0);
+  --color-surface:          var(--bg-1);
+  --color-surfaceSecondary: var(--bg-2);
+  --color-surfaceTertiary:  var(--bg-3);
+  --color-surfaceHover:     var(--bg-3);
+
+  --color-bg-primary:   var(--bg-0);
+  --color-bg-secondary: var(--bg-1);
+  --color-bg-tertiary:  var(--bg-2);
+
+  /* Kebab-case aliases for semantic surface tokens — some inline-styled
+     admin components read `--color-surface-primary` / `-secondary` /
+     `-tertiary` and `--color-bg` which weren't previously defined here,
+     so their backgrounds resolved to transparent (causing the Router
+     Tuning tooltip + misc admin chrome to look unthemed). Fixed 2026-04-23. */
+  --color-surface-primary:   var(--bg-1);
+  --color-surface-secondary: var(--bg-2);
+  --color-surface-tertiary:  var(--bg-3);
+  --color-surface-hover:     var(--bg-3);
+  --color-bg:                var(--bg-0);
+  --color-text-primary:      var(--fg-0);
+  --color-text-secondary:    var(--fg-1);
+  --color-text-muted:        var(--fg-2);
+
+  --color-text:          var(--fg-0);
+  --color-textSecondary: var(--fg-1);
+  --color-textMuted:     var(--fg-2);
+
+  --color-border:      var(--line-1);
+  --color-borderHover: var(--line-2);
+
+  --color-primary: var(--accent);
+
+  /* Violet accent surfaces leveraged by inline-style components. */
+  --color-accent: var(--accent);
+
+  /* M3 surface tokens (task #160) re-aligned to mockup stack so the
+     existing `bg-surface-1` etc. utilities produce mockup shades. */
+  --surface-0: var(--bg-0);
+  --surface-1: var(--bg-1);
+  --surface-2: var(--bg-2);
+  --surface-3: var(--bg-3);
+  --surface-4: var(--bg-4);
+}
+
+/* Shift body background so the whole chat surface picks up --bg-0. */
+body {
+  background-color: var(--bg-0);
+  color: var(--fg-1);
+  font-feature-settings: 'ss01', 'cv11';
+}
+
+/* ============================================================
+   C. CHAT COLUMN LAYOUT
+   Match mockup: 760px max-width centered column, 32px gap between
+   messages, 24/32 wrap padding, 200px bottom clearance.
+   Targets ChatMessages wrapper via its existing structure.
+   ============================================================ */
+/* Chat column wrapper: the 800px constraint is applied directly in
+   ChatMessages.tsx as an inline style (see task #166). Here we only
+   tighten inter-message gap. */
+[data-message-id] + [data-message-id] {
+  margin-top: 32px;
+}
+
+/* ============================================================
+   D. ASSISTANT MESSAGE — meta row layout
+   (Avatar + name + model chip + cost pill renders inside
+    MessageBubble directly; see [data-testid='assistant-meta-row'].)
+   ============================================================ */
+
+/* Assistant body: remove justify-center padding so content sits left.
+   User messages keep right-alignment via justify-end in JSX. */
+[data-message-role='assistant'] > div > div.flex {
+  justify-content: flex-start !important;
+  padding: 0 !important;
+}
+
+/* ============================================================
+   E. USER MESSAGE BUBBLE
+   ============================================================ */
+/* Existing MessageBubble wraps user content in a div with
+   `background: var(--user-accent-primary)` inline. Shift to mockup
+   bubble styling: bg-2, line-2 border, 14px radius, 12/16 padding,
+   right-aligned, max 640px. */
+[data-message-role='user'] .inline-block > .group > div:not(.absolute):not(.flex) {
+  background: var(--bg-2) !important;
+  color: var(--fg-0) !important;
+  border: 1px solid var(--line-2);
+  border-radius: 14px !important;
+  padding: 12px 16px !important;
+  box-shadow: var(--mk-shadow-sm);
+  max-width: 640px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* ============================================================
+   F. COST PILL — mockup style, violet surface with live dot
+   ============================================================ */
+[data-testid='cost-pill'] {
+  background: var(--accent-soft) !important;
+  border: 1px solid var(--accent-line) !important;
+  color: var(--fg-0) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 11px !important;
+  font-variant-numeric: tabular-nums;
+  border-radius: 99px !important;
+  padding: 3px 8px !important;
+}
+
+/* ============================================================
+   G. INLINE THINKING BLOCK — starburst accent + italic body
+   ============================================================ */
+.inline-thinking-natural [data-testid='inline-thinking-toggle'] {
+  color: var(--fg-2) !important;
+}
+.inline-thinking-natural [data-testid='inline-thinking-toggle']:hover {
+  color: var(--fg-1) !important;
+}
+.inline-thinking-natural [data-testid='inline-thinking-header'] {
+  color: var(--fg-1) !important;
+  font-weight: 500;
+}
+/* The inner spinner → violet when streaming. */
+.inline-thinking-natural [data-testid='inline-thinking-toggle'] > div:first-child {
+  border-top-color: var(--accent) !important;
+  border-color: var(--accent-line) !important;
+}
+/* Expanded body: violet left-rail, fg-2 italic, spacious. */
+.inline-thinking-natural [data-testid='inline-thinking-body'] > div {
+  border-left-color: var(--accent-line) !important;
+  color: var(--fg-2) !important;
+  font-style: italic;
+  padding-left: 12px !important;
+  margin-left: 0 !important;
+  font-size: 13px !important;
+}
+
+/* ============================================================
+   H. TOOL CALL CARD — terminal-style header + bg-1 body
+   ============================================================ */
+[data-testid='tool-call-card'] {
+  background: var(--bg-1) !important;
+  border: 1px solid var(--line-1) !important;
+  border-radius: var(--mk-radius-md) !important;
+  overflow: hidden;
+  margin: 4px 0;
+}
+[data-testid='tool-call-card'] button:first-of-type {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 9px 12px !important;
+  color: var(--fg-0) !important;
+}
+[data-testid='tool-call-card'] button:first-of-type .truncate {
+  color: var(--fg-0) !important;
+  font-weight: 500;
+  font-family: 'JetBrains Mono', monospace;
+}
+/* Section labels (INPUT / OUTPUT) uppercased + tiny. */
+[data-testid='tool-call-card'] pre {
+  background: var(--bg-0) !important;
+  border: 1px solid var(--line-1) !important;
+  border-radius: 6px !important;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px !important;
+  color: var(--fg-1) !important;
+}
+
+/* Live-input pane (streaming). */
+[data-testid='tool-call-live-input'] {
+  background: var(--bg-0) !important;
+  border-top-color: var(--line-1) !important;
+}
+
+/* Activity step (inline compact tool row). */
+.activity-step {
+  padding: 4px 0;
+}
+.activity-step--running {
+  /* Subtle violet shimmer accent for live rows. */
+  position: relative;
+}
+
+/* ============================================================
+   I. PARALLEL TOOL GROUP — header + 280px min grid
+   ============================================================ */
+[data-testid='parallel-tool-group-header'] {
+  color: var(--fg-2) !important;
+  font-size: 11px;
+}
+[data-testid='parallel-tool-group-header'] svg {
+  color: var(--accent) !important;
+}
+[data-testid='parallel-tool-group-grid'] {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+  gap: 12px !important;
+}
+[data-testid='parallel-tool-subcard'] {
+  background: var(--bg-1) !important;
+  border: 1px solid var(--line-1) !important;
+  border-radius: var(--mk-radius-md) !important;
+}
+[data-testid='parallel-tool-subcard'] pre {
+  background: var(--bg-0) !important;
+  border: 1px solid var(--line-1) !important;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ============================================================
+   J. UNIFIED ACTIVITY TREE — agent avatars use hash palette
+   (The component renders an HSL colour; we don't touch that to
+   keep behavior intact, but we tighten the sub-agent card
+   container chrome to match the mockup.)
+   ============================================================ */
+[data-testid='agent-card'] {
+  background: var(--bg-1);
+  border-radius: var(--mk-radius-lg);
+  border: 1px solid var(--line-1);
+  padding: 12px;
+  margin: 6px 0;
+}
+[data-testid='agent-card'][data-collapsed='true'] {
+  padding-bottom: 12px;
+}
+[data-testid='agent-avatar'] {
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+
+/* ============================================================
+   K. COMPOSER — mockup bg-1 pill with accent send button
+   ============================================================ */
+.bg-surface-1 {
+  background: var(--bg-1) !important;
+}
+/* Violet send button on the chat input bar. */
+button[aria-label='Send message'],
+button[aria-label='Queue message'] {
+  background: var(--accent) !important;
+}
+button[aria-label='Send message']:hover,
+button[aria-label='Queue message']:hover {
+  background: #7c3aed !important; /* violet-600 */
+}
+
+/* ============================================================
+   L. SIDEBAR / TOP AREA — subtle mockup alignment
+   ============================================================ */
+/* Gradient headline conic mark for "A" brand icon, when present. */
+.av-asst,
+.avatar-brand {
+  background: linear-gradient(135deg, #a78bfa, #6366f1) !important;
+}
+
+/* Mockup chip (pills near the top bar or model badge). */
+.chip {
+  border: 1px solid var(--line-2);
+  color: var(--fg-2);
+  font-size: 11px;
+  padding: 4px 9px;
+  border-radius: 99px;
+}
+
+/* ============================================================
+   M. TAILWIND UTILITY CLASSES (opt-in)
+   Components can use these directly: bg-bg-1, text-fg-2, etc.
+   ============================================================ */
+@layer utilities {
+  .bg-bg-0 { background-color: var(--bg-0); }
+  .bg-bg-1 { background-color: var(--bg-1); }
+  .bg-bg-2 { background-color: var(--bg-2); }
+  .bg-bg-3 { background-color: var(--bg-3); }
+  .bg-bg-4 { background-color: var(--bg-4); }
+
+  .text-fg-0 { color: var(--fg-0); }
+  .text-fg-1 { color: var(--fg-1); }
+  .text-fg-2 { color: var(--fg-2); }
+  .text-fg-3 { color: var(--fg-3); }
+
+  .border-line-1 { border-color: var(--line-1); }
+  .border-line-2 { border-color: var(--line-2); }
+  .border-line-3 { border-color: var(--line-3); }
+
+  .text-accent   { color: var(--accent); }
+  .bg-accent     { background-color: var(--accent); }
+  .bg-accent-soft { background-color: var(--accent-soft); }
+  .border-accent-line { border-color: var(--accent-line); }
+}
+
+/* ============================================================
+   I. Semantic color tints inside rendered assistant markdown
+   (task #174). Flat B&W reading the K8s audit / security
+   report as monochrome was the top complaint; these rules add
+   Claude.ai/Gemini-grade visual hierarchy without changing the
+   markdown pipeline itself — we just key off the SharedMarkdown
+   renderer's emitted structure.
+   ============================================================ */
+
+/* Markdown renderer mounts under .prose (className="prose dark:prose-invert
+   max-w-none" at SharedMarkdownRenderer.tsx:694). Tailwind's typography
+   plugin ships baseline rules; we override them with higher specificity
+   by nesting under .prose so mockup colors take precedence. !important
+   is intentional — the prose plugin uses hardcoded hex colors that would
+   otherwise win the cascade. */
+.prose h2,
+.prose h3,
+.prose h4 {
+  color: var(--fg-0, #f8fafc) !important;
+  letter-spacing: -0.015em;
+  font-weight: 600 !important;
+}
+.prose h2 {
+  color: var(--fg-0, #f8fafc) !important;
+  margin-top: 1.6em !important;
+  margin-bottom: 0.4em !important;
+  border-bottom: 1px solid var(--line-1, rgba(255, 255, 255, 0.06));
+  padding-bottom: 6px;
+}
+.prose h3 {
+  color: var(--accent, #8b5cf6) !important;
+  margin-top: 1.2em !important;
+  margin-bottom: 0.3em !important;
+}
+.prose h4 {
+  color: var(--fg-1, #d4d4d8) !important;
+  font-size: 13px !important;
+  margin-top: 1em !important;
+  margin-bottom: 0.25em !important;
+}
+
+/* Bold lead-ins inside assistant bullets are the mockup's pattern for
+   Key Points / Risk / Interpretation — pop the term. */
+.prose li > strong,
+.prose p > strong {
+  color: var(--fg-0, #f8fafc) !important;
+  font-weight: 600 !important;
+}
+
+/* Inline code chips: accent-soft background with accent-line border.
+   Tailwind's prose default renders them as plain colored text; we need
+   the pill shape + accent tint to match mockup .inline-code. */
+.prose :not(pre) > code {
+  background: var(--accent-soft, rgba(139, 92, 246, 0.14)) !important;
+  border: 1px solid var(--accent-line, rgba(139, 92, 246, 0.32));
+  color: var(--fg-0, #f8fafc) !important;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo,
+    monospace !important;
+  font-size: 0.88em;
+  padding: 0.08em 0.42em !important;
+  border-radius: 6px !important;
+  font-variant-ligatures: none;
+}
+.prose :not(pre) > code::before,
+.prose :not(pre) > code::after {
+  content: '' !important; /* kill the prose plugin's ` ` backtick wrappers */
+}
+
+/* Blockquote: violet rail + tinted bg for Note/Risk/Disclaimer. */
+.prose blockquote {
+  border-left: 3px solid var(--accent, #8b5cf6) !important;
+  background: color-mix(in srgb, var(--accent, #8b5cf6) 8%, transparent);
+  padding: 10px 14px !important;
+  margin: 12px 0 !important;
+  color: var(--fg-1, #d4d4d8) !important;
+  border-radius: 0 8px 8px 0;
+  font-style: normal !important;
+}
+
+/* Paragraph + list text color — prose plugin renders as a muted gray
+   which looks flat next to the mockup's brighter --fg-0/--fg-1. */
+.prose p,
+.prose li,
+.prose td,
+.prose dd {
+  color: var(--fg-1, #d4d4d8) !important;
+}
+.prose strong {
+  color: var(--fg-0, #f8fafc) !important;
+}
+
+/* Table — mockup-parity: accent-tinted header row, line-1 borders,
+   zebra banding via nth-child on data rows. Overrides the older
+   excel-table defaults when the mockup palette is active. */
+.excel-table thead tr {
+  background: color-mix(in srgb, var(--accent, #8b5cf6) 12%, transparent) !important;
+}
+.excel-table thead th {
+  color: var(--fg-0, #f8fafc) !important;
+  border-bottom: 1px solid var(--accent-line, rgba(139, 92, 246, 0.32)) !important;
+  font-weight: 600;
+}
+.excel-table tbody tr:nth-child(even) {
+  background: var(--bg-1, #0f1012) !important;
+}
+.excel-table tbody tr:nth-child(odd) {
+  background: var(--bg-0, #09090b) !important;
+}
+.excel-table tbody tr:hover {
+  background: var(--bg-2, #16181c) !important;
+}
+.excel-table td {
+  border-bottom: 1px solid var(--line-1, rgba(255,255,255,0.06)) !important;
+  color: var(--fg-1, #d4d4d8);
+}
+
+/* Numbered list markers pick up the accent color so long
+   enumerations like Next Actions 1-7 have a visible rhythm. */
+.prose ol > li::marker {
+  color: var(--accent, #8b5cf6) !important;
+  font-weight: 600;
+}
+.prose ul > li::marker {
+  color: var(--fg-3, #71717a) !important;
+}
+
+/* Status-keyword tinting via custom attribute. The markdown renderer
+   wraps known k8s/cloud status strings in `<span data-status="ok|warn|err">`
+   (see SharedMarkdownRenderer.tsx status-wrap pass). These rules paint them
+   into OK/WARN/ERR pills that match --ok/--warn/--err from mockup tokens. */
+[data-status="ok"] {
+  color: var(--ok, #22c55e);
+  background: color-mix(in srgb, var(--ok, #22c55e) 12%, transparent);
+  padding: 0.05em 0.4em;
+  border-radius: 5px;
+  font-weight: 500;
+}
+[data-status="warn"] {
+  color: var(--warn, #f59e0b);
+  background: color-mix(in srgb, var(--warn, #f59e0b) 14%, transparent);
+  padding: 0.05em 0.4em;
+  border-radius: 5px;
+  font-weight: 500;
+}
+[data-status="err"] {
+  color: var(--err, #ef4444);
+  background: color-mix(in srgb, var(--err, #ef4444) 14%, transparent);
+  padding: 0.05em 0.4em;
+  border-radius: 5px;
+  font-weight: 500;
+}
+/* force rebuild 1776699527 */

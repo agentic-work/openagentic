@@ -29,7 +29,7 @@ const healthPlugin: FastifyPluginAsync<HealthPluginOptions> = async (
   fastify: FastifyInstance,
   options: HealthPluginOptions
 ) => {
-  const { prisma, modelHealthCheck, adminGuard } = options;
+  const { modelHealthCheck, adminGuard } = options;
 
   loggers.routes.info('Registering health & monitoring routes plugin...');
 
@@ -81,155 +81,12 @@ const healthPlugin: FastifyPluginAsync<HealthPluginOptions> = async (
     loggers.routes.info('Model health check route registered at /model-health');
   }
 
-  // Prompt validation health check - validates prompts are loaded in database
-  fastify.get('/prompt-health', async (request, reply) => {
-    try {
-      // Check for default prompt template using Prisma
-      const defaultPrompt = await prisma.promptTemplate.findFirst({
-        where: {
-          is_default: true,
-          is_active: true
-        }
-      });
-
-      // Check for admin prompts using Prisma
-      const adminPromptsCount = await prisma.promptTemplate.count({
-        where: {
-          is_active: true,
-          name: {
-            contains: 'admin',
-            mode: 'insensitive'
-          }
-        }
-      });
-
-      // Check for system prompts using Prisma
-      const systemPromptsCount = await prisma.systemPrompt.count({
-        where: { is_active: true }
-      });
-
-      // Check for user assignments using Prisma
-      const assignmentsCount = await prisma.userPromptAssignment.count();
-
-      const hasDefaultPrompt = !!defaultPrompt;
-      const hasAdminPrompts = adminPromptsCount > 0;
-      const hasSystemPrompts = systemPromptsCount > 0;
-      const isHealthy = hasDefaultPrompt && (hasAdminPrompts || hasSystemPrompts);
-
-      if (!isHealthy) {
-        loggers.server.error({
-          hasDefaultPrompt,
-          hasAdminPrompts,
-          hasSystemPrompts,
-          hasAssignments: assignmentsCount > 0,
-          defaultPrompt: defaultPrompt || null
-        }, '❌ CRITICAL: Prompts NOT properly loaded in database!');
-
-        return reply.code(503).send({
-          status: 'CRITICAL ERROR',
-          error: 'Prompts NOT loaded in database',
-          details: {
-            hasDefaultPrompt,
-            defaultPromptName: defaultPrompt?.name || 'MISSING',
-            adminPromptCount: adminPromptsCount,
-            systemPromptCount: systemPromptsCount,
-            assignmentCount: assignmentsCount,
-            message: 'Database seed needs to be run to populate prompts!'
-          }
-        });
-      }
-
-      loggers.server.info({
-        defaultPrompt: defaultPrompt?.name,
-        adminPrompts: adminPromptsCount,
-        systemPrompts: systemPromptsCount,
-        assignments: assignmentsCount
-      }, '✅ Prompts properly loaded and validated');
-
-      return {
-        status: 'healthy',
-        prompts: {
-          defaultPrompt: defaultPrompt ? {
-            id: defaultPrompt.id,
-            name: defaultPrompt.name,
-            isActive: defaultPrompt.is_active
-          } : null,
-          adminPromptCount: adminPromptsCount,
-          systemPromptCount: systemPromptsCount,
-          assignmentCount: assignmentsCount
-        }
-      };
-    } catch (error: any) {
-      loggers.server.error({ err: error }, '❌ Failed to check prompt health');
-      return reply.code(500).send({
-        status: 'error',
-        error: 'Failed to validate prompts',
-        details: error.message
-      });
-    }
-  });
-  loggers.routes.info('Prompt health check route registered at /prompt-health');
-
-  // Debug endpoint for prompt content (admin only in production)
-  fastify.get('/prompts/debug', async (request, reply) => {
-    try {
-      // Get the default prompt with content using Prisma
-      const defaultPrompt = await prisma.promptTemplate.findFirst({
-        where: {
-          is_default: true,
-          is_active: true
-        },
-        select: {
-          id: true,
-          name: true,
-          content: true
-        }
-      });
-
-      // Get admin prompts with content using Prisma
-      const adminPrompts = await prisma.promptTemplate.findMany({
-        where: {
-          is_active: true,
-          name: {
-            contains: 'admin',
-            mode: 'insensitive'
-          }
-        },
-        select: {
-          id: true,
-          name: true,
-          content: true
-        },
-        take: 5
-      });
-
-      const response = {
-        status: 'Prompts loaded from database',
-        defaultPrompt: defaultPrompt ? {
-          id: defaultPrompt.id,
-          name: defaultPrompt.name,
-          contentPreview: defaultPrompt.content.substring(0, 200) + '...',
-          fullContent: defaultPrompt.content
-        } : null,
-        adminPrompts: adminPrompts.map(p => ({
-          id: p.id,
-          name: p.name,
-          contentPreview: p.content.substring(0, 200) + '...'
-        }))
-      };
-
-      loggers.server.info('✅ Prompts debug info retrieved successfully');
-      return reply.send(response);
-    } catch (error: any) {
-      loggers.server.error({ err: error }, '❌ Failed to get prompt debug info');
-      return reply.code(500).send({
-        status: 'error',
-        error: 'Failed to retrieve prompt content',
-        details: error.message
-      });
-    }
-  });
-  loggers.routes.info('Prompts debug route registered at /prompts/debug');
+  // /prompt-health and /prompts/debug routes RIPPED 2026-05-11
+  // (chatmode-rip Phase E final). Both depended on the legacy
+  // PromptTemplate / SystemPrompt / UserPromptAssignment Prisma models
+  // which have been dropped along with the composable prompt-module
+  // system. RBAC system prompts have their own health surface via the
+  // rbac_system_prompts table.
 
   loggers.routes.info('✅ Health & monitoring routes plugin registered successfully');
 };

@@ -1,5 +1,8 @@
-mcp[cli]>=1.0.0
-fastmcp>=0.1.0
+# Phase 1.6 standardization: pin to current stable. fastmcp 3.x is the
+# active maintenance line; mcp 1.27+ ships the wire fields the proxy
+# preserves (annotations, _meta, outputSchema) per the brief contract.
+mcp[cli]>=1.27.0,<2.0.0
+fastmcp>=3.2.0,<4.0.0
 psycopg2-binary>=2.9.0
 redis>=5.0.0
 pymilvus>=2.4.0

@@ -14,12 +14,18 @@
 import { FastifyPluginAsync } from 'fastify';
 import { pino } from 'pino';
 import type { Logger } from 'pino';
-import { ChatPipeline } from './pipeline/ChatPipeline.js';
-import { getToolApprovalGate } from '../../services/ToolApprovalGate.js';
+// V1 ChatPipeline removed in Wave 5 (chatmode-ux-mock-parity Phase 1).
+// File deleted entirely. Plan: docs/chatmode-ux-mock-parity/02-plan-canonical.md §142, §240.
+import { buildChatV2Deps } from '../../services/buildChatV2Deps.js';
+import { getBuiltInAgents } from '../../services/BuiltInAgentRegistry.js';
+// Option B (2026-05-13) — chatmode reads agents from prisma.agent (DB SoT).
+import { listAgentsFromDbSync } from '../../services/listAgentsFromDb.js';
+import { resolveChatModel } from './resolveChatModel.js';
+import type { ChatStreamHandlerDeps } from './handlers/stream.handler.js';
+import { getPermissionService } from '../../services/PermissionService.js';
 import { ChatSessionService } from './services/ChatSessionService.js';
 import { ChatAuthService } from './services/ChatAuthService.js';
 import { ChatValidationService } from './services/ChatValidationService.js';
-import { ChatPromptService } from './services/ChatPromptService.js';
 import { ChatMCPService } from './services/ChatMCPService.js';
 import { ChatCompletionService } from './services/ChatCompletionService.js';
 import { ChatAnalyticsService } from './services/ChatAnalyticsService.js';
@@ -43,9 +49,11 @@ import { authMiddleware, authMiddlewarePlugin } from '../../middleware/unifiedAu
 import { rateLimitMiddleware, rateLimitMiddlewarePlugin } from '../../middleware/rateLimiter.js';
 import { requestLoggingMiddleware, loggingMiddlewarePlugin } from '../../middleware/logging.js';
 import { streamHandler } from './handlers/stream.handler.js';
+import { registerStreamTailRoute } from './stream-tail.route.js';
 import { sessionHandler } from './handlers/session.handler.js';
 import { messageHandler } from './handlers/message.handler.js';
 import { ChatRequest, ChatError, ChatErrorCode } from './interfaces/chat.types.js';
+import { getProviderManager } from '../../services/llm-providers/ProviderManager.js';
 
 // Storage service interface
 export interface IChatStorageService {
@@ -178,7 +186,6 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
     session: new ChatSessionService(options.chatStorage, fastify.log, cacheService),
     auth: new ChatAuthService(fastify.log),
     validation: new ChatValidationService(fastify.log, options.chatStorage),
-    prompt: new ChatPromptService(options.chatStorage, fastify.log, options.redis, options.milvus), // Added Milvus for semantic routing
     mcp: new ChatMCPService(fastify.log),
     completion: completionService,
     capabilities: capabilitiesService,
@@ -202,8 +209,259 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
     realTimeKnowledgeService
   };
 
-  // Initialize pipeline
-  const pipeline = new ChatPipeline(services, fastify.log, options.config || {});
+  // Phase E.8.g+h (2026-05-11): the legacy in-api orchestrator factory
+  // was ripped along with the orchestrator class itself. Sub-agent
+  // dispatch now goes through `chatLoopRecursor` via
+  // `makeRunSubagentViaRecursorPerCall`, wired below through the
+  // `recursorGetAgents` deps slot. Build V2 pipeline deps in place of
+  // the V1 ChatPipeline instance. The deps struct is shared across every
+  // chat-stream request; per-request inputs (mcpTools, model,
+  // priorMessages) are sourced through the streamHandler's
+  // `ChatStreamHandlerDeps` (below).
+
+  // TASK #524 — wire wave-1 services into V2 deps so the pipeline can
+  // (a) classify intent, (b) rank/subset MCP tools per intent, (c) emit
+  // intent_classified + tool_shortlist NDJSON frames the UI consumes.
+  // Each handle is best-effort: when a singleton is unavailable (early
+  // boot, test harness), the V2 pipeline degrades to defaults.
+  const ctx = (fastify as any).app;
+  // Phase E.1 (2026-05-10) — intentClassifier wiring REMOVED.
+  // Spec §50: model decides; no pre-LLM classifier.
+
+  // RouterTuningService — instantiate if missing on AppContext (it's not
+  // currently a tracked AppContext field). Singleton-cached internally.
+  //
+  // Capture the underlying service in a separate `const` before wrapping so
+  // the closure does NOT self-reference. Earlier shape:
+  //
+  //   wave1RouterTuning = getRouterTuningService(...);
+  //   wave1RouterTuning = { getTuning: () => wave1RouterTuning.getTuning() };
+  //
+  // ...left the arrow body referring to the wrapper itself (since
+  // `wave1RouterTuning` was reassigned), so every `getTuning()` call
+  // infinite-recursed and threw `Maximum call stack size exceeded`. The
+  // resulting cascade fallback dropped MCP tools to 0 across every chatmode
+  // turn from 2026-04-29 17:14 EDT (commit 85b6a539) onward. Pinned by
+  // `__tests__/architecture/no-router-tuning-self-reference.source-regression.test.ts`.
+  let wave1RouterTuning: any;
+  try {
+    const { getRouterTuningService } = await import('../../services/RouterTuningService.js');
+    const redis = getRedisClient();
+    const tuningService = getRouterTuningService(prisma, redis as any);
+    // The pipeline needs `getTuning()`, but RouterTuningService exposes that
+    // method directly. Map to the `RouterTuningLike` shape — closure
+    // captures the const above, NOT the outer wrapper variable.
+    wave1RouterTuning = { getTuning: () => tuningService.getTuning() };
+  } catch (err: any) {
+    fastify.log.warn({ err: err?.message }, '[chat] RouterTuningService init failed — V2 pipeline will use built-in topK defaults');
+  }
+
+  // Phase E.2 (2026-05-10) — per-intent tool ranker rip. The chat-side
+  // ranker dep stays optional in BuildChatV2DepsOptions for back-compat
+  // with the V2 pipeline stub; we pass `undefined` so the deps factory
+  // skips the ranker wiring entirely. tool discovery now happens via the
+  // model invoking `tool_search` mid-turn (Phase B-vrip).
+  const wave1ToolRanker: any = undefined;
+
+  // T1 ARCHITECTURE (2026-05-02) — built-in agent dispatch wiring. When
+  // the Task tool dispatches a built-in agent (cloud-operations,
+  // code-execution, etc.) the sub-agent runner hands the sub-agent the
+  // same T1 meta-tool surface the parent ships — [Task, compose_visual,
+  // render_artifact, request_clarification, browser_sandbox_exec,
+  // memorize, tool_search, agent_search]. NO wholesale wildcard
+  // expansion (the previous `expandAgentTools` pre-T1 path drowned small
+  // models in 120 cloud tools). The sub-agent discovers operational
+  // tools at run-time via `tool_search`. Frontmatter `tools:
+  // ["azure_*", ...]` becomes metadata only — kept for telemetry /
+  // future tool_search query biasing, but no longer materialized.
+  //
+  // The dispatch object stays `getBuiltInAgents + listMcpProxyTools`-
+  // shaped because the sub-agent dispatch still needs the proxy snapshot
+  // for discovered-name hydration paths and telemetry. mcp-proxy /tools
+  // is unauthenticated catalog read; OBO happens at tool execution time,
+  // not listing.
+  //
+  // SEV-1 fix 2026-05-01 — built unconditionally. The dispatch resolver
+  // needs only `getBuiltInAgents` + `listMcpProxyTools`, NOT the ranker.
+  // The previous `wave1ToolRanker ? {…} : undefined` ternary blanked the
+  // dispatch object whenever ranker init threw at boot (transient
+  // redis/milvus/embeddings unavailability) — that propagated
+  // `undefined` into the sub-agent dispatch, the inner guard
+  // `if (builtInDeps?.getBuiltInAgents && builtInDeps.listMcpProxyTools)`
+  // failed, sub-agents were dispatched with EMPTY scope. Tying the
+  // resolver to the ranker was the root cause of "sub-agents don't run
+  // tools." Pinned by
+  // wave2-builtin-dispatch-unconditional.source-regression.test.ts.
+  const wave2BuiltInDispatch = {
+    // Option B (2026-05-13) — chatmode now reads its sub-agent registry
+    // from `prisma.agent` via `listAgentsFromDbSync`. The DB is the single
+    // source of truth; the 8 markdown built-ins are seeded into the DB at
+    // boot by `14-agent-md-to-db-seeder.ts`. Admin-created custom agents
+    // appear in the same lookup because they live in the same table.
+    //
+    // The cached snapshot reads sync; the underlying refresh is async +
+    // TTL'd (60s) so admin-write → chatmode-visibility latency stays
+    // bounded. Admin agent CRUD writes call `invalidateAgentsFromDbCache`
+    // to force fresh reads immediately (mirrors the provider hot-reload
+    // pattern in [[feedback_provider_hot_reload_after_write]]).
+    //
+    // Cold-start fallback: when the cache is empty (first turn before
+    // refresh resolves), this falls back to the markdown-loaded
+    // `getBuiltInAgents()` so chatmode never sees an empty registry
+    // mid-boot.
+    getBuiltInAgents: () => {
+      const dbAgents = listAgentsFromDbSync();
+      if (dbAgents.length > 0) {
+        return dbAgents;
+      }
+      try {
+        return getBuiltInAgents();
+      } catch {
+        return [];
+      }
+    },
+    listMcpProxyTools: async () => {
+      const resp = await services.mcp.listTools(undefined, 'system');
+      return (resp?.tools as any[]) ?? [];
+    },
+  };
+
+  const v2Deps = buildChatV2Deps({
+    providerManager: options.providerManager,
+    prismaLike: prisma,
+    // LIVE fix 2026-05-11 — wire AzureTokenService so the chat→mcp-proxy
+    // hop uses the DB-persisted Azure access_token for OBO instead of
+    // the inbound bearer (often an id_token from the SPA session, which
+    // Azure rejects with AADSTS240002). Pinned by
+    // buildChatV2Deps.obo-db-token.test.ts.
+    azureTokenService,
+    // Wave 5 — wire the chatStorage singleton so the deps struct surfaces
+    // loadPriorMessages / persistUserMessage / persistAssistantMessage. The
+    // stream handler reads these directly off the v2Deps via the
+    // streamHandlerDeps mapping below; without them the V2 pipeline would
+    // forget every prior turn and lose history.
+    // Plan: docs/chatmode-ux-mock-parity/02-plan-canonical.md §272-302.
+    chatStorage: options.chatStorage as any,
+    // Phase E.1 — intentClassifier dep dropped.
+    toolRanker: wave1ToolRanker,
+    routerTuning: wave1RouterTuning,
+    // TASK #535 v2 — built-in agent cascade dispatch.
+    builtInDispatch: wave2BuiltInDispatch,
+    // Phase E.8.g+h — `deps.runSubagent` is recursor-backed by default.
+    // The caller MUST stamp `parentCtx[RECURSOR_CTX_SLOTS.parentDeps]`
+    // + `[parentSequencer]` + `[parentTurnId]` onto the per-turn RunCtx
+    // BEFORE dispatch. Without those slots, sub-agent dispatch returns
+    // a structured "not wired" error rather than crashing the turn — see
+    // `makeRunSubagentViaRecursorPerCall` in makeRunSubagentViaRecursor.ts.
+    //
+    // NOTE: runChat.ts currently overwrites deps.runSubagent with
+    // `makeOpenAgenticProxyRunSubagent(ctx)` (out-of-process openagentic-proxy
+    // dispatch). The recursor path here is the in-process alternative
+    // that lands when the per-turn ctx slots are wired in runChat.
+    recursorGetAgents: wave2BuiltInDispatch.getBuiltInAgents as any,
+  });
+
+  // Per-request helpers wired into the stream handler. listMcpTools comes
+  // from the existing ChatMCPService; pickModel goes through resolveChatModel
+  // so the DB-backed default-chat-model continues to be the SoT.
+  // Wave 5: loadPriorMessages / persistUserMessage / persistAssistantMessage
+  // forward to the chatStorage-backed callbacks attached to v2Deps.
+  const streamHandlerDeps: ChatStreamHandlerDeps = {
+    v2Deps,
+    loadPriorMessages: v2Deps.loadPriorMessages,
+    persistUserMessage: v2Deps.persistUserMessage,
+    persistAssistantMessage: v2Deps.persistAssistantMessage,
+    listMcpTools: async (authHeader: string | undefined, userId: string) => {
+      const resp = await services.mcp.listTools(authHeader, userId);
+      const tools = (resp?.tools as any[]) ?? [];
+      // #516 — MCP Proxy returns native MCP shape ({name, description,
+      // inputSchema, server}); meta-tools are OpenAI shape. OllamaProvider's
+      // convertToolsToOllama filters on `.function?.name`, so unnormalized
+      // MCP tools get silently dropped. Normalize at this boundary so the
+      // V2 pipeline + every provider downstream operate on a single shape.
+      const { normalizeToolArray } = await import('../../utils/normalizeMcpToolToOpenAI.js');
+      return normalizeToolArray(tools);
+    },
+    pickModel: async (input) => {
+      // Look up the session's persisted model (set by /sessions PUT).
+      let sessionModel: string | undefined;
+      try {
+        const session = await prisma.chatSession.findUnique({
+          where: { id: input.sessionId },
+          select: { metadata: true },
+        });
+        const meta: any = session?.metadata ?? {};
+        sessionModel = typeof meta?.model === 'string' ? meta.model : undefined;
+      } catch {
+        /* swallow */
+      }
+
+      // Q1-fix-10 — read the prior assistant message's stamped taskType
+      // for conversation-context inheritance. The router classifier uses
+      // this to keep agentic follow-ups ("break it down by day") routed
+      // to a capable model instead of falling through to pure-chat → gpt-
+      // oss:20b. Best-effort: any failure (no prior message, no metadata,
+      // db error) silently yields undefined and the classifier behaves
+      // as fresh-prompt path.
+      let priorClassification: string | undefined;
+      try {
+        const last = await prisma.chatMessage.findFirst({
+          where: { session_id: input.sessionId, role: 'assistant' },
+          orderBy: { created_at: 'desc' },
+          select: { metadata: true },
+        });
+        const m: any = last?.metadata ?? null;
+        const t = m && typeof m.taskType === 'string' ? m.taskType : undefined;
+        if (t) priorClassification = t;
+      } catch {
+        /* swallow — fresh-prompt classification on db blip */
+      }
+
+      // Sentinel passthroughs: callers that send 'smart-router'/'auto'/empty
+      // should fall through to the SmartModelRouter (or DB default); only
+      // a real concrete model id counts as an explicit override.
+      const explicit = input.requestedModel;
+      const isSentinel =
+        !explicit ||
+        explicit === 'auto' ||
+        explicit === 'smart-router' ||
+        explicit.trim() === '';
+      // Pull SmartModelRouter from AppContext (decorated by server.ts at
+      // bootstrap). When present, resolveChatModel consults it for the
+      // intent='chat'/'unclear'/null cheapest-for-chat branch (C3) — the
+      // step that makes the Smart-Router agency layering actually fire on
+      // live chat. When absent, falls through to the DB-backed default.
+      const appCtx = (fastify as any).app;
+      const smartRouter = appCtx?.smartModelRouter ?? null;
+      return resolveChatModel({
+        explicitModel: isSentinel ? null : explicit,
+        sessionModel,
+        message: input.message,
+        smartRouter,
+        priorClassification,
+      });
+    },
+    // OBO PLUMB (LIVE 2026-04-30): mirror V1 auth.stage Azure token loading
+    // so V2 ctx.user gets accessToken+idToken populated before tool calls.
+    // services.auth is a ChatAuthService — its getAzureTokenInfo wraps
+    // the same prisma query V1's auth.stage used.
+    getAzureTokenInfo: async (userId: string) => {
+      try {
+        return await services.auth.getAzureTokenInfo(userId);
+      } catch {
+        return null;
+      }
+    },
+    isTokenExpired: (expiresAt) => {
+      if (!expiresAt) return true;
+      return new Date() >= new Date(expiresAt);
+    },
+  };
+
+  // Surfaced for the /health endpoint below — V2 pipeline doesn't carry
+  // construction state (just deps), so the closest "isHealthy" signal is
+  // whether the providerManager dep was supplied.
+  const pipelineHealthy = (): boolean => Boolean(v2Deps.providerManager);
 
   // Register middleware
   await fastify.register(loggingMiddlewarePlugin, { logger: fastify.log });
@@ -242,7 +500,7 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
       status: 'ok',
       timestamp: new Date().toISOString(),
       services: {
-        pipeline: pipeline.isHealthy(),
+        pipeline: pipelineHealthy(),
         storage: await services.session.healthCheck(),
         mcp: await services.mcp.healthCheck(),
         cache: await services.cache.healthCheck()
@@ -278,9 +536,6 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
         
         // Get tools from MCP service
         const toolsResponse = await services.mcp.listTools(authHeader, userId);
-
-        // REMOVED: getOrchestrator() - using MCP Proxy integration
-        // const orchestrator = services.mcp.getOrchestrator();
 
         return reply.send({
           userId,
@@ -338,11 +593,14 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
         const completionService = services.completion;
         let toolsInCompletion = null;
         try {
-          // Create a minimal chat request to test tool visibility
-          // Use requested model or default from environment
+          // Create a minimal chat request to test tool visibility.
+          // DB is SoT — the diagnostic probe uses whatever model the admin
+          // currently has configured, not a stale env var.
+          const { ModelConfigurationService } = await import('../../services/ModelConfigurationService.js');
+          const probeModel = await ModelConfigurationService.getDefaultChatModel().catch(() => undefined);
           const testRequest = {
             messages: [{ role: 'user', content: message }],
-            model: process.env.DEFAULT_MODEL,
+            model: probeModel,
             tools: toolsResponse.tools,
             user: request.user
           };
@@ -382,7 +640,6 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
           return reply.code(400).send({ error: 'toolName required' });
         }
 
-        // REMOVED: getOrchestrator() - using MCP Proxy integration
         return reply.code(500).send({
           error: 'Direct tool execution not supported with MCP Proxy integration',
           note: 'Tools are executed automatically during chat completions',
@@ -399,7 +656,7 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
   });
 
   // Get MCP status
-  fastify.get('/mcp/status', { preHandler: authMiddleware }, async (request: any, reply) => {
+  fastify.get('/mcp/status', { onRequest: authMiddleware }, async (request: any, reply) => {
     try {
       const authHeader = request.headers.authorization;
       const userId = request.user?.id || request.user?.userId;
@@ -441,7 +698,7 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
   });
 
   // Get MCP functions (alias for tools) - used by UI
-  fastify.get('/mcp-functions', { preHandler: authMiddleware }, async (request: any, reply) => {
+  fastify.get('/mcp-functions', { onRequest: authMiddleware }, async (request: any, reply) => {
     try {
       const authHeader = request.headers.authorization;
       const userId = request.user?.id || request.user?.userId;
@@ -497,7 +754,7 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
 
   // Get available OpenAI models - import from models handler
   fastify.get('/models', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['Chat'],
       summary: 'List available AI models',
@@ -538,7 +795,7 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
   });
 
   // Knowledge Base: Ingest content into shared (DLP-scrubbed) or private Milvus collection
-  fastify.post('/knowledge/ingest', { preHandler: authMiddleware }, async (request: any, reply) => {
+  fastify.post('/knowledge/ingest', { onRequest: authMiddleware }, async (request: any, reply) => {
     const user = request.user;
     const xUserId = request.headers['x-user-id'] as string;
     const userId = (user?.id?.startsWith('service-') && xUserId) ? xUserId : (user?.id || user?.userId);
@@ -565,7 +822,7 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
   });
 
   // Knowledge Base: Search knowledge bases
-  fastify.post('/knowledge/search', { preHandler: authMiddleware }, async (request: any, reply) => {
+  fastify.post('/knowledge/search', { onRequest: authMiddleware }, async (request: any, reply) => {
     const user = request.user;
     const userId = user?.id || user?.userId;
     const body = request.body as any;
@@ -586,7 +843,7 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
   });
 
   // List available models with permission check (UI model selector)
-  fastify.get('/models/available', { preHandler: authMiddleware }, async (request: any, reply) => {
+  fastify.get('/models/available', { onRequest: authMiddleware }, async (request: any, reply) => {
     const user = request.user;
     const isAdmin = user?.isAdmin === true;
     const prismaClient = prisma;
@@ -629,7 +886,7 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
   });
 
   // Get default model from DB (used by workflows and code mode)
-  fastify.get('/models/default', { preHandler: authMiddleware }, async (request: any, reply) => {
+  fastify.get('/models/default', { onRequest: authMiddleware }, async (request: any, reply) => {
     try {
       const { ModelResolutionService } = await import('../../services/ModelResolutionService.js');
       const resolver = new ModelResolutionService(prisma, fastify.log as any);
@@ -641,14 +898,14 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
   });
 
   // Get AI capabilities for this deployment
-  fastify.get('/capabilities', { preHandler: authMiddleware }, async (request, reply) => {
+  fastify.get('/capabilities', { onRequest: authMiddleware }, async (request, reply) => {
     const { getCapabilitiesHandler } = await import('./capabilities.js');
     return getCapabilitiesHandler(request as any, reply);
   });
 
   // Main streaming endpoint (requires authentication)
   fastify.post('/stream', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['Chat'],
       summary: 'Stream chat completion',
@@ -705,10 +962,14 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
       },
       security: [{ bearerAuth: [] }, { apiKey: [] }]
     }
-  }, streamHandler(pipeline, logger));
+  }, streamHandler(streamHandlerDeps, logger));
+
+  // Durable-stream resume endpoint — GET /api/chat/stream/:sessionId/tail
+  // See `stream-tail.route.ts` for the contract. Task #154.
+  registerStreamTailRoute(fastify, { authMiddleware, logger });
 
   // Get available MCP tools (requires authentication)
-  fastify.get('/tools', { preHandler: authMiddleware }, async (request: any, reply) => {
+  fastify.get('/tools', { onRequest: authMiddleware }, async (request: any, reply) => {
     try {
       const authHeader = request.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -948,13 +1209,13 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
   // ═══════════════════════════════════════════════════════════════════════
   // HITL: Tool Approval endpoint — UI calls this to approve/deny MCP tools
   // ═══════════════════════════════════════════════════════════════════════
-  fastify.post('/tool-approval/:requestId', { preHandler: authMiddleware }, async (request: any, reply) => {
+  fastify.post('/tool-approval/:requestId', { onRequest: authMiddleware }, async (request: any, reply) => {
     const { requestId } = request.params;
     const { approved } = request.body as { approved: boolean };
     const userId = request.user?.id || request.user?.userId || 'unknown';
 
     // Path 1: in-process inline chat ReAct loop pending approval
-    const gate = getToolApprovalGate(logger);
+    const gate = getPermissionService(logger);
     const inProcessResolved = gate.submitApproval(requestId, approved, userId);
 
     // Path 2: HITL-A — sub-agent (openagentic-proxy) listens on hitl:result:{requestId}
@@ -989,8 +1250,8 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
   });
 
   // HITL: Get pending approvals (admin or current user)
-  fastify.get('/tool-approvals/pending', { preHandler: authMiddleware }, async (request: any, reply) => {
-    const gate = getToolApprovalGate(logger);
+  fastify.get('/tool-approvals/pending', { onRequest: authMiddleware }, async (request: any, reply) => {
+    const gate = getPermissionService(logger);
     const pending = gate.getPendingApprovals();
     return reply.send({ approvals: pending });
   });
@@ -1005,7 +1266,7 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
         return reply.code(400).send({ error: 'Prompt is required and must be a string' });
       }
 
-      const providerManager = (global as any).providerManager;
+      const providerManager = getProviderManager();
 
       const result = await providerManager.generateImage({
         prompt,
@@ -1055,7 +1316,7 @@ export const chatPlugin: FastifyPluginAsync<ChatPluginOptions> = async (fastify,
   // Test image generation endpoint
   fastify.get('/test-image-generation', async (request, reply) => {
     try {
-      const providerManager = (global as any).providerManager;
+      const providerManager = getProviderManager();
       const result = await providerManager.generateImage({
         prompt: 'Test image generation with GPT-5-chat'
       });

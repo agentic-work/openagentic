@@ -1,12 +1,15 @@
 /**
- * VersionBadge Component
+ * VersionBadge — compact "v0.6.6 · dev" pill in the sidebar footer.
+ * Click opens the About panel (platform logo + per-service versions).
  *
- * Displays the platform version and service status in a compact badge.
- * Always visible in the UI to show current platform version.
+ * Uses theme tokens (--bg-*, --fg-*, --line-*) so it looks correct in
+ * light and dark themes — the previous iteration used hardcoded
+ * bg-gray-800 classes and went black-on-black in light mode.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { CompanyLogo } from './CompanyLogo';
 
 interface ServiceStatus {
   version: string;
@@ -42,18 +45,17 @@ interface FullVersionData {
   timestamp: string;
 }
 
-const STATUS_COLORS = {
-  online: 'bg-green-500',
-  offline: 'bg-red-500',
-  degraded: 'bg-yellow-500',
-  unknown: 'bg-gray-500',
-};
-
-const STATUS_TEXT_COLORS = {
-  online: 'text-green-400',
-  offline: 'text-red-400',
-  degraded: 'text-yellow-400',
-  unknown: 'text-gray-400',
+const statusDot = (status: string): string => {
+  switch (status) {
+    case 'online':
+      return 'var(--color-success, #22c55e)';
+    case 'offline':
+      return 'var(--color-error, #ef4444)';
+    case 'degraded':
+      return 'var(--color-warning, #f59e0b)';
+    default:
+      return 'var(--fg-3, #71717a)';
+  }
 };
 
 export const VersionBadge: React.FC<{ className?: string }> = ({ className = '' }) => {
@@ -73,7 +75,7 @@ export const VersionBadge: React.FC<{ className?: string }> = ({ className = '' 
       } else {
         setError('Failed to fetch version');
       }
-    } catch (err) {
+    } catch {
       setError('Version unavailable');
     } finally {
       setIsLoading(false);
@@ -87,14 +89,13 @@ export const VersionBadge: React.FC<{ className?: string }> = ({ className = '' 
         const data = await response.json();
         setFullData(data);
       }
-    } catch (err) {
-      console.error('Failed to fetch full version data:', err);
+    } catch {
+      // silent — About panel will show whatever is in versionData
     }
   }, []);
 
   useEffect(() => {
     fetchVersion();
-    // Refresh version every 60 seconds
     const interval = setInterval(fetchVersion, 60000);
     return () => clearInterval(interval);
   }, [fetchVersion]);
@@ -105,163 +106,331 @@ export const VersionBadge: React.FC<{ className?: string }> = ({ className = '' 
     }
   }, [isExpanded, fullData, fetchFullVersion]);
 
-  const getOverallStatus = (): 'online' | 'offline' | 'degraded' => {
-    if (!versionData?.services) return 'unknown' as any;
+  const overallStatus = ((): 'online' | 'offline' | 'degraded' | 'unknown' => {
+    if (!versionData?.services) return 'unknown';
     const statuses = Object.values(versionData.services);
-    if (statuses.every(s => s.status === 'online')) return 'online';
-    if (statuses.some(s => s.status === 'offline')) return 'degraded';
+    if (statuses.every((s) => s.status === 'online')) return 'online';
+    if (statuses.some((s) => s.status === 'offline')) return 'degraded';
     return 'online';
-  };
+  })();
 
-  const overallStatus = getOverallStatus();
+  const pillStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '6px 10px',
+    borderRadius: 999,
+    background: 'var(--bg-2, rgba(255,255,255,.04))',
+    border: '1px solid var(--line-2, rgba(255,255,255,.1))',
+    color: 'var(--fg-1, #d4d4d8)',
+    fontSize: 11,
+    lineHeight: 1,
+    cursor: 'pointer',
+    transition: 'background 160ms ease',
+  };
 
   if (isLoading) {
     return (
-      <div className={`flex items-center gap-2 px-3 py-1.5 bg-gray-800/50 rounded-full ${className}`}>
-        <div className="w-2 h-2 rounded-full bg-gray-500 animate-pulse" />
-        <span className="text-xs text-gray-400">Loading...</span>
+      <div className={className} style={pillStyle} aria-busy="true">
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 999,
+            background: 'var(--fg-3, #71717a)',
+          }}
+        />
+        <span style={{ color: 'var(--fg-2, #a1a1aa)' }}>Loading…</span>
       </div>
     );
   }
 
-  if (error || !versionData) {
-    const fallbackVersion = import.meta.env.VITE_APP_VERSION || import.meta.env.VITE_VERSION || 'dev';
-    return (
-      <div className={`flex items-center gap-2 px-3 py-1.5 bg-gray-800/50 rounded-full ${className}`}>
-        <div className="w-2 h-2 rounded-full bg-gray-500" />
-        <span className="text-xs text-gray-400">v{fallbackVersion}</span>
-      </div>
-    );
-  }
+  const fallbackVersion =
+    import.meta.env.VITE_APP_VERSION || import.meta.env.VITE_VERSION || 'dev';
+  const version = versionData?.version ?? fallbackVersion;
+  const environment =
+    versionData?.environment === 'production' ? 'prod' : (versionData?.environment ?? 'dev');
 
   return (
-    <div className={`relative ${className}`}>
-      {/* Main Badge */}
+    <div className={className} style={{ position: 'relative' }}>
       <motion.button
+        type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-2 px-3 py-1.5 bg-gray-800/50 hover:bg-gray-700/50 rounded-full transition-colors cursor-pointer border border-gray-700/50"
+        style={pillStyle}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
+        aria-expanded={isExpanded}
+        aria-label="Open About panel"
       >
-        <div className={`w-2 h-2 rounded-full ${STATUS_COLORS[overallStatus]}`} />
-        <span className="text-xs font-medium text-gray-200">
-          v{versionData.version}
-        </span>
-        <span className="text-xs text-gray-500">
-          {versionData.environment === 'production' ? 'prod' : versionData.environment}
-        </span>
-        <svg
-          className={`w-3 h-3 text-gray-400 transition-transform ${isExpanded ? '' : 'rotate-180'}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-        </svg>
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 999,
+            background: statusDot(overallStatus),
+          }}
+        />
+        <span style={{ fontWeight: 500, color: 'var(--fg-1)' }}>v{version}</span>
+        <span style={{ color: 'var(--fg-3)' }}>·</span>
+        <span style={{ color: 'var(--fg-3)' }}>{environment}</span>
+        {error && (
+          <span
+            title={error}
+            style={{
+              color: 'var(--color-warning, #f59e0b)',
+              marginLeft: 4,
+              fontSize: 10,
+            }}
+          >
+            offline
+          </span>
+        )}
       </motion.button>
 
-      {/* Expanded Panel - opens upward from bottom left */}
       <AnimatePresence>
         {isExpanded && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="absolute left-0 bottom-full mb-2 w-80 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden"
-          >
-            {/* Header */}
-            <div className="px-4 py-3 bg-gray-800/50 border-b border-gray-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-white">OpenAgentic Platform</h3>
-                  <p className="text-xs text-gray-400">Version {versionData.version}</p>
-                </div>
-                <div className={`px-2 py-0.5 rounded text-xs font-medium ${
-                  overallStatus === 'online' ? 'bg-green-900/50 text-green-400' :
-                  overallStatus === 'degraded' ? 'bg-yellow-900/50 text-yellow-400' :
-                  'bg-red-900/50 text-red-400'
-                }`}>
-                  {overallStatus === 'online' ? 'All Systems Operational' :
-                   overallStatus === 'degraded' ? 'Partial Outage' : 'System Issues'}
-                </div>
+          <>
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 40,
+              }}
+              onClick={() => setIsExpanded(false)}
+              aria-hidden
+            />
+            <motion.div
+              role="dialog"
+              aria-label="About OpenAgentic"
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              style={{
+                position: 'absolute',
+                left: 0,
+                bottom: 'calc(100% + 8px)',
+                width: 340,
+                background: 'var(--bg-1, #0f1012)',
+                border: '1px solid var(--line-2, rgba(255,255,255,.1))',
+                borderRadius: 14,
+                boxShadow:
+                  'var(--mk-shadow-md, 0 12px 32px rgba(0,0,0,.4))',
+                zIndex: 50,
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  padding: '16px 16px 12px',
+                  borderBottom: '1px solid var(--line-1, rgba(255,255,255,.06))',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                }}
+              >
+                <CompanyLogo variant="full" width={180} height={32} />
+                <div style={{ flex: 1 }} />
+                <span
+                  style={{
+                    fontSize: 10,
+                    padding: '3px 8px',
+                    borderRadius: 999,
+                    color: statusDot(overallStatus),
+                    background: 'var(--bg-2)',
+                    border: `1px solid ${statusDot(overallStatus)}40`,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  {overallStatus === 'online'
+                    ? 'Operational'
+                    : overallStatus === 'degraded'
+                      ? 'Degraded'
+                      : overallStatus === 'offline'
+                        ? 'Outage'
+                        : 'Unknown'}
+                </span>
               </div>
-            </div>
 
-            {/* Services List */}
-            <div className="px-4 py-3 space-y-2 max-h-64 overflow-y-auto">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Services</p>
+              <div
+                style={{
+                  padding: '10px 16px 4px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: 11,
+                  color: 'var(--fg-2)',
+                }}
+              >
+                <span>
+                  Platform · <strong style={{ color: 'var(--fg-0)' }}>v{version}</strong>
+                </span>
+                <span>env: {environment}</span>
+              </div>
 
-              {fullData?.services ? (
-                fullData.services.map((service) => {
-                  const sha = service.gitShortCommit || service.gitCommit || '';
-                  const shaDisplay =
-                    sha && sha !== 'unknown' && sha !== 'upstream'
-                      ? sha.length > 8 ? sha.slice(0, 8) : sha
-                      : sha === 'upstream' ? 'upstream' : '';
-                  return (
-                    <div key={service.name} className="flex items-center justify-between py-1.5">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_COLORS[service.status] || STATUS_COLORS.unknown}`} />
-                        <span className="text-sm text-gray-300 truncate">{service.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs text-gray-500">v{service.version}</span>
-                        {shaDisplay && (
-                          <code
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 font-mono"
-                            title={service.gitCommit || sha}
+              <div
+                style={{
+                  padding: '4px 16px 12px',
+                  maxHeight: 280,
+                  overflowY: 'auto',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: 'var(--fg-3)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    padding: '8px 0 6px',
+                  }}
+                >
+                  Services
+                </div>
+
+                {fullData?.services?.length ? (
+                  fullData.services.map((service) => {
+                    const sha =
+                      service.gitShortCommit || service.gitCommit || '';
+                    const shaDisplay =
+                      sha && sha !== 'unknown' && sha !== 'upstream'
+                        ? sha.length > 8
+                          ? sha.slice(0, 8)
+                          : sha
+                        : sha === 'upstream'
+                          ? 'upstream'
+                          : '';
+                    return (
+                      <div
+                        key={service.name}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '6px 0',
+                          gap: 8,
+                          fontSize: 12,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            minWidth: 0,
+                            flex: 1,
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: 999,
+                              background: statusDot(service.status),
+                              flexShrink: 0,
+                            }}
+                          />
+                          <span
+                            style={{
+                              color: 'var(--fg-1)',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
                           >
-                            {shaDisplay}
-                          </code>
-                        )}
-                        <span className={`text-xs ${STATUS_TEXT_COLORS[service.status] || STATUS_TEXT_COLORS.unknown}`}>
-                          {service.status}
-                        </span>
+                            {service.name}
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <span style={{ color: 'var(--fg-2)', fontSize: 11 }}>
+                            v{service.version}
+                          </span>
+                          {shaDisplay && (
+                            <code
+                              title={service.gitCommit || sha}
+                              style={{
+                                fontSize: 10,
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                background: 'var(--bg-3)',
+                                color: 'var(--fg-2)',
+                                fontFamily: 'var(--font-mono, monospace)',
+                              }}
+                            >
+                              {shaDisplay}
+                            </code>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })
-              ) : versionData.services ? (
-                Object.entries(versionData.services).map(([name, service]) => (
-                  <div key={name} className="flex items-center justify-between py-1.5">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full ${STATUS_COLORS[service.status]}`} />
-                      <span className="text-sm text-gray-300">{name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">v{service.version}</span>
-                      <span className={`text-xs ${STATUS_TEXT_COLORS[service.status]}`}>
-                        {service.status}
+                    );
+                  })
+                ) : versionData?.services ? (
+                  Object.entries(versionData.services).map(([name, service]) => (
+                    <div
+                      key={name}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '6px 0',
+                        fontSize: 12,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: 999,
+                            background: statusDot(service.status),
+                          }}
+                        />
+                        <span style={{ color: 'var(--fg-1)' }}>{name}</span>
+                      </div>
+                      <span style={{ color: 'var(--fg-2)', fontSize: 11 }}>
+                        v{service.version}
                       </span>
                     </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-xs text-gray-500">Loading services...</p>
-              )}
-            </div>
-
-            {/* Footer */}
-            {fullData?.platform && (
-              <div className="px-4 py-2 bg-gray-800/30 border-t border-gray-700">
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>Build: {fullData.platform.buildTime?.split('T')[0] || 'unknown'}</span>
-                  <span>Commit: {fullData.platform.gitCommit?.slice(0, 7) || 'unknown'}</span>
-                </div>
+                  ))
+                ) : (
+                  <p style={{ fontSize: 11, color: 'var(--fg-3)', padding: '6px 0' }}>
+                    Loading services…
+                  </p>
+                )}
               </div>
-            )}
-          </motion.div>
+
+              {fullData?.platform && (
+                <div
+                  style={{
+                    padding: '8px 16px',
+                    background: 'var(--bg-2)',
+                    borderTop: '1px solid var(--line-1)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: 10,
+                    color: 'var(--fg-3)',
+                  }}
+                >
+                  <span>
+                    Build{' '}
+                    {fullData.platform.buildTime?.split('T')[0] || 'unknown'}
+                  </span>
+                  <span>
+                    Commit{' '}
+                    {fullData.platform.gitCommit?.slice(0, 7) || 'unknown'}
+                  </span>
+                </div>
+              )}
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
-
-      {/* Click outside to close */}
-      {isExpanded && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setIsExpanded(false)}
-        />
-      )}
     </div>
   );
 };

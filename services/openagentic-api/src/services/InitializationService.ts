@@ -145,9 +145,8 @@ export class InitializationService {
       // This avoids raw SQL and will change when schema changes
       const counts = await Promise.all([
         this.prisma.user.count(),
-        this.prisma.chatSession.count(), 
+        this.prisma.chatSession.count(),
         this.prisma.chatMessage.count(),
-        this.prisma.promptTemplate.count(),
         this.prisma.mCPServerConfig.count()
       ]);
       
@@ -244,19 +243,10 @@ export class InitializationService {
     // Check if re-initialization is needed due to version changes
     const needsReinit = status.isInitialized ? await this.needsReinitialization(status) : false;
 
-    // CRITICAL FIX: Always check if prompts exist, even if system is marked as initialized
-    // This prevents the PROMPT_HEALTHCHECK 0 prompts issue
-    let promptsNeedReseeding = false;
-    if (status.isInitialized && config.components.prompts) {
-      const promptCount = await this.prisma.promptTemplate.count({ where: { is_active: true } });
-      if (promptCount === 0) {
-        this.logger.warn('⚠️ System marked as initialized but NO PROMPTS FOUND - forcing prompt reseeding');
-        promptsNeedReseeding = true;
-      }
-    }
-
-    // Skip if already initialized unless forced or version changed or prompts missing
-    if (status.isInitialized && config.skipIfDone && !config.forceReinit && !needsReinit && !promptsNeedReseeding) {
+    // Skip if already initialized unless forced or version changed.
+    // Legacy `promptsNeedReseeding` re-init trigger RIPPED 2026-05-11 along
+    // with the PromptTemplate model (chatmode-rip Phase E final cleanup).
+    if (status.isInitialized && config.skipIfDone && !config.forceReinit && !needsReinit) {
       this.logger.info({
         completedComponents: status.completedComponents,
         lastInitialized: status.lastInitialized,
@@ -271,8 +261,6 @@ export class InitializationService {
       this.logger.warn('Force reinitialization requested');
     } else if (needsReinit) {
       this.logger.info('Re-initialization triggered due to version changes');
-    } else if (promptsNeedReseeding) {
-      this.logger.info('Re-initialization triggered due to missing prompt templates');
     }
 
     this.logger.info('Starting system initialization');
@@ -319,11 +307,9 @@ export class InitializationService {
         this.logger.info('✅ Milvus collections and RAG initialized');
       }
 
-      // 5b. Index prompt templates in Milvus (after collections are created)
-      if (config.components.prompts && config.components.milvusCollections) {
-        await this.indexPromptsInMilvus();
-        this.logger.info('✅ Prompt templates indexed in Milvus');
-      }
+      // 5b. Prompt-template Milvus indexing RIPPED 2026-05-11 (chatmode-rip
+      // Phase E final). The PromptTemplate model is gone; RBAC prompts ship
+      // as static files and don't need vector indexing.
 
       // 5c. Index MCP tools from MCP Proxy into Milvus (after collections are created)
       if (config.components.mcpToolIndexing && config.components.milvusCollections) {
@@ -408,33 +394,18 @@ export class InitializationService {
   }
 
   /**
-   * Initialize system prompts and templates
+   * Initialize system prompts.
+   *
+   * RIPPED 2026-05-11 — the legacy DB-backed PromptTemplate seeder went away
+   * with the chatmode-rip Phase E final cleanup. RBAC system prompts are
+   * file-sourced from `services/openagentic-api/prompts/chat-system-*.md`
+   * and seeded into `rbac_system_prompts` by `startup/09-prompt-cache.ts`
+   * via `seedRbacSystemPromptsFromFiles`. Nothing to do here at init time
+   * — kept as a no-op so call sites in this orchestrator don't 404 if any
+   * callers still reference it.
    */
   private async initializePrompts(): Promise<void> {
-    // Use CachedPromptService to ensure all default templates exist
-    const { CachedPromptService } = await import('./CachedPromptService.js');
-    const { initializeRedis } = await import('../utils/redis-client.js');
-
-    // Initialize Redis for caching
-    await initializeRedis(this.logger);
-    const promptService = new CachedPromptService(this.logger, {
-      enableCache: true,
-      cacheTTL: 1800,
-      cacheUserAssignments: true,
-      cacheTemplates: true
-    });
-
-    // Call the PromptService's method to ensure all templates exist
-    this.logger.info('Delegating prompt initialization to PromptService...');
-    await promptService.ensureDefaultTemplates();
-
-    // Validate they were created
-    const validation = await promptService.validateSystemPrompts();
-    if (!validation.healthy) {
-      throw new Error(`Failed to initialize prompts. Missing: ${validation.missing.join(', ')}`);
-    }
-
-    this.logger.info('✅ All system prompts initialized via PromptService');
+    this.logger.info('initializePrompts: no-op — RBAC prompts seeded by startup/09-prompt-cache.ts');
   }
 
   /**
@@ -1438,10 +1409,6 @@ export class InitializationService {
         const mcpConfigCount = await this.prisma.mCPServerConfig.count();
         this.logger.debug(`MCP configs table verified (${mcpConfigCount} configs)`);
         
-        // Test prompt templates table
-        const promptCount = await this.prisma.promptTemplate.count();
-        this.logger.debug(`Prompt templates table verified (${promptCount} templates)`);
-        
         this.logger.info('✅ Database schema verified - all critical tables exist');
         return; // Success - exit retry loop
         
@@ -1847,300 +1814,52 @@ export class InitializationService {
   }
 
   /**
-   * Validate Admin Portal is fully configured
+   * Validate Admin Portal is fully configured.
+   *
+   * The original gate required at least one row in PromptTemplate +
+   * UserPromptAssignment. Both tables were ripped 2026-05-11 along with
+   * the composable prompt-module system (chatmode-rip Phase E final).
+   * RBAC system prompts ship as files in `services/openagentic-api/prompts/`
+   * and the runtime falls back to the static body when the
+   * rbac_system_prompts table is empty, so there's no longer a hard
+   * boot-time gate on prompt rows.
    */
   private async validateAdminPortal(): Promise<void> {
     this.logger.info('🔍 Validating Admin Portal configuration...');
-    
+
     try {
-      // Check default prompt exists
-      const defaultPrompt = await this.prisma.promptTemplate.findFirst({
-        where: { is_default: true, is_active: true }
-      });
-      
-      if (!defaultPrompt) {
-        throw new Error('No default prompt template found');
-      }
-      
-      // Check if we have a default assignment - either __all_users__ or admin user
-      const adminEmail = process.env.ADMIN_USER_EMAIL || process.env.LOCAL_ADMIN_EMAIL;
-      
-      // First try to find __all_users__ assignment (might not exist due to FK constraint)
-      let globalAssignment = await this.prisma.userPromptAssignment.findFirst({
-        where: { user_id: '__all_users__' }
-      });
-      
-      if (!globalAssignment && adminEmail) {
-        // Fall back to checking admin user's assignment
-        const adminUser = await this.prisma.user.findUnique({
-          where: { email: adminEmail }
-        });
-        
-        if (adminUser) {
-          globalAssignment = await this.prisma.userPromptAssignment.findFirst({
-            where: { user_id: adminUser.id }
-          });
-          
-          if (!globalAssignment) {
-            this.logger.warn(`No prompt assignment found for admin user ${adminEmail}, but continuing...`);
-          } else {
-            this.logger.info(`Using admin user ${adminEmail} prompt assignment as default`);
-          }
-        } else {
-          this.logger.warn(`Admin user ${adminEmail} not found, but continuing...`);
-        }
-      }
-      
-      if (!globalAssignment) {
-        this.logger.warn('No global or admin prompt assignment found - users will get dynamic defaults');
-        // Don't throw - the system has fallback logic
-      }
-      
-      // Check active prompts count
-      const activePromptCount = await this.prisma.promptTemplate.count({
-        where: { is_active: true }
-      });
-      
-      if (activePromptCount === 0) {
-        throw new Error('No active prompt templates found');
-      }
-      
-      // Check admin user exists
       const adminCount = await this.prisma.user.count({
         where: { is_admin: true }
       });
-      
+
       if (adminCount === 0) {
         throw new Error('No admin users found');
       }
-      
-      // Check MCP configs exist - but don't fail if none
+
       const mcpConfigCount = await this.prisma.mCPServerConfig.count({
         where: { enabled: true }
       });
-      
+
       if (mcpConfigCount === 0) {
         this.logger.warn('No enabled MCP server configurations found - MCP Orchestrator will initialize them');
-        // Don't throw - MCP Orchestrator handles its own initialization
       }
-      
+
       this.logger.info({
-        defaultPrompt: defaultPrompt.name,
-        activePrompts: activePromptCount,
         adminUsers: adminCount,
         mcpConfigs: mcpConfigCount
       }, '✅ Admin Portal fully configured');
-      
-    } catch (error) {
+
+    } catch (error: any) {
       this.logger.error({ err: error }, '❌ Admin Portal validation failed');
       throw new Error(`Admin Portal validation failed: ${error.message}`);
     }
   }
 
   /**
-   * Index prompt templates in Milvus for semantic search
+   * indexPromptsInMilvus RIPPED 2026-05-11 (chatmode-rip Phase E final).
+   * The PromptTemplate model is gone; the `prompt_templates` Milvus
+   * collection is no longer maintained. RBAC prompts ship as static files.
    */
-  private async indexPromptsInMilvus(): Promise<void> {
-    this.logger.info('🔍 Indexing prompt templates in Milvus...');
-
-    // Check if Milvus operations should be skipped
-    if (process.env.DISABLE_MILVUS === 'true' || process.env.SKIP_MILVUS_INIT === 'true') {
-      this.logger.info('⏭️ Skipping Milvus indexing (DISABLE_MILVUS or SKIP_MILVUS_INIT is set)');
-      return;
-    }
-
-    try {
-      // Get all active prompt templates from database
-      this.logger.info('📚 Fetching active prompt templates from database...');
-      const templates = await this.prisma.promptTemplate.findMany({
-        where: { is_active: true }
-      });
-      this.logger.info(`📊 Found ${templates.length} active prompt templates`);
-
-      if (templates.length === 0) {
-        this.logger.warn('No active prompt templates to index');
-        return;
-      }
-
-      // Connect to Milvus
-      const milvusAddress = process.env.MILVUS_ADDRESS ||
-        `${serviceDiscovery.milvus.host}:${serviceDiscovery.milvus.port}`;
-
-      this.logger.info(`🔌 Connecting to Milvus at ${milvusAddress}...`);
-      this.logger.debug({
-        address: milvusAddress,
-        username: process.env.MILVUS_USERNAME || process.env.MILVUS_USER,
-        hasPassword: !!process.env.MILVUS_PASSWORD
-      }, 'Milvus connection parameters');
-
-      const milvus = new MilvusClient({
-        address: milvusAddress,
-        username: process.env.MILVUS_USERNAME || process.env.MILVUS_USER,
-        password: process.env.MILVUS_PASSWORD,
-        timeout: 60000 // 60 second timeout to handle slow Milvus operations
-      });
-
-      try {
-        // Add timeout wrapper for Milvus operations
-        const timeoutMs = parseInt(process.env.MILVUS_TIMEOUT || '30000');
-        this.logger.info(`⏱️ Setting Milvus operation timeout to ${timeoutMs}ms`);
-
-        // Check if we should skip re-indexing (already have embeddings)
-        const skipReindexEnv = process.env.SKIP_PROMPT_REINDEX !== 'false'; // Default to skip
-        if (skipReindexEnv) {
-          // Check if collection already has data
-          try {
-            const stats = await milvus.getCollectionStatistics({
-              collection_name: 'prompt_templates'
-            });
-            const rowCount = parseInt(stats.data?.row_count || '0');
-            if (rowCount >= templates.length) {
-              this.logger.info({
-                existingRows: rowCount,
-                templateCount: templates.length
-              }, '⏭️ Prompt templates already indexed in Milvus, skipping re-index');
-              return;
-            }
-            this.logger.info({
-              existingRows: rowCount,
-              templateCount: templates.length
-            }, '📊 Milvus has fewer rows than templates, will re-index');
-          } catch (statsError) {
-            this.logger.debug({ error: statsError }, 'Could not get collection stats, proceeding with indexing');
-          }
-        }
-
-        // Check if collection exists and is loaded
-        this.logger.info('🔍 Checking if prompt_templates collection exists...');
-        const hasCollection = await Promise.race([
-          milvus.hasCollection({
-            collection_name: 'prompt_templates'
-          }),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error(`Milvus hasCollection timed out after ${timeoutMs}ms`)), timeoutMs)
-          )
-        ]);
-        this.logger.info(`📦 Collection exists: ${hasCollection.value}`);
-
-        if (!hasCollection.value) {
-          this.logger.warn('prompt_templates collection does not exist, will be created in initializeMilvusCollections');
-          return;
-        }
-
-        // Load collection if not loaded
-        this.logger.info('🔍 Checking collection load state...');
-        const loadState = await Promise.race([
-          milvus.getLoadState({
-            collection_name: 'prompt_templates'
-          }),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error(`Milvus getLoadState timed out after ${timeoutMs}ms`)), timeoutMs)
-          )
-        ]);
-        this.logger.info(`📊 Load state: ${loadState.state}`);
-
-        if (loadState.state !== 'LoadStateLoaded') {
-          this.logger.info('📥 Loading collection...');
-          await Promise.race([
-            milvus.loadCollection({
-              collection_name: 'prompt_templates'
-            }),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error(`Milvus loadCollection timed out after ${timeoutMs}ms`)), timeoutMs)
-            )
-          ]);
-          this.logger.info('✅ Collection loaded');
-        }
-
-        // Clear existing data in the collection
-        this.logger.info('🗑️ Clearing existing data from collection...');
-        const deleteResult = await Promise.race([
-          milvus.deleteEntities({
-            collection_name: 'prompt_templates',
-            expr: 'id != ""' // Delete all
-          }),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error(`Milvus deleteEntities timed out after ${timeoutMs}ms`)), timeoutMs)
-          )
-        ]);
-        this.logger.info('✅ Existing data cleared');
-
-        // Prepare data for insertion
-        this.logger.info('📝 Preparing template data for insertion...');
-        const records = [];
-
-        for (const template of templates) {
-          // Create embedding text that includes all relevant information
-          const embeddingText = `
-            Template: ${template.name}
-            Category: ${template.category || 'general'}
-            Content: ${template.content}
-          `.trim();
-
-          // Skip indexing if no embedding service is configured — zero-vector
-          // embeddings make semantic search non-functional and waste Milvus memory.
-          // PromptTemplateService handles lazy indexing with real embeddings when available.
-          if (!process.env.EMBEDDING_PROVIDER && !process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT) {
-            this.logger.info('⏭️ Skipping prompt indexing — no embedding provider configured');
-            return;
-          }
-
-          // Use placeholder embedding; real embeddings come from UniversalEmbeddingService
-          // in PromptTemplateService when queries are made
-          const embedding = new Array(1536).fill(0);
-
-          records.push({
-            id: template.id,
-            embedding: embedding,
-            metadata: {
-              name: template.name,
-              category: template.category || 'general',
-              is_default: template.is_default,
-              created_at: template.created_at?.toISOString(),
-              updated_at: template.updated_at?.toISOString()
-            },
-            content: template.content.substring(0, 65535), // Limit to field max length
-            created_at: Math.floor(template.created_at?.getTime() / 1000) || 0
-          });
-        }
-
-        // Insert into Milvus
-        this.logger.info(`📤 Inserting ${records.length} records into Milvus...`);
-        const insertResult = await Promise.race([
-          milvus.insert({
-            collection_name: 'prompt_templates',
-            data: records
-          }),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error(`Milvus insert timed out after ${timeoutMs}ms`)), timeoutMs)
-          )
-        ]);
-
-        this.logger.info({
-          templatesIndexed: insertResult.insert_cnt,
-          totalTemplates: templates.length
-        }, '✅ Prompt templates indexed in Milvus');
-
-      } finally {
-        // Close Milvus connection
-        try {
-          this.logger.info('🔌 Closing Milvus connection...');
-          await milvus.closeConnection();
-          this.logger.info('✅ Milvus connection closed');
-        } catch (error) {
-          this.logger.warn({ error }, 'Failed to close Milvus connection');
-        }
-      }
-
-    } catch (error) {
-      this.logger.error({
-        error: error.message,
-        stack: error.stack,
-        type: error.name
-      }, '❌ Failed to index prompt templates in Milvus - will use PostgreSQL fallback');
-      // Don't throw - this is not critical for system operation
-    }
-  }
 
   /**
    * Index MCP tools from MCP Proxy into Milvus for semantic search

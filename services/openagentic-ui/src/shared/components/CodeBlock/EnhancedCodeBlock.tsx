@@ -192,7 +192,7 @@ const EnhancedCodeBlock: React.FC<EnhancedCodeBlockProps> = ({
         :root.dark .token.class-name { color: rgb(var(--color-warning)); }
         :root.dark .token.string { color: rgb(var(--color-success)); }
         :root.dark .token.number { color: rgb(var(--color-warning)); }
-        :root.dark .token.comment { color: rgb(var(--text-muted)); }
+        :root.dark .token.comment { color: var(--text-muted); }
 
         :root.light .token.keyword { color: rgb(var(--color-info)); }
         :root.light .token.builtin { color: rgb(var(--color-info)); }
@@ -200,7 +200,7 @@ const EnhancedCodeBlock: React.FC<EnhancedCodeBlockProps> = ({
         :root.light .token.class-name { color: rgb(var(--color-warning)); }
         :root.light .token.string { color: rgb(var(--color-success)); }
         :root.light .token.number { color: rgb(var(--color-warning)); }
-        :root.light .token.comment { color: rgb(var(--text-muted)); }
+        :root.light .token.comment { color: var(--text-muted); }
       `}</style>
       <div className={`code-block-wrapper relative rounded-lg overflow-hidden ${
         'bg-bg-secondary'

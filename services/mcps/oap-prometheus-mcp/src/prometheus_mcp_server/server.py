@@ -586,7 +586,18 @@ async def prometheus_health_summary() -> str:
 def main():
     """Run the MCP server"""
     logger.info(f"Starting Prometheus MCP Server (Prometheus URL: {PROMETHEUS_URL})")
-    mcp.run()
+    # Use shared HTTP transport when deployed as a pod-per-MCP service;
+    # fall back to stdio when http_transport isn't on sys.path (local dev).
+    try:
+        from http_transport import run_with_http_support
+        run_with_http_support(
+            mcp_server=mcp,
+            name="oap-prometheus-mcp",
+            version="1.0.0",
+            default_port=int(os.environ.get("MCP_SERVER_PORT", "8088")),
+        )
+    except ImportError:
+        mcp.run()
 
 if __name__ == "__main__":
     main()

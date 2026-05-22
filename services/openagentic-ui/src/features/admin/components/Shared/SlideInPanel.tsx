@@ -88,19 +88,21 @@ export const SlideInPanel: React.FC<SlideInPanelProps> = ({
       aria-modal="true"
       aria-labelledby="slide-panel-title"
     >
-      {/* Panel */}
+      {/* Panel — M3 Expressive (task #160): surface-2, soft-lg shadow, 24px
+          radius on top-left + bottom-left for the exposed edge. */}
       <div
         ref={panelRef}
         className={`
           h-full flex flex-col
           ${widthClasses[width]}
-          transform transition-transform duration-300 ease-out
+          transform transition-transform duration-300 ease-emphasized
           ${isOpen ? 'translate-x-0' : 'translate-x-full'}
         `}
         style={{
-          backgroundColor: 'var(--color-surface)',
-          borderLeft: '1px solid var(--color-border)',
-          boxShadow: 'var(--color-shadow-lg)',
+          backgroundColor: 'var(--surface-2)',
+          boxShadow: 'var(--shadow-soft-lg)',
+          borderTopLeftRadius: 'var(--radius-panel)',
+          borderBottomLeftRadius: 'var(--radius-panel)',
         }}
       >
         {/* Header */}
@@ -185,12 +187,17 @@ export const PanelButton: React.FC<{
   type?: 'button' | 'submit';
 }> = ({ variant = 'secondary', onClick, disabled, children, type = 'button' }) => {
   const getStyles = () => {
+    // M3 Expressive (task #160): primary/danger → pill; secondary → btn (12px).
+    // Press scale handled via the CSS active:scale-[0.98] rule added to the
+    // class string below.
+    const isFilled = variant === 'primary' || variant === 'danger';
     const base = {
-      padding: '8px 16px',
-      borderRadius: '6px',
+      padding: isFilled ? '8px 20px' : '8px 16px',
+      borderRadius: isFilled ? 'var(--radius-btn-pill)' : 'var(--radius-btn-soft)',
       fontSize: 'var(--text-sm)',
       fontWeight: '500',
-      transition: 'all 150ms',
+      letterSpacing: '-0.01em',
+      transition: 'background-color 200ms var(--ease-emphasized), border-color 200ms var(--ease-emphasized), transform 150ms var(--ease-emphasized)',
       cursor: disabled ? 'not-allowed' : 'pointer',
       opacity: disabled ? 0.5 : 1,
     };
@@ -200,14 +207,14 @@ export const PanelButton: React.FC<{
         return {
           ...base,
           backgroundColor: 'var(--color-primary)',
-          color: '#FFFFFF',
+          color: 'var(--ap-fg-0)',
           border: 'none',
         };
       case 'danger':
         return {
           ...base,
           backgroundColor: 'var(--color-error)',
-          color: '#FFFFFF',
+          color: 'var(--ap-fg-0)',
           border: 'none',
         };
       default:
@@ -225,6 +232,7 @@ export const PanelButton: React.FC<{
       type={type}
       onClick={onClick}
       disabled={disabled}
+      className="active:scale-[0.98] focus-visible:outline-none focus-visible:shadow-focus-ring"
       style={getStyles()}
       onMouseEnter={(e) => {
         if (!disabled) {

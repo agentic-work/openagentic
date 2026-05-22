@@ -29,8 +29,7 @@ export const featureFlags = {
   // Multi-Model orchestration
   multiModel: parseFlag(import.meta.env.VITE_FEATURE_MULTIMODEL, true),
 
-  // Intelligence Slider
-  slider: parseFlag(import.meta.env.VITE_FEATURE_SLIDER, true),
+  // 2026-04-19 — Intelligence Slider flag removed (task #144, slider rip).
 
   // MCP (Model Context Protocol)
   mcp: parseFlag(import.meta.env.VITE_FEATURE_MCP, true),

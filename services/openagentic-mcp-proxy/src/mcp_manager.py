@@ -591,21 +591,8 @@ class MCPManager:
             ))
             logger.info("OpenAgentic Loki MCP server configured (Log aggregation queries - ADMIN USERS ONLY)")
 
-        # OpenAgentic Alertmanager MCP Server - Alert management and silencing
-        # Provides tools to manage alerts, create silences, and view alert groups
-        alertmanager_disabled = os.getenv("ALERTMANAGER_MCP_DISABLED", os.getenv("OpenAgentic_ALERTMANAGER_MCP_DISABLED", "false")).lower() == "true"
-        if not alertmanager_disabled:
-            openagentic_alertmanager_env = {
-                "ALERTMANAGER_URL": os.getenv("ALERTMANAGER_URL", "http://alertmanager:9093"),
-                "LOG_LEVEL": "info"
-            }
-
-            self.servers["openagentic_alertmanager"] = MCPServer(MCPServerConfig(
-                name="openagentic_alertmanager",
-                command=["fastmcp", "run", "-t", "stdio", "/app/mcp-servers/oap-alertmanager-mcp/server.py"],
-                env=openagentic_alertmanager_env
-            ))
-            logger.info("OpenAgentic Alertmanager MCP server configured (Alert management - ADMIN USERS ONLY)")
+        # REMOVED: OpenAgentic Alertmanager MCP Server — out of scope (2026-05-01)
+        logger.info("OpenAgentic Alertmanager MCP server REMOVED — out of scope")
 
         # REMOVED: OpenAgentic Runbook MCP Server — redundant, kubernetes MCP handles remediation
         logger.info("OpenAgentic Runbook MCP server REMOVED — redundant")
@@ -681,21 +668,12 @@ class MCPManager:
             ))
             logger.info("AWS Knowledge MCP server configured (AWS docs and best practices)")
 
-        # OpenAgentic Knowledge MCP Server - Tool guidance and documentation for all OpenAgentic MCPs
-        # This is our "meta-MCP" that teaches LLMs how to use other MCP tools correctly
-        # Provides: suggest_tools_for_task, get_tool_examples, search_tool_documentation
-        if not os.getenv("OpenAgentic_KNOWLEDGE_MCP_DISABLED", "false").lower() == "true":
-            openagentic_knowledge_env = {
-                "LOG_LEVEL": "info"
-            }
-
-            self.servers["openagentic_knowledge"] = MCPServer(MCPServerConfig(
-                name="openagentic_knowledge",
-                command=["fastmcp", "run", "-t", "stdio", "/app/mcp-servers/oap-knowledge-mcp/server.py"],
-                env=openagentic_knowledge_env,
-                supports_obo=False  # Knowledge queries don't need user context
-            ))
-            logger.info("OpenAgentic Knowledge MCP server configured (Tool guidance and documentation for LLMs)")
+        # REMOVED: OpenAgentic Knowledge MCP Server — out of scope (2026-05-01)
+        # The "meta-MCP" tool-guidance role is replaced by per-tool _meta blocks
+        # (goldenPrompts + adjacentTools) flowing through the cascade indexer
+        # post Phase 1.7b wire-fix (eb9ff943). Tool discovery is now driven by
+        # the metadata each tool ships, not a separate registry server.
+        logger.info("OpenAgentic Knowledge MCP server REMOVED — replaced by per-tool _meta cascade")
 
         logger.info(f"Initialized {len(self.servers)} MCP servers")
 

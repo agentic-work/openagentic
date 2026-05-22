@@ -1,0 +1,318 @@
+{
+  "name": "Cluster Triage Watchdog",
+  "slug": "cluster-triage-watchdog",
+  "description": "Scheduled watchdog that detects errors in Kubernetes + the OpenAgentic platform, auto-generates a remediation sub-flow, persists it, and notifies #devops with links to both the triage report artifact and the created remediation flow.",
+  "category": "aiops",
+  "tags": ["aiops", "kubernetes", "platform-health", "watchdog", "auto-remediation"],
+  "is_template": true,
+  "is_public": true,
+  "settings": {
+    "meta": {
+      "slug": "cluster-triage-watchdog",
+      "purpose": "Detect cluster + platform health degradations on a schedule and auto-generate a remediation sub-flow that a human (or a future autonomous loop) can execute to fix the issue. Posts a Slack digest with deep-links to the triage artifact + the remediation flow.",
+      "how_it_works": [
+        "Triggered on a cron schedule (default every 15 minutes).",
+        "Fans out 3 MCP queries in parallel: k8s_cluster_health, prometheus_health_summary, loki_search_errors.",
+        "Two analyst agents (cloud_operations + engineering_metrics) summarize their respective signals.",
+        "A synthesizer agent (flows_expert) produces a structured remediation JSON: summary + findings + recommendations + proposed_flow definition.",
+        "structured_output validates the JSON envelope.",
+        "A guard condition gates the rest of the flow on findings.length > 0 — quiet windows do not page #devops.",
+        "If issues are found: render an HTML triage report (persisted as artifact), POST the proposed_flow definition to /api/workflows to create a real remediation flow row, and post a Slack message with deep-links to both."
+      ],
+      "expected_output": "When issues are detected, a Slack message lands in #devops with a one-line severity summary plus two clickable links: (1) the HTML triage report artifact, (2) the created remediation flow ready to inspect / execute. When no issues are detected, the run completes silently with the slack node skipped by the condition gate.",
+      "useful_when": [
+        "Continuous platform-health monitoring without standing up Prometheus alertmanager rules.",
+        "Each detected outage produces a self-contained remediation flow that captures the LLM's suggested fix steps as an executable artifact (audit trail + one-click run).",
+        "Operators want a single Slack channel they can scan to see both 'is anything wrong' and 'what does the platform think we should do about it'."
+      ]
+    }
+  },
+  "variables": {
+    "time_window": "15m",
+    "namespace": "agentic-dev",
+    "min_severity": "warning",
+    "api_base": "http://openagentic-api:3000",
+    "ui_base": "https://chat-dev.openagentic.io",
+    "notification_email_to": ""
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "position": { "x": 100, "y": 400 },
+        "data": {
+          "triggerType": "schedule",
+          "schedule": { "cron": "*/15 * * * *", "timezone": "UTC" }
+        }
+      },
+
+      {
+        "id": "mcp_k8s",
+        "type": "mcp_tool",
+        "position": { "x": 400, "y": 200 },
+        "data": {
+          "toolServer": "openagentic_kubernetes",
+          "toolName": "k8s_cluster_health",
+          "arguments": { "namespace": "{{trigger.namespace}}" }
+        }
+      },
+      {
+        "id": "mcp_prom",
+        "type": "mcp_tool",
+        "position": { "x": 400, "y": 400 },
+        "data": {
+          "toolServer": "openagentic_prometheus",
+          "toolName": "prometheus_health_summary",
+          "arguments": { "window": "{{trigger.time_window}}" }
+        }
+      },
+      {
+        "id": "mcp_loki",
+        "type": "mcp_tool",
+        "position": { "x": 400, "y": 600 },
+        "data": {
+          "toolServer": "openagentic_loki",
+          "toolName": "loki_search_errors",
+          "arguments": { "since": "{{trigger.time_window}}", "limit": 50 }
+        }
+      },
+      {
+        "id": "mcp_unhealthy_pods",
+        "type": "mcp_tool",
+        "position": { "x": 400, "y": 800 },
+        "data": {
+          "toolServer": "openagentic_kubernetes",
+          "toolName": "k8s_list_unhealthy_pods",
+          "arguments": { "namespace": "{{trigger.namespace}}" }
+        }
+      },
+
+      {
+        "id": "agent_cloud",
+        "type": "llm_completion",
+        "position": { "x": 700, "y": 200 },
+        "data": {
+          "systemPrompt": "You are a senior cloud-operations analyst summarizing a Kubernetes cluster snapshot for a #devops Slack digest. Be concise and actionable; do NOT call any tools — the data you need is in the prompt.\n\nGROUNDING RULES (a post-check will flag violations):\n- Reference pods by their EXACT names as they appear in the UNHEALTHY PODS list. Do not invent pod names.\n- If the UNHEALTHY PODS list is empty or shows only Running pods, say so — do NOT claim crashes that aren't in the input.\n- Cluster-level counters (failed/pending/unknown totals from CLUSTER HEALTH JSON) describe the WHOLE cluster, not just the requested namespace — flag this if you cite them.",
+          "model": "auto",
+          "prompt": "Analyze this Kubernetes cluster snapshot for namespace {{trigger.namespace}}. Identify any unhealthy nodes, pods in CrashLoopBackOff / ImagePullBackOff / Pending, missing readiness, or resource pressure. Output a 4-bullet summary plus a `concerns` array with specific {namespace, name, reason, severity} entries — quoting pod names EXACTLY as they appear in the UNHEALTHY PODS list.\n\nCLUSTER HEALTH JSON:\n{{steps.mcp_k8s.content}}\n\nUNHEALTHY PODS (authoritative per-pod list for namespace {{trigger.namespace}}):\n{{steps.mcp_unhealthy_pods.content}}"
+        }
+      },
+      {
+        "id": "agent_metrics",
+        "type": "llm_completion",
+        "position": { "x": 700, "y": 500 },
+        "data": {
+          "systemPrompt": "You are a senior engineering-metrics analyst summarizing Prometheus health + Loki error logs for a #devops Slack digest. Be concise and actionable; do NOT call any tools — the data you need is in the prompt.",
+          "model": "auto",
+          "prompt": "Analyze platform metrics + error logs from the last {{trigger.time_window}}. Identify scrape-target outages, latency anomalies, and recurring error patterns at severity >= {{trigger.min_severity}}. Output a 4-bullet summary plus a `patterns` array of {service, pattern, count, severity} entries.\n\nPROMETHEUS HEALTH SUMMARY:\n{{steps.mcp_prom.content}}\n\nLOKI ERROR LOGS:\n{{steps.mcp_loki.content}}"
+        }
+      },
+
+      {
+        "id": "synth_prompt",
+        "type": "prompt_template",
+        "position": { "x": 1000, "y": 400 },
+        "data": {
+          "template": "{{system}}\nYou are the senior SRE on call for OpenAgentic. You receive two analyst briefings (cluster + metrics). Produce an actionable JSON report with this exact shape:\n{\n  \"summary\": \"1-3 sentence executive summary suitable for a #devops Slack message\",\n  \"severity\": \"P0|P1|P2|P3\",\n  \"findings\": [\"bullet\", \"bullet\", ...],\n  \"recommendations\": [{ \"title\": \"string\", \"priority\": \"P0|P1|P2\", \"rationale\": \"string\" }],\n  \"proposed_flow\": {\n    \"name\": \"Remediation: <issue>\",\n    \"description\": \"Auto-generated sub-flow that implements the recommendations.\",\n    \"definition\": {\n      \"nodes\": [ /* trigger + tool/agent/webhook_response nodes that take action */ ],\n      \"edges\": [ /* connecting them */ ]\n    }\n  }\n}\n\n!!! GROUNDING RULES — VIOLATIONS WILL BE FLAGGED BY A POST-CHECK !!!\n- Use ONLY facts that appear verbatim in the analyst briefings below.\n- Do NOT invent pod names, replica counts, or component states.\n- Do NOT speculate about services not explicitly named in the briefings.\n- If you didn't see it in the input, don't write it in the output.\n- If only Prometheus exporters are mentioned, do NOT extrapolate to claim the underlying service is crashing — exporter failure ≠ service failure.\n- \"Active Sessions = 0\" in a dev environment is NORMAL — do not cite it as evidence of an outage unless an analyst briefing explicitly says so.\n- \"No errors found\" in Loki means the search was clean — it does NOT mean Loki itself is down or has no logs.\n- If everything looks healthy, return findings:[] and a no-op proposed_flow.\n- Severity P0 requires CONCRETE failures named in the input (CrashLoopBackOff pod names, ImagePullBackOff, OOMKilled, hard endpoint outages). Don't assign P0 from indirect signals alone.\n\nThe proposed_flow MUST be a valid OpenAgentic Flows definition (trigger + at least one mcp_tool/agent_single/webhook_response node) — keep it minimal, 3-6 nodes max.\n{{user}}\nCLOUD ANALYST BRIEFING:\n{{cloud_brief}}\n\nMETRICS ANALYST BRIEFING:\n{{metrics_brief}}\n\nNAMESPACE: {{namespace}}\nTIME WINDOW: {{time_window}}",
+          "variables": {
+            "cloud_brief": "{{steps.agent_cloud.content}}",
+            "metrics_brief": "{{steps.agent_metrics.content}}",
+            "namespace": "{{trigger.namespace}}",
+            "time_window": "{{trigger.time_window}}"
+          },
+          "outputAs": "messages"
+        }
+      },
+
+      {
+        "id": "agent_synth",
+        "type": "llm_completion",
+        "position": { "x": 1300, "y": 400 },
+        "data": {
+          "systemPrompt": "You are the senior SRE on call. Synthesize cluster + metrics analyst briefings into the EXACT JSON shape demanded in the user prompt.\n\nABSOLUTE OUTPUT RULES:\n- Your response MUST be a single JSON object.\n- The first character of your response MUST be `{`.\n- The last character of your response MUST be `}`.\n- NO prose, NO reasoning, NO `<thinking>`, NO code fences, NO commentary.\n- NO Markdown.\n- Do NOT explain what you are doing.\n- Do NOT call any tools.",
+          "model": "auto",
+          "responseFormat": "json_object",
+          "prompt": "{{steps.synth_prompt.messages}}"
+        }
+      },
+
+      {
+        "id": "structured",
+        "type": "structured_output",
+        "position": { "x": 1600, "y": 400 },
+        "data": {
+          "model": "auto",
+          "prompt": "Extract the JSON report envelope from this synthesizer output:\n\n{{steps.agent_synth.content}}",
+          "schema": {
+            "type": "object",
+            "required": ["summary", "severity", "findings", "recommendations", "proposed_flow"],
+            "properties": {
+              "summary": { "type": "string" },
+              "severity": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
+              "findings": { "type": "array", "items": { "type": "string" } },
+              "recommendations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["title", "priority", "rationale"],
+                  "properties": {
+                    "title": { "type": "string" },
+                    "priority": { "type": "string", "enum": ["P0", "P1", "P2"] },
+                    "rationale": { "type": "string" }
+                  }
+                }
+              },
+              "proposed_flow": {
+                "type": "object",
+                "required": ["name", "description", "definition"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "definition": { "type": "object" }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      {
+        "id": "grounding",
+        "type": "grounding_check",
+        "position": { "x": 1750, "y": 400 },
+        "data": {
+          "claim": "Summary: {{steps.structured.output.summary}}\nFindings: {{steps.structured.output.findings}}\nRecommendations: {{steps.structured.output.recommendations}}",
+          "groundTruth": "{{steps.mcp_k8s.content}} {{steps.mcp_prom.content}} {{steps.mcp_loki.content}} {{steps.mcp_unhealthy_pods.content}}",
+          "strictMode": false,
+          "allowedTokens": [
+            "agentic-dev", "kube-system", "monitoring-stack",
+            "redis", "postgres", "postgresql", "nginx", "ollama", "minio",
+            "loki", "prometheus", "grafana", "milvus", "etcd",
+            "redis_exporter", "redis-exporter",
+            "postgres_exporter", "postgres-exporter",
+            "nginx_exporter", "nginx-exporter",
+            "minio_exporter", "minio-exporter",
+            "kubelet", "coredns", "kube-dns",
+            "error_rate", "active_sessions", "scrape_target", "scrape_targets",
+            "readiness", "liveness", "crashloopbackoff", "imagepullbackoff"
+          ]
+        }
+      },
+      {
+        "id": "guard",
+        "type": "condition",
+        "position": { "x": 1900, "y": 400 },
+        "data": {
+          "expression": "{{steps.structured.output.findings.length}} > 0"
+        }
+      },
+
+      {
+        "id": "render_html",
+        "type": "webhook_response",
+        "position": { "x": 2200, "y": 200 },
+        "data": {
+          "statusCode": 200,
+          "bodyTemplate": "<div class=\"triage-report\"><h2>Cluster Triage Watchdog — {{trigger.namespace}} / {{trigger.time_window}}</h2>\n<p class=\"severity-{{steps.structured.output.severity}}\"><strong>Severity:</strong> {{steps.structured.output.severity}}</p>\n<p><strong>Summary:</strong> {{steps.structured.output.summary}}</p>\n<h3>Findings</h3>\n<pre class=\"findings\">{{steps.structured.output.findings}}</pre>\n<h3>Recommendations</h3>\n<pre class=\"recommendations\">{{steps.structured.output.recommendations}}</pre>\n<h3>Proposed Remediation Sub-Flow</h3>\n<p><strong>{{steps.structured.output.proposed_flow.name}}</strong></p>\n<p>{{steps.structured.output.proposed_flow.description}}</p>\n<pre class=\"proposed-definition\">{{steps.structured.output.proposed_flow.definition}}</pre>\n<p><em>The remediation flow has been auto-created — see the Slack message for the deep-link.</em></p></div>",
+          "persistAsArtifact": true,
+          "artifactTitle": "Triage Report — {{trigger.namespace}} @ {{steps.structured.output.severity}}",
+          "artifactMimeType": "text/html",
+          "artifactTags": ["aiops", "triage", "auto-generated"]
+        }
+      },
+
+      {
+        "id": "create_remediation",
+        "type": "http_request",
+        "position": { "x": 2200, "y": 500 },
+        "data": {
+          "url": "{{trigger.api_base}}/api/workflows",
+          "method": "POST",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "name": "{{steps.structured.output.proposed_flow.name}}",
+            "description": "{{steps.structured.output.proposed_flow.description}}\n\nAuto-generated by cluster-triage-watchdog on detection of: {{steps.structured.output.summary}}",
+            "definition": "{{steps.structured.output.proposed_flow.definition}}",
+            "tags": ["auto-remediation", "triage-generated"],
+            "category": "aiops"
+          }
+        }
+      },
+
+      {
+        "id": "notify",
+        "type": "slack_message",
+        "position": { "x": 2500, "y": 350 },
+        "data": {
+          "webhookUrl": "{{secret:SLACK_DEVOPS_WEBHOOK}}",
+          "channel": "#devops",
+          "message": ":rotating_light: *{{steps.structured.output.severity}} — Triage Watchdog* in `{{trigger.namespace}}`\n\n*Summary:* {{steps.structured.output.summary}}\n\n*Findings:* {{steps.structured.output.findings.length}}  *Recommendations:* {{steps.structured.output.recommendations.length}}\n\n*Grounding:* {{steps.grounding.score}} grounded ({{steps.grounding.violationSummary}})\n\n• Triage report → {{trigger.ui_base}}/artifacts/{{steps.render_html.artifactId}}\n• Auto-generated remediation flow → {{trigger.ui_base}}/workflows/{{steps.create_remediation.data.workflow.id}}"
+        }
+      },
+      {
+        "id": "email_guard",
+        "type": "condition",
+        "position": { "x": 2200, "y": 600 },
+        "data": {
+          "expression": "\"{{trigger.notification_email_to}}\".trim().length > 0"
+        }
+      },
+      {
+        "id": "email_skip",
+        "type": "transform",
+        "position": { "x": 2500, "y": 750 },
+        "data": {
+          "template": "email branch skipped — no recipient supplied"
+        }
+      },
+      {
+        "id": "notify_email",
+        "type": "send_email",
+        "position": { "x": 2500, "y": 600 },
+        "data": {
+          "to": "{{trigger.notification_email_to}}",
+          "subject": "[{{steps.structured.output.severity}}] Cluster Triage Watchdog — {{trigger.namespace}}",
+          "body": "<h2>Cluster Triage Watchdog — {{trigger.namespace}} / {{trigger.time_window}}</h2><p><strong>Severity:</strong> {{steps.structured.output.severity}}</p><p><strong>Summary:</strong> {{steps.structured.output.summary}}</p><p><strong>Findings:</strong> {{steps.structured.output.findings.length}}<br/><strong>Recommendations:</strong> {{steps.structured.output.recommendations.length}}</p><p>• <a href=\"{{trigger.ui_base}}/artifacts/{{steps.render_html.artifactId}}\">Triage report</a><br/>• <a href=\"{{trigger.ui_base}}/workflows/{{steps.create_remediation.data.workflow.id}}\">Auto-generated remediation flow</a></p>",
+          "isHtml": true,
+          "smtpHost": "{{secret:SMTP_HOST}}",
+          "smtpPort": "{{secret:SMTP_PORT}}",
+          "smtpUser": "{{secret:SMTP_USER}}",
+          "smtpPasswordRef": "{{secret:SMTP_PASS}}"
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e_t_k8s", "source": "trigger", "target": "mcp_k8s" },
+      { "id": "e_t_prom", "source": "trigger", "target": "mcp_prom" },
+      { "id": "e_t_loki", "source": "trigger", "target": "mcp_loki" },
+      { "id": "e_t_up", "source": "trigger", "target": "mcp_unhealthy_pods" },
+
+      { "id": "e_k8s_ac", "source": "mcp_k8s", "target": "agent_cloud" },
+      { "id": "e_up_ac", "source": "mcp_unhealthy_pods", "target": "agent_cloud" },
+      { "id": "e_prom_am", "source": "mcp_prom", "target": "agent_metrics" },
+      { "id": "e_loki_am", "source": "mcp_loki", "target": "agent_metrics" },
+
+      { "id": "e_ac_sp", "source": "agent_cloud", "target": "synth_prompt" },
+      { "id": "e_am_sp", "source": "agent_metrics", "target": "synth_prompt" },
+
+      { "id": "e_sp_as", "source": "synth_prompt", "target": "agent_synth" },
+      { "id": "e_as_st", "source": "agent_synth", "target": "structured" },
+      { "id": "e_st_gr", "source": "structured", "target": "grounding" },
+      { "id": "e_gr_g", "source": "grounding", "target": "guard" },
+
+      { "id": "e_g_rh", "source": "guard", "target": "render_html", "sourceHandle": "true" },
+      { "id": "e_g_cr", "source": "guard", "target": "create_remediation", "sourceHandle": "true" },
+
+      { "id": "e_rh_n", "source": "render_html", "target": "notify" },
+      { "id": "e_cr_n", "source": "create_remediation", "target": "notify" },
+
+      { "id": "e_rh_eg", "source": "render_html", "target": "email_guard" },
+      { "id": "e_cr_eg", "source": "create_remediation", "target": "email_guard" },
+      { "id": "e_eg_ne", "source": "email_guard", "target": "notify_email", "sourceHandle": "true" },
+      { "id": "e_eg_es", "source": "email_guard", "target": "email_skip", "sourceHandle": "false" }
+    ]
+  }
+}

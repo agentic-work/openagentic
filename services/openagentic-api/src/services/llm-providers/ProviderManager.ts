@@ -12,6 +12,7 @@ import { AWSBedrockProvider } from './AWSBedrockProvider.js';
 import { GoogleVertexProvider } from './GoogleVertexProvider.js';
 import { classifyError, type FailoverClassification } from './FailoverError.js';
 import { getModelCapabilityRegistry } from '../ModelCapabilityRegistry.js';
+import { recordCompletionMetrics } from './recordCompletionMetrics.js';
 
 export interface ProviderConfig {
   name: string;
@@ -25,7 +26,29 @@ export interface ProviderManagerConfig {
   providers: ProviderConfig[];
   defaultProvider?: string;
   enableFailover: boolean;
-  failoverTimeout: number; // ms
+  failoverTimeout: number; // ms — STREAMING completions (TTFB budget)
+  /**
+   * Timeout budget for non-streaming chat completions (ms). Separate from
+   * `failoverTimeout` because non-streaming requests dominated by reasoning
+   * models (gpt-5.4, claude-sonnet-4-x, o-series) legitimately take 60-300s
+   * for complete answers — the entire generation must finish before the
+   * promise resolves. The TTFB budget is the wrong knob for that path.
+   *
+   * Default: 10x `failoverTimeout` (so 30s stream budget → 300s non-stream
+   * budget). Override via env `LLM_NONSTREAM_TIMEOUT_MS` or per-instance config.
+   *
+   * Live failure that drove this (2026-05-02): AIF gpt-5.4 produced a
+   * complete 18,698-token response in 97s; with `failoverTimeout: 90000`
+   * the call was killed at the 90s mark and failed over to ollama-hal
+   * (no gpt-5.4) → REQUEST_TIMEOUT to UI.
+   */
+  nonStreamFailoverTimeout?: number;
+  /**
+   * Timeout budget for image generation (ms). Separate from failoverTimeout
+   * because DALL-E / Imagen inference reliably exceeds the 30s chat budget
+   * (15-30s inference + embed + Milvus insert + MinIO upload).
+   */
+  imageGenTimeout: number;
   enableLoadBalancing: boolean;
   loadBalancingStrategy: 'round-robin' | 'least-latency' | 'priority';
 }
@@ -67,6 +90,32 @@ export interface CostLimits {
   enforced: boolean;
 }
 
+/**
+ * Thrown by `getProviderForModel` when the caller passes an empty/null/
+ * undefined model id. Surfacing the upstream wiring bug as an Error (rather
+ * than silently returning null and letting the caller pick the wrong
+ * provider) is the 2026-04-28 fail-closed routing contract.
+ *
+ * Note: a null return value from `getProviderForModel` is still valid for
+ * the "this id is well-formed but no enabled provider serves it" case.
+ * Callers should check for null and emit a clean 400/500 with a
+ * "model X has no registered provider; admin must add it" message — DO NOT
+ * silently fall back to a default provider.
+ */
+export class ModelNotRoutableError extends Error {
+  public readonly modelId: string;
+  public readonly knownProviders: string[];
+  constructor(modelId: string, knownProviders: string[], reason?: string) {
+    const detail = reason ? ` (${reason})` : '';
+    super(
+      `Model "${modelId}" has no registered provider${detail}. Known providers: [${knownProviders.join(', ') || 'none'}]. Admin must add this model to the registry via Admin → Models, or use one of the known providers' canonical model ids.`,
+    );
+    this.name = 'ModelNotRoutableError';
+    this.modelId = modelId;
+    this.knownProviders = knownProviders;
+  }
+}
+
 export class ProviderManager {
   private logger: Logger;
   private providers: Map<string, ILLMProvider> = new Map();
@@ -93,7 +142,12 @@ export class ProviderManager {
 
   constructor(logger: Logger, config: ProviderManagerConfig) {
     this.logger = logger;
-    this.config = config;
+    // Default `nonStreamFailoverTimeout` to 10x `failoverTimeout` if not set.
+    // This covers reasoning-model non-stream completions (gpt-5.4 / sonnet-4-x
+    // / o-series) that legitimately take 60-300s to finish.
+    const nonStreamDefault = (config as any).nonStreamFailoverTimeout
+      ?? Math.max(config.failoverTimeout * 10, 300_000);
+    this.config = { ...config, nonStreamFailoverTimeout: nonStreamDefault } as any;
   }
 
   /**
@@ -218,7 +272,10 @@ export class ProviderManager {
       }
     }
 
-    // Build model-to-provider mapping from configurations
+    // Build model-to-provider mapping from configurations.
+    // Refresh the Registry-row cache first so the synchronous
+    // buildModelToProviderMap can pick up enabled rows without a DB hop.
+    await this.refreshRegistryRowMap();
     this.buildModelToProviderMap();
 
     // Discover live model capabilities from all providers — MUST complete before init returns
@@ -481,6 +538,37 @@ export class ProviderManager {
    * This is populated during initialization from each provider's configured models
    */
   private modelToProviderMap: Map<string, string> = new Map();
+  /**
+   * Registry SoT model rows grouped by provider name. Populated by
+   * refreshRegistryRowMap() before buildModelToProviderMap() so the
+   * synchronous map-build can pick up enabled rows without a DB hop.
+   */
+  private registryRowsByProvider: Map<string, Array<{ model: string }>> | null = null;
+
+  /**
+   * Refresh the in-memory Registry-row cache. Cheap query (one filtered
+   * SELECT). Call before buildModelToProviderMap() so the map reflects
+   * the latest admin.model_role_assignments state. */
+  private async refreshRegistryRowMap(): Promise<void> {
+    try {
+      const { prisma } = await import('../../utils/prisma.js');
+      const rows = await prisma.modelRoleAssignment.findMany({
+        where: { enabled: true },
+        select: { model: true, provider: true },
+      });
+      const m = new Map<string, Array<{ model: string }>>();
+      for (const r of rows) {
+        const arr = m.get(r.provider) ?? [];
+        arr.push({ model: r.model });
+        m.set(r.provider, arr);
+      }
+      this.registryRowsByProvider = m;
+    } catch (err: any) {
+      this.logger.warn({ error: err?.message }, '[ProviderManager] Failed to refresh Registry row map — modelToProviderMap may miss rows');
+      // Don't clobber existing cache on transient DB error.
+      if (!this.registryRowsByProvider) this.registryRowsByProvider = new Map();
+    }
+  }
 
   /**
    * Live-discovered model capabilities from providers.
@@ -521,14 +609,38 @@ export class ProviderManager {
     this.discoveredCapabilities.clear();
     const startTime = Date.now();
 
+    // Gate capability discovery on the Model Registry — we only care about
+    // models an admin has explicitly approved. Without this filter, Bedrock
+    // alone dumps 100+ catalog entries into the capability map, which the
+    // capability gate / router can then route to even though the admin
+    // never added them. Registry is the authoritative allowlist.
+    const registryIds = new Set<string>();
+    try {
+      const { ModelConfigurationService } = await import('../ModelConfigurationService.js');
+      const cfg = await ModelConfigurationService.getConfig();
+      for (const m of cfg.availableModels || []) {
+        if (m?.modelId) registryIds.add(m.modelId.toLowerCase());
+      }
+    } catch (err: any) {
+      this.logger.warn({ err: err?.message }, '[ProviderManager] Could not load Model Registry; capability discovery skipped');
+      return;
+    }
+
     for (const [name, provider] of this.providers) {
       try {
         // Only use discoverModels() — listModels() lacks capability data
         if (!provider.discoverModels) continue;
         const models = await provider.discoverModels();
+        let registered = 0;
+        let skipped = 0;
         for (const model of models) {
           if (!model.capabilities) continue;
           const normalized = model.id.toLowerCase();
+          // Registry gate — skip anything the admin hasn't approved.
+          if (!registryIds.has(normalized) && !registryIds.has(`${normalized}:latest`)) {
+            skipped++;
+            continue;
+          }
           if (!this.discoveredCapabilities.has(normalized)) {
             this.discoveredCapabilities.set(normalized, model);
           }
@@ -536,18 +648,49 @@ export class ProviderManager {
           if (!normalized.includes(':') && !this.discoveredCapabilities.has(`${normalized}:latest`)) {
             this.discoveredCapabilities.set(`${normalized}:latest`, model);
           }
+          registered++;
         }
         this.logger.info({
           provider: name,
           modelsDiscovered: models.length,
-          modelIds: models.slice(0, 10).map(m => m.id),
-        }, '[ProviderManager] Discovered model capabilities from provider');
+          registered,
+          skippedOutOfRegistry: skipped,
+        }, '[ProviderManager] Discovered model capabilities from provider (registry-filtered)');
       } catch (err: any) {
         this.logger.warn({
           provider: name,
           error: err.message,
         }, '[ProviderManager] Failed to discover models from provider (non-fatal)');
       }
+    }
+
+    // 2026-04-22 (updated 2026-04-26): overlay admin-authored capabilities
+    // from the Registry SoT (admin.model_role_assignments) onto the
+    // discovery cache. Provider discovery infers capabilities from model-
+    // name heuristics (see BedrockCapabilityInference.ts) and sometimes
+    // flags `tools: false` for entries where the admin explicitly set
+    // `tools: true`. Registry-authored values MUST win — (a) they're
+    // explicit, (b) ModelCapabilityGate reads this cache to decide the
+    // auto-upgrade cascade — a false-negative on `tools` silently reroutes
+    // a pinned Sonnet to gpt-oss, which was the 2026-04-21 incident.
+    try {
+      const { prisma } = await import('../../utils/prisma.js');
+      const rows = await prisma.modelRoleAssignment.findMany({
+        where: { enabled: true },
+        select: { model: true, capabilities: true },
+      });
+      let overlaid = 0;
+      for (const r of rows) {
+        if (!r.capabilities || typeof r.capabilities !== 'object') continue;
+        const normalized = r.model.toLowerCase();
+        const existing = this.discoveredCapabilities.get(normalized);
+        if (!existing) continue;
+        existing.capabilities = { ...existing.capabilities, ...(r.capabilities as any) } as any;
+        overlaid++;
+      }
+      this.logger.info({ overlaid }, '[ProviderManager] Overlaid Registry-authored capabilities onto discovery cache');
+    } catch (err: any) {
+      this.logger.warn({ error: err?.message }, '[ProviderManager] Failed to overlay Registry capabilities onto discovery — gate may auto-upgrade incorrectly');
     }
 
     this.logger.info({
@@ -589,7 +732,32 @@ export class ProviderManager {
         }
       }
 
-      // Also include models from provider_config.models[] array (admin-added models)
+      // Registry SoT — add every enabled Registry row for this provider
+      // to the modelToProviderMap. Replaces the legacy
+      // provider_config.models[] iteration. Populated by
+      // refreshRegistryRowMap() which runs before this method.
+      //
+      // Bug-fix 2026-05-06: tracking which models are registry-pinned so the
+      // inferProviderFromModelName cross-provider override below cannot
+      // clobber an explicit registry assignment. Repro: two ollama providers
+      // (`hal` + `ollama-dev-win11`) with the registry pinning
+      // `gemma4:latest` to ollama-dev-win11. The heuristic returned `ollama`,
+      // the lookup loop picked `hal` (first in Map iteration), and routed
+      // every gemma4 request to hal which doesn't host that model → 500
+      // every turn. Registry rows are authoritative per the SoT contract;
+      // honoring them here prevents the override.
+      const registryPinned = new Set<string>();
+      const rows = this.registryRowsByProvider?.get(providerName) ?? [];
+      for (const r of rows) {
+        if (r.model) {
+          registryPinned.add(r.model.toLowerCase());
+          if (!modelIds.includes(r.model)) modelIds.push(r.model);
+        }
+      }
+
+      // Back-compat fallback during migration: still pull provider_config.models
+      // entries that haven't been mirrored to Registry yet. The legacy field
+      // will be deleted after the backfill (#70) lands.
       if (Array.isArray(config.models)) {
         for (const m of config.models) {
           const mId = m.id || m.name;
@@ -623,7 +791,32 @@ export class ProviderManager {
 
         // Cross-provider validation: don't map a model to the wrong provider
         // e.g., gpt-oss in vertex-ai's thinkingModel should still route to ollama
-        const correctProviderType = this.inferProviderFromModelName(normalizedModelId);
+        //
+        // EXCEPTION 2026-05-01: Microsoft Azure AI Foundry hosts third-party
+        // model families (Anthropic Claude, OpenAI gpt-oss-120b, etc.) under
+        // the original family names. The name-pattern heuristic was assigning
+        // `gpt-oss-120b` configured on AIF → `ollama`, blocking AIF as a
+        // legitimate host for that model. AIF's model registration is
+        // ground-truth for the deployments it explicitly hosts; trust it
+        // and skip the heuristic.
+        // Same logic applies to Bedrock and Vertex when they host non-native
+        // families via partnership channels — those providers also explicitly
+        // declare which models they host in `provider_config.models[]`.
+        const providerConfigType =
+          this.providerConfigs?.find(c => c.name === providerName)?.provider_type;
+        const trustsThirdPartyFamilies =
+          providerConfigType === 'azure-ai-foundry' ||
+          providerConfigType === 'aif' ||
+          providerConfigType === 'aws-bedrock' ||
+          providerConfigType === 'vertex-ai' ||
+          providerConfigType === 'vertex-claude';
+        // Skip the inference entirely when this model is pinned to THIS
+        // provider via a Registry row — the assignment is authoritative
+        // and overriding it via name-pattern heuristic produced the
+        // 2026-05-06 hal/ollama-dev-win11 mis-routing.
+        const correctProviderType = trustsThirdPartyFamilies || registryPinned.has(normalizedModelId)
+          ? null  // trust the explicit registration on multi-host clouds AND on registry pins
+          : this.inferProviderFromModelName(normalizedModelId);
         // Resolve provider TYPE to actual provider NAME (instance name in providers map)
         // e.g., 'aws-bedrock' → 'bedrock-east1', 'vertex-ai' → 'gcp-vertex'
         let correctProvider = correctProviderType;
@@ -680,8 +873,16 @@ export class ProviderManager {
     // Bedrock-specific model IDs (have vendor prefix like us.anthropic.* or amazon.*)
     // Plain 'claude-*' names are NOT Bedrock-specific — they could be AIF deployments.
     // Only route to Bedrock when the model ID has the Bedrock ARN-style prefix.
+    // (2026-04-28) Also accept the cross-region inference-profile prefix
+    // `global.*` — Bedrock surfaces ids like
+    // `global.anthropic.claude-sonnet-4-20250514-v1:0`. Without this, the
+    // detectProviderForModel heuristic missed the live admin-configured
+    // codemode default and silent-fellthrough to ollama-hal.
     if (m.startsWith('us.anthropic') || m.startsWith('anthropic.') ||
-        m.startsWith('us.amazon.') || m.startsWith('amazon.')) {
+        m.startsWith('us.amazon.') || m.startsWith('amazon.') ||
+        m.startsWith('global.anthropic.') || m.startsWith('global.amazon.') ||
+        m.startsWith('eu.anthropic.') || m.startsWith('apac.anthropic.') ||
+        m.startsWith('mistral.') || m.startsWith('meta.llama')) {
       return 'aws-bedrock';
     }
     // Vertex AI / Google models
@@ -808,8 +1009,9 @@ export class ProviderManager {
     // map to Bedrock-registered "anthropic.claude-sonnet-4-6". Without this,
     // a request silently routes to the platform default (gpt-oss) instead.
     // Also handle version suffixes (-v1, -v1:0) that Bedrock appends to some
-    // Anthropic deployments.
-    for (const prefix of ['anthropic.', 'us.anthropic.']) {
+    // Anthropic deployments. (2026-04-28) Added `global.anthropic.` for
+    // cross-region inference profile ids.
+    for (const prefix of ['anthropic.', 'us.anthropic.', 'global.anthropic.']) {
       if (modelLower.startsWith(prefix)) continue;
       for (const suffix of ['', '-v1', '-v1:0']) {
         const aliased = prefix + modelLower + suffix;
@@ -854,38 +1056,87 @@ export class ProviderManager {
       }
     }
 
-    // ── 3. Pattern fallback — VERIFIED against enabled providers only ───────
-    // Removed in 2026-04-08 hardening: the previous code returned hardcoded
-    // literal provider names (e.g., 'aws-bedrock') without verifying that the
-    // provider actually had the requested model. This bypassed admin disable:
-    // a request for `anthropic.claude-sonnet-4-5-...` would route to a Bedrock
-    // provider that no longer had any Sonnet model in its config, OR to a
-    // disabled provider whose name happened to match the literal string.
+    // ── 3. Prefix-heuristic RIPPED (#912, 2026-05-20) ─────────────────────
+    // The prior heuristic fell back to inferProviderFromModelName() and
+    // matched name patterns to provider types (anthropic.* → aws-bedrock,
+    // gemini → vertex-ai, etc.). Per the two-SoT contract (CLAUDE.md §7),
+    // the registry IS the source of truth. Silently routing a model the
+    // admin hasn't registered bypasses admin intent — disabled models
+    // could still get picked via name pattern. Return null instead and
+    // let `getProviderForModel` throw MODEL_NOT_IN_REGISTRY (the public
+    // entry-point), so internal-only callers like `getStreamFormatForModel`
+    // can still fall back to defaults without exception propagation.
     //
-    // New behavior: if the model id isn't in modelToProviderMap or
-    // discoveredCapabilities, no enabled provider serves it. Return null and
-    // let the caller error out cleanly with "model unavailable".
-    //
-    // For models that need pattern-based routing (e.g., a sub-agent picks an
-    // unfamiliar id), the admin must add the model explicitly via
-    // POST /admin/llm-providers/:providerName/models or rely on the provider's
-    // own discoverModels() to surface it.
-
-    this.logger.debug({
-      model,
-      enabledProviders: Array.from(this.providers.keys()),
-      hint: 'Model not found in any enabled provider config or discovered list'
-    }, '[ProviderManager] No enabled provider serves this model');
+    // The single legitimate caller of inferProviderFromModelName that
+    // remains is buildModelToProviderMap (line ~819) where it's used as
+    // a cross-provider integrity check during map BUILD, guarded by
+    // registryPinned + trustsThirdPartyFamilies. That guarded build-time
+    // use is the only allowed surface.
+    this.logger.debug(
+      {
+        model,
+        enabledProviders: Array.from(this.providers.keys()),
+        hint:
+          'Model not found in registry map or discovery cache. Prefix heuristic ripped — admin must register this model.',
+      },
+      '[ProviderManager] No registry row for this model',
+    );
 
     return null;
   }
 
   /**
-   * PUBLIC method to get the provider for a model
-   * Can be called by completion stage to determine routing
+   * PUBLIC method to get the provider for a model.
+   * Can be called by completion stage to determine routing.
+   *
+   * (2026-04-28) Fail-closed contract:
+   *   - Throws when `model` is missing/empty/non-string. The previous "return
+   *     null on empty" behavior masked an upstream wiring bug (the codemode
+   *     boot probe sent no model and silently fell through to the first
+   *     listed provider).
+   *
+   * (#912, 2026-05-20) Hardened contract — prefix-heuristic RIPPED:
+   *   - Returns the explicit map's value when the id is registered (or
+   *     resolves via alias / fuzzy lookup against the registry map).
+   *   - Returns the discovered-capability provider when listModels()
+   *     surfaced it (still registry-gated by discoverFromProviders).
+   *   - Throws MODEL_NOT_IN_REGISTRY for unknown ids — name-substring
+   *     prefix-heuristic fallback was ripped per the two-SoT contract
+   *     (admin.model_role_assignments is the SoT; the heuristic
+   *     bypassed admin intent on disabled / un-registered models).
+   *
+   * Internal-only callers (`getStreamFormatForModel`, `selectProvider`)
+   * still hit `detectProviderForModel` directly which returns null on
+   * miss — they need null to apply their own fallback (default stream
+   * format / strategy-based provider selection). Only this public
+   * entry-point throws, matching the fail-closed semantics callers
+   * already expect.
    */
-  public getProviderForModel(model: string): string | null {
-    return this.detectProviderForModel(model);
+  public getProviderForModel(model: string): string {
+    if (model === null || model === undefined) {
+      throw new ModelNotRoutableError(
+        '<missing>',
+        Array.from(this.providers.keys()),
+        'getProviderForModel called with null/undefined — caller must pass a non-empty model id',
+      );
+    }
+    if (typeof model !== 'string' || model.trim() === '') {
+      throw new ModelNotRoutableError(
+        String(model),
+        Array.from(this.providers.keys()),
+        'getProviderForModel called with empty model id — caller must pass a non-empty model id',
+      );
+    }
+    const resolved = this.detectProviderForModel(model);
+    if (!resolved) {
+      throw new Error(
+        `MODEL_NOT_IN_REGISTRY: ${model}. Provider routing failed — the model is not in any enabled ` +
+          `provider's registry map or discovery cache, and prefix-heuristic resolution is disabled per ` +
+          `the two-SoT contract (#912). Admin must register this model via the Models admin page before ` +
+          `requests can route.`,
+      );
+    }
+    return resolved;
   }
 
   /**
@@ -940,10 +1191,29 @@ export class ProviderManager {
   }
 
   /**
-   * Get the stream format for a given model
-   * Used by the pipeline to know how to parse streaming responses
+   * Get the stream format for a given model. Used by the pipeline to
+   * know how to parse streaming responses.
+   *
+   * F0-3 (2026-05-12 audit): return type widened to match the 8
+   * canonical formats the SDK `selectCanonicalNormalizer` factory
+   * accepts. Previously the union was `'anthropic'|'openai'|'gemini'`
+   * — a TypeScript-level narrowing that silently downcasted real
+   * provider streamFormat values like 'bedrock-anthropic' /
+   * 'aif-responses' / 'ollama' / 'foundry-anthropic' /
+   * 'vertex-anthropic' to one of the three. Downstream callers
+   * dispatched to the wrong normalizer for non-OpenAI/Anthropic streams.
    */
-  public getStreamFormatForModel(model: string): 'anthropic' | 'openai' | 'gemini' {
+  public getStreamFormatForModel(
+    model: string,
+  ):
+    | 'anthropic'
+    | 'bedrock-anthropic'
+    | 'vertex-anthropic'
+    | 'foundry-anthropic'
+    | 'ollama'
+    | 'openai'
+    | 'gemini'
+    | 'aif-responses' {
     const providerName = this.detectProviderForModel(model);
     if (providerName) {
       const provider = this.providers.get(providerName);
@@ -1096,6 +1366,9 @@ export class ProviderManager {
       source: 'merged_provider_defaults'
     }, 'Request parameters merged with provider model config');
 
+    const startedAt = new Date(startTime);
+    const providerType = providerConfig?.type ?? 'unknown';
+
     try {
       metrics.totalRequests++;
       const response = await provider.createCompletion(mergedRequest);
@@ -1113,6 +1386,19 @@ export class ProviderManager {
         uptime: metrics.uptime.toFixed(2)
       }, 'Completion successful');
 
+      // Tier-1 Prom + Tier-2 fact-table emit for the non-streaming path.
+      // Streaming responses (AsyncGenerator) are handled at the consumer
+      // seam — skipping here would otherwise emit empty rows.
+      if (response && typeof (response as any).model === 'string' && Array.isArray((response as any).choices)) {
+        recordCompletionMetrics({
+          response: response as any,
+          providerName,
+          providerType,
+          startedAt,
+          streaming: false,
+        }).catch(err => this.logger.debug({ err }, 'recordCompletionMetrics failed (non-fatal)'));
+      }
+
       return response;
 
     } catch (error) {
@@ -1124,6 +1410,15 @@ export class ProviderManager {
         error: error instanceof Error ? error.message : error,
         uptime: metrics.uptime.toFixed(2)
       }, 'Completion failed');
+
+      // Error path — emit gen_ai_errors_total + write the failed-request row.
+      recordCompletionMetrics({
+        providerName,
+        providerType,
+        model: mergedRequest.model,
+        startedAt,
+        error,
+      }).catch(err => this.logger.debug({ err }, 'recordCompletionMetrics failed (non-fatal)'));
 
       throw error;
     }
@@ -1142,9 +1437,21 @@ export class ProviderManager {
     const originalProvider = providerName;
 
     try {
-      // Try primary provider with timeout
+      // Pick budget by request type:
+      //  - Streaming requests: time-to-generator-handle (TTFB). Fast.
+      //  - Non-streaming requests: total generation time. Slow (reasoning).
+      // Live failure 2026-05-02: AIF gpt-5.4 returned full 18,698 tokens at
+      // 97s elapsed; with the old single 90s budget the call was killed
+      // mid-flight and failed over to ollama-hal (no gpt-5.4) → user got
+      // REQUEST_TIMEOUT despite a successful upstream completion.
+      const isStream = request.stream === true;
+      const budgetMs = isStream
+        ? this.config.failoverTimeout
+        : ((this.config as any).nonStreamFailoverTimeout ?? this.config.failoverTimeout * 10);
+
+      // Try primary provider with budget-appropriate timeout
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), this.config.failoverTimeout);
+        setTimeout(() => reject(new Error('Request timeout')), budgetMs);
       });
 
       const completionPromise = this.executeCompletion(provider, providerName, request);
@@ -1441,7 +1748,9 @@ export class ProviderManager {
       this.config = newConfig;
       this.lastReloadTime = Date.now();
 
-      // Rebuild the model→provider lookup map
+      // Rebuild the model→provider lookup map (refresh Registry cache first
+      // so any admin enable/disable since last reload is reflected).
+      await this.refreshRegistryRowMap();
       this.buildModelToProviderMap();
 
       // Re-discover capabilities for the new provider set (best-effort, non-blocking)
@@ -1537,7 +1846,7 @@ export class ProviderManager {
 
         // Timeout race
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Image generation timeout')), this.config.failoverTimeout);
+          setTimeout(() => reject(new Error('Image generation timeout')), this.config.imageGenTimeout);
         });
 
         const result = await Promise.race([
@@ -1674,6 +1983,22 @@ export async function invalidateAllModelCaches(logger?: any, broadcast = true): 
     logger?.info?.('[CacheInvalidation] ModelConfigurationService cache refreshed');
   } catch (err: any) {
     logger?.warn?.({ error: err.message }, '[CacheInvalidation] ModelConfigurationService refresh failed');
+  }
+
+  // SmartModelRouter carries its own profile Map keyed by the Model
+  // Registry — when the registry changes (admin Add/Remove Model), the
+  // router MUST reload or its routable set drifts from the registry.
+  // Without this hook the Add-Model UI succeeds but the new model stays
+  // invisible in the Smart Router dropdown until the next pod restart.
+  try {
+    const { getSmartModelRouter } = await import('../SmartModelRouter.js');
+    const router = getSmartModelRouter();
+    if (router) {
+      await router.reload();
+      logger?.info?.('[CacheInvalidation] SmartModelRouter reloaded from registry');
+    }
+  } catch (err: any) {
+    logger?.warn?.({ error: err.message }, '[CacheInvalidation] SmartModelRouter reload failed');
   }
 
   // Broadcast to other replicas via Redis pub/sub

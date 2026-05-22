@@ -127,7 +127,12 @@ export class RedisMemoryCache {
         return result;
       } catch (error) {
         lastError = error as Error;
-        
+
+        // READONLY errors from a replica node are permanent — no point retrying.
+        if (lastError.message?.includes('READONLY')) {
+          throw lastError;
+        }
+
         if (attempt < retries) {
           const delay = this.config.retryDelay! * Math.pow(2, attempt);
           await new Promise(resolve => setTimeout(resolve, delay));
@@ -168,12 +173,12 @@ export class RedisMemoryCache {
   }
 
   private async setWithOptions(
-    key: string, 
-    value: string, 
+    key: string,
+    value: string,
     options: CacheOptions = {}
   ): Promise<void> {
     await this.connect();
-    
+
     const ttl = options.ttl || this.config.defaultTTL!;
     let finalValue = value;
 
@@ -183,10 +188,21 @@ export class RedisMemoryCache {
       key = `${key}:compressed`;
     }
 
-    await this.executeWithRetry(async () => {
-      await this.client.set(key, finalValue, { EX: ttl });
-      this.metrics.operations.sets++;
-    });
+    try {
+      await this.executeWithRetry(async () => {
+        await this.client.set(key, finalValue, { EX: ttl });
+        this.metrics.operations.sets++;
+      });
+    } catch (err) {
+      // READONLY means this client is connected to a replica node.
+      // Write failures are non-critical — degrade silently so reads still succeed.
+      const errMsg = (err as Error)?.message ?? '';
+      if (errMsg.includes('READONLY')) {
+        console.debug('[RedisMemoryCache] Skipping write — connected to read-only replica:', errMsg);
+        return;
+      }
+      throw err;
+    }
   }
 
   private async getWithOptions(

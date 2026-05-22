@@ -23,6 +23,7 @@ import { MilvusClient } from '@zilliz/milvus2-sdk-node';
 import OpenAI from 'openai';
 import { ExtendedCapabilitiesService } from './ModelCapabilitiesService.js';
 import { prisma } from '../utils/prisma.js';
+import { getModelCapabilityRegistry } from './ModelCapabilityRegistry.js';
 
 // Discovery mode types
 export type DiscoveryMode = 'lazy' | 'eager' | 'disabled';
@@ -938,13 +939,39 @@ export class ModelCapabilityDiscoveryService {
     }
   }
 
-  // Helper methods
+  // Helper methods.
+  //
+  // Each accessor consults ModelCapabilityRegistry first (which now reads
+  // from admin.model_role_assignments — the SoT). Substring inference is
+  // a documented discovery-time fallback for models that haven't been
+  // registered yet; downstream consumers (Milvus knowledge ingesters)
+  // get registry-truth for any model the operator has actually configured.
 
   private inferCapabilitiesFromModelName(modelName: string): ModelCapability['capabilities'] {
+    const registry = getModelCapabilityRegistry();
+    const reg = registry?.getCapabilities(modelName);
+    if (reg && registry?.hasModel?.(modelName)) {
+      return {
+        text: reg.chat,
+        vision: reg.vision,
+        imageGeneration: reg.imageGeneration,
+        audioGeneration: false,
+        audioTranscription: false,
+        functionCalling: reg.functionCalling,
+        streaming: reg.streaming,
+        embeddings: reg.embeddings,
+        fineTuning: false,
+        jsonMode: reg.jsonMode,
+        structuredOutput: reg.jsonMode,
+      };
+    }
+    // Discovery-time fallback. Used when scanning a provider for newly
+    // available models that operator hasn't registered yet. Capability
+    // accuracy here only affects RAG knowledge-base prose; runtime model
+    // selection always reads from the registry directly.
     const lower = modelName.toLowerCase();
-    
     return {
-      text: true, // All models support text
+      text: true,
       vision: lower.includes('vision') || lower.includes('4o') || lower.includes('gpt-4-turbo'),
       imageGeneration: lower.includes('dall-e') || lower.includes('imagen') || lower.includes('stable'),
       audioGeneration: lower.includes('tts') || lower.includes('speech'),
@@ -954,24 +981,36 @@ export class ModelCapabilityDiscoveryService {
       embeddings: lower.includes('embedding'),
       fineTuning: lower.includes('base') || lower.includes('davinci'),
       jsonMode: lower.includes('gpt-4') || lower.includes('turbo'),
-      structuredOutput: lower.includes('gpt-4o')
+      structuredOutput: lower.includes('gpt-4o'),
     };
   }
 
   private getContextLength(modelName: string): number {
+    const reg = getModelCapabilityRegistry()?.getCapabilities(modelName);
+    if (reg?.maxContextTokens && reg.maxContextTokens > 0) return reg.maxContextTokens;
+    // Discovery-time fallback (see inferCapabilitiesFromModelName).
     const lower = modelName.toLowerCase();
     if (lower.includes('32k')) return 32768;
     if (lower.includes('16k')) return 16384;
     if (lower.includes('128k')) return 128000;
     if (lower.includes('turbo')) return 16384;
     if (lower.includes('gpt-4')) return 8192;
-    return 4096; // Default
+    return 4096;
   }
 
   private getModelCost(modelName: string): ModelCapability['cost'] {
+    const reg = getModelCapabilityRegistry()?.getCapabilities(modelName);
+    if (reg && (reg.inputCostPer1k != null || reg.outputCostPer1k != null)) {
+      return {
+        inputPer1kTokens: reg.inputCostPer1k ?? 0,
+        outputPer1kTokens: reg.outputCostPer1k ?? 0,
+        currency: 'USD',
+      };
+    }
+    // Discovery-time fallback. Real pricing comes from BedrockPricingService
+    // for AWS, Azure-OpenAI listings for Azure, and the registry row's
+    // cost_per_*_token_usd columns once the operator has set them.
     const lower = modelName.toLowerCase();
-    
-    // These are approximate costs - should be updated with actual pricing
     if (lower.includes('gpt-4o')) {
       return { inputPer1kTokens: 0.005, outputPer1kTokens: 0.015, currency: 'USD' };
     }
@@ -981,7 +1020,6 @@ export class ModelCapabilityDiscoveryService {
     if (lower.includes('gpt-3.5')) {
       return { inputPer1kTokens: 0.0005, outputPer1kTokens: 0.0015, currency: 'USD' };
     }
-    
     return { inputPer1kTokens: 0.001, outputPer1kTokens: 0.002, currency: 'USD' };
   }
 

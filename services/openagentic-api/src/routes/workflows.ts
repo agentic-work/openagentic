@@ -23,28 +23,129 @@ import { loggers } from '../utils/logger.js';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../utils/prisma.js';
 import { authMiddleware } from '../middleware/unifiedAuth.js';
-import { executeWorkflow, ExecutionEvent, abortWorkflowExecution } from '../services/WorkflowExecutionEngine.js';
+import { getInternalKey } from '../utils/internalKeyReader.js';
+import { reportLocalEngineFallback } from '../services/workflowServiceUrlGuard.js';
+
+/**
+ * Build the s2s headers used when this api proxies to the workflows-service.
+ * The workflows-service rejects calls without a valid internal-key (P0a fix).
+ */
+function workflowServiceHeaders(extra: Record<string, string | undefined> = {}): Record<string, string> {
+  const internalKey = getInternalKey();
+  const out: Record<string, string> = {};
+  if (internalKey) out['Authorization'] = `Bearer ${internalKey}`;
+  for (const [k, v] of Object.entries(extra)) {
+    if (typeof v === 'string' && v.length > 0) out[k] = v;
+  }
+  return out;
+}
+// Phase B (#15): the in-process executeWorkflow + ExecutionEvent are
+// being retired. Proxy goes to workflows-svc; ExecutionEvent type comes
+// from the shared package. abortWorkflowExecution stays for now — a
+// /abort endpoint on workflows-svc is follow-up work; today the local-
+// fallback else branches are the only callers that resolve to a
+// local-engine instance to abort.
+import { executeViaWorkflowsService as executeWorkflow } from '../services/executeViaWorkflowsService.js';
+import { fireWorkflowFinishedSubscribers } from '../services/workflowFinishedSubscriptions.js';
+import { resolveExecuteTenantId } from './helpers/resolveExecuteTenantId.js';
+import { abortWorkflowExecution } from '../services/WorkflowExecutionEngine.js';
+import type { ExecutionEvent } from '@openagentic/workflow-engine';
+import { deriveFlowToolSchema } from '@openagentic/workflow-engine';
+import { subscribeAgentProgressForFlowsStream } from '../services/workflowAgentProgressBridge.js';
 import { WorkflowCompiler } from '../services/WorkflowCompiler.js';
 import { randomUUID, createHash } from 'crypto';
 import bcrypt from 'bcrypt';
 import axios from 'axios';
 import { getRedisClient } from '../utils/redis-client.js';
 import { ndjsonHeaders, writeNDJSON, createSSEToNDJSONTranslator } from '../infra/ndjson.js';
+import { getNodeSchemasProxyService } from '../services/NodeSchemasProxyService.js';
+import { featureFlags } from '../config/featureFlags.js';
 
 const workflowCompiler = new WorkflowCompiler();
 
-// Workflow execution service URL — when available, execution is proxied to the dedicated service
+// Workflow execution service URL — when available, execution is proxied to the dedicated service.
+// Phase A: when unset, log a loud warn at module load so the misconfig is
+// surfaced (the dedicated workflows pod was deployed and idle in agentic-dev
+// for weeks because nobody noticed). Phase B will fail-fast.
 const WORKFLOW_SERVICE_URL = process.env.WORKFLOW_SERVICE_URL || '';
+if (!WORKFLOW_SERVICE_URL) {
+  loggers.server.warn(
+    {},
+    '[Workflows] WORKFLOW_SERVICE_URL is not set — every workflow execution will fall back to the in-process engine. Set WORKFLOW_SERVICE_URL=http://openagentic-workflows:3400 (or equivalent) to route to the dedicated pod. Phase B of the decoupling will turn this into a startup error.',
+  );
+}
 
-// Helper to transform workflow from DB schema to API response format
+// Imported template definitions — kept in standalone files to keep this
+// router file readable while still seeding via SEED_WORKFLOW_TEMPLATES on
+// the canonical `workflow` table (where chat-dev's templates panel reads).
+import {
+  nodes as pdAutoTriageNodes,
+  edges as pdAutoTriageEdges,
+} from '../services/__seed__/templates/06-pagerduty-auto-triage.js';
+import {
+  nodes as deepResearchNodes,
+  edges as deepResearchEdges,
+} from '../services/__seed__/templates/07-deep-research-team.js';
+// OMHS On-Call team template pack — moved from omhsTemplateSeeder (which
+// silently failed on every boot — wrong table + invalid upsert key, see
+// fix commit) to the canonical seed path.
+import {
+  nodes as omhsPdTriageNodes,
+  edges as omhsPdTriageEdges,
+} from '../services/__seed__/templates/01-pagerduty-triage.js';
+import {
+  nodes as omhsAlertmanagerNodes,
+  edges as omhsAlertmanagerEdges,
+} from '../services/__seed__/templates/02-alertmanager-pd.js';
+import {
+  nodes as omhsSplunkNodes,
+  edges as omhsSplunkEdges,
+} from '../services/__seed__/templates/03-splunk-detection-triage.js';
+import {
+  nodes as omhsK8sNodes,
+  edges as omhsK8sEdges,
+} from '../services/__seed__/templates/04-k8s-cluster-health.js';
+import {
+  nodes as omhsLokiPromNodes,
+  edges as omhsLokiPromEdges,
+} from '../services/__seed__/templates/05-loki-prom-incident.js';
+
+// Helper to transform workflow from DB schema to API response format.
+// 2026-04-19 (task #144) — strip legacy `intelligenceLevel` and
+// `sliderPosition` / `sliderOverride` fields from node data on the way
+// out. Existing flows were saved with these; the UI no longer renders
+// them and the executor ignores them, but we drop them from the wire
+// so old saved-flows look clean in the editor without a DB migration.
+function stripLegacySliderFields(nodes: any[]): any[] {
+  if (!Array.isArray(nodes)) return nodes;
+  return nodes.map((n) => {
+    if (!n?.data) return n;
+    const { intelligenceLevel, sliderPosition, sliderOverride, ...cleanData } = n.data;
+    return { ...n, data: cleanData };
+  });
+}
+
 function transformWorkflow(workflow: any) {
   const definition = workflow.definition as any || {};
+  // settings.meta carries the human-readable template legend block
+  // authored in seed/templates/*.json (purpose / how_it_works /
+  // expected_output / useful_when / tools_used / version / tags).
+  // Surface it as a top-level `meta` so UI gallery cards + canvas-side
+  // 'About this workflow' panel can render it without digging into
+  // settings.
+  const settings = (workflow.settings as Record<string, any> | null | undefined) || {};
+  const meta = settings.meta ?? null;
+  // Slug lives at meta.slug per the templateSeeder contract (the seeder
+  // copies tpl.slug from seed/templates/<slug>.json into settings.meta.slug).
+  // Surface it as a top-level field so the UI can deep-link by slug.
+  const slug = meta && typeof meta.slug === 'string' ? meta.slug : null;
   return {
     id: workflow.id,
     user_id: workflow.created_by,
     name: workflow.name,
+    slug,
     description: workflow.description,
-    nodes: definition.nodes || [],
+    nodes: stripLegacySliderFields(definition.nodes || []),
     edges: definition.edges || [],
     status: workflow.is_active ? 'active' : 'draft',
     is_public: workflow.is_public || false,
@@ -53,6 +154,7 @@ function transformWorkflow(workflow: any) {
     category: workflow.category,
     icon: workflow.icon,
     color: workflow.color,
+    meta,
     executionCount: workflow.total_executions || 0,
     lastExecutedAt: workflow.last_executed_at,
     created_at: workflow.created_at,
@@ -220,6 +322,29 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
   fastify.addHook('preHandler', authMiddleware);
 
   /**
+   * GET /api/workflows/internal/node-schemas
+   *
+   * Proxy to the openagentic-workflows service GET /node-schemas endpoint.
+   * Returns the schema-driven node registry: { schemas, aiPromptFragment }.
+   * Response is cached in-memory for 60 s (registry is static at boot).
+   * Falls back to { schemas: [], aiPromptFragment: '' } when the workflows
+   * service is unreachable or WORKFLOW_SERVICE_URL is unset.
+   *
+   * Auth: any logged-in user (auth guard applied via preHandler hook above).
+   */
+  fastify.get('/internal/node-schemas', async (request, reply) => {
+    try {
+      const svc = getNodeSchemasProxyService();
+      const payload = await svc.getNodeSchemas();
+      return reply.send(payload);
+    } catch (err: unknown) {
+      const error = err as Error;
+      logger.error({ error: error.message }, '[Workflows] /internal/node-schemas handler threw unexpectedly');
+      return reply.code(500).send({ error: 'Failed to fetch node schemas', message: error.message });
+    }
+  });
+
+  /**
    * GET /api/workflows
    * List user's workflows
    */
@@ -263,6 +388,7 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
               name: true,
               description: true,
               definition: true,
+              settings: true,
               is_active: true,
               is_template: true,
               is_public: true,
@@ -342,6 +468,15 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
         const autoTags = computeAutoTags(definition);
         const mergedTags = [...new Set([...(tags || []), ...autoTags])];
 
+        // SEV-0 Flows-fix-A1: persist tenant_id on creation so the execute
+        // path's defense-in-depth fallback (request.tenantId → row tenant_id)
+        // actually has a row tenant to fall back to. Pre-fix every Workflow
+        // row had tenant_id:null, which made the fallback chain dead-end at
+        // null and shipped tenantId:null to workflows-svc.
+        const creatorTenantId = (request as any).tenantId
+          ?? (request as any).user?.tenantId
+          ?? null;
+
         const workflow = await prisma.workflow.create({
           data: {
             name,
@@ -357,7 +492,8 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
             is_template,
             is_public,
             created_by: userId,
-            group_id
+            group_id,
+            tenant_id: creatorTenantId,
           }
         });
 
@@ -450,6 +586,103 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
         });
       }
     }
+  );
+
+  /**
+   * GET /api/workflows/:id/as-tool-schema
+   * V1.1 flow_tool: project a saved Workflow into the agent-tool catalog
+   * shape `{ flowId, name, description, input_schema }`. Used by openagentic-proxy
+   * to inject the user's saved flows as dynamic tools per turn.
+   */
+  fastify.get<{ Params: WorkflowIdParams }>(
+    '/:id/as-tool-schema',
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const user = (request as any).user;
+        const userId = user?.userId || user?.id;
+
+        const workflow = await prisma.workflow.findFirst({
+          where: {
+            id,
+            deleted_at: null,
+            OR: [
+              { created_by: userId },
+              { is_public: true },
+              { is_template: true },
+            ],
+          },
+        });
+
+        if (!workflow) {
+          return reply.code(404).send({
+            error: 'Not found',
+            message: `Workflow with ID '${id}' not found`,
+          });
+        }
+
+        const schema = deriveFlowToolSchema({
+          id: workflow.id,
+          name: workflow.name,
+          description: workflow.description,
+          definition: workflow.definition,
+          settings: workflow.settings as Record<string, unknown> | null | undefined,
+        });
+
+        return reply.send({ tool: schema });
+      } catch (error: any) {
+        logger.error({ error }, '[Workflows] Failed to derive tool schema');
+        return reply.code(500).send({
+          error: 'Failed to derive tool schema',
+          message: error.message,
+        });
+      }
+    },
+  );
+
+  /**
+   * GET /api/workflows/agent-tools
+   * V1.1 flow_tool: return every workflow the caller owns that is tagged
+   * `agent-tool`, projected into the agent-tool catalog shape. Bulk endpoint
+   * so openagentic-proxy can populate its per-turn tools[] in one round-trip.
+   */
+  fastify.get(
+    '/agent-tools',
+    async (request, reply) => {
+      try {
+        const user = (request as any).user;
+        const userId = user?.userId || user?.id;
+
+        const workflows = await prisma.workflow.findMany({
+          where: {
+            created_by: userId,
+            deleted_at: null,
+            is_active: true,
+            tags: { has: 'agent-tool' },
+          },
+          orderBy: { updated_at: 'desc' },
+          take: 50,
+        });
+
+        const tools = workflows.map((wf) =>
+          deriveFlowToolSchema({
+            id: wf.id,
+            name: wf.name,
+            description: wf.description,
+            definition: wf.definition,
+            settings: wf.settings as Record<string, unknown> | null | undefined,
+          }),
+        );
+
+        return reply.send({ tools });
+      } catch (error: any) {
+        logger.error({ error }, '[Workflows] Failed to list agent-tools');
+        return reply.code(500).send({
+          error: 'Failed to list agent-tools',
+          message: error.message,
+        });
+      }
+    },
   );
 
   /**
@@ -648,6 +881,26 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
         const user = (request as any).user;
         const userId = user?.userId || user?.id;
         const { nodes, edges, input = {} } = request.body;
+        // Task 1.3 (V3 Enterprise Chatmode S5): derive tenantId from the
+        // tenantContextPlugin-populated request.tenantId (azure_tenant_id JWT
+        // claim or user.tenantId fallback). The downstream wrapper
+        // executeViaWorkflowsService fails-CLOSED if this is null/empty.
+        //
+        // BUG-FIX 2026-05-14: the global preHandler in server.ts that mirrors
+        // user.tenantId onto request.tenantId is registered BEFORE
+        // workflows.ts:315's plugin-scoped authMiddleware. Fastify runs
+        // preHandler hooks in registration order, so at the time the mirror
+        // runs, `request.user` is still null and `request.tenantId` stays
+        // unset — shipping tenantId:undefined to workflows-svc which then
+        // 400s on `missing_tenant_id`. Fix in two places (test + test-node)
+        // by reading `user.tenantId` as a defense-in-depth fallback. The
+        // properly ordered fix is to move the tenant mirror to a
+        // route-level preHandler that runs AFTER auth, but the unblocking
+        // shipped here keeps live Flows working today.
+        const tenantId =
+          ((request as any).tenantId as string | null | undefined)
+          ?? user?.tenantId
+          ?? null;
 
         if (!nodes || !Array.isArray(nodes) || nodes.length === 0) {
           reply.code(400).send({
@@ -689,6 +942,20 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
           }
         };
 
+        // Phase C.4: subscribe to AgentEventStore so sub-agent progress
+        // (published by openagentic-proxy's Phase C HTTP callback) surfaces as
+        // flat `agent_progress` NDJSON frames — parity with chat's
+        // stream.handler. Unsubscribe on stream close to avoid leaks.
+        const unsubscribeAgentProgress = subscribeAgentProgressForFlowsStream(
+          testExecutionId,
+          (frame) => {
+            if (!reply.raw.writableEnded) {
+              writeNDJSON(reply, 'agent_progress', frame as unknown as Record<string, unknown>);
+            }
+          },
+        );
+        reply.raw.on('close', unsubscribeAgentProgress);
+
         try {
           if (WORKFLOW_SERVICE_URL) {
             // Proxy to workflow service. Downstream still emits SSE until
@@ -703,8 +970,10 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
                 input,
                 userId,
                 authToken: request.headers.authorization,
+                // Task 1.3 (V3 Enterprise Chatmode S5).
+                tenantId,
               },
-              { responseType: 'stream', timeout: 300000, headers: { 'Accept': 'text/event-stream' } }
+              { responseType: 'stream', timeout: 300000, headers: workflowServiceHeaders({ Accept: 'text/event-stream' }) }
             );
             const bridge = createSSEToNDJSONTranslator();
             await new Promise<void>((resolve, reject) => {
@@ -725,6 +994,7 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
               proxyResponse.data.on('error', (err: Error) => reject(err));
             });
           } else {
+            reportLocalEngineFallback({ workflowId: 'test', executionId: testExecutionId, logger });
             const testAuthToken = request.headers.authorization
               || (user?.accessToken ? `Bearer ${user.accessToken}` : undefined);
             await executeWorkflow(
@@ -734,7 +1004,8 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
               input,
               userId,
               testAuthToken,
-              sendEvent
+              sendEvent,
+              { tenantId } // Task 1.3 (V3 Enterprise Chatmode S5).
             );
           }
         } catch (execError: any) {
@@ -778,6 +1049,14 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
       try {
         const user = (request as any).user;
         const userId = user?.userId || user?.id;
+        // Task 1.3 (V3 Enterprise Chatmode S5).
+        // 2026-05-14 bug-fix: same preHandler-ordering issue as /test —
+        // global mirror runs before plugin-scoped authMiddleware so
+        // request.tenantId is stale; fall back to user.tenantId.
+        const tenantId =
+          ((request as any).tenantId as string | null | undefined)
+          ?? user?.tenantId
+          ?? null;
         const { node, input = {} } = request.body;
 
         if (!node || !node.type) {
@@ -815,8 +1094,10 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
                 input,
                 userId,
                 authToken,
+                // Task 1.3 (V3 Enterprise Chatmode S5).
+                tenantId,
               },
-              { timeout: 60000, validateStatus: () => true }
+              { timeout: 60000, validateStatus: () => true, headers: workflowServiceHeaders() }
             );
 
             const duration = Date.now() - startTime;
@@ -830,6 +1111,7 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
         }
 
         // Fallback: run locally if workflow service unavailable
+        reportLocalEngineFallback({ workflowId: 'test-node', executionId: testExecId, logger });
         let nodeOutput: any = null;
         let nodeError: string | undefined;
         const result = await executeWorkflow(
@@ -847,7 +1129,8 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
                 nodeError = (event as any).error;
               }
             }
-          }
+          },
+          { tenantId } // Task 1.3 (V3 Enterprise Chatmode S5).
         );
 
         const duration = Date.now() - startTime;
@@ -879,7 +1162,7 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
       // Route to workflow service if available
       if (WORKFLOW_SERVICE_URL) {
         try {
-          const svcRes = await axios.post(`${WORKFLOW_SERVICE_URL}/compile`, { definition }, { timeout: 10000 });
+          const svcRes = await axios.post(`${WORKFLOW_SERVICE_URL}/compile`, { definition }, { timeout: 10000, headers: workflowServiceHeaders() });
           return svcRes.data;
         } catch (err: any) {
           // If workflow service returns 400 with validation errors, forward them
@@ -1027,6 +1310,17 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
         const { id } = request.params;
         const user = (request as any).user;
         const userId = user?.userId || user?.id;
+        // SEV-0 Flows-fix-A1 (audit 2026-05-13): derive the request tenant
+        // from BOTH (a) `request.tenantId` (set by tenantContextPlugin if
+        // registered) and (b) `request.user.tenantId` (set by unifiedAuth's
+        // buildRequestUser from the validated UserContext). The (b) source
+        // is more reliable because tenantContextPlugin is currently NOT
+        // registered in server.ts startup, which is why every execute call
+        // pre-fix shipped tenantId:null on the wire.
+        const requestTenantId =
+          ((request as any).tenantId as string | null | undefined)
+          ?? (user?.tenantId as string | null | undefined)
+          ?? null;
         const { input = {}, trigger_type = 'manual', version_id } = request.body;
         const isDryRun = request.query.dryRun === 'true';
         const isAsync = request.query.async === 'true';
@@ -1056,6 +1350,32 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
           });
           return;
         }
+
+        // SEV-0 Flows-fix-A1 (audit 2026-05-13): resolve the wire tenantId
+        // via the fail-CLOSED helper. Pre-fix the streaming execute path
+        // used raw axios.post and shipped tenantId:null when both sources
+        // were unset — workflows-svc 400-rejected every call (41h, 0 execs).
+        const tenantResolution = resolveExecuteTenantId({
+          requestTenantId,
+          workflowTenantId: (workflow as any).tenant_id,
+        });
+        if (tenantResolution.ok !== true) {
+          const reason = (tenantResolution as { ok: false; error: string }).error;
+          logger.warn({
+            workflowId: id,
+            userId,
+            requestTenantId,
+            workflowTenantId: (workflow as any).tenant_id,
+            reason,
+          }, '[Workflows] execute fail-CLOSED: no resolvable tenantId');
+          reply.code(400).send({
+            error: 'Tenant required',
+            message: reason,
+            code: 'TENANT_REQUIRED',
+          });
+          return;
+        }
+        const tenantId: string = tenantResolution.tenantId;
 
         const version = workflow.versions[0];
         // Prefer version definition if it has nodes, otherwise fall back to workflow's own definition
@@ -1180,6 +1500,18 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
               redisPublisher.publish(execChannel, line).catch(() => {});
             };
 
+            // Phase C.4: subscribe to AgentEventStore and publish
+            // agent_progress frames to the exec channel so GET /stream
+            // subscribers see sub-agent progress. Unsubscribe when the
+            // inner execution finishes (in finally below).
+            const unsubscribeAgentProgress = subscribeAgentProgressForFlowsStream(
+              execution.id,
+              (frame) => {
+                const line = JSON.stringify({ type: 'agent_progress', ...frame }) + '\n';
+                redisPublisher.publish(execChannel, line).catch(() => {});
+              },
+            );
+
             // Send execution_start so the frontend timeline initializes
             sendEvent({ type: 'execution_start', executionId: execution.id, data: { workflowId: id }, timestamp: new Date().toISOString() });
 
@@ -1211,8 +1543,10 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
                     definition: { nodes: definition.nodes || [], edges: definition.edges || [] },
                     input: input || {}, userId,
                     authToken: effectiveAuthToken, idToken: effectiveIdToken, userEmail,
+                    // Task 1.3 (V3 Enterprise Chatmode S5).
+                    tenantId,
                   },
-                  { responseType: 'stream', timeout: 300000, headers: { 'Accept': 'text/event-stream' } }
+                  { responseType: 'stream', timeout: 300000, headers: workflowServiceHeaders({ Accept: 'text/event-stream' }) }
                 );
                 // Bridge downstream SSE → NDJSON before publishing to Redis
                 // so both direct and pub/sub consumers see the same format.
@@ -1232,10 +1566,12 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
                   proxyResponse.data.on('error', (err: Error) => reject(err));
                 });
               } else {
+                reportLocalEngineFallback({ workflowId: id, executionId: execution.id, logger });
                 await executeWorkflow(id, execution.id,
                   { nodes: definition.nodes || [], edges: definition.edges || [] },
                   input || {}, userId, effectiveAuthToken, sendEvent,
-                  { userEmail, idToken: effectiveIdToken }
+                  // Task 1.3 (V3 Enterprise Chatmode S5).
+                  { userEmail, idToken: effectiveIdToken, tenantId }
                 );
               }
 
@@ -1243,6 +1579,23 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
                 where: { id },
                 data: { total_executions: { increment: 1 }, successful_executions: { increment: 1 } },
               }).catch(() => {});
+
+              // P1.19 — workflow_finished trigger fan-out (success path).
+              // Fire-and-forget: subscriber failure must NEVER block source
+              // completion. Discovery + fire isolated in
+              // workflowFinishedSubscriptions.ts; tests pin the discovery
+              // logic independently of this hook.
+              fireWorkflowFinishedSubscribers({
+                prisma,
+                logger,
+                sourceWorkflowId: id,
+                sourceWorkflowSlug: ((workflow as any).settings as any)?.meta?.slug,
+                sourceExecutionId: execution.id,
+                sourceStatus: 'completed',
+                sourceOutput: undefined,
+                tenantId,
+                userId,
+              }).catch(() => { /* fire-and-forget */ });
             } catch (execError: any) {
               logger.error({ error: execError }, '[Workflows] Async execution failed');
               sendEvent({ type: 'execution_error', executionId: execution.id, data: { error: execError.message }, timestamp: new Date().toISOString() });
@@ -1250,6 +1603,24 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
                 where: { id },
                 data: { total_executions: { increment: 1 }, failed_executions: { increment: 1 } },
               }).catch(() => {});
+
+              // P1.19 — workflow_finished trigger fan-out (failed path).
+              fireWorkflowFinishedSubscribers({
+                prisma,
+                logger,
+                sourceWorkflowId: id,
+                sourceWorkflowSlug: ((workflow as any).settings as any)?.meta?.slug,
+                sourceExecutionId: execution.id,
+                sourceStatus: 'failed',
+                sourceOutput: { error: execError.message },
+                tenantId,
+                userId,
+              }).catch(() => { /* fire-and-forget */ });
+            } finally {
+              // Phase C.4: release the AgentEventStore subscriber when
+              // the background execution finishes (success or failure),
+              // otherwise listeners accumulate per concurrent workflow.
+              unsubscribeAgentProgress();
             }
           })();
 
@@ -1287,6 +1658,22 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
           // Publish to Redis for GET /stream subscribers.
           redisPublisher.publish(execChannel, line).catch(() => {});
         };
+
+        // Phase C.4: subscribe to AgentEventStore so sub-agent progress
+        // (posted by openagentic-proxy's HTTP callback) surfaces as flat
+        // `agent_progress` NDJSON frames on both the direct POST stream
+        // and the Redis exec channel. Parity with chat's stream.handler.
+        const unsubscribeAgentProgress = subscribeAgentProgressForFlowsStream(
+          execution.id,
+          (frame) => {
+            const line = JSON.stringify({ type: 'agent_progress', ...frame }) + '\n';
+            if (!reply.raw.writableEnded) {
+              reply.raw.write(line);
+            }
+            redisPublisher.publish(execChannel, line).catch(() => {});
+          },
+        );
+        reply.raw.on('close', unsubscribeAgentProgress);
 
         try {
           // Load Azure AD access token for MCP calls (works for both proxy and local paths)
@@ -1373,11 +1760,13 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
                 authToken: effectiveAuthToken,
                 idToken: effectiveIdToken,
                 userEmail,
+                // Task 1.3 (V3 Enterprise Chatmode S5).
+                tenantId,
               },
               {
                 responseType: 'stream',
                 timeout: 300000, // 5 min
-                headers: { 'Accept': 'text/event-stream' },
+                headers: workflowServiceHeaders({ Accept: 'text/event-stream' }),
               }
             );
 
@@ -1411,7 +1800,8 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
             });
 
           } else {
-            // ── Local execution (fallback) ──
+            // ── Local execution (fallback — Phase B will rip this entire branch) ──
+            reportLocalEngineFallback({ workflowId: id, executionId: execution.id, logger });
             let userEmail: string | undefined;
             try {
               const dbUser = await prisma.user.findUnique({
@@ -1429,7 +1819,8 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
               userId,
               effectiveAuthToken,
               sendEvent,
-              { userEmail, idToken: effectiveIdToken }
+              // Task 1.3 (V3 Enterprise Chatmode S5).
+              { userEmail, idToken: effectiveIdToken, tenantId }
             );
 
             // Update workflow stats
@@ -1606,6 +1997,231 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
       } catch (error: any) {
         logger.error({ error }, '[Workflows] Failed to stop execution');
         return reply.code(500).send({ error: 'Failed to stop execution', message: error.message });
+      }
+    }
+  );
+
+  /**
+   * POST /api/workflows/:id/retry-node
+   * Retry a specific failed node from a completed execution.
+   *
+   * Body: { executionId, nodeId }
+   * Looks up the original WorkflowExecution, collects upstream node outputs
+   * (all nodes except the failed one), creates a new WorkflowExecution with
+   * { resume_from_node: nodeId, upstream_outputs: {...} } in state, then
+   * fires executeWorkflow with that resume state.
+   * Returns: { newExecutionId }
+   */
+  fastify.post<{ Params: WorkflowIdParams; Body: { executionId?: string; nodeId?: string } }>(
+    '/:id/retry-node',
+    async (request, reply) => {
+      try {
+        const { id: workflowId } = request.params;
+        const { executionId, nodeId } = request.body || {};
+        const user = (request as any).user;
+        const userId = user?.userId || user?.id;
+
+        if (!executionId || !nodeId) {
+          return reply.code(400).send({ error: 'executionId and nodeId are required in request body' });
+        }
+
+        // Look up the original execution
+        const originalExecution = await prisma.workflowExecution.findFirst({
+          where: { id: executionId },
+          include: { workflow: { select: { created_by: true, definition: true, tenant_id: true } } },
+        });
+
+        if (!originalExecution) {
+          return reply.code(404).send({ error: 'Execution not found', executionId });
+        }
+
+        if (originalExecution.workflow?.created_by !== userId && !user?.isAdmin) {
+          return reply.code(403).send({ error: 'Not authorized to retry this execution' });
+        }
+
+        // Task 1.3 (V3 Enterprise Chatmode S5): tenant from request, falling
+        // back to the execution's persisted tenant_id (or workflow row).
+        const tenantId = ((request as any).tenantId as string | null | undefined)
+          || (originalExecution as any).tenant_id
+          || (originalExecution.workflow as any)?.tenant_id
+          || null;
+
+        // Gather upstream node outputs: all nodes that completed successfully
+        // (i.e., not the failed node and not nodes that came after it)
+        const nodeOutputs = (originalExecution.node_outputs as Record<string, any>) || {};
+        const upstreamOutputs: Record<string, any> = {};
+        for (const [nId, nodeData] of Object.entries(nodeOutputs)) {
+          if (nId !== nodeId && (nodeData as any)?.status === 'completed') {
+            upstreamOutputs[nId] = (nodeData as any)?.output;
+          }
+        }
+
+        // Create a new execution record with resume state
+        const newExecution = await prisma.workflowExecution.create({
+          data: {
+            workflow_id: workflowId,
+            started_by: userId,
+            status: 'pending',
+            trigger_type: 'retry',
+            input: (originalExecution.input as any) ?? {},
+            state: {
+              resume_from_node: nodeId,
+              upstream_outputs: upstreamOutputs,
+              original_execution_id: executionId,
+            } as any,
+          },
+        });
+
+        // Fire the workflow execution asynchronously
+        const definition = (originalExecution.workflow?.definition as any) || { nodes: [], edges: [] };
+        const authToken = request.headers.authorization
+          || (user?.accessToken ? `Bearer ${user.accessToken}` : undefined);
+
+        // Kick off the execution (non-blocking — update DB status on completion)
+        executeWorkflow(
+          workflowId,
+          newExecution.id,
+          definition,
+          {},
+          userId,
+          authToken,
+          (_event: ExecutionEvent) => { /* fire-and-forget; client can subscribe to stream */ },
+          // Task 1.3 (V3 Enterprise Chatmode S5).
+          { tenantId }
+        ).then(async () => {
+          await prisma.workflowExecution.update({
+            where: { id: newExecution.id },
+            data: { status: 'completed', completed_at: new Date() },
+          }).catch(() => { /* ignore — execution may have already updated status */ });
+        }).catch(async (err: Error) => {
+          await prisma.workflowExecution.update({
+            where: { id: newExecution.id },
+            data: { status: 'failed', error: err.message, completed_at: new Date() },
+          }).catch(() => {});
+        });
+
+        logger.info({ workflowId, nodeId, executionId, newExecutionId: newExecution.id, userId }, '[Workflows] Retry-node execution started');
+
+        return reply.send({ newExecutionId: newExecution.id });
+      } catch (error: any) {
+        logger.error({ error }, '[Workflows] Failed to retry node');
+        return reply.code(500).send({ error: 'Failed to retry node', message: error.message });
+      }
+    }
+  );
+
+  /**
+   * POST /api/workflows/executions/:executionId/pause
+   * Pause a running workflow execution (marks as paused in DB).
+   */
+  fastify.post<{ Params: { executionId: string } }>(
+    '/executions/:executionId/pause',
+    async (request, reply) => {
+      try {
+        const { executionId } = request.params;
+        const user = (request as any).user;
+        const userId = user?.userId || user?.id;
+
+        const execution = await prisma.workflowExecution.findFirst({
+          where: { id: executionId },
+          include: { workflow: { select: { created_by: true } } },
+        });
+
+        if (!execution) {
+          return reply.code(404).send({ error: 'Execution not found' });
+        }
+        if (execution.workflow?.created_by !== userId && !user?.isAdmin) {
+          return reply.code(403).send({ error: 'Not authorized to pause this execution' });
+        }
+
+        await prisma.workflowExecution.update({
+          where: { id: executionId },
+          data: { status: 'paused', paused_at: new Date() },
+        });
+
+        logger.info({ executionId, userId }, '[Workflows] Execution paused');
+        return reply.send({ success: true, executionId, status: 'paused' });
+      } catch (error: any) {
+        logger.error({ error }, '[Workflows] Failed to pause execution');
+        return reply.code(500).send({ error: 'Failed to pause execution', message: error.message });
+      }
+    }
+  );
+
+  /**
+   * POST /api/workflows/executions/:executionId/resume
+   * Resume a paused workflow execution.
+   */
+  fastify.post<{ Params: { executionId: string } }>(
+    '/executions/:executionId/resume',
+    async (request, reply) => {
+      try {
+        const { executionId } = request.params;
+        const user = (request as any).user;
+        const userId = user?.userId || user?.id;
+
+        const execution = await prisma.workflowExecution.findFirst({
+          where: { id: executionId },
+          include: { workflow: { select: { created_by: true } } },
+        });
+
+        if (!execution) {
+          return reply.code(404).send({ error: 'Execution not found' });
+        }
+        if (execution.workflow?.created_by !== userId && !user?.isAdmin) {
+          return reply.code(403).send({ error: 'Not authorized to resume this execution' });
+        }
+
+        await prisma.workflowExecution.update({
+          where: { id: executionId },
+          data: { status: 'running', paused_at: null },
+        });
+
+        logger.info({ executionId, userId }, '[Workflows] Execution resumed');
+        return reply.send({ success: true, executionId, status: 'running' });
+      } catch (error: any) {
+        logger.error({ error }, '[Workflows] Failed to resume execution');
+        return reply.code(500).send({ error: 'Failed to resume execution', message: error.message });
+      }
+    }
+  );
+
+  /**
+   * POST /api/workflows/executions/:executionId/cancel
+   * Cancel a running or paused execution. Calls abortWorkflowExecution in-memory
+   * and marks the DB row as cancelled.
+   */
+  fastify.post<{ Params: { executionId: string } }>(
+    '/executions/:executionId/cancel',
+    async (request, reply) => {
+      try {
+        const { executionId } = request.params;
+        const user = (request as any).user;
+        const userId = user?.userId || user?.id;
+
+        const execution = await prisma.workflowExecution.findFirst({
+          where: { id: executionId },
+          include: { workflow: { select: { created_by: true } } },
+        });
+
+        if (!execution) {
+          return reply.code(404).send({ error: 'Execution not found' });
+        }
+        if (execution.workflow?.created_by !== userId && !user?.isAdmin) {
+          return reply.code(403).send({ error: 'Not authorized to cancel this execution' });
+        }
+
+        const aborted = abortWorkflowExecution(executionId, 'Cancelled by user');
+        await prisma.workflowExecution.update({
+          where: { id: executionId },
+          data: { status: 'cancelled', completed_at: new Date(), error: 'Cancelled by user' },
+        });
+
+        logger.info({ executionId, userId, engineAborted: aborted }, '[Workflows] Execution cancelled');
+        return reply.send({ success: true, executionId, engineAborted: aborted, status: 'cancelled' });
+      } catch (error: any) {
+        logger.error({ error }, '[Workflows] Failed to cancel execution');
+        return reply.code(500).send({ error: 'Failed to cancel execution', message: error.message });
       }
     }
   );
@@ -2292,6 +2908,7 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
             name: true,
             description: true,
             definition: true,
+            settings: true,
             is_active: true,
             is_template: true,
             is_public: true,
@@ -2324,32 +2941,72 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
   );
 
   /**
-   * GET /api/workflows/agents
-   * List available agent definitions for workflow use (non-admin)
+   * GET /api/workflows/cost-rates
+   * Active per-million-token rates for the cost-preview feature in the
+   * Flows toolbar. Returns the LLMCostRate rows that are currently in
+   * effect (effective_from <= now < effective_to OR effective_to NULL).
+   * Cached client-side; cheap server query (single SELECT, no joins).
+   */
+  fastify.get(
+    '/cost-rates',
+    async (_request, reply) => {
+      try {
+        const now = new Date();
+        const rows = await (prisma as any).lLMCostRate.findMany({
+          where: {
+            effective_from: { lte: now },
+            OR: [{ effective_to: null }, { effective_to: { gte: now } }],
+          },
+          select: {
+            provider_type: true,
+            model: true,
+            model_variant: true,
+            input_cost_per_1m: true,
+            output_cost_per_1m: true,
+            cached_input_cost_per_1m: true,
+          },
+          orderBy: [{ provider_type: 'asc' }, { model: 'asc' }],
+        });
+        // Decimal columns serialise as strings in JSON; coerce to number
+        // so the client doesn't have to parse.
+        const rates = rows.map((r: any) => ({
+          providerType: r.provider_type,
+          model: r.model,
+          modelVariant: r.model_variant ?? null,
+          inputCostPer1m: Number(r.input_cost_per_1m),
+          outputCostPer1m: Number(r.output_cost_per_1m),
+          cachedInputCostPer1m:
+            r.cached_input_cost_per_1m == null ? null : Number(r.cached_input_cost_per_1m),
+        }));
+        return reply.send({ rates, fetchedAt: now.toISOString() });
+      } catch (error: any) {
+        logger.warn({ error: error.message }, '[Workflows] cost-rates query failed, returning empty');
+        return reply.send({ rates: [], fetchedAt: new Date().toISOString() });
+      }
+    }
+  );
+
+  /**
+   * GET /api/workflows/agents — DEPRECATED 2026-04-26.
+   *
+   * Originally hit openagentic-proxy only and skipped prisma.agent (the SOT).
+   * Now collapsed onto listAgentsFromSOT — same merge as /api/admin/agents
+   * but with sensitive prompt/tool fields redacted. Kept as a pass-through
+   * so any external caller still works; UI no longer calls it.
    */
   fastify.get(
     '/agents',
     async (request, reply) => {
       try {
-        // Fetch from openagentic-proxy service (source of truth for agent definitions)
-        const openagenticProxyUrl = process.env.OPENAGENTIC_PROXY_URL || 'http://openagentic-openagentic-proxy:3300';
-        const internalKey = process.env.OPENAGENTIC_PROXY_INTERNAL_KEY || '';
-        const res = await fetch(`${openagenticProxyUrl}/api/agents/definitions`, {
-          headers: {
-            'Authorization': `Bearer ${internalKey}`,
-            'X-Agent-Proxy': 'true',
-          },
-          signal: AbortSignal.timeout(5000),
-        });
-        if (res.ok) {
-          const data = await res.json() as { agents: any[] };
-          return reply.send({ agents: data.agents || [] });
-        }
-        // Fallback: return empty if openagentic-proxy unavailable
-        logger.warn({ status: res.status }, '[Workflows] Agent-proxy returned non-OK, returning empty');
-        return reply.send({ agents: [] });
+        logger.info(
+          { ua: request.headers['user-agent'] },
+          '[Workflows] DEPRECATED /api/workflows/agents — use /api/admin/agents'
+        );
+        const { listAgentsFromSOT } = await import('../services/listAgentsFromSOT.js');
+        const agents = await listAgentsFromSOT({ redactSensitive: true });
+        return reply.send({ agents });
       } catch (error: any) {
-        logger.warn({ error: error.message }, '[Workflows] Failed to reach openagentic-proxy, returning empty');
+        logger.warn({ error: error.message }, '[Workflows] /agents failed, returning empty');
         return reply.send({ agents: [] });
       }
     }
@@ -3173,7 +3830,7 @@ data.on("data", (chunk: Buffer) => {
         }
 
         // Store in Milvus via MilvusVectorService (with user isolation)
-        const milvusSvc = (global as any).milvusVectorService;
+        const milvusSvc = fastify.app?.milvusVectorService;
         if (!milvusSvc) {
           // Fallback: return chunk info without embedding
           const docId = randomUUID();
@@ -3189,8 +3846,9 @@ data.on("data", (chunk: Buffer) => {
           });
         }
 
-        // Determine artifact type from extension
-        const artifactType = ['json', 'csv'].includes(ext) ? 'document' : ext === 'md' ? 'document' : 'file';
+        // Determine artifact type from extension (lazy-load ArtifactType to avoid eager Milvus SDK import)
+        const { ArtifactType: AType } = await import('../services/MilvusVectorService.js');
+        const artifactType = ['json', 'csv'].includes(ext) ? AType.DOCUMENT : ext === 'md' ? AType.DOCUMENT : AType.FILE;
 
         const artifactId = await milvusSvc.storeArtifact(userId, {
           type: artifactType,
@@ -3199,9 +3857,8 @@ data.on("data", (chunk: Buffer) => {
           mimeType: mimetype,
           metadata: {
             source: 'file_upload',
-            originalFilename: filename,
+            description: `Uploaded file: ${filename}`,
             fileSize: buffer.length,
-            chunkCount: textChunks.length,
           },
         });
 
@@ -3411,8 +4068,13 @@ data.on("data", (chunk: Buffer) => {
 
         const results = { created: 0, skipped: 0, errors: 0, details: [] as string[] };
 
-        for (const template of SEED_WORKFLOW_TEMPLATES) {
+        // Materialize inline ghost agents into prisma.agent SOT before persistence.
+        const { materializeTemplateAgents } = await import('../services/materializeTemplateAgents.js');
+
+        for (const rawTemplate of SEED_WORKFLOW_TEMPLATES) {
           try {
+            const template = await materializeTemplateAgents(rawTemplate);
+
             // Check if a template with this name already exists
             const existing = await prisma.workflow.findFirst({
               where: {
@@ -3479,8 +4141,8 @@ data.on("data", (chunk: Buffer) => {
             results.details.push(`Created "${template.name}" (${workflow.id})`);
           } catch (templateError: any) {
             results.errors++;
-            results.details.push(`Error seeding "${template.name}": ${templateError.message}`);
-            logger.error({ error: templateError, templateName: template.name }, '[Workflows] Failed to seed template');
+            results.details.push(`Error seeding "${rawTemplate.name}": ${templateError.message}`);
+            logger.error({ error: templateError, templateName: rawTemplate.name }, '[Workflows] Failed to seed template');
           }
         }
 
@@ -3532,9 +4194,9 @@ data.on("data", (chunk: Buffer) => {
           return reply.code(400).send({ error: 'content and title are required' });
         }
 
-        // Use the global MilvusVectorService instance to store the artifact
+        // Use the AppContext MilvusVectorService instance to store the artifact
         const { ArtifactType } = await import('../services/MilvusVectorService.js');
-        const milvus = (global as any).milvusVectorService;
+        const milvus = fastify.app?.milvusVectorService;
 
         if (!milvus) {
           return reply.code(503).send({ error: 'Knowledge base service is not available' });
@@ -3546,10 +4208,7 @@ data.on("data", (chunk: Buffer) => {
           content,
           metadata: {
             source: 'workflow',
-            workflowId,
-            executionId,
-            nodeId,
-            format,
+            description: `workflow:${workflowId} execution:${executionId} node:${nodeId} format:${format}`,
           },
         });
 
@@ -3635,8 +4294,15 @@ export async function autoSeedWorkflowTemplates(): Promise<{
   }
   const ownerId = owner.id;
 
-  for (const template of SEED_WORKFLOW_TEMPLATES) {
+  // Materialize inline ghost agents into prisma.agent SOT first.
+  const { materializeTemplateAgents } = await import('../services/materializeTemplateAgents.js');
+
+  for (const rawTemplate of SEED_WORKFLOW_TEMPLATES) {
     try {
+      // Replace inline { role, taskDescription } with { agentId } references
+      // by upserting a Template__<slug>__<role> agent in the SOT.
+      const template = await materializeTemplateAgents(rawTemplate);
+
       const existing = await prisma.workflow.findFirst({
         where: { name: template.name, is_template: true, deleted_at: null },
         select: { id: true },
@@ -3688,13 +4354,13 @@ export async function autoSeedWorkflowTemplates(): Promise<{
       }
     } catch (err: any) {
       result.errors++;
-      loggers.routes.warn({ err: err.message, template: template.name }, '[Workflows] autoSeed template failed');
+      loggers.routes.warn({ err: err.message, template: rawTemplate.name }, '[Workflows] autoSeed template failed');
     }
   }
   return result;
 }
 
-const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
+export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
   // ══════════════════════════════════════════════════════════════════════════
   // 1. Platform Health Deep Dive
   // Uses: trigger, mcp_tool (K8s, Prometheus), merge, openagentic_llm
@@ -3710,10 +4376,10 @@ const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
       nodes: [
         { id: 'trigger-1', type: 'trigger', position: { x: 0, y: Y * 2 }, data: { label: 'Start', triggerType: 'manual', icon: 'Play', color: '#ff9800' } },
         { id: 'mcp-health', type: 'mcp_tool', position: { x: X, y: 0 }, data: { label: 'Cluster Health', icon: 'Activity', color: '#00bcd4', toolName: 'k8s_cluster_health', toolServer: 'openagentic_kubernetes', arguments: {} } },
-        { id: 'mcp-pods', type: 'mcp_tool', position: { x: X, y: Y }, data: { label: 'List Pods', icon: 'Server', color: '#00bcd4', toolName: 'k8s_list_pods', toolServer: 'openagentic_kubernetes', arguments: { namespace: 'agentic-dev' } } },
-        { id: 'mcp-nodes', type: 'mcp_tool', position: { x: X, y: Y * 2 }, data: { label: 'Node Resources', icon: 'Cpu', color: '#00bcd4', toolName: 'k8s_get_nodes', toolServer: 'openagentic_kubernetes', arguments: {} } },
-        { id: 'mcp-deployments', type: 'mcp_tool', position: { x: X, y: Y * 3 }, data: { label: 'Deployments', icon: 'Layers', color: '#00bcd4', toolName: 'k8s_list_deployments', toolServer: 'openagentic_kubernetes', arguments: { namespace: 'agentic-dev' } } },
-        { id: 'mcp-metrics', type: 'mcp_tool', position: { x: X, y: Y * 4 }, data: { label: 'CPU/Memory Metrics', icon: 'BarChart', color: '#e91e63', toolName: 'prometheus_query', toolServer: 'openagentic_prometheus', arguments: { query: 'sum(rate(container_cpu_usage_seconds_total{namespace="agentic-dev"}[5m])) by (pod)' } } },
+        { id: 'mcp-pods', type: 'mcp_tool', position: { x: X, y: Y }, data: { label: 'List Pods', icon: 'Server', color: '#00bcd4', toolName: 'k8s_list_pods', toolServer: 'openagentic_kubernetes', arguments: { namespace: featureFlags.k8sNamespace } } },
+        { id: 'mcp-nodes', type: 'mcp_tool', position: { x: X, y: Y * 2 }, data: { label: 'Node Resources', icon: 'Cpu', color: '#00bcd4', toolName: 'k8s_list_nodes', toolServer: 'openagentic_kubernetes', arguments: {} } },
+        { id: 'mcp-deployments', type: 'mcp_tool', position: { x: X, y: Y * 3 }, data: { label: 'Deployments', icon: 'Layers', color: '#00bcd4', toolName: 'k8s_list_deployments', toolServer: 'openagentic_kubernetes', arguments: { namespace: featureFlags.k8sNamespace } } },
+        { id: 'mcp-metrics', type: 'mcp_tool', position: { x: X, y: Y * 4 }, data: { label: 'CPU/Memory Metrics', icon: 'BarChart', color: '#e91e63', toolName: 'prometheus_query', toolServer: 'openagentic_prometheus', arguments: { query: `sum(rate(container_cpu_usage_seconds_total{namespace="${featureFlags.k8sNamespace}"}[5m])) by (pod)` } } },
         { id: 'merge-all', type: 'merge', position: { x: X * 2, y: Y * 2 }, data: { label: 'Merge Data', icon: 'GitMerge', color: '#9c27b0', strategy: 'combine' } },
         { id: 'llm-report', type: 'openagentic_llm', position: { x: X * 3, y: Y * 2 }, data: { label: 'Health Report', icon: 'Brain', color: '#7c4dff', prompt: 'You are a platform reliability engineer. Analyze the following infrastructure data and produce a structured health report.\n\nInclude sections for:\n1. Overall Health Score (1-10)\n2. Critical Issues (CrashLoopBackOff, OOMKilled, not Ready)\n3. Resource Utilization (CPU/memory per node)\n4. Deployment Status\n5. Recommendations\n\nData:\n{{steps.merge-all.output}}' } },
       ],
@@ -3736,20 +4402,88 @@ const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
   // ══════════════════════════════════════════════════════════════════════════
   // 2. Multi-Agent Research Team
   // Uses: trigger, multi_agent, merge, openagentic_llm
+  //
+  // The trigger declares ONE required input (`topic`). The engine refuses to
+  // start the run if it isn't provided. The wizard surfaces it as a required
+  // field on Use-Template; pre-flight validation blocks Run if empty.
   // ══════════════════════════════════════════════════════════════════════════
   {
     name: 'Multi-Agent Research Team',
-    description: 'Spawns three specialized agents (researcher, analyst, critic) in parallel to investigate a topic, merges their findings, and synthesizes a comprehensive report.',
+    description: 'Spawns three specialized agents (researcher, analyst, critic) to investigate a topic, merges their findings, and synthesizes a comprehensive report.',
     icon: 'Bot',
     category: 'ai-analysis',
     tags: ['multi-agent', 'research', 'ai-analysis'],
     color: '#7c3aed',
     definition: {
       nodes: [
-        { id: 'trigger-1', type: 'trigger', position: { x: 0, y: Y }, data: { label: 'Research Topic', triggerType: 'manual', icon: 'Play', color: '#ff9800' } },
-        { id: 'multi-research', type: 'multi_agent', position: { x: X, y: Y }, data: { label: 'Research Team', icon: 'Users', color: '#7c3aed', agents: [{ role: 'researcher', task: 'Research the topic thoroughly. Find key facts, recent developments, and authoritative sources. Topic: {{input}}' }, { role: 'analyst', task: 'Analyze the topic from multiple perspectives — technical feasibility, market impact, and risks. Topic: {{input}}' }, { role: 'critic', task: 'Challenge assumptions about the topic. Identify weaknesses, counterarguments, and blind spots. Topic: {{input}}' }], strategy: 'parallel' } },
-        { id: 'merge-findings', type: 'merge', position: { x: X * 2, y: Y }, data: { label: 'Merge Findings', icon: 'GitMerge', color: '#9c27b0', strategy: 'combine' } },
-        { id: 'llm-synthesize', type: 'openagentic_llm', position: { x: X * 3, y: Y }, data: { label: 'Synthesize Report', icon: 'Brain', color: '#7c4dff', prompt: 'You are a research director. Three agents have investigated a topic from different angles:\n\n{{steps.merge-findings.output}}\n\nSynthesize their findings into a structured report with:\n1. Executive Summary\n2. Key Findings (areas of agreement)\n3. Conflicting Views (where agents disagreed)\n4. Risk Assessment\n5. Recommendations' } },
+        {
+          id: 'trigger-1',
+          type: 'trigger',
+          position: { x: 0, y: Y },
+          data: {
+            label: 'Research Topic',
+            triggerType: 'manual',
+            icon: 'Play',
+            color: '#ff9800',
+            inputs: [
+              {
+                name: 'topic',
+                label: 'Research Topic',
+                type: 'string',
+                required: true,
+                placeholder: 'e.g., Post-quantum cryptography readiness for enterprises',
+                description: 'What should the research team investigate? Be specific.',
+              },
+            ],
+          },
+        },
+        {
+          id: 'multi-research',
+          type: 'multi_agent',
+          position: { x: X, y: Y },
+          data: {
+            label: 'Research Team',
+            icon: 'Users',
+            color: '#7c3aed',
+            pattern: 'parallel',
+            agents: [
+              {
+                role: 'researcher',
+                taskDescription:
+                  'Research the topic thoroughly. Use web_search + web_fetch to find key facts, recent developments, and authoritative sources. Cite URLs. Topic: {{trigger.topic}}',
+              },
+              {
+                role: 'analyst',
+                taskDescription:
+                  'Analyze the topic from multiple perspectives — technical feasibility, market impact, and risks. Use tools to ground your analysis in real data. Topic: {{trigger.topic}}',
+              },
+              {
+                role: 'critic',
+                taskDescription:
+                  'Challenge assumptions about the topic. Use tools to find counterarguments, weaknesses, and blind spots in the conventional wisdom. Topic: {{trigger.topic}}',
+              },
+            ],
+            strategy: 'parallel',
+          },
+        },
+        {
+          id: 'merge-findings',
+          type: 'merge',
+          position: { x: X * 2, y: Y },
+          data: { label: 'Merge Findings', icon: 'GitMerge', color: '#9c27b0', strategy: 'combine' },
+        },
+        {
+          id: 'llm-synthesize',
+          type: 'openagentic_llm',
+          position: { x: X * 3, y: Y },
+          data: {
+            label: 'Synthesize Report',
+            icon: 'Brain',
+            color: '#7c4dff',
+            prompt:
+              'You are a research director writing a report on: "{{trigger.topic}}".\n\nThree agents have investigated the topic from different angles:\n\n{{steps.merge-findings.output}}\n\nSynthesize their findings into a structured report with:\n1. Executive Summary\n2. Key Findings (areas of agreement, with citations)\n3. Conflicting Views (where agents disagreed)\n4. Risk Assessment\n5. Recommendations\n\nIf the agents did not actually research the topic (e.g., they returned only meta-commentary or refusal patterns), say so plainly and stop — do NOT fabricate findings.',
+          },
+        },
       ],
       edges: [
         { id: 'e1', source: 'trigger-1', target: 'multi-research', animated: true },
@@ -3774,7 +4508,7 @@ const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
       nodes: [
         { id: 'trigger-1', type: 'trigger', position: { x: 0, y: Y }, data: { label: 'User Question', triggerType: 'manual', icon: 'Play', color: '#ff9800' } },
         { id: 'llm-queries', type: 'openagentic_llm', position: { x: X, y: Y }, data: { label: 'Generate Queries', icon: 'Brain', color: '#7c4dff', prompt: 'Given the user question below, generate 3 diverse search queries that would help retrieve relevant information. Output them as a JSON array of strings.\n\nQuestion: {{input}}' } },
-        { id: 'rag-search', type: 'rag_query', position: { x: X * 2, y: Y }, data: { label: 'Vector Search', icon: 'Database', color: '#2196f3', query: '{{steps.llm-queries.output}}', topK: 10 } },
+        { id: 'rag-search', type: 'rag_query', position: { x: X * 2, y: Y }, data: { label: 'Vector Search', icon: 'Database', color: '#2196f3', collection: 'docs', query: '{{steps.llm-queries.output}}', topK: 10, minScore: 0.5, filter: { file_extensions: ['md', 'mdx'] } } },
         { id: 'llm-answer', type: 'openagentic_llm', position: { x: X * 3, y: Y }, data: { label: 'Synthesize Answer', icon: 'Brain', color: '#7c4dff', prompt: 'Answer the user question using ONLY the retrieved context below. Cite specific sources. If the context is insufficient, say so.\n\nQuestion: {{input}}\n\nRetrieved Context:\n{{steps.rag-search.output}}' } },
       ],
       edges: [
@@ -3788,6 +4522,8 @@ const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
   // ══════════════════════════════════════════════════════════════════════════
   // 4. Smart Router Showcase
   // Uses: trigger, openagentic_llm (3 tiers), merge
+  // 2026-04-19 — slider removed (task #144); each tier now picks by explicit
+  // modelOverride on the node, honoring UserModelBudgetService caps.
   // ══════════════════════════════════════════════════════════════════════════
   {
     name: 'Smart Router Showcase',
@@ -3799,9 +4535,9 @@ const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
     definition: {
       nodes: [
         { id: 'trigger-1', type: 'trigger', position: { x: 0, y: Y * 2 }, data: { label: 'Test Prompt', triggerType: 'manual', icon: 'Play', color: '#ff9800' } },
-        { id: 'llm-eco', type: 'openagentic_llm', position: { x: X, y: 0 }, data: { label: 'Economical (Slider 10)', icon: 'Brain', color: '#4caf50', prompt: '{{input}}', sliderPosition: 10 } },
-        { id: 'llm-balanced', type: 'openagentic_llm', position: { x: X, y: Y * 2 }, data: { label: 'Balanced (Slider 50)', icon: 'Brain', color: '#ff9800', prompt: '{{input}}', sliderPosition: 50 } },
-        { id: 'llm-premium', type: 'openagentic_llm', position: { x: X, y: Y * 4 }, data: { label: 'Premium (Slider 90)', icon: 'Brain', color: '#7c4dff', prompt: '{{input}}', sliderPosition: 90 } },
+        { id: 'llm-eco', type: 'openagentic_llm', position: { x: X, y: 0 }, data: { label: 'Economical', icon: 'Brain', color: '#4caf50', prompt: '{{input}}' } },
+        { id: 'llm-balanced', type: 'openagentic_llm', position: { x: X, y: Y * 2 }, data: { label: 'Balanced', icon: 'Brain', color: '#ff9800', prompt: '{{input}}' } },
+        { id: 'llm-premium', type: 'openagentic_llm', position: { x: X, y: Y * 4 }, data: { label: 'Premium', icon: 'Brain', color: '#7c4dff', prompt: '{{input}}' } },
         { id: 'merge-responses', type: 'merge', position: { x: X * 2, y: Y * 2 }, data: { label: 'Merge Responses', icon: 'GitMerge', color: '#9c27b0', strategy: 'combine' } },
         { id: 'llm-compare', type: 'openagentic_llm', position: { x: X * 3, y: Y * 2 }, data: { label: 'Compare Models', icon: 'Brain', color: '#7c4dff', prompt: 'Three AI models at different quality tiers answered the same prompt. Compare their responses on:\n1. Accuracy and completeness\n2. Response quality\n3. Which tier provides the best value for this type of question\n\nResponses:\n{{steps.merge-responses.output}}' } },
       ],
@@ -3936,6 +4672,100 @@ const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
         { id: 'e5', source: 'cond-approved', target: 'llm-revise', label: 'Rejected', sourceHandle: 'false' },
       ],
     },
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 9. PagerDuty Auto-Triage (Multi-Agent + HITL — mockup approved 2026-04-25)
+  // Uses: trigger(webhook) → transform → multi_agent (aws/azure/k8s/splunk
+  //       parallel pool) → merge → openagentic_llm synthesize fix →
+  //       pagerduty_incident add_note → human_approval (channel: pagerduty)
+  //       → condition → apply_fix (mcp_tool) / re-triage → verify
+  //       (k8s_sandbox_run) → resolve → slack post-mortem.
+  // ══════════════════════════════════════════════════════════════════════════
+  {
+    name: 'PagerDuty Auto-Triage',
+    description: 'PagerDuty incident webhook spawns a four-agent live troubleshooting pool (AWS / Azure / Kubernetes / Splunk) running in parallel. Findings are merged and synthesized into a structured fix proposal posted as a note on the open PD incident. A reviewer approves or rejects on the PagerDuty mobile app (channel-aware HITL); approval applies the fix via MCP, verifies via Prometheus, then auto-resolves the incident and posts a Slack post-mortem.',
+    icon: 'AlertTriangle',
+    category: 'incident-response',
+    tags: ['pagerduty', 'multi-agent', 'aws-mcp', 'azure-mcp', 'kubernetes', 'splunk', 'hitl', 'auto-remediation'],
+    color: '#dc2626',
+    definition: {
+      nodes: pdAutoTriageNodes,
+      edges: pdAutoTriageEdges,
+    },
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 10. Deep Research Team (multi-agent research with critique — mockup
+  //     approved 2026-04-25)
+  // Uses: trigger(topic, depth) → openagentic_llm plan → parallel fan-out →
+  //       agent_pool research squad (web/RAG/news) → merge → multi_agent
+  //       critique (critic + fact_checker + devil's_advocate) → condition
+  //       (avg confidence > 0.75) → loop back OR synthesize_report → optional
+  //       human_approval → knowledge_ingest → webhook_response.
+  // ══════════════════════════════════════════════════════════════════════════
+  {
+    name: 'Deep Research Team',
+    description: 'Decomposes a topic into 6-10 research questions, fans out a 3-agent research squad (web / RAG / news) per question, runs a critique round (critic + fact-checker + devil\'s advocate), then either loops back to fill knowledge gaps or synthesizes a structured final report. Confidence-gated, with optional editorial review before publishing the artifact.',
+    icon: 'Search',
+    category: 'research',
+    tags: ['research', 'multi-agent', 'rag', 'web-search', 'fact-checking', 'iterative', 'knowledge-base'],
+    color: '#7c3aed',
+    definition: {
+      nodes: deepResearchNodes,
+      edges: deepResearchEdges,
+    },
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // OMHS On-Call team template pack — 5 incident-response / monitoring flows
+  // tailored to the OMHS use case. Moved here from omhsTemplateSeeder which
+  // silently failed on every boot (wrong table + invalid upsert key).
+  // ══════════════════════════════════════════════════════════════════════════
+  {
+    name: 'OMHS PagerDuty Triage',
+    description: 'Webhook trigger receives PagerDuty incident payloads, auto-acknowledges the incident, uses an LLM to classify severity, then routes critical alerts to Slack and warning alerts to email.',
+    icon: 'AlertTriangle',
+    category: 'incident-response',
+    tags: ['pagerduty', 'triage', 'on-call', 'slack', 'email', 'omhs'],
+    color: '#dc2626',
+    definition: { nodes: omhsPdTriageNodes, edges: omhsPdTriageEdges },
+  },
+  {
+    name: 'OMHS Alertmanager → PagerDuty',
+    description: 'Receives Prometheus Alertmanager firing payloads via webhook, groups alerts by severity, triggers a PagerDuty incident for critical alerts, and posts a summary to Slack for all firing alerts.',
+    icon: 'BarChart',
+    category: 'monitoring',
+    tags: ['alertmanager', 'prometheus', 'pagerduty', 'slack', 'on-call', 'omhs'],
+    color: '#ea580c',
+    definition: { nodes: omhsAlertmanagerNodes, edges: omhsAlertmanagerEdges },
+  },
+  {
+    name: 'OMHS Splunk Detection Triage',
+    description: 'Polls Splunk every 15 minutes for new notable events, uses an LLM to summarize detections, triggers a PagerDuty incident for high/critical severity findings, and stores all results in the knowledge base.',
+    icon: 'Search',
+    category: 'incident-response',
+    tags: ['splunk', 'siem', 'detection', 'pagerduty', 'knowledge-base', 'omhs'],
+    color: '#0891b2',
+    definition: { nodes: omhsSplunkNodes, edges: omhsSplunkEdges },
+  },
+  {
+    name: 'OMHS K8s Cluster Health',
+    description: 'Hourly cluster health probe using read-only oap-kubernetes-mcp tools (cluster health, node list, pod list in target namespace). LLM synthesizes the three signals into a concise report and posts it to Slack. No pod spawn, no privileged sandbox.',
+    icon: 'Activity',
+    category: 'infra-ops',
+    tags: ['kubernetes', 'k8s', 'mcp', 'health-check', 'slack', 'omhs'],
+    color: '#0ea5e9',
+    definition: { nodes: omhsK8sNodes, edges: omhsK8sEdges },
+  },
+  {
+    name: 'OMHS Loki + Prom Incident',
+    description: 'Queries Prometheus for high error rates and Loki for error logs every 5 minutes, merges both signal streams, uses an LLM to correlate and confirm real incidents, then triggers a PagerDuty incident for confirmed findings.',
+    icon: 'GitMerge',
+    category: 'monitoring',
+    tags: ['loki', 'prometheus', 'observability', 'pagerduty', 'correlation', 'omhs'],
+    color: '#16a34a',
+    definition: { nodes: omhsLokiPromNodes, edges: omhsLokiPromEdges },
   },
 ];
 

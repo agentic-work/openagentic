@@ -9,6 +9,7 @@
  */
 
 import { AzureOpenAI } from 'openai';
+import { shouldEnableParallelToolCalls } from './parallelToolCallsPolicy.js';
 import { ClientSecretCredential, DefaultAzureCredential, getBearerTokenProvider, TokenCredential } from '@azure/identity';
 import {
   BaseLLMProvider,
@@ -16,9 +17,7 @@ import {
   CompletionResponse,
   ProviderHealth,
   ProviderConfig,
-  type NormalizerState,
 } from './ILLMProvider.js';
-import { NormalizedStreamEvent } from '../NormalizedStreamTypes.js';
 import type { Logger } from 'pino';
 
 export class AzureOpenAIProvider extends BaseLLMProvider {
@@ -272,6 +271,9 @@ export class AzureOpenAIProvider extends BaseLLMProvider {
       if (request.tools && request.tools.length > 0) {
         params.tools = request.tools;
         params.tool_choice = request.tool_choice || 'auto';
+        if (shouldEnableParallelToolCalls({ tools: request.tools, metadata: (request as any).metadata })) {
+          params.parallel_tool_calls = true;
+        }
       }
 
       // Add response format if provided
@@ -560,14 +562,6 @@ export class AzureOpenAIProvider extends BaseLLMProvider {
     return null;
   }
 
-  /**
-   * Normalize a raw Azure OpenAI stream chunk into NormalizedStreamEvents.
-   * Delegates to the exported pure function for testability.
-   */
-  normalizeChunk(rawChunk: any, state: NormalizerState): NormalizedStreamEvent[] {
-    return normalizeAzureOpenAIChunk(rawChunk, state);
-  }
-
   static getDefaultConfig(): import('./ILLMProvider.js').ProviderDefaultConfig {
     return {
       maxTokens: 4096, temperature: 1.0, topP: 1.0, topK: 0,
@@ -581,266 +575,3 @@ export class AzureOpenAIProvider extends BaseLLMProvider {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Exported normalizer function — pure, per-chunk, state-mutating
-// ---------------------------------------------------------------------------
-
-/**
- * Normalizes a single raw Azure OpenAI streaming chunk into zero or more
- * NormalizedStreamEvents. Handles two formats:
- *
- * Format A: Anthropic-style content_block_* events (from reasoning models like o3-mini
- *           that go through the wrapStreamWithInterleavedEvents thinking transform)
- * Format B: OpenAI-style choices[0].delta chunks (standard model streaming)
- *
- * State is mutated in place to track block types, thinking accumulation,
- * synthetic thinking, and pending tools across chunk boundaries.
- */
-export function normalizeAzureOpenAIChunk(rawChunk: any, state: NormalizerState): NormalizedStreamEvent[] {
-  const events: NormalizedStreamEvent[] = [];
-
-  // Format A: Anthropic-style content_block events (from reasoning models)
-  if (typeof rawChunk.type === 'string' && rawChunk.type.startsWith('content_block')) {
-    return normalizeContentBlockChunk(rawChunk, state, events);
-  }
-
-  // Format B: OpenAI-style chunks
-  return normalizeOpenAIStyleChunk(rawChunk, state, events);
-}
-
-/**
- * Handles Anthropic-style content_block_start/delta/stop events that come
- * from the reasoning model path in wrapStreamWithInterleavedEvents().
- */
-function normalizeContentBlockChunk(
-  rawChunk: any,
-  state: NormalizerState,
-  events: NormalizedStreamEvent[]
-): NormalizedStreamEvent[] {
-  // Emit stream_start on the first Format A event (reasoning model path never sees an
-  // OpenAI-style first chunk, so we must emit it here instead).
-  if (!state.streamStartEmitted) {
-    state.streamStartEmitted = true;
-    events.push({
-      type: 'stream_start',
-      messageId: '',
-      model: state.model || '',
-      provider: 'azure-openai',
-    });
-  }
-
-  const blockTypes = state.blockTypes;
-
-  switch (rawChunk.type) {
-    case 'content_block_start': {
-      const block = rawChunk.content_block;
-      const index: number = rawChunk.index;
-      if (block?.type === 'thinking') {
-        const id = `tk-${index}`;
-        state.thinkingId = id;
-        state.thinkingStartTime = Date.now();
-        state.thinkingAccumulated = '';
-        blockTypes.set(index, { type: 'thinking', id });
-        events.push({ type: 'thinking_start', id });
-      } else if (block?.type === 'text') {
-        const id = `txt-${index}`;
-        state.textBlockId = id;
-        blockTypes.set(index, { type: 'text', id });
-        events.push({ type: 'text_start', id });
-      } else if (block?.type === 'tool_use') {
-        const id = block.id || `tool-${index}`;
-        blockTypes.set(index, { type: 'tool_use', id });
-        events.push({ type: 'tool_start', id, toolName: block.name || '', serverName: '' });
-      }
-      break;
-    }
-
-    case 'content_block_delta': {
-      const delta = rawChunk.delta;
-      const index: number = rawChunk.index;
-      const blockInfo = blockTypes.get(index);
-
-      if (delta?.type === 'thinking_delta') {
-        state.thinkingAccumulated += delta.thinking || '';
-        events.push({
-          type: 'thinking_delta',
-          id: blockInfo?.id || state.thinkingId || `tk-${index}`,
-          content: delta.thinking || '',
-          accumulated: state.thinkingAccumulated,
-        });
-      } else if (delta?.type === 'text_delta') {
-        events.push({
-          type: 'text_delta',
-          id: blockInfo?.id || state.textBlockId || `txt-${index}`,
-          content: delta.text || '',
-        });
-      } else if (delta?.type === 'input_json_delta') {
-        const toolId = blockInfo?.id || `tool-${index}`;
-        events.push({ type: 'tool_delta', id: toolId, argsFragment: delta.partial_json || '' });
-      }
-      break;
-    }
-
-    case 'content_block_stop': {
-      const index: number = rawChunk.index;
-      const blockInfo = blockTypes.get(index);
-      if (blockInfo?.type === 'thinking') {
-        const elapsed = state.thinkingStartTime ? Date.now() - state.thinkingStartTime : 0;
-        events.push({ type: 'thinking_stop', id: blockInfo.id, elapsedMs: elapsed });
-        state.thinkingId = null;
-        state.thinkingStartTime = null;
-        state.thinkingAccumulated = '';
-      } else if (blockInfo?.type === 'text') {
-        events.push({ type: 'text_stop', id: blockInfo.id });
-        state.textBlockId = null;
-      } else if (blockInfo?.type === 'tool_use') {
-        events.push({ type: 'tool_stop', id: blockInfo.id, result: null, durationMs: 0 });
-      }
-      blockTypes.delete(index);
-      break;
-    }
-  }
-
-  return events;
-}
-
-/**
- * Handles OpenAI-style streaming chunks (choices[0].delta).
- * Emits a synthetic thinking block on the first chunk so every response
- * has a thinking node in the activity tree.
- */
-function normalizeOpenAIStyleChunk(
-  rawChunk: any,
-  state: NormalizerState,
-  events: NormalizedStreamEvent[]
-): NormalizedStreamEvent[] {
-  const pendingTools = state.pendingTools;
-
-  const choice = rawChunk.choices?.[0];
-
-  // Usage-only chunk (no choices)
-  if (!choice && rawChunk.usage) {
-    events.push({
-      type: 'usage',
-      tokensIn: rawChunk.usage.prompt_tokens || 0,
-      tokensOut: rawChunk.usage.completion_tokens || 0,
-      cost: 0,
-      contextUsed: 0,
-      contextMax: 0,
-    });
-    return events;
-  }
-
-  if (!choice) return events;
-
-  const delta = choice.delta;
-  if (!delta && !choice.finish_reason) return events;
-
-  // -----------------------------------------------------------------------
-  // First chunk — role === 'assistant': emit stream_start + synthetic thinking
-  // -----------------------------------------------------------------------
-  if (delta?.role === 'assistant' && !state.streamStartEmitted) {
-    state.streamStartEmitted = true;
-    state.model = rawChunk.model || '';
-    events.push({
-      type: 'stream_start',
-      messageId: rawChunk.id || '',
-      model: rawChunk.model || '',
-      provider: 'azure-openai',
-    });
-
-    // Emit synthetic thinking block (closed when real content arrives)
-    const thinkId = 'tk-synth-0';
-    state.thinkingId = thinkId;
-    state.thinkingStartTime = Date.now();
-    events.push({ type: 'thinking_start', id: thinkId });
-    events.push({ type: 'thinking_delta', id: thinkId, content: 'Processing', accumulated: 'Processing' });
-    return events;
-  }
-
-  // -----------------------------------------------------------------------
-  // Helper: close synthetic thinking if still active
-  // -----------------------------------------------------------------------
-  const closeSyntheticThinking = () => {
-    if (state.thinkingId) {
-      const elapsed = state.thinkingStartTime ? Date.now() - state.thinkingStartTime : 0;
-      events.push({ type: 'thinking_stop', id: state.thinkingId, elapsedMs: elapsed });
-      state.thinkingId = null;
-      state.thinkingStartTime = null;
-    }
-  };
-
-  // -----------------------------------------------------------------------
-  // Text content delta
-  // -----------------------------------------------------------------------
-  if (delta?.content) {
-    closeSyntheticThinking();
-    if (!state.textBlockId) {
-      state.textBlockId = 'txt-0';
-      events.push({ type: 'text_start', id: state.textBlockId });
-    }
-    events.push({ type: 'text_delta', id: state.textBlockId, content: delta.content });
-  }
-
-  // -----------------------------------------------------------------------
-  // Tool call deltas
-  // -----------------------------------------------------------------------
-  if (delta?.tool_calls) {
-    closeSyntheticThinking();
-    for (const tc of delta.tool_calls) {
-      if (tc.function?.name) {
-        const toolId = tc.id || `tool-${tc.index}`;
-        pendingTools.set(toolId, tc.function.name);
-        state.toolIndexToId.set(tc.index, toolId);
-        events.push({ type: 'tool_start', id: toolId, toolName: tc.function.name, serverName: '' });
-      }
-      if (tc.function?.arguments) {
-        // Resolve tool ID: prefer explicit id, then toolIndexToId map, then fallback
-        const toolId = tc.id || state.toolIndexToId.get(tc.index) || `tool-${tc.index}`;
-        events.push({ type: 'tool_delta', id: toolId, argsFragment: tc.function.arguments });
-      }
-    }
-  }
-
-  // -----------------------------------------------------------------------
-  // Finish reason
-  // -----------------------------------------------------------------------
-  if (choice.finish_reason) {
-    if (choice.finish_reason === 'tool_calls') {
-      for (const [id] of pendingTools) {
-        events.push({ type: 'tool_stop', id, result: null, durationMs: 0 });
-      }
-      pendingTools.clear();
-    }
-
-    if (state.textBlockId) {
-      events.push({ type: 'text_stop', id: state.textBlockId });
-      state.textBlockId = null;
-    }
-
-    // Close any still-open synthetic thinking (e.g. response with no content)
-    closeSyntheticThinking();
-
-    events.push({
-      type: 'stream_end',
-      finishReason: choice.finish_reason === 'stop' ? 'stop' : choice.finish_reason,
-      totalDurationMs: 0,
-    });
-  }
-
-  // -----------------------------------------------------------------------
-  // Usage embedded in the same chunk
-  // -----------------------------------------------------------------------
-  if (rawChunk.usage) {
-    events.push({
-      type: 'usage',
-      tokensIn: rawChunk.usage.prompt_tokens || 0,
-      tokensOut: rawChunk.usage.completion_tokens || 0,
-      cost: 0,
-      contextUsed: 0,
-      contextMax: 0,
-    });
-  }
-
-  return events;
-}

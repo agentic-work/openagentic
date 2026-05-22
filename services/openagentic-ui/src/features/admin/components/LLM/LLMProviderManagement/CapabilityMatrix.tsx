@@ -55,17 +55,17 @@ export const CapabilityMatrix: React.FC<{
                   <td key={p.id} className="text-center px-3 py-3">
                     <div className="flex flex-col items-center gap-1">
                       {/* Primary radio */}
-                      <label className="flex items-center gap-1 text-xs cursor-pointer" style={{ color: isPrimary ? '#6366f1' : 'var(--text-tertiary)' }}>
+                      <label className="flex items-center gap-1 text-xs cursor-pointer" style={{ color: isPrimary ? 'var(--ap-accent)' : 'var(--text-tertiary)' }}>
                         <input type="radio" name={`primary-${cap.key}`} checked={isPrimary && hasCap}
                           onChange={() => onCapabilityChange(p.id, cap.key, 'primary')}
                           className="accent-primary-500" style={{ width: 12, height: 12 }} />
                         Primary
                       </label>
                       {/* Fallback checkbox */}
-                      <label className="flex items-center gap-1 text-xs cursor-pointer" style={{ color: isFallback ? '#8b5cf6' : 'var(--text-tertiary)' }}>
+                      <label className="flex items-center gap-1 text-xs cursor-pointer" style={{ color: isFallback ? 'var(--ap-accent)' : 'var(--text-tertiary)' }}>
                         <input type="checkbox" checked={hasCap && !isPrimary}
                           onChange={e => onCapabilityChange(p.id, cap.key, e.target.checked ? 'fallback' : 'none')}
-                          className="accent-purple-500 rounded" style={{ width: 12, height: 12 }} />
+                          className="rounded" style={{ width: 12, height: 12, accentColor: 'var(--ap-accent)' }} />
                         Fallback
                       </label>
                     </div>

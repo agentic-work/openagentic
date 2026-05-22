@@ -14,7 +14,7 @@ const logger = loggers.api;
 const userContextRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
   // Get user context (cross-mode)
-  fastify.get('/api/user-context', { preHandler: [authMiddleware] }, async (request, reply) => {
+  fastify.get('/api/user-context', { onRequest: authMiddleware }, async (request, reply) => {
     const user = (request as any).user;
     const query = request.query as any;
 
@@ -36,7 +36,7 @@ const userContextRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
   });
 
   // Index user data into unified context
-  fastify.post('/api/user-context/index', { preHandler: [authMiddleware] }, async (request, reply) => {
+  fastify.post('/api/user-context/index', { onRequest: authMiddleware }, async (request, reply) => {
     const user = (request as any).user;
     const body = request.body as any;
 
@@ -55,7 +55,7 @@ const userContextRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
   });
 
   // Search user context
-  fastify.get('/api/user-context/search', { preHandler: [authMiddleware] }, async (request, reply) => {
+  fastify.get('/api/user-context/search', { onRequest: authMiddleware }, async (request, reply) => {
     const user = (request as any).user;
     const query = request.query as any;
 
@@ -72,7 +72,7 @@ const userContextRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
   });
 
   // Purge user context (admin or self)
-  fastify.delete('/api/user-context/:userId', { preHandler: [authMiddleware] }, async (request, reply) => {
+  fastify.delete('/api/user-context/:userId', { onRequest: authMiddleware }, async (request, reply) => {
     const user = (request as any).user;
     const { userId } = request.params as { userId: string };
 
@@ -88,7 +88,7 @@ const userContextRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
   });
 
   // Admin: get user context stats
-  fastify.get('/api/admin/user-context/stats/:userId', { preHandler: [authMiddleware] }, async (request, reply) => {
+  fastify.get('/api/admin/user-context/stats/:userId', { onRequest: authMiddleware }, async (request, reply) => {
     const user = (request as any).user;
     if (!user.is_admin) return reply.code(403).send({ error: 'Admin access required' });
 

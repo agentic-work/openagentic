@@ -143,7 +143,7 @@ const adminMCPInspectorRoutes: FastifyPluginAsync = async (fastify) => {
    * Serve the MCP Inspector homepage with URL rewriting
    * REQUIRES: Admin authentication
    */
-  fastify.get('/mcp-inspector', { preHandler: adminMiddleware }, async (request, reply) => {
+  fastify.get('/mcp-inspector', { onRequest: adminMiddleware }, async (request, reply) => {
     return handleInspectorHomepage(request, reply);
   });
 
@@ -151,7 +151,7 @@ const adminMCPInspectorRoutes: FastifyPluginAsync = async (fastify) => {
    * GET /api/admin/mcp-inspector/ (trailing slash)
    * Same as above, handles trailing slash variant
    */
-  fastify.get('/mcp-inspector/', { preHandler: adminMiddleware }, async (request, reply) => {
+  fastify.get('/mcp-inspector/', { onRequest: adminMiddleware }, async (request, reply) => {
     return handleInspectorHomepage(request, reply);
   });
 
@@ -203,7 +203,7 @@ const adminMCPInspectorRoutes: FastifyPluginAsync = async (fastify) => {
    * GET /api/admin/mcp-inspector/* -> http://mcp-proxy:8080/*
    * REQUIRES: Admin authentication
    */
-  fastify.all('/mcp-inspector/*', { preHandler: adminMiddleware }, async (request, reply) => {
+  fastify.all('/mcp-inspector/*', { onRequest: adminMiddleware }, async (request, reply) => {
     try {
       // Extract the path after /mcp-inspector/ (accounting for /api/admin prefix)
       // request.url contains full path like /api/admin/mcp-inspector/something
@@ -279,7 +279,7 @@ const adminMCPInspectorRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.get('/mcp-inspector/mcpp', {
     websocket: true,
-    preHandler: [adminMiddleware as any]
+    onRequest: adminMiddleware as any
   } as any, (connection: any, req: any) => {
     const clientWs = connection.socket;
     const user = (req as any).user;

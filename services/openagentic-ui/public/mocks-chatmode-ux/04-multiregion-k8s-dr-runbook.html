@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-accent="violet">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>OpenAgentic · Multi-region K8s DR runbook · Mockup 04</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* =======================================================================
+   Mockup 04 · Chat-mode · multi-region K8s failover strategy + DR runbook
+   5 regions · 7 services · RPO<=5m RTO<=15m · 6 sub-agents · 4 passes
+   ======================================================================= */
+:root {
+  --bg-0: #09090b; --bg-1: #0f1012; --bg-2: #16181c; --bg-3: #1c1f24; --bg-4: #242831;
+  --line-1: rgba(255,255,255,0.06); --line-2: rgba(255,255,255,0.10); --line-3: rgba(255,255,255,0.16);
+  --fg-0: #f8fafc; --fg-1: #d4d4d8; --fg-2: #a1a1aa; --fg-3: #71717a;
+  --accent: #8b5cf6; --accent-soft: rgba(139,92,246,0.14); --accent-line: rgba(139,92,246,0.32);
+  --agent-c: #f59e0b; --agent-g: #10b981; --agent-s: #ef4444; --agent-k: #3b82f6;
+  --agent-n: #06b6d4; --agent-p: #ec4899;
+  --ok: #22c55e; --warn: #f59e0b; --err: #ef4444; --info: #38bdf8;
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
+}
+html[data-theme=light] {
+  --bg-0: #fafafa; --bg-1: #fff; --bg-2: #f4f4f5; --bg-3: #e4e4e7; --bg-4: #d4d4d8;
+  --line-1: rgba(0,0,0,0.06); --line-2: rgba(0,0,0,0.1); --line-3: rgba(0,0,0,0.16);
+  --fg-0: #09090b; --fg-1: #27272a; --fg-2: #52525b; --fg-3: #71717a;
+}
+html[data-accent=violet] { --accent: #8b5cf6; --accent-soft: rgba(139,92,246,0.14); --accent-line: rgba(139,92,246,0.32); }
+html[data-accent=teal]   { --accent: #14b8a6; --accent-soft: rgba(20,184,166,0.14); --accent-line: rgba(20,184,166,0.32); }
+html[data-accent=amber]  { --accent: #f59e0b; --accent-soft: rgba(245,158,11,0.14); --accent-line: rgba(245,158,11,0.32); }
+html[data-accent=rose]   { --accent: #f43f5e; --accent-soft: rgba(244,63,94,0.14); --accent-line: rgba(244,63,94,0.32); }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px; line-height: 1.5;
+  color: var(--fg-1); background: var(--bg-0);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'ss01','cv11';
+}
+code, pre, .mono, .tabular { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.tnum { font-variant-numeric: tabular-nums; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+a { color: #7dd3fc; }
+
+.shell { display: grid; grid-template-columns: 260px 1fr; height: 100vh; min-height: 100vh; }
+.sidebar { border-right: 1px solid var(--line-1); background: var(--bg-1); display: flex; flex-direction: column; padding: 12px 8px; gap: 2px; }
+.sb-logo { display: flex; align-items: center; gap: 8px; padding: 8px 10px 16px; border-bottom: 1px solid var(--line-1); margin-bottom: 8px; }
+.sb-logo .mark {
+  width: 22px; height: 22px; border-radius: 6px;
+  background: conic-gradient(from 220deg, var(--accent), #6366f1, var(--accent));
+  display: grid; place-items: center; font-weight: 700; font-size: 12px; color: white;
+}
+.sb-logo .brand { font-weight: 600; color: var(--fg-0); letter-spacing: -0.01em; }
+.sb-logo .brand small { display: block; font-size: 10px; color: var(--fg-3); font-weight: 400; margin-top: -1px; }
+.sb-new { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line-2); color: var(--fg-0); font-weight: 500; font-size: 13px; margin-bottom: 10px; }
+.sb-new:hover { background: var(--bg-2); }
+.sb-group-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); padding: 10px 10px 4px; }
+.sb-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; font-size: 13px; color: var(--fg-1); }
+.sb-item:hover { background: var(--bg-2); }
+.sb-item.active { background: var(--bg-2); color: var(--fg-0); }
+.sb-item .t { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-item .age { font-size: 10px; color: var(--fg-3); }
+
+/* agent tree */
+.agent-tree { padding: 4px 4px 10px; border-top: 1px solid var(--line-1); margin-top: 10px; }
+.agent-tree .node { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; font-size: 12px; }
+.agent-tree .node.sub { padding-left: 20px; position: relative; color: var(--fg-2); font-size: 11.5px; }
+.agent-tree .node.sub::before { content: ""; position: absolute; left: 10px; top: 0; bottom: 50%; border-left: 1px dashed var(--line-2); border-bottom: 1px dashed var(--line-2); width: 6px; border-bottom-left-radius: 3px; }
+.agent-tree .node .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.agent-tree .node .dot.c { background: var(--agent-c); }
+.agent-tree .node .dot.g { background: var(--agent-g); }
+.agent-tree .node .dot.s { background: var(--agent-s); }
+.agent-tree .node .dot.k { background: var(--agent-k); }
+.agent-tree .node .dot.n { background: var(--agent-n); }
+.agent-tree .node .dot.p { background: var(--agent-p); }
+.agent-tree .node .label { flex: 1; }
+.agent-tree .node .count { font-family: 'JetBrains Mono', monospace; color: var(--fg-3); font-size: 10.5px; }
+
+.main { display: grid; grid-template-rows: 52px 1fr; min-width: 0; }
+.topbar { display: flex; align-items: center; gap: 12px; padding: 0 20px; border-bottom: 1px solid var(--line-1); background: var(--bg-0); position: sticky; top: 0; z-index: 5; }
+.topbar .title { font-size: 13px; font-weight: 500; color: var(--fg-0); }
+.topbar .crumbs { font-size: 12px; color: var(--fg-3); }
+.topbar .back { font-size: 12px; color: var(--fg-2); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line-2); }
+.topbar .back:hover { background: var(--bg-2); color: var(--fg-0); }
+.topbar .spacer { flex: 1; }
+.topbar .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 99px; border: 1px solid var(--line-2); font-size: 11px; color: var(--fg-2); }
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+
+.chat-wrap { overflow-y: auto; padding: 24px 32px 220px; scroll-behavior: smooth; }
+.chat { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px; }
+
+/* messages */
+.msg { display: flex; flex-direction: column; gap: 10px; }
+.msg-user { align-self: flex-end; max-width: 640px; background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 14px; padding: 12px 16px; font-size: 14px; line-height: 1.55; color: var(--fg-0); }
+.msg-user .meta-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--fg-3); margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line-1); }
+.msg-asst { display: grid; grid-template-columns: 28px 1fr; gap: 12px; }
+.avatar { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-weight: 600; font-size: 12px; color: white; }
+.avatar.av-asst { background: linear-gradient(135deg, #a78bfa, #6366f1); }
+.avatar.av-c { background: linear-gradient(135deg, #fbbf24, #d97706); }
+.avatar.av-g { background: linear-gradient(135deg, #34d399, #059669); }
+.avatar.av-s { background: linear-gradient(135deg, #f87171, #b91c1c); }
+.avatar.av-k { background: linear-gradient(135deg, #60a5fa, #1d4ed8); }
+.avatar.av-n { background: linear-gradient(135deg, #22d3ee, #0e7490); }
+.avatar.av-p { background: linear-gradient(135deg, #f472b6, #be185d); }
+.avatar.sm { width: 20px; height: 20px; border-radius: 6px; font-size: 10px; }
+
+.msg-body { min-width: 0; }
+.msg-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.msg-head .name { font-size: 13px; font-weight: 600; color: var(--fg-0); }
+.msg-head .model { font-size: 10px; color: var(--fg-3); padding: 2px 7px; border-radius: 99px; border: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; }
+.msg-head .model .tag { color: var(--accent); margin-right: 4px; }
+.msg-head .spacer { flex: 1; }
+.cost-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 99px; border: 1px solid var(--line-2); background: rgba(139,92,246,0.05); font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-1); }
+.cost-pill .live { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+.cost-pill.done .live { background: var(--ok); animation: none; }
+
+.status-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 2px; }
+.pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 99px; font-size: 11px; border: 1px solid var(--line-2); color: var(--fg-2); }
+.pill .ico { width: 11px; height: 11px; flex-shrink: 0; }
+.pill.info { background: rgba(56,189,248,.06); border-color: rgba(56,189,248,.25); color: #7dd3fc; }
+.pill.warn { background: rgba(245,158,11,.06); border-color: rgba(245,158,11,.28); color: #fbbf24; }
+.pill.ok { background: rgba(34,197,94,.06); border-color: rgba(34,197,94,.25); color: #4ade80; }
+.pill.err { background: rgba(239,68,68,.06); border-color: rgba(239,68,68,.25); color: #f87171; }
+
+.thinking { border-left: 1.5px solid var(--accent-line); padding-left: 12px; margin: 2px 0 4px; }
+.thinking .head { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: 12px; color: var(--fg-2); cursor: pointer; user-select: none; }
+.thinking .head .ico { width: 12px; height: 12px; color: var(--accent); }
+.thinking .head .label { font-weight: 500; color: var(--fg-1); }
+.thinking .head .chev { margin-left: auto; color: var(--fg-3); transition: transform 0.2s; }
+.thinking[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.thinking .body { max-height: 0; overflow: hidden; transition: max-height 0.25s ease; font-size: 13px; color: var(--fg-2); line-height: 1.6; }
+.thinking[aria-expanded="true"] .body { max-height: 1200px; padding: 6px 0 10px; }
+.thinking ul { margin: 6px 0; padding-left: 18px; }
+.thinking li { margin: 2px 0; }
+.thinking code { font-size: 11px; background: var(--bg-2); border: 1px solid var(--line-1); padding: 1px 4px; border-radius: 3px; }
+
+/* tool cards */
+.tool { border: 1px solid var(--line-2); border-radius: 10px; background: var(--bg-1); overflow: hidden; margin: 4px 0; position: relative; }
+.tool.running::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, transparent 0%, rgba(139,92,246,.08) 50%, transparent 100%); background-size: 200% 100%; animation: shimmer 1.8s ease-in-out infinite; pointer-events: none; }
+.tool .t-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; font-size: 12px; }
+.tool[aria-expanded="true"] .t-head { border-bottom: 1px solid var(--line-1); }
+.tool .t-ico { width: 20px; height: 20px; border-radius: 5px; background: var(--bg-3); display: grid; place-items: center; color: var(--fg-1); flex-shrink: 0; }
+.tool .t-name { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-0); font-weight: 500; }
+.tool .t-status { font-size: 11px; color: var(--fg-3); }
+.tool .t-status.ok { color: var(--ok); }
+.tool .t-status.warn { color: var(--warn); }
+.tool .t-status.err { color: var(--err); }
+.tool .t-timer { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-3); margin-left: auto; font-variant-numeric: tabular-nums; }
+.tool .t-chev { color: var(--fg-3); transition: transform 0.2s; }
+.tool[aria-expanded="true"] .t-chev { transform: rotate(90deg); }
+.tool .t-body { display: none; }
+.tool[aria-expanded="true"] .t-body { display: block; }
+.tool .t-section { padding: 10px 12px; border-top: 1px solid var(--line-1); }
+.tool .t-section:first-child { border-top: 0; }
+.tool .t-section .t-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); margin-bottom: 6px; font-weight: 600; }
+.tool pre.json { margin: 0; padding: 8px 10px; border-radius: 6px; background: var(--bg-0); border: 1px solid var(--line-1); font-size: 12px; line-height: 1.55; color: var(--fg-1); overflow-x: auto; max-height: 260px; }
+.tool pre.json.stream::after { content: "▍"; color: var(--accent); animation: caret 0.9s steps(1) infinite; margin-left: 1px; }
+.tool-parallel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 900px) { .tool-parallel { grid-template-columns: 1fr; } }
+.tool-parallel-hdr { font-size: 11px; color: var(--fg-3); display: flex; align-items: center; gap: 6px; margin: 6px 0 4px; }
+.tool-parallel-hdr .fan { width: 14px; height: 14px; color: var(--accent); }
+
+.json .k { color: #93c5fd; } .json .s { color: #86efac; } .json .n { color: #fcd34d; } .json .b { color: #f0abfc; } .json .c { color: var(--fg-3); font-style: italic; } .json .null { color: var(--fg-3); }
+
+/* text */
+.txt { font-size: 14px; line-height: 1.6; color: var(--fg-1); }
+.txt p { margin: 10px 0; }
+.txt p:first-child { margin-top: 0; }
+.txt strong { color: var(--fg-0); font-weight: 600; }
+.txt h3 { font-size: 15px; font-weight: 600; color: var(--fg-0); margin: 18px 0 6px; letter-spacing: -0.01em; }
+.txt h4 { font-size: 13.5px; font-weight: 600; color: var(--fg-0); margin: 14px 0 4px; }
+.txt ul { margin: 6px 0 6px 0; padding-left: 20px; }
+.txt li { margin: 4px 0; }
+.txt code { font-size: 12px; padding: 1px 5px; border-radius: 4px; background: var(--bg-2); border: 1px solid var(--line-1); }
+.citation { display: inline-flex; align-items: center; justify-content: center; vertical-align: super; min-width: 16px; height: 16px; padding: 0 4px; margin: 0 2px; border-radius: 4px; font-size: 10px; font-weight: 600; background: var(--accent-soft); border: 1px solid var(--accent-line); color: #c4b5fd; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+
+/* tables */
+.streaming-table { border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; background: var(--bg-1); margin: 10px 0; }
+.streaming-table .tt-hdr { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-2); border-bottom: 1px solid var(--line-2); font-size: 11px; color: var(--fg-2); }
+.streaming-table .tt-count { margin-left: auto; font-family: 'JetBrains Mono', monospace; color: var(--fg-3); font-size: 11px; }
+.streaming-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.streaming-table thead th { text-align: left; padding: 7px 12px; font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--fg-3); background: var(--bg-1); border-bottom: 1px solid var(--line-1); }
+.streaming-table tbody td { padding: 7px 12px; border-bottom: 1px solid var(--line-1); color: var(--fg-1); font-variant-numeric: tabular-nums; }
+.streaming-table tbody tr:last-child td { border-bottom: 0; }
+.streaming-table tbody tr { animation: rowIn 400ms cubic-bezier(.22,1,.36,1) both; }
+.streaming-table .mono { color: var(--fg-2); font-size: 11px; }
+.streaming-table td .sev { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; text-align: center; font-weight: 500; white-space: nowrap; }
+.sev.sev-ok { background: rgba(34,197,94,.10); color: #4ade80; border: 1px solid rgba(34,197,94,.25); }
+.sev.sev-warn { background: rgba(245,158,11,.10); color: #fbbf24; border: 1px solid rgba(245,158,11,.28); }
+.sev.sev-err { background: rgba(239,68,68,.10); color: #f87171; border: 1px solid rgba(239,68,68,.28); }
+.sev.sev-info { background: rgba(56,189,248,.10); color: #7dd3fc; border: 1px solid rgba(56,189,248,.28); }
+
+/* metrics / savings cards */
+.metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; border: 1px solid var(--accent-line); background: linear-gradient(135deg, rgba(139,92,246,0.05), rgba(99,102,241,0.03)); border-radius: 12px; padding: 14px 16px; margin: 10px 0; }
+.metrics-grid .cell .k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); margin-bottom: 2px; }
+.metrics-grid .cell .v { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 600; color: var(--fg-0); letter-spacing: -0.02em; }
+.metrics-grid .cell .v.g { color: #4ade80; } .metrics-grid .cell .v.w { color: #fbbf24; } .metrics-grid .cell .v.r { color: #f87171; }
+.metrics-grid .cell .v small { font-size: 11px; font-weight: 400; color: var(--fg-3); margin-left: 4px; }
+
+/* region map */
+.region-map { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; border: 1px solid var(--line-2); background: var(--bg-1); border-radius: 10px; padding: 12px; margin: 10px 0; }
+.region-map .r { border: 1px solid var(--line-2); background: var(--bg-0); border-radius: 8px; padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 4px; position: relative; overflow: hidden; }
+.region-map .r.primary::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); }
+.region-map .r.standby::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--info); opacity: .5; }
+.region-map .r.edge::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--fg-3); opacity: .4; }
+.region-map .r .code { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-0); font-weight: 600; }
+.region-map .r .role { font-size: 10px; color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.08em; }
+.region-map .r .stats { font-size: 10.5px; color: var(--fg-2); font-family: 'JetBrains Mono', monospace; margin-top: 4px; display: flex; justify-content: space-between; }
+.region-map .r .bar { height: 3px; background: var(--bg-3); border-radius: 2px; overflow: hidden; }
+.region-map .r .bar span { display: block; height: 100%; background: var(--ok); }
+
+/* sub-agent card */
+.subagent { border: 1px solid var(--line-1); border-left: 3px solid var(--agent-c); border-radius: 10px; background: var(--bg-1); margin: 6px 0; overflow: hidden; }
+.subagent.agent-c { border-left-color: var(--agent-c); }
+.subagent.agent-g { border-left-color: var(--agent-g); }
+.subagent.agent-s { border-left-color: var(--agent-s); }
+.subagent.agent-k { border-left-color: var(--agent-k); }
+.subagent.agent-n { border-left-color: var(--agent-n); }
+.subagent.agent-p { border-left-color: var(--agent-p); }
+.sa-head { display: flex; align-items: center; gap: 10px; padding: 9px 12px; font-size: 12px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--line-1); }
+.sa-head .name { font-weight: 600; color: var(--fg-0); font-size: 13px; }
+.sa-head .role { font-size: 11px; color: var(--fg-3); }
+.sa-head .stats { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-3); display: flex; gap: 10px; }
+.sa-head .pass-chip { margin-left: 6px; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-family: 'JetBrains Mono', monospace; background: var(--bg-3); color: var(--fg-2); }
+.sa-head .pass-chip.pass-2 { background: rgba(245,158,11,.16); color: #fcd34d; }
+.sa-head .chev { color: var(--fg-3); }
+.sa-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.sa-return { background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.2); border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #6ee7b7; display: flex; align-items: flex-start; gap: 8px; }
+.sa-return strong { color: #34d399; font-weight: 600; }
+.sa-return .ico { width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px; }
+.sa-return.fail { background: rgba(239,68,68,.06); border-color: rgba(239,68,68,.25); color: #fca5a5; }
+.sa-return.fail strong { color: #f87171; }
+.sa-subthink { border-left: 1.5px solid rgba(245,158,11,.3); padding-left: 10px; font-size: 12px; color: var(--fg-2); line-height: 1.5; }
+.subagent.agent-g .sa-subthink { border-left-color: rgba(16,185,129,.3); }
+.subagent.agent-s .sa-subthink { border-left-color: rgba(239,68,68,.3); }
+.subagent.agent-k .sa-subthink { border-left-color: rgba(59,130,246,.3); }
+.subagent.agent-n .sa-subthink { border-left-color: rgba(6,182,212,.3); }
+.subagent.agent-p .sa-subthink { border-left-color: rgba(236,72,153,.3); }
+.sa-subthink .sth-head { font-size: 11px; color: var(--fg-3); margin-bottom: 3px; }
+
+/* correction card */
+.correction-card { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: linear-gradient(90deg, rgba(245,158,11,0.08), transparent); border: 1px solid rgba(245,158,11,0.28); border-radius: 10px; font-size: 12px; margin: 6px 0; }
+.correction-card .ico { width: 26px; height: 26px; border-radius: 6px; background: rgba(245,158,11,0.18); color: #fcd34d; display: grid; place-items: center; flex-shrink: 0; }
+.correction-card .title { font-weight: 600; color: var(--fg-0); font-size: 13px; }
+.correction-card .sub { color: var(--fg-2); font-size: 11.5px; margin-top: 2px; line-height: 1.5; }
+
+/* handoff */
+.handoff { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px dashed var(--line-3); border-radius: 8px; background: var(--bg-1); font-size: 12px; color: var(--fg-2); margin: 6px 0; }
+.handoff .arrow { color: var(--accent); }
+.handoff strong { color: var(--fg-0); font-weight: 600; }
+
+/* finding card */
+.finding { border: 1px solid rgba(239,68,68,.22); background: rgba(239,68,68,.04); border-radius: 8px; padding: 10px 12px; font-size: 12px; margin: 4px 0; }
+.finding.sev-warn { border-color: rgba(245,158,11,.28); background: rgba(245,158,11,.04); }
+.finding.sev-info { border-color: rgba(56,189,248,.25); background: rgba(56,189,248,.04); }
+.finding .f-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.finding .f-head .ord { width: 18px; height: 18px; border-radius: 50%; background: var(--err); color: white; font-size: 10px; font-weight: 700; display: grid; place-items: center; }
+.finding.sev-warn .f-head .ord { background: var(--warn); }
+.finding.sev-info .f-head .ord { background: var(--info); }
+.finding .f-head .title { font-weight: 600; color: var(--fg-0); font-size: 13px; }
+.finding .f-head .sev { margin-left: auto; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 500; background: rgba(239,68,68,.15); color: #fca5a5; }
+.finding.sev-warn .f-head .sev { background: rgba(245,158,11,.15); color: #fcd34d; }
+.finding.sev-info .f-head .sev { background: rgba(56,189,248,.15); color: #7dd3fc; }
+.finding .f-body { color: var(--fg-2); }
+.finding .f-body code { font-size: 11px; padding: 1px 4px; border-radius: 3px; background: var(--bg-0); border: 1px solid var(--line-1); }
+
+/* runbook block */
+.runbook { border: 1px solid var(--line-2); border-radius: 10px; background: var(--bg-1); margin: 10px 0; overflow: hidden; }
+.runbook .rb-hdr { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: var(--bg-2); border-bottom: 1px solid var(--line-2); font-size: 11px; color: var(--fg-2); }
+.runbook .rb-title { font-weight: 600; color: var(--fg-0); font-size: 13px; }
+.runbook .rb-step { display: grid; grid-template-columns: 32px 1fr auto; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--line-1); font-size: 12.5px; align-items: start; }
+.runbook .rb-step:last-child { border-bottom: 0; }
+.runbook .rb-step .n { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--accent); padding-top: 1px; }
+.runbook .rb-step .t { color: var(--fg-1); line-height: 1.55; }
+.runbook .rb-step .t strong { color: var(--fg-0); }
+.runbook .rb-step .t code { font-size: 11px; padding: 1px 4px; border-radius: 3px; background: var(--bg-0); border: 1px solid var(--line-1); }
+.runbook .rb-step .t .owner { font-size: 10.5px; color: var(--fg-3); margin-top: 2px; display: block; }
+.runbook .rb-step .dur { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--fg-3); white-space: nowrap; }
+
+/* composer */
+.composer { position: fixed; bottom: 24px; left: calc(260px + 32px); right: 32px; max-width: 780px; margin-left: auto; margin-right: auto; background: var(--bg-1); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: 0 -8px 30px rgba(0,0,0,.25), 0 12px 40px rgba(0,0,0,.4); padding: 10px 12px; backdrop-filter: blur(10px); }
+.composer textarea { width: 100%; background: transparent; border: 0; outline: 0; color: var(--fg-0); font: 14px/1.5 'Inter', system-ui, sans-serif; resize: none; padding: 4px 4px 8px; }
+.composer .row { display: flex; align-items: center; gap: 6px; padding-top: 4px; border-top: 1px solid var(--line-1); }
+.composer .btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 7px; color: var(--fg-2); font-size: 12px; }
+.composer .btn:hover { background: var(--bg-2); color: var(--fg-0); }
+.composer .spacer { flex: 1; }
+.composer .send { background: var(--accent); color: white; padding: 6px 10px; border-radius: 7px; font-weight: 500; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
+
+/* theme + accent switcher */
+.switcher { position: absolute; top: 10px; right: 16px; z-index: 10; display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px; font-size: 11px; color: var(--fg-2); border: 1px solid var(--line-2); border-radius: 99px; background: var(--bg-1); }
+.switcher button { padding: 3px 8px; border-radius: 99px; font-size: 11px; color: var(--fg-2); }
+.switcher button:hover { background: var(--bg-2); color: var(--fg-0); }
+.switcher .sep { width: 1px; height: 14px; background: var(--line-2); }
+.switcher .swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--line-2); cursor: pointer; padding: 0; }
+.switcher .swatch.violet { background: #8b5cf6; }
+.switcher .swatch.teal { background: #14b8a6; }
+.switcher .swatch.amber { background: #f59e0b; }
+.switcher .swatch.rose { background: #f43f5e; }
+.switcher .swatch[data-active="true"] { outline: 2px solid var(--fg-0); outline-offset: 1px; }
+
+/* animations */
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .6; transform: scale(1.1); } }
+@keyframes caret { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+@keyframes rowIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" aria-label="Chat history">
+    <div class="sb-logo">
+      <div class="mark">A</div>
+      <div class="brand">OpenAgentic <small>v0.6.7 · dev</small></div>
+    </div>
+    <button class="sb-new">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New chat
+    </button>
+    <div class="sb-group-label">Today</div>
+    <div class="sb-item active"><span class="t">Multi-region K8s DR strategy</span><span class="age">now</span></div>
+    <div class="sb-item"><span class="t">SOC 2 Type II gap analysis</span><span class="age">1h</span></div>
+    <div class="sb-item"><span class="t">Datacenter consolidation plan</span><span class="age">3h</span></div>
+    <div class="sb-item"><span class="t">Azure VM right-sizing audit</span><span class="age">5h</span></div>
+    <div class="sb-group-label">Yesterday</div>
+    <div class="sb-item"><span class="t">K8s prod health for CTO</span><span class="age">1d</span></div>
+    <div class="sb-item"><span class="t">Go user-mgmt API scaffold</span><span class="age">1d</span></div>
+
+    <div class="agent-tree">
+      <div class="sb-group-label" style="padding-top: 0;">Agent tree · this chat</div>
+      <div class="node"><span class="dot" style="background: linear-gradient(135deg, #a78bfa, #6366f1);"></span><span class="label">cloud-arch · orchestrator</span><span class="count">7t</span></div>
+      <div class="node sub"><span class="dot k"></span><span class="label">k8s-topology</span><span class="count">18t</span></div>
+      <div class="node sub"><span class="dot c"></span><span class="label">cost-analysis</span><span class="count">11t</span></div>
+      <div class="node sub"><span class="dot n"></span><span class="label">network-latency</span><span class="count">9t</span></div>
+      <div class="node sub"><span class="dot g"></span><span class="label">data-replication</span><span class="count">14t</span></div>
+      <div class="node sub"><span class="dot s"></span><span class="label">dr-drill-validator</span><span class="count">6t</span></div>
+      <div class="node sub"><span class="dot p"></span><span class="label">runbook-author</span><span class="count">12t</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <a class="back" href="index.html">&larr; index</a>
+      <div class="title">Multi-region Kubernetes DR strategy</div>
+      <div class="crumbs">· cloud-arch · 6 subs · gpt-5.2 · 4 passes</div>
+      <div class="spacer"></div>
+      <span class="chip"><span class="dot"></span> stream complete</span>
+      <span class="chip mono tabular">47.3s</span>
+      <span class="chip mono tabular">$0.412</span>
+    </header>
+    <div class="switcher" role="group" aria-label="Theme and accent">
+      <button id="theme-btn" aria-label="Toggle theme">dark</button>
+      <span class="sep"></span>
+      <button class="swatch violet" data-accent="violet" aria-label="Violet accent" data-active="true"></button>
+      <button class="swatch teal" data-accent="teal" aria-label="Teal accent"></button>
+      <button class="swatch amber" data-accent="amber" aria-label="Amber accent"></button>
+      <button class="swatch rose" data-accent="rose" aria-label="Rose accent"></button>
+    </div>
+
+    <div class="chat-wrap">
+      <div class="chat">
+
+        <!-- USER -->
+        <article class="msg">
+          <div class="msg-user">
+            Architect a multi-region Kubernetes failover strategy across AWS + Azure with full DR runbook, cost model, and MTTR targets &mdash; 5 regions, 7 services, RPO&le;5min RTO&le;15min.
+            <div class="meta-row">
+              <span>phatoldsun@gmail.com</span>
+              <span class="mono tabular">09:14 &middot; 2026-04-20</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- ASSISTANT -->
+        <article class="msg msg-asst">
+          <div class="avatar av-asst">A</div>
+          <div class="msg-body">
+            <div class="msg-head">
+              <span class="name">OpenAgentic <span style="color: var(--fg-3); font-weight: 400; font-size: 12px;">&middot; cloud-arch orchestrator</span></span>
+              <span class="model"><span class="tag">gpt</span>5.2</span>
+              <span class="spacer"></span>
+              <span class="cost-pill done"><span class="live"></span><span class="tnum">$0.412</span></span>
+            </div>
+
+            <div class="status-row">
+              <span class="pill info">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 0 20"/></svg>
+                cloud-arch
+              </span>
+              <span class="pill">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+                6 sub-agents
+              </span>
+              <span class="pill">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                34 tool calls
+              </span>
+              <span class="pill">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                47.3s
+              </span>
+              <span class="pill warn">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                1 self-correction
+              </span>
+            </div>
+
+            <section class="thinking" aria-expanded="true">
+              <div class="head" onclick="this.parentElement.setAttribute('aria-expanded', this.parentElement.getAttribute('aria-expanded') !== 'true')" tabindex="0" role="button">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 0-4 12.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26A7 7 0 0 0 12 2z"/></svg>
+                <span class="label">Thought for 6.2s</span>
+                <span style="color: var(--fg-3); margin-left: 4px;">&middot; 842 tokens &middot; 3 passes</span>
+                <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+              <div class="body">
+                <p>This is a four-dimensional architecture question: <strong>topology</strong> (where do services run), <strong>data</strong> (how do we replicate state without breaking RPO), <strong>network</strong> (how do clients fail over), and <strong>cost</strong> (does the design fit a budget). Each dimension has its own expertise and its own MCP tools; I'll fan out to sub-agents rather than load every AWS + Azure pricing manifest into my own context.</p>
+                <p>Constraints the user stated explicitly:</p>
+                <ul>
+                  <li>5 regions spanning AWS + Azure &mdash; cross-cloud, not cross-region-same-cloud. That rules out cloud-native replication primitives like Azure GRS or AWS Aurora Global &mdash; we need cloud-agnostic tooling.</li>
+                  <li>7 services &mdash; I'll model stateless (FE, API, workers) vs stateful (Postgres, Redis, Kafka, MinIO) separately because the RPO constraint bites only the stateful ones.</li>
+                  <li>RPO &le; 5min means synchronous replication is out (too much WAN latency); semi-sync + log shipping at 1-minute cadence is the realistic target.</li>
+                  <li>RTO &le; 15min means DNS TTL + GSLB probe + readiness checks all need to complete inside that window. Hot-warm topology, not warm-cold.</li>
+                </ul>
+                <p>Plan:</p>
+                <ul>
+                  <li><strong>Pass 1</strong> &mdash; topology: <code>k8s-topology</code> sub-agent maps services onto 5 regions, assigns active/standby roles. Parallel fan-out: one call per region to pull AZ counts + SKU availability.</li>
+                  <li><strong>Pass 2</strong> &mdash; network: <code>network-latency</code> measures pair-wise P99 latency across the 5 regions; <code>data-replication</code> models RPO for each stateful service given that latency.</li>
+                  <li><strong>Pass 3</strong> &mdash; cost: <code>cost-analysis</code> sums steady-state + failover-event cost. If we breach budget I'll retry pass 1 with a different topology.</li>
+                  <li><strong>Pass 4</strong> &mdash; validation: <code>dr-drill-validator</code> simulates regional failure and checks the runbook steps actually hit RTO. <code>runbook-author</code> composes the final runbook from everything above.</li>
+                </ul>
+                <p>I'll handle one self-correction scenario: if pass 2 shows WAN latency between eu-west-1 and ap-southeast-1 exceeds the 80ms budget for semi-sync Postgres, I'll split those regions into independent write domains and redo cost.</p>
+              </div>
+            </section>
+
+            <div class="txt">
+              <p>I'll break this into 4 passes: topology, network+data, cost, validation+runbook. Fanning out to six sub-agents.</p>
+            </div>
+
+            <!-- PASS 1 -->
+            <div class="handoff">
+              <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              <span>Pass 1 &middot; <strong>topology</strong> &rarr; <span class="mono" style="color: var(--agent-k);">k8s-topology</span></span>
+            </div>
+
+            <article class="subagent agent-k">
+              <header class="sa-head">
+                <div class="avatar av-k sm">K</div>
+                <div>
+                  <div class="name">k8s-topology</div>
+                  <div class="role">sub-agent &middot; region + AZ mapping</div>
+                </div>
+                <div class="stats">
+                  <span>5 turns</span><span>2,104 tok</span><span>6.8s</span><span>$0.048</span>
+                </div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 1.9s</div>
+                  Five regions: us-east-1 (AWS primary), us-west-2 (AWS standby), eu-west-1 (AWS edge), westeurope (Azure hot-standby), southeastasia (Azure edge). I'll pull AZ inventory in parallel + confirm SKU availability for GPU workers (Milvus).
+                </div>
+
+                <div class="tool-parallel-hdr">
+                  <svg class="fan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M5 12h14M7 5l10 14M17 5L7 19"/></svg>
+                  Parallel fan-out &middot; 5 concurrent AZ + capacity queries
+                </div>
+
+                <div class="tool-parallel">
+                  <div class="tool" aria-expanded="false">
+                    <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                      <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg></div>
+                      <span class="t-name">aws_describe_azs</span>
+                      <span class="t-status ok">&middot; us-east-1 &middot; 6 AZs</span>
+                      <span class="t-timer tabular">0.62s</span>
+                      <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                  </div>
+                  <div class="tool" aria-expanded="false">
+                    <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                      <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/></svg></div>
+                      <span class="t-name">aws_describe_azs</span>
+                      <span class="t-status ok">&middot; us-west-2 &middot; 4 AZs</span>
+                      <span class="t-timer tabular">0.54s</span>
+                      <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                  </div>
+                  <div class="tool" aria-expanded="false">
+                    <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                      <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/></svg></div>
+                      <span class="t-name">aws_describe_azs</span>
+                      <span class="t-status ok">&middot; eu-west-1 &middot; 3 AZs</span>
+                      <span class="t-timer tabular">0.71s</span>
+                      <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                  </div>
+                  <div class="tool" aria-expanded="false">
+                    <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                      <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div>
+                      <span class="t-name">azure_list_locations</span>
+                      <span class="t-status ok">&middot; westeurope &middot; 3 zones</span>
+                      <span class="t-timer tabular">0.83s</span>
+                      <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="tool" aria-expanded="true">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/></svg></div>
+                    <span class="t-name">azure_list_locations</span>
+                    <span class="t-status ok">&middot; southeastasia &middot; 3 zones</span>
+                    <span class="t-timer tabular">0.91s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                  <div class="t-body">
+                    <div class="t-section">
+                      <div class="t-label">Result &middot; zone inventory</div>
+<pre class="json">{
+  <span class="k">"region"</span>: <span class="s">"southeastasia"</span>,
+  <span class="k">"zones"</span>: [<span class="s">"1"</span>, <span class="s">"2"</span>, <span class="s">"3"</span>],
+  <span class="k">"skus"</span>: {
+    <span class="k">"Standard_D8s_v5"</span>: { <span class="k">"available"</span>: <span class="b">true</span>, <span class="k">"quota"</span>: <span class="n">80</span> },
+    <span class="k">"Standard_E16s_v5"</span>: { <span class="k">"available"</span>: <span class="b">true</span>, <span class="k">"quota"</span>: <span class="n">40</span> },
+    <span class="k">"Standard_NC6s_v3"</span>: { <span class="k">"available"</span>: <span class="b">false</span>, <span class="k">"note"</span>: <span class="s">"GPU SKU not in SEA; use NC12s_v3 or skip Milvus here"</span> }
+  }
+}</pre>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ regions: 5, primary: "us-east-1", standby: ["us-west-2","westeurope"], edge: ["eu-west-1","southeastasia"], gpu_warning: "SEA lacks NC6s_v3" }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <div class="txt">
+              <p>Topology decided. Five regions pinned:</p>
+            </div>
+
+            <div class="region-map">
+              <div class="r primary"><div class="code">us-east-1</div><div class="role">primary &middot; AWS</div><div class="stats"><span>6 AZ</span><span>7 svc</span></div><div class="bar"><span style="width: 100%;"></span></div></div>
+              <div class="r standby"><div class="code">us-west-2</div><div class="role">hot standby &middot; AWS</div><div class="stats"><span>4 AZ</span><span>7 svc</span></div><div class="bar"><span style="width: 92%;"></span></div></div>
+              <div class="r standby"><div class="code">westeurope</div><div class="role">hot standby &middot; Azure</div><div class="stats"><span>3 AZ</span><span>7 svc</span></div><div class="bar"><span style="width: 88%;"></span></div></div>
+              <div class="r edge"><div class="code">eu-west-1</div><div class="role">edge &middot; AWS</div><div class="stats"><span>3 AZ</span><span>3 svc</span></div><div class="bar"><span style="width: 45%;"></span></div></div>
+              <div class="r edge"><div class="code">southeastasia</div><div class="role">edge &middot; Azure</div><div class="stats"><span>3 AZ</span><span>3 svc</span></div><div class="bar"><span style="width: 42%;"></span></div></div>
+            </div>
+
+            <!-- PASS 2 -->
+            <div class="handoff">
+              <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              <span>Pass 2 &middot; <strong>network + data</strong> &rarr; <span class="mono" style="color: var(--agent-n);">network-latency</span> + <span class="mono" style="color: var(--agent-g);">data-replication</span> in parallel</span>
+            </div>
+
+            <article class="subagent agent-n">
+              <header class="sa-head">
+                <div class="avatar av-n sm">N</div>
+                <div>
+                  <div class="name">network-latency</div>
+                  <div class="role">sub-agent &middot; pairwise RTT + WAN p99</div>
+                </div>
+                <div class="stats"><span>4 turns</span><span>1,312 tok</span><span>3.9s</span><span>$0.028</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 1.2s</div>
+                  Using <code>cloudping</code> + <code>azure_network_watcher_latency</code>. 5 regions &rArr; C(5,2)=10 pairs. Running all 10 in parallel; each returns p50/p95/p99 over 24h. This is what tells us whether semi-sync replication is feasible for each stateful service.
+                </div>
+
+                <div class="tool" aria-expanded="true">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 0 20"/></svg></div>
+                    <span class="t-name">cloudping_matrix</span>
+                    <span class="t-status ok">&middot; 10/10 pairs</span>
+                    <span class="t-timer tabular">2.1s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                  <div class="t-body">
+                    <div class="t-section">
+                      <div class="t-label">Result &middot; latency matrix (p99 ms)</div>
+<pre class="json">{
+  <span class="k">"us-east-1 &rarr; us-west-2"</span>:      { <span class="k">"p50"</span>: <span class="n">61</span>,  <span class="k">"p99"</span>: <span class="n">78</span>  },
+  <span class="k">"us-east-1 &rarr; eu-west-1"</span>:     { <span class="k">"p50"</span>: <span class="n">72</span>,  <span class="k">"p99"</span>: <span class="n">92</span>  },
+  <span class="k">"us-east-1 &rarr; westeurope"</span>:    { <span class="k">"p50"</span>: <span class="n">79</span>,  <span class="k">"p99"</span>: <span class="n">103</span> },
+  <span class="k">"us-east-1 &rarr; southeastasia"</span>: { <span class="k">"p50"</span>: <span class="n">211</span>, <span class="k">"p99"</span>: <span class="n">248</span> },
+  <span class="k">"us-west-2 &rarr; westeurope"</span>:    { <span class="k">"p50"</span>: <span class="n">138</span>, <span class="k">"p99"</span>: <span class="n">171</span> },
+  <span class="k">"eu-west-1 &rarr; southeastasia"</span>: { <span class="k">"p50"</span>: <span class="n">184</span>, <span class="k">"p99"</span>: <span class="n">219</span> },
+  <span class="k">"westeurope &rarr; southeastasia"</span>:{ <span class="k">"p50"</span>: <span class="n">156</span>, <span class="k">"p99"</span>: <span class="n">189</span> }
+}</pre>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ p99_max_ms: 248, semi_sync_safe_pairs: 4, async_only_pairs: 6 }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <article class="subagent agent-g">
+              <header class="sa-head">
+                <div class="avatar av-g sm">G</div>
+                <div>
+                  <div class="name">data-replication</div>
+                  <div class="role">sub-agent &middot; RPO modelling per service</div>
+                </div>
+                <div class="stats"><span>7 turns</span><span>2,914 tok</span><span>7.8s</span><span>$0.067</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 2.8s</div>
+                  Seven services &mdash; I'll classify them by state class: Postgres (ACID), Redis (ephemeral), Kafka (durable log), MinIO (object), Milvus (vector), plus two stateless (FE, API). For each stateful one I'll compute achievable RPO given pass-2's p99 latencies.
+                </div>
+
+                <div class="tool" aria-expanded="false">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/></svg></div>
+                    <span class="t-name">postgres_replication_calc</span>
+                    <span class="t-status ok">&middot; semi-sync feasible</span>
+                    <span class="t-timer tabular">0.34s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                </div>
+                <div class="tool" aria-expanded="false">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg></div>
+                    <span class="t-name">kafka_mirror_maker_plan</span>
+                    <span class="t-status ok">&middot; 3 topics &middot; 30s lag</span>
+                    <span class="t-timer tabular">0.48s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                </div>
+
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ postgres_rpo: "2m", redis_rpo: "5m", kafka_rpo: "30s", minio_rpo: "4m", milvus_rpo: "8m", worst: "milvus" }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <!-- self-correction -->
+            <div class="correction-card">
+              <div class="ico">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
+              </div>
+              <div>
+                <div class="title">Self-correction &middot; Milvus RPO breaches budget</div>
+                <div class="sub">Milvus async replication gives 8min RPO but requirement is &le;5min. Re-planning: pin Milvus writes to primary only + cold-restore from snapshot on failover. Accepting higher Milvus RTO (12min) to hit RPO. Re-delegating to <span class="mono" style="color: var(--agent-g);">data-replication</span> for revised model.</div>
+              </div>
+            </div>
+
+            <article class="subagent agent-g">
+              <header class="sa-head">
+                <div class="avatar av-g sm">G</div>
+                <div>
+                  <div class="name">data-replication</div>
+                  <div class="role">sub-agent &middot; revised plan</div>
+                </div>
+                <span class="pass-chip pass-2">pass 2</span>
+                <div class="stats"><span>3 turns</span><span>914 tok</span><span>2.1s</span><span>$0.019</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 0.7s</div>
+                  Single-primary Milvus + 1-min WAL snapshot to S3 cross-region. RPO becomes snapshot interval (1m). Restore time 12min on warm pod. Meets RPO at cost of RTO.
+                </div>
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ milvus_rpo: "1m", milvus_rto: "12m", strategy: "snapshot_restore" }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <div class="streaming-table">
+              <div class="tt-hdr">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                Per-service RPO / RTO targets
+                <span class="tt-count">7 services &middot; all within budget</span>
+              </div>
+              <table>
+                <thead><tr><th>Service</th><th>State</th><th>Strategy</th><th style="text-align: right;">RPO</th><th style="text-align: right;">RTO</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td class="mono">frontend</td><td class="mono">stateless</td><td class="mono">GSLB + health</td><td class="tnum" style="text-align: right;">0s</td><td class="tnum" style="text-align: right;">90s</td><td><span class="sev sev-ok">pass</span></td></tr>
+                  <tr><td class="mono">api</td><td class="mono">stateless</td><td class="mono">GSLB + k8s</td><td class="tnum" style="text-align: right;">0s</td><td class="tnum" style="text-align: right;">2m</td><td><span class="sev sev-ok">pass</span></td></tr>
+                  <tr><td class="mono">postgres</td><td class="mono">ACID</td><td class="mono">semi-sync + patroni</td><td class="tnum" style="text-align: right;">2m</td><td class="tnum" style="text-align: right;">5m</td><td><span class="sev sev-ok">pass</span></td></tr>
+                  <tr><td class="mono">redis</td><td class="mono">ephemeral</td><td class="mono">AOF ship 60s</td><td class="tnum" style="text-align: right;">5m</td><td class="tnum" style="text-align: right;">3m</td><td><span class="sev sev-ok">pass</span></td></tr>
+                  <tr><td class="mono">kafka</td><td class="mono">log</td><td class="mono">MirrorMaker2</td><td class="tnum" style="text-align: right;">30s</td><td class="tnum" style="text-align: right;">4m</td><td><span class="sev sev-ok">pass</span></td></tr>
+                  <tr><td class="mono">minio</td><td class="mono">object</td><td class="mono">site-replication</td><td class="tnum" style="text-align: right;">4m</td><td class="tnum" style="text-align: right;">5m</td><td><span class="sev sev-ok">pass</span></td></tr>
+                  <tr><td class="mono">milvus</td><td class="mono">vector</td><td class="mono">snapshot-restore</td><td class="tnum" style="text-align: right;">1m</td><td class="tnum" style="text-align: right;">12m</td><td><span class="sev sev-warn">rto tight</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- PASS 3 -->
+            <div class="handoff">
+              <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              <span>Pass 3 &middot; <strong>cost model</strong> &rarr; <span class="mono" style="color: var(--agent-c);">cost-analysis</span></span>
+            </div>
+
+            <article class="subagent agent-c">
+              <header class="sa-head">
+                <div class="avatar av-c sm">C</div>
+                <div>
+                  <div class="name">cost-analysis</div>
+                  <div class="role">sub-agent &middot; steady + event cost</div>
+                </div>
+                <div class="stats"><span>6 turns</span><span>2,412 tok</span><span>5.4s</span><span>$0.054</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 1.5s</div>
+                  Steady state: 3 regions full + 2 regions edge (90% reduced capacity). Failover event: promote one standby to full &rArr; ~3h at full scale = incremental $. Egress matters most (cross-cloud data transfer dominates). I'll pull AWS Data Transfer + Azure Bandwidth pricing and sum.
+                </div>
+
+                <div class="tool" aria-expanded="false">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+                    <span class="t-name">aws_retail_prices</span>
+                    <span class="t-status ok">&middot; 42 SKUs priced</span>
+                    <span class="t-timer tabular">1.1s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                </div>
+                <div class="tool" aria-expanded="false">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/></svg></div>
+                    <span class="t-name">azure_retail_prices</span>
+                    <span class="t-status ok">&middot; 28 SKUs priced</span>
+                    <span class="t-timer tabular">0.94s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                </div>
+
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ steady_monthly: $68,420, per_event_surge: $3,280, egress_monthly: $12,140, 3yri_savings: $192k }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <div class="metrics-grid">
+              <div class="cell"><div class="k">Steady / mo</div><div class="v tnum">$68,420</div></div>
+              <div class="cell"><div class="k">Egress / mo</div><div class="v w tnum">$12,140</div></div>
+              <div class="cell"><div class="k">Event surge</div><div class="v tnum">$3,280</div></div>
+              <div class="cell"><div class="k">3Y with RI</div><div class="v g tnum">&minus;$192k</div></div>
+            </div>
+
+            <!-- PASS 4 -->
+            <div class="handoff">
+              <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              <span>Pass 4 &middot; <strong>validation + runbook</strong> &rarr; <span class="mono" style="color: var(--agent-s);">dr-drill-validator</span> + <span class="mono" style="color: var(--agent-p);">runbook-author</span></span>
+            </div>
+
+            <article class="subagent agent-s">
+              <header class="sa-head">
+                <div class="avatar av-s sm">V</div>
+                <div>
+                  <div class="name">dr-drill-validator</div>
+                  <div class="role">sub-agent &middot; simulated failover chaos</div>
+                </div>
+                <div class="stats"><span>4 turns</span><span>1,614 tok</span><span>4.8s</span><span>$0.036</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 1.4s</div>
+                  Simulating 3 scenarios with <code>litmus_chaos</code> and <code>gremlin_region_kill</code>: (1) primary us-east-1 down; (2) cross-AZ network partition; (3) split-brain during Azure &harr; AWS failover. Check whether each runbook step completes inside its duration budget.
+                </div>
+
+                <div class="tool" aria-expanded="true">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+                    <span class="t-name">litmus_chaos_simulate</span>
+                    <span class="t-status ok">&middot; 3/3 scenarios pass</span>
+                    <span class="t-timer tabular">3.2s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                  <div class="t-body">
+                    <div class="t-section">
+                      <div class="t-label">Validation log</div>
+<pre class="json">{
+  <span class="k">"scenario_1_region_loss"</span>: {
+    <span class="k">"promoted"</span>: <span class="s">"us-west-2"</span>,
+    <span class="k">"total_rto"</span>: <span class="s">"11m42s"</span>,
+    <span class="k">"data_loss_max"</span>: <span class="s">"118s"</span>,
+    <span class="k">"result"</span>: <span class="s">"PASS (budget 15m / 5m)"</span>
+  },
+  <span class="k">"scenario_2_az_partition"</span>: {
+    <span class="k">"split_brain_detected"</span>: <span class="b">true</span>,
+    <span class="k">"fencing_ok"</span>: <span class="b">true</span>,
+    <span class="k">"result"</span>: <span class="s">"PASS (patroni fenced in 4s)"</span>
+  },
+  <span class="k">"scenario_3_cross_cloud"</span>: {
+    <span class="k">"aws_to_azure_total_rto"</span>: <span class="s">"13m08s"</span>,
+    <span class="k">"kafka_mirror_lag_max"</span>: <span class="s">"41s"</span>,
+    <span class="k">"result"</span>: <span class="s">"PASS (budget tight, 4% headroom)"</span>
+  }
+}</pre>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ scenarios: 3, passed: 3, worst_rto: "13m08s", worst_rpo: "118s" }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <article class="subagent agent-p">
+              <header class="sa-head">
+                <div class="avatar av-p sm">R</div>
+                <div>
+                  <div class="name">runbook-author</div>
+                  <div class="role">sub-agent &middot; compose DR procedure</div>
+                </div>
+                <div class="stats"><span>8 turns</span><span>3,114 tok</span><span>8.2s</span><span>$0.078</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 2.1s</div>
+                  I'll write a 16-step runbook with explicit durations and ownership. Steps grouped: detect (auto), decide (human gate), execute (auto), verify (auto), comms (human). First five minutes are machine-only; the human is on the bridge by T+4min.
+                </div>
+
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ steps: 16, owners: 3, total_budget: "15m", comms_templates: 4 }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <!-- FINAL REPORT -->
+            <div class="txt">
+              <h3>Final strategy &middot; 5 regions &middot; 7 services &middot; hot-warm topology</h3>
+              <p>The design is a <strong>two-tier, two-cloud, active-active-standby</strong> topology. Three regions run the full stack at steady state (us-east-1 primary, us-west-2 and westeurope as hot standbys). Two regions (eu-west-1 and southeastasia) act as edge nodes carrying only stateless FE + API + read replicas &mdash; they never take writes. GSLB (Route 53 + Azure Front Door in active/passive at the DNS tier) routes clients by latency with a 60-second TTL, which is the floor for RTO on the stateless tier.<span class="citation">1</span></p>
+
+              <p>Stateful data is handled one class at a time. Postgres uses <strong>Patroni + etcd</strong> with synchronous replication inside the primary region (quorum of 3 across AZs) and <strong>semi-synchronous streaming</strong> to the two hot standbys. The semi-sync wait is 80ms-bounded &mdash; any replica that falls behind 80ms goes async and is excluded from the ACK quorum, so a replica outage never blocks writes. The 2-minute RPO comes from the WAL-shipping window to the two async regions not in quorum. Failover is automatic via Patroni's etcd-backed leader election, triggered when the primary pgBouncer health-check fails for &gt;30 seconds in succession.</p>
+
+              <p>Kafka uses <strong>MirrorMaker 2</strong> with active-active topology and a consistent offset-translation state-store. The three topics (<code>orders</code>, <code>events</code>, <code>audit</code>) mirror at 30-second lag p99. On failover the consumer group offset-translation picks up within 10s, which is well inside the 4-minute service RTO. The catch: both clusters independently assign offsets, so we run an offset-reconciliation cron against <code>audit</code> daily to catch drift before it becomes a consistency bug.<span class="citation">2</span></p>
+
+              <p>MinIO uses its <strong>site-replication</strong> primitive. Writes are asynchronous but the replication manager acks within 4 minutes p99 &mdash; the 4-minute RPO is the worst-case one-hop replication window plus backoff retries. Milvus is the outlier: cross-region async replication is unsupported by the GPU build we run, so the design is <strong>single-primary Milvus with 1-minute WAL snapshots shipped to S3</strong>. On failover, a warm Milvus pod in the target region restores from snapshot and a client rebuild of the last minute's vector writes comes from Kafka <code>events</code> replay. This gives a 1-minute RPO but pushes RTO to 12 minutes; we accepted the trade-off because vector search on stale data is worse than search being briefly unavailable.</p>
+
+              <h3>DR runbook &middot; 16 steps &middot; 15-minute budget</h3>
+            </div>
+
+            <div class="runbook">
+              <div class="rb-hdr">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span class="rb-title">us-east-1 region loss &rarr; us-west-2 promotion</span>
+                <span style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--fg-3);">budget 15m &middot; actual 11m42s</span>
+              </div>
+              <div class="rb-step"><div class="n">T+0</div><div class="t"><strong>Detect</strong>: Prometheus alert <code>region_health_us_east_1 == 0</code> fires on &gt;50% AZ packet loss for 60s; paged to on-call.<span class="owner">owner &middot; auto &middot; no human required</span></div><div class="dur">60s</div></div>
+              <div class="rb-step"><div class="n">T+1</div><div class="t"><strong>Confirm</strong>: automated health probe from 3 non-affected regions; if all 3 report primary unreachable, advance.<span class="owner">owner &middot; synth-executor &middot; auto</span></div><div class="dur">30s</div></div>
+              <div class="rb-step"><div class="n">T+1.5</div><div class="t"><strong>GSLB withdraw</strong>: Route 53 health-check forces us-east-1 out of the rotation; Azure Front Door mirrors.<span class="owner">owner &middot; auto</span></div><div class="dur">90s (TTL)</div></div>
+              <div class="rb-step"><div class="n">T+3</div><div class="t"><strong>Patroni promote</strong>: etcd quorum in us-west-2 elects the local replica; new leader fsync&apos;ed, pgBouncer reroutes.<span class="owner">owner &middot; patroni &middot; auto</span></div><div class="dur">45s</div></div>
+              <div class="rb-step"><div class="n">T+4</div><div class="t"><strong>Human gate</strong>: SRE on-call confirms promotion via Slack approval (<code>/dr-approve us-west-2</code>). Last chance to abort.<span class="owner">owner &middot; SRE on-call (human)</span></div><div class="dur">120s cap</div></div>
+              <div class="rb-step"><div class="n">T+6</div><div class="t"><strong>Kafka MirrorMaker flip</strong>: promote target cluster to producer-authoritative; consumer groups rebalance via offset-translation store.<span class="owner">owner &middot; auto (kafka-operator CRD)</span></div><div class="dur">90s</div></div>
+              <div class="rb-step"><div class="n">T+7.5</div><div class="t"><strong>MinIO re-point</strong>: update <code>MINIO_SITE_ROLE=authoritative</code> on target; block writes to source until resync.<span class="owner">owner &middot; auto</span></div><div class="dur">60s</div></div>
+              <div class="rb-step"><div class="n">T+8.5</div><div class="t"><strong>Milvus restore</strong>: warm pod in target reads latest WAL snapshot from S3; replay 1m of Kafka <code>events</code> backlog.<span class="owner">owner &middot; auto</span></div><div class="dur">180s</div></div>
+              <div class="rb-step"><div class="n">T+11.5</div><div class="t"><strong>Verify</strong>: synthetic probe from 3 regions hits <code>/healthz</code> on all 7 services; k6 soak at 10% traffic.<span class="owner">owner &middot; auto</span></div><div class="dur">60s</div></div>
+              <div class="rb-step"><div class="n">T+12.5</div><div class="t"><strong>Ramp traffic</strong>: DNS priority shifts 100% to us-west-2. Monitor p99 latency for regression.<span class="owner">owner &middot; auto</span></div><div class="dur">120s</div></div>
+              <div class="rb-step"><div class="n">T+14.5</div><div class="t"><strong>Comms</strong>: StatusPage update to &ldquo;Resolved &middot; failover completed&rdquo;; internal Slack #incident.<span class="owner">owner &middot; SRE (human)</span></div><div class="dur">60s</div></div>
+              <div class="rb-step"><div class="n">T+15</div><div class="t"><strong>Close</strong>: incident declared over; post-mortem scheduled within 72h per SRE policy.<span class="owner">owner &middot; incident-commander (human)</span></div><div class="dur">&mdash;</div></div>
+            </div>
+
+            <div class="txt">
+              <h3>Rollback gates &amp; abort criteria</h3>
+              <p>Every automated step has a <strong>sentinel metric</strong> and a <strong>rollback path</strong>. Two hard gates that must hold before advancing:</p>
+              <ul>
+                <li><strong>Gate A &middot; T+4</strong>: if Patroni promote fails in &lt;45s, the runbook aborts to &ldquo;manual recovery&rdquo;. The on-call gets a paged Slack thread with the failed promotion logs and three pre-approved rollback commands (reseat etcd quorum, force-switch to westeurope, declare partial outage).</li>
+                <li><strong>Gate B &middot; T+11.5</strong>: if synthetic probes show &lt;97% success on any of the 7 services, traffic ramp halts at 10%. Engineering gets paged; StatusPage shows &ldquo;Investigating&rdquo; rather than &ldquo;Resolved&rdquo;.</li>
+              </ul>
+
+              <h3>Cost model &middot; steady state + surge + egress</h3>
+              <p>Monthly steady-state cost is <strong>$68,420</strong>, dominated by compute in the three full regions ($51k) and stateful storage ($12k). Cross-region egress adds another <strong>$12,140/month</strong> &mdash; roughly $400/day of WAL shipping + Kafka mirror + MinIO site-replication traffic. A failover event incurs a one-time surge of <strong>$3,280</strong> (edge regions scale up to full capacity; lasts ~3h until traffic normalises). Over 3 years, committed-use pricing (AWS Savings Plans + Azure 3y Reserved Instances) pulls <strong>$192,000</strong> out of the steady-state line &mdash; that's the real TCO delta vs. single-region.</p>
+
+              <p>A note on egress: of the $12k, $7.3k is cross-cloud (AWS &harr; Azure). If we moved westeurope to AWS eu-west-2 we'd save $5.1k/month on egress alone but lose the cloud-diversity argument. The CFO is going to ask about this &mdash; I can draft a side-by-side if you want. For now the design assumes the diversity argument wins.</p>
+
+              <h3>Monitoring + chaos schedule</h3>
+              <p>We'll run the runbook against live staging <strong>quarterly</strong> via <code>litmus</code> game days. Two metrics are tracked per drill:</p>
+              <ul>
+                <li><strong>Measured RTO</strong> &mdash; time from chaos inject to all 7 services returning healthy. Must stay &lt;15min over a rolling 4-drill window; one breach triggers a runbook review.</li>
+                <li><strong>Measured RPO</strong> &mdash; max observed data lag at the moment of flip. Must stay &lt;5min; breach triggers replication-pipeline review.</li>
+              </ul>
+              <p>Alert pipeline: Prometheus &rarr; Alertmanager &rarr; PagerDuty (SRE on-call) + Slack (#incident). Four alert templates cover full-region loss, single-AZ loss, WAN partition, and single-service deep-failure. All templates have runbook links as the first line.</p>
+
+              <h3>Open risks</h3>
+              <ul>
+                <li><strong>Milvus RTO is tight</strong> &mdash; 12min of a 15min budget. If snapshot size grows past ~80GB, restore won't fit. We should schedule a snapshot-compaction job monthly and re-measure restore time at each growth milestone.</li>
+                <li><strong>Cross-cloud comms</strong> &mdash; the Azure Front Door health-check that triggers AWS Route 53 withdrawal is a single API path. If both cloud consoles have a simultaneous control-plane incident we're stuck. Mitigation: a 3rd-party synthetic monitor (Catchpoint) as an independent signal.</li>
+                <li><strong>Human gate at T+4</strong> &mdash; on-call needs to respond in &lt;120s or auto-abort fires. We should practice this quarterly; the last drill showed a 97s median but a 184s p95 (one on-call was in an elevator).</li>
+                <li><strong>GSLB TTL floor</strong> &mdash; 60s is the min we can push Route 53 for the cost tier we're on. Reducing to 30s on a different tier saves ~20s RTO but costs $180/mo more.</li>
+              </ul>
+
+              <h3>Sources</h3>
+              <p style="font-size: 12px; color: var(--fg-3); margin-top: 4px;">
+                [1] <a href="#">AWS Route 53 &middot; latency-based routing + health checks</a> &middot; docs.aws.amazon.com<br/>
+                [2] <a href="#">Apache Kafka &middot; MirrorMaker 2 offset translation</a> &middot; kafka.apache.org<br/>
+                [3] <a href="#">Patroni &middot; etcd-based leader election</a> &middot; patroni.readthedocs.io<br/>
+                [4] <a href="#">Azure Front Door &middot; multi-cloud failover patterns</a> &middot; learn.microsoft.com<br/>
+                [5] <a href="#">Litmus &middot; Kubernetes chaos engineering recipes</a> &middot; litmuschaos.io
+              </p>
+            </div>
+
+          </div>
+        </article>
+
+      </div>
+    </div>
+
+    <div class="composer">
+      <textarea rows="2" placeholder="Ask a follow-up: e.g. &ldquo;cost-compare moving westeurope to AWS eu-west-2&rdquo;&hellip;"></textarea>
+      <div class="row">
+        <button class="btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg> attach</button>
+        <button class="btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg> cloud-arch</button>
+        <button class="btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg> gpt-5.2</button>
+        <span class="spacer"></span>
+        <button class="send">send <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/></svg></button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+(function () {
+  // theme + accent switcher, coordinating with #185 via localStorage
+  var KEY = 'mockup-theme-prefs';
+  var prefs = {};
+  try { prefs = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  var html = document.documentElement;
+  if (prefs.theme) html.dataset.theme = prefs.theme;
+  if (prefs.accent) html.dataset.accent = prefs.accent;
+
+  var save = function () {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({
+        theme: html.dataset.theme || 'dark',
+        accent: html.dataset.accent || 'violet'
+      }));
+    } catch (e) {}
+  };
+
+  var themeBtn = document.getElementById('theme-btn');
+  var refresh = function () {
+    themeBtn.textContent = html.dataset.theme || 'dark';
+    document.querySelectorAll('.swatch').forEach(function (el) {
+      el.setAttribute('data-active', el.dataset.accent === (html.dataset.accent || 'violet') ? 'true' : 'false');
+    });
+  };
+  themeBtn.addEventListener('click', function () {
+    html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark';
+    refresh(); save();
+  });
+  document.querySelectorAll('.swatch').forEach(function (el) {
+    el.addEventListener('click', function () {
+      html.dataset.accent = el.dataset.accent;
+      refresh(); save();
+    });
+  });
+  window.addEventListener('storage', function (e) {
+    if (e.key !== KEY) return;
+    try {
+      var next = JSON.parse(e.newValue || '{}');
+      if (next.theme) html.dataset.theme = next.theme;
+      if (next.accent) html.dataset.accent = next.accent;
+      refresh();
+    } catch (err) {}
+  });
+  refresh();
+})();
+</script>
+</body>
+</html>

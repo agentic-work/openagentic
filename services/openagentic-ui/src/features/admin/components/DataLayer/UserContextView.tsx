@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Trash2, RefreshCw, Users, Brain, Code, GitBranch, MessageSquare } from '@/shared/icons';
 import { Database } from '../Shared/AdminIcons';
+import { PageHeader } from '../../primitives-v2';
 
 // =============================================================================
 // Types
@@ -254,22 +255,15 @@ export const UserContextView: React.FC<UserContextViewProps> = ({ theme }) => {
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--color-border, var(--color-border-default))' }}>
-        <div>
-          <h2 className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>User Context Memory</h2>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-            Cross-mode memory layer &middot; {formatNumber(overview?.totalEntries || 0)} entries &middot; {overview?.totalUsers || 0} users &middot; {formatBytes(overview?.storageBytes || 0)}
-          </p>
-        </div>
-        <button
-          onClick={fetchOverview}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-opacity hover:opacity-80"
-          style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border, var(--color-border-default))' }}
-        >
-          <RefreshCw size={14} /> Refresh
-        </button>
-      </div>
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Content', 'User Memory']}
+        title="User Memory"
+        explainer={`Cross-mode memory layer · ${formatNumber(overview?.totalEntries || 0)} entries · ${overview?.totalUsers || 0} users · ${formatBytes(overview?.storageBytes || 0)}`}
+        actions={[
+          { label: 'Refresh', onClick: fetchOverview },
+        ]}
+      />
 
       {error && (
         <div className="mx-4 mt-2 p-2 rounded-lg text-xs" style={{ backgroundColor: 'color-mix(in srgb, var(--color-error) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-error) 30%, transparent)', color: 'var(--color-error)' }}>
@@ -347,7 +341,7 @@ export const UserContextView: React.FC<UserContextViewProps> = ({ theme }) => {
             </div>
             <div className="mt-2 flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
               Auto-cleanup: {retention.autoCleanupEnabled ? (
-                <span style={{ color: 'var(--color-success, #00D26A)' }}>Enabled</span>
+                <span style={{ color: 'var(--color-success)' }}>Enabled</span>
               ) : (
                 <span style={{ color: 'var(--color-warning)' }}>Disabled</span>
               )}
@@ -490,7 +484,7 @@ export const UserContextView: React.FC<UserContextViewProps> = ({ theme }) => {
                 <button
                   onClick={() => fetchUserEntries(selectedUser.userId, userSearchQuery)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-0.5 text-xs rounded transition-opacity hover:opacity-80"
-                  style={{ backgroundColor: 'var(--color-accent, var(--color-accent-primary))', color: '#fff' }}
+                  style={{ backgroundColor: 'var(--color-accent, var(--color-accent-primary))', color: 'var(--ap-fg-0)' }}
                 >
                   Search
                 </button>

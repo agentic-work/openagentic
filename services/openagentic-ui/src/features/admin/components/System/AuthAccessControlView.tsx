@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../../../../app/providers/AuthContext';
 import { apiRequest } from '@/utils/api';
 import { useConfirm } from '@/shared/hooks/useConfirm';
+import { PageHeader } from '../../primitives-v2';
 import {
   AdminCard,
   StatCard,
@@ -351,23 +352,15 @@ export const AuthAccessControlView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-white">Auth Access Control</h1>
-          <p className="text-text-secondary mt-1">Manage who can log in via Google OAuth</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <AdminButton variant="secondary" onClick={handleSyncFromEnv}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Sync from ENV
-          </AdminButton>
-          <AdminButton variant="primary" onClick={fetchData}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
-          </AdminButton>
-        </div>
-      </div>
+      <PageHeader
+        crumbs={['Admin', 'Security', 'Auth Access']}
+        title="Auth Access Control"
+        explainer="Manage who can log in via Google OAuth — allowed users, allowed domains, and pending access requests."
+        actions={[
+          { label: 'Sync from ENV', onClick: () => { void handleSyncFromEnv(); } },
+          { label: 'Refresh', primary: true, onClick: () => { void fetchData(); } },
+        ]}
+      />
 
       {/* Error display */}
       {error && (

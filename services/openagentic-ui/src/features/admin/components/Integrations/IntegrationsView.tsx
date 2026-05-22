@@ -6,6 +6,11 @@
  * - Add/Edit integration dialog with platform-specific config
  * - Detail panel with masked secrets, logs table, enable/disable toggle
  * - Metric cards row: total, active, messages today, workflows triggered
+ * - Rich test connection diagnostics (workspace, user, botId, scopes for Slack;
+ *   tokenType/expiresIn for Teams)
+ * - Per-field error highlighting when format validation fails
+ * - "Send test message" button for Slack after a successful auth test
+ * - Last-test status stored in config.lastTest JSON (no migration needed)
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -19,6 +24,7 @@ import { AdminFilterBar } from '../Shared/AdminFilterBar';
 import { AdminStatusBadge } from '../Shared/AdminStatusBadge';
 import { InfoTooltip } from '../Shared/AdminTooltip';
 import { apiRequest } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -66,6 +72,30 @@ interface IntegrationsViewProps {
   theme: string;
 }
 
+// Test result with rich diagnostics
+interface TestResult {
+  ok: boolean;
+  message: string;
+  details?: {
+    // Slack
+    team?: string;
+    teamId?: string;
+    user?: string;
+    userId?: string;
+    botId?: string;
+    url?: string;
+    scopes?: string[];
+    // Teams
+    tokenType?: string;
+    expiresIn?: number;
+    appDisplayName?: string;
+    // Errors
+    error?: string;
+    field?: string;
+  };
+  testStatus?: 'active' | 'error' | 'untested';
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -86,9 +116,45 @@ function timeAgo(dateStr: string | null): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+function buildTestResultMessage(platform: string, data: any): TestResult {
+  if (!data.success) {
+    const error = data.details?.error ?? 'unknown_error';
+    const field = data.details?.field;
+    return {
+      ok: false,
+      message: error,
+      details: { error, field },
+      testStatus: 'error',
+    };
+  }
+
+  if (platform === 'slack') {
+    const d = data.details ?? {};
+    const scopes = d.scopes?.join(', ');
+    const msg = [
+      `Connected to workspace **${d.team}** as **@${d.user}** (bot id ${d.botId}).`,
+      scopes ? `Scopes: ${scopes}` : '',
+    ].filter(Boolean).join(' ');
+
+    return { ok: true, message: msg, details: d, testStatus: 'active' };
+  }
+
+  if (platform === 'teams') {
+    const d = data.details ?? {};
+    const msg = `Authenticated against Bot Framework. Token type: ${d.tokenType}, expires in ${d.expiresIn}s.`;
+    return { ok: true, message: msg, details: d, testStatus: 'active' };
+  }
+
+  return { ok: true, message: 'Connection successful', testStatus: 'active' };
+}
+
 // ---------------------------------------------------------------------------
 // Platform Icons
 // ---------------------------------------------------------------------------
+// Hex literals below are vendor BRAND IDENTITY colors (Slack #E01E5A/#36C5F0/
+// #2EB67D/#ECB22E, Teams #5059C9/#7B83EB/#4F52B2). Non-themeable by design —
+// see Shared/ProviderIcons.tsx for the same pattern.
+/* eslint-disable admin-tokens/no-hardcoded-admin-color */
 
 const SlackIcon: React.FC<{ size?: number }> = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -108,6 +174,8 @@ const TeamsIcon: React.FC<{ size?: number }> = ({ size = 20 }) => (
     <circle cx="8.625" cy="4.5" r="3" fill="#4F52B2"/>
   </svg>
 );
+
+/* eslint-enable admin-tokens/no-hardcoded-admin-color */
 
 // ---------------------------------------------------------------------------
 // Component
@@ -138,7 +206,13 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ theme }) => 
   const [formWorkflows, setFormWorkflows] = useState('');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
+
+  // Send test message state
+  const [showSendMessage, setShowSendMessage] = useState(false);
+  const [sendChannel, setSendChannel] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   // Clipboard
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -252,6 +326,9 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ theme }) => 
     setFormChannels('');
     setFormWorkflows('');
     setTestResult(null);
+    setShowSendMessage(false);
+    setSendResult(null);
+    setSendChannel('');
     setShowDialog(true);
   }, []);
 
@@ -259,37 +336,100 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ theme }) => 
     setEditingId(integration.id);
     setFormPlatform(integration.platform);
     setFormName(integration.name);
+    // The list endpoint omits `config` for security (don't leak secrets in
+    // list responses). Defensive default to {} so we don't crash; user must
+    // re-paste credentials to update them, or leave blank to keep existing
+    // (the save handler ignores empty config fields). A future improvement
+    // is to fetch /integrations/:id on edit and show "(unchanged)" placeholders.
     if (integration.platform === 'slack') {
-      const cfg = integration.config as SlackConfig;
+      const cfg = (integration.config || {}) as SlackConfig;
       setFormSlack({ botToken: cfg.botToken || '', signingSecret: cfg.signingSecret || '', appId: cfg.appId || '' });
     } else {
-      const cfg = integration.config as TeamsConfig;
+      const cfg = (integration.config || {}) as TeamsConfig;
       setFormTeams({ appId: cfg.appId || '', appPassword: cfg.appPassword || '', tenantId: cfg.tenantId || '' });
     }
     setFormChannels(integration.channels?.join(', ') || '');
     setFormWorkflows(integration.workflowIds?.join(', ') || '');
     setTestResult(null);
+    setShowSendMessage(false);
+    setSendResult(null);
+    setSendChannel('');
     setShowDialog(true);
   }, []);
 
+  // B1: Fix response parsing — check data.success, not res.ok alone
   const handleTestConnection = useCallback(async () => {
     setTesting(true);
     setTestResult(null);
+    setShowSendMessage(false);
+    setSendResult(null);
     try {
       const id = editingId;
       if (id) {
         const res = await apiRequest(`/admin/integrations/${id}/test`, { method: 'POST' });
         const data = await res.json();
-        setTestResult({ ok: res.ok, message: data.message || (res.ok ? 'Connection successful' : 'Connection failed') });
+
+        // B1: Defense-in-depth: check both res.ok AND data.success
+        const isSuccess = res.ok && data.success === true;
+        const result = buildTestResultMessage(formPlatform, data);
+        setTestResult(result);
+
+        // B4: Show send message only after Slack auth success
+        if (isSuccess && formPlatform === 'slack') {
+          setShowSendMessage(true);
+        }
+
+        // B5: Persist last test result into integration config (client-side only for now)
+        // The actual config.lastTest is stored server-side via PUT /integrations/:id
+        // We update local state optimistically
+        const lastTest = {
+          status: isSuccess ? 'active' : 'error',
+          error: isSuccess ? undefined : (data.details?.error || 'unknown'),
+          testedAt: new Date().toISOString(),
+        };
+        setIntegrations((prev) =>
+          prev.map((i) =>
+            i.id === id
+              ? {
+                  ...i,
+                  config: { ...i.config, lastTest } as any,
+                  status: isSuccess ? 'active' : i.status,
+                }
+              : i
+          )
+        );
       } else {
-        setTestResult({ ok: false, message: 'Save integration first, then test' });
+        setTestResult({ ok: false, message: 'Save integration first, then test', testStatus: 'untested' });
       }
     } catch (err: any) {
-      setTestResult({ ok: false, message: err.message });
+      setTestResult({ ok: false, message: err.message, testStatus: 'error' });
     } finally {
       setTesting(false);
     }
-  }, [editingId]);
+  }, [editingId, formPlatform]);
+
+  // A6: Send test message
+  const handleSendMessage = useCallback(async () => {
+    if (!editingId || !sendChannel) return;
+    setSending(true);
+    setSendResult(null);
+    try {
+      const res = await apiRequest(`/admin/integrations/${editingId}/test/send-message`, {
+        method: 'POST',
+        body: JSON.stringify({ channel: sendChannel }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSendResult({ ok: true, message: `Message sent! (ts: ${data.details?.ts})` });
+      } else {
+        setSendResult({ ok: false, message: data.details?.error || 'Send failed' });
+      }
+    } catch (err: any) {
+      setSendResult({ ok: false, message: err.message });
+    } finally {
+      setSending(false);
+    }
+  }, [editingId, sendChannel]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -339,6 +479,16 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ theme }) => 
 
   return (
     <div className="space-y-6">
+      <PageHeader
+        crumbs={['Admin', 'Integrations']}
+        title="Integrations"
+        explainer="Connect Slack, Teams, and other platforms — view delivery logs and trigger workflows from inbound messages."
+        actions={[
+          { label: 'Add Integration', primary: true, onClick: () => openAddDialog() },
+          { label: 'Refresh', onClick: () => refresh(), disabled: refreshing },
+        ]}
+      />
+
       {/* Metrics row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <AdminMetricCard label="Total Integrations" value={metrics.total} loading={loading} />
@@ -365,7 +515,7 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ theme }) => 
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
           style={{
             backgroundColor: 'var(--color-primary)',
-            color: '#fff',
+            color: 'var(--ap-fg-0)',
           }}
         >
           <Plus size={14} /> Add Integration
@@ -420,8 +570,15 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ theme }) => 
                   onEdit={openEditDialog}
                   onDelete={handleDelete}
                   onTest={(id) => {
-                    setEditingId(id);
-                    handleTestConnection();
+                    // Card-level Test opens the inspect/edit dialog so the
+                    // RichTestResult panel is visible. Without this, the test
+                    // ran silently and the user saw nothing.
+                    const integration = integrations.find((it) => it.id === id);
+                    if (integration) {
+                      openEditDialog(integration);
+                      // Trigger the test once the dialog has opened.
+                      setTimeout(() => handleTestConnection(), 0);
+                    }
                   }}
                 />
               ))}
@@ -454,6 +611,10 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ theme }) => 
           saving={saving}
           testing={testing}
           testResult={testResult}
+          showSendMessage={showSendMessage}
+          sendChannel={sendChannel}
+          sending={sending}
+          sendResult={sendResult}
           onPlatformChange={setFormPlatform}
           onNameChange={setFormName}
           onSlackChange={setFormSlack}
@@ -461,6 +622,8 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ theme }) => 
           onChannelsChange={setFormChannels}
           onWorkflowsChange={setFormWorkflows}
           onTest={handleTestConnection}
+          onSendChannelChange={setSendChannel}
+          onSendMessage={handleSendMessage}
           onSave={handleSave}
           onClose={() => setShowDialog(false)}
         />
@@ -485,6 +648,12 @@ const IntegrationCard: React.FC<{
 }> = ({ integration, isSelected, copiedId, onSelect, onCopy, onEdit, onDelete, onTest }) => {
   const { id, name, platform, status, webhookUrl, channelCount, workflowCount, lastActivity } = integration;
 
+  // B5: Derive display status from lastTest if present.
+  // Defensive: list endpoint omits `config` for security; treat as {}.
+  const config = (integration.config || {}) as any;
+  const lastTest = config?.lastTest;
+  const displayStatus = lastTest?.status === 'error' ? 'error' : status;
+
   return (
     <div
       className="rounded-lg p-4 cursor-pointer transition-all duration-150"
@@ -501,8 +670,12 @@ const IntegrationCard: React.FC<{
           <div
             className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
             style={{
+              // Slack #E01E5A and Teams #5059C9 — brand-tinted backgrounds.
+              // eslint-disable-next-line admin-tokens/no-hardcoded-admin-color
               backgroundColor: platform === 'slack'
+                // eslint-disable-next-line admin-tokens/no-hardcoded-admin-color
                 ? 'color-mix(in srgb, #E01E5A 15%, transparent)'
+                // eslint-disable-next-line admin-tokens/no-hardcoded-admin-color
                 : 'color-mix(in srgb, #5059C9 15%, transparent)',
             }}
           >
@@ -513,7 +686,7 @@ const IntegrationCard: React.FC<{
             <div className="text-xs capitalize" style={{ color: 'var(--text-tertiary)' }}>{platform}</div>
           </div>
         </div>
-        <AdminStatusBadge status={status} size="sm" />
+        <AdminStatusBadge status={displayStatus} size="sm" />
       </div>
 
       {/* Webhook URL */}
@@ -595,7 +768,9 @@ const DetailPanel: React.FC<{
   onToggle: () => void;
 }> = ({ integration, logs, logsLoading, onClose, onToggle }) => {
   const isActive = integration.status === 'active';
-  const config = integration.config;
+  // List endpoint omits `config` for security; default to {} so the inspector
+  // renders cleanly with masked placeholders instead of crashing.
+  const config = integration.config || {};
 
   const configRows: Array<{ label: string; value: string }> = integration.platform === 'slack'
     ? [
@@ -723,7 +898,11 @@ const IntegrationDialog: React.FC<{
   workflows: string;
   saving: boolean;
   testing: boolean;
-  testResult: { ok: boolean; message: string } | null;
+  testResult: TestResult | null;
+  showSendMessage: boolean;
+  sendChannel: string;
+  sending: boolean;
+  sendResult: { ok: boolean; message: string } | null;
   onPlatformChange: (p: 'slack' | 'teams') => void;
   onNameChange: (v: string) => void;
   onSlackChange: (c: SlackConfig) => void;
@@ -731,21 +910,28 @@ const IntegrationDialog: React.FC<{
   onChannelsChange: (v: string) => void;
   onWorkflowsChange: (v: string) => void;
   onTest: () => void;
+  onSendChannelChange: (v: string) => void;
+  onSendMessage: () => void;
   onSave: () => void;
   onClose: () => void;
 }> = ({
   editingId, platform, name, slackConfig, teamsConfig, channels, workflows,
-  saving, testing, testResult,
+  saving, testing, testResult, showSendMessage, sendChannel, sending, sendResult,
   onPlatformChange, onNameChange, onSlackChange, onTeamsChange,
-  onChannelsChange, onWorkflowsChange, onTest, onSave, onClose,
+  onChannelsChange, onWorkflowsChange, onTest, onSendChannelChange, onSendMessage,
+  onSave, onClose,
 }) => {
   const isEdit = !!editingId;
 
-  const inputStyle: React.CSSProperties = {
+  // B3: Track which field has an error
+  const errorField = testResult?.details?.field;
+
+  const inputStyle = (field?: string): React.CSSProperties => ({
     backgroundColor: 'var(--color-bg)',
-    border: '1px solid var(--color-border)',
+    border: `1px solid ${field && errorField === field ? 'var(--color-error)' : 'var(--color-border)'}`,
     color: 'var(--text-primary)',
-  };
+    outline: 'none',
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -774,7 +960,7 @@ const IntegrationDialog: React.FC<{
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors"
                   style={{
                     backgroundColor: platform === p ? 'var(--color-primary)' : 'var(--color-surface)',
-                    color: platform === p ? '#fff' : 'var(--text-secondary)',
+                    color: platform === p ? 'var(--ap-fg-0)' : 'var(--text-secondary)',
                   }}
                 >
                   {p === 'slack' ? <SlackIcon size={16} /> : <TeamsIcon size={16} />}
@@ -792,32 +978,52 @@ const IntegrationDialog: React.FC<{
               onChange={(e) => onNameChange(e.target.value)}
               placeholder={`My ${platform === 'slack' ? 'Slack' : 'Teams'} Integration`}
               className="w-full px-3 py-2 rounded-md text-sm outline-none"
-              style={inputStyle}
+              style={inputStyle()}
             />
           </Field>
 
           {/* Platform-specific config */}
           {platform === 'slack' ? (
             <>
+              {/* B3: Per-field error on botToken */}
               <Field label="Bot Token" tooltip="xoxb-... token from your Slack app">
-                <input
-                  type="password"
-                  value={slackConfig.botToken}
-                  onChange={(e) => onSlackChange({ ...slackConfig, botToken: e.target.value })}
-                  placeholder="xoxb-..."
-                  className="w-full px-3 py-2 rounded-md text-sm outline-none font-mono"
-                  style={inputStyle}
-                />
+                <div data-field-error={errorField === 'botToken' ? 'botToken' : undefined}>
+                  <input
+                    type="password"
+                    value={slackConfig.botToken}
+                    onChange={(e) => onSlackChange({ ...slackConfig, botToken: e.target.value })}
+                    placeholder="xoxb-..."
+                    className="w-full px-3 py-2 rounded-md text-sm outline-none font-mono"
+                    style={inputStyle('botToken')}
+                    data-error={errorField === 'botToken' ? 'true' : undefined}
+                    aria-invalid={errorField === 'botToken' ? 'true' : undefined}
+                  />
+                  {errorField === 'botToken' && testResult?.details?.error && (
+                    <p className="text-xs mt-1" style={{ color: 'var(--color-error)' }}>
+                      {testResult.details.error}
+                    </p>
+                  )}
+                </div>
               </Field>
+              {/* B3: Per-field error on signingSecret */}
               <Field label="Signing Secret" tooltip="Used to verify requests from Slack">
-                <input
-                  type="password"
-                  value={slackConfig.signingSecret}
-                  onChange={(e) => onSlackChange({ ...slackConfig, signingSecret: e.target.value })}
-                  placeholder="Signing secret"
-                  className="w-full px-3 py-2 rounded-md text-sm outline-none font-mono"
-                  style={inputStyle}
-                />
+                <div data-field-error={errorField === 'signingSecret' ? 'signingSecret' : undefined}>
+                  <input
+                    type="password"
+                    value={slackConfig.signingSecret}
+                    onChange={(e) => onSlackChange({ ...slackConfig, signingSecret: e.target.value })}
+                    placeholder="Signing secret"
+                    className="w-full px-3 py-2 rounded-md text-sm outline-none font-mono"
+                    style={inputStyle('signingSecret')}
+                    data-error={errorField === 'signingSecret' ? 'true' : undefined}
+                    aria-invalid={errorField === 'signingSecret' ? 'true' : undefined}
+                  />
+                  {errorField === 'signingSecret' && testResult?.details?.error && (
+                    <p className="text-xs mt-1" style={{ color: 'var(--color-error)' }}>
+                      {testResult.details.error}
+                    </p>
+                  )}
+                </div>
               </Field>
               <Field label="App ID">
                 <input
@@ -826,21 +1032,31 @@ const IntegrationDialog: React.FC<{
                   onChange={(e) => onSlackChange({ ...slackConfig, appId: e.target.value })}
                   placeholder="A0123456789"
                   className="w-full px-3 py-2 rounded-md text-sm outline-none font-mono"
-                  style={inputStyle}
+                  style={inputStyle()}
                 />
               </Field>
             </>
           ) : (
             <>
+              {/* B3: Per-field error on Teams appId */}
               <Field label="App ID" tooltip="Azure Bot registration App ID">
-                <input
-                  type="text"
-                  value={teamsConfig.appId}
-                  onChange={(e) => onTeamsChange({ ...teamsConfig, appId: e.target.value })}
-                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                  className="w-full px-3 py-2 rounded-md text-sm outline-none font-mono"
-                  style={inputStyle}
-                />
+                <div data-field-error={errorField === 'appId' ? 'appId' : undefined}>
+                  <input
+                    type="text"
+                    value={teamsConfig.appId}
+                    onChange={(e) => onTeamsChange({ ...teamsConfig, appId: e.target.value })}
+                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                    className="w-full px-3 py-2 rounded-md text-sm outline-none font-mono"
+                    style={inputStyle('appId')}
+                    data-error={errorField === 'appId' ? 'true' : undefined}
+                    aria-invalid={errorField === 'appId' ? 'true' : undefined}
+                  />
+                  {errorField === 'appId' && testResult?.details?.error && (
+                    <p className="text-xs mt-1" style={{ color: 'var(--color-error)' }}>
+                      {testResult.details.error}
+                    </p>
+                  )}
+                </div>
               </Field>
               <Field label="App Password" tooltip="Client secret from Azure Bot registration">
                 <input
@@ -849,7 +1065,9 @@ const IntegrationDialog: React.FC<{
                   onChange={(e) => onTeamsChange({ ...teamsConfig, appPassword: e.target.value })}
                   placeholder="App password"
                   className="w-full px-3 py-2 rounded-md text-sm outline-none font-mono"
-                  style={inputStyle}
+                  style={inputStyle('appPassword')}
+                  data-error={errorField === 'appPassword' ? 'true' : undefined}
+                  aria-invalid={errorField === 'appPassword' ? 'true' : undefined}
                 />
               </Field>
               <Field label="Tenant ID">
@@ -859,7 +1077,7 @@ const IntegrationDialog: React.FC<{
                   onChange={(e) => onTeamsChange({ ...teamsConfig, tenantId: e.target.value })}
                   placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                   className="w-full px-3 py-2 rounded-md text-sm outline-none font-mono"
-                  style={inputStyle}
+                  style={inputStyle()}
                 />
               </Field>
             </>
@@ -873,7 +1091,7 @@ const IntegrationDialog: React.FC<{
               onChange={(e) => onChannelsChange(e.target.value)}
               placeholder="#general, #support, #engineering"
               className="w-full px-3 py-2 rounded-md text-sm outline-none"
-              style={inputStyle}
+              style={inputStyle()}
             />
           </Field>
 
@@ -885,11 +1103,11 @@ const IntegrationDialog: React.FC<{
               onChange={(e) => onWorkflowsChange(e.target.value)}
               placeholder="workflow-id-1, workflow-id-2"
               className="w-full px-3 py-2 rounded-md text-sm outline-none"
-              style={inputStyle}
+              style={inputStyle()}
             />
           </Field>
 
-          {/* Test result */}
+          {/* B1+B2: Test result display with rich diagnostics */}
           {testResult && (
             <div
               className="px-3 py-2 rounded-md text-xs"
@@ -900,7 +1118,49 @@ const IntegrationDialog: React.FC<{
                 color: testResult.ok ? 'var(--color-success)' : 'var(--color-error)',
               }}
             >
-              {testResult.message}
+              {testResult.ok ? (
+                // B2: Rich success display
+                <RichTestResult platform={platform} details={testResult.details} />
+              ) : (
+                // B1: Show actual error, not generic message
+                <span>{testResult.message}</span>
+              )}
+            </div>
+          )}
+
+          {/* B4: Send test message — only shown after Slack auth success */}
+          {showSendMessage && platform === 'slack' && (
+            <div className="space-y-2 rounded-md p-3" style={{ border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
+              <div className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                Send test message
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={sendChannel}
+                  onChange={(e) => onSendChannelChange(e.target.value)}
+                  placeholder="Channel ID (e.g. C01ABCDEFG)"
+                  className="flex-1 px-2 py-1.5 rounded-md text-xs outline-none font-mono"
+                  style={inputStyle()}
+                />
+                <button
+                  onClick={onSendMessage}
+                  disabled={sending || !sendChannel}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors disabled:opacity-40"
+                  style={{ backgroundColor: 'var(--color-primary)', color: 'var(--ap-fg-0)' }}
+                >
+                  {sending ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
+                  Send test message
+                </button>
+              </div>
+              {sendResult && (
+                <div
+                  className="text-xs px-2 py-1 rounded"
+                  style={{ color: sendResult.ok ? 'var(--color-success)' : 'var(--color-error)' }}
+                >
+                  {sendResult.message}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -931,7 +1191,7 @@ const IntegrationDialog: React.FC<{
               onClick={onSave}
               disabled={saving || !name.trim()}
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium transition-colors disabled:opacity-40"
-              style={{ backgroundColor: 'var(--color-primary)', color: '#fff' }}
+              style={{ backgroundColor: 'var(--color-primary)', color: 'var(--ap-fg-0)' }}
             >
               {saving && <Loader2 size={13} className="animate-spin" />}
               {isEdit ? 'Update' : 'Create'}
@@ -941,6 +1201,41 @@ const IntegrationDialog: React.FC<{
       </div>
     </div>
   );
+};
+
+// ---------------------------------------------------------------------------
+// RichTestResult — B2: Display rich success diagnostics
+// ---------------------------------------------------------------------------
+
+const RichTestResult: React.FC<{
+  platform: 'slack' | 'teams';
+  details?: TestResult['details'];
+}> = ({ platform, details }) => {
+  if (!details) return <span>Connection successful</span>;
+
+  if (platform === 'slack') {
+    return (
+      <div className="space-y-1">
+        <div>
+          Connected to workspace <strong>{details.team}</strong> as{' '}
+          <strong>@{details.user}</strong> (bot id {details.botId}).
+        </div>
+        {details.scopes && details.scopes.length > 0 && (
+          <div>Scopes: {details.scopes.join(', ')}</div>
+        )}
+      </div>
+    );
+  }
+
+  if (platform === 'teams') {
+    return (
+      <div>
+        Authenticated against Bot Framework. Token type: {details.tokenType}, expires in {details.expiresIn}s.
+      </div>
+    );
+  }
+
+  return <span>Connection successful</span>;
 };
 
 // ---------------------------------------------------------------------------

@@ -107,7 +107,7 @@ export const imageRoutes = async (fastify: FastifyInstance) => {
    * Search for images by semantic similarity
    * Requires authentication
    */
-  fastify.get('/api/images/search', { preHandler: authMiddleware }, async (
+  fastify.get('/api/images/search', { onRequest: authMiddleware }, async (
     request: FastifyRequest<{ Querystring: { query: string; limit?: number } }>,
     reply: FastifyReply
   ) => {
@@ -156,7 +156,7 @@ export const imageRoutes = async (fastify: FastifyInstance) => {
    * Delete an image (user must own it or be admin)
    * Requires authentication
    */
-  fastify.delete('/api/images/:id', { preHandler: authMiddleware }, async (
+  fastify.delete('/api/images/:id', { onRequest: authMiddleware }, async (
     request: FastifyRequest<{ Params: { id: string } }>,
     reply: FastifyReply
   ) => {
@@ -231,7 +231,7 @@ export const imageRoutes = async (fastify: FastifyInstance) => {
    * Get statistics about stored images (admin only)
    * Requires authentication
    */
-  fastify.get('/api/images/admin/stats', { preHandler: authMiddleware }, async (
+  fastify.get('/api/images/admin/stats', { onRequest: authMiddleware }, async (
     request: FastifyRequest,
     reply: FastifyReply
   ) => {
@@ -273,7 +273,7 @@ export const imageRoutes = async (fastify: FastifyInstance) => {
    * Cleanup unused or old images (admin only)
    * Requires authentication
    */
-  fastify.post('/api/images/admin/cleanup', { preHandler: authMiddleware }, async (
+  fastify.post('/api/images/admin/cleanup', { onRequest: authMiddleware }, async (
     request: FastifyRequest<{ Body: { olderThanDays?: number; dryRun?: boolean } }>,
     reply: FastifyReply
   ) => {

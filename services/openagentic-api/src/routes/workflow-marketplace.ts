@@ -73,7 +73,7 @@ export const workflowMarketplaceRoutes: FastifyPluginAsync = async (fastify: Fas
   // GET /search
   fastify.get<{ Querystring: SearchQuery }>(
     '/search',
-    { preHandler: [authMiddleware] },
+    { onRequest: authMiddleware },
     async (request, reply) => {
       try {
         const { tags, ...rest } = request.query;
@@ -95,7 +95,7 @@ export const workflowMarketplaceRoutes: FastifyPluginAsync = async (fastify: Fas
   // GET /featured
   fastify.get<{ Querystring: FeaturedQuery }>(
     '/featured',
-    { preHandler: [authMiddleware] },
+    { onRequest: authMiddleware },
     async (request, reply) => {
       try {
         const limit = request.query.limit ? Number(request.query.limit) : undefined;
@@ -111,7 +111,7 @@ export const workflowMarketplaceRoutes: FastifyPluginAsync = async (fastify: Fas
   // GET /categories
   fastify.get(
     '/categories',
-    { preHandler: [authMiddleware] },
+    { onRequest: authMiddleware },
     async (_request, reply) => {
       try {
         const categories = await service.getCategories();
@@ -126,7 +126,7 @@ export const workflowMarketplaceRoutes: FastifyPluginAsync = async (fastify: Fas
   // GET /tags
   fastify.get<{ Querystring: TagsQuery }>(
     '/tags',
-    { preHandler: [authMiddleware] },
+    { onRequest: authMiddleware },
     async (request, reply) => {
       try {
         const limit = request.query.limit ? Number(request.query.limit) : undefined;
@@ -142,7 +142,7 @@ export const workflowMarketplaceRoutes: FastifyPluginAsync = async (fastify: Fas
   // GET /starred
   fastify.get(
     '/starred',
-    { preHandler: [authMiddleware] },
+    { onRequest: authMiddleware },
     async (request, reply) => {
       try {
         const userId = (request as any).user?.id;
@@ -161,7 +161,7 @@ export const workflowMarketplaceRoutes: FastifyPluginAsync = async (fastify: Fas
   // GET /author/:authorId
   fastify.get<{ Params: AuthorIdParams }>(
     '/author/:authorId',
-    { preHandler: [authMiddleware] },
+    { onRequest: authMiddleware },
     async (request, reply) => {
       try {
         const templates = await service.getTemplatesByAuthor(request.params.authorId);
@@ -176,7 +176,7 @@ export const workflowMarketplaceRoutes: FastifyPluginAsync = async (fastify: Fas
   // GET /templates/:id
   fastify.get<{ Params: TemplateIdParams }>(
     '/templates/:id',
-    { preHandler: [authMiddleware] },
+    { onRequest: authMiddleware },
     async (request, reply) => {
       try {
         const userId = (request as any).user?.id;
@@ -197,7 +197,7 @@ export const workflowMarketplaceRoutes: FastifyPluginAsync = async (fastify: Fas
   // POST /publish
   fastify.post<{ Body: PublishBody }>(
     '/publish',
-    { preHandler: [authMiddleware] },
+    { onRequest: authMiddleware },
     async (request, reply) => {
       try {
         const userId = (request as any).user?.id;
@@ -224,7 +224,7 @@ export const workflowMarketplaceRoutes: FastifyPluginAsync = async (fastify: Fas
   // POST /templates/:id/fork
   fastify.post<{ Params: TemplateIdParams; Body: ForkBody }>(
     '/templates/:id/fork',
-    { preHandler: [authMiddleware] },
+    { onRequest: authMiddleware },
     async (request, reply) => {
       try {
         const userId = (request as any).user?.id;
@@ -248,7 +248,7 @@ export const workflowMarketplaceRoutes: FastifyPluginAsync = async (fastify: Fas
   // POST /templates/:id/rate
   fastify.post<{ Params: TemplateIdParams; Body: RateBody }>(
     '/templates/:id/rate',
-    { preHandler: [authMiddleware] },
+    { onRequest: authMiddleware },
     async (request, reply) => {
       try {
         const userId = (request as any).user?.id;
@@ -272,7 +272,7 @@ export const workflowMarketplaceRoutes: FastifyPluginAsync = async (fastify: Fas
   // POST /templates/:id/star
   fastify.post<{ Params: TemplateIdParams }>(
     '/templates/:id/star',
-    { preHandler: [authMiddleware] },
+    { onRequest: authMiddleware },
     async (request, reply) => {
       try {
         const userId = (request as any).user?.id;
@@ -292,7 +292,7 @@ export const workflowMarketplaceRoutes: FastifyPluginAsync = async (fastify: Fas
   // DELETE /templates/:id
   fastify.delete<{ Params: TemplateIdParams }>(
     '/templates/:id',
-    { preHandler: [authMiddleware] },
+    { onRequest: authMiddleware },
     async (request, reply) => {
       try {
         const userId = (request as any).user?.id;

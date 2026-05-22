@@ -9,7 +9,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, ChevronRight } from '@/shared/icons';
 import { PaletteItem } from './palette/PaletteItem';
 import { nodeTypeConfigs } from '../utils/nodeConfigs';
-import { useBackendNodes } from '../hooks/useBackendNodes';
+// Audit AUDIT-2026-05-03 fix: useBackendNodes() called a `/nodes` endpoint
+// that does not exist on workflows-service (only `/node-schemas` does), so
+// the fetch silently failed and the palette fell back to the hand-maintained
+// legacy list — hiding 9 schema-only nodes (anomaly_detect, request_clarification,
+// etc.). useMergedNodeConfigs reads from /node-schemas via NodeSchemasProxy
+// and overlays schema-driven node types on top of legacy.
+import { useMergedNodeConfigs } from '../hooks/useMergedNodeConfigs';
 
 interface NodePaletteDrawerProps {
   isOpen: boolean;
@@ -36,8 +42,7 @@ export const NodePaletteDrawer: React.FC<NodePaletteDrawerProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
-  const { nodeConfigs: backendNodeConfigs } = useBackendNodes();
-  const activeNodeConfigs = Object.keys(backendNodeConfigs).length > 0 ? backendNodeConfigs : nodeTypeConfigs;
+  const { merged: activeNodeConfigs } = useMergedNodeConfigs(nodeTypeConfigs as any);
 
   const toggleCat = (cat: string) => {
     setCollapsedCats(prev => {

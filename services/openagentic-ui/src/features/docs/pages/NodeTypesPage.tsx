@@ -47,7 +47,7 @@ const nodeCategories: NodeCategory[] = [
     description: 'Nodes that interact with language models and AI agents.',
     nodes: [
       { name: 'llm_completion', description: 'Send a prompt to any configured LLM provider and receive a completion. Supports system prompts, temperature, max tokens, and JSON mode.', inputs: 'prompt, system_prompt, model, temperature', outputs: 'completion, tokens_used, finish_reason' },
-      { name: 'openagentic_llm', description: 'Use the OpenAgentic platform LLM with SmartRouter model selection and intelligence slider integration.', inputs: 'prompt, intelligence_level', outputs: 'completion, model_used' },
+      { name: 'openagentic_llm', description: 'Use the OpenAgentic platform LLM with SmartModelRouter capability scoring and per-user × per-model budget caps.', inputs: 'prompt, model_override', outputs: 'completion, model_used' },
       { name: 'synth', description: 'Synthesize tool for generating structured outputs from multiple inputs.', inputs: 'inputs[], synthesis_config', outputs: 'synthesized_result' },
       { name: 'openagentic', description: 'Execute code tasks using the OpenAgentic sandboxed code execution environment.', inputs: 'task, language, context', outputs: 'result, files[]' },
     ],

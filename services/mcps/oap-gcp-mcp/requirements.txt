@@ -1,6 +1,9 @@
 # OpenAgentic GCP MCP - Requirements
-# FastMCP framework for MCP server
-fastmcp>=2.0.0
+# Phase 1.6 standardization — pin current stable. server.py uses
+# `from mcp.server.fastmcp import FastMCP` (bundled) so both libs are
+# pinned together at versions that emit annotations + _meta on the wire.
+mcp>=1.27.0,<2.0.0
+fastmcp>=3.2.0,<4.0.0
 
 # Google Cloud Authentication
 google-auth>=2.25.0

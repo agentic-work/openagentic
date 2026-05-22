@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Codemode TUI-parity mock 3 — Research, fix, deploy</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<div class="codemode-shell">
+
+  <div class="cm-banner"><div class="cm-banner-pixel">[ A G E N T I C W O R K ]</div></div>
+
+  <div class="cm-rule">
+    <span class="pill ready">● READY</span>
+    <span class="sep">·</span>
+    <span>61,202 tok</span>
+    <span class="sep">·</span>
+    <span>$0.842</span>
+    <span class="sep">·</span>
+    <span>1h 14m elapsed</span>
+    <span class="sep">·</span>
+    <span class="cm-accent">claude-sonnet-4-6</span>
+    <span class="sep">·</span>
+    <span>workspace: <span class="cm-accent">openagentic</span></span>
+  </div>
+
+  <div class="cm-hint-footer">
+    <kbd>/?</kbd> help &nbsp;·&nbsp; <kbd>ctrl+c</kbd> cancel &nbsp;·&nbsp; <kbd>ctrl+o</kbd> expand thinking &nbsp;·&nbsp; <kbd>/exit</kbd> quit
+  </div>
+
+  <main class="cm-transcript">
+
+    <!-- ───────────────────── TURN 1 — RESEARCH ───────────────────── -->
+    <div class="cm-user">
+      <div class="bubble">we're seeing intermittent "Stream completed" with outputTokens=0 in openagentic-api logs for codemode/v1/messages on Ollama gpt-oss:20b. The model returns text fine via direct curl. find the root cause across the codebase, propose a fix, write it TDD-style, deploy it, verify with playwright. take your time, dispatch sub-agents as needed. cite sources.</div>
+    </div>
+
+    <div class="cm-assistant">
+      <div class="cm-thinking">
+        <div class="head">
+          <span class="glyph">∴</span><span>Thinking</span><span class="timer">14s</span><span class="ctrl-o-hint">(ctrl+o to expand)</span>
+        </div>
+        <div class="body">
+          User reports a <span class="cm-rkw1">silent-zero-tokens</span> regression on codemode <span class="cm-rkw3">/v1/messages</span> when the active model is gpt-oss:20b — direct Ollama works, our adapter doesn't. Two channels in Ollama's <code>/api/chat</code> NDJSON: <code>message.content</code> (final answer) and <code>message.thinking</code> (reasoning). In <span class="cm-rkw5">gpt-oss</span> with <code>think:true</code>, the model often emits the final answer in <code>thinking</code> only (<a class="cm-rkw7">Harmony channel</a>), so a renderer that only counts <code>text_delta</code> sees zero. Plan: (1) read the OllamaProvider stream loop, (2) read the route's text-delta accounting, (3) confirm gpt-oss emission shape via a fixture, (4) write a red test, (5) fix at the right layer, (6) deploy + Playwright-verify.
+        </div>
+      </div>
+
+      <div class="text-block first">
+        <p>I'll fan out reads across the suspected files <strong>and</strong> a web fetch for the Ollama API contract — then synthesize.</p>
+      </div>
+
+      <!-- Parallel — 4 tools, mixed types -->
+      <div class="cm-parallel">
+        <div class="header">↯ <span class="count">4</span> tools in parallel</div>
+
+        <div class="cm-tool branch">
+          <div class="head"><span class="glyph">⎿</span><span class="name">Read</span><span class="arg">services/openagentic-api/src/services/llm-providers/OllamaProvider.ts:600-750</span><span class="check">✓</span><span class="elapsed">0.1s</span></div>
+          <div class="cm-read">
+            <div class="hdr">services/openagentic-api/src/services/llm-providers/OllamaProvider.ts</div>
+            <div class="row"><div class="ln">605</div><div class="content">async *streamCompletion(...) {</div></div>
+            <div class="row"><div class="ln">606</div><div class="content">  let accumulatedThinking = '';</div></div>
+            <div class="row"><div class="ln">607</div><div class="content">  let accumulatedContent = '';</div></div>
+            <div class="row"><div class="ln">608</div><div class="content">  for await (const chunk of ndjson) {</div></div>
+            <div class="row"><div class="ln">615</div><div class="content">    const thinkingText = chunk.message?.thinking;</div></div>
+            <div class="row"><div class="ln">616</div><div class="content">    const contentText = chunk.message?.content;</div></div>
+            <div class="row"><div class="ln">619</div><div class="content">    if (thinkingText) {</div></div>
+            <div class="row"><div class="ln">620</div><div class="content">      accumulatedThinking += thinkingText;</div></div>
+            <div class="row"><div class="ln">621</div><div class="content">      yield { type: 'content_block_delta',</div></div>
+            <div class="row"><div class="ln">622</div><div class="content">        delta: { type: 'thinking_delta', thinking: thinkingText } };</div></div>
+            <div class="row"><div class="ln">623</div><div class="content">    }</div></div>
+            <div class="row"><div class="ln">692</div><div class="content">    if (contentText) {</div></div>
+            <div class="row"><div class="ln">696</div><div class="content">      const isDuplicate = thinkingText &amp;&amp; contentText === thinkingText;</div></div>
+            <div class="row"><div class="ln">697</div><div class="content">      if (isDuplicate) { /* dropped */ continue; }</div></div>
+            <div class="row"><div class="ln">700</div><div class="content">      accumulatedContent += contentText;</div></div>
+            <div class="row"><div class="ln">701</div><div class="content">      yield { type: 'content_block_delta',</div></div>
+            <div class="row"><div class="ln">702</div><div class="content">        delta: { type: 'text_delta', text: contentText } };</div></div>
+            <div class="row"><div class="ln">703</div><div class="content">    }</div></div>
+            <div class="row"><div class="ln">730</div><div class="content">    if (chunk.done) break;</div></div>
+            <div class="row"><div class="ln">733</div><div class="content">  }</div></div>
+            <div class="truncate">… 17 more lines · click to expand</div>
+          </div>
+        </div>
+
+        <div class="cm-tool branch">
+          <div class="head"><span class="glyph">⎿</span><span class="name">Read</span><span class="arg">services/openagentic-api/src/routes/openagentic.ts:2480-2510</span><span class="check">✓</span><span class="elapsed">0.1s</span></div>
+          <div class="cm-read">
+            <div class="hdr">services/openagentic-api/src/routes/openagentic.ts (route /v1/messages stream loop)</div>
+            <div class="row"><div class="ln">2484</div><div class="content">for await (const chunk of provider.streamCompletion(...)) {</div></div>
+            <div class="row"><div class="ln">2491</div><div class="content">  if (chunk.type === 'content_block_delta') {</div></div>
+            <div class="row"><div class="ln">2493</div><div class="content">    if (chunk.delta?.text) v1AccumulatedChars += chunk.delta.text.length;</div></div>
+            <div class="row"><div class="ln">2496</div><div class="content">    writeEvent(chunk);</div></div>
+            <div class="row"><div class="ln">2498</div><div class="content">  }</div></div>
+            <div class="row"><div class="ln">2500</div><div class="content">}</div></div>
+            <div class="row"><div class="ln">2503</div><div class="content">log.info({ inputTokens, outputTokens: v1AccumulatedChars, model }, 'Stream completed');</div></div>
+          </div>
+        </div>
+
+        <div class="cm-tool branch">
+          <div class="head"><span class="glyph">⎿</span><span class="name">Grep</span><span class="arg">isDuplicate.*thinkingText</span><span class="check">✓</span><span class="elapsed">0.3s</span></div>
+          <div class="cm-grep">
+            <div class="summary">2 matches in 1 file</div>
+            <div class="match"><span class="path">services/openagentic-api/src/services/llm-providers/OllamaProvider.ts</span><span class="lineno">:696</span><span class="text">const <em class="hit">isDuplicate</em> = <em class="hit">thinkingText</em> &amp;&amp; contentText === <em class="hit">thinkingText</em>;</span></div>
+            <div class="match"><span class="path">services/openagentic-api/src/services/llm-providers/__tests__/OllamaProvider.test.ts</span><span class="lineno">:142</span><span class="text">// dedup case for gpt-oss when channels mirror — see <em class="hit">isDuplicate</em></span></div>
+          </div>
+        </div>
+
+        <div class="cm-tool branch">
+          <div class="head"><span class="glyph">⎿</span><span class="name">WebFetch</span><span class="arg">https://github.com/ollama/ollama/blob/main/docs/api.md#generate-a-chat-completion</span><span class="check">✓</span><span class="elapsed">2.1s</span></div>
+          <div class="cm-tool-body">
+<span class="corner">⎿</span><strong>Ollama API — /api/chat</strong>
+With <code>think: true</code>, reasoning models emit chunks shaped:
+<pre style="margin: 6px 0; color: var(--cm-text);">{ "model": "gpt-oss:20b",
+  "message": { "role": "assistant", "thinking": "...", "content": "" },
+  "done": false }</pre>
+On the final chunk the <code>message.content</code> field carries the answer when the model uses the
+content channel, OR remains empty if the model used the thinking-only channel (Harmony reasoning-only).
+<br><br>For models that route the final output through the thinking channel (gpt-oss:20b often does this
+for short answers), <strong>callers must accept <code>message.thinking</code> as the actual response
+text</strong> when <code>message.content</code> is never populated.
+          </div>
+        </div>
+      </div>
+
+      <div class="text-block first">
+        <p>Sources confirm the diagnosis. Two compounding bugs in our adapter:</p>
+        <ol>
+          <li><strong>OllamaProvider.ts:696</strong> — when <code>thinkingText</code> equals <code>contentText</code> we silently drop the text_delta. That dedup made sense when both channels were emitted; it's a leak when gpt-oss only emits via thinking AND happens to mirror.</li>
+          <li><strong>OllamaProvider.ts:733 (terminal chunk)</strong> — when <code>accumulatedContent === ''</code> AND <code>accumulatedThinking</code> is non-empty, we yield zero <code>text_delta</code>s. The Anthropic Messages contract requires at least one text_delta for the assistant turn to be non-empty (<a>docs.claude.com/streaming#event-types</a>).</li>
+        </ol>
+        <p>Right layer to fix: OllamaProvider (the producer), not the route counter (the consumer). I'll dispatch a sub-agent to capture a real gpt-oss NDJSON fixture, then write the red test, then fix.</p>
+      </div>
+
+      <!-- Sub-agent dispatched -->
+      <div class="cm-tool">
+        <div class="head"><span class="glyph">●</span><span class="name">Task</span><span class="arg">fixture-collector: capture gpt-oss "What is 2+2?" stream live</span><span class="check">✓</span><span class="elapsed">42.1s</span><span class="toggle">[hide]</span></div>
+        <div class="cm-subagent">
+          <div class="hdr"><span>◆</span><span class="name">fixture-collector</span><span class="status">— 5 turns, 3 tools, completed</span></div>
+          <div class="body">
+            <div class="turn"><span class="cm-stage plan">PLAN</span>kubectl port-forward to ollama, curl <code>/api/chat</code> with <code>think:true</code>, stream-save to fixture.</div>
+            <div class="turn"><span class="cm-stage act">ACT</span>↯ port-forward + curl + tee → <code>test-fixtures/ollama-gptoss-2plus2.ndjson</code></div>
+            <div class="turn"><span class="cm-stage observe">OBSERVE</span>31 chunks. Chunks 1-29: <code>{"thinking":"&lt;reasoning fragment&gt;","content":""}</code>. Chunk 30: <code>{"thinking":"","content":"4"}</code>. Chunk 31: <code>{"done":true}</code>. So <strong>content channel DOES fire</strong> — but only on the last useful chunk, with content="4" and thinking="".</div>
+            <div class="turn"><span class="cm-stage reflect">REFLECT</span>This means the route SHOULD see one text_delta with "4". But the user sees outputTokens=0. So the bug isn't the produce-side missing the chunk — it's somewhere between produce and writeEvent. Re-read openagentic.ts:2480-2500 with fresh eyes — the <code>writeEvent(chunk)</code> happens on line 2496 which is INSIDE the <code>chunk.delta?.text</code> increment branch — wait, it's not, it's at the same indent. Re-checking… the increment is INSIDE the delta-text guard but writeEvent is AFTER, OK. So writeEvent happens for thinking_delta too. But the daemon-side mid-stream count counts text_delta only. That's the bug — the COUNTER, not the writer.</div>
+            <div class="turn"><span class="cm-stage verify">VERIFY</span>Confirmed by re-reading line numbers. Counter at :2493 only increments for text_delta. Daemon decides "stream had no answer" if counter is 0 at end. But because chunk 30 IS a text_delta with "4", we DO get +1. So why is the user seeing 0? — Re-checking the user's exact log line: <code>outputTokens=9</code>, not 0. The user said "0" but the live log says 9. Misread? Recommend the user re-confirm the symptom.</div>
+          </div>
+          <div class="footer">
+            <span>◆ completed</span><span>·</span><span>5 turns</span><span>·</span><span>$0.0204</span><span>·</span><span>42.1s</span><span>·</span><span>by claude-haiku-4-5</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-block first">
+        <p>Sub-agent surfaced an important wrinkle: the original symptom report says <code>outputTokens=0</code> but live logs show <code>outputTokens=9</code>. So either (a) the user's symptom is stale, or (b) there's a second mode where we hit 0. Let me check the route's actual error-path stream handling — maybe certain prompts hit a path that bypasses the counter entirely.</p>
+      </div>
+    </div>
+
+    <!-- Compacted boundary mid-session (gap 6) — long research, summarized -->
+    <div class="cm-boundary compact">
+      <span class="glyph">∿</span>
+      <span class="label">Compacted to token limit</span>
+      <span>summarized 14 turns of research · saved 22,118 tokens · context now 38,840 / 200,000 (19%)</span>
+    </div>
+
+    <!-- ───────────────────── TURN 2 — INVESTIGATE COUNTER ───────────────────── -->
+    <div class="cm-assistant">
+      <div class="text-block first">
+        <p>Continuing — let me investigate the <em>thinking-only</em> path. If gpt-oss ever emits a turn where every chunk has thinking but content stays empty until <code>done:true</code>, the counter never increments and <code>outputTokens=0</code> ships. Per the Ollama docs source above, this IS a documented mode for short reasoning answers.</p>
+      </div>
+
+      <div class="cm-parallel">
+        <div class="header">↯ <span class="count">2</span> tools in parallel</div>
+        <div class="cm-tool branch">
+          <div class="head"><span class="glyph">⎿</span><span class="name">Bash</span><span class="arg">curl -sN $OLLAMA_URL/api/chat -d '{"model":"gpt-oss:20b","messages":[{"role":"user","content":"in one word: name the capital of France"}],"stream":true,"think":true}' | head -20</span><span class="check">✓</span><span class="elapsed">8.4s</span></div>
+          <div class="cm-tool-body bash"><span class="corner">⎿</span>{"model":"gpt-oss:20b","message":{"role":"assistant","thinking":"User asks for","content":""},"done":false}
+{"model":"gpt-oss:20b","message":{"role":"assistant","thinking":" the capital","content":""},"done":false}
+{"model":"gpt-oss:20b","message":{"role":"assistant","thinking":" of France.","content":""},"done":false}
+{"model":"gpt-oss:20b","message":{"role":"assistant","thinking":" That is Paris.","content":""},"done":false}
+{"model":"gpt-oss:20b","message":{"role":"assistant","thinking":"","content":""},"done":true}
+<span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">8.42s</span></div>
+        </div>
+        <div class="cm-tool branch">
+          <div class="head"><span class="glyph">⎿</span><span class="name">Bash</span><span class="arg">curl -sN $OLLAMA_URL/api/chat -d '{"model":"gpt-oss:20b","messages":[{"role":"user","content":"What is 2+2?"}],"stream":true,"think":true}' | tail -3</span><span class="check">✓</span><span class="elapsed">2.6s</span></div>
+          <div class="cm-tool-body bash"><span class="corner">⎿</span>{"message":{"thinking":"","content":"4"},"done":false}
+{"message":{"thinking":"","content":""},"done":true}
+<span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">2.63s</span></div>
+        </div>
+      </div>
+
+      <div class="text-block first">
+        <p><strong>Confirmed.</strong> Two distinct modes:</p>
+        <ul>
+          <li><span class="cm-stage observe">OBSERVE</span><strong>"What is 2+2?"</strong> — model uses content channel for "4" → adapter yields one text_delta → counter=+1 → outputTokens=1+ ✓</li>
+          <li><span class="cm-stage observe">OBSERVE</span><strong>"capital of France"</strong> — model emits the answer ENTIRELY through thinking channel (<code>"thinking":" That is Paris."</code>) → adapter yields ONLY thinking_deltas → counter never increments → outputTokens=0 → <span class="cm-error-color">daemon thinks the turn empty + drops it</span></li>
+        </ul>
+        <p>Fix: in OllamaProvider's terminal-chunk handling, if <code>accumulatedContent === ''</code> AND <code>accumulatedThinking</code> is non-empty, synthesize a final <code>text_delta</code> from the tail of <code>accumulatedThinking</code> (or the whole thing) so the Anthropic Messages contract is satisfied. Citations:</p>
+        <ul>
+          <li><a>docs.claude.com/en/docs/build-with-claude/streaming#event-types</a> — every assistant turn must contain at least one content_block_delta with text_delta to be non-empty</li>
+          <li>Ollama source <a>llm/server.go</a> — <code>think:true</code> can route final answer through thinking-only channel for short responses</li>
+        </ul>
+      </div>
+
+      <!-- Red test first (TDD) -->
+      <div class="text-block first">
+        <p>TDD: red test first.</p>
+      </div>
+
+      <div class="cm-tool">
+        <div class="head"><span class="glyph">●</span><span class="name">Write</span><span class="arg">services/openagentic-api/src/services/llm-providers/__tests__/OllamaProvider.thinking-only-fallback.test.ts</span><span class="check">✓</span></div>
+        <div class="cm-diff">
+          <div class="filehdr"><span>📁</span><span class="path">services/openagentic-api/src/services/llm-providers/__tests__/OllamaProvider.thinking-only-fallback.test.ts</span><span class="stat">+34 (new)</span></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">1</div><div class="content">import { describe, it, expect } from 'vitest';</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">2</div><div class="content">import { OllamaProvider } from '../OllamaProvider.js';</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">3</div><div class="content">import { ndjsonFromFixture } from './_helpers.js';</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">4</div><div class="content"></div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">5</div><div class="content">describe('OllamaProvider — thinking-only Harmony fallback', () =&gt; {</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">6</div><div class="content">  it('yields a final text_delta synthesized from thinking when content stays empty', async () =&gt; {</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">7</div><div class="content">    // fixture: 5 chunks, all "thinking" populated, "content" empty, then done</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">8</div><div class="content">    const stream = ndjsonFromFixture('gptoss-thinking-only-paris');</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">9</div><div class="content">    const provider = new OllamaProvider({ model: 'gpt-oss:20b' });</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">10</div><div class="content">    const events = [];</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">11</div><div class="content">    for await (const e of provider.parseStream(stream)) events.push(e);</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">12</div><div class="content"></div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">13</div><div class="content">    const textDeltas = events.filter(e =&gt; e?.delta?.type === 'text_delta');</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">14</div><div class="content">    expect(textDeltas.length).toBeGreaterThan(0);</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">15</div><div class="content">    const fullText = textDeltas.map(e =&gt; e.delta.text).join('');</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">16</div><div class="content">    expect(fullText).toContain('Paris');</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">17</div><div class="content">  });</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">18</div><div class="content"></div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">19</div><div class="content">  it('does NOT synthesize when content channel already produced text', async () =&gt; {</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">20</div><div class="content">    const stream = ndjsonFromFixture('gptoss-2plus2');</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">21</div><div class="content">    const provider = new OllamaProvider({ model: 'gpt-oss:20b' });</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">22</div><div class="content">    const events = [];</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">23</div><div class="content">    for await (const e of provider.parseStream(stream)) events.push(e);</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">24</div><div class="content">    const textDeltas = events.filter(e =&gt; e?.delta?.type === 'text_delta');</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">25</div><div class="content">    expect(textDeltas.map(e =&gt; e.delta.text).join('')).toBe('4');</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">26</div><div class="content">    expect(textDeltas).toHaveLength(1);  // not duplicated</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">27</div><div class="content">  });</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">28</div><div class="content">});</div></div>
+        </div>
+      </div>
+
+      <!-- Run red — confirm it FAILS -->
+      <div class="cm-tool">
+        <div class="head"><span class="glyph">●</span><span class="name">Bash</span><span class="arg">cd services/openagentic-api &amp;&amp; bun test src/services/llm-providers/__tests__/OllamaProvider.thinking-only-fallback.test.ts</span><span class="x">✕</span><span class="elapsed">1.4s</span></div>
+        <div class="cm-tool-body bash"><span class="corner">⎿</span>bun test v1.0.36
+
+src/services/llm-providers/__tests__/OllamaProvider.thinking-only-fallback.test.ts:
+  ✕ OllamaProvider — thinking-only Harmony fallback
+    ✕ yields a final text_delta synthesized from thinking when content stays empty
+      AssertionError: expected 0 to be greater than 0
+      ❯ OllamaProvider.thinking-only-fallback.test.ts:14:35
+    ✓ does NOT synthesize when content channel already produced text
+
+ 1 pass
+ 1 fail
+<span class="cm-exit fail">✕ Exit 1</span><span class="cm-duration">1.41s</span></div>
+      </div>
+
+      <div class="text-block first">
+        <p><strong>Red.</strong> Now the green fix — both-side edit on OllamaProvider.ts:</p>
+      </div>
+
+      <!-- The both-side edit (gap 1 + 16) — the headline diff for this mock -->
+      <div class="cm-tool">
+        <div class="head"><span class="glyph">●</span><span class="name">Edit</span><span class="arg">services/openagentic-api/src/services/llm-providers/OllamaProvider.ts</span><span class="check">✓</span></div>
+        <div class="cm-diff">
+          <div class="filehdr"><span>📁</span><span class="path">services/openagentic-api/src/services/llm-providers/OllamaProvider.ts</span><span class="stat">−5 +14</span></div>
+          <div class="row ctx"><div class="marker"> </div><div class="ln">692</div><div class="content">    if (contentText) {</div></div>
+          <div class="row rem"><div class="marker">−</div><div class="ln">696</div><div class="content">      const isDuplicate = thinkingText &amp;&amp; contentText === thinkingText;</div></div>
+          <div class="row rem"><div class="marker">−</div><div class="ln">697</div><div class="content">      if (isDuplicate) { /* dropped */ continue; }</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">696</div><div class="content">      // Only drop the content delta if BOTH channels are emitting</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">697</div><div class="content">      // identical text in the SAME chunk — historic dedup case.</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">698</div><div class="content">      // The thinking-only path is handled at terminal chunk below.</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">699</div><div class="content">      const isDuplicate = thinkingText &amp;&amp; contentText === thinkingText;</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">700</div><div class="content">      if (isDuplicate) continue;</div></div>
+          <div class="row ctx"><div class="marker"> </div><div class="ln">701</div><div class="content">      accumulatedContent += contentText;</div></div>
+          <div class="row ctx"><div class="marker"> </div><div class="ln">702</div><div class="content">      yield { type: 'content_block_delta',</div></div>
+          <div class="row ctx"><div class="marker"> </div><div class="ln">703</div><div class="content">        delta: { type: 'text_delta', text: contentText } };</div></div>
+          <div class="row ctx"><div class="marker"> </div><div class="ln">704</div><div class="content">    }</div></div>
+          <div class="hunk-sep">… 26 more lines …</div>
+          <div class="row ctx"><div class="marker"> </div><div class="ln">730</div><div class="content">    if (chunk.done) break;</div></div>
+          <div class="row ctx"><div class="marker"> </div><div class="ln">731</div><div class="content">  }</div></div>
+          <div class="row rem"><div class="marker">−</div><div class="ln">732</div><div class="content">  // (no terminal handling — counter sees 0 if model emitted thinking-only)</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">732</div><div class="content">  // Harmony / reasoning-only fallback: when the content channel never</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">733</div><div class="content">  // produced text but the thinking channel did, synthesize a final</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">734</div><div class="content">  // text_delta so the Anthropic Messages contract is satisfied.</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">735</div><div class="content">  // See: docs.claude.com/streaming#event-types,</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">736</div><div class="content">  //      ollama/ollama/blob/main/docs/api.md#generate-a-chat-completion</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">737</div><div class="content">  if (<span class="word-add">accumulatedContent === '' &amp;&amp; accumulatedThinking !== ''</span>) {</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">738</div><div class="content">    yield { type: 'content_block_delta',</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">739</div><div class="content">      delta: { type: 'text_delta', text: accumulatedThinking } };</div></div>
+          <div class="row add"><div class="marker">+</div><div class="ln">740</div><div class="content">  }</div></div>
+        </div>
+      </div>
+
+      <!-- Run green -->
+      <div class="cm-tool">
+        <div class="head"><span class="glyph">●</span><span class="name">Bash</span><span class="arg">cd services/openagentic-api &amp;&amp; bun test src/services/llm-providers/__tests__/OllamaProvider.thinking-only-fallback.test.ts</span><span class="check">✓</span><span class="elapsed">1.6s</span></div>
+        <div class="cm-tool-body bash"><span class="corner">⎿</span>bun test v1.0.36
+
+src/services/llm-providers/__tests__/OllamaProvider.thinking-only-fallback.test.ts:
+  ✓ OllamaProvider — thinking-only Harmony fallback
+    ✓ yields a final text_delta synthesized from thinking when content stays empty
+    ✓ does NOT synthesize when content channel already produced text
+
+ 2 pass
+ 0 fail
+<span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">1.62s</span></div>
+      </div>
+
+      <div class="text-block first">
+        <p><span class="cm-success">Green.</span> Now run the full provider suite to confirm no regressions:</p>
+      </div>
+
+      <div class="cm-tool">
+        <div class="head"><span class="glyph">●</span><span class="name">Bash</span><span class="arg">cd services/openagentic-api &amp;&amp; bun test src/services/llm-providers</span><span class="check">✓</span><span class="elapsed">14.2s</span></div>
+        <div class="cm-tool-body bash"><span class="corner">⎿</span> Test Files  17 passed (17)
+      Tests  142 passed (142)
+   Duration  14.18s
+
+<span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">14.21s</span></div>
+      </div>
+    </div>
+
+    <!-- Model swap boundary (gap 5) — switching to gpt-oss for the cheap build/deploy steps -->
+    <div class="cm-boundary">
+      <span class="glyph">⤳</span>
+      <span class="label">Model swap</span>
+      <span>claude-sonnet-4-6 → gpt-oss:20b (issued by /model — using the model we just patched, dogfooding)</span>
+    </div>
+
+    <!-- ───────────────────── TURN 3 — DEPLOY + VERIFY ───────────────────── -->
+    <div class="cm-user">
+      <div class="bubble">build the api image, deploy, then use Playwright to send a "name the capital of France" prompt to chat-dev codemode and assert the assistant message contains "Paris".</div>
+    </div>
+
+    <div class="cm-assistant">
+      <div class="cm-thinking">
+        <div class="head"><span class="glyph">∴</span><span>Thinking</span><span class="timer">3s</span><span class="ctrl-o-hint">(ctrl+o to expand)</span></div>
+      </div>
+
+      <div class="text-block first">
+        <p>Build, helm upgrade, rollout, Playwright verify.</p>
+      </div>
+
+      <div class="cm-tool">
+        <div class="head"><span class="glyph">●</span><span class="name">Bash</span><span class="arg">./scripts/build.sh openagentic-api --buildpush --no-cache</span><span class="check">✓</span><span class="elapsed">4m 28s</span><span class="toggle">[hide]</span></div>
+        <div class="cm-tool-body bash"><span class="corner">⎿</span>[ build.sh ] image: 10.2.10.131:30500/openagentic-api:0.6.28-7d1a04ef
+... (snipped, see prior session for build.sh output shape)
+DONE 4m 28s
+<span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">4m 28s</span></div>
+      </div>
+
+      <div class="cm-tool">
+        <div class="head"><span class="glyph">●</span><span class="name">Bash</span><span class="arg">helm upgrade openagentic ~/openagentic-helm -f values-k3s-local.yaml -n agentic-dev --no-hooks &amp;&amp; kubectl rollout status deployment/openagentic-api -n agentic-dev</span><span class="check">✓</span><span class="elapsed">42.1s</span></div>
+        <div class="cm-tool-body bash"><span class="corner">⎿</span>Release "openagentic" has been upgraded. Happy Helming!
+REVISION: 185
+deployment "openagentic-api" successfully rolled out
+<span class="cm-exit ok">✓ Exit 0</span><span class="cm-duration">42.13s</span></div>
+      </div>
+
+      <!-- Sub-agent for Playwright verification -->
+      <div class="cm-tool">
+        <div class="head"><span class="glyph">●</span><span class="name">Task</span><span class="arg">playwright-verifier: codemode "capital of France" → assert "Paris"</span><span class="check">✓</span><span class="elapsed">1m 04s</span><span class="toggle">[hide]</span></div>
+        <div class="cm-subagent">
+          <div class="hdr"><span>◆</span><span class="name">playwright-verifier</span><span class="status">— 7 turns, 5 tools, completed</span></div>
+          <div class="body">
+            <div class="turn"><span class="cm-stage plan">PLAN</span>headed Playwright on WSLg :0, login mcp-tester, enter codemode, type prompt, wait for stream, assert.</div>
+            <div class="turn"><span class="cm-stage act">ACT</span>browser.navigate → chat-dev → click "Continue with Microsoft" → SSO complete → click Code → click composer → type → Enter</div>
+            <div class="turn"><span class="cm-stage observe">OBSERVE</span>WS opens to <code>/api/code/v2/ws/chat</code> ✓ — stream events:
+<pre style="margin: 4px 0 4px 14px; padding: 6px 10px; background: var(--cm-bg-tertiary); border-radius: 4px; font-size: 11.5px; color: var(--cm-text-muted);">{"type":"message_start","model":"gpt-oss:20b"}
+{"type":"content_block_start","content_block":{"type":"thinking"}}
+{"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"User asks for"}}
+{"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":" the capital of France."}}
+{"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":" That is Paris."}}
+{"type":"content_block_stop"}
+{"type":"content_block_start","content_block":{"type":"text"}}
+{"type":"content_block_delta","delta":{"type":"text_delta","text":"User asks for the capital of France. That is Paris."}}
+{"type":"content_block_stop"}
+{"type":"message_stop"}</pre></div>
+            <div class="turn"><span class="cm-stage verify">VERIFY</span>assistant message visible in DOM contains "Paris" ✓ — assertion passed. <code>outputTokens=12</code> in api log (was 0 before patch).</div>
+            <div class="turn"><span class="cm-stage observe">OBSERVE</span>screenshot saved to <code>/tmp/codemode-paris-verify-2026-04-25T13-58.png</code></div>
+          </div>
+          <div class="footer">
+            <span>◆ completed</span><span>·</span><span>7 turns</span><span>·</span><span>$0.0312</span><span>·</span><span>1m 04s</span><span>·</span><span>by claude-haiku-4-5</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-block first">
+        <p><span class="cm-success">End-to-end verified.</span> Stream now contains a real <code>text_delta</code> with the synthesized answer "User asks for the capital of France. That is Paris." — the daemon receives non-empty output, the UI renders it, and api logs show <code>outputTokens=12</code> instead of 0. Citing both source pages from the diff comment.</p>
+      </div>
+
+      <!-- Final TodoWrite + summary -->
+      <div class="cm-tool">
+        <div class="head"><span class="glyph">●</span><span class="name">TodoWrite</span><span class="arg">7 todo(s)</span><span class="check">✓</span></div>
+        <div class="cm-todo">
+          <div class="item completed"><span class="box">☒</span><span class="text">Read OllamaProvider stream loop + identify dedup site</span></div>
+          <div class="item completed"><span class="box">☒</span><span class="text">Read /v1/messages route counter + identify increment-on-text_delta-only</span></div>
+          <div class="item completed"><span class="box">☒</span><span class="text">Capture live gpt-oss NDJSON fixtures (2+2 + capital of France)</span></div>
+          <div class="item completed"><span class="box">☒</span><span class="text">Write red TDD tests for thinking-only fallback</span></div>
+          <div class="item completed"><span class="box">☒</span><span class="text">Add terminal-chunk synthesis when accumulatedContent empty + thinking non-empty</span></div>
+          <div class="item completed"><span class="box">☒</span><span class="text">Build api 0.6.28-7d1a04ef + helm upgrade + rollout</span></div>
+          <div class="item completed"><span class="box">☒</span><span class="text">Playwright live-verify: codemode prompt → assert "Paris" in DOM ✓</span></div>
+        </div>
+      </div>
+
+      <div class="text-block first">
+        <p><strong>Total runtime:</strong> 1h 17m. <strong>Cost:</strong> $0.93. <strong>Files touched:</strong> 1 prod (OllamaProvider.ts), 1 test (new), 2 fixtures (new). <strong>Commits:</strong> none — per the no-direct-commit rule, the diff is staged for your review. Want me to run the cross-model battery from the parity report against this build, or commit + push?</p>
+      </div>
+    </div>
+
+    <!-- Slash palette open mid-flow -->
+    <div style="margin-top: 14px; opacity: 0.95;">
+      <div class="cm-mono cm-muted" style="font-size: 11px; margin-bottom: 4px;">user typed <kbd>/</kbd>commit...</div>
+      <div class="cm-palette">
+        <div class="row selected">
+          <span class="glyph p1">◐</span><span class="name">/commit</span><span class="desc">Stage staged changes + create commit with TDD-style msg</span>
+        </div>
+        <div class="row">
+          <span class="glyph p1">◐</span><span class="name">/cross-model</span><span class="desc">Run cross-model consistency battery on this build</span>
+        </div>
+        <div class="row">
+          <span class="glyph p2">○</span><span class="name">/compact</span><span class="desc">Summarize conversation (already 19% used)</span>
+        </div>
+        <div class="row">
+          <span class="glyph p3">·</span><span class="name">/exit</span><span class="desc">Save session + quit</span>
+        </div>
+        <div class="footer"><kbd>↑</kbd><kbd>↓</kbd> navigate · <kbd>↵</kbd> run · <kbd>esc</kbd> dismiss · <strong>4</strong> matches</div>
+      </div>
+    </div>
+
+    <div class="cm-composer">
+      <span class="placeholder">Message — try /commit, /cross-model, /agents …</span>
+      <span class="send">Send</span>
+    </div>
+  </main>
+
+  <div class="cm-metadata">
+    <span class="cell"><span class="label">v</span><span class="val">0.6.28</span></span>
+    <span class="sep">·</span>
+    <span class="cell"><span class="label">model</span><span class="val">gpt-oss:20b</span></span>
+    <span class="sep">·</span>
+    <span class="cell"><span class="label">cwd</span><span class="val">~/openagentic</span></span>
+    <span class="sep">·</span>
+    <span class="cell"><span class="label">budget</span><span class="val">$0.928 / $5.00 · 18.6%</span></span>
+    <span class="sep">·</span>
+    <span class="cell"><span class="label">surface</span><span class="val">61 tools · 4 mcp · 3 agents · 2 plugins</span></span>
+    <span class="sep">·</span>
+    <span class="cell"><kbd>/help</kbd></span>
+    <span class="cell"><kbd>/model</kbd></span>
+    <span class="cell"><kbd>Tab</kbd></span>
+    <span class="cell"><kbd>⌘P</kbd></span>
+    <span class="cell"><kbd>⌘↵</kbd></span>
+  </div>
+
+  <div class="cm-statusbar">
+    <span class="cell"><span class="dot ok"></span><span>WS connected</span></span>
+    <span class="sep">·</span>
+    <span class="cell"><span>latency</span><span class="val">44ms</span></span>
+    <span class="sep">·</span>
+    <span class="cell"><span>pod</span><span class="val">openagentic-2cb1bf3f719f-q4p2k</span></span>
+    <span class="sep">·</span>
+    <span class="cell"><span>session</span><span class="val">1h 17m 02s</span></span>
+    <span class="cell right"><span class="val cm-mono cm-success">✓ idle</span></span>
+  </div>
+</div>
+</body>
+</html>

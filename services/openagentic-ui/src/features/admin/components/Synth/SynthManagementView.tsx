@@ -17,6 +17,7 @@ import {
   PlayIcon, StopIcon, RefreshIcon, SuccessIcon, WarningIcon, ErrorIcon
 } from '../Shared/AdminIcons';
 import { apiRequest } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 
 interface SynthConfig {
   // Visibility & Enablement
@@ -28,7 +29,6 @@ interface SynthConfig {
   baseUrl?: string;
   synthesisTemperature: number;
   maxSynthesisTokens: number;
-  useSliderModelSelection: boolean;
   // Execution Settings
   timeoutSeconds: number;
   executorUrl?: string;
@@ -220,66 +220,35 @@ export const SynthManagementView: React.FC<SynthManagementViewProps> = ({ theme 
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]" style={{ backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text)' }}>
-        <RefreshIcon size={32} className="animate-spin text-blue-500" />
+      <div>
+        <PageHeader
+          crumbs={['Admin', 'Tools', 'Synthesis Config']}
+          title="Synthesis Config"
+          explainer="Synth — dynamic tool synthesis and execution."
+        />
+        <div className="p-6 flex items-center justify-center min-h-[400px]" style={{ backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text)' }}>
+          <RefreshIcon size={32} className="animate-spin text-blue-500" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6" style={{ backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text)' }}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <CpuIcon size={28} className="text-purple-500" />
-            Tool Synthesis
-          </h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
-            Synth - Dynamic tool synthesis and execution
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {config && (
-            <>
-              {/* Visibility to LLM Toggle - Critical Control */}
-              <button
-                onClick={toggleVisibleToLLM}
-                title={config.visibleToLLM ? 'LLM can see Synth capabilities' : 'Synth is hidden from LLM'}
-                className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
-                  config.visibleToLLM
-                    ? 'bg-purple-600 text-white hover:bg-purple-700'
-                    : 'bg-orange-500 text-white hover:bg-orange-600'
-                }`}
-              >
-                {config.visibleToLLM ? <ActivityIcon size={16} /> : <ShieldIcon size={16} />}
-                {config.visibleToLLM ? 'Visible to LLM' : 'Hidden from LLM'}
-              </button>
-              {/* Enabled/Disabled Toggle */}
-              <button
-                onClick={toggleEnabled}
-                className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
-                  config.enabled
-                    ? 'bg-green-600 text-white hover:bg-green-700'
-                    : 'text-white hover:opacity-90'
-                }`}
-                style={!config.enabled ? { backgroundColor: 'var(--color-text-tertiary)' } : undefined}
-              >
-                {config.enabled ? <PlayIcon size={16} /> : <StopIcon size={16} />}
-                {config.enabled ? 'Enabled' : 'Disabled'}
-              </button>
-            </>
-          )}
-          <button
-            onClick={saveConfig}
-            disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2 hover:bg-blue-700 disabled:opacity-50"
-          >
-            <SuccessIcon size={16} />
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
-      </div>
+    <div style={{ backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text)' }}>
+      <PageHeader
+        crumbs={['Admin', 'Tools', 'Synthesis Config']}
+        title="Synthesis Config"
+        explainer="Synth — dynamic tool synthesis and execution. Toggle visibility to LLM and enable/disable the synthesis pipeline."
+        actions={config ? [
+          { label: config.visibleToLLM ? 'Visible to LLM' : 'Hidden from LLM', onClick: () => { void toggleVisibleToLLM(); } },
+          { label: config.enabled ? 'Enabled' : 'Disabled', onClick: () => { void toggleEnabled(); } },
+          { label: saving ? 'Saving…' : 'Save Changes', primary: true, onClick: () => { void saveConfig(); }, disabled: saving },
+        ] : [
+          { label: saving ? 'Saving…' : 'Save Changes', primary: true, onClick: () => { void saveConfig(); }, disabled: saving },
+        ]}
+      />
+
+      <div className="p-6">
 
       {/* Visibility Warning Banner */}
       {config && !config.visibleToLLM && (
@@ -336,24 +305,10 @@ export const SynthManagementView: React.FC<SynthManagementViewProps> = ({ theme 
           {/* LLM Settings */}
           <div className="p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <CpuIcon size={20} className="text-purple-500" />
+              <CpuIcon size={20} style={{ color: 'var(--ap-accent)' }} />
               LLM Settings
             </h3>
             <div className="space-y-4">
-              {/* Dynamic Model Selection Toggle */}
-              <label className="flex items-center gap-2 cursor-pointer p-3 rounded border" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}>
-                <input
-                  type="checkbox"
-                  checked={config.useSliderModelSelection}
-                  onChange={(e) => setConfig({ ...config, useSliderModelSelection: e.target.checked })}
-                  className="w-4 h-4 text-blue-600"
-                />
-                <div>
-                  <span className="font-medium">Use Intelligence Slider for Model Selection</span>
-                  <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>When enabled, Synth uses the slider setting to pick the best model dynamically</p>
-                </div>
-              </label>
-
               {/* Provider Selection */}
               <div>
                 <label className="block text-sm font-medium mb-1">Provider</label>
@@ -361,7 +316,6 @@ export const SynthManagementView: React.FC<SynthManagementViewProps> = ({ theme 
                   value={config.provider}
                   onChange={(e) => setConfig({ ...config, provider: e.target.value })}
                   className="w-full p-2 rounded border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-                  disabled={config.useSliderModelSelection}
                 >
                   <option value="bedrock">AWS Bedrock</option>
                   <option value="anthropic">Anthropic</option>
@@ -369,9 +323,6 @@ export const SynthManagementView: React.FC<SynthManagementViewProps> = ({ theme 
                   <option value="ollama">Ollama</option>
                   <option value="openagentic">OpenAgentic (Internal)</option>
                 </select>
-                {config.useSliderModelSelection && (
-                  <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>Provider is auto-selected when using slider</p>
-                )}
               </div>
 
               {/* Model Selection */}
@@ -382,10 +333,9 @@ export const SynthManagementView: React.FC<SynthManagementViewProps> = ({ theme 
                     value={config.model}
                     onChange={(e) => setConfig({ ...config, model: e.target.value })}
                     className="w-full p-2 rounded border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-                    disabled={config.useSliderModelSelection}
                   >
                     {availableModels
-                      .filter(m => !config.provider || m.provider === config.provider || config.useSliderModelSelection)
+                      .filter(m => !config.provider || m.provider === config.provider)
                       .map((model) => (
                         <option key={model.id} value={model.id}>
                           {model.name} ({model.provider})
@@ -401,11 +351,7 @@ export const SynthManagementView: React.FC<SynthManagementViewProps> = ({ theme 
                     onChange={(e) => setConfig({ ...config, model: e.target.value })}
                     className="w-full p-2 rounded border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
                     placeholder="e.g., us.anthropic.claude-opus-4-6-v1"
-                    disabled={config.useSliderModelSelection}
                   />
-                )}
-                {config.useSliderModelSelection && (
-                  <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>Model is auto-selected based on intelligence slider</p>
                 )}
               </div>
 
@@ -716,6 +662,7 @@ export const SynthManagementView: React.FC<SynthManagementViewProps> = ({ theme 
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

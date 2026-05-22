@@ -8,17 +8,21 @@
  */
 
 /** Hex fallbacks -- only used when CSS vars can't be read (SSR, tests) */
+// Teal #14b8a6 below is an explicit chart-palette slot (extended series #8) —
+// no semantic --ap-* equivalent. Chart palettes are non-themeable by design.
+// eslint-disable-next-line admin-tokens/no-hardcoded-admin-color
 export const CHART_COLOR_FALLBACKS = [
-  '#6366f1', // primary (indigo)
-  '#00D26A', // success (green)
-  '#f59e0b', // warning (amber)
-  '#ef4444', // error (red)
-  '#06b6d4', // info (cyan)
-  '#a855f7', // secondary (purple)
-  '#ec4899', // pink
+  'var(--ap-accent)', // primary (indigo)
+  'var(--ap-ok)', // success (green)
+  'var(--ap-warn)', // warning (amber)
+  'var(--ap-err)', // error (red)
+  'var(--ap-info)', // info (cyan)
+  'var(--ap-accent)', // secondary (purple)
+  'var(--ap-accent)', // pink
+  // eslint-disable-next-line admin-tokens/no-hardcoded-admin-color
   '#14b8a6', // teal
-  '#f97316', // orange
-  '#8b5cf6', // violet
+  'var(--ap-warn)', // orange
+  'var(--ap-accent)', // violet
 ];
 
 /** Resolve chart colors from the CSS variable theme system with fallbacks. */

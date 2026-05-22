@@ -3,6 +3,26 @@
  * Proprietary and confidential. Unauthorized copying prohibited.
  */
 
+/* @imports MUST precede all other statements (besides @charset/empty @layer)
+   per CSS spec. PostCSS enforces this hard — @font-face above @import
+   silently drops the @imports (bug #191). Order:
+     1. @imports (theme tokens + mockup + admin + codemode)
+     2. @tailwind directives (PostCSS processes these)
+     3. @font-face blocks (self-hosted fonts)
+     4. Rest of the file (design tokens, utilities, etc). */
+@import './styles/themes/catppuccin-mocha.css';
+@import './styles/themes/terminal-green.css';
+@import './styles/themes/tokyo-night.css';
+@import './styles/themes/dracula.css';
+@import './styles/design-tokens.css';
+@import './styles/mockup-v067.css';
+@import './styles/admin-tokens.css';
+@import './styles/admin-v2-accents.css';
+@import './styles/admin-overhaul.css';
+@import './styles/admin-v3-overrides.css';
+@import './features/code/codeMode.css';
+@import './features/code/codeMode-crt.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -45,40 +65,36 @@
   font-display: swap;
 }
 
-@import './styles/themes/catppuccin-mocha.css';
-@import './styles/themes/terminal-green.css';
-@import './styles/themes/tokyo-night.css';
-@import './styles/themes/dracula.css';
-@import './styles/admin-tokens.css';
-@import './styles/admin-overhaul.css';
-@import './features/code/codeMode.css';
-
 /* ==========================================================================
    OPENAGENTIC DESIGN SYSTEM - macOS-Inspired, Human-Designed
    ========================================================================== */
 
 @layer base {
   /* ==========================================================================
-     BASE TYPOGRAPHY - Standardized Gemini/Google-inspired system
+     BASE TYPOGRAPHY — M3 Expressive / Gemini (task #160)
+     Body: Inter var, 15px / 1.55, tracking -0.01em for optical balance.
+     Headlines: 600-700, tracking -0.02em, line-height 1.2.
+     UI labels: weight 500 (medium), tracking -0.01em.
+     Numerics: tabular-nums so digits line up (tool costs, timestamps).
      ========================================================================== */
   body {
     font-family: var(--font-sans);
     font-size: var(--text-base);
     font-weight: var(--font-normal);
-    line-height: var(--leading-normal);
-    letter-spacing: var(--tracking-normal);
+    line-height: var(--text-body-leading, 1.55);
+    letter-spacing: var(--text-ui-tracking, -0.01em);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
 
-  /* Heading scale using CSS variables */
+  /* Heading scale — tighter tracking, shorter leading for optical weight. */
   h1 {
     font-family: var(--font-sans);
     font-size: var(--text-3xl);
-    font-weight: var(--font-semibold);
-    line-height: var(--leading-tight);
-    letter-spacing: var(--tracking-tight);
+    font-weight: 700;
+    line-height: var(--text-headline-leading, 1.2);
+    letter-spacing: var(--text-headline-tracking, -0.02em);
     margin-top: 1.5em;
     margin-bottom: 0.5em;
   }
@@ -86,9 +102,9 @@
   h2 {
     font-family: var(--font-sans);
     font-size: var(--text-2xl);
-    font-weight: var(--font-semibold);
-    line-height: var(--leading-tight);
-    letter-spacing: var(--tracking-tight);
+    font-weight: 700;
+    line-height: var(--text-headline-leading, 1.2);
+    letter-spacing: var(--text-headline-tracking, -0.02em);
     margin-top: 1.4em;
     margin-bottom: 0.4em;
   }
@@ -96,9 +112,9 @@
   h3 {
     font-family: var(--font-sans);
     font-size: var(--text-xl);
-    font-weight: var(--font-semibold);
-    line-height: var(--leading-snug);
-    letter-spacing: var(--tracking-tight);
+    font-weight: 600;
+    line-height: var(--text-headline-leading, 1.2);
+    letter-spacing: var(--text-headline-tracking, -0.02em);
     margin-top: 1.3em;
     margin-bottom: 0.3em;
   }
@@ -106,9 +122,9 @@
   h4 {
     font-family: var(--font-sans);
     font-size: var(--text-lg);
-    font-weight: var(--font-semibold);
-    line-height: var(--leading-snug);
-    letter-spacing: var(--tracking-normal);
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: var(--text-headline-tracking, -0.02em);
     margin-top: 1.2em;
     margin-bottom: 0.25em;
   }
@@ -116,26 +132,45 @@
   h5, h6 {
     font-family: var(--font-sans);
     font-size: var(--text-base);
-    font-weight: var(--font-semibold);
-    line-height: var(--leading-snug);
-    letter-spacing: var(--tracking-normal);
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: var(--text-ui-tracking, -0.01em);
     margin-top: 1em;
     margin-bottom: 0.25em;
   }
 
-  /* Buttons and interactive elements */
+  /* Buttons + interactive elements — medium weight labels, tightened tracking. */
   button, .button, [role="button"] {
     font-family: var(--font-sans);
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
-    line-height: var(--leading-snug);
-    letter-spacing: var(--tracking-normal);
+    font-size: var(--text-ui-label, 14px);
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: var(--text-ui-tracking, -0.01em);
   }
 
-  /* Code and monospace */
+  /* Form-control labels. */
+  label {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    letter-spacing: var(--text-ui-tracking, -0.01em);
+  }
+
+  /* Code and monospace — tabular-nums so digits align. */
   code, kbd, pre, samp {
     font-family: var(--font-mono);
-    font-size: 0.9em; /* Relative to parent */
+    font-size: 0.9em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  /* Any element tagged .num, numeric table cells, times, and costs get
+     lining+tabular numerals. The `.num` class lets ad-hoc numeric spans
+     opt in explicitly. */
+  .num,
+  time,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
   }
 
   /* Small text utility */
@@ -177,8 +212,10 @@
      Base: 16px | Scale: 1.2 (Minor Third) | Min: 12px
      ========================================================================== */
 
-  /* Primary font stack - IBM Plex Sans for clean enterprise look */
-  --font-sans: 'IBM Plex Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  /* Primary font stack — Inter first (M3 Expressive / Gemini), IBM Plex
+     retained as a fallback for installs that still prefer it. Inter is
+     self-hosted from /artifact-runtime/fonts/, see @font-face block above. */
+  --font-sans: 'Inter', 'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 
   /* Monospace font stack - JetBrains Mono with Nerd Font support for code mode */
   --font-mono: 'JetBrainsMono Nerd Font', 'JetBrains Mono', 'FiraCode Nerd Font', 'Fira Code', 'SF Mono', ui-monospace, monospace;
@@ -450,14 +487,11 @@
   --thinking-accent: rgba(139, 92, 246, 0.4);
 }
 
-/* Theme body background overrides */
-body.light-theme {
-  background-color: #FFFFFF;
-}
-
-body.dark-theme {
-  background-color: #000000;
-}
+/* Legacy `body.light-theme` / `body.dark-theme` overrides removed.
+   The body now reads `var(--bg-0)` which is set by the html[data-theme]
+   selector in mockup-v067.css. These class-based overrides fought the
+   tokenized theming and forced pure-black in light mode because
+   ThemeContext still writes the class on <body> but not the token. */
 
 /* Base Styles */
 * {
@@ -469,7 +503,11 @@ body.dark-theme {
 body {
   /* Typography set in @layer base above - uses Inter/SF Pro */
   overflow-x: hidden;
-  background-color: #0D0D12; /* Solid dark background */
+  /* Theme-reactive: var(--bg-0) is #09090b dark, #ffffff light.
+     Hardcoded #0D0D12 fallback kept so the body is never white-flash
+     on first paint before the CSS-var bundle resolves. */
+  background-color: var(--bg-0, #0D0D12);
+  color: var(--fg-0, #f8fafc);
 }
 
 /* Color definitions for glow effects */
@@ -477,6 +515,42 @@ body {
   --purple-glow: #A855F7;
   --blue-glow: #3B82F6;
   --pink-glow: #EC4899;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Mock-widget palette — aliased onto the chatmode --cm-* theme tokens so
+ * inline artifacts (kpi_grid, sankey_3col, mermaid_flow, bar_chart, etc.)
+ * inherit the USER's selected theme + accent at runtime. Light/dark
+ * cascade through automatically because --cm-* already has theme-aware
+ * overrides. Status tints (success/danger/warning/info) stay semantic.
+ *
+ * Was: hardcoded mock-1 sediment palette that ignored the user accent.
+ * Now: --mw-* are thin aliases over --cm-* (which flow through
+ *      --user-accent-primary). One source of truth, one theme picker.
+ * ───────────────────────────────────────────────────────────────────────── */
+:root {
+  --mw-bg-0: var(--cm-bg-0, #09090b);
+  --mw-bg-1: var(--cm-bg-1, #0f1012);
+  --mw-bg-2: var(--cm-bg-2, #16181c);
+  --mw-bg-3: var(--cm-bg-3, #1c1f24);
+  --mw-bg-4: var(--cm-bg-4, #242831);
+
+  --mw-fg-0: var(--cm-fg-0, #f8fafc);
+  --mw-fg-1: var(--cm-fg-1, #d4d4d8);
+  --mw-fg-2: var(--cm-fg-2, #a1a1aa);
+  --mw-fg-3: var(--cm-fg-3, #71717a);
+
+  --mw-accent: var(--cm-accent, #8b5cf6);
+  --mw-accent-soft: var(--cm-accent-soft, rgba(139, 92, 246, 0.14));
+  --mw-accent-line: var(--cm-accent-line, rgba(139, 92, 246, 0.32));
+
+  --mw-line-1: var(--cm-line-1, rgba(255, 255, 255, 0.06));
+
+  /* Status tints — semantic, do NOT track user accent. */
+  --mw-success: var(--cm-ok, #22c55e);
+  --mw-danger: var(--cm-err, #ef4444);
+  --mw-warning: var(--cm-warn, #f59e0b);
+  --mw-info: var(--cm-info, #38bdf8);
 }
 
 /* Glassmorphic Utilities */
@@ -2883,7 +2957,18 @@ pre.shiki-fallback {
   --ap-success: var(--color-success);
   --ap-warning: var(--color-warning);
   --ap-error: var(--color-error);
+
+  /* Override the v0.6.7 mockup's hardcoded violet --accent (#8b5cf6) so
+     the StateMachineToggle, AdminAI bar, and other primitives-v2
+     components that read var(--accent) follow the user's chosen accent
+     color instead of staying purple regardless of theme/accent. */
+  --accent: var(--user-accent-primary, var(--color-primary));
+  --accent-soft: color-mix(in srgb, var(--user-accent-primary, var(--color-primary)) 14%, transparent);
+  --accent-line: color-mix(in srgb, var(--user-accent-primary, var(--color-primary)) 32%, transparent);
   --ap-info: var(--accent-info);
+  --ap-info-soft: color-mix(in srgb, var(--accent-info, #5ac8fa) 14%, transparent);
+  /* Foreground used on top of an accent-coloured surface (primary buttons). */
+  --ap-fg-on-accent: white;
   --ap-purple: var(--color-primary);
   --ap-cyan: var(--color-secondary);
 
@@ -2936,6 +3021,35 @@ pre.shiki-fallback {
   --ap-progress-low: var(--color-success);
   --ap-progress-medium: var(--color-warning);
   --ap-progress-high: var(--color-error);
+
+  /* ── Consistency-migration token aliases (2026-04-26) ──
+     The proposal-atlas mocks + new primitives-v2 components reference a
+     numbered scale (bg-0..3, fg-0..3, ln-1..3) and short semantic names
+     (ok/warn/err). Map them to the existing token system so the codemod
+     and primitives resolve to live values across themes. */
+  --ap-bg-0: var(--color-background);
+  --ap-bg-1: var(--color-surface);
+  --ap-bg-2: var(--color-surfaceSecondary);
+  --ap-bg-3: var(--color-surfaceTertiary);
+
+  --ap-fg-0: var(--color-text);
+  --ap-fg-1: color-mix(in srgb, var(--color-text) 86%, var(--color-textSecondary));
+  --ap-fg-2: var(--color-textSecondary);
+  --ap-fg-3: var(--color-textMuted);
+
+  --ap-ln-1: var(--color-border);
+  --ap-ln-2: var(--color-borderHover);
+  --ap-ln-3: color-mix(in srgb, var(--color-border) 60%, transparent);
+
+  --ap-ok: var(--color-success);
+  --ap-warn: var(--color-warning);
+  --ap-err: var(--color-error);
+  --ap-ok-soft: color-mix(in srgb, var(--color-success) 14%, transparent);
+  --ap-warn-soft: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  --ap-err-soft: color-mix(in srgb, var(--color-error) 14%, transparent);
+
+  --ap-accent-soft: color-mix(in srgb, var(--user-accent-primary, var(--color-primary)) 14%, transparent);
+  --ap-accent-line: color-mix(in srgb, var(--user-accent-primary, var(--color-primary)) 32%, transparent);
 }
 
 /* GCP-style navigation sidebar with glassmorphic effect */
@@ -4162,7 +4276,9 @@ pre.shiki-fallback {
      on the brief pre-swap flash or if the woff2 fails to load. */
   font-family: var(--cm-prose-font, "Inter", "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif);
   font-size: 15px;
-  line-height: 1.6;
+  /* Claude Code TUI parity: 1.7 line-height reads more breathy than 1.6,
+     letting the eye anchor on a phrase rather than a wall. */
+  line-height: 1.7;
   color: var(--cm-text, #e6edf3);
   white-space: normal;
   word-break: break-word;
@@ -4176,10 +4292,17 @@ pre.shiki-fallback {
   font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "tnum" 1, "cv11" 1;
   letter-spacing: -0.005em;
 }
-.cm-markdown p        { margin: 0 0 0.8em 0; }
+/* Paragraph rhythm — 1em (≈16px) between blocks lets the eye glide. */
+.cm-markdown p        { margin: 0 0 1em 0; }
 .cm-markdown p:last-child { margin-bottom: 0; }
 .cm-markdown strong   { font-weight: 600; color: var(--cm-text, #e6edf3); }
 .cm-markdown em       { font-style: italic; }
+/* First paragraph after a heading hugs the heading more tightly so
+   the section header reads as a unit with its first line of prose. */
+.cm-markdown h1 + p,
+.cm-markdown h2 + p,
+.cm-markdown h3 + p,
+.cm-markdown h4 + p { margin-top: 0; }
 .cm-markdown code {
   /* JetBrains Mono is self-hosted — same font-face pattern as Inter.
      Falls through to the OS mono stack if the woff2 misses. */
@@ -4286,22 +4409,60 @@ pre.shiki-fallback {
   box-shadow: none !important;
   overflow-x: auto;
 }
+/* Lists — claude.ai parity: bullets are accent-colored squares, ordered
+   list numerals are tabular and slightly dimmer. Comfortable indent so
+   nested lists keep their hierarchy visible. */
 .cm-markdown ul, .cm-markdown ol {
-  margin: 0.6em 0 0.8em 1.4em;
-  padding: 0;
+  margin: 0.7em 0 1em 0;
+  padding-left: 1.6em;
 }
-.cm-markdown li { margin: 0.35em 0; }
+.cm-markdown li { margin: 0.45em 0; padding-left: 0.15em; }
+.cm-markdown ul {
+  list-style: none;
+}
+.cm-markdown ul > li {
+  position: relative;
+}
+.cm-markdown ul > li::before {
+  content: "";
+  position: absolute;
+  left: -1em;
+  top: 0.7em;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--cm-accent, #58a6ff) 75%, var(--cm-text-muted, #6e7681));
+}
+.cm-markdown ol {
+  list-style: decimal;
+  font-variant-numeric: tabular-nums;
+}
+.cm-markdown ol > li::marker {
+  color: var(--cm-text-muted, #6e7681);
+  font-weight: 500;
+}
+/* Tighten nested lists so they read as a sub-tree, not a new section */
+.cm-markdown li > ul, .cm-markdown li > ol { margin: 0.3em 0 0.2em 0; }
 .cm-markdown h1, .cm-markdown h2, .cm-markdown h3,
 .cm-markdown h4, .cm-markdown h5, .cm-markdown h6 {
   font-weight: 600;
-  margin: 1em 0 0.4em 0;
+  margin: 1.2em 0 0.5em 0;
   color: var(--cm-text, #e6edf3);
   line-height: 1.3;
+  letter-spacing: -0.012em;
 }
-.cm-markdown h1 { font-size: 1.35em; }
-.cm-markdown h2 { font-size: 1.2em; }
-.cm-markdown h3 { font-size: 1.08em; }
-.cm-markdown h4 { font-size: 1em; }
+.cm-markdown h1 + h2,
+.cm-markdown h2 + h3,
+.cm-markdown h3 + h4 { margin-top: 0.5em; }
+.cm-markdown h1 { font-size: 1.4em; }
+.cm-markdown h2 { font-size: 1.22em; }
+.cm-markdown h3 {
+  font-size: 1.08em;
+  /* H3s get a soft accent rule on the left to anchor sub-sections */
+  padding-left: 0.5em;
+  border-left: 2px solid color-mix(in srgb, var(--cm-accent, #58a6ff) 40%, transparent);
+}
+.cm-markdown h4 { font-size: 1em; color: var(--cm-text-secondary, #b1bac4); }
 .cm-markdown a {
   color: var(--cm-accent, #58a6ff);
   text-decoration: underline;
@@ -4548,4 +4709,157 @@ pre.shiki-fallback {
 .cm-copy-btn.copied {
   color: var(--cm-success, #3fb950);
   border-color: var(--cm-success, #3fb950);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Semantic token palette (rehypeSemanticTokens). Used by BOTH chatmode
+   prose (.prose .sem-…) and codemode (.cm-markdown .sem-…). Tokens are
+   wrapped server-side in the rehype pass; CSS paints them in a uniform
+   palette so PASS / FAIL / WARN / NOTE / file paths / metrics / money
+   read at a glance.
+   ───────────────────────────────────────────────────────────────────── */
+.sem-status {
+  font-weight: 600;
+  border-radius: 3px;
+  padding: 0 0.25em;
+  letter-spacing: -0.005em;
+}
+.sem-success {
+  color: var(--cm-success, #3fb950);
+  background: color-mix(in srgb, var(--cm-success, #3fb950) 14%, transparent);
+}
+.sem-error {
+  color: var(--cm-error, #f85149);
+  background: color-mix(in srgb, var(--cm-error, #f85149) 14%, transparent);
+}
+.sem-warn {
+  color: var(--cm-warning, #d29922);
+  background: color-mix(in srgb, var(--cm-warning, #d29922) 14%, transparent);
+}
+.sem-info {
+  color: var(--cm-info, #58a6ff);
+  background: color-mix(in srgb, var(--cm-info, #58a6ff) 14%, transparent);
+}
+.sem-path {
+  font-family: var(--cm-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.92em;
+  color: var(--cm-accent, #58a6ff);
+  background: color-mix(in srgb, var(--cm-accent, #58a6ff) 8%, transparent);
+  padding: 0 0.3em;
+  border-radius: 3px;
+  border-bottom: 1px dotted color-mix(in srgb, var(--cm-accent, #58a6ff) 35%, transparent);
+}
+.sem-metric {
+  font-feature-settings: "tnum";
+  color: var(--cm-text, #e6edf3);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--cm-accent, #58a6ff) 7%, transparent);
+  padding: 0 0.25em;
+  border-radius: 3px;
+}
+.sem-money {
+  font-feature-settings: "tnum";
+  color: var(--cm-success, #3fb950);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--cm-success, #3fb950) 9%, transparent);
+  padding: 0 0.25em;
+  border-radius: 3px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Rainbow inline-code palette (rehypeRainbowInlineCode). Applied ONLY
+   inside the codemode thinking-block renderer (`MessageTree`'s
+   thinking <details>). Mirrors mock-3-research-fix-deploy.html:
+     mocks/codemode-tui-parity/_shared.css → .cm-rkw1..7
+   The catppuccin-mocha rainbow palette gives dense token-heavy thinking
+   content visual texture without any one term dominating.
+   ───────────────────────────────────────────────────────────────────── */
+:root {
+  --cm-rainbow-1: #f38ba8;  /* red */
+  --cm-rainbow-2: #fab387;  /* orange */
+  --cm-rainbow-3: #f9e2af;  /* yellow */
+  --cm-rainbow-4: #a6e3a1;  /* green */
+  --cm-rainbow-5: #89dceb;  /* blue */
+  --cm-rainbow-6: #b4befe;  /* indigo */
+  --cm-rainbow-7: #cba6f7;  /* violet */
+}
+.cm-rkw1 { color: var(--cm-rainbow-1); font-weight: 600; }
+.cm-rkw2 { color: var(--cm-rainbow-2); font-weight: 600; }
+.cm-rkw3 { color: var(--cm-rainbow-3); font-weight: 600; }
+.cm-rkw4 { color: var(--cm-rainbow-4); font-weight: 600; }
+.cm-rkw5 { color: var(--cm-rainbow-5); font-weight: 600; }
+.cm-rkw6 { color: var(--cm-rainbow-6); font-weight: 600; }
+.cm-rkw7 { color: var(--cm-rainbow-7); font-weight: 600; }
+
+/* ─────────────────────────────────────────────────────────────────────
+   ReAct stage badges (.react-stage / .react-stage-{think,act,observe,
+   reflect,plan,verify}). The MessageTree component sets inline styles
+   too, so this CSS is decorative only — it gives mock-3 parity for
+   selectors used by tests and any external surface that targets the
+   class. Matches `_shared.css → .cm-stage.{think,act,observe,reflect,
+   plan,verify}` in the tui-parity mock.
+   ───────────────────────────────────────────────────────────────────── */
+.react-stage,
+.cm-stage {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  margin-right: 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-family: var(--cm-mono-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  vertical-align: middle;
+}
+.cm-stage.think,    .react-stage-think    { background: rgba(180,190,254,0.18); color: var(--cm-rainbow-6, #b4befe); }
+.cm-stage.act,      .react-stage-act      { background: rgba(166,227,161,0.20); color: var(--cm-success,    #3fb950); }
+.cm-stage.observe,  .react-stage-observe  { background: rgba(137,220,235,0.20); color: var(--cm-info,       #58a6ff); }
+.cm-stage.reflect,  .react-stage-reflect  { background: rgba(249,226,175,0.20); color: var(--cm-warning,    #d29922); }
+.cm-stage.plan,     .react-stage-plan     { background: rgba(203,166,247,0.20); color: var(--cm-rainbow-7,  #cba6f7); }
+.cm-stage.verify,   .react-stage-verify   { background: rgba(243,139,168,0.20); color: var(--cm-error,      #f85149); }
+
+/* Stronger emphasis polish for both prose surfaces — claude.ai-grade. */
+.cm-markdown strong,
+.prose strong {
+  font-weight: 700;
+  color: var(--cm-text, #ffffff);
+  letter-spacing: -0.005em;
+}
+.cm-markdown em,
+.prose em {
+  font-style: italic;
+  color: color-mix(in srgb, var(--cm-text, #e6edf3) 92%, var(--cm-accent, #58a6ff) 8%);
+}
+.cm-markdown blockquote,
+.prose blockquote {
+  border-left: 3px solid color-mix(in srgb, var(--cm-accent, #58a6ff) 55%, transparent);
+  padding: 0.25em 0 0.25em 1em;
+  margin: 0.8em 0;
+  color: var(--cm-text-secondary, #b1bac4);
+  background: color-mix(in srgb, var(--cm-accent, #58a6ff) 5%, transparent);
+  border-radius: 0 4px 4px 0;
+}
+.cm-markdown table,
+.prose table {
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  font-size: 0.95em;
+}
+.cm-markdown thead th,
+.prose thead th {
+  font-weight: 700;
+  color: var(--cm-accent, #58a6ff);
+  border-bottom: 1px solid var(--cm-border, #30363d);
+  text-align: left;
+  padding: 0.4em 0.8em;
+}
+.cm-markdown tbody td,
+.prose tbody td {
+  padding: 0.35em 0.8em;
+  border-bottom: 1px solid color-mix(in srgb, var(--cm-border, #30363d) 50%, transparent);
+}
+.cm-markdown tbody tr:hover,
+.prose tbody tr:hover {
+  background: color-mix(in srgb, var(--cm-accent, #58a6ff) 6%, transparent);
 }

@@ -14,6 +14,14 @@ interface SlashCommandPaletteProps {
   onDismiss: () => void;
   /** Optional: limit number of visible results. Default 10. */
   limit?: number;
+  /**
+   * Daemon-supplied extra commands (plugin commands like
+   * `superpowers:test-driven-development`). Synthesized from
+   * `sessionMeta.slashCommands` by the parent and merged into the
+   * filter pool. Without this, plugin commands installed via
+   * /plugin would never appear in the palette.
+   */
+  extraCommands?: ReadonlyArray<SlashCommand>;
 }
 
 const PRIORITY_LABEL: Record<SlashCommandPriority, string> = {
@@ -44,12 +52,12 @@ export interface SlashCommandPaletteHandle {
 export const SlashCommandPalette = React.forwardRef<
   SlashCommandPaletteHandle,
   SlashCommandPaletteProps
->(function SlashCommandPalette({ input, onSelect, onDismiss, limit = 10 }, ref) {
+>(function SlashCommandPalette({ input, onSelect, onDismiss, limit = 50, extraCommands }, ref) {
   const isSlashMode = input.startsWith('/');
   const query = isSlashMode ? input.slice(1).split(/\s/)[0] : '';
   const candidates: SlashCommand[] = useMemo(
-    () => (isSlashMode ? filterSlashCommands(query, limit) : []),
-    [isSlashMode, query, limit],
+    () => (isSlashMode ? filterSlashCommands(query, limit, extraCommands) : []),
+    [isSlashMode, query, limit, extraCommands],
   );
 
   const [selected, setSelected] = useState(0);

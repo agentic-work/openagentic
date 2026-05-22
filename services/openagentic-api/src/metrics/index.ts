@@ -61,6 +61,63 @@ export const tokenUsageTotal = new Counter({
   registers: [register]
 });
 
+// ──────────────────────────────────────────────────────────────────────────
+// gen_ai.* — OpenTelemetry GenAI semantic conventions
+// (https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/)
+//
+// One canonical set the dashboard reads via PromQL — every provider call
+// (OpenAI / Azure / Anthropic / Bedrock / Vertex / Ollama) maps onto these
+// at emit time. Buckets tuned for chat/agent workloads — adjust if you
+// see clipping at the tails on PromQL `histogram_quantile`.
+// ──────────────────────────────────────────────────────────────────────────
+export const genAiClientOperationDurationSeconds = new Histogram({
+  name: 'gen_ai_client_operation_duration_seconds',
+  help: 'Duration of LLM client operations (full request wall-clock)',
+  labelNames: ['provider', 'model', 'operation', 'status'],
+  // 50ms → 120s — covers cached completions through long reasoning runs.
+  buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 20, 30, 60, 120],
+  registers: [register],
+});
+
+export const genAiServerTimeToFirstTokenSeconds = new Histogram({
+  name: 'gen_ai_server_time_to_first_token_seconds',
+  help: 'Time from request send to first streamed token (TTFT)',
+  labelNames: ['provider', 'model'],
+  // 50ms → 30s — anything above 30s is a separate alert.
+  buckets: [0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 5, 10, 30],
+  registers: [register],
+});
+
+export const genAiServerTimePerOutputTokenSeconds = new Histogram({
+  name: 'gen_ai_server_time_per_output_token_seconds',
+  help: 'Inter-token latency / decode rate (TPOT) — derived as 1 / tokens_per_second',
+  labelNames: ['provider', 'model'],
+  // 1ms → 1s per token — covers fast decode through degraded.
+  buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1],
+  registers: [register],
+});
+
+export const genAiClientTokenUsageTotal = new Counter({
+  name: 'gen_ai_client_token_usage_total',
+  help: 'Cumulative tokens consumed split by direction (input / output / cached / reasoning)',
+  labelNames: ['provider', 'model', 'token_type'],
+  registers: [register],
+});
+
+export const genAiFinishReasonsTotal = new Counter({
+  name: 'gen_ai_finish_reasons_total',
+  help: 'Per-provider finish_reason / stop_reason distribution',
+  labelNames: ['provider', 'model', 'finish_reason'],
+  registers: [register],
+});
+
+export const genAiErrorsTotal = new Counter({
+  name: 'gen_ai_errors_total',
+  help: 'LLM request errors by class (timeout / rate_limit / 4xx / 5xx / network / unknown)',
+  labelNames: ['provider', 'model', 'error_class'],
+  registers: [register],
+});
+
 export const tokenCostTotal = new Counter({
   name: 'token_cost_total',
   help: 'Total cost from token usage',
@@ -266,6 +323,79 @@ export function trackTokenUsage(model: string, type: 'input' | 'output', tokens:
 }
 
 /**
+ * One-shot emit-site for gen_ai.* metrics. Called by LLMMetricsService.logRequest()
+ * AFTER the per-request DB row is written, so a single seam covers both
+ * Prom + Postgres. Keep this function side-effect-only — never throws,
+ * never blocks the calling LLM request.
+ *
+ * Token-type rows that are zero or undefined are elided so the Counter
+ * doesn't emit empty rows that pollute PromQL `topk()` and `sum by(token_type)`.
+ */
+export interface LLMRequestTrack {
+  provider: string;
+  model: string;
+  operation: 'chat' | 'embedding' | 'completion' | 'image';
+  status: 'success' | 'error' | 'timeout' | 'rate_limited';
+  durationMs: number;
+  ttftMs?: number;
+  tokensPerSecond?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  cachedTokens?: number;
+  reasoningTokens?: number;
+  finishReason?: string;
+  errorClass?: string;
+}
+
+export function trackLLMRequest(t: LLMRequestTrack): void {
+  try {
+    const { provider, model, operation, status } = t;
+
+    // NOTE: prom-client orders labels alphabetically internally on `.labels(...)`
+    // positional calls — we use the object form so binding is explicit and
+    // immune to label-name reordering.
+    genAiClientOperationDurationSeconds
+      .labels({ provider, model, operation, status })
+      .observe(t.durationMs / 1000);
+
+    if (t.ttftMs != null && t.ttftMs > 0) {
+      genAiServerTimeToFirstTokenSeconds
+        .labels({ provider, model })
+        .observe(t.ttftMs / 1000);
+    }
+    if (t.tokensPerSecond != null && t.tokensPerSecond > 0) {
+      genAiServerTimePerOutputTokenSeconds
+        .labels({ provider, model })
+        .observe(1 / t.tokensPerSecond);
+    }
+
+    if (t.promptTokens && t.promptTokens > 0) {
+      genAiClientTokenUsageTotal.labels({ provider, model, token_type: 'input' }).inc(t.promptTokens);
+    }
+    if (t.completionTokens && t.completionTokens > 0) {
+      genAiClientTokenUsageTotal.labels({ provider, model, token_type: 'output' }).inc(t.completionTokens);
+    }
+    if (t.cachedTokens && t.cachedTokens > 0) {
+      genAiClientTokenUsageTotal.labels({ provider, model, token_type: 'cached' }).inc(t.cachedTokens);
+    }
+    if (t.reasoningTokens && t.reasoningTokens > 0) {
+      genAiClientTokenUsageTotal.labels({ provider, model, token_type: 'reasoning' }).inc(t.reasoningTokens);
+    }
+
+    if (status === 'success' && t.finishReason) {
+      genAiFinishReasonsTotal.labels({ provider, model, finish_reason: t.finishReason }).inc();
+    } else if (status !== 'success') {
+      genAiErrorsTotal
+        .labels({ provider, model, error_class: t.errorClass || 'unknown' })
+        .inc();
+    }
+  } catch (err) {
+    // Side-effect only — never break the calling request.
+    logger.debug({ err }, '[metrics] trackLLMRequest failed');
+  }
+}
+
+/**
  * Track vector operation
  */
 export function trackVectorOperation(operation: string, collection: string, status: 'success' | 'error') {
@@ -415,6 +545,99 @@ export class MetricsUtils {
     mcpResponseTime.labels(serverId, toolName).observe(duration / 1000);
   }
 }
+
+// ============================================================================
+// Router + Tuning + Defaults Metrics (added 2026-04-23)
+// ============================================================================
+
+/** Counter: which model got picked and how it got picked */
+export const routerDecisionCounter = new Counter({
+  name: 'openagentic_router_decision_total',
+  help: 'SmartRouter model selection count, labelled by resolution path, model, and tier',
+  labelNames: ['resolved_by', 'selected_model', 'tier'] as const,
+  registers: [register],
+});
+
+/** Counter: when an escalation path fired (destructive/infra/complexity/chat-pool/quality-gate) */
+export const routerEscalationCounter = new Counter({
+  name: 'openagentic_router_escalation_fires_total',
+  help: 'SmartRouter escalation path triggers',
+  labelNames: ['type'] as const,
+  registers: [register],
+});
+
+/** Counter: when an FCA floor filtered a model out */
+export const routerFloorExcludedCounter = new Counter({
+  name: 'openagentic_router_floor_excluded_total',
+  help: 'SmartRouter candidate filtered by an FCA floor',
+  labelNames: ['floor', 'model'] as const,
+  registers: [register],
+});
+
+/** Histogram: routeRequest latency in ms */
+export const routerRouteRequestDurationMs = new Histogram({
+  name: 'openagentic_router_route_request_duration_ms',
+  help: 'SmartRouter routeRequest wall time (ms)',
+  buckets: [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000],
+  registers: [register],
+});
+
+/** Counter: whether quality bonus was applied on a request */
+export const routerQualityBonusCounter = new Counter({
+  name: 'openagentic_router_quality_bonus_applied_total',
+  help: 'SmartRouter quality bonus fired on a request (gated: was the fcaQualityGatedByComplexity check passed)',
+  labelNames: ['applied'] as const,
+  registers: [register],
+});
+
+/** Counter: admin updated a tuning field */
+export const routerTuningUpdatedCounter = new Counter({
+  name: 'openagentic_router_tuning_updated_total',
+  help: 'Router tuning field mutations via admin UI / API',
+  labelNames: ['field', 'updated_by'] as const,
+  registers: [register],
+});
+
+/** Gauge: current value of each tuning field (scalar fields only) */
+export const routerTuningCurrentGauge = new Gauge({
+  name: 'openagentic_router_tuning_current',
+  help: 'Current value of each router tuning field',
+  labelNames: ['field'] as const,
+  registers: [register],
+});
+
+/** Counter: admin updated a default-models category */
+export const defaultModelsUpdatedCounter = new Counter({
+  name: 'openagentic_defaults_updated_total',
+  help: 'Tenant default_models category mutations via admin UI / API',
+  labelNames: ['category', 'updated_by'] as const,
+  registers: [register],
+});
+
+/** Gauge: the currently-selected model per default-models category */
+export const defaultModelsCurrentGauge = new Gauge({
+  name: 'openagentic_defaults_current',
+  help: 'Current tenant default model per category (value is always 1; label carries the model id)',
+  labelNames: ['category', 'model'] as const,
+  registers: [register],
+});
+
+/** Histogram: bootstrap step duration — labelled by step name and outcome status */
+export const bootstrapStepDuration = new Histogram({
+  name: 'bootstrap_step_duration_seconds',
+  help: 'Duration of each API bootstrap step in seconds',
+  labelNames: ['step', 'status'] as const,
+  buckets: [0.1, 0.5, 1, 5, 10, 30, 60],
+  registers: [register],
+});
+
+/** Histogram: sub-agent concurrent dispatch count per orchestration run */
+export const subagentConcurrentDispatch = new Histogram({
+  name: 'openagentic_subagent_concurrent_dispatch_count',
+  help: 'Number of sub-agents dispatched concurrently from a single orchestration group',
+  buckets: [1, 2, 3, 4, 5, 8, 10],
+  registers: [register],
+});
 
 // Default export
 export default {

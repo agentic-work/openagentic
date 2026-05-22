@@ -16,7 +16,7 @@
 
 import { prisma } from '../utils/prisma.js';
 import { loggers } from '../utils/logger.js';
-import { WorkflowDefinition } from './WorkflowExecutionEngine.js';
+import type { WorkflowDefinition } from '@openagentic/workflow-engine';
 import { getPrismaVectorClient } from './database/PrismaVectorClient.js';
 import { UniversalEmbeddingService } from './UniversalEmbeddingService.js';
 

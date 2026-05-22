@@ -56,6 +56,94 @@ export default async function agentMetricsRoutes(fastify: FastifyInstance) {
     }
   );
 
+  // GET /admin/agents/metrics/fleet — backs the AgentOpsView (#54).
+  // Returns the exact { agents, runs } shape AgentOpsView consumes,
+  // rolled up from admin.agentic_loops (the agent SOT for runtime
+  // executions) joined to admin.agentic_loop_executions over a 24h
+  // window. Falls back to empty arrays when the schema isn't migrated
+  // (matches the by-agent endpoint's defensive pattern).
+  fastify.get('/agents/metrics/fleet', async (_request, reply) => {
+    try {
+      // Per-agent 24h roll-up
+      const agents = await prisma.$queryRawUnsafe<Array<any>>(`
+        SELECT
+          a.id            AS "agentId",
+          a.display_name  AS "displayName",
+          a.name          AS "name",
+          a.agent_type    AS "agentType",
+          COUNT(e.id)::int AS "runCount24h",
+          ROUND(
+            COUNT(*) FILTER (WHERE e.status = 'completed')::numeric /
+              NULLIF(COUNT(e.id), 0),
+            4
+          )::float8 AS "successRate",
+          COALESCE(
+            percentile_cont(0.5) WITHIN GROUP (
+              ORDER BY e.duration_ms
+            ) FILTER (WHERE e.duration_ms IS NOT NULL),
+            0
+          )::int AS "p50DurationMs",
+          COALESCE(SUM(e.estimated_cost), 0)::float8 AS "totalCostDollars"
+        FROM admin.agentic_loops a
+        LEFT JOIN admin.agentic_loop_executions e
+          ON e.loop_id = a.id
+         AND e.started_at >= NOW() - INTERVAL '24 hours'
+        GROUP BY a.id, a.display_name, a.name, a.agent_type
+        ORDER BY "runCount24h" DESC, a.display_name
+      `);
+
+      // Latest 50 runs across the fleet
+      const runs = await prisma.$queryRawUnsafe<Array<any>>(`
+        SELECT
+          e.id,
+          e.loop_id        AS "agentId",
+          COALESCE(a.display_name, a.name, 'unknown') AS "agentName",
+          e.status,
+          COALESCE(e.duration_ms, 0)::int AS "durationMs",
+          COALESCE(e.estimated_cost * 100, 0)::float8 AS "costCents",
+          e.started_at     AS "startedAt",
+          e.error
+        FROM admin.agentic_loop_executions e
+        LEFT JOIN admin.agentic_loops a ON a.id = e.loop_id
+        ORDER BY e.started_at DESC NULLS LAST
+        LIMIT 50
+      `);
+
+      return reply.send({
+        agents: agents.map((a: any) => ({
+          agentId: a.agentId,
+          agentName: a.displayName || a.name,
+          agentType: a.agentType || 'agent',
+          runCount24h: Number(a.runCount24h ?? 0),
+          successRate: Number(a.successRate ?? 0),
+          p50DurationMs: Number(a.p50DurationMs ?? 0),
+          // The view consumes cents — convert dollars → cents.
+          totalCostCents: Math.round(Number(a.totalCostDollars ?? 0) * 100),
+        })),
+        runs: runs.map((r: any) => ({
+          id: r.id,
+          agentId: r.agentId,
+          agentName: r.agentName,
+          status:
+            r.error
+              ? 'error'
+              : r.status === 'completed' || r.status === 'success'
+                ? 'success'
+                : r.status === 'running'
+                  ? 'running'
+                  : 'queued',
+          durationMs: Number(r.durationMs ?? 0),
+          costCents: Number(r.costCents ?? 0),
+          startedAt: r.startedAt ? new Date(r.startedAt).toISOString() : '',
+          error: r.error || undefined,
+        })),
+      });
+    } catch (error: any) {
+      fastify.log.warn({ err: error }, 'agent-metrics fleet query failed');
+      return reply.send({ agents: [], runs: [] });
+    }
+  });
+
   // GET /admin/agents/metrics/by-agent
   fastify.get('/agents/metrics/by-agent', async (request, reply) => {
     try {

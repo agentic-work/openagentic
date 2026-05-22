@@ -1,0 +1,225 @@
+/**
+ * codeMode-crt.css — opt-in CRT/glitch terminal aesthetic for the
+ * codemode chat column. Pure CSS, no JS animation loops, no per-frame
+ * work. All animations run on `transform`/`opacity` only so they stay
+ * on the GPU compositor and never block layout/paint.
+ *
+ * Activation contract:
+ *   - `<body class="cm-crt">`     → effect on
+ *   - localStorage["cm-crt-mode"] = "true"  → persists across reloads
+ *
+ * Effects, top-down:
+ *   1. Subtle phosphor tint + text glow on `.cm-msg-user`,
+ *      `.cm-msg-thinking`, `.cm-tool-block`, `.cm-part-text`. Monaco
+ *      is intentionally NOT touched — it owns its own font rendering
+ *      and any filter/text-shadow there obliterates syntax highlights.
+ *   2. Fixed-position overlay (`[data-cm-crt-overlay]`) drawn over the
+ *      whole viewport with `pointer-events:none` so it never intercepts
+ *      clicks. Three pseudo-element layers:
+ *        - `::before`  scanlines (repeating-linear-gradient)
+ *        - `::after`   vignette (radial-gradient, dark corners)
+ *        - itself      vertical 60Hz roll (1px translateY loop) +
+ *                      occasional RGB-shift flicker
+ *   3. Pseudo-random glitch via `nth-child` selectors on chat
+ *      messages, applying brief chromatic-aberration text-shadow
+ *      with long animation-delays so each row fires independently
+ *      every 8-15s with no JS coordination.
+ *
+ * Performance budget:
+ *   - 0 setInterval / requestAnimationFrame
+ *   - All animated properties are `transform` or `opacity`
+ *   - `will-change: transform, opacity` only on the overlay (keeps it
+ *      on its own compositor layer, doesn't promote chat content)
+ *
+ * @copyright 2026 Openagentic LLC
+ * @license PROPRIETARY
+ */
+
+:root {
+  /* Phosphor green by default. To switch to amber, add data-cm-crt-color="amber"
+     on body — the rule below overrides --cm-crt-glow. */
+  --cm-crt-glow: 0, 255, 65;
+  --cm-crt-glitch-cycle: 12s;
+  --cm-crt-flicker-cycle: 30s;
+}
+
+body.cm-crt[data-cm-crt-color="amber"] {
+  --cm-crt-glow: 255, 176, 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+ * 1. Phosphor tint + glow on chat content (NOT Monaco)
+ * ───────────────────────────────────────────────────────────────── */
+
+body.cm-crt .code-mode {
+  /* Subtle saturation/brightness shift gives the whole column the
+     "old monitor" look without nuking Catppuccin/Tokyo Night palettes.
+     Hue-rotate is intentionally tiny (5deg) so existing themes still
+     read correctly — the heavy lifting is the per-message glow below. */
+  filter: saturate(1.15) brightness(0.97) contrast(1.05);
+}
+
+body.cm-crt .cm-msg-user,
+body.cm-crt .cm-msg-thinking,
+body.cm-crt .cm-tool-block,
+body.cm-crt .cm-part-text {
+  text-shadow:
+    0 0 4px currentColor,
+    0 0 10px rgba(var(--cm-crt-glow), 0.35),
+    0 0 18px rgba(var(--cm-crt-glow), 0.18);
+}
+
+/* Ensure Monaco editor content is left alone — defense in depth in
+   case .cm-tool-block ever wraps an editor. */
+body.cm-crt .monaco-editor,
+body.cm-crt .monaco-editor *,
+body.cm-crt [class*="monaco-"] {
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+ * 2. Fixed-position overlay layers (scanlines, vignette, roll)
+ * ───────────────────────────────────────────────────────────────── */
+
+[data-cm-crt-overlay] {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+  will-change: transform, opacity;
+  /* The 60Hz vertical roll — translateY 0→1px→0 over 16.67ms (≈60Hz).
+     One pixel of jiggle, GPU-compositable, perceived as the "rolling
+     scanline lock" of an old CRT. */
+  animation: cm-crt-roll 16.67ms steps(2, end) infinite,
+             cm-crt-rgb-flicker var(--cm-crt-flicker-cycle) cubic-bezier(.9, 0, .1, 1) infinite;
+}
+
+/* Scanlines layer */
+[data-cm-crt-overlay]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0,
+    transparent 2px,
+    rgba(0, 0, 0, 0.18) 2px,
+    rgba(0, 0, 0, 0.18) 3px
+  );
+  pointer-events: none;
+}
+
+/* Vignette layer */
+[data-cm-crt-overlay]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 55%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+  pointer-events: none;
+}
+
+@keyframes cm-crt-roll {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(1px); }
+}
+
+/* Rare full-screen RGB-shift flicker — translates 1px on X and shifts
+   opacity briefly. Duration is set by the cubic-bezier on the parent
+   animation; the keyframes only "fire" for ~60ms of the 30s cycle
+   thanks to the 0%→0.2% jump. */
+@keyframes cm-crt-rgb-flicker {
+  0%, 0.15%, 100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  0.05% {
+    opacity: 0.92;
+    transform: translateX(1px);
+  }
+  0.10% {
+    opacity: 0.96;
+    transform: translateX(-1px);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+ * 3. Per-message chromatic-aberration glitch (pseudorandom)
+ *
+ * Uses :nth-child with prime-ish moduli + per-bucket animation-delay
+ * to spread glitches across messages without JS. Each message picks
+ * up ONE of these animations. The animation only "shows" for ~80ms
+ * out of var(--cm-crt-glitch-cycle) (default 12s) by holding the
+ * "normal" state through nearly all keyframes.
+ * ───────────────────────────────────────────────────────────────── */
+
+@keyframes cm-crt-glitch {
+  0%, 99%, 100% {
+    text-shadow:
+      0 0 4px currentColor,
+      0 0 10px rgba(var(--cm-crt-glow), 0.35),
+      0 0 18px rgba(var(--cm-crt-glow), 0.18);
+    transform: translateX(0);
+  }
+  99.3% {
+    text-shadow:
+      1px 0 0 #ff003c,
+      -1px 0 0 #00f0ff,
+      0 0 6px currentColor;
+    transform: translateX(0.5px);
+  }
+  99.6% {
+    text-shadow:
+      -1px 0 0 #ff003c,
+      1px 0 0 #00f0ff,
+      0 0 6px currentColor;
+    transform: translateX(-0.5px);
+  }
+}
+
+body.cm-crt .cm-msg-user,
+body.cm-crt .cm-tool-block,
+body.cm-crt .cm-part-text {
+  animation: cm-crt-glitch var(--cm-crt-glitch-cycle) cubic-bezier(.9, 0, .1, 1) infinite;
+}
+
+/* Stagger so every message glitches at a different point in the cycle.
+   The seven buckets cover most realistic message counts before
+   wrap-around becomes obvious. */
+body.cm-crt .cm-msg-user:nth-child(7n+1),
+body.cm-crt .cm-tool-block:nth-child(7n+1),
+body.cm-crt .cm-part-text:nth-child(7n+1)   { animation-delay: 0s; }
+body.cm-crt .cm-msg-user:nth-child(7n+2),
+body.cm-crt .cm-tool-block:nth-child(7n+2),
+body.cm-crt .cm-part-text:nth-child(7n+2)   { animation-delay: 1.7s; }
+body.cm-crt .cm-msg-user:nth-child(7n+3),
+body.cm-crt .cm-tool-block:nth-child(7n+3),
+body.cm-crt .cm-part-text:nth-child(7n+3)   { animation-delay: 3.4s; }
+body.cm-crt .cm-msg-user:nth-child(7n+4),
+body.cm-crt .cm-tool-block:nth-child(7n+4),
+body.cm-crt .cm-part-text:nth-child(7n+4)   { animation-delay: 5.1s; }
+body.cm-crt .cm-msg-user:nth-child(7n+5),
+body.cm-crt .cm-tool-block:nth-child(7n+5),
+body.cm-crt .cm-part-text:nth-child(7n+5)   { animation-delay: 6.8s; }
+body.cm-crt .cm-msg-user:nth-child(7n+6),
+body.cm-crt .cm-tool-block:nth-child(7n+6),
+body.cm-crt .cm-part-text:nth-child(7n+6)   { animation-delay: 8.5s; }
+body.cm-crt .cm-msg-user:nth-child(7n+7),
+body.cm-crt .cm-tool-block:nth-child(7n+7),
+body.cm-crt .cm-part-text:nth-child(7n+7)   { animation-delay: 10.2s; }
+
+/* Respect the user's OS-level reduced motion preference — cuts ALL
+   CRT animations but keeps the static phosphor glow + scanlines so
+   the look is preserved without the jitter. */
+@media (prefers-reduced-motion: reduce) {
+  [data-cm-crt-overlay],
+  body.cm-crt .cm-msg-user,
+  body.cm-crt .cm-tool-block,
+  body.cm-crt .cm-part-text {
+    animation: none !important;
+  }
+}

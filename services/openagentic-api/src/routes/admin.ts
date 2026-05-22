@@ -17,9 +17,10 @@ import { AzureGroupService } from '../services/AzureGroupService.js';
 import { loggers } from '../utils/logger.js';
 import llmProviderRoutes from './admin/llm-providers.js';
 import multiModelRoutes from './admin/multi-model.js';
-import pipelineConfigRoutes from './admin/pipeline-config.js';
-import codeModeConfigRoutes from './admin/code-mode-config.js';
-import { ProviderManager } from '../services/llm-providers/ProviderManager.js';
+import routerTuningRoutes from './admin/router-tuning.js';
+import chatLoopConfigRoutes from './admin/chat-loop-config.js';
+import enrichedToolsRoutes from './admin/enriched-tools.js';
+import { ProviderManager, getProviderManager } from '../services/llm-providers/ProviderManager.js';
 import { ProviderConfigService } from '../services/llm-providers/ProviderConfigService.js';
 import { contextManagementService } from '../services/ContextManagementService.js';
 
@@ -910,19 +911,19 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Register LLM Provider routes
-  // IMPORTANT: Use the GLOBAL ProviderManager instance from server.ts
+  // IMPORTANT: Use the singleton ProviderManager instance from server.ts startup
   // This ensures admin CRUD operations reload the same instance used by chat
   try {
-    // Get global providerManager set in server.ts
-    const globalProviderManager = (global as any).providerManager as ProviderManager | undefined;
+    // Get singleton providerManager set during startup
+    const globalProviderManager = getProviderManager();
 
     if (globalProviderManager) {
       await fastify.register(llmProviderRoutes, {
         providerManager: globalProviderManager
       });
-      logger.info('LLM Provider routes registered with GLOBAL providerManager (chat will see changes)');
+      logger.info('LLM Provider routes registered with singleton providerManager (chat will see changes)');
     } else {
-      // Fallback: create local instance if global not available (shouldn't happen)
+      // Fallback: create local instance if singleton not available (shouldn't happen)
       logger.warn('Global providerManager not found - creating local instance (admin changes may not affect chat!)');
       const configService = new ProviderConfigService(loggers.admin);
       const config = await configService.loadProviderConfig();
@@ -946,6 +947,17 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
     // Don't throw - allow admin routes to work even if provider manager fails
   }
 
+  // Admin AI assistant — SSE handler for the in-product help bar.
+  // Mounted directly because the handler is the route, not a plugin.
+  try {
+    const { adminAiAskHandler } = await import('./admin/ai/ask.handler.js');
+    fastify.post('/ai/ask', adminAiAskHandler);
+    logger.info('Admin AI assistant route registered at /api/admin/ai/ask');
+  } catch (error) {
+    logger.error({ error: error instanceof Error ? error.message : String(error) },
+      'Failed to register admin AI ask handler');
+  }
+
   // Register Multi-Model Configuration routes
   try {
     await fastify.register(multiModelRoutes, {
@@ -964,13 +976,13 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
     // Don't throw - allow admin routes to work even if multi-model fails
   }
 
-  // Register Pipeline Configuration routes
+  // Register Router Tuning routes
   try {
-    await fastify.register(pipelineConfigRoutes, {
-      prefix: '' // Routes already include /pipeline-config prefix
+    await fastify.register(routerTuningRoutes, {
+      prefix: '' // Routes already include /router-tuning prefix
     });
 
-    logger.info('Pipeline Configuration routes registered successfully');
+    logger.info('Router Tuning routes registered successfully');
   } catch (error) {
     logger.error({
       error: error instanceof Error ? {
@@ -978,17 +990,18 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         stack: error.stack,
         name: error.name
       } : String(error)
-    }, 'Failed to initialize Pipeline Config routes');
-    // Don't throw - allow admin routes to work even if pipeline config fails
+    }, 'Failed to initialize Router Tuning routes');
+    // Don't throw - allow admin routes to work even if router tuning fails
   }
 
-  // Register Code Mode Configuration routes
+  // Register Chat Loop Config routes — admin-tunable max_turns + future
+  // chat-loop knobs (SoT: admin.system_configuration row keyed `chat_loop`).
+  // Surfaced at /admin#chat-loop in the admin UI.
   try {
-    await fastify.register(codeModeConfigRoutes, {
-      prefix: '' // Routes already include /code-mode prefix
+    await fastify.register(chatLoopConfigRoutes, {
+      prefix: '' // Routes already include /chat-loop-config prefix
     });
-
-    logger.info('Code Mode Configuration routes registered successfully');
+    logger.info('Chat Loop Config routes registered successfully');
   } catch (error) {
     logger.error({
       error: error instanceof Error ? {
@@ -996,8 +1009,27 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         stack: error.stack,
         name: error.name
       } : String(error)
-    }, 'Failed to initialize Code Mode Config routes');
-    // Don't throw - allow admin routes to work even if code mode config fails
+    }, 'Failed to initialize Chat Loop Config routes');
+    // Don't throw - allow admin routes to work even if chat-loop-config fails
+  }
+
+  // V3 Phase 5 — EnrichedTool registry (per-T1-tool metadata SoT).
+  // Drives the V3 envelope splitter outputTemplate + truncate_summary;
+  // admin can edit/disable rows live via /admin#enriched-tools.
+  try {
+    await fastify.register(enrichedToolsRoutes, {
+      prefix: '' // Routes already include /enriched-tools prefix
+    });
+    logger.info('EnrichedTool routes registered successfully');
+  } catch (error) {
+    logger.error({
+      error: error instanceof Error ? {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      } : String(error),
+    }, 'Failed to initialize EnrichedTool routes');
+    // Don't throw - additive, V3 falls back to default outputTemplate (none).
   }
 
   // ============================================================================

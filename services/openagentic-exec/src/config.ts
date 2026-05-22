@@ -2,7 +2,7 @@
  * Configuration for Openagentic Exec Daemon
  *
  * This is a lightweight execution service that runs CLI sessions
- * and code-server instances. It's controlled by openagentic-manager.
+ * It's controlled by openagentic-manager via REST API and WebSocket.
  */
 
 export interface Config {
@@ -14,12 +14,6 @@ export interface Config {
   sandboxEnabled: boolean;
   sandboxUidMin: number;
   sandboxUidMax: number;
-  // code-server configuration
-  codeServerBinary: string;
-  codeServerBasePort: number;
-  codeServerMaxInstances: number;
-  codeServerExtensionsDir: string;
-  codeServerUserDataDir: string;
   // Ollama configuration (for local LLM)
   ollamaHost: string;
   defaultModel: string;
@@ -38,12 +32,6 @@ export const config: Config = {
   sandboxEnabled: process.env.SANDBOX_ENABLED !== 'false',
   sandboxUidMin: parseInt(process.env.SANDBOX_UID_MIN || '10000'),
   sandboxUidMax: parseInt(process.env.SANDBOX_UID_MAX || '60000'),
-  // code-server
-  codeServerBinary: process.env.CODE_SERVER_BINARY || '/usr/bin/code-server',
-  codeServerBasePort: parseInt(process.env.CODE_SERVER_BASE_PORT || '3100'),
-  codeServerMaxInstances: parseInt(process.env.CODE_SERVER_MAX_INSTANCES || '100'),
-  codeServerExtensionsDir: process.env.CODE_SERVER_EXTENSIONS_DIR || '/var/lib/code-server/extensions',
-  codeServerUserDataDir: process.env.CODE_SERVER_USER_DATA_DIR || '/var/lib/code-server',
   // Ollama - OLLAMA_HOST is passed by k8sSessionManager, fallback uses K8s service name
   ollamaHost: process.env.OLLAMA_HOST || process.env.OLLAMA_URL || 'http://openagentic-ollama:11434',
   // NEVER hardcode a model. Empty = API smart router decides (admin DB → platform default)

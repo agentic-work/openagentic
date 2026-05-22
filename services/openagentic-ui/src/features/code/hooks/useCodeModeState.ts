@@ -13,12 +13,12 @@ import type {
   ConversationMessage,
   UIState,
   ToolStep,
-} from '../types/anthropic-blocks';
+} from '../types/uiState';
 import {
   getToolDisplayName,
   getToolIcon,
   getInputPreview,
-} from '../types/anthropic-blocks';
+} from '../types/toolDisplay';
 import type { TodoItem } from '../types/protocol';
 
 // Connection state

@@ -3,6 +3,7 @@
 packages:
   - services/openagentic-ui
   - services/openagentic-api
+  - services/shared/workflow-engine
 
 ignoredBuiltDependencies:
   - '@parcel/watcher'

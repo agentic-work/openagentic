@@ -5,7 +5,14 @@
  *
  * Note: SVG content is statically imported at build time from trusted local
  * repo assets — not user input — so dangerouslySetInnerHTML is safe here.
+ *
+ * Hex literals in this file are vendor BRAND IDENTITY colors (Microsoft #0078D4,
+ * Google #4285F4, AWS #FF9900, Anthropic #D4A574, OpenAI #10A37F, etc.). They
+ * are non-themeable by definition — the whole point is that "Azure blue" must
+ * always look like Azure blue regardless of admin theme. Equivalent to chart
+ * palettes — see comment at the top of `Shared/chartColors.ts`.
  */
+/* eslint-disable admin-tokens/no-hardcoded-admin-color */
 import React from 'react';
 
 // Raw SVG imports — Vite returns the file contents as a string.
@@ -83,7 +90,7 @@ export const BedrockIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
 );
 
 export const OllamaIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
-  <InlineSvg svg={OllamaSvg} size={size} color="var(--text-primary, #fff)" title="Ollama" />
+  <InlineSvg svg={OllamaSvg} size={size} color="var(--text-primary)" title="Ollama" />
 );
 
 export const AnthropicIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
@@ -117,17 +124,17 @@ export const GroqIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
 // ── Icon + color lookup maps ─────────────────────────────────────────────────
 
 const PROVIDER_COLORS: Record<string, string> = {
-  'azure-openai': 'var(--provider-azure, #0078D4)',
-  'azure-ai-foundry': 'var(--provider-azure, #0078D4)',
-  'vertex-ai': 'var(--provider-google, #4285F4)',
-  'google-vertex': 'var(--provider-google, #4285F4)',
-  google: 'var(--provider-google, #4285F4)',
+  'azure-openai': 'var(--provider-azure)',
+  'azure-ai-foundry': 'var(--provider-azure)',
+  'vertex-ai': 'var(--provider-google)',
+  'google-vertex': 'var(--provider-google)',
+  google: 'var(--provider-google)',
   gemini: '#3186FF',
-  'aws-bedrock': 'var(--provider-aws, #FF9900)',
-  aws: 'var(--provider-aws, #FF9900)',
-  ollama: 'var(--provider-ollama, #22C55E)',
-  anthropic: 'var(--provider-anthropic, #D4A574)',
-  openai: 'var(--provider-openai, #10A37F)',
+  'aws-bedrock': 'var(--provider-aws)',
+  aws: 'var(--provider-aws)',
+  ollama: 'var(--provider-ollama)',
+  anthropic: 'var(--provider-anthropic)',
+  openai: 'var(--provider-openai)',
   mistral: '#FF8205',
   cohere: '#39594D',
   meta: '#0082FB',
@@ -186,5 +193,5 @@ export function getProviderColor(providerType: string): string {
   if (t.includes('cohere')) return PROVIDER_COLORS['cohere'];
   if (t.includes('meta') || t.includes('llama')) return PROVIDER_COLORS['meta'];
   if (t.includes('groq')) return PROVIDER_COLORS['groq'];
-  return '#6b7280';
+  return 'var(--ap-fg-3)';
 }

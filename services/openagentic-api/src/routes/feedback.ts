@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { getFeedbackIntegrationService } from '../services/FeedbackIntegrationService.js';
 import { getSemanticLearningService } from '../services/SemanticLearningService.js';
 import { getFeedbackLearningService, detectResponseFormat } from '../services/FeedbackLearningService.js';
+import { v3Metrics, safeIncCounter } from '../services/V3MetricsRegistry.js';
 
 // Validation schemas
 const feedbackSubmitSchema = z.object({
@@ -27,6 +28,12 @@ const feedbackSubmitSchema = z.object({
   provider: z.string().optional(),
   responseTime: z.number().optional(),
   tokenCount: z.number().optional(),
+  // Phase 13 advisory loop: intent classification captured at turn time so
+  // analyze() can group (intent, model) without joining ChatMessage metadata.
+  // The `audience` column was DROPPED in chatmode-rip Phase E.7 (role
+  // discrimination now lives on rbac_system_prompts), so the request schema
+  // is intent-only.
+  intent: z.string().optional(),
 });
 
 type FeedbackSubmitBody = z.infer<typeof feedbackSubmitSchema>;
@@ -114,6 +121,9 @@ export const feedbackRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
           provider: validatedBody.provider || null,
           response_time: validatedBody.responseTime,
           token_count: validatedBody.tokenCount || null,
+          // Phase 13 advisory loop. `audience` was dropped in chatmode-rip
+          // Phase E.7 (role discrim now on rbac_system_prompts).
+          intent: validatedBody.intent || null,
           metadata: {
             userAgent: request.headers['user-agent'],
             timestamp: new Date().toISOString(),
@@ -123,9 +133,24 @@ export const feedbackRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
           rating: validatedBody.rating,
           comment: validatedBody.comment,
           tags: validatedBody.tags || [],
+          intent: validatedBody.intent || null,
           updated_at: new Date(),
         },
       });
+
+      // ── Phase 13 V3 advisory loop — emit feedback_signals counter ────
+      // Maps the existing 6-way feedback_type onto the V3 binary signal:
+      // thumbs_up / copy / share → positive; thumbs_down / regenerate / report → negative.
+      const positiveTypes = new Set(['thumbs_up', 'copy', 'share']);
+      const negativeTypes = new Set(['thumbs_down', 'regenerate', 'report']);
+      const v3Signal: 'positive' | 'negative' | null = positiveTypes.has(validatedBody.feedbackType)
+        ? 'positive'
+        : negativeTypes.has(validatedBody.feedbackType)
+        ? 'negative'
+        : null;
+      if (v3Signal) {
+        safeIncCounter(v3Metrics.feedbackSignals, { signal: v3Signal });
+      }
 
       logger.info({
         feedbackId: feedback.id,

@@ -1,0 +1,447 @@
+/**
+ * Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
+ *
+ * Admin v3 — global override layer for v2-delegated leaves
+ *
+ * Scope: every selector below is rooted at `.aw-shell` so it applies
+ * ONLY when a v2 page body is rendering inside the v3 industrial-
+ * telemetry chrome via PageRouter delegation. The v2 fallback (when
+ * the user opts out via ?v3=0) is unaffected.
+ *
+ * Goal: fix the 6 P0 + 36 P1 UX inconsistencies catalogued by the
+ * 2026-05-06 admin-walk audit without rewriting 60 individual v2
+ * components. Each rule below targets one of the recurring v2 styling
+ * hooks (`.glass-card`, `.admin-table-excel`, `.status-badge`,
+ * `.ap-btn-primary`, `.ap-text-*`, raw `text-white` / `bg-white`,
+ * etc.) and restyles it to match the v3 aesthetic:
+ *   - flat surfaces (no glassmorphism), 1px hairlines
+ *   - JetBrains Mono for tabular/figure text
+ *   - neutral-first KPIs (large fg-0, small fg-3 unit)
+ *   - status colors via tokens (--ok/--warn/--err) only
+ *   - 26-28px control heights, dense padding
+ *
+ * Pattern: each block ends with a `/* WHY:` comment naming the
+ * audit punch-list item it closes.
+ */
+
+/* ============================================================
+   Reset Tailwind hard-coded colors that break light-mode
+   (audit P0/P1 across ~47 files: text-white, bg-white, bg-black)
+   ============================================================ */
+.aw-shell .text-white,
+.aw-shell .text-gray-100,
+.aw-shell .text-gray-200 { color: var(--fg-0) !important; }
+
+.aw-shell .text-black,
+.aw-shell .text-gray-900,
+.aw-shell .text-gray-800 { color: var(--fg-0) !important; }
+
+.aw-shell .text-gray-300,
+.aw-shell .text-gray-400 { color: var(--fg-2) !important; }
+
+.aw-shell .text-gray-500,
+.aw-shell .text-gray-600 { color: var(--fg-3) !important; }
+
+.aw-shell .bg-white { background: var(--bg-1) !important; }
+.aw-shell .bg-black { background: var(--bg-0) !important; }
+.aw-shell .bg-gray-50 { background: var(--bg-1) !important; }
+.aw-shell .bg-gray-100,
+.aw-shell .bg-gray-200 { background: var(--bg-2) !important; }
+.aw-shell .bg-gray-700,
+.aw-shell .bg-gray-800,
+.aw-shell .bg-gray-900 { background: var(--bg-1) !important; }
+
+/* WHY: P0/P1 — audit catalogues 233 hardcoded color literals. Map
+   each to the active theme's token so light-mode parity works. */
+
+/* ============================================================
+   .glass-card → flat industrial Panel
+   (160 occurrences — the dominant v2 Panel surface)
+   ============================================================ */
+.aw-shell .glass-card {
+  background: var(--bg-1) !important;
+  border: 1px solid var(--line-1) !important;
+  border-radius: 0 !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+.aw-shell .glass-card:hover { border-color: var(--line-2) !important; }
+
+/* WHY: v3 industrial aesthetic = flat hairline borders, no glass /
+   blur / pill radii. The audit's #1 most-cited mismatch. */
+
+/* ============================================================
+   .admin-table-excel → v3 Dt-style table
+   ============================================================ */
+.aw-shell table.admin-table-excel,
+.aw-shell .admin-table-excel {
+  font-family: var(--font-v3-mono) !important;
+  font-size: var(--v3-t-meta, 12px) !important;
+  border-collapse: collapse !important;
+  width: 100%;
+}
+.aw-shell .admin-table-excel thead th {
+  background: var(--bg-2) !important;
+  color: var(--fg-3) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em;
+  font-weight: 500 !important;
+  font-size: 11px !important;
+  border-bottom: 1px solid var(--line-2) !important;
+  padding: 6px 10px !important;
+  text-align: left !important;
+}
+.aw-shell .admin-table-excel tbody td {
+  border-bottom: 1px solid var(--line-1) !important;
+  padding: 6px 10px !important;
+  color: var(--fg-1) !important;
+  background: transparent !important;
+}
+.aw-shell .admin-table-excel tbody tr:hover td {
+  background: var(--bg-2) !important;
+}
+
+/* WHY: P0 — User Management page audit calls out raw blue-header
+   `<table>` as unreadable. Strip the gradient, neutralize colors,
+   tighten padding to v3 density. */
+
+/* ============================================================
+   .status-badge → v3 Pill
+   ============================================================ */
+.aw-shell .status-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 1px 6px !important;
+  border-radius: 0 !important;
+  font-family: var(--font-v3-mono) !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.04em !important;
+  background: var(--bg-2) !important;
+  border: 1px solid var(--line-1) !important;
+  color: var(--fg-1) !important;
+  text-transform: lowercase !important;
+}
+.aw-shell .status-badge.success,
+.aw-shell .status-badge.ok {
+  color: var(--ok) !important;
+  border-color: color-mix(in srgb, var(--ok) 40%, transparent) !important;
+}
+.aw-shell .status-badge.warning,
+.aw-shell .status-badge.warn {
+  color: var(--warn) !important;
+  border-color: color-mix(in srgb, var(--warn) 40%, transparent) !important;
+}
+.aw-shell .status-badge.error,
+.aw-shell .status-badge.danger {
+  color: var(--err) !important;
+  border-color: color-mix(in srgb, var(--err) 40%, transparent) !important;
+}
+.aw-shell .status-badge.info {
+  color: var(--info) !important;
+  border-color: color-mix(in srgb, var(--info) 40%, transparent) !important;
+}
+
+/* WHY: P1 — colored backgrounds + pill radii read as 'web app',
+   not 'mission control'. Hairline border + token-based color. */
+
+/* ============================================================
+   .ap-text-{error,success,warning,info} → token-mapped
+   (147 total occurrences across these 4 utilities)
+   ============================================================ */
+.aw-shell .ap-text-error   { color: var(--err)  !important; }
+.aw-shell .ap-text-success { color: var(--ok)   !important; }
+.aw-shell .ap-text-warning { color: var(--warn) !important; }
+.aw-shell .ap-text-info    { color: var(--info) !important; }
+.aw-shell .ap-text         { color: var(--fg-1) !important; }
+
+.aw-shell .ap-bg-error   { background: color-mix(in srgb, var(--err)  12%, transparent) !important; }
+.aw-shell .ap-bg-success { background: color-mix(in srgb, var(--ok)   12%, transparent) !important; }
+.aw-shell .ap-bg-warning { background: color-mix(in srgb, var(--warn) 12%, transparent) !important; }
+.aw-shell .ap-bg-info    { background: color-mix(in srgb, var(--info) 12%, transparent) !important; }
+.aw-shell .ap-bg-tertiary { background: var(--bg-2) !important; }
+
+/* ============================================================
+   Buttons — .ap-btn-primary, .ap-icon-btn → flat v3 Btn
+   ============================================================ */
+.aw-shell .ap-btn-primary,
+.aw-shell button.btn-primary,
+.aw-shell button[class*="bg-blue-5"],
+.aw-shell button[class*="bg-blue-6"],
+.aw-shell button[class*="bg-primary"] {
+  background: var(--accent-dim) !important;
+  border: 1px solid var(--accent) !important;
+  color: var(--accent) !important;
+  border-radius: 0 !important;
+  padding: 4px 10px !important;
+  height: 26px !important;
+  font-family: var(--font-v3-mono) !important;
+  font-size: var(--v3-t-meta, 12px) !important;
+  font-weight: 500 !important;
+  text-transform: lowercase !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: none !important;
+  transition: background 80ms ease;
+}
+.aw-shell .ap-btn-primary:hover,
+.aw-shell button.btn-primary:hover {
+  background: color-mix(in srgb, var(--accent) 24%, transparent) !important;
+}
+
+.aw-shell .ap-icon-btn {
+  width: 26px !important;
+  height: 26px !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: var(--bg-2) !important;
+  border: 1px solid var(--line-1) !important;
+  color: var(--fg-2) !important;
+}
+.aw-shell .ap-icon-btn:hover {
+  border-color: var(--line-2) !important;
+  background: var(--bg-3) !important;
+  color: var(--fg-0) !important;
+}
+.aw-shell .ap-icon-btn-primary { color: var(--accent) !important; border-color: var(--accent) !important; }
+.aw-shell .ap-icon-btn-info    { color: var(--info)   !important; }
+.aw-shell .ap-icon-btn-error   { color: var(--err)    !important; }
+
+/* WHY: P0/P1 — solid blue / red / green action buttons read as
+   'consumer web'. Flatten to neutral with accent on primary. */
+
+/* Tailwind utility-class buttons (bg-primary-500/600, bg-blue-500/600).
+   Matches the LLMProvidersView "+ add provider", many other CTAs. */
+.aw-shell button[class*="bg-primary-5"],
+.aw-shell button[class*="bg-primary-6"],
+.aw-shell button[class*="bg-blue-5"],
+.aw-shell button[class*="bg-blue-6"],
+.aw-shell a[class*="bg-primary-5"],
+.aw-shell a[class*="bg-blue-5"] {
+  background: var(--accent-dim) !important;
+  color: var(--accent) !important;
+  border: 1px solid var(--accent) !important;
+  border-radius: 0 !important;
+  font-family: var(--font-v3-mono) !important;
+  font-weight: 500 !important;
+  text-transform: lowercase !important;
+}
+.aw-shell button[class*="bg-primary-5"]:hover,
+.aw-shell button[class*="bg-blue-5"]:hover {
+  background: color-mix(in srgb, var(--accent) 28%, transparent) !important;
+}
+
+/* Segmented controls / tab buttons that use bg-primary-500 for active
+   state (range pickers, view toggles, tab buttons across many views). */
+.aw-shell .bg-primary-500,
+.aw-shell .bg-blue-500 { background: var(--accent-dim) !important; color: var(--accent) !important; }
+
+.aw-shell .bg-primary-100,
+.aw-shell .bg-blue-100,
+.aw-shell .bg-primary-50,
+.aw-shell .bg-blue-50 {
+  background: color-mix(in srgb, var(--accent) 8%, transparent) !important;
+  color: var(--accent) !important;
+}
+.aw-shell .text-primary-500,
+.aw-shell .text-blue-500,
+.aw-shell .text-blue-600,
+.aw-shell .text-primary-600 { color: var(--accent) !important; }
+
+/* Border utilities the views lean on heavily. */
+.aw-shell .border-primary-500,
+.aw-shell .border-blue-500 { border-color: var(--accent) !important; }
+.aw-shell .border-error,
+.aw-shell .border-red-500 { border-color: var(--err) !important; }
+.aw-shell .border-success,
+.aw-shell .border-green-500 { border-color: var(--ok) !important; }
+
+/* `rounded-pill` (and `rounded-full` on buttons specifically) — these
+   are the strongest 'web app' tells; flatten on shell scope. */
+.aw-shell button.rounded-pill,
+.aw-shell button.rounded-full,
+.aw-shell a.rounded-pill,
+.aw-shell .rounded-pill,
+.aw-shell .rounded-full { border-radius: 0 !important; }
+
+/* ============================================================
+   Section / page titles in v2 → v3 typography
+   ============================================================ */
+.aw-shell h1, .aw-shell .page-title {
+  font-family: var(--font-v3-tele, system-ui) !important;
+  font-size: 22px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--fg-0) !important;
+}
+.aw-shell h2, .aw-shell .section-title {
+  font-family: var(--font-v3-tele, system-ui) !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0;
+  color: var(--fg-0) !important;
+}
+.aw-shell h3 {
+  font-family: var(--font-v3-tele, system-ui) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-2) !important;
+}
+
+/* WHY: P1 — v2 PageHeader uses a serif/heavy display title; v3 is
+   industrial sans, lighter weight, tighter tracking. */
+
+/* ============================================================
+   Form controls — inputs, selects, textareas
+   ============================================================ */
+.aw-shell input[type="text"],
+.aw-shell input[type="search"],
+.aw-shell input[type="email"],
+.aw-shell input[type="number"],
+.aw-shell input[type="password"],
+.aw-shell select,
+.aw-shell textarea {
+  background: var(--bg-2) !important;
+  border: 1px solid var(--line-1) !important;
+  border-radius: 0 !important;
+  color: var(--fg-0) !important;
+  font-family: var(--font-v3-mono) !important;
+  font-size: var(--v3-t-meta, 12px) !important;
+  padding: 4px 8px !important;
+  height: 28px;
+}
+.aw-shell textarea { height: auto; }
+.aw-shell input:focus,
+.aw-shell select:focus,
+.aw-shell textarea:focus {
+  outline: none !important;
+  border-color: var(--accent) !important;
+  background: var(--bg-3) !important;
+}
+
+/* ============================================================
+   Loading spinners — match v3 accent
+   ============================================================ */
+.aw-shell .animate-spin.border-primary-500,
+.aw-shell .animate-spin.border-blue-500 {
+  border-color: var(--bg-3) !important;
+  border-bottom-color: var(--accent) !important;
+}
+
+/* ============================================================
+   Misc — round corners, drop shadows, pill radii
+   ============================================================ */
+.aw-shell .rounded-lg,
+.aw-shell .rounded-xl,
+.aw-shell .rounded-md,
+.aw-shell .rounded { border-radius: 0 !important; }
+
+.aw-shell .shadow,
+.aw-shell .shadow-sm,
+.aw-shell .shadow-md,
+.aw-shell .shadow-lg { box-shadow: none !important; }
+
+/* WHY: P1 — round corners + drop shadows are the strongest 'web app'
+   tells. Industrial telemetry = sharp edges + flat surfaces. */
+
+/* ============================================================
+   Phase A — Typography lockdown (2026-05-06)
+   Locks the GCP-grade signature for the admin shell:
+     - Tabular-figures globally on numeric / mono columns so columns
+       align column-by-column even with proportional fonts.
+     - Page-head h1 22px / Inter, tight tracking.
+     - Section h2 16px / Inter, gentle tracking.
+     - Telemetry h3 11px / uppercase / wide tracking — the chat /
+       flows / codemode signature lifted into admin so the surfaces
+       feel like the same product.
+     - Form labels match the same uppercase signature at narrower
+       tracking (0.08em) — distinguishes chrome (0.18em) from
+       interactive labels.
+   Scoped to .aw-shell so it never bleeds into chat / flows / codemode.
+   ============================================================ */
+.aw-shell .aw-dt td,
+.aw-shell .aw-dt th,
+.aw-shell .aw-kpi__value,
+.aw-shell .aw-kpi__sub,
+.aw-shell .aw-mono,
+.aw-shell .num,
+.aw-shell .mono,
+.aw-shell .recharts-text,
+.aw-shell pre,
+.aw-shell code,
+.aw-shell tt {
+  font-feature-settings: 'tnum' 1, 'lnum' 1, 'cv11' 1, 'ss03' 1 !important;
+  font-variant-numeric: tabular-nums lining-nums !important;
+}
+
+/* WHY: numeric columns must left-align decimals + right-align units
+   without manual padding. Tnum + lnum together collapse glyph-width
+   variance to zero on Inter / JetBrains. cv11 / ss03 enable Inter's
+   "open 4" + "single-storey g" — readable at 11–13px row text. */
+
+.aw-shell h1,
+.aw-shell .page-title,
+.aw-shell .page-head__title,
+.aw-shell [data-v3-head="page"] {
+  font-family: var(--font-v3-body) !important;
+  font-weight: 500 !important;
+  font-size: 22px !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.02em !important;
+  color: var(--fg-0) !important;
+}
+
+.aw-shell h2,
+.aw-shell .section-title,
+.aw-shell .panel-head__title,
+.aw-shell [data-v3-head="section"] {
+  font-family: var(--font-v3-body) !important;
+  font-weight: 500 !important;
+  font-size: 16px !important;
+  line-height: 1.3 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--fg-0) !important;
+}
+
+.aw-shell h3,
+.aw-shell .telemetry-title,
+.aw-shell [data-v3-head="telemetry"] {
+  font-family: var(--font-v3-tele) !important;
+  font-weight: 500 !important;
+  font-size: 11px !important;
+  line-height: 1.3 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.18em !important;
+  color: var(--fg-3) !important;
+}
+
+.aw-shell label:not([data-v3-untouched]),
+.aw-shell .form-label {
+  font-family: var(--font-v3-body) !important;
+  font-weight: 400 !important;
+  font-size: 11px !important;
+  line-height: 1.3 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  color: var(--fg-3) !important;
+}
+
+/* ============================================================
+   Phase B'-1 — Dashboard section anchors land BELOW the sticky
+   tab strip, not under it. The Subtabs sticky height is ~33px
+   (8px top + 8px bottom + 17px line-height + 1px border); we
+   give 40px scroll-margin so sections land cleanly with a hair
+   of breathing room above the section header.
+   ============================================================ */
+.aw-shell [id^="section-"] {
+  scroll-margin-top: 40px;
+}
+
+/* WHY: page hierarchy. h1 = page-head (22px tight) — only one per
+   page. h2 = panel/section header (16px). h3 = telemetry chrome
+   (11px uppercase, wide tracking) — chat/flows surface signature.
+   Labels: uppercase 11px wide-spaced. The pre-existing PageHead /
+   PanelHead components already use these sizes; this rule snaps
+   any v2-leaf component that didn't into line. */

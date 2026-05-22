@@ -9,44 +9,19 @@
 
 import { FastifyPluginAsync } from 'fastify';
 import { prisma } from '../../utils/prisma.js';
-import * as jwt from 'jsonwebtoken';
 import os from 'os';
 import { authMiddleware, AuthenticatedRequest } from '../../middleware/unifiedAuth.js';
+import { requireAdminFastify } from '../../middleware/adminGuard.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.SIGNING_SECRET;
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET or SIGNING_SECRET environment variable is required for usage routes');
-}
+// Phase I-9 follow-up (2026-05-07): swapped local hand-decoded
+// requireAdmin for the canonical `requireAdminFastify`. Same root
+// cause as prompt-metrics: the local decoder only honored
+// `decoded.isAdmin` from local-token JWTs, not the request-time
+// isAdmin populated by the auth chain for AAD/SSO admins.
 
 export const analyticsRoutes: FastifyPluginAsync = async (fastify) => {
   const logger = fastify.log;
-
-  // Helper to get user from token
-  const getUserFromToken = (request: any): { userId: string; isAdmin: boolean } | null => {
-    const authHeader = request.headers.authorization;
-    if (!authHeader) return null;
-
-    try {
-      const token = authHeader.replace('Bearer ', '');
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
-      return {
-        userId: decoded.userId || decoded.id || decoded.oid,
-        isAdmin: decoded.isAdmin || false
-      };
-    } catch (error) {
-      logger.warn({ error }, 'Failed to decode user token');
-      return null;
-    }
-  };
-
-  // Admin auth middleware
-  const requireAdmin = async (request: any, reply: any) => {
-    const user = getUserFromToken(request);
-    if (!user || !user.isAdmin) {
-      return reply.code(403).send({ error: 'Admin access required' });
-    }
-    request.user = user;
-  };
+  const requireAdmin = requireAdminFastify;
 
   /**
    * Usage analytics (Admin only)
@@ -754,7 +729,7 @@ export const analyticsRoutes: FastifyPluginAsync = async (fastify) => {
    * GET /api/analytics/my-usage
    */
   fastify.get('/my-usage', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: AuthenticatedRequest, reply) => {
     try {
       const user = request.user;

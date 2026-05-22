@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-accent="violet">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>OpenAgentic · SOC 2 Type II gap analysis · Mockup 05</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* =======================================================================
+   Mockup 05 · Chat-mode · SOC 2 Type II gap analysis across AWS+Azure+GCP
+   5 trust-service categories · 64 controls · 7 sub-agents · 3 passes
+   ======================================================================= */
+:root {
+  --bg-0: #09090b; --bg-1: #0f1012; --bg-2: #16181c; --bg-3: #1c1f24; --bg-4: #242831;
+  --line-1: rgba(255,255,255,0.06); --line-2: rgba(255,255,255,0.10); --line-3: rgba(255,255,255,0.16);
+  --fg-0: #f8fafc; --fg-1: #d4d4d8; --fg-2: #a1a1aa; --fg-3: #71717a;
+  --accent: #8b5cf6; --accent-soft: rgba(139,92,246,0.14); --accent-line: rgba(139,92,246,0.32);
+  --agent-c: #f59e0b; --agent-g: #10b981; --agent-s: #ef4444; --agent-k: #3b82f6;
+  --agent-n: #06b6d4; --agent-p: #ec4899; --agent-w: #eab308;
+  --ok: #22c55e; --warn: #f59e0b; --err: #ef4444; --info: #38bdf8;
+}
+html[data-theme=light] {
+  --bg-0: #fafafa; --bg-1: #fff; --bg-2: #f4f4f5; --bg-3: #e4e4e7; --bg-4: #d4d4d8;
+  --line-1: rgba(0,0,0,0.06); --line-2: rgba(0,0,0,0.1); --line-3: rgba(0,0,0,0.16);
+  --fg-0: #09090b; --fg-1: #27272a; --fg-2: #52525b; --fg-3: #71717a;
+}
+html[data-accent=violet] { --accent: #8b5cf6; --accent-soft: rgba(139,92,246,0.14); --accent-line: rgba(139,92,246,0.32); }
+html[data-accent=teal]   { --accent: #14b8a6; --accent-soft: rgba(20,184,166,0.14); --accent-line: rgba(20,184,166,0.32); }
+html[data-accent=amber]  { --accent: #f59e0b; --accent-soft: rgba(245,158,11,0.14); --accent-line: rgba(245,158,11,0.32); }
+html[data-accent=rose]   { --accent: #f43f5e; --accent-soft: rgba(244,63,94,0.14); --accent-line: rgba(244,63,94,0.32); }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px; line-height: 1.5;
+  color: var(--fg-1); background: var(--bg-0);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'ss01','cv11';
+}
+code, pre, .mono, .tabular { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.tnum { font-variant-numeric: tabular-nums; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+a { color: #7dd3fc; }
+
+.shell { display: grid; grid-template-columns: 260px 1fr; height: 100vh; min-height: 100vh; }
+.sidebar { border-right: 1px solid var(--line-1); background: var(--bg-1); display: flex; flex-direction: column; padding: 12px 8px; gap: 2px; }
+.sb-logo { display: flex; align-items: center; gap: 8px; padding: 8px 10px 16px; border-bottom: 1px solid var(--line-1); margin-bottom: 8px; }
+.sb-logo .mark { width: 22px; height: 22px; border-radius: 6px; background: conic-gradient(from 220deg, var(--accent), #6366f1, var(--accent)); display: grid; place-items: center; font-weight: 700; font-size: 12px; color: white; }
+.sb-logo .brand { font-weight: 600; color: var(--fg-0); letter-spacing: -0.01em; }
+.sb-logo .brand small { display: block; font-size: 10px; color: var(--fg-3); font-weight: 400; margin-top: -1px; }
+.sb-new { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line-2); color: var(--fg-0); font-weight: 500; font-size: 13px; margin-bottom: 10px; }
+.sb-new:hover { background: var(--bg-2); }
+.sb-group-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); padding: 10px 10px 4px; }
+.sb-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; font-size: 13px; color: var(--fg-1); }
+.sb-item:hover { background: var(--bg-2); }
+.sb-item.active { background: var(--bg-2); color: var(--fg-0); }
+.sb-item .t { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-item .age { font-size: 10px; color: var(--fg-3); }
+
+.agent-tree { padding: 4px 4px 10px; border-top: 1px solid var(--line-1); margin-top: 10px; }
+.agent-tree .node { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; font-size: 12px; }
+.agent-tree .node.sub { padding-left: 20px; position: relative; color: var(--fg-2); font-size: 11.5px; }
+.agent-tree .node.sub::before { content: ""; position: absolute; left: 10px; top: 0; bottom: 50%; border-left: 1px dashed var(--line-2); border-bottom: 1px dashed var(--line-2); width: 6px; border-bottom-left-radius: 3px; }
+.agent-tree .node .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.agent-tree .node .dot.c { background: var(--agent-c); }
+.agent-tree .node .dot.g { background: var(--agent-g); }
+.agent-tree .node .dot.s { background: var(--agent-s); }
+.agent-tree .node .dot.k { background: var(--agent-k); }
+.agent-tree .node .dot.n { background: var(--agent-n); }
+.agent-tree .node .dot.p { background: var(--agent-p); }
+.agent-tree .node .dot.w { background: var(--agent-w); }
+.agent-tree .node .label { flex: 1; }
+.agent-tree .node .count { font-family: 'JetBrains Mono', monospace; color: var(--fg-3); font-size: 10.5px; }
+
+.main { display: grid; grid-template-rows: 52px 1fr; min-width: 0; }
+.topbar { display: flex; align-items: center; gap: 12px; padding: 0 20px; border-bottom: 1px solid var(--line-1); background: var(--bg-0); position: sticky; top: 0; z-index: 5; }
+.topbar .title { font-size: 13px; font-weight: 500; color: var(--fg-0); }
+.topbar .crumbs { font-size: 12px; color: var(--fg-3); }
+.topbar .back { font-size: 12px; color: var(--fg-2); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line-2); }
+.topbar .back:hover { background: var(--bg-2); color: var(--fg-0); }
+.topbar .spacer { flex: 1; }
+.topbar .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 99px; border: 1px solid var(--line-2); font-size: 11px; color: var(--fg-2); }
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+
+.chat-wrap { overflow-y: auto; padding: 24px 32px 220px; scroll-behavior: smooth; }
+.chat { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px; }
+
+/* messages */
+.msg { display: flex; flex-direction: column; gap: 10px; }
+.msg-user { align-self: flex-end; max-width: 640px; background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 14px; padding: 12px 16px; font-size: 14px; line-height: 1.55; color: var(--fg-0); }
+.msg-user .meta-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--fg-3); margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line-1); }
+.msg-asst { display: grid; grid-template-columns: 28px 1fr; gap: 12px; }
+.avatar { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-weight: 600; font-size: 12px; color: white; }
+.avatar.av-asst { background: linear-gradient(135deg, #a78bfa, #6366f1); }
+.avatar.av-c { background: linear-gradient(135deg, #fbbf24, #d97706); }
+.avatar.av-g { background: linear-gradient(135deg, #34d399, #059669); }
+.avatar.av-s { background: linear-gradient(135deg, #f87171, #b91c1c); }
+.avatar.av-k { background: linear-gradient(135deg, #60a5fa, #1d4ed8); }
+.avatar.av-n { background: linear-gradient(135deg, #22d3ee, #0e7490); }
+.avatar.av-p { background: linear-gradient(135deg, #f472b6, #be185d); }
+.avatar.av-w { background: linear-gradient(135deg, #facc15, #a16207); }
+.avatar.sm { width: 20px; height: 20px; border-radius: 6px; font-size: 10px; }
+
+.msg-body { min-width: 0; }
+.msg-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.msg-head .name { font-size: 13px; font-weight: 600; color: var(--fg-0); }
+.msg-head .model { font-size: 10px; color: var(--fg-3); padding: 2px 7px; border-radius: 99px; border: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; }
+.msg-head .model .tag { color: var(--accent); margin-right: 4px; }
+.msg-head .spacer { flex: 1; }
+.cost-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 99px; border: 1px solid var(--line-2); background: rgba(139,92,246,0.05); font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-1); }
+.cost-pill .live { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+.cost-pill.done .live { background: var(--ok); animation: none; }
+
+.status-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 2px; }
+.pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 99px; font-size: 11px; border: 1px solid var(--line-2); color: var(--fg-2); }
+.pill .ico { width: 11px; height: 11px; flex-shrink: 0; }
+.pill.info { background: rgba(56,189,248,.06); border-color: rgba(56,189,248,.25); color: #7dd3fc; }
+.pill.warn { background: rgba(245,158,11,.06); border-color: rgba(245,158,11,.28); color: #fbbf24; }
+.pill.ok { background: rgba(34,197,94,.06); border-color: rgba(34,197,94,.25); color: #4ade80; }
+.pill.err { background: rgba(239,68,68,.06); border-color: rgba(239,68,68,.25); color: #f87171; }
+
+.thinking { border-left: 1.5px solid var(--accent-line); padding-left: 12px; margin: 2px 0 4px; }
+.thinking .head { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: 12px; color: var(--fg-2); cursor: pointer; user-select: none; }
+.thinking .head .ico { width: 12px; height: 12px; color: var(--accent); }
+.thinking .head .label { font-weight: 500; color: var(--fg-1); }
+.thinking .head .chev { margin-left: auto; color: var(--fg-3); transition: transform 0.2s; }
+.thinking[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.thinking .body { max-height: 0; overflow: hidden; transition: max-height 0.25s ease; font-size: 13px; color: var(--fg-2); line-height: 1.6; }
+.thinking[aria-expanded="true"] .body { max-height: 1200px; padding: 6px 0 10px; }
+.thinking ul { margin: 6px 0; padding-left: 18px; }
+.thinking li { margin: 2px 0; }
+.thinking code { font-size: 11px; background: var(--bg-2); border: 1px solid var(--line-1); padding: 1px 4px; border-radius: 3px; }
+
+.tool { border: 1px solid var(--line-2); border-radius: 10px; background: var(--bg-1); overflow: hidden; margin: 4px 0; position: relative; }
+.tool.running::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, transparent 0%, rgba(139,92,246,.08) 50%, transparent 100%); background-size: 200% 100%; animation: shimmer 1.8s ease-in-out infinite; pointer-events: none; }
+.tool .t-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; font-size: 12px; }
+.tool[aria-expanded="true"] .t-head { border-bottom: 1px solid var(--line-1); }
+.tool .t-ico { width: 20px; height: 20px; border-radius: 5px; background: var(--bg-3); display: grid; place-items: center; color: var(--fg-1); flex-shrink: 0; }
+.tool .t-name { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-0); font-weight: 500; }
+.tool .t-status { font-size: 11px; color: var(--fg-3); }
+.tool .t-status.ok { color: var(--ok); }
+.tool .t-status.warn { color: var(--warn); }
+.tool .t-status.err { color: var(--err); }
+.tool .t-timer { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-3); margin-left: auto; font-variant-numeric: tabular-nums; }
+.tool .t-chev { color: var(--fg-3); transition: transform 0.2s; }
+.tool[aria-expanded="true"] .t-chev { transform: rotate(90deg); }
+.tool .t-body { display: none; }
+.tool[aria-expanded="true"] .t-body { display: block; }
+.tool .t-section { padding: 10px 12px; border-top: 1px solid var(--line-1); }
+.tool .t-section:first-child { border-top: 0; }
+.tool .t-section .t-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); margin-bottom: 6px; font-weight: 600; }
+.tool pre.json { margin: 0; padding: 8px 10px; border-radius: 6px; background: var(--bg-0); border: 1px solid var(--line-1); font-size: 12px; line-height: 1.55; color: var(--fg-1); overflow-x: auto; max-height: 280px; }
+.tool-parallel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+@media (max-width: 1000px) { .tool-parallel { grid-template-columns: 1fr; } }
+.tool-parallel-hdr { font-size: 11px; color: var(--fg-3); display: flex; align-items: center; gap: 6px; margin: 6px 0 4px; }
+.tool-parallel-hdr .fan { width: 14px; height: 14px; color: var(--accent); }
+
+.json .k { color: #93c5fd; } .json .s { color: #86efac; } .json .n { color: #fcd34d; } .json .b { color: #f0abfc; } .json .c { color: var(--fg-3); font-style: italic; }
+
+.txt { font-size: 14px; line-height: 1.6; color: var(--fg-1); }
+.txt p { margin: 10px 0; } .txt p:first-child { margin-top: 0; } .txt strong { color: var(--fg-0); font-weight: 600; }
+.txt h3 { font-size: 15px; font-weight: 600; color: var(--fg-0); margin: 18px 0 6px; letter-spacing: -0.01em; }
+.txt h4 { font-size: 13.5px; font-weight: 600; color: var(--fg-0); margin: 14px 0 4px; }
+.txt ul { margin: 6px 0 6px 0; padding-left: 20px; } .txt li { margin: 4px 0; }
+.txt code { font-size: 12px; padding: 1px 5px; border-radius: 4px; background: var(--bg-2); border: 1px solid var(--line-1); }
+.citation { display: inline-flex; align-items: center; justify-content: center; vertical-align: super; min-width: 16px; height: 16px; padding: 0 4px; margin: 0 2px; border-radius: 4px; font-size: 10px; font-weight: 600; background: var(--accent-soft); border: 1px solid var(--accent-line); color: #c4b5fd; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+
+/* trust-service matrix */
+.tsc-matrix { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; border: 1px solid var(--line-2); background: var(--bg-1); border-radius: 10px; padding: 12px; margin: 10px 0; }
+.tsc-matrix .tsc { border: 1px solid var(--line-2); background: var(--bg-0); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; position: relative; }
+.tsc-matrix .tsc .k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); font-weight: 600; }
+.tsc-matrix .tsc .t { font-size: 12px; color: var(--fg-0); font-weight: 600; }
+.tsc-matrix .tsc .nums { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-2); display: flex; justify-content: space-between; }
+.tsc-matrix .tsc .nums .ok { color: #4ade80; } .tsc-matrix .tsc .nums .gap { color: #f87171; }
+.tsc-matrix .tsc .bar { height: 4px; background: var(--bg-3); border-radius: 2px; overflow: hidden; display: flex; }
+.tsc-matrix .tsc .bar .ok { background: var(--ok); } .tsc-matrix .tsc .bar .gap { background: var(--err); }
+
+/* streaming table */
+.streaming-table { border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; background: var(--bg-1); margin: 10px 0; }
+.streaming-table .tt-hdr { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-2); border-bottom: 1px solid var(--line-2); font-size: 11px; color: var(--fg-2); }
+.streaming-table .tt-count { margin-left: auto; font-family: 'JetBrains Mono', monospace; color: var(--fg-3); font-size: 11px; }
+.streaming-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.streaming-table thead th { text-align: left; padding: 7px 12px; font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--fg-3); background: var(--bg-1); border-bottom: 1px solid var(--line-1); }
+.streaming-table tbody td { padding: 7px 12px; border-bottom: 1px solid var(--line-1); color: var(--fg-1); font-variant-numeric: tabular-nums; vertical-align: top; }
+.streaming-table tbody tr:last-child td { border-bottom: 0; }
+.streaming-table tbody tr { animation: rowIn 400ms cubic-bezier(.22,1,.36,1) both; }
+.streaming-table .mono { color: var(--fg-2); font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+.streaming-table td .sev { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 500; white-space: nowrap; }
+.sev.sev-ok { background: rgba(34,197,94,.10); color: #4ade80; border: 1px solid rgba(34,197,94,.25); }
+.sev.sev-warn { background: rgba(245,158,11,.10); color: #fbbf24; border: 1px solid rgba(245,158,11,.28); }
+.sev.sev-err { background: rgba(239,68,68,.10); color: #f87171; border: 1px solid rgba(239,68,68,.28); }
+.sev.sev-info { background: rgba(56,189,248,.10); color: #7dd3fc; border: 1px solid rgba(56,189,248,.28); }
+
+/* metrics */
+.metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; border: 1px solid var(--accent-line); background: linear-gradient(135deg, rgba(139,92,246,0.05), rgba(99,102,241,0.03)); border-radius: 12px; padding: 14px 16px; margin: 10px 0; }
+.metrics-grid .cell .k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); margin-bottom: 2px; }
+.metrics-grid .cell .v { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 600; color: var(--fg-0); letter-spacing: -0.02em; }
+.metrics-grid .cell .v.g { color: #4ade80; } .metrics-grid .cell .v.w { color: #fbbf24; } .metrics-grid .cell .v.r { color: #f87171; }
+.metrics-grid .cell .v small { font-size: 11px; font-weight: 400; color: var(--fg-3); margin-left: 4px; }
+
+/* sub-agent card */
+.subagent { border: 1px solid var(--line-1); border-left: 3px solid var(--agent-c); border-radius: 10px; background: var(--bg-1); margin: 6px 0; overflow: hidden; }
+.subagent.agent-c { border-left-color: var(--agent-c); }
+.subagent.agent-g { border-left-color: var(--agent-g); }
+.subagent.agent-s { border-left-color: var(--agent-s); }
+.subagent.agent-k { border-left-color: var(--agent-k); }
+.subagent.agent-n { border-left-color: var(--agent-n); }
+.subagent.agent-p { border-left-color: var(--agent-p); }
+.subagent.agent-w { border-left-color: var(--agent-w); }
+.sa-head { display: flex; align-items: center; gap: 10px; padding: 9px 12px; font-size: 12px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--line-1); }
+.sa-head .name { font-weight: 600; color: var(--fg-0); font-size: 13px; }
+.sa-head .role { font-size: 11px; color: var(--fg-3); }
+.sa-head .stats { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-3); display: flex; gap: 10px; }
+.sa-head .pass-chip { margin-left: 6px; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-family: 'JetBrains Mono', monospace; background: var(--bg-3); color: var(--fg-2); }
+.sa-head .pass-chip.pass-2 { background: rgba(245,158,11,.16); color: #fcd34d; }
+.sa-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.sa-return { background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.2); border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #6ee7b7; display: flex; align-items: flex-start; gap: 8px; }
+.sa-return strong { color: #34d399; font-weight: 600; }
+.sa-return .ico { width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px; }
+.sa-return.fail { background: rgba(239,68,68,.06); border-color: rgba(239,68,68,.25); color: #fca5a5; }
+.sa-return.fail strong { color: #f87171; }
+.sa-subthink { border-left: 1.5px solid rgba(245,158,11,.3); padding-left: 10px; font-size: 12px; color: var(--fg-2); line-height: 1.5; }
+.subagent.agent-g .sa-subthink { border-left-color: rgba(16,185,129,.3); }
+.subagent.agent-s .sa-subthink { border-left-color: rgba(239,68,68,.3); }
+.subagent.agent-k .sa-subthink { border-left-color: rgba(59,130,246,.3); }
+.subagent.agent-n .sa-subthink { border-left-color: rgba(6,182,212,.3); }
+.subagent.agent-p .sa-subthink { border-left-color: rgba(236,72,153,.3); }
+.subagent.agent-w .sa-subthink { border-left-color: rgba(234,179,8,.3); }
+.sa-subthink .sth-head { font-size: 11px; color: var(--fg-3); margin-bottom: 3px; }
+
+/* correction card */
+.correction-card { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: linear-gradient(90deg, rgba(245,158,11,0.08), transparent); border: 1px solid rgba(245,158,11,0.28); border-radius: 10px; font-size: 12px; margin: 6px 0; }
+.correction-card .ico { width: 26px; height: 26px; border-radius: 6px; background: rgba(245,158,11,0.18); color: #fcd34d; display: grid; place-items: center; flex-shrink: 0; }
+.correction-card .title { font-weight: 600; color: var(--fg-0); font-size: 13px; }
+.correction-card .sub { color: var(--fg-2); font-size: 11.5px; margin-top: 2px; line-height: 1.5; }
+
+/* handoff */
+.handoff { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px dashed var(--line-3); border-radius: 8px; background: var(--bg-1); font-size: 12px; color: var(--fg-2); margin: 6px 0; }
+.handoff .arrow { color: var(--accent); }
+.handoff strong { color: var(--fg-0); font-weight: 600; }
+
+/* gap / ticket cards */
+.ticket { border: 1px solid var(--line-2); background: var(--bg-1); border-radius: 10px; padding: 11px 14px; font-size: 12px; margin: 6px 0; position: relative; }
+.ticket .t-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.ticket .t-head .id { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-3); font-weight: 500; }
+.ticket .t-head .title { font-weight: 600; color: var(--fg-0); font-size: 13px; flex: 1; }
+.ticket .t-head .sev { padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 500; white-space: nowrap; }
+.ticket .t-head .sev.critical { background: rgba(239,68,68,.15); color: #fca5a5; border: 1px solid rgba(239,68,68,.28); }
+.ticket .t-head .sev.high { background: rgba(245,158,11,.15); color: #fcd34d; border: 1px solid rgba(245,158,11,.28); }
+.ticket .t-head .sev.med { background: rgba(56,189,248,.15); color: #7dd3fc; border: 1px solid rgba(56,189,248,.28); }
+.ticket .t-body { color: var(--fg-2); line-height: 1.5; font-size: 12px; }
+.ticket .t-body code { font-size: 11px; background: var(--bg-0); border: 1px solid var(--line-1); padding: 1px 4px; border-radius: 3px; }
+.ticket .t-meta { display: flex; gap: 12px; margin-top: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--fg-3); }
+.ticket .t-meta .k { color: var(--fg-3); } .ticket .t-meta .v { color: var(--fg-1); }
+
+/* evidence playbook */
+.playbook { border: 1px solid var(--line-2); border-radius: 10px; background: var(--bg-1); margin: 10px 0; overflow: hidden; }
+.playbook .pb-hdr { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: var(--bg-2); border-bottom: 1px solid var(--line-2); font-size: 11px; color: var(--fg-2); }
+.playbook .pb-title { font-weight: 600; color: var(--fg-0); font-size: 13px; }
+.playbook .pb-step { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--line-1); font-size: 12.5px; align-items: start; }
+.playbook .pb-step:last-child { border-bottom: 0; }
+.playbook .pb-step .n { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--accent); padding-top: 1px; }
+.playbook .pb-step .t { color: var(--fg-1); line-height: 1.55; }
+.playbook .pb-step .t strong { color: var(--fg-0); }
+.playbook .pb-step .t code { font-size: 11px; padding: 1px 4px; border-radius: 3px; background: var(--bg-0); border: 1px solid var(--line-1); }
+.playbook .pb-step .t .owner { font-size: 10.5px; color: var(--fg-3); margin-top: 2px; display: block; }
+.playbook .pb-step .cadence { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--fg-3); white-space: nowrap; }
+
+/* composer */
+.composer { position: fixed; bottom: 24px; left: calc(260px + 32px); right: 32px; max-width: 820px; margin-left: auto; margin-right: auto; background: var(--bg-1); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: 0 -8px 30px rgba(0,0,0,.25), 0 12px 40px rgba(0,0,0,.4); padding: 10px 12px; backdrop-filter: blur(10px); }
+.composer textarea { width: 100%; background: transparent; border: 0; outline: 0; color: var(--fg-0); font: 14px/1.5 'Inter', system-ui, sans-serif; resize: none; padding: 4px 4px 8px; }
+.composer .row { display: flex; align-items: center; gap: 6px; padding-top: 4px; border-top: 1px solid var(--line-1); }
+.composer .btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 7px; color: var(--fg-2); font-size: 12px; }
+.composer .btn:hover { background: var(--bg-2); color: var(--fg-0); }
+.composer .spacer { flex: 1; }
+.composer .send { background: var(--accent); color: white; padding: 6px 10px; border-radius: 7px; font-weight: 500; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
+
+/* switcher */
+.switcher { position: absolute; top: 10px; right: 16px; z-index: 10; display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px; font-size: 11px; color: var(--fg-2); border: 1px solid var(--line-2); border-radius: 99px; background: var(--bg-1); }
+.switcher button { padding: 3px 8px; border-radius: 99px; font-size: 11px; color: var(--fg-2); }
+.switcher button:hover { background: var(--bg-2); color: var(--fg-0); }
+.switcher .sep { width: 1px; height: 14px; background: var(--line-2); }
+.switcher .swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--line-2); cursor: pointer; padding: 0; }
+.switcher .swatch.violet { background: #8b5cf6; } .switcher .swatch.teal { background: #14b8a6; }
+.switcher .swatch.amber { background: #f59e0b; } .switcher .swatch.rose { background: #f43f5e; }
+.switcher .swatch[data-active="true"] { outline: 2px solid var(--fg-0); outline-offset: 1px; }
+
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .6; transform: scale(1.1); } }
+@keyframes rowIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" aria-label="Chat history">
+    <div class="sb-logo">
+      <div class="mark">A</div>
+      <div class="brand">OpenAgentic <small>v0.6.7 · dev</small></div>
+    </div>
+    <button class="sb-new">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New chat
+    </button>
+    <div class="sb-group-label">Today</div>
+    <div class="sb-item"><span class="t">Multi-region K8s DR strategy</span><span class="age">1h</span></div>
+    <div class="sb-item active"><span class="t">SOC 2 Type II gap analysis</span><span class="age">now</span></div>
+    <div class="sb-item"><span class="t">Datacenter consolidation plan</span><span class="age">3h</span></div>
+    <div class="sb-item"><span class="t">Azure VM right-sizing audit</span><span class="age">5h</span></div>
+    <div class="sb-group-label">Yesterday</div>
+    <div class="sb-item"><span class="t">K8s prod health for CTO</span><span class="age">1d</span></div>
+    <div class="sb-item"><span class="t">Go user-mgmt API scaffold</span><span class="age">1d</span></div>
+
+    <div class="agent-tree">
+      <div class="sb-group-label" style="padding-top: 0;">Agent tree · this chat</div>
+      <div class="node"><span class="dot" style="background: linear-gradient(135deg, #a78bfa, #6366f1);"></span><span class="label">compliance · orchestrator</span><span class="count">9t</span></div>
+      <div class="node sub"><span class="dot k"></span><span class="label">aws-inventory</span><span class="count">16t</span></div>
+      <div class="node sub"><span class="dot n"></span><span class="label">azure-inventory</span><span class="count">14t</span></div>
+      <div class="node sub"><span class="dot p"></span><span class="label">gcp-inventory</span><span class="count">11t</span></div>
+      <div class="node sub"><span class="dot s"></span><span class="label">control-mapper</span><span class="count">19t</span></div>
+      <div class="node sub"><span class="dot g"></span><span class="label">evidence-collector</span><span class="count">8t</span></div>
+      <div class="node sub"><span class="dot w"></span><span class="label">ticket-writer</span><span class="count">14t</span></div>
+      <div class="node sub"><span class="dot c"></span><span class="label">policy-gap-analyzer</span><span class="count">7t</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <a class="back" href="index.html">&larr; index</a>
+      <div class="title">SOC 2 Type II gap analysis · AWS + Azure + GCP</div>
+      <div class="crumbs">· compliance · 7 subs · gpt-5.2 · 3 passes</div>
+      <div class="spacer"></div>
+      <span class="chip"><span class="dot"></span> stream complete</span>
+      <span class="chip mono tabular">68.4s</span>
+      <span class="chip mono tabular">$0.587</span>
+    </header>
+    <div class="switcher" role="group" aria-label="Theme and accent">
+      <button id="theme-btn" aria-label="Toggle theme">dark</button>
+      <span class="sep"></span>
+      <button class="swatch violet" data-accent="violet" data-active="true"></button>
+      <button class="swatch teal" data-accent="teal"></button>
+      <button class="swatch amber" data-accent="amber"></button>
+      <button class="swatch rose" data-accent="rose"></button>
+    </div>
+
+    <div class="chat-wrap">
+      <div class="chat">
+
+        <!-- USER -->
+        <article class="msg">
+          <div class="msg-user">
+            Run a full SOC 2 Type II gap analysis across our AWS, Azure, GCP footprint. Map every control to a concrete remediation ticket. Include evidence collection playbook.
+            <div class="meta-row">
+              <span>phatoldsun@gmail.com</span>
+              <span class="mono tabular">10:32 &middot; 2026-04-20</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- ASSISTANT -->
+        <article class="msg msg-asst">
+          <div class="avatar av-asst">A</div>
+          <div class="msg-body">
+            <div class="msg-head">
+              <span class="name">OpenAgentic <span style="color: var(--fg-3); font-weight: 400; font-size: 12px;">&middot; compliance orchestrator</span></span>
+              <span class="model"><span class="tag">gpt</span>5.2</span>
+              <span class="spacer"></span>
+              <span class="cost-pill done"><span class="live"></span><span class="tnum">$0.587</span></span>
+            </div>
+
+            <div class="status-row">
+              <span class="pill info">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                compliance
+              </span>
+              <span class="pill">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+                7 sub-agents
+              </span>
+              <span class="pill">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                38 tool calls
+              </span>
+              <span class="pill">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                68.4s
+              </span>
+              <span class="pill err">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                23 gaps
+              </span>
+            </div>
+
+            <section class="thinking" aria-expanded="true">
+              <div class="head" onclick="this.parentElement.setAttribute('aria-expanded', this.parentElement.getAttribute('aria-expanded') !== 'true')" tabindex="0" role="button">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 0-4 12.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26A7 7 0 0 0 12 2z"/></svg>
+                <span class="label">Thought for 8.1s</span>
+                <span style="color: var(--fg-3); margin-left: 4px;">&middot; 1,204 tokens &middot; 3 passes</span>
+                <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+              <div class="body">
+                <p>SOC 2 Type II is an attestation of operating effectiveness over a period, not a point-in-time design review. The deliverables the user needs are: (a) a control inventory, (b) per-control evidence artifacts for a &ge;6-month window, (c) mapped gaps and concrete remediation tickets with owners and due dates, and (d) a repeatable collection playbook so the next audit isn't a fire drill.</p>
+                <p>The 2017 TSC framework has 64 common criteria across 5 categories (CC Security is always in scope; Availability, Confidentiality, Processing Integrity, Privacy are opt-in). Based on this stack &mdash; SaaS, multi-cloud, customer data &mdash; I'll scope Security + Availability + Confidentiality. That's typically 48-54 controls in the final audit matrix.</p>
+                <p>Plan:</p>
+                <ul>
+                  <li><strong>Pass 1</strong> &mdash; inventory each cloud in parallel. <code>aws-inventory</code>, <code>azure-inventory</code>, <code>gcp-inventory</code> run concurrently. Each pulls IAM, logging, encryption posture, backup state, and change-management evidence.</li>
+                  <li><strong>Pass 2</strong> &mdash; <code>control-mapper</code> takes the merged inventory and maps each finding to the TSC 2017 control it proves or breaks. This is where we find gaps.</li>
+                  <li><strong>Pass 3</strong> &mdash; <code>evidence-collector</code> writes the playbook (what to export + at what cadence). <code>ticket-writer</code> emits a ticket per gap with owner, severity, estimated effort. <code>policy-gap-analyzer</code> double-checks against our existing policy library.</li>
+                </ul>
+                <p>I'll budget &le;$0.70 and &lt;80s. If control-mapper raises a framework-drift question (SOC 2 2017 vs. SSAE 18 mapping) I'll make that a footnote rather than a sub-agent pass.</p>
+              </div>
+            </section>
+
+            <div class="txt">
+              <p>Fanning out inventory across three clouds in parallel, then consolidating into a TSC control map.</p>
+            </div>
+
+            <!-- PASS 1 parallel inventory -->
+            <div class="handoff">
+              <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              <span>Pass 1 &middot; <strong>parallel cloud inventory</strong> &rarr; <span class="mono" style="color: var(--agent-k);">aws-inventory</span> + <span class="mono" style="color: var(--agent-n);">azure-inventory</span> + <span class="mono" style="color: var(--agent-p);">gcp-inventory</span></span>
+            </div>
+
+            <div class="tool-parallel-hdr">
+              <svg class="fan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M5 12h14M7 5l10 14M17 5L7 19"/></svg>
+              Parallel fan-out &middot; 3 clouds &middot; 18 inventory calls total
+            </div>
+
+            <article class="subagent agent-k">
+              <header class="sa-head">
+                <div class="avatar av-k sm">K</div>
+                <div><div class="name">aws-inventory</div><div class="role">sub-agent &middot; 9 accounts &middot; 4 regions</div></div>
+                <div class="stats"><span>7 turns</span><span>3,112 tok</span><span>8.4s</span><span>$0.071</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 2.1s</div>
+                  Nine accounts under one AWS Org. I'll pull IAM Analyzer reports, CloudTrail config, Config Rules compliance, GuardDuty findings, KMS key rotation status, S3 encryption/versioning/block-public-access, VPC flow logs, and backup vault state. All in parallel.
+                </div>
+
+                <div class="tool-parallel">
+                  <div class="tool" aria-expanded="false">
+                    <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                      <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a7 7 0 0 0-14 0v2"/></svg></div>
+                      <span class="t-name">aws_iam_analyzer</span>
+                      <span class="t-status ok">&middot; 142 findings</span>
+                      <span class="t-timer tabular">1.4s</span>
+                      <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                  </div>
+                  <div class="tool" aria-expanded="false">
+                    <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                      <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+                      <span class="t-name">aws_cloudtrail_describe</span>
+                      <span class="t-status warn">&middot; 3 trails &middot; 1 paused</span>
+                      <span class="t-timer tabular">0.8s</span>
+                      <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                  </div>
+                  <div class="tool" aria-expanded="false">
+                    <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                      <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg></div>
+                      <span class="t-name">aws_config_compliance</span>
+                      <span class="t-status err">&middot; 18 non-compliant</span>
+                      <span class="t-timer tabular">1.2s</span>
+                      <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="tool" aria-expanded="true">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/></svg></div>
+                    <span class="t-name">aws_s3_encryption_audit</span>
+                    <span class="t-status warn">&middot; 147 buckets &middot; 6 gaps</span>
+                    <span class="t-timer tabular">2.3s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                  <div class="t-body">
+                    <div class="t-section">
+                      <div class="t-label">Non-compliant buckets</div>
+<pre class="json">{
+  <span class="k">"buckets_total"</span>: <span class="n">147</span>,
+  <span class="k">"sse_disabled"</span>: [
+    <span class="s">"openagentic-dev-archive"</span>,
+    <span class="s">"marketing-assets-public"</span>
+  ],
+  <span class="k">"versioning_disabled"</span>: [
+    <span class="s">"openagentic-dev-archive"</span>,
+    <span class="s">"openagentic-prod-exports-2024"</span>,
+    <span class="s">"ephemeral-build-cache"</span>
+  ],
+  <span class="k">"public_access_not_blocked"</span>: [
+    <span class="s">"marketing-assets-public"</span>
+  ]
+}</pre>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ accounts: 9, gaps: 12, critical: 3, high: 5, med: 4, controls_touched: 24 }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <article class="subagent agent-n">
+              <header class="sa-head">
+                <div class="avatar av-n sm">N</div>
+                <div><div class="name">azure-inventory</div><div class="role">sub-agent &middot; 2 subscriptions &middot; 6 tenants</div></div>
+                <div class="stats"><span>6 turns</span><span>2,814 tok</span><span>7.2s</span><span>$0.064</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 1.7s</div>
+                  Azure Defender posture, Policy Compliance, Storage Account encryption, Key Vault rotation logs, Entra ID conditional access, Activity Log retention. Pulling all of these; the conditional-access audit is the one that tends to show gaps.
+                </div>
+
+                <div class="tool" aria-expanded="false">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/></svg></div>
+                    <span class="t-name">azure_defender_secure_score</span>
+                    <span class="t-status warn">&middot; 72% secure score</span>
+                    <span class="t-timer tabular">1.1s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                </div>
+                <div class="tool" aria-expanded="false">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg></div>
+                    <span class="t-name">azure_policy_compliance</span>
+                    <span class="t-status err">&middot; 31 non-compliant</span>
+                    <span class="t-timer tabular">0.9s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                </div>
+                <div class="tool" aria-expanded="false">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+                    <span class="t-name">azure_entra_conditional_access</span>
+                    <span class="t-status warn">&middot; 14 policies &middot; 2 report-only</span>
+                    <span class="t-timer tabular">0.7s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                </div>
+
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ subscriptions: 2, gaps: 7, critical: 1, high: 3, med: 3, controls_touched: 18 }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <article class="subagent agent-p">
+              <header class="sa-head">
+                <div class="avatar av-p sm">P</div>
+                <div><div class="name">gcp-inventory</div><div class="role">sub-agent &middot; 3 projects &middot; org-level</div></div>
+                <div class="stats"><span>5 turns</span><span>1,914 tok</span><span>5.1s</span><span>$0.043</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 1.2s</div>
+                  SCC findings, Org Policy violations, Audit Log sinks, CMEK state on BigQuery + GCS + Cloud SQL, Workload Identity pool usage. Smaller footprint than AWS.
+                </div>
+
+                <div class="tool" aria-expanded="false">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s-8-4.5-8-11.8a8 8 0 1 1 16 0c0 7.3-8 11.8-8 11.8z"/></svg></div>
+                    <span class="t-name">gcp_scc_findings</span>
+                    <span class="t-status warn">&middot; 23 active</span>
+                    <span class="t-timer tabular">1.4s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                </div>
+
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ projects: 3, gaps: 4, critical: 0, high: 2, med: 2, controls_touched: 11 }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <!-- Trust-service matrix -->
+            <div class="txt">
+              <p>Inventory done: <strong>23 gaps</strong> found across the three clouds. Now mapping each to TSC 2017 controls.</p>
+            </div>
+
+            <div class="tsc-matrix">
+              <div class="tsc"><div class="k">CC · Security</div><div class="t">Common Criteria</div><div class="nums"><span>33 controls</span><span class="gap">9 gaps</span></div><div class="bar"><span class="ok" style="flex: 24;"></span><span class="gap" style="flex: 9;"></span></div></div>
+              <div class="tsc"><div class="k">A · Availability</div><div class="t">Uptime &amp; DR</div><div class="nums"><span>12 controls</span><span class="gap">5 gaps</span></div><div class="bar"><span class="ok" style="flex: 7;"></span><span class="gap" style="flex: 5;"></span></div></div>
+              <div class="tsc"><div class="k">C · Confidentiality</div><div class="t">Data segregation</div><div class="nums"><span>9 controls</span><span class="gap">4 gaps</span></div><div class="bar"><span class="ok" style="flex: 5;"></span><span class="gap" style="flex: 4;"></span></div></div>
+              <div class="tsc"><div class="k">PI · Integrity</div><div class="t">Out of scope</div><div class="nums"><span>&mdash;</span><span>&mdash;</span></div><div class="bar"><span style="flex: 1; background: var(--bg-3);"></span></div></div>
+              <div class="tsc"><div class="k">P · Privacy</div><div class="t">Out of scope</div><div class="nums"><span>&mdash;</span><span>&mdash;</span></div><div class="bar"><span style="flex: 1; background: var(--bg-3);"></span></div></div>
+            </div>
+
+            <!-- PASS 2: control mapping -->
+            <div class="handoff">
+              <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              <span>Pass 2 &middot; <strong>map findings to controls</strong> &rarr; <span class="mono" style="color: var(--agent-s);">control-mapper</span></span>
+            </div>
+
+            <article class="subagent agent-s">
+              <header class="sa-head">
+                <div class="avatar av-s sm">S</div>
+                <div><div class="name">control-mapper</div><div class="role">sub-agent &middot; TSC 2017 framework</div></div>
+                <div class="stats"><span>10 turns</span><span>4,241 tok</span><span>11.8s</span><span>$0.098</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 3.4s</div>
+                  54 controls in scope. For each finding I'll compute: which control it touches, whether it's a design or operating-effectiveness gap, and what the minimum remediation effort is. I'll cite AICPA SSAE 18 guidance where the 2017 language is ambiguous.
+                </div>
+
+                <div class="tool" aria-expanded="false">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div>
+                    <span class="t-name">tsc_2017_mapping</span>
+                    <span class="t-status ok">&middot; 54 controls mapped</span>
+                    <span class="t-timer tabular">4.1s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                </div>
+
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ in_scope: 54, passing: 31, gaps: 23, design: 8, operating: 15 }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <!-- self-correction -->
+            <div class="correction-card">
+              <div class="ico">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
+              </div>
+              <div>
+                <div class="title">Self-correction &middot; CC7.4 flagged as gap but existing runbook covers it</div>
+                <div class="sub">Control-mapper initially raised <code>CC7.4 &middot; incident response</code> as a design gap. Re-reading the policy library, the on-call runbook at <code>runbooks/oncall.md</code> satisfies the control; the evidence just isn't linked from Drata. Downgraded CC7.4 from <strong>design gap</strong> to <strong>evidence-link gap</strong>. Reducing count from 24 to 23 total.</div>
+              </div>
+            </div>
+
+            <div class="streaming-table">
+              <div class="tt-hdr">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+                Top 12 gaps by audit risk
+                <span class="tt-count">23 total &middot; showing highest-risk</span>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Control</th>
+                    <th>Cloud</th>
+                    <th>Gap</th>
+                    <th>Type</th>
+                    <th>Sev</th>
+                    <th>Ticket</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td class="mono">CC6.1</td><td class="mono">AWS</td><td>2 S3 buckets w/o SSE-KMS</td><td class="mono">operating</td><td><span class="sev sev-err">critical</span></td><td class="mono">SOC2-101</td></tr>
+                  <tr><td class="mono">CC6.1</td><td class="mono">AWS</td><td>CloudTrail paused in mkting acct</td><td class="mono">operating</td><td><span class="sev sev-err">critical</span></td><td class="mono">SOC2-102</td></tr>
+                  <tr><td class="mono">CC6.2</td><td class="mono">AWS</td><td>21 IAM users w/o MFA enforced</td><td class="mono">design</td><td><span class="sev sev-err">critical</span></td><td class="mono">SOC2-103</td></tr>
+                  <tr><td class="mono">CC6.6</td><td class="mono">Azure</td><td>2 conditional-access policies in report-only</td><td class="mono">operating</td><td><span class="sev sev-warn">high</span></td><td class="mono">SOC2-104</td></tr>
+                  <tr><td class="mono">CC6.7</td><td class="mono">AWS</td><td>KMS key rotation disabled on 4 keys</td><td class="mono">operating</td><td><span class="sev sev-warn">high</span></td><td class="mono">SOC2-105</td></tr>
+                  <tr><td class="mono">CC6.8</td><td class="mono">Azure</td><td>Storage account TLS min 1.0</td><td class="mono">operating</td><td><span class="sev sev-warn">high</span></td><td class="mono">SOC2-106</td></tr>
+                  <tr><td class="mono">CC7.1</td><td class="mono">AWS</td><td>GuardDuty off in 2 regions (eu-west-2, sa-east-1)</td><td class="mono">design</td><td><span class="sev sev-warn">high</span></td><td class="mono">SOC2-107</td></tr>
+                  <tr><td class="mono">CC7.2</td><td class="mono">GCP</td><td>Audit log sink not exported to SIEM</td><td class="mono">design</td><td><span class="sev sev-warn">high</span></td><td class="mono">SOC2-108</td></tr>
+                  <tr><td class="mono">CC8.1</td><td class="mono">all</td><td>Change-mgmt tickets missing approver for 4% of PRs</td><td class="mono">operating</td><td><span class="sev sev-warn">high</span></td><td class="mono">SOC2-109</td></tr>
+                  <tr><td class="mono">A1.2</td><td class="mono">AWS</td><td>Backup Vault retention not enforced via org SCP</td><td class="mono">design</td><td><span class="sev sev-info">med</span></td><td class="mono">SOC2-110</td></tr>
+                  <tr><td class="mono">A1.3</td><td class="mono">Azure</td><td>DR runbook last tested 2024-11 (stale)</td><td class="mono">operating</td><td><span class="sev sev-info">med</span></td><td class="mono">SOC2-111</td></tr>
+                  <tr><td class="mono">C1.1</td><td class="mono">GCP</td><td>BigQuery 3 datasets w/o CMEK</td><td class="mono">operating</td><td><span class="sev sev-info">med</span></td><td class="mono">SOC2-112</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- PASS 3: ticket writer + evidence -->
+            <div class="handoff">
+              <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              <span>Pass 3 &middot; <strong>tickets + evidence playbook</strong> &rarr; <span class="mono" style="color: var(--agent-w);">ticket-writer</span> + <span class="mono" style="color: var(--agent-g);">evidence-collector</span></span>
+            </div>
+
+            <article class="subagent agent-w">
+              <header class="sa-head">
+                <div class="avatar av-w sm">T</div>
+                <div><div class="name">ticket-writer</div><div class="role">sub-agent &middot; Linear + Jira emit</div></div>
+                <div class="stats"><span>9 turns</span><span>3,412 tok</span><span>9.6s</span><span>$0.082</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 2.4s</div>
+                  Writing 23 tickets. Each gets a title, acceptance criteria (what would satisfy the auditor), rollback plan, estimated effort, owner (from CODEOWNERS of the affected repo/resource), and a target Type II window date. I'll emit to Linear with the <code>compliance/soc2</code> label and group by control family.
+                </div>
+
+                <div class="tool" aria-expanded="true">
+                  <div class="t-head" onclick="const p = this.parentElement; p.setAttribute('aria-expanded', p.getAttribute('aria-expanded') !== 'true')" role="button" tabindex="0">
+                    <div class="t-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/></svg></div>
+                    <span class="t-name">linear_create_issues</span>
+                    <span class="t-status ok">&middot; 23 issues &middot; 5 assignees</span>
+                    <span class="t-timer tabular">2.8s</span>
+                    <svg class="t-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                  <div class="t-body">
+                    <div class="t-section">
+                      <div class="t-label">Batch result</div>
+<pre class="json">{
+  <span class="k">"created"</span>: <span class="n">23</span>,
+  <span class="k">"labels"</span>: [<span class="s">"compliance/soc2"</span>, <span class="s">"audit-2026"</span>],
+  <span class="k">"assignees"</span>: {
+    <span class="k">"sre-lead"</span>: <span class="n">11</span>,
+    <span class="k">"security-eng"</span>: <span class="n">6</span>,
+    <span class="k">"platform-lead"</span>: <span class="n">4</span>,
+    <span class="k">"data-platform"</span>: <span class="n">2</span>
+  },
+  <span class="k">"target_window"</span>: <span class="s">"2026-07-01"</span>
+}</pre>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ tickets: 23, sprints: 3, est_effort_pts: 142, due: "2026-07-01" }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <!-- highlight tickets -->
+            <div class="txt"><h3>Top three remediation tickets</h3></div>
+
+            <div class="ticket">
+              <div class="t-head"><span class="id">SOC2-103</span><span class="title">Enforce MFA on all IAM users (AWS)</span><span class="sev critical">critical</span></div>
+              <div class="t-body">
+                Twenty-one IAM users across 4 accounts have console password + no MFA device. This fails <strong>CC6.2</strong> (logical access controls). Remediation: attach <code>mfa-required-or-deny-all.json</code> SCP at the OU level; give users 72h self-service onboarding via <code>aws iam enable-mfa-device</code>; break-glass root accounts already have hardware tokens. Acceptance: <code>aws iam list-users &amp;&amp; check_mfa</code> returns 0 violations for 90 consecutive days.
+              </div>
+              <div class="t-meta"><span><span class="k">owner</span> <span class="v">security-eng</span></span><span><span class="k">effort</span> <span class="v">5 pts</span></span><span><span class="k">due</span> <span class="v">2026-05-02</span></span><span><span class="k">control</span> <span class="v">CC6.2</span></span></div>
+            </div>
+
+            <div class="ticket">
+              <div class="t-head"><span class="id">SOC2-101</span><span class="title">Enable SSE-KMS on 2 orphaned S3 buckets</span><span class="sev critical">critical</span></div>
+              <div class="t-body">
+                Two buckets (<code>openagentic-dev-archive</code>, <code>marketing-assets-public</code>) store data at rest without server-side encryption. Fails <strong>CC6.1</strong>. Fix: enable SSE-KMS with <code>aws:kms</code>, re-encrypt existing objects via a one-shot Lambda batch job. Rollback: fall back to SSE-S3 if KMS quota limits hit. Acceptance: <code>get-bucket-encryption</code> returns KMS on all 147 buckets. Note the public-access bucket must also block ACLs and switch to CloudFront origin access.
+              </div>
+              <div class="t-meta"><span><span class="k">owner</span> <span class="v">sre-lead</span></span><span><span class="k">effort</span> <span class="v">3 pts</span></span><span><span class="k">due</span> <span class="v">2026-04-28</span></span><span><span class="k">control</span> <span class="v">CC6.1</span></span></div>
+            </div>
+
+            <div class="ticket">
+              <div class="t-head"><span class="id">SOC2-108</span><span class="title">Export GCP audit logs to SIEM sink</span><span class="sev high">high</span></div>
+              <div class="t-body">
+                GCP Cloud Audit Logs stay in the default <code>_Default</code> sink and never reach our SIEM (Panther). This is a <strong>design gap</strong> for CC7.2 (anomaly detection). Create an aggregated sink at the org level piping admin, data-access, and system-event logs to a Pub/Sub topic consumed by Panther's GCP integration. Retention: 400 days in the sink, 13 months in Panther. Acceptance: Panther dashboard shows GCP events within 5 minutes of generation for 30 consecutive days.
+              </div>
+              <div class="t-meta"><span><span class="k">owner</span> <span class="v">platform-lead</span></span><span><span class="k">effort</span> <span class="v">8 pts</span></span><span><span class="k">due</span> <span class="v">2026-05-15</span></span><span><span class="k">control</span> <span class="v">CC7.2</span></span></div>
+            </div>
+
+            <!-- evidence collector -->
+            <article class="subagent agent-g">
+              <header class="sa-head">
+                <div class="avatar av-g sm">E</div>
+                <div><div class="name">evidence-collector</div><div class="role">sub-agent &middot; playbook author</div></div>
+                <div class="stats"><span>6 turns</span><span>2,114 tok</span><span>6.4s</span><span>$0.051</span></div>
+              </header>
+              <div class="sa-body">
+                <div class="sa-subthink">
+                  <div class="sth-head">thinking &middot; 1.8s</div>
+                  Type II audit needs evidence of operating effectiveness over a 6-12 month window. The auditor will sample. I'll document exactly what to export, from which source-of-truth, at what cadence, and how to freeze it so we can reproduce the sample if challenged.
+                </div>
+                <div class="sa-return">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span><strong>return_value:</strong> <code style="color: #6ee7b7; background: transparent; padding: 0; border: 0;">{ artifacts: 31, weekly: 12, monthly: 14, quarterly: 5, storage: "evidence-bucket (WORM)" }</code></span>
+                </div>
+              </div>
+            </article>
+
+            <!-- Evidence playbook -->
+            <div class="playbook">
+              <div class="pb-hdr">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+                <span class="pb-title">Evidence collection playbook &middot; 31 artifacts</span>
+                <span style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--fg-3);">WORM bucket &middot; 400d retention</span>
+              </div>
+              <div class="pb-step"><div class="n">W1</div><div class="t"><strong>AWS IAM credential report</strong>: <code>aws iam generate-credential-report</code> weekly, dump to <code>s3://evidence/aws/iam/YYYY-WW.csv</code>; proves CC6.2 MFA coverage over time.<span class="owner">owner &middot; security-eng</span></div><div class="cadence">weekly</div></div>
+              <div class="pb-step"><div class="n">W2</div><div class="t"><strong>CloudTrail digest file verification</strong>: validate daily digests, export verification report; proves CC6.1 log integrity.<span class="owner">owner &middot; security-eng</span></div><div class="cadence">weekly</div></div>
+              <div class="pb-step"><div class="n">W3</div><div class="t"><strong>GuardDuty findings summary</strong>: count by severity + response SLA; proves CC7.1 detection operating effectiveness.<span class="owner">owner &middot; sre-lead</span></div><div class="cadence">weekly</div></div>
+              <div class="pb-step"><div class="n">W4</div><div class="t"><strong>GitHub PR approvals report</strong>: all PRs merged to <code>main</code> with &ge;1 CODEOWNER approval; proves CC8.1 change management.<span class="owner">owner &middot; sre-lead</span></div><div class="cadence">weekly</div></div>
+              <div class="pb-step"><div class="n">M1</div><div class="t"><strong>Azure Policy compliance snapshot</strong>: export to JSON + upload; proves CC6.1 + CC6.8 config hardening.<span class="owner">owner &middot; platform-lead</span></div><div class="cadence">monthly</div></div>
+              <div class="pb-step"><div class="n">M2</div><div class="t"><strong>Access review sign-off</strong>: department heads attest to team member access quarterly. Capture signed PDFs in evidence bucket. Proves CC6.3.<span class="owner">owner &middot; security-eng + HR</span></div><div class="cadence">quarterly</div></div>
+              <div class="pb-step"><div class="n">M3</div><div class="t"><strong>Vulnerability scan results</strong>: monthly full-stack scan via Wiz + remediation SLA report. Proves CC7.1 + CC7.3.<span class="owner">owner &middot; security-eng</span></div><div class="cadence">monthly</div></div>
+              <div class="pb-step"><div class="n">Q1</div><div class="t"><strong>DR drill results</strong>: runbook tested end-to-end against staging; capture RTO/RPO measurements. Proves A1.3 operating effectiveness.<span class="owner">owner &middot; sre-lead</span></div><div class="cadence">quarterly</div></div>
+              <div class="pb-step"><div class="n">Q2</div><div class="t"><strong>Vendor SOC 2 collection</strong>: pull refreshed SOC 2 Type II reports from critical vendors (AWS, Azure, GCP, Datadog, Stripe, Auth0). Proves vendor-management control CC9.2.<span class="owner">owner &middot; security-eng</span></div><div class="cadence">quarterly</div></div>
+              <div class="pb-step"><div class="n">Q3</div><div class="t"><strong>Penetration test</strong>: external pentest by approved vendor; report + remediation evidence. Proves CC7.1 design effectiveness.<span class="owner">owner &middot; security-eng + CISO</span></div><div class="cadence">annual</div></div>
+            </div>
+
+            <!-- FINAL REPORT -->
+            <div class="txt">
+              <h3>Executive summary</h3>
+              <p>You are <strong>57% of the way</strong> to a clean SOC 2 Type II audit across the scoped trust-service categories. Out of 54 in-scope controls, 31 pass today, 15 have operating-effectiveness gaps (control exists but wasn't applied consistently), and 8 are design gaps (control doesn't exist yet). The design gaps are the long poles; operating-effectiveness issues can all be closed with configuration changes in the next 4 weeks.</p>
+
+              <p>The auditor will sample. For Type II, they pick a window (usually 6 months) and pull evidence from random points in that window to prove each control operated continuously. That's why the <strong>evidence-collection playbook is non-negotiable</strong> &mdash; missing a weekly IAM credential report for one week in the window means the auditor cannot form an opinion on CC6.2. The playbook I wrote codifies exactly which artifacts to produce, at what cadence, and where they live. If you follow it for 90 days you'll have a clean Type II sample envelope.</p>
+
+              <h3>Gap breakdown by severity</h3>
+            </div>
+
+            <div class="metrics-grid">
+              <div class="cell"><div class="k">Critical</div><div class="v r tnum">4</div></div>
+              <div class="cell"><div class="k">High</div><div class="v w tnum">10</div></div>
+              <div class="cell"><div class="k">Medium</div><div class="v tnum">9</div></div>
+              <div class="cell"><div class="k">Est. effort</div><div class="v g tnum">142<small>pts</small></div></div>
+            </div>
+
+            <div class="txt">
+              <h3>Recommended close order</h3>
+              <p>I would close gaps in <strong>three waves</strong> tied to the 3 audit-prep sprints we have before a July 2026 Type II window:</p>
+              <ul>
+                <li><strong>Sprint 1 &middot; weeks 1-2</strong>: all critical gaps (SOC2-101 &rarr; SOC2-103) plus re-enable marketing-account CloudTrail. These are all &le;5 pts and block any clean opinion letter. No policy or training work &mdash; pure config changes.</li>
+                <li><strong>Sprint 2 &middot; weeks 3-6</strong>: all high-severity operating gaps (KMS rotation, TLS 1.2 minimum, GuardDuty in missing regions, GCP audit-log sink). Requires cross-team coordination but no architectural work. Begin the evidence-collection cadence in parallel so the 6-month window starts producing samples.</li>
+                <li><strong>Sprint 3 &middot; weeks 7-12</strong>: the design gaps. Backup Vault SCP-enforced retention, conditional-access enforcement (move from report-only to enforce), BigQuery CMEK migration, change-management tooling for the 4% of PRs missing approver records. Higher-risk changes because they affect developer velocity; stage each behind a feature flag.</li>
+              </ul>
+
+              <h3>What I didn't do (yet)</h3>
+              <ul>
+                <li><strong>Policy library review</strong> &mdash; I sampled three policies and they read well, but a full review needs a human. Our Information Security Policy was last updated 2025-11; SOC 2 CC1.1 wants it reviewed annually with documented board approval.</li>
+                <li><strong>HR process audit</strong> &mdash; onboarding/offboarding sampling (CC6.3) requires interviewing People Ops and pulling Okta deprovisioning timestamps. I drafted the interview questions but did not conduct the interviews.</li>
+                <li><strong>Vendor DDQ</strong> &mdash; the audit will ask about subprocessors. I can pull the vendor registry from Vanta/Drata if you want, but the legal review of the current DDQ responses is a human task.</li>
+                <li><strong>Penetration test</strong> &mdash; last external pentest was 2025-08. You'll need a fresh one before the Type II period ends; I can help pick a vendor and scope the statement of work if asked.</li>
+              </ul>
+
+              <h3>Confidence + caveats</h3>
+              <p>High confidence on the cloud-config gaps &mdash; those are deterministic. Medium confidence on the change-management finding (SOC2-109) because it depends on how the auditor interprets <em>&ldquo;effective approver&rdquo;</em> &mdash; strict readings count bot-approvals as non-compliant, lenient readings don't<span class="citation">1</span>. Suggest getting an early opinion from your audit partner on this one. Low-impact findings like the stale DR runbook (A1.3) are easy to close but the auditor may dig into <em>why</em> the last drill was 5 months ago; be ready to show the drill log.</p>
+
+              <h3>Sources</h3>
+              <p style="font-size: 12px; color: var(--fg-3); margin-top: 4px;">
+                [1] <a href="#">AICPA SSAE 18 &middot; attestation standards</a> &middot; aicpa.org<br/>
+                [2] <a href="#">TSC 2017 &middot; Trust Services Criteria</a> &middot; aicpa.org<br/>
+                [3] <a href="#">AWS Audit Manager &middot; SOC 2 framework</a> &middot; docs.aws.amazon.com<br/>
+                [4] <a href="#">Azure Compliance Manager &middot; SOC 2</a> &middot; learn.microsoft.com<br/>
+                [5] <a href="#">GCP Assured Workloads &middot; SOC 2 blueprint</a> &middot; cloud.google.com
+              </p>
+            </div>
+
+          </div>
+        </article>
+
+      </div>
+    </div>
+
+    <div class="composer">
+      <textarea rows="2" placeholder="Ask a follow-up: e.g. &ldquo;draft the board-approval memo for CC1.1 policy review&rdquo;&hellip;"></textarea>
+      <div class="row">
+        <button class="btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg> attach</button>
+        <button class="btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg> compliance</button>
+        <button class="btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg> gpt-5.2</button>
+        <span class="spacer"></span>
+        <button class="send">send <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/></svg></button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+(function () {
+  var KEY = 'mockup-theme-prefs';
+  var prefs = {};
+  try { prefs = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+  var html = document.documentElement;
+  if (prefs.theme) html.dataset.theme = prefs.theme;
+  if (prefs.accent) html.dataset.accent = prefs.accent;
+  var save = function () { try { localStorage.setItem(KEY, JSON.stringify({ theme: html.dataset.theme, accent: html.dataset.accent })); } catch (e) {} };
+  var themeBtn = document.getElementById('theme-btn');
+  var refresh = function () {
+    themeBtn.textContent = html.dataset.theme || 'dark';
+    document.querySelectorAll('.swatch').forEach(function (el) {
+      el.setAttribute('data-active', el.dataset.accent === (html.dataset.accent || 'violet') ? 'true' : 'false');
+    });
+  };
+  themeBtn.addEventListener('click', function () {
+    html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark'; refresh(); save();
+  });
+  document.querySelectorAll('.swatch').forEach(function (el) {
+    el.addEventListener('click', function () { html.dataset.accent = el.dataset.accent; refresh(); save(); });
+  });
+  window.addEventListener('storage', function (e) {
+    if (e.key !== KEY) return;
+    try { var next = JSON.parse(e.newValue || '{}'); if (next.theme) html.dataset.theme = next.theme; if (next.accent) html.dataset.accent = next.accent; refresh(); } catch (err) {}
+  });
+  refresh();
+})();
+</script>
+</body>
+</html>

@@ -1031,8 +1031,13 @@ const MODEL_PATTERNS: ModelPattern[] = [
       outputCostPer1k: 0,
     }
   },
-  // gpt-oss (Ollama) — has custom channel-based tool call parsing in OllamaProvider
-  // Lower accuracy than cloud models but functional for single-tool calls
+  // gpt-oss (Ollama) — has custom channel-based tool call parsing in OllamaProvider.
+  // FCA 0.87 matches the router's live in-memory profile (validated on gpt-oss:20b
+  // in production chat-dev routing). MCR previously carried 0.75 which was a
+  // pre-channel-parser estimate from the original seed; bumped 2026-04-23 to
+  // unblock chat-pool routing (gpt-oss:20b was being filtered out by the 0.82
+  // floor, causing simple prompts like "write a haiku" to fall through to
+  // Sonnet even though gpt-oss was clearly the correct routing target).
   {
     pattern: /gpt-oss/i,
     capabilities: {
@@ -1041,7 +1046,7 @@ const MODEL_PATTERNS: ModelPattern[] = [
       maxContextTokens: 8192,
       maxOutputTokens: 4096,
       functionCalling: true,
-      functionCallingAccuracy: 0.75,
+      functionCallingAccuracy: 0.87,
       vision: false,
       thinking: true,
       jsonMode: true,
@@ -1138,6 +1143,39 @@ const PROVIDER_PATTERNS: Array<{ pattern: RegExp; providerType: ProviderType }> 
   { pattern: /llama|mistral|qwen|deepseek|phi|codellama|vicuna|orca/i, providerType: 'ollama' },
 ];
 
+// Lightweight SoT-row enrichers — used only to fill ModelCapabilities
+// fields the DB row does not currently track (family label, provider-type
+// label). They DO NOT decide capabilities; capabilities come from the row's
+// JSONB. If/when admin.model_role_assignments grows a `family` and
+// `provider_type` column these helpers go away.
+function inferFamily(model: string): ModelFamily {
+  const m = model.toLowerCase();
+  if (/gpt-oss/.test(m)) return 'gpt-oss';
+  if (/^gpt|davinci/.test(m)) return 'gpt';
+  if (/claude/.test(m)) return 'claude';
+  if (/gemini|bison|palm/.test(m)) return 'gemini';
+  if (/llama|codellama|vicuna|orca/.test(m)) return 'llama';
+  if (/mistral|mixtral/.test(m)) return 'mistral';
+  if (/qwen/.test(m)) return 'qwen';
+  if (/deepseek/.test(m)) return 'deepseek';
+  if (/^phi/.test(m)) return 'phi';
+  if (/gemma/.test(m)) return 'gemma';
+  if (/titan/.test(m)) return 'titan';
+  return 'unknown';
+}
+
+function inferProviderType(provider: string): ProviderType {
+  const p = provider.toLowerCase();
+  if (p === 'aif' || p === 'azure-ai-foundry') return 'azure-ai-foundry';
+  if (p === 'azure' || p === 'azure-openai') return 'azure-openai';
+  if (p === 'vertex' || p === 'vertex-ai' || p === 'gcp') return 'vertex-ai';
+  if (p === 'bedrock' || p === 'aws-bedrock') return 'aws-bedrock';
+  if (p === 'ollama') return 'ollama';
+  if (p === 'openai') return 'openai';
+  if (p === 'anthropic') return 'anthropic';
+  return 'unknown';
+}
+
 // ============================================================================
 // MODEL CAPABILITY REGISTRY
 // ============================================================================
@@ -1179,17 +1217,73 @@ export class ModelCapabilityRegistry {
   }
 
   /**
-   * Load model capabilities from database
+   * Load model capabilities from the registry SoT
+   * (admin.model_role_assignments). Reads each active+enabled row's
+   * capabilities JSONB and populates the cache.
+   *
+   * The previous implementation read from a non-existent `modelCapability`
+   * table, which meant the substring/regex pattern fallback was the de
+   * facto SoT — exactly what docs/rules/no-hardcoded-models.md forbids.
+   * This method now sources from the registry table that the seeder +
+   * admin UI write to.
    */
   private async loadFromDatabase(): Promise<void> {
     if (!this.prisma) return;
 
     try {
-      // Check if ModelCapability table exists
-      const capabilities = await (this.prisma as any).modelCapability?.findMany({
-        where: { enabled: true }
-      });
+      const rows: any[] = await (this.prisma as any).modelRoleAssignment?.findMany({
+        where: { state: 'active', enabled: true },
+      }) ?? [];
 
+      for (const row of rows) {
+        const caps = (row.capabilities ?? {}) as Record<string, any>;
+        const family = inferFamily(row.model);
+        const providerType = inferProviderType(row.provider);
+
+        // Merge any extra keys (e.g. maxContextTokens written by discovery)
+        // into the canonical shape, preferring DB values over pattern guesses.
+        const fallback = this.getDefaultCapabilities(row.model);
+
+        this.cache.set(String(row.model).toLowerCase(), {
+          modelId: row.model,
+          displayName: row.description ?? row.model,
+          provider: row.provider,
+          providerType,
+          maxContextTokens: typeof caps.maxContextTokens === 'number' ? caps.maxContextTokens : fallback.maxContextTokens,
+          maxOutputTokens: typeof caps.maxOutputTokens === 'number' ? caps.maxOutputTokens : fallback.maxOutputTokens,
+          chat: caps.chat ?? fallback.chat,
+          vision: caps.vision ?? fallback.vision,
+          functionCalling: caps.tools ?? caps.functionCalling ?? fallback.functionCalling,
+          functionCallingAccuracy: typeof caps.functionCallingAccuracy === 'number' ? caps.functionCallingAccuracy : fallback.functionCallingAccuracy,
+          streaming: caps.streaming ?? fallback.streaming,
+          jsonMode: caps.jsonMode ?? fallback.jsonMode,
+          thinking: caps.thinking ?? fallback.thinking,
+          thinkingCapabilities: caps.thinkingCapabilities ?? fallback.thinkingCapabilities,
+          imageGeneration: caps.imageGeneration ?? fallback.imageGeneration,
+          embeddings: caps.embeddings ?? fallback.embeddings,
+          inputCostPer1k: typeof row.cost_per_input_token_usd === 'number'
+            ? Number(row.cost_per_input_token_usd) * 1000
+            : undefined,
+          outputCostPer1k: typeof row.cost_per_output_token_usd === 'number'
+            ? Number(row.cost_per_output_token_usd) * 1000
+            : undefined,
+          family,
+          isAvailable: true,
+          lastUpdated: row.updated_at instanceof Date ? row.updated_at : new Date(),
+        });
+      }
+
+      this.logger.info({ rows: rows.length }, '[MCR] Loaded capabilities from admin.model_role_assignments (SoT)');
+      return;
+    } catch (error: any) {
+      this.logger.warn({ err: error?.message }, '[MCR] modelRoleAssignment SoT read failed; pattern fallback will be used');
+    }
+
+    // Legacy modelCapability table (kept as a transitional reader for
+    // installs that pre-date Registry SoT v1). Will be deleted once all
+    // envs are confirmed to populate model_role_assignments.
+    try {
+      const capabilities = await (this.prisma as any).modelCapability?.findMany({ where: { enabled: true } });
       if (capabilities) {
         for (const cap of capabilities) {
           this.cache.set(cap.modelId.toLowerCase(), {
@@ -1528,6 +1622,15 @@ export class ModelCapabilityRegistry {
   }
 
   /**
+   * True if the registry actually has the model in its DB-backed cache
+   * (i.e. an admin.model_role_assignments row exists). Distinct from
+   * getCapabilities() which always returns a value via pattern fallback.
+   */
+  hasModel(modelId: string): boolean {
+    return this.cache.has(String(modelId).toLowerCase());
+  }
+
+  /**
    * Get all model capabilities with additional metadata for API consumption
    * This is used by the /api/admin/llm-providers/model-capabilities endpoint
    */
@@ -1538,10 +1641,10 @@ export class ModelCapabilityRegistry {
   }
 
   /**
-   * Get model recommendations for each intelligence slider tier
-   * Returns models categorized by tier (economical, balanced, premium)
+   * Get model recommendations for each tier.
+   * Returns models categorized by tier (economical, balanced, premium).
    */
-  getSliderTierRecommendations(): {
+  getTierRecommendations(): {
     economical: { name: string; range: string; models: string[]; description: string };
     balanced: { name: string; range: string; models: string[]; description: string };
     premium: { name: string; range: string; models: string[]; description: string };
@@ -1585,45 +1688,18 @@ export class ModelCapabilityRegistry {
   }
 
   /**
-   * Get display name for a model ID
-   * Used by UI components to show friendly names
+   * Get display name for a model ID.
+   * Used by UI components to show friendly names.
+   *
+   * H1 (2026-05-05): the registry's `displayName` (sourced from
+   * admin.model_role_assignments.description) is the SoT. If the operator
+   * hasn't set a description, the UI shows the bare modelId — that's the
+   * intended "if it's not in the registry, you see what you stored" signal,
+   * not a hidden substring → friendly-label remap.
    */
   getDisplayName(modelId: string): string {
     const capabilities = this.getCapabilities(modelId);
-    if (capabilities.displayName) {
-      return capabilities.displayName;
-    }
-
-    // Fallback: format model ID nicely
-    const model = modelId.toLowerCase();
-    if (model.includes('claude-opus-4-6')) return 'Claude Opus 4.6';
-    if (model.includes('claude-sonnet-4-6')) return 'Claude Sonnet 4.6';
-    if (model.includes('claude-opus-4-5')) return 'Claude Opus 4.5';
-    if (model.includes('claude-sonnet-4-5')) return 'Claude Sonnet 4.5';
-    if (model.includes('claude-opus')) return 'Claude Opus';
-    if (model.includes('claude-sonnet')) return 'Claude Sonnet';
-    if (model.includes('claude-3-5-sonnet')) return 'Claude 3.5 Sonnet';
-    if (model.includes('claude-3-opus')) return 'Claude 3 Opus';
-    if (model.includes('claude-haiku')) return 'Claude Haiku';
-    if (model.includes('gpt-4o-mini')) return 'GPT-4o Mini';
-    if (model.includes('gpt-4o')) return 'GPT-4o';
-    if (model.includes('gpt-4-turbo')) return 'GPT-4 Turbo';
-    if (model.includes('gpt-4')) return 'GPT-4';
-    if (model.includes('o1-preview')) return 'o1 Preview';
-    if (model.includes('o1-mini')) return 'o1 Mini';
-    if (model.includes('gemini-3-pro')) return 'Gemini 3 Pro';
-    if (model.includes('gemini-3-flash')) return 'Gemini 3 Flash';
-    if (model.includes('gemini-2.5-pro')) return 'Gemini 2.5 Pro';
-    if (model.includes('gemini-2.5-flash')) return 'Gemini 2.5 Flash';
-    if (model.includes('gemini-2.0-flash')) return 'Gemini 2 Flash';
-    if (model.includes('gemini-1.5-pro')) return 'Gemini 1.5 Pro';
-    if (model.includes('gemini-1.5-flash')) return 'Gemini 1.5 Flash';
-    if (model.includes('gemini-pro')) return 'Gemini Pro';
-    if (model.includes('llama')) return 'Llama';
-    if (model.includes('mistral')) return 'Mistral';
-
-    // Default: return model ID as-is
-    return modelId;
+    return capabilities.displayName || modelId;
   }
 
   /**

@@ -47,7 +47,7 @@ export function PipelineLogViewer({ sessionId: initialSessionId, messageId: init
     backgroundColor: 'rgba(255,255,255,0.05)',
     border: '1px solid rgba(255,255,255,0.1)',
     borderRadius: 4,
-    color: '#e6edf3',
+    color: 'var(--ap-fg-1)',
     flex: 1,
   };
 
@@ -60,10 +60,10 @@ export function PipelineLogViewer({ sessionId: initialSessionId, messageId: init
   };
 
   const labelStyle: React.CSSProperties = { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 4 };
-  const valueStyle: React.CSSProperties = { fontSize: 13, color: '#e6edf3', fontFamily: 'SF Mono, JetBrains Mono, monospace' };
+  const valueStyle: React.CSSProperties = { fontSize: 13, color: 'var(--ap-fg-1)', fontFamily: 'SF Mono, JetBrains Mono, monospace' };
 
   return (
-    <div style={{ fontFamily: 'SF Mono, JetBrains Mono, monospace', color: '#e6edf3' }}>
+    <div style={{ fontFamily: 'SF Mono, JetBrains Mono, monospace', color: 'var(--ap-fg-1)' }}>
       <h3 style={{ fontSize: 14, marginBottom: 12, color: 'rgba(255,255,255,0.7)' }}>Pipeline Log Viewer</h3>
 
       {/* Search */}
@@ -75,7 +75,7 @@ export function PipelineLogViewer({ sessionId: initialSessionId, messageId: init
           disabled={loading || !sessionId || !messageId}
           style={{
             padding: '6px 16px', fontSize: 12, border: 'none', borderRadius: 4,
-            backgroundColor: '#238636', color: '#fff', cursor: 'pointer',
+            backgroundColor: 'var(--ap-ok)', color: 'var(--ap-fg-0)', cursor: 'pointer',
             opacity: loading || !sessionId || !messageId ? 0.5 : 1,
           }}
         >
@@ -83,7 +83,7 @@ export function PipelineLogViewer({ sessionId: initialSessionId, messageId: init
         </button>
       </div>
 
-      {error && <div style={{ color: '#f85149', fontSize: 12, marginBottom: 12 }}>{error}</div>}
+      {error && <div style={{ color: 'var(--ap-err)', fontSize: 12, marginBottom: 12 }}>{error}</div>}
 
       {data && (
         <>
@@ -107,7 +107,7 @@ export function PipelineLogViewer({ sessionId: initialSessionId, messageId: init
                 <div style={{ flex: 1, height: 4, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
                   <div style={{
                     width: `${Math.min((ms / Math.max(...Object.values(data.stageTimings))) * 100, 100)}%`,
-                    height: '100%', backgroundColor: '#58a6ff', borderRadius: 2,
+                    height: '100%', backgroundColor: 'var(--ap-accent)', borderRadius: 2,
                   }} />
                 </div>
                 <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', width: 50, textAlign: 'right' }}>{ms}ms</span>
@@ -119,8 +119,8 @@ export function PipelineLogViewer({ sessionId: initialSessionId, messageId: init
           <div style={cardStyle}>
             <div style={labelStyle}>Token Usage</div>
             <div style={{ display: 'flex', gap: 16 }}>
-              <span style={{ color: '#58a6ff' }}>↓ {data.tokenUsage.input.toLocaleString()}</span>
-              <span style={{ color: '#3fb950' }}>↑ {data.tokenUsage.output.toLocaleString()}</span>
+              <span style={{ color: 'var(--ap-accent)' }}>↓ {data.tokenUsage.input.toLocaleString()}</span>
+              <span style={{ color: 'var(--ap-ok)' }}>↑ {data.tokenUsage.output.toLocaleString()}</span>
               <span style={{ color: 'rgba(255,255,255,0.4)' }}>${data.tokenUsage.cost.toFixed(4)}</span>
             </div>
           </div>
@@ -147,9 +147,9 @@ export function PipelineLogViewer({ sessionId: initialSessionId, messageId: init
                   <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>Round {round.round}</div>
                   {round.tools.map((t, i) => (
                     <div key={i} style={{ display: 'flex', gap: 8, fontSize: 11, padding: '2px 0' }}>
-                      <span style={{ color: '#58a6ff' }}>{t.name}</span>
+                      <span style={{ color: 'var(--ap-accent)' }}>{t.name}</span>
                       <span style={{ color: 'rgba(255,255,255,0.3)' }}>{t.duration}ms</span>
-                      <span style={{ color: t.status === 'success' ? '#3fb950' : '#f85149' }}>{t.status}</span>
+                      <span style={{ color: t.status === 'success' ? 'var(--ap-ok)' : 'var(--ap-err)' }}>{t.status}</span>
                     </div>
                   ))}
                 </div>
@@ -174,8 +174,8 @@ export function PipelineLogViewer({ sessionId: initialSessionId, messageId: init
               <div style={labelStyle}>HITL Events</div>
               {data.hitlEvents.map(h => (
                 <div key={h.id} style={{ display: 'flex', gap: 8, fontSize: 11, padding: '2px 0' }}>
-                  <span style={{ color: '#d29922' }}>{h.tool}</span>
-                  <span style={{ color: h.approved ? '#3fb950' : '#f85149' }}>{h.approved ? 'Approved' : 'Denied'}</span>
+                  <span style={{ color: 'var(--ap-warn)' }}>{h.tool}</span>
+                  <span style={{ color: h.approved ? 'var(--ap-ok)' : 'var(--ap-err)' }}>{h.approved ? 'Approved' : 'Denied'}</span>
                   <span style={{ color: 'rgba(255,255,255,0.3)' }}>{(h.waitMs / 1000).toFixed(1)}s wait</span>
                 </div>
               ))}

@@ -21,6 +21,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { prisma } from '../utils/prisma.js';
 import { autoMigrationService } from './AutoMigrationService.js';
+import { capEmbeddingDimForHnsw, HALFVEC_HNSW_MAX_DIM } from './halfvecHnswCap.js';
 
 const logger: Logger = (pino as any).default ? (pino as any).default({ name: 'database-service' }) : (pino as any)({ name: 'database-service' });
 const execAsync = promisify(exec);
@@ -433,16 +434,24 @@ export class DatabaseService {
     }
 
     // Resolve target dim
-    const targetDim = await DatabaseService.resolveActiveEmbeddingDim();
-    if (!targetDim || targetDim < 1) {
+    const rawTargetDim = await DatabaseService.resolveActiveEmbeddingDim();
+    if (!rawTargetDim || rawTargetDim < 1) {
       logger.warn('⚠️ Could not resolve active embedding dimension — skipping column migration');
       return;
     }
-    logger.info({ targetDim }, '  target dimension resolved');
+    // pgvector caps HNSW on halfvec at 4000d — providers like qwen3-embedding:8b return 4096-d natively.
+    const targetDim = capEmbeddingDimForHnsw(rawTargetDim);
+    if (targetDim !== rawTargetDim) {
+      logger.warn(
+        { rawTargetDim, targetDim, HALFVEC_HNSW_MAX_DIM },
+        '⚠️  capping embedding dim for HNSW compatibility — pgvector limits halfvec HNSW to 4000d'
+      );
+    }
+    logger.info({ targetDim, rawTargetDim }, '  target dimension resolved');
 
     // Each tuple: schema.table.column → HNSW index name.
     // Includes both Prisma-managed tables and runtime-created tables
-    // (ModuleEmbeddingService, SemanticResponseCache, shared_kb_*).
+    // (SemanticResponseCache, shared_kb_*).
     const embeddingColumns: Array<{ schema: string; table: string; column: string; idx: string }> = [
       { schema: 'admin', table: 'prompt_templates',  column: 'embedding',             idx: 'prompt_templates_embedding_idx' },
       { schema: 'admin', table: 'prompt_templates',  column: 'search_embedding',      idx: 'prompt_templates_search_embedding_idx' },
@@ -489,12 +498,11 @@ export class DatabaseService {
         const isVector = udtName === 'vector';
 
         if (isHalfvec && currentDim === targetDim) {
-          // Already correct — just verify the index
-          const idxCheck = await prisma.$queryRawUnsafe<Array<{ indisvalid: boolean }>>(`
-            SELECT indisvalid FROM pg_index
-            WHERE indexrelid = ($1 || '.' || $2)::regclass
-          `, c.schema, c.idx).catch(() => []);
-          if (idxCheck.length > 0 && idxCheck[0].indisvalid) {
+          // Already correct — just verify the index. probeIndexValid uses
+          // pg_class/pg_namespace/pg_index by NAME so a missing index
+          // returns false instead of raising 42P01 at the SQL layer.
+          const valid = await DatabaseService.probeIndexValid(c.schema, c.idx);
+          if (valid) {
             logger.debug({ ...c, dim: currentDim }, '  halfvec + HNSW valid — skip');
             continue;
           }
@@ -547,6 +555,39 @@ export class DatabaseService {
     }
 
     logger.info({ targetDim }, '✅ embedding dimension migration complete');
+  }
+
+  /**
+   * Check whether an index exists and is marked valid in pg_index. Resolves
+   * the index by NAME via pg_class joined to pg_namespace, so a missing
+   * index returns false instead of throwing.
+   *
+   * History: this used to be an inline `WHERE indexrelid = ($1 || '.' || $2)::regclass`
+   * cast in `ensureEmbeddingDimensions`. The regclass cast raises 42P01 at
+   * the SQL layer when the index is absent — even though the JS-level
+   * `.catch(() => [])` swallowed the rejection, Prisma's global event
+   * logger still emitted "Connection error" + a multi-line stack trace
+   * before the rejection reached us. On every fresh-DB cold-boot that
+   * was 14 spurious error blocks (one per embedding column) before the
+   * indexes get lazily created by their owning services. Switching to a
+   * pg_class lookup eliminates the noise without changing semantics.
+   *
+   * Returns false on any error (defense in depth — the caller decides
+   * whether to recreate or skip the index).
+   */
+  static async probeIndexValid(schema: string, indexName: string): Promise<boolean> {
+    try {
+      const rows = await prisma.$queryRawUnsafe<Array<{ indisvalid: boolean }>>(`
+        SELECT i.indisvalid
+        FROM pg_index i
+        JOIN pg_class c ON c.oid = i.indexrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = $1 AND c.relname = $2
+      `, schema, indexName);
+      return rows.length > 0 && rows[0].indisvalid === true;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -1213,9 +1254,20 @@ export class DatabaseService {
     toolCalls?: any[];
     mcpCalls?: any[];
     visualizations?: any[];
+    // Phase 3 persistence keystone (plan §3): canonical ContentBlock[] in
+    // wire-emit order. When present on assistant messages, hydration
+    // prefers this over flat content + tool_calls reconstruction, so the
+    // chronological interleave (text → tool → text → tool → text) survives
+    // page reload. Legacy rows have this null and fall back to the
+    // existing buildFinalContentBlocks path.
+    contentBlocks?: unknown[];
   }): Promise<ChatMessage> {
     try {
       const message = await prisma.chatMessage.create({
+        // Cast the full `data` block to `any` so the unregenerated Prisma
+        // client doesn't reject the new `content_blocks` Json? column. The
+        // column landed in schema.prisma via plan §3; `prisma generate` at
+        // api image build time will obviate this cast.
         data: {
           session_id: messageData.sessionId,
           role: messageData.role,
@@ -1225,8 +1277,9 @@ export class DatabaseService {
           model: messageData.model,
           tool_calls: messageData.toolCalls,
           mcp_calls: messageData.mcpCalls,
-          visualizations: messageData.visualizations
-        }
+          visualizations: messageData.visualizations,
+          content_blocks: messageData.contentBlocks ?? undefined,
+        } as any
       });
 
       // Update session message count and last activity

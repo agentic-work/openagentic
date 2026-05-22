@@ -12,7 +12,7 @@
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { Logger } from 'pino';
-import { ProviderManager } from '../services/llm-providers/ProviderManager.js';
+import { ProviderManager, getProviderManager as getProviderManagerSingleton } from '../services/llm-providers/ProviderManager.js';
 import { CompletionRequest, CompletionResponse } from '../services/llm-providers/ILLMProvider.js';
 import { TaskAnalysisService } from '../services/TaskAnalysisService.js';
 import { gateModelSelection, estimateToolChainDepth } from '../services/ModelCapabilityGate.js';
@@ -113,7 +113,7 @@ export default async function openaiCompatibleRoutes(
   options: OpenAICompatibleOptions
 ) {
   // Use lazy getter — ProviderManager initializes asynchronously after routes register
-  const getProviderManager = () => options.providerManager || (global as any).providerManager;
+  const getProviderManager = () => options.providerManager || getProviderManagerSingleton();
   const logger = options.logger || fastify.log;
 
   /**
@@ -175,6 +175,37 @@ export default async function openaiCompatibleRoutes(
       }, 'OpenAI-compatible chat completion request');
 
       try {
+        // ═══════════════════════════════════════════════════════════════════
+        // REGISTRY GUARD (task #6): body.model must be a sentinel or present
+        // + enabled in admin.model_role_assignments. Non-Registry concrete
+        // ids → HTTP 400 ModelNotInRegistry. Sentinels pass through to the
+        // Smart Router branch below.
+        // ═══════════════════════════════════════════════════════════════════
+        try {
+          const { prisma } = await import('../utils/prisma.js');
+          const { resolveRequestedModel } = await import('../services/model-routing/RegistryModelGuard.js');
+          const resolution = await resolveRequestedModel(body.model as any, prisma as any);
+          if (resolution.kind === 'not-in-registry') {
+            logger.warn({
+              requestId,
+              requestedModel: resolution.requested,
+              availableCount: resolution.availableCount,
+            }, '[/v1/messages] Rejected body.model — not in Registry');
+            return reply.code(400).send({
+              error: {
+                type: 'ModelNotInRegistry',
+                message: `Model "${resolution.requested}" is not enabled in the Model Registry. Either enable it on the Admin Models page or omit body.model to use Smart Router.`,
+                model: resolution.requested,
+                availableCount: resolution.availableCount,
+              },
+            });
+          }
+          // resolution.kind === 'smart-router' or 'registry' → continue normally.
+          // The pipeline/providerManager already honor concrete body.model values
+          // at dispatch time; we just needed to reject bad ones up-front.
+        } catch (guardErr) {
+          logger.warn({ requestId, err: guardErr }, '[/v1/messages] Registry guard failed (non-blocking)');
+        }
         // Handle model-router / auto: use TaskAnalysisService (smart router) for intelligent selection
         let selectedModel = body.model;
         if (!selectedModel || selectedModel === 'model-router' || selectedModel === 'auto') {
@@ -185,15 +216,8 @@ export default async function openaiCompatibleRoutes(
               Array.isArray(msg.content) && msg.content.some((c: any) => c.type === 'image_url')
             ),
             // Forward client metadata so AI Builder requests get premium-tier
-            // routing regardless of slider position / message length heuristics.
+            // routing regardless of message length heuristics.
             metadata: (body as any).metadata,
-            sliderConfig: (body as any).slider_position != null ? {
-              position: (body as any).slider_position,
-              costWeight: 1 - ((body as any).slider_position / 100),
-              qualityWeight: (body as any).slider_position / 100,
-              enableThinking: false,
-              source: 'user',
-            } : undefined,
           });
 
           if (taskAnalysis.suggestedModel) {

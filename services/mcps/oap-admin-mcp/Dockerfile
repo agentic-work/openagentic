@@ -1,86 +1,75 @@
-# OpenAgentic Admin MCP Server - Isolated Container
-# System administration and configuration management
+# OpenAgentic Admin MCP Server — Chainguard hardened runtime (2026-04-22)
 #
-# Service Discovery:
-#   - Service name: oap-admin-mcp
-#   - Port: 8083
-#   - Health: /health
-#   - Metrics: /metrics
-#
-# Observability:
-#   - OTEL traces: exports to OTEL_EXPORTER_OTLP_ENDPOINT
-#   - Prometheus metrics: /metrics endpoint
-#   - Structured JSON logs: scraped by Loki via stdout
-#
-# Build Note:
-#   Build from repo root with: docker build -f services/mcps/oap-admin-mcp/Dockerfile .
-#   Or use build.sh which handles the context correctly
+# Was: python:3.11-slim (Harbor Trivy: 1023 HIGH). Now: chainguard distroless
+# python. Same two-stage pattern as oap-aws-mcp — see its Dockerfile for the
+# long-form explanation. Non-root uid 65532, no shell, no apk at runtime.
 
-FROM python:3.11-slim
+ARG PYTHON_TAG=latest
 
-LABEL maintainer="OpenAgentic <devops@openagentic.io>"
-LABEL description="OpenAgentic Admin MCP Server - System administration tools"
-LABEL version="1.0.0"
+# =============================================================================
+# Stage 1: builder — installs Python deps + the admin_mcp_server package
+# =============================================================================
+FROM cgr.dev/chainguard/python:${PYTHON_TAG}-dev AS builder
 
-WORKDIR /app
+USER root
+# gcc/make available by default in the -dev image; no apk calls needed for
+# psycopg2-binary / pymilvus / fastmcp — they ship manylinux wheels.
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+USER nonroot
+WORKDIR /home/nonroot
 
-# Copy requirements
-COPY services/mcps/oap-admin-mcp/requirements.txt .
-COPY services/mcps/oap-admin-mcp/pyproject.toml ./
+COPY --chown=nonroot:nonroot services/mcps/oap-admin-mcp/requirements.txt /home/nonroot/requirements.txt
+COPY --chown=nonroot:nonroot services/mcps/oap-admin-mcp/pyproject.toml  /home/nonroot/pkg/pyproject.toml
+COPY --chown=nonroot:nonroot services/mcps/oap-admin-mcp/src/            /home/nonroot/pkg/src/
 
-# Install Python dependencies + observability packages
-RUN pip install --no-cache-dir -r requirements.txt \
-    # HTTP server for remote MCP mode
-    fastapi \
-    uvicorn \
-    # OTEL for distributed tracing
-    opentelemetry-api \
-    opentelemetry-sdk \
-    opentelemetry-exporter-otlp \
-    opentelemetry-instrumentation-fastapi \
-    opentelemetry-instrumentation-httpx \
-    # Prometheus metrics
-    prometheus-client \
-    # Structured logging for Loki
-    python-json-logger \
-    structlog
+RUN python -m venv /home/nonroot/.venv \
+ && /home/nonroot/.venv/bin/pip install --no-cache-dir -U pip setuptools wheel \
+ && /home/nonroot/.venv/bin/pip install --no-cache-dir -r /home/nonroot/requirements.txt \
+        fastapi uvicorn \
+        opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp \
+        opentelemetry-instrumentation-fastapi opentelemetry-instrumentation-httpx \
+        prometheus-client python-json-logger structlog \
+ && /home/nonroot/.venv/bin/pip install --no-cache-dir /home/nonroot/pkg
 
-# Copy shared utilities (http_transport module)
-COPY services/mcps/shared/ ./shared/
+COPY --chown=nonroot:nonroot services/mcps/shared/              /home/nonroot/app/shared/
+COPY --chown=nonroot:nonroot services/mcps/oap-admin-mcp/server.py /home/nonroot/app/server.py
 
-# Copy source code
-COPY services/mcps/oap-admin-mcp/src/ ./src/
-COPY services/mcps/oap-admin-mcp/server.py ./
+# IP protection: compile → .pyc, drop .py
+# Each step has `|| true` because the chainguard python:latest-dev image
+# doesn't always ship `find`, and a single failing step in an && chain
+# previously aborted the whole build. The .pyc files are nice-to-have
+# (source-hiding) but not load-time-required.
+RUN /home/nonroot/.venv/bin/python -m compileall -b /home/nonroot/app/shared/ 2>/dev/null || true \
+ && /home/nonroot/.venv/bin/python -c "import py_compile; py_compile.compile('/home/nonroot/app/server.py', '/home/nonroot/app/server.pyc')" 2>/dev/null || true \
+ && /home/nonroot/.venv/bin/python -c "import os; [os.remove(os.path.join(r,f)) for r,_,fs in os.walk('/home/nonroot/app/shared') for f in fs if f.endswith('.py')]" 2>/dev/null || true \
+ && rm -f /home/nonroot/app/server.py || true
 
-# Install package as root
-RUN pip install -e .
+# =============================================================================
+# Stage 2: runtime — distroless, non-root, no shell
+# =============================================================================
+FROM cgr.dev/chainguard/python:${PYTHON_TAG}
 
-# IP Protection: compile Python source to bytecode and strip .py files
-RUN python -m compileall -b /app/src/ /app/shared/ 2>/dev/null; \
-    python -c "import py_compile; py_compile.compile('/app/server.py', '/app/server.pyc')" 2>/dev/null; \
-    find /app/src/ /app/shared/ -name '*.py' -delete 2>/dev/null; \
-    rm -f /app/server.py 2>/dev/null || true
+LABEL org.opencontainers.image.title="oap-admin-mcp"
+LABEL org.opencontainers.image.description="OpenAgentic admin MCP — system + platform administration"
 
-# Create non-root user (CRIT-004 compliance)
-RUN useradd -m -u 1000 -s /bin/bash mcp
+LABEL org.opencontainers.image.source="https://github.com/agentic-work/agentic/tree/main/services/mcps/oap-admin-mcp"
 
-RUN chown -R mcp:mcp /app
+COPY --from=builder --chown=nonroot:nonroot /home/nonroot/.venv /home/nonroot/.venv
+COPY --from=builder --chown=nonroot:nonroot /home/nonroot/app   /home/nonroot/app
 
-# Switch to non-root user
-USER mcp
+USER nonroot
+WORKDIR /home/nonroot/app
 
-# Environment variables for observability and HTTP mode
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    # Enable HTTP mode for remote MCP control
+    PATH="/home/nonroot/.venv/bin:/usr/local/bin:/usr/bin:/bin" \
+    # admin_mcp_server.server looks up http_transport via two legacy paths
+    # (`$pkg/../../shared` and hardcoded `/app/shared`). Neither lines up
+    # with the Chainguard layout; PYTHONPATH surfaces the shared module at
+    # its new home so `run_with_http_support` resolves → HTTP mode fires,
+    # not stdio-which-exits-on-EOF.
+    PYTHONPATH="/home/nonroot/app/shared:/home/nonroot/app" \
     MCP_HTTP_MODE=true \
-    # Logging
     LOG_LEVEL=INFO \
     LOG_FORMAT=json \
     OTEL_SERVICE_NAME=oap-admin-mcp \
@@ -88,11 +77,8 @@ ENV PYTHONUNBUFFERED=1 \
     MCP_SERVER_NAME=oap-admin-mcp \
     MCP_SERVER_PORT=8083
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${MCP_SERVER_PORT}/health || exit 1
-
 EXPOSE 8083
 
-# Start server in HTTP mode
-CMD ["python", "-m", "admin_mcp_server.server"]
+# No HEALTHCHECK — /health is hit by the Deployment's liveness/readiness probes.
+ENTRYPOINT ["/home/nonroot/.venv/bin/python"]
+CMD ["-m", "admin_mcp_server.server"]

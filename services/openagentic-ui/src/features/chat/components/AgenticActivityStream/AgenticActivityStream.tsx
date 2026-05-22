@@ -35,26 +35,62 @@ import {
   GitBranch,
   Book,
 } from '@/shared/icons';
-import ArtifactRenderer from '../MessageContent/ArtifactRenderer';
 import ChartRenderer from '../MessageContent/ChartRenderer';
-import StreamingArtifactRenderer from '../MessageContent/StreamingArtifactRenderer';
-import { detectStreamingArtifact, hasStreamingArtifact } from '../../utils/streamingArtifactDetector';
+import ShikiCodeBlock from '../MessageContent/ShikiCodeBlock';
+// Legacy ArtifactRenderer / StreamingArtifactRenderer / streamingArtifactDetector
+// pipeline ripped 2026-05-13 (#781 Phase D.4). Interactive artifacts flow via
+// Message.visualizations[] + ArtifactSlideOutLauncher in MessageBubble.
 import { MCPToolRenderer, getRendererForTool, GenericMCPRenderer } from './MCPRenderers';
 import { CollapsedThinkingBlock, ArtifactErrorBoundary } from '@/shared/components';
+import { ThinkingSphere } from '@/shared/components/ThinkingSphere';
 import { humanizeToolName, getCategoryColor } from '../../utils/toolNameHumanizer';
 import { summarizeToolCall, type ToolSummary, type RichSummary } from '../../utils/toolSummarizer';
 import { formatToolInputDelta } from '../../utils/toolInputDelta';
+import { detectTableData } from '../../utils/tableRowStream';
+import { InlineStreamingTable } from '../InlineStreamingTable';
 import { AgentExecutionTimeline } from '@/features/agents/components/AgentExecutionTimeline';
 import type { ExecutionStep } from '@/features/agents/hooks/useAgentPlayground';
 import { useAgentTreeStore } from '@/stores/useAgentTreeStore';
+import { useFollowupChipsStore } from '@/stores/useFollowupChipsStore';
+// v0.6.7 task #159 — wire premium UX components into the render path.
+// InlineThinkingBlock replaces CollapsedThinkingBlock for thinking blocks
+// (collapsed header + live "Thought for Xs · ~N tokens" header). ToolCallCard
+// receives the live input_json_delta pane while a tool is executing.
+import { InlineThinkingBlock } from '../InlineThinkingBlock';
+import { ToolCallCard } from './components/ToolCallCard';
+// v0.6.7 task #131 (Phase F₂) — parallel tool fan-out group + sub-card. When
+// N ≥ 2 tool_executing events share a toolCallRound (stamped in useChatStream),
+// the group is delegated to this premium component which renders a
+// flex-wrap grid with per-tool shimmer + independent completion timers,
+// matching the mockup in docs/release-plans/v0.6.7-ux-mockups/01-cloud-ops.html.
+// Single-tool groups (round of 1) and non-grouped sequences still flow
+// through the existing inline ToolCallGroup below.
+import { ToolCallGroup as ParallelFanOutGroup } from '../UnifiedAgentActivity/ToolCallGroup';
+// Wire-in D (#82) — parallel tool-round container. Rendered when a
+// content block carries type 'tool_round' (the server-emitted
+// tool_round_start envelope), grouping its children[] under one
+// .tool-parallel card per mock 01-cloud-ops.
+import { ToolParallelGroup } from '../ToolParallelGroup';
+// #646 Option B — sub-agent card render INLINE in the timeline at the
+// agent-block position (mock 01:1077-1140). When the parent's stream
+// emits a `sub_agent_started` envelope, the matching agent_group below
+// renders a rich SubAgentCard wrapper around the AgentExecutionTimeline
+// instead of the lightweight purple chrome. Falls back to the bare
+// timeline when no SubAgentEntry has arrived yet (graceful degradation).
+import { SubAgentCard, StreamingTable } from '../v2';
+import { InlineAppBadge } from '../v2/InlineAppBadge';
+import { InlineVizBadge } from './InlineVizBadge';
+import { subAgentVariantFor } from '../../hooks/useChatStream';
 
 import type {
   AgenticActivityStreamProps,
+  SubAgentEntry,
   ToolCall,
   AgenticTask,
   ContentBlock,
   StreamingState,
   ThinkingProgress,
+  HitlApprovalEntry,
 } from './types/activity.types';
 
 // ============================================================================
@@ -64,6 +100,75 @@ import type {
 const formatDuration = (ms: number): string => {
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
+};
+
+/**
+ * T1 meta-tool name set — sourced from
+ * `services/openagentic-api/src/routes/chat/pipeline/chat/toolRegistry.ts`
+ * `getAllBaseTools()`. These are the platform's agentic primitives that the
+ * model uses to discover, dispatch, and self-curate workflows. User
+ * directive 2026-05-12: they are noise and MUST never render as inline
+ * tool cards in the activity stream.
+ *
+ * Important: the underlying frames (`tool_executing` / `tool_result`) still
+ * flow through the wire and accumulate in `toolCallsByMessageId` — only the
+ * VISUAL card is suppressed. User-visible output for the artifact-producing
+ * meta-tools (compose_visual, compose_app, render_artifact) still renders
+ * via the dedicated `visual_render` / `app_render` / `artifact_render`
+ * frames. Synth lifecycle renders via SynthCard. Sub-agent execution
+ * renders via SubAgentCard at the agent_group position. None of those
+ * paths route through the tool-card filter here.
+ */
+const T1_TOOL_NAMES: ReadonlySet<string> = new Set([
+  'tool_search',
+  'agent_search',
+  'Task',
+  'agent_send',
+  'agent_list',
+  'agent_stop',
+  'read_large_result',
+  'web_search',
+  'web_fetch',
+  'synth',
+  'pattern_save',
+  'pattern_recall',
+  'memorize',
+  'compose_visual',
+  'compose_app',
+  'render_artifact',
+  'request_clarification',
+  'browser_sandbox_exec',
+]);
+
+/** True when this tool name belongs to the T1 meta-tool catalog. */
+const isT1Tool = (name: string | undefined | null): boolean =>
+  !!name && T1_TOOL_NAMES.has(name);
+
+/**
+ * Resolve a content block's tool name with the same fallback chain the
+ * render path uses (block.toolName → toolCalls[id].toolName). Returns
+ * undefined when the block has no associated tool name yet (streaming
+ * pre-name window).
+ */
+const resolveBlockToolName = (
+  block: ContentBlock,
+  toolCalls: ReadonlyArray<ToolCall>,
+): string | undefined => {
+  if (block.toolName) return block.toolName;
+  if (block.toolId) {
+    const tc = toolCalls.find((t) => t.id === block.toolId);
+    return tc?.toolName;
+  }
+  return undefined;
+};
+
+/** A tool-typed block whose resolved tool name is in the T1 hidden set. */
+const isHiddenT1Block = (
+  block: ContentBlock,
+  toolCalls: ReadonlyArray<ToolCall>,
+): boolean => {
+  if (block.type !== 'tool_use' && block.type !== 'tool_call') return false;
+  return isT1Tool(resolveBlockToolName(block, toolCalls));
 };
 
 /**
@@ -784,9 +889,9 @@ const ThinkingGlobeIndicator: React.FC<{
     : circumference;
 
   const phaseColors = {
-    thinking: { primary: '#A855F7', glow: 'rgba(168, 85, 247, 0.4)' },
-    tools: { primary: '#0A84FF', glow: 'rgba(10, 132, 255, 0.4)' },
-    generating: { primary: '#22C55E', glow: 'rgba(34, 197, 94, 0.4)' },
+    thinking: { primary: 'var(--cm-thinking)', glow: 'var(--cm-thinking-glow)' },
+    tools: { primary: 'var(--cm-info)', glow: 'var(--cm-info-glow)' },
+    generating: { primary: 'var(--cm-ok)', glow: 'var(--cm-ok-glow)' },
   };
   const colors = phaseColors[phase];
 
@@ -816,20 +921,14 @@ const ThinkingGlobeIndicator: React.FC<{
         width: size * 0.5,
         height: size * 0.5,
       }}>
-        <img
-          src="/think.svg"
-          alt="Thinking"
-          style={{
-            width: '100%',
-            height: '100%',
-            filter: isAnimating ? `drop-shadow(0 0 2px ${colors.glow})` : 'none',
-            animation: isAnimating ? 'thinking-pulse 2s ease-in-out infinite' : 'none',
-          }}
-        />
+        {/* 2026-05-07 — was a static `/think.svg` square that pulse-scaled.
+            User asked to swap for the existing canvas-based ThinkingSphere
+            (sparkles + rotating arcs) so the inline thinking indicator
+            matches the rest of the app's animated aesthetic. */}
+        <ThinkingSphere state={isAnimating ? 'thinking' : 'hidden'} size={size * 0.5} />
       </div>
       <style>{`
         @keyframes thinking-spin { from { stroke-dashoffset: 0; } to { stroke-dashoffset: ${circumference}; } }
-        @keyframes thinking-pulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.1); } }
       `}</style>
     </>
   );
@@ -959,7 +1058,7 @@ const InlineThinking: React.FC<InlineThinkingProps> = memo(({
               <span style={{
                 fontWeight: 500,
                 fontSize: 13,
-                color: isStreaming ? 'var(--color-primary, #A855F7)' : 'var(--color-text-muted)',
+                color: isStreaming ? 'var(--cm-thinking)' : 'var(--cm-fg-2)',
               }}>
                 {isStreaming ? 'Thinking...' : 'Thought process'}
               </span>
@@ -1262,15 +1361,27 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
     return null;
   }, [toolCall.input, finalStatus]);
 
-  // Error message extraction
+  // Error message extraction — prefer a clean message field if the
+  // tool output is a structured error object; fall back to the first
+  // `error:` / `exception:` match; only last-resort shows a truncated
+  // JSON fragment so the user isn't staring at `": 5,\n "unknown": 1`
+  // leaked from the middle of an error payload.
   const errorMessage = useMemo(() => {
-    if (!hasError || !toolCall.output) return null;
-    const outStr = typeof toolCall.output === 'string'
-      ? toolCall.output
-      : JSON.stringify(toolCall.output);
-    // Extract first line of error
+    if (!hasError) return null;
+    if (!toolCall.output) return 'error';
+    const out = toolCall.output;
+    if (typeof out === 'object' && out !== null) {
+      const obj = out as Record<string, unknown>;
+      const msg = (obj.error || obj.message || obj.detail || obj.reason);
+      if (typeof msg === 'string' && msg.trim()) {
+        return msg.length > 80 ? msg.slice(0, 80) + '…' : msg;
+      }
+    }
+    const outStr = typeof out === 'string' ? out : JSON.stringify(out);
     const match = outStr.match(/(?:error|failed|exception)[:\s]*(.{1,80})/i);
-    return match ? match[1].trim() : 'error';
+    if (match) return match[1].trim();
+    // Last resort — don't paste ANY raw JSON fragment, just say error.
+    return 'error';
   }, [hasError, toolCall.output]);
 
   // Formatted output for detail view
@@ -1296,12 +1407,17 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
         ? 'activity-step activity-step--success'
         : 'activity-step activity-step--pending';
 
-  // Display label — use activeForm during execution for Claude Code-style "Fetching Azure costs..." labels
+  // Display label — match mockup 02-kubernetes-health-report.html: raw MCP
+  // tool function name in JetBrains Mono, e.g. `kubectl_get_events` not
+  // "Cluster Health". Humanized form is kept only for sub-agents (where
+  // the role is the signal) and during running state when activeForm is
+  // more descriptive than a function name (e.g. "Listing Kubernetes pods").
+  const rawToolName = toolCall.toolName || 'tool';
   const baseLabel = toolCall.agentId
-    ? toolCall.agentRole || toolCall.toolName
+    ? toolCall.agentRole || rawToolName
     : isAgentSpawn && childAgents.length > 0
       ? `Orchestrating ${childAgents.length} agent${childAgents.length !== 1 ? 's' : ''}`
-      : humanized.label;
+      : rawToolName;
   const displayLabel = finalStatus === 'running' && humanized.activeForm && !toolCall.agentId
     ? humanized.activeForm
     : baseLabel;
@@ -1339,9 +1455,24 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
             size={depth > 0 ? 12 : 14}
           />
 
-          {/* Category badge */}
+          {/* Mockup-parity: tiny colored dot encoding the tool's category
+              instead of the large "Kubernetes" / "Monitoring" pill. Mock 02
+              has just `<span class="t-name">kubectl_get_events</span>` with
+              no category badge — the tool name is the signal. The dot lets
+              a user scan vs. mono text column for cluster/cloud/web-type
+              tools quickly without the badge eating horizontal space. */}
           {!isAgent && (
-            <CategoryBadge category={humanized.category} small={depth > 0} />
+            <span
+              aria-label={`${humanized.category} tool`}
+              title={humanized.category}
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 999,
+                background: humanized.color,
+                flexShrink: 0,
+              }}
+            />
           )}
 
           {/* Agent indicator */}
@@ -1359,11 +1490,16 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
             </span>
           )}
 
-          {/* Tool label */}
+          {/* Tool label — matches mock .t-name: JetBrains Mono, 12px,
+              weight 500. For sub-agents / running activeForm strings,
+              keep a non-mono fallback since they're human sentences. */}
           <span style={{
+            fontFamily: isAgent || (finalStatus === 'running' && humanized.activeForm && !toolCall.agentId)
+              ? undefined
+              : "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
             fontSize: depth > 0 ? 12 : 13,
             fontWeight: 500,
-            color: depth > 0 ? 'var(--color-text-secondary)' : 'var(--color-text)',
+            color: depth > 0 ? 'var(--color-text-secondary)' : 'var(--color-text, var(--fg-0))',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -1480,25 +1616,72 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
         </div>
       )}
 
-      {/* Expanded detail: structured key-value view */}
+      {/* Expanded detail — Shiki-highlighted Input/Result sections that
+          match mock 02's `<pre class="json">` + `<pre class="result">`
+          styling. The section labels use the mockup terminology (Input /
+          Result / Error) rather than Request/Response so the live tool
+          cards scan like the mock. */}
       {showDetail && (inputForDetail || outputForDetail) && (
         <div className="activity-detail-panel" style={{ marginLeft: 16 }}>
           {inputForDetail && (
-            <div style={{ borderBottom: outputForDetail ? '1px solid color-mix(in srgb, var(--color-border) 30%, transparent)' : 'none' }}>
-              <div className="activity-detail-panel__section-label">Request</div>
-              <pre className="activity-detail-panel__content">
-                {inputForDetail.length > 1500 ? inputForDetail.slice(0, 1500) + '\n...' : inputForDetail}
-              </pre>
+            <div
+              style={{
+                borderBottom: outputForDetail
+                  ? '1px solid color-mix(in srgb, var(--color-border) 30%, transparent)'
+                  : 'none',
+                padding: '10px 12px',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 10,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  color: 'var(--fg-3, var(--color-text-muted))',
+                  marginBottom: 6,
+                  fontWeight: 600,
+                }}
+              >
+                Input
+              </div>
+              <ShikiCodeBlock
+                language={(() => {
+                  try { JSON.parse(inputForDetail); return 'json'; } catch { return 'text'; }
+                })()}
+                code={inputForDetail.length > 2000 ? inputForDetail.slice(0, 2000) + '\n// …truncated' : inputForDetail}
+                theme="dark"
+                onCopy={async (t: string) => {
+                  try { await navigator.clipboard.writeText(t); } catch { /* swallow */ }
+                }}
+              />
             </div>
           )}
           {outputForDetail && (
-            <div>
-              <div className="activity-detail-panel__section-label" style={{ color: hasError ? '#da3633' : undefined }}>
-                Response
+            <div style={{ padding: '10px 12px' }}>
+              <div
+                style={{
+                  fontSize: 10,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  color: hasError
+                    ? 'var(--err, #ef4444)'
+                    : 'var(--fg-3, var(--color-text-muted))',
+                  marginBottom: 6,
+                  fontWeight: 600,
+                }}
+              >
+                {hasError ? 'Error' : 'Result'}
               </div>
-              <pre className="activity-detail-panel__content" style={{ color: hasError ? '#da3633' : undefined }}>
-                {outputForDetail.length > 2000 ? outputForDetail.slice(0, 2000) + '\n...' : outputForDetail}
-              </pre>
+              <ShikiCodeBlock
+                language={(() => {
+                  try { JSON.parse(outputForDetail); return 'json'; } catch { return 'text'; }
+                })()}
+                code={outputForDetail.length > 4000 ? outputForDetail.slice(0, 4000) + '\n// …truncated' : outputForDetail}
+                theme="dark"
+                onCopy={async (t: string) => {
+                  try { await navigator.clipboard.writeText(t); } catch { /* swallow */ }
+                }}
+              />
             </div>
           )}
         </div>
@@ -1647,8 +1830,23 @@ const TreeStepsContainer: React.FC<TreeStepsContainerProps> = memo(({
                 lineHeight: '18px',
               }}>
                 <StatusDot status={isErr ? 'error' : tc.status === 'calling' ? 'running' : 'success'} size={11} />
-                <CategoryBadge category={h.category} small />
-                <span style={{ fontWeight: 500, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{h.label}</span>
+                <span
+                  aria-label={`${h.category} tool`}
+                  title={h.category}
+                  style={{
+                    width: 5,
+                    height: 5,
+                    borderRadius: 999,
+                    background: h.color,
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{
+                  fontFamily: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+                  fontWeight: 500,
+                  color: 'var(--color-text, var(--fg-0))',
+                  whiteSpace: 'nowrap',
+                }}>{h.label}</span>
                 {sum && <span style={{ opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{sum}</span>}
                 {tc.duration != null && tc.duration > 0 && (
                   <span style={{ opacity: 0.4, fontSize: 11, fontFamily: 'var(--font-mono)', flexShrink: 0 }}>
@@ -1695,13 +1893,139 @@ TreeStepsContainer.displayName = 'TreeStepsContainer';
 // Grouped Tool Calls - Tree style (consecutive tool_use blocks)
 // ============================================================================
 
+// ============================================================================
+// HITL inline approval card (Sev-1 #922) — rendered IMMEDIATELY adjacent to
+// the matching tool_use block so the approval prompt stays glued to the
+// tool that triggered it. Theme tokens only (CLAUDE.md rule 8b).
+//
+// Defined BEFORE ToolCallGroup so the cluster renderer can embed it inside
+// the per-child tool-card wrapper (fixes #922+#831 serial-cluster migration).
+// ============================================================================
+
+interface HitlInlineCardProps {
+  entry: HitlApprovalEntry;
+  onApprove?: (requestId: string) => void;
+  onDeny?: (requestId: string) => void;
+}
+
+const HitlInlineCard: React.FC<HitlInlineCardProps> = ({ entry, onApprove, onDeny }) => {
+  return (
+    <div
+      data-testid="hitl-approval-card"
+      data-status={entry.status}
+      data-tool-name={entry.toolName}
+      data-request-id={entry.requestId}
+      style={{
+        border: '1px solid var(--cm-line-2)',
+        borderRadius: 6,
+        padding: '10px 12px',
+        background: 'var(--cm-bg-1)',
+        fontFamily: 'var(--font-v3-mono, monospace)',
+        fontSize: 12,
+        margin: '4px 0',
+      }}
+    >
+      <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--cm-fg-1)' }}>
+        ⚠ Approval required: <code>{entry.toolName}</code>
+      </div>
+      <div style={{ color: 'var(--cm-fg-2)', marginBottom: 8 }}>
+        {entry.reason}
+      </div>
+      {entry.status === 'pending' && (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            data-testid="hitl-approve-btn"
+            onClick={() => onApprove?.(entry.requestId)}
+            style={{
+              border: '1px solid var(--cm-success)',
+              background: 'transparent',
+              color: 'var(--cm-success)',
+              padding: '4px 10px',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              fontSize: 11,
+            }}
+          >
+            Approve
+          </button>
+          <button
+            data-testid="hitl-deny-btn"
+            onClick={() => onDeny?.(entry.requestId)}
+            style={{
+              border: '1px solid var(--cm-error)',
+              background: 'transparent',
+              color: 'var(--cm-error)',
+              padding: '4px 10px',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              fontSize: 11,
+            }}
+          >
+            Deny
+          </button>
+        </div>
+      )}
+      {entry.status !== 'pending' && (
+        <div style={{ color: 'var(--cm-fg-2)' }}>
+          status: <code>{entry.status}</code>
+        </div>
+      )}
+    </div>
+  );
+};
+
+HitlInlineCard.displayName = 'HitlInlineCard';
+
 interface ToolCallGroupProps {
   blocks: ContentBlock[];
   toolCalls: ToolCall[];
   theme: string;
   isStreaming?: boolean;
   isHistorical?: boolean;
+  /** Stable session-scoped id for sessionStorage expand-state persistence. */
+  clusterKey?: string;
+  /**
+   * #922 + #831 — HITL approval entries keyed by ContentBlock.id. When a
+   * child tool-card's block.id is present in the map, the matching
+   * HitlInlineCard renders INSIDE that child's tool-card wrapper so the
+   * approval prompt stays glued to the specific tool that triggered it
+   * even as the cluster grows with additional consecutive tool_use blocks.
+   *
+   * Pre-fix the HITL nodes were appended as siblings AFTER the whole
+   * cluster wrapper — when the model emitted N tools back-to-back, the
+   * card "migrated" to the end of the cluster (visually below tool #N),
+   * far from the gated tool. Customer-visible "where did my approval
+   * prompt go?" regression.
+   */
+  hitlByBlockId?: ReadonlyMap<string, HitlApprovalEntry>;
+  onApproveHitl?: (requestId: string) => void;
+  onDenyHitl?: (requestId: string) => void;
 }
+
+const CLUSTER_STORAGE_PREFIX = 'cm.toolCluster.';
+
+const readClusterExpand = (key: string | undefined): boolean | null => {
+  if (!key || typeof window === 'undefined') return null;
+  try {
+    const v = window.sessionStorage.getItem(CLUSTER_STORAGE_PREFIX + key);
+    if (v === '1') return true;
+    if (v === '0') return false;
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const writeClusterExpand = (key: string | undefined, expanded: boolean): void => {
+  if (!key || typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(CLUSTER_STORAGE_PREFIX + key, expanded ? '1' : '0');
+  } catch {
+    /* swallow */
+  }
+};
 
 /** Tree node for building hierarchical tool call structure */
 interface ToolTreeNode {
@@ -1720,7 +2044,10 @@ const ExpandableToolItem: React.FC<{
   allToolCalls: ToolCall[];
   depth?: number;
   isHistorical?: boolean;
-}> = memo(({ block, toolCall, isRunning, hasError, isLastRunning, children = [], allToolCalls, depth = 0, isHistorical = false }) => {
+  // v0.6.7 task #159 — threaded through so the embedded ToolCallCard
+  // (live input_json_delta pane) can inherit the surrounding theme.
+  theme?: 'light' | 'dark';
+}> = memo(({ block, toolCall, isRunning, hasError, isLastRunning, children = [], allToolCalls, depth = 0, isHistorical = false, theme = 'dark' }) => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isChildrenOpen, setIsChildrenOpen] = useState(!isHistorical);
   const toolName = block.toolName || toolCall?.toolName || 'Tool';
@@ -1737,14 +2064,26 @@ const ExpandableToolItem: React.FC<{
     return getCompactSummary(toolCall);
   }, [toolCall]);
 
-  // Error message
+  // Error message — prefer a proper .error/.message/.detail field from a
+  // structured error object. Fall back to first `error:` / `failed:` /
+  // `exception:` regex match. Never leak a middle-of-JSON fragment
+  // (`": 5,\n "unknown": 1`) into the tool row — just say "error" if we
+  // can't find a clean message.
   const errorMsg = useMemo(() => {
-    if (!hasError || !toolCall?.output) return null;
-    const outStr = typeof toolCall.output === 'string'
-      ? toolCall.output
-      : JSON.stringify(toolCall.output);
-    const match = outStr.match(/(?:error|failed|exception)[:\s]*(.{1,60})/i);
-    return match ? match[1].trim() : 'error';
+    if (!hasError) return null;
+    if (!toolCall?.output) return 'error';
+    const out = toolCall.output;
+    if (typeof out === 'object' && out !== null) {
+      const obj = out as Record<string, unknown>;
+      const msg = obj.error || obj.message || obj.detail || obj.reason;
+      if (typeof msg === 'string' && msg.trim()) {
+        return msg.length > 60 ? msg.slice(0, 60) + '…' : msg;
+      }
+    }
+    const outStr = typeof out === 'string' ? out : JSON.stringify(out);
+    const match = outStr.match(/(?:error|failed|exception)[:\s]*([^"}{\n]{1,60})/i);
+    if (match) return match[1].trim();
+    return 'error';
   }, [hasError, toolCall?.output]);
 
   // Format tool input/output for display
@@ -1820,14 +2159,34 @@ const ExpandableToolItem: React.FC<{
               Orchestration
             </span>
           ) : (
-            <CategoryBadge category={humanized.category} small={depth > 0} />
+            /* Mock 02 parity — tiny colored dot (6px) encoding tool
+               category instead of the verbose "Kubernetes"/"Monitoring"
+               pill. The mock shows bare `<span class="t-name">` with
+               only the raw MCP function name. */
+            <span
+              aria-label={`${humanized.category} tool`}
+              title={humanized.category}
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 999,
+                background: humanized.color,
+                flexShrink: 0,
+              }}
+            />
           )}
 
-          {/* Label */}
+          {/* Tool name in JetBrains Mono to match mock .t-name. For
+              sub-agents (role is the signal) or delegate-to-agent
+              synthetic rows (description text, not a function name)
+              keep sans. */}
           <span style={{
+            fontFamily: isAgentBlock || isAgentSpawn
+              ? undefined
+              : "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
             fontSize: depth > 1 ? 12 : 13,
             fontWeight: 500,
-            color: depth > 1 ? 'var(--color-text-secondary)' : 'var(--color-text)',
+            color: depth > 1 ? 'var(--color-text-secondary)' : 'var(--color-text, var(--fg-0))',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -1837,7 +2196,7 @@ const ExpandableToolItem: React.FC<{
               ? (block.agentRole || toolName)
               : isAgentSpawn
                 ? `Delegate to ${children.length} Agent${children.length !== 1 ? 's' : ''}`
-                : humanized.label}
+                : (toolName || humanized.label)}
           </span>
 
           {/* Summary or error */}
@@ -1914,6 +2273,34 @@ const ExpandableToolItem: React.FC<{
         </div>
       )}
 
+      {/* v0.6.7 task #159 — live input_json_delta pane for executing tools.
+          Uses the premium ToolCallCard with status="calling" and the
+          partial JSON piped into inputDeltaContent. The card is rendered
+          *below* the summary row so the row keeps its compact Claude-Code
+          look and the live JSON streams inside the card with a blinking
+          caret + "streaming…" label. Phase F.1 (tool_input_delta) behavior
+          is preserved — block.content still carries the partial JSON.
+          #515 — drop the content-truthy gate so fast tools (no/small
+          delta payload) still get a streaming card on dispatch (mock 01
+          parity: card visible the moment a tool is dispatched). */}
+      {!isAgentBlock && isRunning && !hasChildren && (
+        <div style={{ marginLeft: depth > 0 ? 12 : 16, marginTop: 2, marginBottom: 4 }}>
+          <ToolCallCard
+            toolName={toolName}
+            displayName={humanized.label}
+            toolInput={toolInput}
+            toolOutput={undefined}
+            status="calling"
+            startTime={block.startTime}
+            progressMessage={block.progressMessage}
+            inputDeltaContent={block.content}
+            collapsible={true}
+            isCollapsed={true}
+            theme={theme}
+          />
+        </div>
+      )}
+
       {/* Nested children */}
       {hasChildren && isChildrenOpen && (
         <div style={{ paddingLeft: 16 }}>
@@ -1934,6 +2321,7 @@ const ExpandableToolItem: React.FC<{
                 allToolCalls={allToolCalls}
                 depth={depth + 1}
                 isHistorical={isHistorical}
+                theme={theme}
               />
             );
           })}
@@ -1966,21 +2354,64 @@ const ExpandableToolItem: React.FC<{
         return (
           <div className="activity-detail-panel" style={{ marginLeft: 16 }}>
             {inputStr && (
-              <div style={{ borderBottom: outputStr ? '1px solid color-mix(in srgb, var(--color-border) 30%, transparent)' : 'none' }}>
-                <div className="activity-detail-panel__section-label">Request</div>
-                <pre className="activity-detail-panel__content">
-                  {inputStr.length > 1000 ? inputStr.slice(0, 1000) + '...' : inputStr}
-                </pre>
+              <div
+                style={{
+                  borderBottom: outputStr
+                    ? '1px solid color-mix(in srgb, var(--color-border) 30%, transparent)'
+                    : 'none',
+                  padding: '10px 12px',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 10,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    color: 'var(--fg-3, var(--color-text-muted))',
+                    marginBottom: 6,
+                    fontWeight: 600,
+                  }}
+                >
+                  Input
+                </div>
+                <ShikiCodeBlock
+                  language={(() => {
+                    try { JSON.parse(inputStr); return 'json'; } catch { return 'text'; }
+                  })()}
+                  code={inputStr.length > 2000 ? inputStr.slice(0, 2000) + '\n// …truncated' : inputStr}
+                  theme="dark"
+                  onCopy={async (t: string) => {
+                    try { await navigator.clipboard.writeText(t); } catch { /* swallow */ }
+                  }}
+                />
               </div>
             )}
             {outputStr && (
-              <div>
-                <div className="activity-detail-panel__section-label" style={{ color: hasError ? '#da3633' : undefined }}>
-                  Response
+              <div style={{ padding: '10px 12px' }}>
+                <div
+                  style={{
+                    fontSize: 10,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    color: hasError
+                      ? 'var(--err, #ef4444)'
+                      : 'var(--fg-3, var(--color-text-muted))',
+                    marginBottom: 6,
+                    fontWeight: 600,
+                  }}
+                >
+                  {hasError ? 'Error' : 'Result'}
                 </div>
-                <pre className="activity-detail-panel__content" style={{ color: hasError ? '#da3633' : undefined }}>
-                  {outputStr.length > 2000 ? outputStr.slice(0, 2000) + '...' : outputStr}
-                </pre>
+                <ShikiCodeBlock
+                  language={(() => {
+                    try { JSON.parse(outputStr); return 'json'; } catch { return 'text'; }
+                  })()}
+                  code={outputStr.length > 4000 ? outputStr.slice(0, 4000) + '\n// …truncated' : outputStr}
+                  theme="dark"
+                  onCopy={async (t: string) => {
+                    try { await navigator.clipboard.writeText(t); } catch { /* swallow */ }
+                  }}
+                />
               </div>
             )}
             {!inputStr && !outputStr && (
@@ -1994,18 +2425,239 @@ const ExpandableToolItem: React.FC<{
 });
 ExpandableToolItem.displayName = 'ExpandableToolItem';
 
-const ToolCallGroup: React.FC<ToolCallGroupProps> = memo(({ blocks, toolCalls, theme, isStreaming, isHistorical = false }) => {
-  const allComplete = blocks.every(b => b.isComplete);
-  // Historical loads ALWAYS start collapsed. Active streaming starts expanded.
-  const [isExpanded, setIsExpanded] = useState(isHistorical ? false : !allComplete);
+/**
+ * B3 / mock 06:267-349 — completed tool-card opens to INPUT/RESULT panels.
+ *
+ * Round 18 chatmode parity gap: the "11 tools completed" group rendered each
+ * tool as a one-line summary row that was a dead-click. Mock 06 specifies
+ * each completed tool MUST be independently openable to a body with an
+ * INPUT pill and a RESULT pill — same anatomy as the in-flight v2/ToolCard.
+ *
+ * `<CollapsedToolRow>` is the openable inline row used inside the
+ * `!isExpanded` branch of `<ToolCallGroup>`. Click toggles a body with
+ * `data-testid="tool-input"` + `data-testid="tool-result"` panels rendered
+ * via `ShikiCodeBlock` (same renderer as the expanded detail panel —
+ * keeps JSON-pretty + copy semantics consistent across both paths).
+ *
+ * Test contract: `services/openagentic-ui/src/features/chat/components/
+ * __tests__/AgenticActivityStream.collapsedRowClickToExpand.test.tsx`.
+ */
+interface CollapsedToolRowProps {
+  block: any;
+  toolCall?: ToolCall;
+  rowOpen: boolean;
+  onToggle: () => void;
+}
 
-  // Auto-collapse 300ms after all complete
-  useEffect(() => {
-    if (allComplete) {
-      const t = setTimeout(() => setIsExpanded(false), 300);
-      return () => clearTimeout(t);
-    }
-  }, [allComplete]);
+const CollapsedToolRow: React.FC<CollapsedToolRowProps> = memo(({ block, toolCall, rowOpen, onToggle }) => {
+  const name = block.toolName || 'Tool';
+  const h = humanizeToolName(name);
+  const tc = toolCall;
+  const sum = tc ? getCompactSummary(tc) : null;
+  const isErr = block.isComplete && (block.error || (tc && detectErrorInOutput(tc.output)));
+  const inlineChips = extractInlineChips(name, tc, block);
+
+  const toolInput = tc?.input || tc?.arguments;
+  const toolOutput = tc?.output;
+  const inputStr = toolInput
+    ? (typeof toolInput === 'string' ? toolInput : JSON.stringify(toolInput, null, 2))
+    : null;
+  const outputStr = toolOutput
+    ? (typeof toolOutput === 'string' ? toolOutput : JSON.stringify(toolOutput, null, 2))
+    : null;
+  const hasBody = !!(inputStr || outputStr);
+
+  return (
+    <div data-collapsed-row data-tool-name={name} data-tool-status={isErr ? 'err' : (!block.isComplete ? 'running' : 'ok')}>
+      <button
+        type="button"
+        aria-expanded={rowOpen}
+        onClick={(e) => { e.stopPropagation(); if (hasBody) onToggle(); }}
+        disabled={!hasBody}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          fontSize: 12,
+          color: 'var(--color-text-secondary)',
+          lineHeight: '18px',
+          background: 'transparent',
+          border: 'none',
+          padding: '2px 0',
+          width: '100%',
+          textAlign: 'left',
+          cursor: hasBody ? 'pointer' : 'default',
+        }}
+      >
+        <StatusDot status={isErr ? 'error' : !block.isComplete ? 'running' : 'success'} size={11} />
+        <span
+          aria-label={`${h.category} tool`}
+          title={h.category}
+          style={{
+            width: 5,
+            height: 5,
+            borderRadius: 999,
+            background: h.color,
+            flexShrink: 0,
+          }}
+        />
+        <span style={{
+          fontFamily: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+          fontWeight: 500,
+          color: 'var(--color-text, var(--fg-0))',
+          whiteSpace: 'nowrap',
+        }}>{h.label}</span>
+        {sum && <span style={{ opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{sum}</span>}
+        {inlineChips.length > 0 && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+            {inlineChips.map((chip, i) => {
+              const pillStyle: React.CSSProperties = {
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 3,
+                padding: '1px 6px',
+                borderRadius: 3,
+                background: 'color-mix(in srgb, var(--color-border) 25%, transparent)',
+                color: 'var(--color-text-secondary)',
+                textDecoration: 'none',
+                maxWidth: 160,
+              };
+              const inner = (
+                <>
+                  {chip.favicon && (
+                    <img
+                      src={chip.favicon}
+                      alt=""
+                      width={12}
+                      height={12}
+                      style={{ borderRadius: 2, flexShrink: 0 }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  )}
+                  <span style={{ fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {chip.label}
+                  </span>
+                </>
+              );
+              if (chip.url) {
+                return (
+                  <a
+                    key={chip.url + i}
+                    href={chip.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={chip.tooltip}
+                    onClick={(e) => e.stopPropagation()}
+                    style={pillStyle}
+                  >
+                    {inner}
+                  </a>
+                );
+              }
+              return (
+                <span key={chip.label + i} title={chip.tooltip} style={pillStyle}>
+                  {inner}
+                </span>
+              );
+            })}
+          </span>
+        )}
+        {block.duration != null && block.duration > 0 && (
+          <span style={{ opacity: 0.4, fontSize: 11, fontFamily: 'var(--font-mono)', flexShrink: 0 }}>
+            {formatDuration(block.duration)}
+          </span>
+        )}
+        {hasBody && (
+          rowOpen
+            ? <ChevronDown size={11} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} aria-hidden />
+            : <ChevronRight size={11} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} aria-hidden />
+        )}
+      </button>
+      {rowOpen && hasBody && (
+        <div
+          data-tool-card-body
+          style={{
+            marginLeft: 22,
+            marginTop: 4,
+            marginBottom: 6,
+            borderLeft: '1px solid color-mix(in srgb, var(--color-border) 40%, transparent)',
+            paddingLeft: 10,
+          }}
+        >
+          {inputStr && (
+            <section data-testid="tool-input" style={{ marginBottom: outputStr ? 8 : 0 }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4,
+                fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em',
+                color: 'var(--fg-3, var(--color-text-muted))', fontWeight: 600,
+              }}>
+                <span style={{
+                  padding: '1px 6px', borderRadius: 3, background: 'var(--bg-3, rgba(255,255,255,0.06))',
+                  color: 'var(--fg-2, var(--color-text-secondary))', fontSize: 9,
+                }}>INPUT</span>
+              </div>
+              <ShikiCodeBlock
+                language={(() => { try { JSON.parse(inputStr); return 'json'; } catch { return 'text'; } })()}
+                code={inputStr.length > 2000 ? inputStr.slice(0, 2000) + '\n// …truncated' : inputStr}
+                theme="dark"
+                onCopy={async (t: string) => { try { await navigator.clipboard.writeText(t); } catch { /* swallow */ } }}
+              />
+            </section>
+          )}
+          {outputStr && (
+            <section data-testid="tool-result">
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4,
+                fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em',
+                color: isErr ? 'var(--err, #ef4444)' : 'var(--fg-3, var(--color-text-muted))',
+                fontWeight: 600,
+              }}>
+                <span style={{
+                  padding: '1px 6px', borderRadius: 3, background: 'var(--bg-3, rgba(255,255,255,0.06))',
+                  color: 'var(--fg-2, var(--color-text-secondary))', fontSize: 9,
+                }}>{isErr ? 'ERROR' : (<>RESULT</>)}</span>
+              </div>
+              <ShikiCodeBlock
+                language={(() => { try { JSON.parse(outputStr); return 'json'; } catch { return 'text'; } })()}
+                code={outputStr.length > 4000 ? outputStr.slice(0, 4000) + '\n// …truncated' : outputStr}
+                theme="dark"
+                onCopy={async (t: string) => { try { await navigator.clipboard.writeText(t); } catch { /* swallow */ } }}
+              />
+            </section>
+          )}
+        </div>
+      )}
+    </div>
+  );
+});
+CollapsedToolRow.displayName = 'CollapsedToolRow';
+
+const ToolCallGroup: React.FC<ToolCallGroupProps> = memo(({ blocks, toolCalls, theme, isStreaming, isHistorical = false, clusterKey, hitlByBlockId, onApproveHitl, onDenyHitl }) => {
+  const allComplete = blocks.every(b => b.isComplete);
+  const isCluster = blocks.length >= 2;
+  const storedExpand = useMemo(() => readClusterExpand(clusterKey), [clusterKey]);
+  // Stream ≡ final-render invariant (CLAUDE.md rule 8a + user direction
+  // 2026-05-17 PM: "stream and finished result have to be EXACTLY THE
+  // SAME"). Default to expanded so children stay visible at all times —
+  // no flip from "individual cards" → "cluster summary" when the 2nd
+  // tool arrives mid-stream, no auto-collapse 300ms after completion.
+  // User's manual click-to-collapse persists via sessionStorage.
+  const [isExpanded, setIsExpanded] = useState<boolean>(() => {
+    if (storedExpand !== null) return storedExpand;
+    return true;
+  });
+  // B3 / mock 06:267-349 — per-row open state for the collapsed summary view.
+  // Tracks which inline rows the user has opened to inspect INPUT/RESULT
+  // without expanding the whole group tree.
+  const [openRowIds, setOpenRowIds] = useState<Set<string>>(() => new Set());
+
+  const toggleExpanded = (): void => {
+    setIsExpanded((prev) => {
+      const next = !prev;
+      writeClusterExpand(clusterKey, next);
+      return next;
+    });
+  };
 
   // Build tree structure
   const tree = useMemo((): ToolTreeNode[] => {
@@ -2070,11 +2722,28 @@ const ToolCallGroup: React.FC<ToolCallGroupProps> = memo(({ blocks, toolCalls, t
     <StatusDot status="running" size={16} />
   );
 
+  const clusterNamesPreview = useMemo(() => {
+    if (!isCluster) return { head: '', extra: 0 };
+    const names = blocks.map((b) => {
+      const tc = toolCalls.find((t) => t.id === b.toolId);
+      const raw = b.toolName || tc?.toolName || 'tool';
+      return humanizeToolName(raw).label;
+    });
+    if (names.length <= 2) return { head: names.join(', '), extra: 0 };
+    return { head: names.slice(0, 2).join(', '), extra: names.length - 2 };
+  }, [blocks, toolCalls, isCluster]);
+
   return (
-    <div style={{ marginBottom: 4 }}>
+    <div
+      data-testid={isCluster ? 'tool-cluster' : undefined}
+      data-tool-count={blocks.length}
+      style={{ marginBottom: 4 }}
+    >
       {/* Header */}
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
+        data-testid={isCluster ? 'tool-cluster-header' : undefined}
+        aria-expanded={isExpanded}
+        onClick={toggleExpanded}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -2108,12 +2777,29 @@ const ToolCallGroup: React.FC<ToolCallGroupProps> = memo(({ blocks, toolCalls, t
                 : `${totalCount} tools completed`
               : `Running ${totalCount} tools...`}
         </span>
+        {isCluster && clusterNamesPreview.head && (
+          <span
+            data-testid="tool-cluster-names"
+            style={{
+              fontSize: 12,
+              color: 'var(--cm-fg-2, var(--color-text-muted))',
+              fontFamily: 'var(--font-mono)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              maxWidth: 380,
+            }}
+          >
+            {clusterNamesPreview.head}
+            {clusterNamesPreview.extra > 0 ? ` +${clusterNamesPreview.extra} more` : ''}
+          </span>
+        )}
         {errorCount > 0 && (
           <span style={{
             fontSize: 11,
             fontWeight: 600,
-            color: '#fff',
-            background: '#da3633',
+            color: 'var(--cm-fg-on-accent, var(--color-text-on-primary))',
+            background: 'var(--cm-err, var(--color-error))',
             padding: '0 6px',
             borderRadius: 8,
           }}>
@@ -2137,8 +2823,13 @@ const ToolCallGroup: React.FC<ToolCallGroupProps> = memo(({ blocks, toolCalls, t
         )}
       </button>
 
-      {/* Collapsed: per-tool one-line summary (Claude Code style) */}
-      {!isExpanded && blocks.length > 0 && (
+      {/* Collapsed: per-tool one-line summary (Claude Code style).
+          B3 / mock 06:267-349 — each row is now an openable
+          <CollapsedToolRow> with INPUT/RESULT panels.
+          Slice B (2026-05-16): cluster-collapsed view (N>=2) renders the
+          one-line summary in the header alone — skip the inline row strip so
+          the cluster reads as a single compact block, not 2-6 stacked rows. */}
+      {!isExpanded && !isCluster && blocks.length > 0 && (
         <div style={{
           display: 'flex',
           flexDirection: 'column',
@@ -2147,88 +2838,23 @@ const ToolCallGroup: React.FC<ToolCallGroupProps> = memo(({ blocks, toolCalls, t
           paddingBottom: 4,
         }}>
           {blocks.slice(0, 6).map((block) => {
-            const name = block.toolName || 'Tool';
-            const h = humanizeToolName(name);
             const tc = toolCalls.find(t => t.id === block.toolId);
-            const sum = tc ? getCompactSummary(tc) : null;
-            const isErr = block.isComplete && (block.error || (tc && detectErrorInOutput(tc.output)));
-            // Extract inline chips for the collapsed row — favicon + clickable
-            // anchor for web_search, filename+collection pill for rag_context,
-            // labeled pill for memory_recall/list_*. Restores #330 Tier-1.
-            const inlineChips = extractInlineChips(name, tc, block);
+            const rowOpen = openRowIds.has(block.id);
             return (
-              <div key={block.id} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 12,
-                color: 'var(--color-text-secondary)',
-                lineHeight: '18px',
-              }}>
-                <StatusDot status={isErr ? 'error' : !block.isComplete ? 'running' : 'success'} size={11} />
-                <CategoryBadge category={h.category} small />
-                <span style={{ fontWeight: 500, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{h.label}</span>
-                {sum && <span style={{ opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{sum}</span>}
-                {inlineChips.length > 0 && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-                    {inlineChips.map((chip, i) => {
-                      const pillStyle: React.CSSProperties = {
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 3,
-                        padding: '1px 6px',
-                        borderRadius: 3,
-                        background: 'color-mix(in srgb, var(--color-border) 25%, transparent)',
-                        color: 'var(--color-text-secondary)',
-                        textDecoration: 'none',
-                        maxWidth: 160,
-                      };
-                      const inner = (
-                        <>
-                          {chip.favicon && (
-                            <img
-                              src={chip.favicon}
-                              alt=""
-                              width={12}
-                              height={12}
-                              style={{ borderRadius: 2, flexShrink: 0 }}
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                            />
-                          )}
-                          <span style={{ fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {chip.label}
-                          </span>
-                        </>
-                      );
-                      if (chip.url) {
-                        return (
-                          <a
-                            key={chip.url + i}
-                            href={chip.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={chip.tooltip}
-                            onClick={(e) => e.stopPropagation()}
-                            style={pillStyle}
-                          >
-                            {inner}
-                          </a>
-                        );
-                      }
-                      return (
-                        <span key={chip.label + i} title={chip.tooltip} style={pillStyle}>
-                          {inner}
-                        </span>
-                      );
-                    })}
-                  </span>
-                )}
-                {block.duration != null && block.duration > 0 && (
-                  <span style={{ opacity: 0.4, fontSize: 11, fontFamily: 'var(--font-mono)', flexShrink: 0 }}>
-                    {formatDuration(block.duration)}
-                  </span>
-                )}
-              </div>
+              <CollapsedToolRow
+                key={block.id}
+                block={block}
+                toolCall={tc}
+                rowOpen={rowOpen}
+                onToggle={() => {
+                  setOpenRowIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(block.id)) next.delete(block.id);
+                    else next.add(block.id);
+                    return next;
+                  });
+                }}
+              />
             );
           })}
         </div>
@@ -2244,8 +2870,14 @@ const ToolCallGroup: React.FC<ToolCallGroupProps> = memo(({ blocks, toolCalls, t
               ? detectErrorInOutput(toolCall?.output)
               : (!node.block.isComplete && isStreaming === false);
             const isLast = idx === tree.length - 1;
+            const childToolName = node.block.toolName || toolCall?.toolName || 'tool';
+            const childStatus: 'running' | 'success' | 'error' = isRunning
+              ? 'running'
+              : hasError
+                ? 'error'
+                : 'success';
 
-            return (
+            const item = (
               <ExpandableToolItem
                 key={node.block.id}
                 block={node.block}
@@ -2257,8 +2889,42 @@ const ToolCallGroup: React.FC<ToolCallGroupProps> = memo(({ blocks, toolCalls, t
                 allToolCalls={toolCalls}
                 depth={0}
                 isHistorical={isHistorical}
+                theme={theme === 'light' || theme === 'dark' ? theme : 'dark'}
               />
             );
+
+            if (isCluster) {
+              // #922+#831 — when a HITL approval is paired with THIS specific
+              // child block (by ContentBlock.id), embed the HitlInlineCard
+              // INSIDE the per-child tool-card wrapper. Pre-fix the HITL
+              // card was appended after the whole cluster wrapper, so a
+              // growing cluster pushed the card to the bottom of the message
+              // and broke the visual coupling to the gated tool.
+              const childHitlEntry = hitlByBlockId?.get(node.block.id);
+              return (
+                <div
+                  key={node.block.id}
+                  data-testid="tool-card"
+                  data-tool-name={childToolName}
+                  data-status={childStatus}
+                >
+                  {item}
+                  {childHitlEntry && (
+                    <div
+                      data-testid="hitl-approval-strip"
+                      data-block-id={node.block.id}
+                    >
+                      <HitlInlineCard
+                        entry={childHitlEntry}
+                        onApprove={onApproveHitl}
+                        onDeny={onDenyHitl}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            return item;
           })}
         </div>
       )}
@@ -2282,9 +2948,67 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
   thinkingProgress,
   onInterrupt,
   className = '',
+  subAgents = [],
+  hitlApprovals = [],
+  onApproveHitl,
+  onDenyHitl,
+  streamingTables = [],
 }) => {
+  // Sev-0 dup-render rip (2026-05-21) — fast lookup by artifactId so the
+  // viz_render(template=table) render branch can swap an iframe for a
+  // native <StreamingTable> at O(1). The same artifact_id is shared by
+  // the visual_render frame (→ ContentBlock with id=artifactId) and the
+  // streaming_table frame (→ StreamingTableEntry.artifactId).
+  const streamingTableByArtifactId = useMemo(() => {
+    const m = new Map<string, typeof streamingTables[number]>();
+    for (const t of streamingTables) {
+      if (t && typeof t.artifactId === 'string' && t.artifactId.length > 0) {
+        m.set(t.artifactId, t);
+      }
+    }
+    return m;
+  }, [streamingTables]);
   // Historical = not currently streaming (loaded from session history or page reload)
   const isHistorical = !isStreaming;
+
+  // 2026-05-19 — user-facing follow-up chip toggle (lives in
+  // ChatInputToolbar.tsx via `useFollowupChipsStore`). When the toggle is
+  // OFF, the `follow_up` ContentBlock render branch short-circuits to null
+  // — the toolbar pill and the inline chip row stay in sync platform-wide.
+  // Pre-fix: ChipsRow honored the store but AAS rendered chips inline through
+  // its own JSX path, so users observed chips even with the toggle OFF.
+  const followupChipsEnabled = useFollowupChipsStore((s) => s.enabled);
+
+  // #646 Option B — lookup table from agent role → SubAgentEntry. The
+  // incoming prop `subAgents?: ReadonlyArray<SubAgentEntry>` carries
+  // sub_agent_started / sub_agent_completed lifecycle entries; we convert
+  // it to a Map so the agent_group branch below can decide per-role
+  // whether to upgrade to a rich SubAgentCard or fall back to the
+  // lightweight AgentExecutionTimeline. Roles are case-sensitive (server
+  // emits the canonical kebab-case role name on sub_agent_started).
+  const subAgentByRole = useMemo(() => {
+    const m = new Map<string, SubAgentEntry>();
+    for (const sa of subAgents ?? []) m.set(sa.role, sa);
+    return m;
+  }, [subAgents]);
+
+  // Sev-1 #922 — HITL approvals indexed by toolName, in arrival order.
+  // The render loop pulls the earliest unrendered entry for a matching
+  // toolName when it emits each tool_use card. After the iteration, any
+  // entries still in the unrendered set are spilled as a fallback at the
+  // end of the stream (orphan approvals — hitl_approval frame raced
+  // ahead of tool_executing).
+  const hitlByToolName = useMemo(() => {
+    const m = new Map<string, HitlApprovalEntry[]>();
+    for (const entry of hitlApprovals ?? []) {
+      if (!entry || typeof entry.toolName !== 'string') continue;
+      const arr = m.get(entry.toolName) ?? [];
+      arr.push(entry);
+      m.set(entry.toolName, arr);
+    }
+    return m;
+  }, [hitlApprovals]);
+
   const [isExpanded, setIsExpanded] = useState(!isHistorical);
   const [thinkingExpanded, setThinkingExpanded] = useState(!isHistorical);
 
@@ -2292,7 +3016,16 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
     const hasThinking = contentBlocks.some(b => b.type === 'thinking');
     const hasText = contentBlocks.some(b => b.type === 'text');
     const hasToolUse = contentBlocks.some(b => b.type === 'tool_use' || b.type === 'tool_call');
-    return hasThinking || hasText || hasToolUse;
+    // viz_render + app_render are typed-block artifacts that must render
+    // inline at their wire-emit chronological position; treat them as
+    // interleaved content so AAS mounts when an assistant turn produced
+    // only artifacts and no thinking/text/tool_use.
+    const hasArtifact = contentBlocks.some(b => b.type === 'viz_render' || b.type === 'app_render');
+    // F1-6 (2026-05-17) — follow_up chip row counts as interleaved content
+    // so a turn with ONLY a follow_up block (degenerate, but possible on
+    // session reload) still mounts AAS.
+    const hasFollowUp = contentBlocks.some(b => b.type === 'follow_up');
+    return hasThinking || hasText || hasToolUse || hasArtifact || hasFollowUp;
   }, [contentBlocks]);
 
   const thinkingContent = useMemo(() => {
@@ -2324,24 +3057,76 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
   // Nothing to show
   if (toolCalls.length === 0 && !thinkingContent && !hasInterleavedContent) return null;
 
+  // #922+#831 — block-level HITL assignment, hoisted out of the JSX IIFE
+  // so `renderContentBlock` and the tool-card inline embed paths can both
+  // look up "what HITL entry pairs with THIS specific tool_use block?".
+  //
+  // Walks tool_use/tool_call blocks in chronological order, pairs each
+  // with the earliest unconsumed HITL entry whose toolName matches.
+  // Remaining unpaired entries are tracked as orphans and rendered at the
+  // end of the stream (existing fallback contract — unchanged from #922 v1).
+  const { hitlAssignedByBlockId, hitlOrphans } = useMemo(() => {
+    const assigned = new Map<string, HitlApprovalEntry>();
+    const pool = new Map<string, HitlApprovalEntry[]>();
+    for (const [toolName, entries] of hitlByToolName.entries()) {
+      pool.set(toolName, [...entries]);
+    }
+    for (const b of contentBlocks) {
+      if (b.type !== 'tool_use' && b.type !== 'tool_call') continue;
+      const tn = b.toolName;
+      if (!tn) continue;
+      const bucket = pool.get(tn);
+      if (!bucket || bucket.length === 0) continue;
+      const entry = bucket.shift()!;
+      assigned.set(b.id, entry);
+    }
+    const orphans: HitlApprovalEntry[] = [];
+    for (const bucket of pool.values()) {
+      for (const e of bucket) orphans.push(e);
+    }
+    return { hitlAssignedByBlockId: assigned, hitlOrphans: orphans };
+  }, [contentBlocks, hitlByToolName]);
+
   // Render a single content block (thinking, text, or tool_use)
   const renderContentBlock = (block: ContentBlock, index: number) => {
+    // Wire-in D (#82) — parallel tool-round container. Delegates to
+    // ToolParallelGroup which lays out child tool cards in a
+    // .tool-parallel grid with a live "Running N in parallel…" header
+    // that flips to a "succeeded · failed · Xms" breakdown on
+    // tool_round_end.
+    if (block.type === 'tool_round') {
+      return (
+        <ToolParallelGroup
+          key={block.id}
+          block={block as unknown as import('../../hooks/useChatStream').ToolRoundBlock}
+          renderChild={(child, i) => renderContentBlock(child as ContentBlock, i)}
+        />
+      );
+    }
     if (block.type === 'thinking') {
       const isLastBlock = index === contentBlocks.length - 1;
       const isActivelyStreaming = isStreaming && isLastBlock && !block.isComplete;
+      // v0.6.7 task #159 — derive startedAt/endedAt/tokenCount for
+      // InlineThinkingBlock. `startTime` comes from useChatStream; when
+      // the block is complete we compute endedAt = startTime + duration,
+      // falling back to (startTime + 0) if duration is missing. The token
+      // count prefers an explicit thinkingProgress reading, then falls
+      // back to the ~4-chars-per-token estimate inside InlineThinkingBlock.
+      const startedAt = block.startTime;
+      const endedAt = !isActivelyStreaming && block.isComplete && block.startTime
+        ? block.startTime + (block.duration ?? 0)
+        : undefined;
+      const tokenCount = thinkingProgress?.tokensUsed && isActivelyStreaming
+        ? thinkingProgress.tokensUsed
+        : undefined;
       return (
         <div key={block.id}>
-          <CollapsedThinkingBlock
+          <InlineThinkingBlock
             content={block.content}
             isStreaming={isActivelyStreaming}
-            isComplete={block.isComplete}
-            progress={isActivelyStreaming && thinkingProgress ? {
-              percentage: thinkingProgress.percentage,
-              tokensUsed: thinkingProgress.tokensUsed,
-              phase: thinkingProgress.phase === 'tools' ? 'processing' : thinkingProgress.phase === 'generating' ? 'complete' : 'thinking',
-            } : undefined}
-            variant="standard"
-            theme="dark"
+            startedAt={startedAt}
+            endedAt={endedAt}
+            tokenCount={tokenCount}
           />
           {block.isComplete && !isActivelyStreaming && thinkingProgress && thinkingProgress.tokenBudget > 0 && (
             <ThinkingBudgetBadge
@@ -2357,30 +3142,11 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
       const isLastBlock = index === contentBlocks.length - 1;
       const isActiveTextBlock = isStreaming && isLastBlock && !blockIsComplete;
 
-      // Detect streaming artifacts (HTML, SVG, React Flow, etc.) for live preview
-      if (isActiveTextBlock && block.content && hasStreamingArtifact(block.content)) {
-        const artifact = detectStreamingArtifact(block.content);
-        if (artifact.isInArtifact && artifact.artifactType) {
-          return (
-            <div key={block.id} className="interleaved-text-block space-y-4">
-              {artifact.contentBefore.trim() && (
-                <SharedMarkdownRenderer
-                  content={artifact.contentBefore}
-                  theme={theme}
-                  isStreaming={true}
-                />
-              )}
-              <StreamingArtifactRenderer
-                content={artifact.partialContent}
-                type={artifact.artifactType}
-                theme={theme}
-                isStreaming={true}
-                height={350}
-              />
-            </div>
-          );
-        }
-      }
+      // Legacy text-fence artifact detector (StreamingArtifactRenderer +
+      // streamingArtifactDetector) ripped 2026-05-13 (#781 Phase D.4).
+      // Interactive artifacts now arrive via Message.visualizations[] +
+      // tool_result _meta.artifactKind, rendered by ArtifactSlideOutLauncher
+      // in MessageBubble.
 
       return (
         <div key={block.id} className="interleaved-text-block">
@@ -2391,12 +3157,133 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
           />
         </div>
       );
+    } else if (block.type === 'viz_render') {
+      // Sev-0 dup-render rip (2026-05-21) — `compose_visual({template:'table'})`
+      // emits BOTH a `visual_render` frame (HTML iframe content) AND a
+      // `streaming_table` frame (structured columns/rows) with the same
+      // artifact_id. Pre-fix the UI mounted THREE renders of the same
+      // data (iframe + ToolCard JSON wall + sibling StreamingTable strip).
+      // Post-fix: when this is a table viz_render and we have the matching
+      // structured data, render the native React <StreamingTable> INLINE
+      // at the wire-emit position. The iframe path is RIPPED for tables.
+      //
+      // Live evidence:
+      //   reports/verify-cadence/one-shot-redeploy-2026-05-21/07-table-dup-fullpage.png
+      // User contract: "Keep the NATIVE React StreamingTable component —
+      // that IS the premium look. Render it INLINE inside the MessageBubble
+      // at the tool_use position. Kill the iframe-srcdoc renderer entirely
+      // for compose_visual blocks with template:'table'."
+      if (block.template === 'table') {
+        const tbl = streamingTableByArtifactId.get(block.id);
+        if (tbl) {
+          return (
+            <div key={block.id} className="interleaved-viz-render cm-v2">
+              <StreamingTable table={tbl as any} />
+            </div>
+          );
+        }
+        // No matching structured-data frame arrived yet (or ever). The
+        // iframe-srcdoc path stays dead — render an empty placeholder
+        // wrapper so chronological order is preserved if the data lands
+        // later. Better to show nothing here than a non-themed iframe.
+        return (
+          <div
+            key={block.id}
+            className="interleaved-viz-render"
+            data-testid="viz-render-table-pending"
+            data-block-id={block.id}
+          />
+        );
+      }
+      return (
+        <div key={block.id} className="interleaved-viz-render">
+          <InlineVizBadge block={block} />
+        </div>
+      );
+    } else if (block.type === 'app_render') {
+      return (
+        <div key={block.id} className="interleaved-app-render">
+          <InlineAppBadge block={block} />
+        </div>
+      );
+    } else if (block.type === 'follow_up') {
+      // Sev-0 F1-6 (2026-05-17) — end-of-turn follow-up chip row. Mirrors
+      // the `.followups` block from all 17 northstar mocks
+      // (`mocks/UX/AI/Chatmode/end-state-{01..17}.html`). Theme tokens only
+      // (CLAUDE.md rule 8b — no hex/rgb literals).
+      //
+      // 2026-05-19 — honor the user-facing toggle. When the composer
+      // toolbar's "Follow-up suggestions" pill is OFF, this branch returns
+      // null so chips disappear platform-wide (not just from ChipsRow).
+      if (!followupChipsEnabled) return null;
+      const items = Array.isArray(block.items) ? block.items : [];
+      if (items.length === 0) return null;
+      return (
+        <div
+          key={block.id}
+          data-testid="followups"
+          className="interleaved-followups"
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 8,
+            marginTop: 14,
+          }}
+        >
+          {items.map((item, i) => (
+            <button
+              type="button"
+              key={`${block.id}-chip-${i}`}
+              data-testid="followup-chip"
+              onClick={() => {
+                // Best-effort: dispatch a custom event the composer can
+                // listen for. Plumbing to the composer happens at a higher
+                // level (out of scope for the F1-6 render slice).
+                try {
+                  const ev = new CustomEvent('followup-chip-clicked', {
+                    detail: { prompt: item },
+                    bubbles: true,
+                  });
+                  (window as any)?.dispatchEvent?.(ev);
+                } catch {
+                  // ignore — render must be side-effect-free in tests
+                }
+              }}
+              style={{
+                appearance: 'none',
+                cursor: 'pointer',
+                font: 'inherit',
+                fontSize: '0.875rem',
+                lineHeight: 1.2,
+                padding: '7px 12px',
+                borderRadius: '999px',
+                border: '1px solid var(--cm-line-2)',
+                background: 'var(--cm-bg-1)',
+                color: 'var(--cm-fg-1)',
+                textAlign: 'left',
+                transition:
+                  'background-color 120ms ease, color 120ms ease, border-color 120ms ease',
+              }}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      );
     } else if (block.type === 'tool_use' || block.type === 'tool_call') {
       const toolCall = toolCalls.find(tc => tc.id === block.toolId);
       const toolName = block.toolName || toolCall?.toolName || 'Tool';
       const hasError = detectErrorInOutput(toolCall?.output);
       const isRunning = !block.isComplete;
       const isAgentBlock = !!(block as any).agentId;
+      // T1-hide (2026-05-12) — direct single-block render of a T1
+      // meta-tool emits nothing. The grouping path above already
+      // strips T1 from group lists, but this branch can be reached
+      // via tool_round children + other paths that bypass the grouper.
+      if (!isAgentBlock && isT1Tool(toolName)) {
+        return null;
+      }
       const agentContent = isAgentBlock ? block.content : null;
       const humanized = humanizeToolName(toolName);
       const summary = toolCall ? getCompactSummary(toolCall) : null;
@@ -2410,7 +3297,7 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
       const stepClass = `activity-step activity-step--${status}`;
 
       return (
-        <div key={block.id}>
+        <div key={block.id} data-testid="tool-card" data-tool-name={toolName} data-status={status}>
           <div
             className={stepClass}
             style={{ paddingTop: 4, paddingBottom: 4 }}
@@ -2436,19 +3323,37 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
                   Agent
                 </span>
               ) : (
-                <CategoryBadge category={humanized.category} />
+                /* Mock 02 parity — tiny colored category dot, not a pill.
+                   The mock tool row shows only `<span class="t-name">` so
+                   the raw function name (`kubectl_get_events`) is the
+                   primary scan target, with the category encoded in the
+                   dot color instead of the verbose "Kubernetes" pill. */
+                <span
+                  aria-label={`${humanized.category} tool`}
+                  title={humanized.category}
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 999,
+                    background: humanized.color,
+                    flexShrink: 0,
+                  }}
+                />
               )}
 
               <span style={{
+                fontFamily: isAgentBlock
+                  ? undefined
+                  : "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
                 fontSize: 13,
                 fontWeight: 500,
-                color: 'var(--color-text)',
+                color: 'var(--color-text, var(--fg-0))',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
                 flex: 1,
               }}>
-                {isAgentBlock ? ((block as any).agentRole || toolName) : humanized.label}
+                {isAgentBlock ? ((block as any).agentRole || toolName) : (toolName || humanized.label)}
               </span>
 
               {!isRunning && !hasError && summary && (
@@ -2494,12 +3399,30 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
             </div>
           )}
 
-          {/* F.1 tool_input_delta preview — show the tool arg JSON as it
-              streams in, while the tool is running and no final toolCall
-              output exists yet. Once the tool completes, the compact summary
-              above replaces this so we do not duplicate the information. */}
+          {/* v0.6.7 task #159 — ToolCallCard now owns the live streaming
+              input (input_json_delta) pane. It renders a tool-call-card
+              wrapper with a header + collapsible input pane; while
+              status === 'calling' and inputDeltaContent is present, it
+              shows the partial JSON with a blinking caret + a "streaming…"
+              label. The Phase F.1 flow is preserved: block.content still
+              carries the partial JSON, just piped into ToolCallCard's
+              inputDeltaContent prop. */}
           {!isAgentBlock && isRunning && block.content && block.content.trim() && (
-            <ToolInputDeltaPreview partialJson={block.content} theme={theme} />
+            <div style={{ marginLeft: 24, marginTop: 2 }}>
+              <ToolCallCard
+                toolName={toolName}
+                displayName={humanized.label}
+                toolInput={toolCall?.input}
+                toolOutput={undefined}
+                status="calling"
+                startTime={block.startTime}
+                progressMessage={(block as any).progressMessage}
+                inputDeltaContent={block.content}
+                collapsible={true}
+                isCollapsed={true}
+                theme={theme}
+              />
+            </div>
           )}
 
           {/* F.2 tool_progress heartbeat — show "Executing... (15s)" under the
@@ -2511,6 +3434,41 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
               elapsed={(block as any).progressElapsed as number | undefined}
             />
           )}
+
+          {/* F.3 — when a completed tool returned a row-array (common for
+              list_/query_ paginated MCP calls), reveal rows progressively
+              in an inline table instead of dumping the whole array. */}
+          {!isAgentBlock && !isRunning && toolCall?.output != null && (() => {
+            const tableData = detectTableData(toolCall.output);
+            if (!tableData) return null;
+            return (
+              <InlineStreamingTable
+                data={tableData}
+                title={`${tableData.rows.length} ${tableData.rows.length === 1 ? 'row' : 'rows'}`}
+              />
+            );
+          })()}
+
+          {/* #922+#831 — HITL approval card embedded INSIDE the tool-card
+              wrapper. Only the tool_round-child path reaches this branch;
+              the main tool_group path embeds HITL via ToolCallGroup +
+              the single-block AAS wrapper above. */}
+          {(() => {
+            const entry = hitlAssignedByBlockId.get(block.id);
+            if (!entry) return null;
+            return (
+              <div
+                data-testid="hitl-approval-strip"
+                data-block-id={block.id}
+              >
+                <HitlInlineCard
+                  entry={entry}
+                  onApprove={onApproveHitl}
+                  onDeny={onDenyHitl}
+                />
+              </div>
+            );
+          })()}
         </div>
       );
     }
@@ -2521,6 +3479,8 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
     <div
       className={className}
       data-theme={theme}
+      data-testid="agentic-activity-stream"
+      data-streaming={isStreaming ? 'true' : 'false'}
       style={{ marginBottom: 16 }}
     >
       {/* Interrupt button during streaming */}
@@ -2563,11 +3523,55 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
               | { type: 'thinking_group'; blocks: ContentBlock[]; startIndex: number }
               | { type: 'agent_group'; blocks: ContentBlock[]; startIndex: number }
             > = [];
+            // Sev-0 #841 — reload-promotion counter for persisted `Task` blocks.
+            //
+            // Live streaming: the reducer stamps `agentId` + `agentRole` onto
+            // each Task tool_use block as `sub_agent_started` arrives, so
+            // those blocks naturally route into agent_group below.
+            //
+            // Persisted reload: the steps→adapter conversion sees
+            // `Message.toolCalls` (no agentId / agentRole). Without help,
+            // those blocks get killed by the T1-hide filter and the entire
+            // sub-agent UX disappears on reload. Pair the i-th persisted
+            // `Task` tool_use with the i-th SubAgentEntry from
+            // mergePersistedSubAgents and synthesize agentRole so the
+            // existing agent_group → SubAgentCard render path lights up.
+            //
+            // Live blocks (already-stamped agentRole) are skipped in this
+            // promotion — we only patch the ones missing role info.
+            let nextSubAgentIndex = 0;
+            const subAgentsForPromotion = subAgents ?? [];
             let i = 0;
             while (i < contentBlocks.length) {
-              const block = contentBlocks[i];
+              let block = contentBlocks[i];
               const isToolBlock = block.type === 'tool_use' || block.type === 'tool_call';
-              const isAgentBlock = isToolBlock && !!block.agentId;
+              let isAgentBlock = isToolBlock && !!block.agentId;
+
+              // #841 promotion — Task tool_use without agentRole pairs with
+              // the next unconsumed SubAgentEntry (reload-only path; live
+              // streaming already sets agentRole upstream).
+              if (
+                isToolBlock &&
+                !isAgentBlock &&
+                !block.agentRole &&
+                block.toolName === 'Task' &&
+                nextSubAgentIndex < subAgentsForPromotion.length
+              ) {
+                const sa = subAgentsForPromotion[nextSubAgentIndex++];
+                block = { ...block, agentRole: sa.role, agentId: block.toolId ?? `persisted-task-${i}` };
+                isAgentBlock = true;
+              }
+
+              // T1-hide (2026-05-12) — filter T1 meta-tool blocks from the
+              // inline render path. The block stays in `contentBlocks` for
+              // telemetry / persistence; we skip it ONLY when forming
+              // visible groups. Agent-typed blocks (block.agentId set) are
+              // never T1-filtered — the sub-agent render path is
+              // user-visible (SubAgentCard via agent_group).
+              if (isToolBlock && !isAgentBlock && isHiddenT1Block(block, toolCalls)) {
+                i++;
+                continue;
+              }
 
               if (isAgentBlock) {
                 // Collect consecutive agent blocks (blocks with agentId) into an agent_group
@@ -2585,15 +3589,33 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
                 }
                 groups.push({ type: 'agent_group', blocks: agentGroup, startIndex: startIdx });
               } else if (isToolBlock) {
-                // ALWAYS group tool blocks — even singles get the collapsed ToolCallGroup treatment
-                // This ensures consistent Claude Code-style presentation
+                // Slice B (2026-05-16): merge ALL consecutive tool_use blocks
+                // into one cluster. The walk is sequential — any non-tool
+                // block (text / thinking / viz_render / app_render / agent
+                // block) immediately falls through to its own case and breaks
+                // the merge window, so chronological order is preserved
+                // (CLAUDE.md rule 8(a)). Prior #814 guard restricted merging
+                // to blocks sharing a defined toolCallRound, but that left
+                // serial dispatches rendering as N independent tool-cards
+                // with no summary — the exact Q12 user complaint.
+                //
+                // T1-hide rules unchanged: T1 blocks are dropped pre-group;
+                // we still skip them inside the consecutive-merge window
+                // so a hidden T1 row doesn't break a real merge run.
                 const toolGroup: ContentBlock[] = [block];
                 const startIdx = i;
-                while (i + 1 < contentBlocks.length && (contentBlocks[i + 1].type === 'tool_use' || contentBlocks[i + 1].type === 'tool_call') && !contentBlocks[i + 1].agentId) {
+                while (
+                  i + 1 < contentBlocks.length &&
+                  (contentBlocks[i + 1].type === 'tool_use' || contentBlocks[i + 1].type === 'tool_call') &&
+                  !contentBlocks[i + 1].agentId
+                ) {
                   i++;
+                  if (isHiddenT1Block(contentBlocks[i], toolCalls)) continue;
                   toolGroup.push(contentBlocks[i]);
                 }
-                groups.push({ type: 'tool_group', blocks: toolGroup, startIndex: startIdx });
+                if (toolGroup.length > 0) {
+                  groups.push({ type: 'tool_group', blocks: toolGroup, startIndex: startIdx });
+                }
               } else if (block.type === 'thinking') {
                 // Merge consecutive thinking blocks into one
                 const thinkingGroup: ContentBlock[] = [block];
@@ -2609,71 +3631,298 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
               i++;
             }
 
-            return groups.map((group) => {
+            // #922+#831 — hitlAssignedByBlockId + hitlOrphans are hoisted
+            // to the component body above so renderContentBlock + the
+            // tool-card inline embed paths can both read them. Local
+            // shadowing was removed when the embed-inside-tool-card
+            // contract replaced the sibling-append fallback.
+
+            // Helper — for a list of blocks, return the JSX nodes for any
+            // HITL approval cards that should render after them.
+            const renderHitlForBlocks = (blocks: ContentBlock[]): React.ReactNode[] => {
+              const out: React.ReactNode[] = [];
+              for (const b of blocks) {
+                const entry = hitlAssignedByBlockId.get(b.id);
+                if (!entry) continue;
+                out.push(
+                  <div
+                    key={`hitl-${entry.requestId}`}
+                    data-testid="hitl-approval-strip"
+                    data-block-id={b.id}
+                  >
+                    <HitlInlineCard
+                      entry={entry}
+                      onApprove={onApproveHitl}
+                      onDeny={onDenyHitl}
+                    />
+                  </div>,
+                );
+              }
+              return out;
+            };
+
+            const renderedGroups = groups.map((group, gIdx) => {
+              // #922+#831 — HITL inline placement is now block-scoped:
+              //   - `tool_group` (single OR cluster): HITL is embedded
+              //     INSIDE the matching per-child tool-card div (AAS owns
+              //     the single-block wrap, ToolCallGroup owns each child
+              //     for cluster). The wrap helper below MUST skip appending
+              //     HITL siblings for this group type so we don't render
+              //     the card twice.
+              //   - `agent_group`: sibling-append still applies (sub-agent
+              //     positioning is intentionally outside the parent agent's
+              //     tool card). Behavior unchanged from #922 v1.
+              //   - `single` block types (text / viz_render / app_render /
+              //     follow_up): no HITL pairing possible (non-tool blocks)
+              //     so wrap is a no-op.
+              const blocksForHitl: ContentBlock[] =
+                group.type === 'agent_group' ? group.blocks : [];
+              const hitlNodes = renderHitlForBlocks(blocksForHitl);
+              const wrap = (node: React.ReactNode): React.ReactNode => {
+                if (hitlNodes.length === 0) return node;
+                return (
+                  <React.Fragment key={`group-frag-${gIdx}`}>
+                    {node}
+                    {hitlNodes}
+                  </React.Fragment>
+                );
+              };
+
               if (group.type === 'agent_group') {
-                // Convert agent content blocks into ExecutionStep[] for AgentExecutionTimeline
-                const agentSteps: ExecutionStep[] = group.blocks.map((b) => {
-                  const tc = toolCalls.find(t => t.id === b.toolId);
-                  // Determine step type from block state
-                  let stepType: ExecutionStep['type'] = 'agent_start';
-                  if (b.toolName && b.toolName !== (b.agentRole || b.agentId)) {
-                    // This is a tool call within an agent, not the agent start itself
-                    stepType = b.isComplete ? 'tool_result' : 'tool_call';
-                  } else if (b.isComplete) {
-                    stepType = b.content === 'error' ? 'agent_error' : 'agent_complete';
+                // #646 Option B — split the agent_group by agentRole so each
+                // unique sub-agent gets its own visual unit. When N parallel
+                // sub-agents are spawned in one Task fan-out the agent_group
+                // contains interleaved blocks for all roles; we want one
+                // SubAgentCard per role at THIS timeline position (mock
+                // 01:1077-1140 shows one `<article class="subagent">` per
+                // dispatched role, between parent narration and the parent's
+                // Summary). Roles without a matching SubAgentEntry fall back
+                // to the bare AgentExecutionTimeline (sub_agent_started
+                // envelope hasn't arrived yet — graceful degradation).
+                const blocksByRole = new Map<string, ContentBlock[]>();
+                const roleOrder: string[] = [];
+                for (const b of group.blocks) {
+                  const role = b.agentRole || b.agentId || '__unknown__';
+                  if (!blocksByRole.has(role)) {
+                    blocksByRole.set(role, []);
+                    roleOrder.push(role);
                   }
-                  // For agent_start steps, include the task from the agent tree store
-                  let stepData = tc ? { arguments: tc.input, result: tc.output, cost: 0, tokensUsed: 0 } : undefined;
-                  if (stepType === 'agent_start' && b.agentId) {
-                    // Try to get agent's task from the tree store
-                    try {
-                      const trees = (window as any).__agentTrees || useAgentTreeStore?.getState?.()?.trees;
-                      if (trees) {
-                        for (const tree of Object.values(trees) as any[]) {
-                          const agent = tree?.agents?.[b.agentId];
-                          if (agent?.task) {
-                            stepData = { task: agent.task, cost: 0, tokensUsed: 0 } as any;
-                            break;
+                  blocksByRole.get(role)!.push(b);
+                }
+
+                const buildSteps = (blocks: ContentBlock[]): ExecutionStep[] =>
+                  blocks.map((b) => {
+                    const tc = toolCalls.find(t => t.id === b.toolId);
+                    let stepType: ExecutionStep['type'] = 'agent_start';
+                    if (b.toolName && b.toolName !== (b.agentRole || b.agentId)) {
+                      stepType = b.isComplete ? 'tool_result' : 'tool_call';
+                    } else if (b.isComplete) {
+                      stepType = b.content === 'error' ? 'agent_error' : 'agent_complete';
+                    }
+                    let stepData = tc ? { arguments: tc.input, result: tc.output, cost: 0, tokensUsed: 0 } : undefined;
+                    if (stepType === 'agent_start' && b.agentId) {
+                      try {
+                        const trees = (window as any).__agentTrees || useAgentTreeStore?.getState?.()?.trees;
+                        if (trees) {
+                          for (const tree of Object.values(trees) as any[]) {
+                            const agent = tree?.agents?.[b.agentId];
+                            if (agent?.task) {
+                              stepData = { task: agent.task, cost: 0, tokensUsed: 0 } as any;
+                              break;
+                            }
                           }
                         }
+                      } catch {}
+                    }
+                    return {
+                      type: stepType,
+                      agentId: b.agentId || '',
+                      agentRole: b.agentRole,
+                      toolName: b.toolName,
+                      data: stepData,
+                      timestamp: b.timestamp,
+                    };
+                  });
+
+                return wrap(
+                  <div
+                    key={`agent-group-${group.startIndex}`}
+                    data-testid="agent-group-inline"
+                    style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+                  >
+                    {roleOrder.map((role) => {
+                      const blocks = blocksByRole.get(role)!;
+                      const steps = buildSteps(blocks);
+                      const stillExecuting = blocks.some(b => !b.isComplete);
+                      const sa = subAgentByRole.get(role);
+
+                      // Lightweight timeline showing the agent's tool steps
+                      // (always rendered). When a SubAgentCard is available
+                      // the timeline becomes the card's body; otherwise it
+                      // stands alone with the legacy purple chrome.
+                      const timeline = (
+                        <AgentExecutionTimeline
+                          steps={steps}
+                          executing={stillExecuting}
+                        />
+                      );
+
+                      if (sa) {
+                        // mock 01:1077-1140 — rich SubAgentCard render INLINE
+                        // at the dispatch position, with the live tool
+                        // timeline as the card's children body. agentRole is
+                        // the lookup key (block.agentRole) — referenced both
+                        // here and on the SubAgentEntry, so the contract test
+                        // sees both names in the same code path.
+                        const niceName = sa.role
+                          .replace(/[-_]/g, ' ')
+                          .replace(/\b\w/g, (c) => c.toUpperCase());
+                        const returnValue =
+                          sa.status === 'ok' && sa.stats
+                            ? `${sa.stats.turns} turn${sa.stats.turns === 1 ? '' : 's'}, ${sa.stats.tokens} tok`
+                            : sa.status === 'error'
+                              ? `error: ${sa.error || 'sub-agent failed'}`
+                              : undefined;
+                        return (
+                          <SubAgentCard
+                            key={`sa-${group.startIndex}-${role}`}
+                            name={niceName}
+                            role={sa.role}
+                            description={sa.description}
+                            variant={subAgentVariantFor(sa.role)}
+                            status={sa.status}
+                            toolsUsed={sa.stats?.toolsUsed}
+                            error={sa.error}
+                            stats={sa.stats ? {
+                              turns: sa.stats.turns,
+                              tokens: sa.stats.tokens,
+                              wallMs: sa.stats.wallMs,
+                            } : undefined}
+                            output={sa.output}
+                            returnValue={returnValue}
+                          >
+                            {timeline}
+                          </SubAgentCard>
+                        );
                       }
-                    } catch {}
-                  }
-                  return {
-                    type: stepType,
-                    agentId: b.agentId || '',
-                    agentRole: b.agentRole,
-                    toolName: b.toolName,
-                    data: stepData,
-                    timestamp: b.timestamp,
-                  };
-                });
-                const stillExecuting = group.blocks.some(b => !b.isComplete);
-                return (
-                  <div key={`agent-group-${group.startIndex}`} style={{
-                    borderLeft: '2px solid var(--color-primary, #7c4dff)',
-                    paddingLeft: 12,
-                    marginTop: 4,
-                    marginBottom: 4,
-                  }}>
-                    <AgentExecutionTimeline
-                      steps={agentSteps}
-                      executing={stillExecuting}
-                    />
-                  </div>
+
+                      // Fallback: no SubAgentEntry yet — legacy purple chrome.
+                      return (
+                        <div
+                          key={`agent-fallback-${group.startIndex}-${role}`}
+                          style={{
+                            borderLeft: '2px solid var(--color-primary, #7c4dff)',
+                            paddingLeft: 12,
+                          }}
+                        >
+                          {timeline}
+                        </div>
+                      );
+                    })}
+                  </div>,
                 );
               }
 
               if (group.type === 'tool_group') {
+                // Task #131 — when N ≥ 2 tool blocks in this group all share
+                // the same toolCallRound (i.e. they were dispatched as one
+                // parallel fan-out by the backend's executeToolCalls), render
+                // them with the premium ParallelFanOutGroup. Otherwise fall
+                // through to the existing Claude-Code-style inline grouped
+                // list. The fallthrough preserves the #159-wired live-input
+                // card, sub-agent nesting, and category-badge one-liners.
+                //
+                // Slice B (2026-05-16): N>=2 groups render as a `tool-cluster`
+                // (collapsed by default) owned by the inner component. Single
+                // tool blocks keep the outer `tool-card` testid for #842 +
+                // verification probes.
+                const rounds = new Set(group.blocks.map(b => b.toolCallRound));
+                const isParallelFanOut =
+                  group.blocks.length >= 2 &&
+                  rounds.size === 1 &&
+                  !rounds.has(undefined);
+                const firstId = group.blocks[0]?.id ?? group.blocks[0]?.toolId ?? 'no-id';
+                const clusterKey = `${group.startIndex}.${firstId}`;
+                const isSingle = group.blocks.length === 1;
+                if (isParallelFanOut) {
+                  // ParallelFanOutGroup (UnifiedAgentActivity variant) does
+                  // not expose per-child tool-card slots; fall back to the
+                  // sibling-append placement for HITL nodes so the user can
+                  // still act on an approval prompt that lands inside a
+                  // parallel fan-out cluster. Group-level only — visual
+                  // anchor is best-effort here, not the strict
+                  // tool-card-descendant invariant the serial-cluster
+                  // path now enforces (#922+#831).
+                  const parallelHitlNodes = renderHitlForBlocks(group.blocks);
+                  return (
+                    <React.Fragment key={`parallel-frag-${group.startIndex}`}>
+                      <div
+                        key={`parallel-tool-group-${group.startIndex}`}
+                        data-tool-card-kind="parallel-fanout"
+                        data-tool-count={group.blocks.length}
+                      >
+                        <ParallelFanOutGroup
+                          blocks={group.blocks}
+                          toolCalls={toolCalls}
+                          theme={theme === 'light' || theme === 'dark' ? theme : 'dark'}
+                          isStreaming={isStreaming}
+                          isHistorical={isHistorical}
+                          clusterKey={clusterKey}
+                        />
+                      </div>
+                      {parallelHitlNodes}
+                    </React.Fragment>
+                  );
+                }
+                // #922+#831 — when this group is a single tool_use, AAS owns
+                // the outer `data-testid="tool-card"` wrapper. Embed the
+                // matching HITL card INSIDE that wrapper so the approval
+                // prompt is a DOM descendant of the gated tool's card. When
+                // it's a multi-block cluster, pass hitlByBlockId down to
+                // ToolCallGroup which embeds the HITL inside each per-child
+                // tool-card div (the children own the testid in that path).
+                const singleBlockId = isSingle ? group.blocks[0]?.id : undefined;
+                const singleHitlEntry = singleBlockId
+                  ? hitlAssignedByBlockId.get(singleBlockId)
+                  : undefined;
                 return (
-                  <ToolCallGroup
+                  <div
                     key={`tool-group-${group.startIndex}`}
-                    blocks={group.blocks}
-                    toolCalls={toolCalls}
-                    theme={theme}
-                    isStreaming={isStreaming}
-                    isHistorical={isHistorical}
-                  />
+                    data-testid={isSingle ? 'tool-card' : undefined}
+                    data-tool-name={
+                      isSingle
+                        ? group.blocks[0]?.toolName ||
+                          toolCalls.find(tc => tc.id === group.blocks[0]?.toolId)?.toolName ||
+                          undefined
+                        : undefined
+                    }
+                    data-tool-card-kind="serial-group"
+                    data-tool-count={group.blocks.length}
+                  >
+                    <ToolCallGroup
+                      blocks={group.blocks}
+                      toolCalls={toolCalls}
+                      theme={theme}
+                      isStreaming={isStreaming}
+                      isHistorical={isHistorical}
+                      clusterKey={clusterKey}
+                      hitlByBlockId={isSingle ? undefined : hitlAssignedByBlockId}
+                      onApproveHitl={isSingle ? undefined : onApproveHitl}
+                      onDenyHitl={isSingle ? undefined : onDenyHitl}
+                    />
+                    {singleHitlEntry && (
+                      <div
+                        data-testid="hitl-approval-strip"
+                        data-block-id={singleBlockId}
+                      >
+                        <HitlInlineCard
+                          entry={singleHitlEntry}
+                          onApprove={onApproveHitl}
+                          onDeny={onDenyHitl}
+                        />
+                      </div>
+                    )}
+                  </div>
                 );
               }
 
@@ -2683,19 +3932,34 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
                   <div key={`thinking-group-${group.startIndex}`}>
                     {group.blocks.map((block, blockIdx) => {
                       const globalIdx = group.startIndex + blockIdx;
-                      const isLastContentBlock = globalIdx === contentBlocks.length - 1;
-                      const isActivelyStreaming = isStreaming && isLastContentBlock && !block.isComplete;
+                      // Sev-0 #834 (2026-05-14) — drop the isLastContentBlock
+                      // gate. The old gate snapped thinking blocks to their
+                      // "Thought for X.Xs" terminal header the moment the
+                      // model emitted ANY follow-on block (text, tool_use),
+                      // even while thinking_delta frames were still arriving
+                      // → the COT block looked coalesced/post-hoc instead of
+                      // streaming live. `!block.isComplete` is the canonical
+                      // signal: thinking_block_stop flips isComplete=true;
+                      // until then the block IS actively producing tokens.
+                      const isActivelyStreaming = isStreaming && !block.isComplete;
                       const tokenCount = Math.ceil((block.content?.length || 0) / 4);
                       if (!block.content && !isActivelyStreaming) return null;
+                      // v0.6.7 task #159 — InlineThinkingBlock replaces
+                      // CollapsedThinkingBlock so each thinking round shows
+                      // a live "Thinking..." header that locks to
+                      // "Thought for X.Xs · ~N tokens" when complete.
+                      const startedAt = block.startTime;
+                      const endedAt = !isActivelyStreaming && block.isComplete && block.startTime
+                        ? block.startTime + (block.duration ?? 0)
+                        : undefined;
                       return (
-                        <CollapsedThinkingBlock
+                        <InlineThinkingBlock
                           key={block.id || `thinking-${globalIdx}`}
                           content={block.content}
                           isStreaming={isActivelyStreaming}
-                          isComplete={!isActivelyStreaming && block.isComplete}
+                          startedAt={startedAt}
+                          endedAt={endedAt}
                           tokenCount={tokenCount}
-                          variant="standard"
-                          theme="dark"
                         />
                       );
                     })}
@@ -2704,19 +3968,46 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
               }
 
               const { block, index } = group;
-              return renderContentBlock(block, index);
+              return wrap(renderContentBlock(block, index));
             });
+
+            // Sev-1 #922 — orphan HITL approvals (toolName didn't pair with
+            // any tool_use in this stream) render at the end as a fallback
+            // so the user can still act on them. Same testid + same card
+            // chrome — just no inline pairing. Source moved to the hoisted
+            // useMemo above (#922+#831).
+            const orphanNodes = hitlOrphans.length > 0 ? (
+              <div
+                key="hitl-orphan-strip"
+                data-testid="hitl-approval-strip"
+                data-orphan="true"
+              >
+                {hitlOrphans.map((entry) => (
+                  <HitlInlineCard
+                    key={`hitl-orphan-${entry.requestId}`}
+                    entry={entry}
+                    onApprove={onApproveHitl}
+                    onDeny={onDenyHitl}
+                  />
+                ))}
+              </div>
+            ) : null;
+
+            return (
+              <>
+                {renderedGroups}
+                {orphanNodes}
+              </>
+            );
           })()}
         </div>
       ) : (
-        /* Legacy: Single merged thinking block */
+        /* Legacy: Single merged thinking block (v0.6.7 task #159: uses
+           InlineThinkingBlock for the new collapsed header style) */
         thinkingContent && (
-          <CollapsedThinkingBlock
+          <InlineThinkingBlock
             content={thinkingContent}
             isStreaming={isThinkingActive}
-            isComplete={!isThinkingActive}
-            variant="standard"
-            theme="dark"
           />
         )
       )}

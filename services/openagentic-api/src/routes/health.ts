@@ -11,8 +11,7 @@ import type { Logger } from 'pino';
 import { prisma } from '../utils/prisma.js';
 import { RAGHealthCheckService } from '../services/RAGHealthCheck.js';
 import { MCPHealthCheckService } from '../services/MCPHealthCheck.js';
-// TODO: AzureOpenAIConfigService - Direct Azure OpenAI backup controller
-// import { AzureOpenAIConfigService } from '../services/azureOpenAIConfigService.js';
+import { getMilvusConnectionManager, setMilvusConnectionManager } from '../utils/MilvusConnectionManager.js';
 const healthRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // Use fastify.log directly without casting
   const logger = fastify.log;
@@ -24,8 +23,6 @@ const healthRoutes: FastifyPluginAsync = async (fastify, opts) => {
   // Use global.modelHealthCheck instead of creating a new instance
 
   const mcpHealthCheck = new MCPHealthCheckService(logger as Logger);
-  // TODO: Direct Azure OpenAI backup controller (disabled for now)
-  // const azureConfigService = new AzureOpenAIConfigService('/app/data', logger, prisma);
 
   /**
    * GET /api/health - Basic health check
@@ -63,7 +60,7 @@ const healthRoutes: FastifyPluginAsync = async (fastify, opts) => {
       // Milvus connectivity — actually probe the connection, not just check global variable
       let milvusStatus = 'not_configured';
       try {
-        const mgr = (global as any).milvusConnectionManager;
+        const mgr = getMilvusConnectionManager();
         if (mgr && mgr.isConnected()) {
           // Try a real operation with timeout to confirm connectivity
           const client = mgr.getClient();
@@ -76,7 +73,7 @@ const healthRoutes: FastifyPluginAsync = async (fastify, opts) => {
           } else {
             milvusStatus = 'not_initialized';
           }
-        } else if ((global as any).milvusVectorService) {
+        } else if (fastify.app?.milvusVectorService) {
           milvusStatus = 'connected';
         } else {
           // Try lazy reconnection
@@ -85,7 +82,7 @@ const healthRoutes: FastifyPluginAsync = async (fastify, opts) => {
             const newMgr = new MilvusConnectionManager(null as any);
             const client = await newMgr.connect(2, 2000);
             if (client) {
-              (global as any).milvusConnectionManager = newMgr;
+              setMilvusConnectionManager(newMgr);
               milvusStatus = 'reconnected';
             } else {
               milvusStatus = 'not_initialized';
@@ -326,7 +323,7 @@ const healthRoutes: FastifyPluginAsync = async (fastify, opts) => {
     // Milvus Vector health check — actually probe connectivity, not just check global
     try {
       const { MilvusConnectionManager } = await import('../utils/MilvusConnectionManager.js');
-      const milvusManager = (global as any).milvusConnectionManager as InstanceType<typeof MilvusConnectionManager> | undefined;
+      const milvusManager = getMilvusConnectionManager();
 
       if (milvusManager && milvusManager.isConnected()) {
         // Try a real operation with timeout to confirm connectivity
@@ -353,8 +350,8 @@ const healthRoutes: FastifyPluginAsync = async (fastify, opts) => {
             details: { status: 'client_null', service: 'MilvusVectorService' }
           };
         }
-      } else if ((global as any).milvusVectorService) {
-        // Fallback: global service exists but no connection manager
+      } else if (fastify.app?.milvusVectorService) {
+        // Fallback: AppContext service exists but no connection manager
         results.checks.vector_storage = {
           healthy: true,
           details: { status: 'connected', service: 'MilvusVectorService', live_check: false }
@@ -365,7 +362,7 @@ const healthRoutes: FastifyPluginAsync = async (fastify, opts) => {
           const mgr = new MilvusConnectionManager(logger as any);
           const client = await mgr.connect(3, 2000);
           if (client) {
-            (global as any).milvusConnectionManager = mgr;
+            setMilvusConnectionManager(mgr);
             results.checks.vector_storage = {
               healthy: true,
               details: { status: 'reconnected', service: 'MilvusVectorService', live_check: true }

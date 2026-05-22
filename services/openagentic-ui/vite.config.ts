@@ -45,7 +45,7 @@ export default defineConfig({
           'icons': ['lucide-react'],
 
           // Chat-specific heavy components (lazy loaded)
-          'admin-portal': ['@/features/admin/components/Shell/AdminPortal'],
+          'admin-portal': ['@/features/admin/components/Shell/AdminPortalHost'],
           'image-analysis': ['@/shared/components/ImageAnalysis'],
           'docs-viewer': ['@/features/docs/DocsViewer'],
           'canvas-panel': ['@/shared/components/CanvasPanel']
@@ -69,7 +69,7 @@ export default defineConfig({
     ],
     // Exclude heavy components that are lazy loaded
     exclude: [
-      '@/features/admin/components/Shell/AdminPortal',
+      '@/features/admin/components/Shell/AdminPortalHost',
       '@/shared/components/ImageAnalysis',
       '@/features/docs/DocsViewer',
       '@/shared/components/CanvasPanel'

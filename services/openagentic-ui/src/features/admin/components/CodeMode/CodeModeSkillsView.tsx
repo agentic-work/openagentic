@@ -15,6 +15,7 @@ import {
 } from '@/shared/icons';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiRequest } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 import {
   SEED_SKILLS, SEED_PLUGINS, SEED_REGISTRIES,
   type SeedSkill, type SeedPlugin, type SeedRegistry
@@ -230,17 +231,15 @@ export const CodeModeSkillsView: React.FC<CodeModeSkillsViewProps> = ({ theme })
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-bold mb-1 text-text-primary flex items-center gap-2">
-            <Sparkles size={20} />
-            Skills & Plugins
-          </h2>
-          <p className="text-sm text-text-secondary">
-            Manage skills, plugins, and registries injected into code mode sessions
-          </p>
-        </div>
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Code Mode', 'Skills']}
+        title="Code Mode · Skills & Plugins"
+        explainer="Manage skills, plugins, and registries injected into code mode sessions."
+      />
+
+      {/* Action bar — sync + create live below the page header */}
+      <div className="flex items-center justify-end">
         <div className="flex items-center gap-2">
           <button
             onClick={handleSync}

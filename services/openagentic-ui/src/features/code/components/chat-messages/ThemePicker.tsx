@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { SlashCommandModal } from './SlashCommandModal';
 
-// Kept in sync with CodeModeLayoutV2 CM_THEMES by convention. If that
+// Kept in sync with CodeModeLayout CM_THEMES by convention. If that
 // list grows, update here too. Dot colors mirror the primary accent.
 const THEMES = [
   { id: 'default', label: 'Default', dot: '#58a6ff' },

@@ -12,8 +12,8 @@ export const ToastContainer: React.FC<{ toasts: Toast[]; onDismiss: (id: string)
       <div key={t.id} className="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-sm font-medium"
         style={{
           backgroundColor: t.type === 'success' ? 'rgba(0,210,106,0.15)' : t.type === 'error' ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.15)',
-          border: `1px solid ${t.type === 'success' ? '#00D26A' : t.type === 'error' ? '#ef4444' : '#6366f1'}40`,
-          color: t.type === 'success' ? '#00D26A' : t.type === 'error' ? '#ef4444' : '#6366f1',
+          border: `1px solid ${t.type === 'success' ? 'var(--ap-ok)' : t.type === 'error' ? 'var(--ap-err)' : 'var(--ap-accent)'}40`,
+          color: t.type === 'success' ? 'var(--ap-ok)' : t.type === 'error' ? 'var(--ap-err)' : 'var(--ap-accent)',
         }}>
         {t.type === 'success' ? <CheckCircle size={16} /> : t.type === 'error' ? <XCircle size={16} /> : <AlertCircle size={16} />}
         <span>{t.message}</span>

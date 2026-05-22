@@ -78,10 +78,13 @@ export class UserBudgetService {
       isApproachingLimit,
       warningThreshold,
       hardLimit: permissions?.budget_hard_limit ?? false,
-      autoAdjustEnabled: permissions?.budget_auto_adjust_slider ?? true,
-      currentSlider: permissions?.intelligence_slider ?? null,
-      originalSlider: permissions?.budget_original_slider ?? null,
-      wasAutoAdjusted: permissions?.budget_auto_adjusted_at !== null,
+      // 2026-04-19 — slider fields are vestigial (task #144, slider rip).
+      // Keep them on the BudgetStatus type for back-compat with callers,
+      // but always return null/false — TS no longer reads from the DB.
+      autoAdjustEnabled: false,
+      currentSlider: null,
+      originalSlider: null,
+      wasAutoAdjusted: false,
       periodStart,
       periodEnd,
     };
@@ -121,19 +124,9 @@ export class UserBudgetService {
       };
     }
 
-    // Auto-adjust slider if approaching limit
-    if (status.autoAdjustEnabled && status.isApproachingLimit && status.budgetCents !== null) {
-      const adjustedSlider = await this.calculateAutoAdjustedSlider(status);
-
-      if (adjustedSlider !== status.currentSlider) {
-        return {
-          allowed: true,
-          adjustedSlider,
-          reason: `Approaching budget limit (${status.percentUsed?.toFixed(1)}% used). Automatically using more economical models.`,
-          budgetStatus: status,
-        };
-      }
-    }
+    // 2026-04-19 — auto-adjust slider block removed (task #144, slider
+    // rip). Per-user × per-model caps enforced at dispatch time by
+    // UserModelBudgetService instead of shifting a per-user slider.
 
     return {
       allowed: true,
@@ -142,90 +135,28 @@ export class UserBudgetService {
   }
 
   /**
-   * Calculate the auto-adjusted slider based on budget remaining
+   * 2026-04-19 — calculateAutoAdjustedSlider kept as vestigial stub for
+   * back-compat; no code path calls it after the slider rip. Always
+   * returns 50 (neutral).
    */
-  private async calculateAutoAdjustedSlider(status: BudgetStatus): Promise<number> {
-    if (status.budgetCents === null || status.percentUsed === null) {
-      return status.currentSlider ?? 50;
-    }
-
-    // Map remaining budget percentage to slider position
-    // 100% remaining -> keep current slider
-    // 80% remaining -> start reducing
-    // 50% remaining -> slider at 40% max
-    // 20% remaining -> slider at 20% max
-    // 0% remaining -> slider at 0%
-
-    const remainingPercent = 100 - status.percentUsed;
-    const originalSlider = status.originalSlider ?? status.currentSlider ?? 50;
-
-    if (remainingPercent >= 20) {
-      // Still have budget - scale slider proportionally
-      // At 100% remaining: full slider
-      // At 20% remaining: 20% of original slider
-      const scaleFactor = Math.max(0.2, remainingPercent / 100);
-      return Math.round(originalSlider * scaleFactor);
-    }
-
-    // Very low budget - go ultra-economical
-    if (remainingPercent >= 5) {
-      return Math.min(10, originalSlider);
-    }
-
-    // Almost no budget - most economical
-    return 0;
+  private async calculateAutoAdjustedSlider(_status: BudgetStatus): Promise<number> {
+    return 50;
   }
 
   /**
-   * Apply auto-adjusted slider and track original
+   * 2026-04-19 — applyAutoAdjustedSlider / resetSliderToOriginal are
+   * NO-OP after task #144 (slider rip). The DB columns
+   * (intelligence_slider, budget_original_slider, budget_auto_adjusted_at)
+   * are left in place for back-compat but the TS layer no longer writes
+   * to them. Per-user × per-model spend caps now live in
+   * UserModelBudgetService and are enforced at dispatch time.
    */
-  async applyAutoAdjustedSlider(userId: string, newSlider: number): Promise<void> {
-    const permissions = await this.prisma.userPermissions.findUnique({
-      where: { user_id: userId },
-    });
-
-    // Only save original if not already saved
-    const originalSlider = permissions?.budget_original_slider ?? permissions?.intelligence_slider;
-
-    await this.prisma.userPermissions.update({
-      where: { user_id: userId },
-      data: {
-        intelligence_slider: newSlider,
-        budget_original_slider: originalSlider,
-        budget_auto_adjusted_at: new Date(),
-      },
-    });
-
-    logger.info({
-      userId,
-      originalSlider,
-      newSlider,
-    }, 'Auto-adjusted slider for budget');
+  async applyAutoAdjustedSlider(_userId: string, _newSlider: number): Promise<void> {
+    // no-op after 2026-04-19 slider rip
   }
 
-  /**
-   * Reset slider to original after budget period resets
-   */
-  async resetSliderToOriginal(userId: string): Promise<void> {
-    const permissions = await this.prisma.userPermissions.findUnique({
-      where: { user_id: userId },
-    });
-
-    if (permissions?.budget_original_slider !== null) {
-      await this.prisma.userPermissions.update({
-        where: { user_id: userId },
-        data: {
-          intelligence_slider: permissions.budget_original_slider,
-          budget_original_slider: null,
-          budget_auto_adjusted_at: null,
-        },
-      });
-
-      logger.info({
-        userId,
-        restoredSlider: permissions.budget_original_slider,
-      }, 'Reset slider to original after budget period');
-    }
+  async resetSliderToOriginal(_userId: string): Promise<void> {
+    // no-op after 2026-04-19 slider rip
   }
 
   /**
@@ -242,18 +173,19 @@ export class UserBudgetService {
   ): Promise<void> {
     const budgetCents = budgetDollars !== null ? Math.round(budgetDollars * 100) : null;
 
+    // 2026-04-19 — slider ripped (task #144); budget_auto_adjust_slider
+    // column is left untouched on this write. The DB column stays for
+    // back-compat but the API no longer writes to it.
     await this.prisma.userPermissions.upsert({
       where: { user_id: userId },
       update: {
         monthly_budget_cents: budgetCents,
-        budget_auto_adjust_slider: options?.autoAdjust ?? true,
         budget_warning_threshold: options?.warningThreshold ?? 80,
         budget_hard_limit: options?.hardLimit ?? false,
       },
       create: {
         user_id: userId,
         monthly_budget_cents: budgetCents,
-        budget_auto_adjust_slider: options?.autoAdjust ?? true,
         budget_warning_threshold: options?.warningThreshold ?? 80,
         budget_hard_limit: options?.hardLimit ?? false,
       },
@@ -268,20 +200,13 @@ export class UserBudgetService {
   }
 
   /**
-   * Record spending and check if auto-adjustment is needed
+   * Record spending and re-check the budget cap. 2026-04-19 — slider
+   * auto-adjust removed (task #144, slider rip); caller just gets the
+   * updated status.
    */
   async recordSpending(userId: string, costCents: number): Promise<BudgetCheckResult | null> {
     if (costCents <= 0) return null;
-
-    // Check budget after spending
-    const result = await this.checkBudget(userId);
-
-    // Apply auto-adjustment if needed
-    if (result.adjustedSlider !== undefined && result.budgetStatus.autoAdjustEnabled) {
-      await this.applyAutoAdjustedSlider(userId, result.adjustedSlider);
-    }
-
-    return result;
+    return await this.checkBudget(userId);
   }
 
   /**
@@ -334,7 +259,8 @@ export class UserBudgetService {
   }
 
   /**
-   * Reset budget period (call at start of new month)
+   * Reset budget period (call at start of new month).
+   * 2026-04-19 — slider columns no longer written (task #144, slider rip).
    */
   async resetBudgetPeriod(userId: string): Promise<void> {
     await this.prisma.userPermissions.update({
@@ -342,13 +268,8 @@ export class UserBudgetService {
       data: {
         budget_period_start: new Date(),
         budget_last_notified_at: null,
-        budget_auto_adjusted_at: null,
-        budget_original_slider: null,
       },
     });
-
-    // Restore original slider
-    await this.resetSliderToOriginal(userId);
 
     logger.info({ userId }, 'Reset budget period');
   }

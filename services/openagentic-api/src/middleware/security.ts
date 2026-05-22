@@ -141,9 +141,9 @@ export async function securityMiddleware(
         url: request.url
       }, '[SECURITY] [BLOCKED] Origin not allowed');
       
-      reply.code(403).send({ 
-        error: 'Forbidden', 
-        message: 'Origin not allowed' 
+      await reply.code(403).send({
+        error: 'Forbidden',
+        message: 'Origin not allowed'
       });
       return;
     }
@@ -159,9 +159,9 @@ export async function securityMiddleware(
         url: request.url
       }, '[SECURITY] [BLOCKED] Invalid frontend authentication header');
       
-      reply.code(403).send({ 
-        error: 'Forbidden', 
-        message: 'Invalid frontend authentication' 
+      await reply.code(403).send({
+        error: 'Forbidden',
+        message: 'Invalid frontend authentication'
       });
       return;
     }
@@ -183,9 +183,9 @@ export async function securityMiddleware(
         url: request.url
       }, '[SECURITY] [BLOCKED] Invalid authentication - no valid token or API key');
       
-      reply.code(401).send({ 
-        error: 'Unauthorized', 
-        message: 'Invalid authentication' 
+      await reply.code(401).send({
+        error: 'Unauthorized',
+        message: 'Invalid authentication'
       });
       return;
     }
@@ -227,13 +227,13 @@ export async function securityMiddleware(
           url: request.url
         }, '[SECURITY] [BLOCKED] Missing request signature for write operation');
         
-        reply.code(401).send({ 
-          error: 'Unauthorized', 
-          message: 'Missing request signature' 
+        await reply.code(401).send({
+          error: 'Unauthorized',
+          message: 'Missing request signature'
         });
         return;
       }
-      
+
       // Check timestamp is within 5 minutes
       const requestTime = parseInt(timestamp);
       const now = Date.now();
@@ -251,9 +251,9 @@ export async function securityMiddleware(
           url: request.url
         }, '[SECURITY] [BLOCKED] Request timestamp too old');
         
-        reply.code(401).send({ 
-          error: 'Unauthorized', 
-          message: 'Request timestamp too old' 
+        await reply.code(401).send({
+          error: 'Unauthorized',
+          message: 'Request timestamp too old'
         });
         return;
       }
@@ -272,9 +272,9 @@ export async function securityMiddleware(
           url: request.url
         }, '[SECURITY] [BLOCKED] Invalid request signature');
         
-        reply.code(401).send({ 
-          error: 'Unauthorized', 
-          message: 'Invalid request signature' 
+        await reply.code(401).send({
+          error: 'Unauthorized',
+          message: 'Invalid request signature'
         });
         return;
       }
@@ -286,10 +286,15 @@ export async function securityMiddleware(
       }, '[SECURITY] Request signature verified successfully');
     }
 
-    // 6. Add security headers to response
+    // 6. Add security headers to response. The codemode preview
+    // path-proxy intentionally serves user dev-server content in an
+    // iframe; the global X-Frame-Options DENY would block it. Use
+    // SAMEORIGIN for that surface only — port-level auth is enforced
+    // inside the preview-proxy handler.
+    const isPreviewProxy = (request.url || '').startsWith('/api/code/preview/');
     reply.headers({
       'X-Content-Type-Options': 'nosniff',
-      'X-Frame-Options': 'DENY',
+      'X-Frame-Options': isPreviewProxy ? 'SAMEORIGIN' : 'DENY',
       'X-XSS-Protection': '1; mode=block',
       'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -319,7 +324,7 @@ export async function securityMiddleware(
       executionTime
     }, '[SECURITY] [ERROR] Security middleware failed with exception');
     
-    reply.code(500).send({
+    await reply.code(500).send({
       error: 'Internal Server Error',
       message: 'Security validation failed'
     });
@@ -327,11 +332,27 @@ export async function securityMiddleware(
 }
 
 // Rate limiting configuration
+//
+// Internal services (openagentic-proxy, mcp-proxy, workflows) call api endpoints
+// dozens of times per workflow run — agent config resolution, MCP tool
+// listing, execution persistence. Counting those against the per-IP
+// 100/min budget caused multi_agent flows to die mid-run with 429 storms
+// once we unblocked workflows → openagentic-proxy on 2026-04-26. Skip rate
+// limiting entirely when the request carries the validated internal
+// X-Request-From header — those callers go through middleware/unifiedAuth's
+// timingSafeEqual secret check, so they're already authenticated as a
+// service principal.
+const INTERNAL_SERVICES = new Set(['mcp-proxy', 'openagentic-proxy', 'workflows', 'internal']);
+
 export const rateLimitOptions = {
   max: 100, // Max 100 requests
   timeWindow: '1 minute',
   keyGenerator: (request: FastifyRequest) => {
     return request.headers['x-user-id'] as string || request.ip;
+  },
+  skip: (request: FastifyRequest) => {
+    const from = String(request.headers['x-request-from'] || '').toLowerCase();
+    return INTERNAL_SERVICES.has(from);
   },
   errorResponseBuilder: () => {
     return {

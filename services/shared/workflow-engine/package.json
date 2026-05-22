@@ -1,0 +1,92 @@
+{
+  "name": "@openagentic/workflow-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared workflow-engine helpers + node plugin registry. Consumed by openagentic-workflows (executor) and openagentic-api (legacy fallback path) via file:../shared/workflow-engine. Builds independently to dist/ via its own tsconfig; consumers consume the compiled dist/.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./approvalGate": {
+      "types": "./dist/approvalGate.d.ts",
+      "default": "./dist/approvalGate.js"
+    },
+    "./approvalRecord": {
+      "types": "./dist/approvalRecord.d.ts",
+      "default": "./dist/approvalRecord.js"
+    },
+    "./secretRedaction": {
+      "types": "./dist/secretRedaction.d.ts",
+      "default": "./dist/secretRedaction.js"
+    },
+    "./secretAcl": {
+      "types": "./dist/secretAcl.d.ts",
+      "default": "./dist/secretAcl.js"
+    },
+    "./sandbox": {
+      "types": "./dist/sandbox.d.ts",
+      "default": "./dist/sandbox.js"
+    },
+    "./abortableAxios": {
+      "types": "./dist/abortableAxios.d.ts",
+      "default": "./dist/abortableAxios.js"
+    },
+    "./pricingLookup": {
+      "types": "./dist/pricingLookup.d.ts",
+      "default": "./dist/pricingLookup.js"
+    },
+    "./nodes/registry": {
+      "types": "./dist/nodes/registry.d.ts",
+      "default": "./dist/nodes/registry.js"
+    },
+    "./nodes/types": {
+      "types": "./dist/nodes/types.d.ts",
+      "default": "./dist/nodes/types.js"
+    },
+    "./tracing/LLMTracingService": {
+      "types": "./dist/tracing/LLMTracingService.d.ts",
+      "default": "./dist/tracing/LLMTracingService.js"
+    },
+    "./trace/TraceSigner": {
+      "types": "./dist/trace/TraceSigner.d.ts",
+      "default": "./dist/trace/TraceSigner.js"
+    },
+    "./trace/TraceCollector": {
+      "types": "./dist/trace/TraceCollector.d.ts",
+      "default": "./dist/trace/TraceCollector.js"
+    },
+    "./trace/attachTraceCollector": {
+      "types": "./dist/trace/attachTraceCollector.d.ts",
+      "default": "./dist/trace/attachTraceCollector.js"
+    },
+    "./contracts/AgentContract": {
+      "types": "./dist/contracts/AgentContract.d.ts",
+      "default": "./dist/contracts/AgentContract.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "isolated-vm": "^6.1.2",
+    "axios": "^1.15.1",
+    "@prisma/client": "^6.4.1",
+    "@agentic-work/llm-sdk": "file:../../../../openagentic-sdk",
+    "@opentelemetry/api": "^1.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^3.2.4",
+    "@opentelemetry/sdk-trace-base": "^2.7.1",
+    "@opentelemetry/sdk-trace-node": "^2.7.1",
+    "@opentelemetry/sdk-metrics": "^2.7.1"
+  }
+}

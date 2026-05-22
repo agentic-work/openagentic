@@ -25,7 +25,6 @@ interface TerminalToolbarProps {
 
 const SLASH_COMMANDS = [
   { cmd: '/help', label: 'Help', desc: 'Show all commands' },
-  { cmd: '/model', label: 'Model', desc: 'Switch model' },
   { cmd: '/cost', label: 'Cost', desc: 'Show session cost' },
   { cmd: '/compact', label: 'Compact', desc: 'Compress context' },
   { cmd: '/clear', label: 'Clear', desc: 'Clear conversation' },

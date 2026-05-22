@@ -1,0 +1,109 @@
+{
+  "$schema": "./lib-manifest.schema.json",
+  "comment": [
+    "Phase 4 #474 — pinned versions + SHA-256s of every JS/WASM bundle",
+    "served by synth-cdn at /lib/* (ClusterIP only — UI nginx reverse-proxies",
+    "from /api/cdn/lib/* same-origin path; nothing outside the cluster touches this svc)",
+    "",
+    "build-libs.sh fetches each entry, verifies sha256, and bakes into the",
+    "synth-cdn image. CI verifies SHAs on every build — mismatch fails the",
+    "build, preventing supply-chain swaps mid-conversation.",
+    "",
+    "Bumping a version: replace the version + sha256 fields, run",
+    "  cd services/synth-cdn && ./build-libs.sh --verify-only",
+    "to fetch + diff before committing."
+  ],
+  "libraries": [
+    {
+      "name": "d3",
+      "version": "7.9.0",
+      "url": "https://registry.npmjs.org/d3/-/d3-7.9.0.tgz",
+      "extract": "package/dist/d3.min.js",
+      "served_at": "/lib/d3@7/dist/d3.min.js",
+      "sha256": "7e36605710a2ba54846797c8c6d888911341b215ae53257dc32a49a0b824355e",
+      "license": "ISC",
+      "source": "https://github.com/d3/d3"
+    },
+    {
+      "name": "d3-sankey",
+      "version": "0.12.3",
+      "url": "https://registry.npmjs.org/d3-sankey/-/d3-sankey-0.12.3.tgz",
+      "extract": "package/dist/d3-sankey.min.js",
+      "served_at": "/lib/d3-sankey@0/dist/d3-sankey.min.js",
+      "sha256": "6bd8cdb143d4088ff38179def70954419868d4b95f136c168ffef2dad004ff22",
+      "license": "BSD-3-Clause",
+      "source": "https://github.com/d3/d3-sankey"
+    },
+    {
+      "name": "d3-hierarchy",
+      "version": "3.1.2",
+      "url": "https://registry.npmjs.org/d3-hierarchy/-/d3-hierarchy-3.1.2.tgz",
+      "extract": "package/dist/d3-hierarchy.min.js",
+      "served_at": "/lib/d3-hierarchy@3/dist/d3-hierarchy.min.js",
+      "sha256": "7681875f06440c088afda1fd834d853dd560166c945e731382ee0c636332360b",
+      "license": "ISC",
+      "source": "https://github.com/d3/d3-hierarchy"
+    },
+    {
+      "name": "d3-chord",
+      "version": "3.0.1",
+      "url": "https://registry.npmjs.org/d3-chord/-/d3-chord-3.0.1.tgz",
+      "extract": "package/dist/d3-chord.min.js",
+      "served_at": "/lib/d3-chord@3/dist/d3-chord.min.js",
+      "sha256": "84c47d193e5e8c5fd3a28783a55b34f08dfaa1c8d764e96d9b49c78a3b6b40b5",
+      "license": "ISC",
+      "source": "https://github.com/d3/d3-chord"
+    },
+    {
+      "name": "echarts",
+      "version": "5.5.1",
+      "url": "https://registry.npmjs.org/echarts/-/echarts-5.5.1.tgz",
+      "extract": "package/dist/echarts.min.js",
+      "served_at": "/lib/echarts@5/dist/echarts.min.js",
+      "sha256": "1f0eae29c406496a77789a7d7f56b811cae034ac95c0b3808215998f4ba0fbf3",
+      "license": "Apache-2.0",
+      "source": "https://github.com/apache/echarts"
+    },
+    {
+      "name": "plotly.js-dist-min",
+      "version": "2.35.2",
+      "url": "https://registry.npmjs.org/plotly.js-dist-min/-/plotly.js-dist-min-2.35.2.tgz",
+      "extract": "package/plotly.min.js",
+      "served_at": "/lib/plotly@2/plotly.min.js",
+      "sha256": "519b4874ce25867da4e8f59e6356a8ac0d36990f0901a54c2189d75e793dcb8b",
+      "license": "MIT",
+      "source": "https://github.com/plotly/plotly.js"
+    },
+    {
+      "name": "cytoscape",
+      "version": "3.30.0",
+      "url": "https://registry.npmjs.org/cytoscape/-/cytoscape-3.30.0.tgz",
+      "extract": "package/dist/cytoscape.min.js",
+      "served_at": "/lib/cytoscape@3/cytoscape.min.js",
+      "sha256": "5819d5ff53e28457e7260b55ce7c8bd38482f133969f01e31c93f83c8819dfcd",
+      "license": "MIT",
+      "source": "https://github.com/cytoscape/cytoscape.js"
+    },
+    {
+      "name": "mermaid",
+      "version": "11.4.1",
+      "url": "https://registry.npmjs.org/mermaid/-/mermaid-11.4.1.tgz",
+      "extract": "package/dist/mermaid.min.js",
+      "served_at": "/lib/mermaid@11/mermaid.min.js",
+      "sha256": "ec7b61b391aaa24bf666fd20e48d0a626eeb4a95b95bc6b3016a122d7f0bc2af",
+      "license": "MIT",
+      "source": "https://github.com/mermaid-js/mermaid"
+    },
+    {
+      "name": "pyodide",
+      "version": "0.27.0",
+      "url": "https://github.com/pyodide/pyodide/releases/download/0.27.0/pyodide-0.27.0.tar.bz2",
+      "extract": "pyodide/*",
+      "served_at": "/lib/pyodide/0.27/",
+      "sha256": "8b99edffaca7b7e069a0ffab0877c3cb4be278be87e89afceb03a6947ed241c7",
+      "license": "MPL-2.0",
+      "source": "https://github.com/pyodide/pyodide",
+      "comment": "tarball ships pyodide.js + pyodide.asm.{wasm,data} + python_stdlib.zip — all served as immutable static assets"
+    }
+  ]
+}

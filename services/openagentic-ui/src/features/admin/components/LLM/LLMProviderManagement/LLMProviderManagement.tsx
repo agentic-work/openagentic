@@ -27,6 +27,7 @@ import { ProviderCard, EmptyProviderState } from './ProviderCard';
 import { CapabilityMatrix } from './CapabilityMatrix';
 import { EmbeddingProviderSection } from './EmbeddingProviderSection';
 import { CredentialRotationModal } from './CredentialRotationModal';
+import { ExplainerCard, SoTBanner } from '../../../primitives-v2';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -110,11 +111,26 @@ export const LLMProviderManagement: React.FC<LLMProviderManagementProps> = ({ th
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   // ── CRUD ──
+  // §11.5 — every PUT carries the `version` we just GET'd. The server
+  // returns 409 with currentRow + conflictingFields if another admin
+  // saved between our read and write, so we never silently clobber.
   const saveProvider = async (payload: any, isEdit: boolean) => {
     setSaving(true);
     try {
       const url = isEdit && editingProvider ? `/admin/llm-providers/${editingProvider.id}` : '/admin/llm-providers';
-      const res = await apiRequest(url, { method: isEdit ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const body = isEdit && editingProvider
+        ? { ...payload, version: typeof editingProvider.version === 'number' ? editingProvider.version : 1 }
+        : payload;
+      const res = await apiRequest(url, { method: isEdit ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (res.status === 409) {
+        const d = await res.json().catch(() => ({}));
+        const fields = Array.isArray(d.conflictingFields) ? d.conflictingFields.join(', ') : '';
+        toastCtx.show('error',
+          `Another admin saved this provider before your changes landed${fields ? ` (${fields})` : ''}. Refreshing — please reapply your edits if needed.`);
+        setPanelOpen(false); setEditingProvider(null);
+        await fetchAll();
+        return;
+      }
       if (!res.ok) { const d = await res.json().catch(() => ({ message: res.statusText })); throw new Error(d.message || d.error || `HTTP ${res.status}`); }
       toastCtx.show('success', `Provider "${payload.displayName}" ${isEdit ? 'updated' : 'created'}`);
       setPanelOpen(false); setEditingProvider(null);
@@ -139,13 +155,27 @@ export const LLMProviderManagement: React.FC<LLMProviderManagementProps> = ({ th
     }
   };
 
-  const toggleProvider = async (provider: DbProvider) => {
+  const toggleProvider = async (provider: DbProvider, next: boolean): Promise<boolean> => {
     try {
-      await apiRequest(`/admin/llm-providers/${provider.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !provider.enabled }) });
-      toastCtx.show('info', `"${provider.display_name}" ${provider.enabled ? 'disabled' : 'enabled'}`);
+      const res = await apiRequest(`/admin/llm-providers/${provider.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: next, version: provider.version ?? 1 }),
+      });
+      if (res.status === 409) {
+        toastCtx.show('error', `Another admin updated "${provider.display_name}" before your toggle landed. Refreshing.`);
+        await fetchAll();
+        return false;
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      toastCtx.show('info', `"${provider.display_name}" ${next ? 'enabled' : 'disabled'}`);
       emitModelsChanged('provider-change');
       await fetchAll();
-    } catch (err) { toastCtx.show('error', `Toggle failed: ${err instanceof Error ? err.message : 'Unknown'}`); }
+      return true;
+    } catch (err) {
+      toastCtx.show('error', `Toggle failed: ${err instanceof Error ? err.message : 'Unknown'}`);
+      return false;
+    }
   };
 
   const testProvider = async (name: string) => {
@@ -209,7 +239,17 @@ export const LLMProviderManagement: React.FC<LLMProviderManagementProps> = ({ th
     if (!provider) return;
     try {
       const newCaps = { ...provider.capabilities, [capability]: enabled };
-      await apiRequest(`/admin/llm-providers/${providerId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ capabilities: newCaps }) });
+      const res = await apiRequest(`/admin/llm-providers/${providerId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ capabilities: newCaps, version: provider.version ?? 1 }),
+      });
+      if (res.status === 409) {
+        toastCtx.show('error', `Another admin updated "${provider.display_name}" first. Refreshing.`);
+        await fetchAll();
+        return;
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await fetchAll();
     } catch (err) { toastCtx.show('error', `Capability update failed: ${err instanceof Error ? err.message : 'Unknown'}`); }
   };
@@ -264,6 +304,31 @@ export const LLMProviderManagement: React.FC<LLMProviderManagementProps> = ({ th
     <div className="space-y-5">
       <ToastContainer toasts={toastCtx.toasts} onDismiss={toastCtx.dismiss} />
 
+      {/* Mission Control · SoT enforcement banner — always visible */}
+      <SoTBanner />
+
+      {/* Mission Control · explainer for the most-confused workflow */}
+      <ExplainerCard
+        title="Adding a provider does not import its model catalog."
+        body={
+          <>
+            Adding a provider stores its credentials and runs a health probe. It does
+            <b> not</b> import any of the provider's catalog into the Model Registry. To
+            make models routable across chat / flows / agents / code-mode, go to{' '}
+            <span className="font-mono">Models → "+ Add Model"</span> and pick from the
+            provider's catalog explicitly.
+          </>
+        }
+        why={
+          <>
+            The smart router only scores explicitly-added models. Auto-importing 100+
+            catalog models per provider was the 2026-04-25 incident — the registry got
+            flooded and disabled providers caused cluster outages because the router
+            still picked their models.
+          </>
+        }
+      />
+
       {/* Summary Metrics */}
       <div className="grid grid-cols-4 gap-4">
         <AdminMetricCard label="Providers" value={`${enabledCount}/${dbProviders.filter(p => !p.deleted_at).length}`} icon={<Server size={16} />} tooltip="Enabled / Total configured providers" />
@@ -288,7 +353,7 @@ export const LLMProviderManagement: React.FC<LLMProviderManagementProps> = ({ th
                   className="px-3 py-1.5 text-xs font-medium transition-colors"
                   style={{
                     backgroundColor: viewMode === mode ? 'var(--color-primary)' : 'var(--color-surface)',
-                    color: viewMode === mode ? '#FFFFFF' : 'var(--text-secondary)',
+                    color: viewMode === mode ? 'var(--ap-fg-0)' : 'var(--text-secondary)',
                     borderRight: '1px solid var(--color-border)',
                   }}>
                   {label}
@@ -322,7 +387,7 @@ export const LLMProviderManagement: React.FC<LLMProviderManagementProps> = ({ th
                 onEdit={() => { setEditingProvider(provider); setPanelOpen(true); }}
                 onDelete={() => deleteProvider(provider)}
                 onTest={() => testProvider(provider.name)}
-                onToggleEnabled={() => toggleProvider(provider)}
+                onCommit={(next) => toggleProvider(provider, next)}
                 onPauseResume={(dur) => pauseResumeProvider(provider, dur)}
                 onRotateCredentials={() => setRotatingProvider(provider)}
                 onCapabilityToggle={(cap, en) => updateCapability(provider.id, cap, en)}

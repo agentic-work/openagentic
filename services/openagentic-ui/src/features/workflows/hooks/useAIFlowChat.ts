@@ -9,6 +9,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAuth } from '@/app/providers/AuthContext';
 import { useMCP } from '@/app/providers/MCPContext';
 import type { WorkflowDefinition } from '../types/workflow.types';
+import { buildSystemPromptWithFragment } from './schemaPromptBuilder';
+import { useNodeSchemas } from './useNodeSchemas';
 
 const BASE_SYSTEM_PROMPT = `You are an expert AI workflow architect for OpenAgentic, a multi-agent orchestration platform.
 You help users CREATE, TROUBLESHOOT, RUN, and MANAGE their workspace workflows.
@@ -176,16 +178,21 @@ function buildSystemPrompt(
   canvasState?: CanvasContext | null,
   lastExecution?: ExecutionContext | null,
   rawDefinition?: { nodes: any[]; edges: any[] } | null,
+  aiPromptFragment?: string,
 ): string {
-  let prompt = BASE_SYSTEM_PROMPT;
-
-  if (mcpTools.length > 0) {
-    prompt += `\n\n## Available MCP Tools (${mcpTools.length} total)\nUse these tool names in mcp_tool nodes:\n${mcpTools.slice(0, 100).join(', ')}`;
-    if (mcpTools.length > 100) prompt += `\n...and ${mcpTools.length - 100} more`;
-  }
-
-  if (existingWorkflows.length > 0) {
-    prompt += `\n\n## User's Existing Workflows\n${existingWorkflows.join('\n')}`;
+  // Use schema-driven fragment if available, fall back to legacy BASE_SYSTEM_PROMPT
+  let prompt: string;
+  if (aiPromptFragment && aiPromptFragment.trim()) {
+    prompt = buildSystemPromptWithFragment(aiPromptFragment, mcpTools, existingWorkflows);
+  } else {
+    prompt = BASE_SYSTEM_PROMPT;
+    if (mcpTools.length > 0) {
+      prompt += `\n\n## Available MCP Tools (${mcpTools.length} total)\nUse these tool names in mcp_tool nodes:\n${mcpTools.slice(0, 100).join(', ')}`;
+      if (mcpTools.length > 100) prompt += `\n...and ${mcpTools.length - 100} more`;
+    }
+    if (existingWorkflows.length > 0) {
+      prompt += `\n\n## User's Existing Workflows\n${existingWorkflows.join('\n')}`;
+    }
   }
 
   if (canvasState && canvasState.nodes.length > 0) {
@@ -297,6 +304,8 @@ export function useAIFlowChat() {
   const [isGenerating, setIsGenerating] = useState(false);
   const { getAuthHeaders } = useAuth();
   const { mcps } = useMCP();
+  // Schema-driven AI prompt fragment — replaces the hand-maintained node list
+  const { aiPromptFragment } = useNodeSchemas();
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   // Keep conversation history in OpenAI format for multi-turn context
@@ -373,12 +382,14 @@ export function useAIFlowChat() {
       const headers = getAuthHeaders();
 
       // Build OpenAI-format messages with dynamic system prompt + conversation history
+      // Uses schema-driven aiPromptFragment when available, falls back to legacy list
       let systemPrompt = buildSystemPrompt(
         mcpToolNamesRef.current,
         existingWorkflowsRef.current,
         canvasContextRef.current,
         executionContextRef.current,
         rawDefinitionRef.current,
+        aiPromptFragment || undefined,
       );
       // Enrich with available models and provider health
       if (availableModelsRef.current.length > 0) {

@@ -1,0 +1,119 @@
+{
+  "type": "conversation_memory",
+  "category": "ai",
+  "label": "Conversation Memory",
+  "description": "Read / write / clear / summarize / semantic-search a tenant-scoped chat conversation history. Backs stateful agents and HITL flows that span multiple user turns.",
+  "icon": "history",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "operation": "string",
+          "messages": "array",
+          "matches": "array",
+          "count": "number",
+          "written": "boolean",
+          "total": "number",
+          "cleared": "boolean",
+          "summary": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "operation",
+      "label": "Operation",
+      "type": "enum",
+      "values": ["read", "write", "clear", "summarize", "search"],
+      "default": "read",
+      "required": true,
+      "description": "read = pull last N turns; write = append a new message; clear = remove all messages for this memoryId; summarize = build/refresh a rolling LLM summary; search = semantic top-K retrieval over prior turns (V1.1 vector backend)."
+    },
+    {
+      "name": "memoryId",
+      "label": "Memory ID",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "agent-session-{{trigger.body.sessionId}}",
+      "description": "Namespaced session/conversation key. Use a per-tenant + per-session value so two users don't share history."
+    },
+    {
+      "name": "role",
+      "label": "Role (write only)",
+      "type": "enum",
+      "values": ["user", "assistant", "system"],
+      "required": false,
+      "description": "Sender role for write operations. Ignored on read / clear / summarize."
+    },
+    {
+      "name": "content",
+      "label": "Content (write only)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "{{trigger.body.message}}",
+      "description": "Message body for write operations. Templates resolve through the engine's usual scope."
+    },
+    {
+      "name": "metadata",
+      "label": "Metadata (write only)",
+      "type": "object",
+      "required": false,
+      "description": "Optional structured metadata stored alongside the message (e.g. tool_call_id, attachments)."
+    },
+    {
+      "name": "limit",
+      "label": "Limit (read / search)",
+      "type": "number",
+      "required": false,
+      "default": 10,
+      "min": 1,
+      "max": 1000,
+      "description": "Max number of most-recent messages to return on read; max top-K matches on search (capped at 50)."
+    },
+    {
+      "name": "query",
+      "label": "Query (search only)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "{{trigger.body.message}}",
+      "description": "Semantic-search query text. Embedded via the platform's UniversalEmbeddingService and matched against prior message embeddings."
+    },
+    {
+      "name": "summarizerModel",
+      "label": "Summarizer model (summarize only)",
+      "type": "string",
+      "default": "auto",
+      "required": false,
+      "description": "Smart Router default 'auto'. Hard-coded model IDs are discouraged."
+    },
+    {
+      "name": "summaryPrompt",
+      "label": "Summary prompt (summarize only)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Optional override for the summarization system prompt. Empty = service default."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Stateful chat memory: read / write / clear / summarize per-session history.",
+    "whenToUse": "When an agent flow needs prior turns to answer the next message, or when a HITL flow wants to recap the conversation before an approver weighs in.",
+    "examplePrompt": "read the last 10 turns for session {{trigger.body.sessionId}}",
+    "promptHints": "Pair a `read` upstream of agent_single/llm_completion with a `write` downstream to persist the new turn. Output: {{steps.X.messages}} for read; {{steps.X.summary}} for summarize."
+  },
+  "outputAssertions": [
+    {
+      "name": "has_operation_envelope",
+      "expression": "result && typeof result.operation === 'string'",
+      "errorMessage": "conversation_memory output is missing the operation envelope."
+    }
+  ]
+}

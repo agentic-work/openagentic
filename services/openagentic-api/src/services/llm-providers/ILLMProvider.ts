@@ -5,7 +5,8 @@
  */
 
 import type { Logger } from 'pino';
-import { NormalizedStreamEvent } from '../NormalizedStreamTypes.js';
+import type { CanonicalStreamFormat } from '@agentic-work/llm-sdk/lib/normalizers/index.js';
+import type { ModelDiscoveryRecord } from './discovery/ModelDiscoveryRecord.js';
 
 /**
  * Provider configuration
@@ -48,8 +49,6 @@ export interface CompletionRequest {
   response_format?: any;
   /** Structured output JSON schema (Anthropic output_config) */
   outputSchema?: Record<string, unknown>;
-  /** Intelligence slider value 0-100 for effort/quality control */
-  sliderValue?: number;
   user?: string;
 }
 
@@ -131,12 +130,30 @@ export interface ProviderMetrics {
 }
 
 /**
- * Stream format types for different providers
- * - 'anthropic': Native Anthropic format with content_block_start/delta/stop events
- * - 'openai': OpenAI-compatible format with choices[0].delta
- * - 'gemini': Google Vertex AI format with candidates[] and thinking support
+ * Stream format discriminator for provider streaming responses.
+ *
+ * Type alias for `CanonicalStreamFormat` (`canonicalNormalizer.ts:40-48`),
+ * the 8-value SoT used by `selectCanonicalNormalizer(format, opts)`:
+ *   - 'anthropic'          — Direct Anthropic Messages API (native SSE)
+ *   - 'bedrock-anthropic'  — AWS Bedrock invocation of an Anthropic model
+ *   - 'vertex-anthropic'   — Vertex AI Anthropic Claude endpoints
+ *   - 'foundry-anthropic'  — Azure AI Foundry Anthropic deployments
+ *   - 'ollama'             — Ollama native chat NDJSON
+ *   - 'openai'             — OpenAI Chat Completions (Azure OpenAI + OpenAI direct)
+ *   - 'gemini'             — Vertex AI Gemini streaming
+ *   - 'aif-responses'      — Azure AI Foundry Responses API (`/v1/responses`)
+ *
+ * The legacy 3-value list (`'anthropic' | 'openai' | 'gemini'`) is now a
+ * strict subset of this — existing provider declarations like
+ * `readonly streamFormat = 'openai' as const` continue to type-check.
+ *
+ * D-0 (SDK wire-in) widens the type so providers with multi-mode dispatch
+ * (AIF / Bedrock / Vertex) can declare the full 8-value range. D-1 fixes
+ * per-provider correctness (e.g. Ollama → `'ollama'`, AIF → dynamic per
+ * request via `getStreamFormat(req)`).
  */
-export type StreamFormat = 'anthropic' | 'openai' | 'gemini';
+export type StreamFormat = CanonicalStreamFormat;
+export type { CanonicalStreamFormat } from '@agentic-work/llm-sdk/lib/normalizers/index.js';
 
 /**
  * Discovered model from provider catalog — used by Model Garden for discovery
@@ -166,41 +183,6 @@ export interface DiscoveredModel {
 }
 
 /**
- * Per-stream normalization state — tracks thinking blocks, text blocks, and tag parsing.
- * Passed through normalizeChunk() calls so each provider can accumulate state across chunks.
- */
-export interface NormalizerState {
-  thinkingId: string | null;
-  thinkingStartTime: number | null;
-  thinkingAccumulated: string;
-  currentBlockIndex: number;
-  inThinkTag: boolean;       // for Ollama <think> parsing
-  thinkTagBuffer: string;    // for Ollama partial tag buffering
-  streamStartEmitted: boolean;
-  textBlockId: string | null;
-  /** Maps content block index → { type, id } for Anthropic interleaved block tracking */
-  blockTypes: Map<number, { type: string; id: string }>;
-  /** Input token count captured from message_start for usage event */
-  inputTokens: number;
-  /** Model name captured from message_start for cost calculation */
-  model: string;
-  /** Tracks in-flight tool calls by toolId → toolName (OpenAI-style streaming) */
-  pendingTools: Map<string, string>;
-  /** Maps tool_calls index → toolId for reliable out-of-order parallel tool call resolution */
-  toolIndexToId: Map<number, string>;
-}
-
-export function createNormalizerState(): NormalizerState {
-  return {
-    thinkingId: null, thinkingStartTime: null, thinkingAccumulated: '',
-    currentBlockIndex: 0, inThinkTag: false, thinkTagBuffer: '',
-    streamStartEmitted: false, textBlockId: null,
-    blockTypes: new Map(), inputTokens: 0, model: '',
-    pendingTools: new Map(), toolIndexToId: new Map(),
-  };
-}
-
-/**
  * LLM Provider Interface
  */
 export interface ILLMProvider {
@@ -210,11 +192,45 @@ export interface ILLMProvider {
   /** Provider type */
   readonly type: ProviderConfig['provider'];
 
-  /** 
-   * Stream format this provider emits
-   * Used by the pipeline to know how to parse streaming responses
+  /**
+   * Stream format this provider emits (static default).
+   *
+   * Used by the pipeline at provider-bootstrap time (e.g.
+   * `ProviderManager.ts:1180-1181`) when no per-request context is
+   * available. Single-mode providers (Anthropic, OpenAI, AzureOpenAI,
+   * Ollama) declare this and nothing else.
+   *
+   * Multi-mode providers (AIF, Bedrock, Vertex) MUST also override
+   * `getStreamFormat(request)` so the SDK normalizer factory can
+   * dispatch to the correct format per-request.
    */
   readonly streamFormat: StreamFormat;
+
+  /**
+   * Per-request stream format dispatch (optional — only multi-mode providers).
+   *
+   * Returns the `CanonicalStreamFormat` value matching the wire format the
+   * provider will actually emit for THIS specific request, given the model
+   * and any provider-side configuration. The pipeline calls this once per
+   * request just before invoking `selectCanonicalNormalizer(format, opts)`.
+   *
+   * Single-mode providers MAY skip this; the pipeline falls back to
+   * `provider.streamFormat` when `getStreamFormat` is not implemented.
+   *
+   * Examples:
+   *   - AzureAIFoundryProvider:
+   *       'aif-responses' if shouldUseResponsesApi(model)
+   *       'foundry-anthropic' if Claude or anthropic-format endpoint
+   *       'openai' otherwise
+   *   - GoogleVertexProvider:
+   *       'vertex-anthropic' if model is Claude
+   *       'gemini' otherwise
+   *   - AWSBedrockProvider:
+   *       'bedrock-anthropic' if Claude
+   *       'anthropic' fallback for non-Claude (Nova/ConverseStream
+   *       wire-in is out of D-1 scope)
+   */
+  getStreamFormat?(request: CompletionRequest): StreamFormat;
 
   /** Initialize the provider */
   initialize(config: ProviderConfig['config']): Promise<void>;
@@ -259,11 +275,21 @@ export interface ILLMProvider {
    */
   discoverModels?(): Promise<DiscoveredModel[]>;
 
-  /** Normalize a raw provider chunk into NormalizedStreamEvents */
-  normalizeChunk?(rawChunk: any, state: NormalizerState): NormalizedStreamEvent[];
-
-  /** Create a normalized stream that yields NormalizedStreamEvents */
-  createNormalizedStream?(request: CompletionRequest): AsyncGenerator<NormalizedStreamEvent>;
+  /**
+   * #650 Sev-0 — pull all model details (capabilities, limits, defaults,
+   * pricing) live from the provider's SDK. Authoritative source for the
+   * Registry write at Add-Model time and for the daily refresh cron.
+   *
+   * Implementations MUST NOT consult any cached / static / inferred data
+   * for fields the SDK exposes directly. Where the SDK is silent (e.g.
+   * Bedrock context windows), implementations may consult an
+   * admin-editable lookup table — never a hardcoded model-id literal.
+   *
+   * Returns null only if the provider type does not support discovery
+   * (legacy Anthropic-direct, OpenAI-direct, etc.). Never returns null
+   * for transient SDK errors — those throw so the POST handler can 502.
+   */
+  discoverModelDetails?(modelId: string, region?: string): Promise<ModelDiscoveryRecord | null>;
 
   /** Generate an image from a text prompt (optional — only image-capable providers) */
   generateImage?(request: ImageGenerationRequest): Promise<ImageGenerationResponse>;
@@ -326,9 +352,6 @@ export abstract class BaseLLMProvider implements ILLMProvider {
   abstract listModels(): Promise<Array<{ id: string; name: string; provider: string }>>;
   abstract getHealth(): Promise<ProviderHealth>;
 
-  // Optional — subclasses implement to enable createNormalizedStream
-  normalizeChunk?(rawChunk: any, state: NormalizerState): NormalizedStreamEvent[];
-
   isInitialized(): boolean {
     return this.initialized;
   }
@@ -371,27 +394,6 @@ export abstract class BaseLLMProvider implements ILLMProvider {
   protected trackFailure(): void {
     this.metrics.totalRequests++;
     this.metrics.failedRequests++;
-  }
-
-  /**
-   * Default createNormalizedStream — wraps createCompletion and normalizes via normalizeChunk.
-   * Subclasses only need to implement normalizeChunk().
-   */
-  async *createNormalizedStream(request: CompletionRequest): AsyncGenerator<NormalizedStreamEvent> {
-    const state = createNormalizerState();
-    const streamRequest = { ...request, stream: true };
-    const result = await this.createCompletion(streamRequest);
-
-    if (result && typeof result === 'object' && Symbol.asyncIterator in result) {
-      for await (const chunk of result as AsyncIterable<any>) {
-        if (this.normalizeChunk) {
-          const events = this.normalizeChunk(chunk, state);
-          for (const event of events) {
-            yield event;
-          }
-        }
-      }
-    }
   }
 
   /**

@@ -1,0 +1,151 @@
+{
+  "slug": "k8s-crashloop-triage",
+  "name": "K8s CrashLoop Triage",
+  "description": "Triage pods stuck in CrashLoopBackOff / ImagePullBackOff / restart-count > threshold via the live openagentic_kubernetes MCP. Filters the top 5 most-troubled pods (sorted by restart count), fetches the top-offender pod's last logs via k8s_get_pod_logs, asks the platform LLM to diagnose likely root causes as one bullet per unhealthy pod, strips any chain-of-thought preamble, and renders an HTML triage runbook via webhook_response. Cluster-healthy edge case is handled — when no pods match the predicate, the report explicitly says so instead of rendering empty cards.",
+  "category": "aiops",
+  "template": true,
+  "meta": {
+    "purpose": "Triage pods stuck in CrashLoopBackOff / ImagePullBackOff / restart-count > threshold; fetch the worst offender's recent logs and produce a runbook with LLM-diagnosed root causes.",
+    "how_it_works": [
+      "1. openagentic_kubernetes.k8s_list_pods enumerates pods in the namespace.",
+      "2. A filter transform keeps only pods with phase == CrashLoopBackOff/ImagePullBackOff OR restarts >= restart_threshold, sorted desc by restart count, top 5.",
+      "3. openagentic_kubernetes.k8s_get_pod_logs pulls the last log lines from the #1 offender.",
+      "4. The platform LLM diagnoses likely root causes — one bullet per unhealthy pod, referencing log evidence.",
+      "5. A CoT-stripper transform removes any LLM preamble.",
+      "6. webhook_response renders an HTML triage runbook. Cluster-healthy short-circuit: when zero pods match, the report explicitly says so."
+    ],
+    "expected_output": "HTML triage runbook listing the top 5 offending pods with restart counts, log excerpt from the worst offender, and LLM-diagnosed root cause bullets.",
+    "useful_when": "Oncall pages about pod crashes, post-deploy validation when restart counts spike, or after a node reboot to triage stragglers.",
+    "tools_used": ["openagentic_kubernetes.k8s_list_pods", "openagentic_kubernetes.k8s_get_pod_logs", "llm_completion", "transform", "webhook_response"],
+    "version": "1.0",
+    "tags": ["aiops", "observability", "kubernetes", "k8s", "triage", "incident"]
+  },
+  "defaultInputs": {
+    "namespace": "agentic-dev",
+    "restart_threshold": 3
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "data": {
+          "triggerType": "manual",
+          "label": "CrashLoop Triage",
+          "input_schema": {
+            "namespace": "string",
+            "restart_threshold": "number"
+          }
+        }
+      },
+      {
+        "id": "all_pods",
+        "type": "mcp_tool",
+        "data": {
+          "label": "List Pods",
+          "toolServer": "openagentic_kubernetes",
+          "toolName": "k8s_list_pods",
+          "arguments": {
+            "namespace": "{{input.namespace || \"agentic-dev\"}}"
+          }
+        }
+      },
+      {
+        "id": "unhealthy_pods",
+        "type": "transform",
+        "data": {
+          "label": "Filter CrashLoop / Restart Pods",
+          "operations": [
+            {
+              "op": "set",
+              "target": "unhealthy",
+              "value": "{{ (() => { let pods = []; if (Array.isArray(input.pods)) { pods = input.pods; } else if (typeof input.content === 'string') { try { const parsed = JSON.parse(input.content); if (Array.isArray(parsed.pods)) pods = parsed.pods; } catch (e) {} } const threshold = 3; const filtered = pods.filter(p => { if (!p) return false; const s = String(p.status || ''); if (s === 'CrashLoopBackOff' || s === 'ImagePullBackOff' || s === 'Error' || s === 'OOMKilled') return true; if ((p.restarts || 0) > threshold) return true; return false; }); filtered.sort((a, b) => (b.restarts || 0) - (a.restarts || 0)); return filtered.slice(0, 5); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "namespace_label",
+              "value": "{{ (() => { if (typeof input.namespace === 'string' && input.namespace) return input.namespace; if (typeof input.content === 'string') { try { return JSON.parse(input.content).namespace || 'unknown'; } catch (e) {} } return 'unknown'; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "pod_count",
+              "value": "{{ (() => { if (Array.isArray(input.pods)) return input.pods.length; if (typeof input.content === 'string') { try { const p = JSON.parse(input.content).pods; return Array.isArray(p) ? p.length : 0; } catch (e) { return 0; } } return 0; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "unhealthy_count",
+              "value": "{{ (() => { return Array.isArray(input.unhealthy) ? input.unhealthy.length : 0; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "top_pod_name",
+              "value": "{{ (() => { const u = Array.isArray(input.unhealthy) ? input.unhealthy : []; if (u.length > 0) return String(u[0].name || ''); let pods = []; if (Array.isArray(input.pods)) pods = input.pods; else if (typeof input.content === 'string') { try { const parsed = JSON.parse(input.content); if (Array.isArray(parsed.pods)) pods = parsed.pods; } catch (e) {} } return pods.length > 0 ? String(pods[0].name || '') : ''; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "top_pod_namespace",
+              "value": "{{ (() => { const u = Array.isArray(input.unhealthy) ? input.unhealthy : []; if (u.length > 0 && u[0].namespace) return String(u[0].namespace); let pods = []; if (Array.isArray(input.pods)) pods = input.pods; else if (typeof input.content === 'string') { try { const parsed = JSON.parse(input.content); if (Array.isArray(parsed.pods)) pods = parsed.pods; } catch (e) {} } if (pods.length > 0 && pods[0].namespace) return String(pods[0].namespace); if (typeof input.namespace === 'string' && input.namespace) return input.namespace; return 'agentic-dev'; })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "fetch_logs",
+        "type": "mcp_tool",
+        "data": {
+          "label": "Fetch Top Pod Logs",
+          "toolServer": "openagentic_kubernetes",
+          "toolName": "k8s_get_pod_logs",
+          "arguments": {
+            "namespace": "{{steps.unhealthy_pods.top_pod_namespace || \"agentic-dev\"}}",
+            "pod_name": "{{steps.unhealthy_pods.top_pod_name}}",
+            "tail_lines": 100
+          }
+        }
+      },
+      {
+        "id": "diagnose",
+        "type": "llm_completion",
+        "data": {
+          "label": "Diagnose Root Causes",
+          "prompt": "You are an SRE triaging pods that are stuck in a bad state in Kubernetes namespace {{steps.unhealthy_pods.namespace_label}}.\n\nUnhealthy pods (JSON array of pod records, sorted by restart count desc):\n{{steps.unhealthy_pods.unhealthy}}\n\nTotal pods in namespace: {{steps.unhealthy_pods.pod_count}}.\nUnhealthy pod count: {{steps.unhealthy_pods.unhealthy_count}}.\n\nLast 100 log lines from the most-troubled pod ({{steps.unhealthy_pods.top_pod_name}}):\n{{steps.fetch_logs.logs}}\n\nOutput rules (MUST follow):\n1. Start the response with a single `-` character — no preamble, no \"Here is\", no \"Let me think\", no thinking out loud.\n2. Emit exactly one `-` bullet per unhealthy pod (one bullet for each entry in the unhealthy array). If the array is empty, emit a single bullet stating that no crashloop pods were found and recommending a routine future check.\n3. For each pod, include its name verbatim, its status, its restart count, and a concrete root-cause hypothesis with a short remediation hint.\n4. Reference concrete signal words from the log text (error class names, missing relation names, exception types) when applicable so the operator can grep.",
+          "model": "auto",
+          "temperature": 0.2,
+          "maxTokens": 600
+        }
+      },
+      {
+        "id": "clean_diagnoses",
+        "type": "transform",
+        "data": {
+          "label": "Strip CoT Preamble",
+          "operations": [
+            {
+              "op": "set",
+              "target": "clean_content",
+              "value": "{{ (() => { const raw = String(input.content || ''); const inlineMatch = raw.match(/([\\.\\!\\?\\:]|\\n)\\s*(-\\s+\\S)/); const lines = raw.split(/\\r?\\n/); let firstBulletIdx = -1; for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (t.startsWith('-') || t.startsWith('•') || t.startsWith('*')) { firstBulletIdx = i; break; } } if (firstBulletIdx !== -1) { const fromLineIdx = lines.slice(firstBulletIdx).join('\\n').trim(); if (inlineMatch && inlineMatch.index !== undefined) { const fromInline = raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); if (fromInline.length < fromLineIdx.length || lines[firstBulletIdx].trim().length > 8 === false) { return fromInline; } } return fromLineIdx; } if (inlineMatch && inlineMatch.index !== undefined) { return raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); } return raw.trim(); })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "report",
+        "type": "webhook_response",
+        "data": {
+          "label": "HTML Triage Runbook",
+          "statusCode": 200,
+          "headers": { "Content-Type": "text/html" },
+          "bodyTemplate": "<div class=\"k8s-crashloop-triage-report\"><h2>K8s CrashLoop Triage — namespace {{steps.unhealthy_pods.namespace_label}}</h2><p><strong>Total pods scanned:</strong> {{steps.unhealthy_pods.pod_count}} &middot; <strong>Unhealthy:</strong> {{steps.unhealthy_pods.unhealthy_count}} &middot; <strong>Restart threshold:</strong> {{trigger.restart_threshold || \"3\"}} &middot; <strong>Top offender:</strong> {{steps.unhealthy_pods.top_pod_name}}</p><h3>Operator Diagnoses</h3><pre class=\"diagnoses\">{{steps.clean_diagnoses.clean_content}}</pre><h3>Unhealthy Pods (sorted by restart count)</h3><pre class=\"unhealthy-list\">{{steps.unhealthy_pods.unhealthy}}</pre><h3>Last 100 log lines — {{steps.unhealthy_pods.top_pod_name}}</h3><pre class=\"logs\">{{steps.fetch_logs.content}}</pre></div>"
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "trigger", "target": "all_pods" },
+      { "id": "e2", "source": "all_pods", "target": "unhealthy_pods" },
+      { "id": "e3", "source": "unhealthy_pods", "target": "fetch_logs" },
+      { "id": "e4", "source": "fetch_logs", "target": "diagnose" },
+      { "id": "e5", "source": "diagnose", "target": "clean_diagnoses" },
+      { "id": "e6", "source": "clean_diagnoses", "target": "report" }
+    ]
+  }
+}

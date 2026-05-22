@@ -1,0 +1,87 @@
+{
+  "type": "llm_completion",
+  "category": "ai",
+  "label": "LLM Completion",
+  "description": "Send a prompt to a chat-completion model via the platform's OpenAI-compatible endpoint. Supports system + user messages, automatic context injection, and Smart Router model selection.",
+  "icon": "sparkles",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "content": "string",
+          "model": "string",
+          "usage": "object"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "prompt",
+      "label": "Prompt",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "Summarize this in two sentences:\n{{trigger.body.text}}",
+      "description": "Templated user-message prompt. Optional when an upstream prompt_template node feeds a `messages` array via the input edge — the executor uses that array verbatim. Required otherwise; the executor surfaces a clear node_error when both are absent."
+    },
+    {
+      "name": "systemPrompt",
+      "label": "System prompt",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true
+    },
+    {
+      "name": "model",
+      "label": "Model",
+      "type": "string",
+      "required": false,
+      "default": "auto",
+      "description": "Leave as 'auto' to use Smart Router. Hard-coded model IDs are discouraged."
+    },
+    {
+      "name": "temperature",
+      "label": "Temperature",
+      "type": "number",
+      "required": false,
+      "default": 0.7,
+      "min": 0,
+      "max": 2
+    },
+    {
+      "name": "responseFormat",
+      "label": "Response format",
+      "type": "enum",
+      "required": false,
+      "values": ["text", "json_object"],
+      "description": "Set to `json_object` to force the model to emit a valid JSON object only (no surrounding prose). Translates to `response_format:{type:'json_object'}` on the wire; the Ollama provider further translates to grammar-constrained `format:'json'` so weaker models (e.g. gpt-oss:20b) that ignore prose-level instructions still emit parseable output. Required upstream of a `structured_output` node when the chosen model is not strong on instruction-following."
+    },
+    {
+      "name": "maxTokens",
+      "label": "Max tokens",
+      "type": "number",
+      "required": false,
+      "default": 2000,
+      "min": 1,
+      "max": 200000
+    }
+  ],
+  "ai": {
+    "shortDescription": "LLM chat-completion call (templated prompt).",
+    "whenToUse": "When you need to summarize, classify, generate, or transform text using an LLM.",
+    "examplePrompt": "summarize the customer-feedback payload from the trigger and extract the top 3 themes",
+    "promptHints": "Reference the response with {{steps.<id>.content}}. Leave model as 'auto' so the platform's Smart Router picks the right model."
+  },
+  "outputAssertions": [
+    {
+      "name": "non_empty_content",
+      "expression": "result && typeof result.content === 'string' && result.content.trim().length > 0",
+      "errorMessage": "LLM returned an empty completion — usually a provider/model issue or a content-filter rejection."
+    }
+  ]
+}

@@ -6,6 +6,10 @@ import { MCPBridge } from '../tools/MCPBridge';
 import { SSERelay } from './SSERelay';
 import { PersistenceService } from './PersistenceService';
 import { RedisExecutionStore } from './RedisExecutionStore';
+import {
+  AgentProgressContext,
+  createHttpPublisher,
+} from './AgentProgressContext';
 import { logger } from '../utils/logger';
 import {
   activeExecutions,
@@ -63,6 +67,15 @@ export interface ExecuteRequest {
   // sub-agent's system prompt BEFORE the role template, so behavioral
   // rules survive the bypass.
   parentBehaviorRules?: string;
+  // Phase C (2026-04-23) — conversation-level turnId used as the
+  // subscription key on the openagentic-api side AgentEventStore.
+  // When present, AgentOrchestrator constructs an AgentProgressContext
+  // whose `publish` callback HTTP-POSTs progress envelopes back to
+  // /api/chat/agent-event so the parent chat stream can re-emit them
+  // as `agent_progress` NDJSON frames. When absent (legacy callers
+  // that don't route through the chat pipeline), we skip the callback
+  // entirely — the execution still runs and SSERelay still works.
+  turnId?: string;
 }
 
 export interface ExecutionState {
@@ -290,13 +303,23 @@ export class AgentOrchestrator {
         timeout: 5000,
       });
 
-      if (res.status === 200 && res.data?.systemPrompt) {
+      // 2026-05-13 fix: do NOT gate on systemPrompt truthiness. Many DB
+      // agent rows have empty `system_prompt` (the seeder uses
+      // DEFAULT_PROMPTS[role] at runtime as the prompt fallback). The
+      // previous `&& res.data?.systemPrompt` gate caused those rows to
+      // return null here, which silently dropped the per-agent
+      // `model_config.primaryModel` override and fell through to
+      // DEFAULT_MODELS[role] = 'auto'. Affected ~11 of 19 default agent
+      // rows. The empty-prompt case still falls back to
+      // DEFAULT_PROMPTS[role] downstream via `dbConfig?.systemPrompt ||
+      // DEFAULT_PROMPTS[a.role]` in runExecution.
+      if (res.status === 200 && res.data) {
         const config: ResolvedAgentConfig = {
           id: res.data.id,
           name: res.data.name,
           display_name: res.data.display_name,
           agent_type: res.data.agent_type,
-          systemPrompt: res.data.systemPrompt,
+          systemPrompt: res.data.systemPrompt || '',
           model: res.data.model || 'auto',
           maxTurns: res.data.maxTurns || 5,
           maxTokens: res.data.maxTokens || 8192,
@@ -448,7 +471,37 @@ export class AgentOrchestrator {
     const costTracker = new CostTracker(request.totalBudgetCents);
     const runner = new AgentRunner(this.mcpBridge, costTracker, this.apiUrl);
 
-    const emitFn = (event: string, data: any) => relay.emit(event, data);
+    // Phase C: when the chat pipeline passes `turnId`, fan every emit()
+    // out to both the SSE relay (existing path: Redis pub/sub channel
+    // `agent:exec:<executionId>`) AND the chat-side AgentEventStore via
+    // HTTP callback to /api/chat/agent-event. The HTTP callback is
+    // keyed on `turnId` (conversation-level), the SSE relay on
+    // `executionId` (per-execution). Dual-write lets both subscribers
+    // see the full event stream without having to correlate IDs.
+    const progressContext: AgentProgressContext | undefined = request.turnId
+      ? new AgentProgressContext({
+          publish: createHttpPublisher({
+            onError: (err) => logger.warn({ err, turnId: request.turnId }, 'agent progress HTTP callback failed'),
+          }),
+          turnId: request.turnId,
+          runId: executionId,
+          parentRunId: null,
+        })
+      : undefined;
+
+    const emitFn = (event: string, data: any) => {
+      // SSE relay — existing contract, don't change.
+      relay.emit(event, data);
+      // Phase C: mirror to chat-side via HTTP. Fire-and-forget;
+      // AgentProgressContext.emit swallows publish errors so a failed
+      // callback never blocks the agent loop.
+      if (progressContext) {
+        progressContext.emit({
+          event,
+          payload: typeof data === 'object' && data !== null ? data : { data },
+        });
+      }
+    };
 
     // Discover available tools from MCP proxy (Bug 7 fix: tools must be populated for LLM to generate tool calls)
     let availableTools: any[] = [];

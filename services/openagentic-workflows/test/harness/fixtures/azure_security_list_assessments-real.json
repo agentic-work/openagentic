@@ -1,0 +1,58 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_azure.azure_security_list_assessments. Mirrors oap-azure-mcp src/server.py azure_security_list_assessments (lines ~4985-5016) which iterates client.assessments.list(scope=/subscriptions/<id>) from the Azure SDK SecurityCenter client. Each entry carries name, id, display_name, status (Healthy/Unhealthy/NotApplicable), severity (High/Medium/Low), description, categories. The 5 representative findings below cover the canonical Defender for Cloud concern areas: public storage, missing MFA, unencrypted SQL, NSG SSH exposure, public web-app endpoint.",
+  "result": {
+    "result": {
+      "success": true,
+      "subscription_id": "11111111-2222-3333-4444-555555555555",
+      "count": 5,
+      "assessments": [
+        {
+          "name": "f0c1b1aa-1111-aaaa-bbbb-ccccdddd1111",
+          "id": "/subscriptions/11111111-2222-3333-4444-555555555555/providers/Microsoft.Security/assessments/f0c1b1aa-1111-aaaa-bbbb-ccccdddd1111",
+          "display_name": "Storage accounts should restrict network access",
+          "status": "Unhealthy",
+          "severity": "High",
+          "description": "Storage accounts that allow public network access can be reached from any client on the internet. Restrict access via private endpoints or service endpoints to reduce exposure to data-exfiltration attacks.",
+          "categories": ["Data"]
+        },
+        {
+          "name": "f0c1b1aa-2222-aaaa-bbbb-ccccdddd2222",
+          "id": "/subscriptions/11111111-2222-3333-4444-555555555555/providers/Microsoft.Security/assessments/f0c1b1aa-2222-aaaa-bbbb-ccccdddd2222",
+          "display_name": "MFA should be enabled for accounts with owner permissions on your subscription",
+          "status": "Unhealthy",
+          "severity": "High",
+          "description": "Multi-factor authentication is not enabled on at least one owner account. Owners can escalate privileges and modify policy; MFA significantly reduces the blast radius of a compromised credential.",
+          "categories": ["IdentityAndAccess"]
+        },
+        {
+          "name": "f0c1b1aa-3333-aaaa-bbbb-ccccdddd3333",
+          "id": "/subscriptions/11111111-2222-3333-4444-555555555555/providers/Microsoft.Security/assessments/f0c1b1aa-3333-aaaa-bbbb-ccccdddd3333",
+          "display_name": "Transparent Data Encryption on SQL databases should be enabled",
+          "status": "Unhealthy",
+          "severity": "Medium",
+          "description": "One or more SQL databases in this subscription do not have Transparent Data Encryption (TDE) enabled. Enable TDE to encrypt data at rest in the database files and backups.",
+          "categories": ["Data"]
+        },
+        {
+          "name": "f0c1b1aa-4444-aaaa-bbbb-ccccdddd4444",
+          "id": "/subscriptions/11111111-2222-3333-4444-555555555555/providers/Microsoft.Security/assessments/f0c1b1aa-4444-aaaa-bbbb-ccccdddd4444",
+          "display_name": "Management ports of virtual machines should be protected with just-in-time network access control",
+          "status": "Unhealthy",
+          "severity": "Medium",
+          "description": "Several VMs expose SSH/RDP management ports broadly. Enable just-in-time VM access to require time-limited approval for inbound management traffic instead of allowing 0.0.0.0/0.",
+          "categories": ["Compute"]
+        },
+        {
+          "name": "f0c1b1aa-5555-aaaa-bbbb-ccccdddd5555",
+          "id": "/subscriptions/11111111-2222-3333-4444-555555555555/providers/Microsoft.Security/assessments/f0c1b1aa-5555-aaaa-bbbb-ccccdddd5555",
+          "display_name": "Web Application should only be accessible over HTTPS",
+          "status": "Unhealthy",
+          "severity": "Low",
+          "description": "A web app allows plain HTTP traffic. Enable 'HTTPS Only' to redirect all HTTP requests to HTTPS and prevent cleartext credentials being captured by a man-in-the-middle.",
+          "categories": ["Networking"]
+        }
+      ],
+      "executed_as": { "user": "mcp-tester@example.com" }
+    }
+  }
+}

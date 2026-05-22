@@ -20,6 +20,7 @@ import { getRedisClient } from '../utils/redis-client.js';
 import type { ProviderManager } from './llm-providers/ProviderManager.js';
 import { extractToolTags } from '../utils/toolTagExtractor.js';
 import { randomUUID, createHash } from 'crypto';
+import { mintInterServiceSystemToken } from './llm-providers/util/mintInterServiceSystemToken.js';
 
 // Collection name for tool cache
 const TOOLS_COLLECTION_NAME = 'mcp_tools_cache';
@@ -30,8 +31,92 @@ const MCP_INDEX_LOCK_KEY = 'mcp_tools_indexing';
 const MCP_INDEX_LOCK_TTL_SECONDS = 300; // 5 minutes - should be enough for indexing
 const MCP_INDEX_COOLDOWN_KEY = 'mcp_tools_last_indexed';
 
-// Vector dimensions - populated dynamically
-let EMBEDDING_DIMENSIONS = 768; // Default, will be updated during initialization
+// Vector dimensions — populated dynamically from embeddingService.getInfo().dimensions
+// during initialize() (see ~L142). Sentinel 0 = "not yet initialized" — any pre-init
+// read fails the Milvus dim check rather than silently mapping to a model-pinned default.
+// H11: previous default of 768 leaked nomic-embed-text's dimension into a code path
+// that should be model-agnostic (docs/rules/no-hardcoded-models.md).
+let EMBEDDING_DIMENSIONS = 0;
+
+/**
+ * Cloud provider detection rules — exported so executeToolSearch /
+ * /api/internal/tool-search can union cloud-detection across the model's
+ * search query AND the most recent user-turn text. Q1-fix-2 (2026-05-12):
+ * when the model emits a single-cloud query like "Azure cost query tool"
+ * after a tri-cloud user prompt, the service was only detecting one cloud
+ * and skipping the multi-cloud diversity path — top results biased toward
+ * the literal cloud in the model's narrowed query. Threading the user
+ * prompt as an additional cloud-detection corpus fixes that.
+ *
+ * The detection rules MUST stay in lock-step with the private
+ * `detectCloudProviders` method below (which now delegates to this
+ * helper). Adding a new keyword/cloud here automatically updates the
+ * service's runtime behavior.
+ */
+const CLOUD_DETECTION_RULES: Array<{
+  cloud: string;
+  keywords: string[];
+  serverPatterns: string[];
+  boost: number;
+}> = [
+  {
+    cloud: 'aws',
+    keywords: [
+      'aws', 'amazon', 'ec2', 'iam', 's3', 'lambda', 'dynamodb', 'rds',
+      'cloudwatch', 'cloudformation', 'sqs', 'sns', 'eks', 'ecs', 'fargate',
+      'bedrock', 'sagemaker', 'route53', 'vpc', 'elastic', 'kinesis',
+      'redshift', 'aurora', 'secretsmanager',
+    ],
+    serverPatterns: ['aws', 'amazon'],
+    boost: 2.0,
+  },
+  {
+    cloud: 'azure',
+    keywords: [
+      'azure', 'microsoft', 'subscription', 'resource group', 'aks', 'acr',
+      'cosmos', 'keyvault', 'app service', 'function app', 'blob',
+      'storage account', 'sql server', 'entra', 'active directory', 'aad',
+      'rbac', 'arm', 'bicep',
+    ],
+    serverPatterns: ['azure', 'microsoft'],
+    boost: 2.0,
+  },
+  {
+    cloud: 'gcp',
+    keywords: [
+      'gcp', 'google cloud', 'gke', 'bigquery', 'cloud run', 'cloud function',
+      'firestore', 'pubsub', 'vertex', 'spanner', 'dataflow', 'gcs',
+    ],
+    serverPatterns: ['google', 'gcp', 'vertex'],
+    boost: 2.0,
+  },
+  {
+    cloud: 'kubernetes',
+    keywords: [
+      'kubernetes', 'k8s', 'kubectl', 'helm', 'pod', 'deployment', 'service',
+      'ingress', 'docker', 'container', 'orchestration',
+    ],
+    serverPatterns: ['kubernetes', 'k8s', 'aks', 'eks', 'gke'],
+    boost: 1.5,
+  },
+];
+
+export function detectCloudProvidersInText(
+  text: string | undefined | null,
+): Map<string, { serverPatterns: string[]; boost: number }> {
+  const detected = new Map<string, { serverPatterns: string[]; boost: number }>();
+  if (!text || typeof text !== 'string') return detected;
+  const lower = text.toLowerCase();
+  for (const rule of CLOUD_DETECTION_RULES) {
+    if (rule.keywords.some((kw) => lower.includes(kw))) {
+      detected.set(rule.cloud, {
+        serverPatterns: rule.serverPatterns,
+        boost: rule.boost,
+      });
+    }
+  }
+  return detected;
+}
 
 /**
  * MCP Tool interface matching the MCP protocol
@@ -520,10 +605,17 @@ export class ToolSemanticCacheService {
         endpoint: `${MCP_PROXY_URL}/tools`,
       }, '[AUTO-INDEX] About to fetch tools from MCP Proxy');
 
+      // mcp-proxy requires Authorization on every call (Substrate fix S1 — no
+      // more no-creds=admin backdoor). #1029 deduped the inline minting into
+      // mintInterServiceSystemToken. Proxy verifier:
+      // services/openagentic-mcp-proxy/src/main.py:913
+      // Spec: docs/superpowers/specs/2026-05-09-v3-enterprise-chatmode-design.md §3 S1
+      const systemToken = mintInterServiceSystemToken(process.env.INTERNAL_SERVICE_SECRET);
       const response = await fetch(`${MCP_PROXY_URL}/tools`, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${systemToken}`,
         },
         signal: AbortSignal.timeout(60000) // Increased to 60s for slow startup
       });
@@ -1179,53 +1271,13 @@ export class ToolSemanticCacheService {
    * Returns a map of cloud provider to their server names for boosting
    */
   private detectCloudProviders(query: string): Map<string, { serverPatterns: string[], boost: number }> {
-    const lowerQuery = query.toLowerCase();
-    const detectedClouds = new Map<string, { serverPatterns: string[], boost: number }>();
-
-    // AWS detection - keywords that indicate AWS intent
-    const awsKeywords = ['aws', 'amazon', 'ec2', 'iam', 's3', 'lambda', 'dynamodb', 'rds', 'cloudwatch',
-                         'cloudformation', 'sqs', 'sns', 'eks', 'ecs', 'fargate', 'bedrock', 'sagemaker',
-                         'route53', 'vpc', 'elastic', 'kinesis', 'redshift', 'aurora', 'secretsmanager'];
-    if (awsKeywords.some(kw => lowerQuery.includes(kw))) {
-      detectedClouds.set('aws', {
-        serverPatterns: ['aws', 'amazon'],
-        boost: 2.0  // Double the score for AWS tools when AWS is mentioned
-      });
-    }
-
-    // Azure detection
-    const azureKeywords = ['azure', 'microsoft', 'subscription', 'resource group', 'aks', 'acr', 'cosmos',
-                           'keyvault', 'app service', 'function app', 'blob', 'storage account', 'sql server',
-                           'entra', 'active directory', 'aad', 'rbac', 'arm', 'bicep'];
-    if (azureKeywords.some(kw => lowerQuery.includes(kw))) {
-      detectedClouds.set('azure', {
-        serverPatterns: ['azure', 'microsoft'],
-        boost: 2.0
-      });
-    }
-
-    // GCP detection
-    const gcpKeywords = ['gcp', 'google cloud', 'gke', 'bigquery', 'cloud run', 'cloud function',
-                         'firestore', 'pubsub', 'vertex', 'spanner', 'dataflow', 'gcs'];
-    if (gcpKeywords.some(kw => lowerQuery.includes(kw))) {
-      detectedClouds.set('gcp', {
-        serverPatterns: ['google', 'gcp', 'vertex'],
-        boost: 2.0
-      });
-    }
-
-    // Kubernetes/container detection (cloud-agnostic)
-    const k8sKeywords = ['kubernetes', 'k8s', 'kubectl', 'helm', 'pod', 'deployment', 'service', 'ingress',
-                         'docker', 'container', 'orchestration'];
-    if (k8sKeywords.some(kw => lowerQuery.includes(kw))) {
-      detectedClouds.set('kubernetes', {
-        serverPatterns: ['kubernetes', 'k8s', 'aks', 'eks', 'gke'],
-        boost: 1.5
-      });
-    }
+    // Delegates to the pure exported helper so test coverage + callers
+    // (e.g. /api/internal/tool-search route, executeToolSearch) share the
+    // same keyword/rule table. Q1-fix-2 (2026-05-12).
+    const detectedClouds = detectCloudProvidersInText(query);
 
     this.logger.info({
-      query: query.substring(0, 100),
+      query: (query || '').substring(0, 100),
       detectedClouds: Array.from(detectedClouds.keys()),
       cloudCount: detectedClouds.size
     }, '[CLOUD-DETECT] Detected cloud providers in query');
@@ -1394,7 +1446,8 @@ export class ToolSemanticCacheService {
   async searchTools(
     query: string,
     topK: number = 50,
-    serverFilter?: string
+    serverFilter?: string,
+    userPromptHint?: string,
   ): Promise<Tool[]> {
     if (!this._isInitialized) {
       throw new Error('ToolSemanticCacheService not initialized');
@@ -1404,7 +1457,18 @@ export class ToolSemanticCacheService {
       const startTime = Date.now();
 
       // STEP 1: Detect cloud providers mentioned in query
-      const detectedClouds = this.detectCloudProviders(query);
+      //
+      // Q1-fix-2 (2026-05-12): union the model's narrowed search query
+      // with the recent user-turn text. The model often emits a
+      // single-cloud query like "Azure cost query tool" after a tri-cloud
+      // user prompt; without the hint the diversity path never fires.
+      // Live capture: user "cost spikes across Azure/AWS/GCP" → model
+      // tool_search "Azure cost query tool" → detected: {azure} → top 6
+      // = 4× azure_*. With hint: detected: {azure, aws, gcp} → diversity
+      // path forces ≥3 per cloud.
+      const detectedClouds = this.detectCloudProviders(
+        userPromptHint ? `${query}\n${userPromptHint}` : query
+      );
       const isMultiCloud = detectedClouds.size > 1;
 
       // Adjust topK based on multi-cloud detection
@@ -1571,9 +1635,10 @@ export class ToolSemanticCacheService {
   async searchToolsAsOpenAIFunctions(
     query: string,
     topK: number = 30,
-    serverFilter?: string
+    serverFilter?: string,
+    userPromptHint?: string,
   ): Promise<OpenAIFunction[]> {
-    const tools = await this.searchTools(query, topK, serverFilter);
+    const tools = await this.searchTools(query, topK, serverFilter, userPromptHint);
     return this.convertToOpenAIFormat(tools);
   }
 
@@ -1828,3 +1893,17 @@ export class ToolSemanticCacheService {
 // Note: Singleton should be created in server.ts with ProviderManager
 // Export class for creating instance with dependencies
 export default ToolSemanticCacheService;
+
+// ---------------------------------------------------------------------------
+// Singleton accessor (Phase 4 — replaces (global as any).toolSemanticCache)
+// ---------------------------------------------------------------------------
+
+let _toolSemanticCacheInstance: ToolSemanticCacheService | null = null;
+
+export function setToolSemanticCache(svc: ToolSemanticCacheService): void {
+  _toolSemanticCacheInstance = svc;
+}
+
+export function getToolSemanticCache(): ToolSemanticCacheService | null {
+  return _toolSemanticCacheInstance;
+}

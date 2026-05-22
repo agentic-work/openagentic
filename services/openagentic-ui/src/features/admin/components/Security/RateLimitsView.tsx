@@ -32,6 +32,7 @@ import {
   Settings,
 } from '@/shared/icons';
 import { apiRequest } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -498,61 +499,67 @@ const RateLimitsView: React.FC<RateLimitsViewProps> = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div
-          className="w-8 h-8 rounded-full animate-spin"
-          style={{
-            border: '2px solid var(--color-border)',
-            borderTopColor: 'var(--color-primary)',
-          }}
+      <div className="space-y-6">
+        <PageHeader
+          crumbs={['Admin', 'Security', 'Rate Limits']}
+          title="Rate Limits"
+          explainer="Set global rate limits, configure tiers, and monitor enforcement."
         />
+        <div className="flex items-center justify-center h-64">
+          <div
+            className="w-8 h-8 rounded-full animate-spin"
+            style={{
+              border: '2px solid var(--color-border)',
+              borderTopColor: 'var(--color-primary)',
+            }}
+          />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
-            Platform Rate Limits
-          </h2>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Set global rate limits, configure tiers, and monitor enforcement
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Global Default Tier:</span>
-          <select
-            value={globalDefaultTier}
-            onChange={async (e) => {
-              const newTier = e.target.value;
-              setGlobalDefaultTier(newTier);
-              try {
-                await apiRequest('/admin/rate-limits/global-default', {
-                  method: 'PUT',
-                  body: JSON.stringify({ defaultTier: newTier }),
-                });
-                setSuccess(`Global default tier set to "${newTier}"`);
-                setTimeout(() => setSuccess(null), 3000);
-              } catch {
-                setError('Failed to update global default tier');
-              }
-            }}
-            className="px-3 py-1.5 rounded-lg text-sm font-medium"
-            style={{
-              backgroundColor: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              color: 'var(--text-primary)',
-              cursor: 'pointer',
-            }}
-          >
-            {tiers.map(t => (
-              <option key={t.name} value={t.name}>{t.displayName || t.name}</option>
-            ))}
-          </select>
-        </div>
+      <PageHeader
+        crumbs={['Admin', 'Security', 'Rate Limits']}
+        title="Rate Limits"
+        explainer="Set global rate limits, configure tiers, and monitor enforcement."
+        actions={[
+          { label: 'Refresh', onClick: () => { void fetchData(); } },
+        ]}
+      />
+
+      {/* Tier selector row */}
+      <div className="flex items-center gap-3 justify-end">
+        <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Global Default Tier:</span>
+        <select
+          value={globalDefaultTier}
+          onChange={async (e) => {
+            const newTier = e.target.value;
+            setGlobalDefaultTier(newTier);
+            try {
+              await apiRequest('/admin/rate-limits/global-default', {
+                method: 'PUT',
+                body: JSON.stringify({ defaultTier: newTier }),
+              });
+              setSuccess(`Global default tier set to "${newTier}"`);
+              setTimeout(() => setSuccess(null), 3000);
+            } catch {
+              setError('Failed to update global default tier');
+            }
+          }}
+          className="px-3 py-1.5 rounded-lg text-sm font-medium"
+          style={{
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            color: 'var(--text-primary)',
+            cursor: 'pointer',
+          }}
+        >
+          {tiers.map(t => (
+            <option key={t.name} value={t.name}>{t.displayName || t.name}</option>
+          ))}
+        </select>
       </div>
 
       {/* Tab Bar */}
@@ -567,7 +574,7 @@ const RateLimitsView: React.FC<RateLimitsViewProps> = () => {
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all"
             style={{
               backgroundColor: activeTab === tab.id ? 'var(--color-primary)' : 'transparent',
-              color: activeTab === tab.id ? '#fff' : 'var(--text-secondary)',
+              color: activeTab === tab.id ? 'var(--ap-fg-0)' : 'var(--text-secondary)',
             }}
           >
             {tab.icon}
@@ -611,8 +618,8 @@ const RateLimitsView: React.FC<RateLimitsViewProps> = () => {
                     color: 'var(--text-primary)',
                   }}
                 />
-                <Area type="monotone" dataKey="requests" stroke="#6366f1" fill="#6366f1" fillOpacity={0.1} strokeWidth={2} name="Requests" />
-                <Area type="monotone" dataKey="blocked" stroke="#ef4444" fill="#ef4444" fillOpacity={0.15} strokeWidth={2} name="Blocked (429)" />
+                <Area type="monotone" dataKey="requests" stroke="var(--ap-accent)" fill="var(--ap-accent)" fillOpacity={0.1} strokeWidth={2} name="Requests" />
+                <Area type="monotone" dataKey="blocked" stroke="var(--ap-err)" fill="var(--ap-err)" fillOpacity={0.15} strokeWidth={2} name="Blocked (429)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -628,8 +635,8 @@ const RateLimitsView: React.FC<RateLimitsViewProps> = () => {
                   <XAxis dataKey="tier" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
                   <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
                   <RechartsTooltip contentStyle={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
-                  <Bar dataKey="requests" fill="#6366f1" radius={[3, 3, 0, 0]} name="Requests" />
-                  <Bar dataKey="blocked" fill="#ef4444" radius={[3, 3, 0, 0]} name="Blocked" />
+                  <Bar dataKey="requests" fill="var(--ap-accent)" radius={[3, 3, 0, 0]} name="Requests" />
+                  <Bar dataKey="blocked" fill="var(--ap-err)" radius={[3, 3, 0, 0]} name="Blocked" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -643,7 +650,7 @@ const RateLimitsView: React.FC<RateLimitsViewProps> = () => {
                   <XAxis dataKey="time" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
                   <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
                   <RechartsTooltip contentStyle={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12 }} />
-                  <Bar dataKey="count" fill="#f59e0b" radius={[3, 3, 0, 0]} name="Violations" />
+                  <Bar dataKey="count" fill="var(--ap-warn)" radius={[3, 3, 0, 0]} name="Violations" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -834,7 +841,7 @@ const RateLimitsView: React.FC<RateLimitsViewProps> = () => {
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium transition-all"
             style={{
               backgroundColor: activeCategory === tab.key ? 'var(--color-primary)' : 'transparent',
-              color: activeCategory === tab.key ? 'var(--color-text, #fff)' : 'var(--text-secondary)',
+              color: activeCategory === tab.key ? 'var(--color-text)' : 'var(--text-secondary)',
             }}
           >
             {tab.icon}

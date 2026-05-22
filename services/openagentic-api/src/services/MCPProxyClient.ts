@@ -2,7 +2,7 @@
  * MCP Proxy Client
  *
  * Provides a clean interface for calling MCP tools via the MCP Proxy service.
- * Used by SubagentOrchestrator for concurrent tool execution.
+ * Used by the legacy sub-agent orchestrator for concurrent tool execution.
  *
  * Performance optimizations:
  * - HTTP Keep-Alive for connection reuse
@@ -14,7 +14,46 @@ import axios, { type AxiosInstance } from 'axios';
 import http from 'http';
 import https from 'https';
 import type { Logger } from 'pino';
-import { MCPProxyClient as IMCPProxyClient } from './SubagentOrchestrator.js';
+import { prisma } from '../utils/prisma.js';
+
+// Structural interface the legacy sub-agent orchestrator originally
+// declared. Inlined here Phase E.8.a (2026-05-11) so MCPProxyClient.ts
+// no longer imports from the orchestrator file. The class below
+// declares `implements IMCPProxyClient` for explicit shape pinning.
+interface IMCPProxyClient {
+  callTool(server: string, tool: string, args: Record<string, any>): Promise<any>;
+  getAvailableTools(server?: string): Promise<string[]>;
+}
+
+/**
+ * Phase F-tel (2026-05-07): record every callTool invocation to MCPUsage so
+ * the admin dashboard ring (`mcpToolUsage`) and any future analytics have a
+ * source of truth that's actually populated. Fire-and-forget to keep the
+ * caller path latency-equivalent.
+ */
+async function recordMcpUsage(
+  server: string,
+  tool: string,
+  args: Record<string, any>,
+  result: { success: boolean; error?: string; executionTimeMs: number; userId?: string },
+): Promise<void> {
+  try {
+    await prisma.mCPUsage.create({
+      data: {
+        user_id: result.userId ?? 'system',
+        server_name: server,
+        tool_name: tool,
+        method: 'tools/call',
+        execution_time_ms: result.executionTimeMs,
+        success: result.success,
+        error_message: result.error ?? null,
+        request_metadata: args ?? {},
+      },
+    });
+  } catch {
+    // best-effort — we never want telemetry to fail a tool call
+  }
+}
 
 const MCP_PROXY_URL = process.env.MCP_PROXY_URL || 'http://mcp-proxy:8080';
 
@@ -142,6 +181,7 @@ export class MCPProxyClient implements IMCPProxyClient {
         success: true
       }, '[MCPProxyClient] Tool call completed');
 
+      void recordMcpUsage(server, tool, args, { success: true, executionTimeMs });
       return result;
 
     } catch (error: any) {
@@ -154,6 +194,7 @@ export class MCPProxyClient implements IMCPProxyClient {
         error: error.message
       }, '[MCPProxyClient] Tool call failed');
 
+      void recordMcpUsage(server, tool, args, { success: false, error: error.message, executionTimeMs });
       throw error;
     }
   }

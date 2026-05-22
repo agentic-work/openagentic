@@ -3,9 +3,38 @@
  *
  * Provides store/recall/forget operations that are registered as internal
  * tools the LLM can invoke during chat.
+ *
+ * Memory.2 (2026-05-19) — dual-write + semantic recall:
+ *   store()  — writes Postgres (canonical SoT) then fires-and-forgets a
+ *              Milvus embed+insert via UserMemoriesService. Postgres failure
+ *              is fatal (throws). Milvus failure is non-fatal (logged only).
+ *   recall() — two recall paths:
+ *     • opts.userMessage  → semantic top-K via UserMemoriesService.search()
+ *                           (new path — fixes "what's my sub id" misses)
+ *     • opts.key          → legacy Postgres substring match (preserved for
+ *                           backwards compat with memory_recall tool calls
+ *                           that pass an explicit key string)
+ *     • no opts           → Postgres findMany (unchanged)
+ *
+ * User isolation is enforced by:
+ *   - Milvus: UserMemoriesService.search() passes userId as a Milvus filter
+ *     expression (`user_id == "<userId>"`). The service also post-filters
+ *     any hits where user_id !== requested userId.
+ *   - Postgres: WHERE user_id = userId (unchanged).
  */
 
 import { prisma } from '../utils/prisma.js';
+
+// Lazy import helper — avoids loading Milvus bindings at module parse time
+// (same discipline as 06-rag.ts / LearnedPatternsService.ts).
+async function getMilvusService() {
+  try {
+    const { getUserMemoriesService } = await import('./UserMemoriesService.js');
+    return getUserMemoriesService();
+  } catch {
+    return null;
+  }
+}
 
 export interface MemoryEntry {
   id: string;
@@ -21,14 +50,19 @@ export interface MemoryEntry {
 export class AgentMemoryService {
   /**
    * Store or update a memory entry for a user.
+   *
+   * Postgres is the canonical SoT — always written first. Milvus is
+   * fire-and-forget: failures are caught and logged but never thrown.
    */
   async store(userId: string, category: string, key: string, value: string, opts?: { confidence?: number; ttlHours?: number }): Promise<MemoryEntry> {
     const existing = await prisma.agentMemory.findFirst({
       where: { user_id: userId, category, key },
     });
 
+    let entry: MemoryEntry;
+
     if (existing) {
-      return await prisma.agentMemory.update({
+      entry = await prisma.agentMemory.update({
         where: { id: existing.id },
         data: {
           value,
@@ -36,24 +70,136 @@ export class AgentMemoryService {
           ttl_hours: opts?.ttlHours ?? existing.ttl_hours,
         },
       }) as any;
+    } else {
+      entry = await prisma.agentMemory.create({
+        data: {
+          user_id: userId,
+          category,
+          key,
+          value,
+          confidence: opts?.confidence ?? 1.0,
+          ttl_hours: opts?.ttlHours ?? null,
+        },
+      }) as any;
     }
 
-    return await prisma.agentMemory.create({
-      data: {
-        user_id: userId,
-        category,
-        key,
-        value,
-        confidence: opts?.confidence ?? 1.0,
-        ttl_hours: opts?.ttlHours ?? null,
-      },
-    }) as any;
+    // Milvus dual-write — awaited but non-fatal. We await so that callers
+    // (including tests) see a consistent post-store state, but we swallow
+    // any Milvus error so Postgres is the canonical SoT and a Milvus outage
+    // never breaks the memorize tool.
+    try {
+      const milvusSvc = await getMilvusService();
+      if (milvusSvc) {
+        await milvusSvc.store({
+          memory_id: entry.id,
+          user_id: userId,
+          key,
+          value,
+          category,
+          confidence: typeof entry.confidence === 'number' ? entry.confidence : 1.0,
+          created_at: entry.created_at instanceof Date
+            ? entry.created_at.getTime()
+            : Date.now(),
+        });
+      }
+    } catch (milvusErr: any) {
+      // Non-fatal — Postgres is the canonical SoT.
+      console.debug('[agent-memory] Milvus dual-write failed (non-fatal):', milvusErr?.message ?? String(milvusErr));
+    }
+
+    return entry;
   }
 
   /**
-   * Recall memories for a user, optionally filtered by category and/or key pattern.
+   * Recall memories for a user.
+   *
+   * Routing:
+   *   opts.userMessage → semantic Milvus top-K (primary path for system prompt injection)
+   *   opts.key         → Postgres key substring match (legacy tool call path)
+   *   (neither)        → Postgres findMany with optional category filter
    */
-  async recall(userId: string, opts?: { category?: string; key?: string; limit?: number }): Promise<MemoryEntry[]> {
+  async recall(userId: string, opts?: { category?: string; key?: string; userMessage?: string; limit?: number }): Promise<MemoryEntry[]> {
+    // ── Semantic path — userMessage embedding + Milvus top-K ───────────────
+    if (opts?.userMessage) {
+      try {
+        const milvusSvc = await getMilvusService();
+        if (milvusSvc) {
+          const milvusHits = await milvusSvc.search(
+            opts.userMessage,
+            userId,
+            { limit: opts?.limit ?? 5, category: opts?.category },
+          );
+
+          // Enforce user isolation: discard any hits where user_id !== userId.
+          // UserMemoriesService already applies a Milvus filter expression, but
+          // a second post-filter here guarantees isolation against any future
+          // Milvus SDK version that ignores filters.
+          const safeHits = milvusHits.filter((h) => h.user_id === userId);
+
+          return safeHits.map((h) => ({
+            id: h.memory_id,
+            category: h.category,
+            key: h.key,
+            value: h.value,
+            confidence: h.confidence,
+            ttl_hours: null,
+            created_at: new Date(h.created_at || Date.now()),
+            updated_at: new Date(h.created_at || Date.now()),
+          }));
+        }
+      } catch (milvusErr: any) {
+        // Milvus unreachable — fall through to Postgres token-match fallback below.
+        console.debug('[agent-memory] semantic recall failed, falling back to Postgres:', milvusErr?.message ?? String(milvusErr));
+      }
+
+      // Postgres fallback: tokenize userMessage and OR-match tokens against
+      // key or value (broader than full-message substring — catches "azure"
+      // in "what's my Azure subscription?").
+      // This path only fires when Milvus is down.
+      try {
+        await this.cleanExpired(userId);
+        const tokens = (opts.userMessage ?? '')
+          .toLowerCase()
+          .replace(/[^a-z0-9_\s]/g, ' ')
+          .split(/\s+/)
+          .filter((t) => t.length >= 3); // skip noise words like "is", "my"
+
+        if (tokens.length === 0) return [];
+
+        // Prisma doesn't support OR across columns in a simple way; use raw
+        // or per-token queries. We use a simple per-token findMany and dedupe.
+        const seen = new Set<string>();
+        const results: MemoryEntry[] = [];
+        const limit = opts?.limit ?? 5;
+
+        for (const token of tokens.slice(0, 5)) {
+          if (results.length >= limit) break;
+          const batch = await prisma.agentMemory.findMany({
+            where: {
+              user_id: userId,
+              OR: [
+                { key: { contains: token, mode: 'insensitive' } },
+                { value: { contains: token, mode: 'insensitive' } },
+              ],
+            },
+            orderBy: [{ confidence: 'desc' }, { updated_at: 'desc' }],
+            take: limit,
+          }) as any[];
+
+          for (const entry of batch) {
+            if (!seen.has(entry.id)) {
+              seen.add(entry.id);
+              results.push(entry);
+            }
+          }
+        }
+        return results.slice(0, limit);
+      } catch {
+        return [];
+      }
+    }
+
+    // ── Legacy Postgres path — key substring or plain category filter ───────
     const where: any = { user_id: userId };
     if (opts?.category) where.category = opts.category;
     if (opts?.key) where.key = { contains: opts.key, mode: 'insensitive' };

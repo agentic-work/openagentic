@@ -101,6 +101,59 @@ export function writeNDJSONError(
 }
 
 /**
+ * Durable-stream sink — an opaque handle a caller provides to
+ * `writeNDJSONDurable` so every emitted frame is additionally persisted
+ * into the resumability ring buffer (task #154). Kept as a callback
+ * (not a direct StreamRingBuffer dependency) so `infra/ndjson.ts`
+ * stays free of service-layer imports.
+ *
+ * The callback receives the *serialized* NDJSON line (no trailing
+ * newline) and MUST be fire-and-forget. Any thrown error or rejected
+ * promise is swallowed by `writeNDJSONDurable` — the live stream
+ * cannot depend on buffer availability.
+ */
+export type DurableSink = (line: string) => void | Promise<void>;
+
+/**
+ * Emit an NDJSON event AND hand the serialized line to a durable sink
+ * (typically the ring buffer append). Identical semantics to
+ * `writeNDJSON`; the sink call is fire-and-forget.
+ *
+ * If the socket write fails, the sink is NOT invoked — there's nothing
+ * to resume past a drop that never happened on the wire.
+ *
+ * If `sink` is undefined, behaves exactly like `writeNDJSON` — safe to
+ * use unconditionally at call sites that may or may not have a ring
+ * buffer available (e.g. test reply stubs).
+ */
+export function writeNDJSONDurable(
+  reply: FastifyReply,
+  type: string,
+  payload: Record<string, unknown> | undefined,
+  sink: DurableSink | undefined,
+): boolean {
+  const obj = payload ? { ...payload, type } : { type };
+  const line = JSON.stringify(obj);
+  let wrote = false;
+  try {
+    wrote = reply.raw.write(line + '\n');
+  } catch {
+    return false;
+  }
+  if (wrote && sink) {
+    try {
+      const r = sink(line);
+      if (r && typeof (r as Promise<unknown>).catch === 'function') {
+        (r as Promise<unknown>).catch(() => { /* fire-and-forget */ });
+      }
+    } catch {
+      /* fire-and-forget */
+    }
+  }
+  return wrote;
+}
+
+/**
  * Keepalive interval. Exported so tests can assert on it and so callers
  * can choose to skip it (some streams are short-lived).
  */

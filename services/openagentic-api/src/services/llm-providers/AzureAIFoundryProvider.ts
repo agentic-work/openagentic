@@ -22,22 +22,400 @@ import {
   type ProviderHealth,
   type ProviderConfig,
   type DiscoveredModel,
-  type NormalizerState,
 } from './ILLMProvider.js';
-import { NormalizedStreamEvent } from '../NormalizedStreamTypes.js';
+import type { CanonicalStreamFormat } from '@agentic-work/llm-sdk/lib/normalizers/index.js';
 import AnthropicFoundry from '@anthropic-ai/foundry-sdk';
 import { getBearerTokenProvider, DefaultAzureCredential, ClientSecretCredential } from '@azure/identity';
+import { fetchWithRetry } from './fetchWithRetry.js';
+// Phase 0.4 — SDK outbound adapter is SoT for AIF Responses API wire body.
+// The 220-LOC in-class `buildResponsesApiBody` is DELETED; this thin helper
+// wraps `selectOutboundAdapter('aif-responses')` and layers AIF-specific
+// decoration (deployment as model, reasoning.effort, max_output_tokens,
+// AIF-strict JSON Schema normalization on tools).
+import { buildAifResponsesBody } from './aif/buildAifResponsesBody.js';
+// Phase 0.4 (2026-05-12) — Chat Completions path through SDK 'openai'
+// adapter with AIF model-family surgery (gpt-5 temperature strip,
+// o-series no top_p, max_completion_tokens vs max_tokens). Replaces
+// the inline body construction in createOpenAICompletion. The
+// in-class `convertAnthropicMessagesToOpenAI` (~157 LOC) is now called
+// transitively through `completionRequestToCanonical` in the helper.
+import { buildAifChatCompletionsBody } from './aif/buildAifChatCompletionsBody.js';
+// Phase 0.4 — AIF Anthropic paths (createAnthropicCompletion +
+// createAIFAnthropicCompletion) share the same Anthropic Messages wire
+// shape via the SDK 'anthropic' adapter (verified by REAL Bedrock
+// round-trip in buildAnthropicWireBody.real.test.ts).
+import { buildAnthropicWireBody } from './anthropic/buildAnthropicWireBody.js';
 
-// Responses API gate: certain Azure AIF deployments (gpt-5-codex family,
-// gpt-5-pro, o1-pro, o3-pro) reject /chat/completions with 400 "The requested
-// operation is unsupported." and require /openai/v1/responses?api-version=preview.
-// Keep this regex as the single source of truth; never scatter model literals.
-const RESPONSES_API_REQUIRED_PATTERN = /^(gpt-5.*-codex|gpt-5-pro|o1-pro|o3-pro)$/i;
+// Responses API gate. Two reasons a deployment routes to /openai/v1/responses:
+//
+//   1. REQUIRED — Chat Completions returns 400 "The requested operation is
+//      unsupported." for the deployment. Historical set: gpt-5-codex family,
+//      gpt-5-pro, o1-pro, o3-pro.
+//   2. REASONING — the deployment SUPPORTS Chat Completions but emits no
+//      reasoning content there. Reasoning chunks (summary deltas) are only
+//      exposed via Responses API. Verified 2026-05-10 by real-provider probe
+//      against AIF gpt-5.4 (Chat Completions: 0 reasoning_content; Responses:
+//      thinking_delta canonical events emit). Without this gate, gpt-5.4
+//      chat on chat-dev never streams thinking deltas to the wire — exactly
+//      the symptom the user flagged.
+//
+// Keep this regex the single source of truth; never scatter model literals.
+const RESPONSES_API_REQUIRED_PATTERN = /^(gpt-5.*-codex|gpt-5-pro|gpt-5(?:[.-]\d+(?:[.-]\w+)*)?(?:-mini|-nano)?|o1-pro|o3-pro)$/i;
+
+/**
+ * Normalize a tool's `parameters` JSON Schema into a form Azure AIF
+ * accepts on BOTH the Chat Completions and Responses APIs.
+ *
+ * Azure rejects entire requests with 400
+ *   "Invalid schema for function 'X': schema must be a JSON Schema of
+ *    'type: \"object\"', got 'type: \"None\"'."
+ * whenever any tool's parameters lacks a top-level `type: "object"`. This
+ * happens for:
+ *   - Anthropic-shape tools that omit `type` on the input_schema
+ *   - zod `discriminatedUnion` tools that serialize to `{anyOf:[...]}`
+ *     with no top-level type (the openagentic `TailServeLog` case that
+ *     repro'd 2026-05-05)
+ *   - MCP tools with empty / null parameters
+ *
+ * One bad tool kills the whole tool array, so this MUST be applied
+ * before sending tools to AIF on every code path.
+ */
+const FORBIDDEN_TOOL_PARAM_KEYWORDS = ['oneOf', 'anyOf', 'allOf', 'enum', 'not'] as const;
+export function normalizeAifToolParameters(raw: unknown): Record<string, unknown> {
+  const empty = (): Record<string, unknown> => ({
+    type: 'object',
+    properties: {},
+    additionalProperties: false,
+  });
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return empty();
+  const obj: Record<string, unknown> = { ...(raw as Record<string, unknown>) };
+  let stripped = false;
+  for (const k of FORBIDDEN_TOOL_PARAM_KEYWORDS) {
+    if (k in obj) {
+      delete obj[k];
+      stripped = true;
+    }
+  }
+  if (typeof obj.type !== 'string') obj.type = 'object';
+  if (obj.type !== 'object') {
+    // Top-level type "string"/"array"/etc. — wrap as a single value prop.
+    return { type: 'object', properties: { value: raw }, required: ['value'] };
+  }
+  if (
+    obj.properties === undefined ||
+    obj.properties === null ||
+    typeof obj.properties !== 'object' ||
+    Array.isArray(obj.properties)
+  ) {
+    obj.properties = {};
+  }
+  if (stripped && Object.keys(obj.properties as Record<string, unknown>).length === 0) {
+    obj.additionalProperties = obj.additionalProperties ?? true;
+  }
+  return obj;
+}
+
+/** Pick the model id to use for an AIF health probe. Prefers the first
+ *  ARM-discovered deployment (which we know exists in this AIF account)
+ *  over the configured fallback — `this.model` can fall through to
+ *  DEFAULT_MODEL=gpt-oss:20b which AIF doesn't have, producing 404. (#370) */
+export function pickHealthProbeModel(
+  discovered: Array<{ id: string }>,
+  fallback: string | undefined,
+): string {
+  if (Array.isArray(discovered) && discovered.length > 0 && discovered[0]?.id) {
+    return discovered[0].id;
+  }
+  return fallback || '';
+}
+
+/**
+ * Convert Anthropic-shape messages to OpenAI chat-completions shape for AIF.
+ *
+ * Why this exists: openagentic CLI and the /v1/messages route forward
+ * messages in Anthropic shape (content arrays with `tool_use`/`tool_result`
+ * blocks). AIF's chat-completions API rejects that shape with strict
+ * 400s. This converter:
+ *
+ *   1. Splits `{role:'user', content:[{type:'tool_result',...}, ...]}`
+ *      into one OpenAI `{role:'tool', tool_call_id, content}` per result.
+ *   2. Folds `{role:'assistant', content:[{type:'text'}, {type:'tool_use'}]}`
+ *      into `{role:'assistant', content:'<text>', tool_calls:[{id, type:'function',
+ *      function:{name, arguments}}]}` — OpenAI requires tool_calls as a
+ *      sibling of `content`, not nested inside.
+ *   3. **Merges consecutive assistant tool_use messages into a single
+ *      assistant message with all parallel tool_calls in one tool_calls[]
+ *      array.** Anthropic transcripts persist parallel batches as separate
+ *      rows (one assistant message per `tool_use` block); AIF requires
+ *      ONE assistant message per parallel batch, otherwise the orphan
+ *      tool messages downstream fail validation.
+ *   4. Pre-existing OpenAI-shape messages (`{role:'tool', tool_call_id,...}`
+ *      or assistant with `tool_calls`) pass through unchanged.
+ *
+ * The bug-fix that motivated this (2026-05-06): Sonnet/Anthropic accepts
+ * the un-merged shape, so it never surfaced on Anthropic-format providers.
+ * When Smart Router routed a session with parallel tool batches in its
+ * JSONL transcript to AIF (gpt-5.4), AIF's stricter validator returned
+ * 400 every retry → daemon error→result loop → silent UI hang.
+ */
+export function convertAnthropicMessagesToOpenAI(
+  input: Array<Record<string, unknown>>,
+): Array<Record<string, unknown>> {
+  const out: Array<Record<string, unknown>> = [];
+
+  const isToolUseBlock = (b: any) =>
+    b && typeof b === 'object' && b.type === 'tool_use';
+  const isToolResultBlock = (b: any) =>
+    b && typeof b === 'object' && b.type === 'tool_result';
+  const isTextBlock = (b: any) =>
+    b && typeof b === 'object' && b.type === 'text';
+  const isThinkingBlock = (b: any) =>
+    b && typeof b === 'object' && (b.type === 'thinking' || b.type === 'redacted_thinking');
+
+  const stringifyResult = (raw: unknown): string => {
+    if (typeof raw === 'string') return raw;
+    if (Array.isArray(raw)) {
+      // Anthropic tool_result.content can be an array of {type:'text',text}.
+      return raw
+        .map((p: any) => (typeof p === 'string' ? p : (p?.text ?? JSON.stringify(p))))
+        .join('\n');
+    }
+    return JSON.stringify(raw ?? '');
+  };
+
+  for (const msg of input || []) {
+    const role = (msg as any).role as string | undefined;
+    const content = (msg as any).content;
+
+    // ── pass-through: existing OpenAI-shape tool message ──────────────
+    if (role === 'tool' && typeof (msg as any).tool_call_id === 'string') {
+      out.push({
+        role: 'tool',
+        tool_call_id: (msg as any).tool_call_id,
+        content:
+          typeof content === 'string' ? content : stringifyResult(content),
+      });
+      continue;
+    }
+
+    // ── pass-through: existing OpenAI-shape assistant w/ tool_calls ───
+    if (role === 'assistant' && Array.isArray((msg as any).tool_calls)) {
+      // If the previous emitted message is also assistant+tool_calls AND
+      // there's no intervening tool/user message, MERGE them into a
+      // single tool_calls[] array (parallel-batch fold).
+      const prev = out[out.length - 1];
+      if (
+        prev &&
+        prev.role === 'assistant' &&
+        Array.isArray((prev as any).tool_calls) &&
+        // Only merge if neither has substantive text content
+        (!prev.content || prev.content === '') &&
+        !((msg as any).content)
+      ) {
+        (prev as any).tool_calls = [
+          ...((prev as any).tool_calls as any[]),
+          ...((msg as any).tool_calls as any[]),
+        ];
+      } else {
+        out.push({
+          role: 'assistant',
+          content: typeof (msg as any).content === 'string' ? (msg as any).content : '',
+          tool_calls: (msg as any).tool_calls,
+        });
+      }
+      continue;
+    }
+
+    // ── system → pass through (string content) ─────────────────────────
+    if (role === 'system') {
+      out.push({
+        role: 'system',
+        content:
+          typeof content === 'string'
+            ? content
+            : Array.isArray(content)
+              ? content.map((b: any) => (isTextBlock(b) ? b.text : '')).filter(Boolean).join('\n')
+              : '',
+      });
+      continue;
+    }
+
+    // ── user with array content: split tool_result blocks out as tool messages ──
+    if (role === 'user') {
+      if (typeof content === 'string') {
+        out.push({ role: 'user', content });
+        continue;
+      }
+      if (Array.isArray(content)) {
+        const textParts: string[] = [];
+        // Multimodal drag-drop fix (2026-05-08): preserve image_url blocks
+        // (and Anthropic-style {type:'image', source:{base64,…}}) so the
+        // model actually receives the image bytes. Without this the V2
+        // pipeline's `[{type:'text'}, {type:'image_url'}]` content array
+        // collapsed to a text-only string and the model replied "please
+        // upload the image first." OpenAI Chat Completions expects content
+        // to STAY an array `[{type:'text', text}, {type:'image_url',
+        // image_url:{url:'data:…'}}]` for multimodal turns.
+        const imageBlocks: Array<{ type: 'image_url'; image_url: { url: string } }> = [];
+        for (const block of content) {
+          if (isToolResultBlock(block)) {
+            const toolCallId = (block as any).tool_use_id;
+            if (typeof toolCallId !== 'string' || toolCallId.length === 0) continue;
+            out.push({
+              role: 'tool',
+              tool_call_id: toolCallId,
+              content: stringifyResult(
+                (block as any).content !== undefined ? (block as any).content : (block as any).text,
+              ),
+            });
+          } else if (isTextBlock(block)) {
+            textParts.push((block as any).text || '');
+          } else if ((block as any)?.type === 'image_url' && (block as any).image_url?.url) {
+            imageBlocks.push({
+              type: 'image_url',
+              image_url: { url: String((block as any).image_url.url) },
+            });
+          } else if ((block as any)?.type === 'image' && (block as any).source) {
+            // Anthropic-shape image block — translate `{source:{type:'base64',
+            // media_type, data}}` to OpenAI `{image_url:{url:'data:…'}}`.
+            const src = (block as any).source;
+            if (src.type === 'base64' && src.media_type && src.data) {
+              imageBlocks.push({
+                type: 'image_url',
+                image_url: { url: `data:${src.media_type};base64,${src.data}` },
+              });
+            } else if (src.type === 'url' && src.url) {
+              imageBlocks.push({
+                type: 'image_url',
+                image_url: { url: String(src.url) },
+              });
+            }
+          } else if (typeof block === 'string') {
+            textParts.push(block);
+          }
+        }
+        if (imageBlocks.length > 0) {
+          // Multimodal turn — emit content as an array preserving the
+          // image bytes. Text blocks come first (matches OpenAI examples).
+          const blocks: Array<any> = [];
+          if (textParts.length > 0) {
+            blocks.push({ type: 'text', text: textParts.join('\n') });
+          }
+          blocks.push(...imageBlocks);
+          out.push({ role: 'user', content: blocks });
+        } else if (textParts.length > 0) {
+          out.push({ role: 'user', content: textParts.join('\n') });
+        }
+        continue;
+      }
+      // Defensive: unknown content shape — skip rather than send invalid.
+      continue;
+    }
+
+    // ── assistant with array content: peel out tool_use into tool_calls,
+    //    then merge with prior assistant if appropriate ─────────────────
+    if (role === 'assistant') {
+      if (typeof content === 'string') {
+        out.push({ role: 'assistant', content });
+        continue;
+      }
+      if (Array.isArray(content)) {
+        const textParts: string[] = [];
+        const toolCalls: any[] = [];
+        for (const block of content) {
+          if (isToolUseBlock(block)) {
+            const id = (block as any).id;
+            if (typeof id !== 'string' || id.length === 0) continue;
+            const inputObj = (block as any).input;
+            const args =
+              typeof inputObj === 'string'
+                ? inputObj
+                : JSON.stringify(inputObj ?? {});
+            toolCalls.push({
+              id,
+              type: 'function',
+              function: {
+                name: (block as any).name || '',
+                arguments: args,
+              },
+            });
+          } else if (isTextBlock(block)) {
+            textParts.push((block as any).text || '');
+          } else if (isThinkingBlock(block)) {
+            // Drop thinking blocks for OpenAI shape — they're not valid
+            // assistant content for chat-completions and the model never
+            // needs its own prior thinking to continue.
+            continue;
+          }
+        }
+        const text = textParts.join('\n');
+        // Parallel-batch merge: if the previous emitted message is also
+        // assistant with tool_calls and no text, fold this turn's tool_calls
+        // into it. Otherwise emit a fresh assistant message.
+        const prev = out[out.length - 1];
+        const canMerge =
+          prev &&
+          prev.role === 'assistant' &&
+          Array.isArray((prev as any).tool_calls) &&
+          (!prev.content || prev.content === '') &&
+          text === '' &&
+          toolCalls.length > 0;
+        if (canMerge) {
+          (prev as any).tool_calls = [
+            ...((prev as any).tool_calls as any[]),
+            ...toolCalls,
+          ];
+        } else if (toolCalls.length > 0 || text.length > 0) {
+          const m: Record<string, unknown> = { role: 'assistant', content: text };
+          if (toolCalls.length > 0) m.tool_calls = toolCalls;
+          out.push(m);
+        }
+        continue;
+      }
+    }
+
+    // ── unknown / other → pass through verbatim ───────────────────────
+    out.push(msg);
+  }
+
+  return out;
+}
 
 export class AzureAIFoundryProvider extends BaseLLMProvider {
   readonly name = 'azure-ai-foundry';
   readonly type = 'azure-openai' as const; // Type constraint workaround
-  readonly streamFormat = 'openai' as const; // Uses OpenAI-compatible format
+  // D-1.2 — AIF is multi-mode. The static default 'openai' covers the
+  // ProviderManager.ts:1180-1181 callsite that has no per-request context;
+  // multi-mode dispatch uses `getStreamFormat(request)` below.
+  readonly streamFormat = 'openai' as const;
+
+  /**
+   * Per-request stream-format dispatch (D-1.2).
+   *
+   * Mirrors the runtime branch at AzureAIFoundryProvider.ts:1273-1289
+   * (Anthropic-track) and :1746 (Responses API track):
+   *
+   *   1. shouldUseResponsesApi(model) → 'aif-responses'
+   *      (model is an AIF Responses-API-required model — codex / pro)
+   *   2. isAnthropicFormat OR model name contains 'claude' → 'foundry-anthropic'
+   *      (either the AIF endpoint URL is /anthropic/-shaped, OR the Claude
+   *      deployment is reached via per-request Anthropic Messages API)
+   *   3. otherwise → 'openai'
+   *      (default OpenAI Chat Completions wire)
+   *
+   * The pipeline calls `selectCanonicalNormalizer(this.getStreamFormat(req))`
+   * once per request to pick the correct SDK normalizer.
+   */
+  getStreamFormat(request: CompletionRequest): CanonicalStreamFormat {
+    const modelName = (request.model || this.model || '').toLowerCase();
+    if (this.shouldUseResponsesApi(modelName)) {
+      return 'aif-responses';
+    }
+    if (this.isAnthropicFormat || modelName.includes('claude')) {
+      return 'foundry-anthropic';
+    }
+    return 'openai';
+  }
   private endpointUrl: string;
   private apiKey: string;
   private model: string;
@@ -86,7 +464,15 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
     this.endpointUrl = config?.endpointUrl || process.env.AIF_ENDPOINT_URL || '';
     this.apiKey = config?.apiKey || process.env.AIF_API_KEY || '';
     this.model = config?.model || process.env.AIF_MODEL || process.env.DEFAULT_MODEL;
-    this.apiVersion = config?.apiVersion || process.env.AIF_API_VERSION || '2024-08-01-preview';
+    // 2026-05-12 — DB is the SoT for providers/models. Runtime READS ONLY
+    // from `config.apiVersion` (the DB row's stored value), never from
+    // env. env is the seeder's input for FIRST DB write; after that the
+    // DB row owns its value and admin edits via /api/admin/llm-providers
+    // are the only way to change it. User mandate: "fuck env vars winning
+    // anything in the tug o war with the DB SOT for providers/models".
+    // Source default fires only when DB row genuinely lacks apiVersion
+    // (test paths, pre-seed instantiation).
+    this.apiVersion = config?.apiVersion || '2024-12-01-preview';
     this.useUnifiedEndpoint = config?.useUnifiedEndpoint ?? (process.env.AIF_USE_UNIFIED_ENDPOINT === 'true');
 
     // Timeout configuration - default 120 seconds (Anthropic Claude with many tools can be slow)
@@ -490,18 +876,21 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
   }
 
   /**
-   * Persist ARM-discovered models to DB so the chat selector has fresh data.
-   * The chat selector reads from provider_config.models[], not in-memory.
+   * Persist ARM-discovered AIF deployments into the Registry SoT
+   * (admin.model_role_assignments). This is what makes "deploy a model in
+   * Azure → it appears in the registry" work without admin clicks.
+   *
+   * Previously this also wrote to provider_config.models[] (the legacy
+   * store). That field is being deleted — every consumer should read
+   * the Registry. The lastDiscoveryAt timestamp is preserved on the
+   * llm_providers row for observability only.
    */
   private async persistDiscoveredModelsToDb(deployments: Array<{ name: string; modelName: string; modelVersion: string; sku: string; capacity: number }>): Promise<void> {
     const { prisma } = await import('../../utils/prisma.js');
-    // Find our provider record by endpoint URL hostname.
-    // LLMProviderSeeder writes the field as `provider_config.endpoint`
-    // (NOT `endpointUrl`). The previous query used `endpointUrl` which
-    // never matched → findFirst returned null → persist exited silently
-    // → provider_config.models[] stayed empty forever, which meant
-    // auto-discovered AIF deployments never showed up in the chat model
-    // selector. Query both names for safety across legacy + current seeds.
+    const { upsertDiscoveredModels } = await import('../model-routing/RegistryUpsertService.js');
+
+    // Find our provider row to get its `name` (the join key in the Registry's
+    // `provider` column) + `created_by` for new Registry inserts.
     const hostname = new URL(this.endpointUrl).hostname;
     const accountName = hostname.split('.')[0];
     const provider = await prisma.lLMProvider.findFirst({
@@ -517,29 +906,56 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
       },
     });
     if (!provider) {
-      this.logger.warn({ accountName }, '[AIF] persistDiscoveredModelsToDb: provider row not found — models will not appear in selector until next restart');
+      this.logger.warn({ accountName }, '[AIF] persistDiscoveredModelsToDb: provider row not found — Registry rows will not be auto-created until next restart');
       return;
     }
 
-    const existingConfig = (provider.provider_config as any) || {};
-    const modelsForDb = deployments.map(d => ({
-      id: d.name,
-      name: d.modelName || d.name,
-      capabilities: { chat: true, tools: true, streaming: true },
-      config: {},
-    }));
-
-    await prisma.lLMProvider.update({
-      where: { id: provider.id },
-      data: {
-        provider_config: {
-          ...existingConfig,
-          models: modelsForDb,
-          lastDiscoveryAt: new Date().toISOString(),
-        },
-      },
+    // Map ARM deployment shape → DiscoveredModel shape consumed by the Registry upserter.
+    const discovered = deployments.map(d => {
+      const ml = (d.modelName || d.name).toLowerCase();
+      return {
+        id: d.name,
+        name: d.modelName || d.name,
+        provider: 'azure-ai-foundry',
+        description: `Deployed — ${d.sku}, capacity ${d.capacity}`,
+        family: this.inferFamily(ml),
+        costTier: this.inferCostTier(ml),
+        capabilities: this.inferCapabilities(ml),
+        contextWindow: this.inferContextWindow(ml),
+        maxOutputTokens: this.inferMaxOutput(ml),
+        configured: true,
+        deployed: true,
+      } as any;
     });
-    this.logger.info({ provider: provider.name, models: modelsForDb.map(m => m.id) }, '[AIF] Persisted ARM-discovered models to DB');
+
+    try {
+      const result = await upsertDiscoveredModels(
+        {
+          providerName: provider.name,
+          discovered,
+          createdBy: provider.created_by ?? '00000000-0000-0000-0000-000000000000',
+          providerType: 'azure-ai-foundry',
+          region: null,
+        },
+        prisma as any,
+      );
+      this.logger.info(
+        { provider: provider.name, deployments: discovered.length, inserted: result.inserted, updated: result.updated },
+        '[AIF] Synced ARM deployments into Registry (admin.model_role_assignments)',
+      );
+    } catch (err: any) {
+      this.logger.warn({ error: err.message }, '[AIF] Registry upsert failed — deployments not persisted');
+    }
+
+    // Stamp lastDiscoveryAt on the provider row for ops visibility (no models[] write).
+    try {
+      const existingConfig = (provider.provider_config as any) || {};
+      const { models: _legacyModels, ...rest } = existingConfig;
+      await prisma.lLMProvider.update({
+        where: { id: provider.id },
+        data: { provider_config: { ...rest, lastDiscoveryAt: new Date().toISOString() } },
+      });
+    } catch { /* best-effort timestamp; not fatal */ }
   }
 
   /**
@@ -725,6 +1141,7 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
   private convertAnthropicResponseToOpenAI(anthropicResponse: any, modelName: string): CompletionResponse {
     const toolCalls: any[] = [];
     let textContent = '';
+    let reasoningContent = '';
 
     // Extract content blocks
     for (const block of anthropicResponse.content || []) {
@@ -739,6 +1156,12 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
             arguments: JSON.stringify(block.input)
           }
         });
+      } else if (block.type === 'thinking' && typeof block.thinking === 'string') {
+        // #656 — surface Anthropic-shape thinking blocks. Mirrors the
+        // Bedrock #647 Layer 2 fix; the streaming path already emits
+        // these as thinking_delta (line ~1742-1753) but the non-stream
+        // converter dropped them.
+        reasoningContent += block.thinking;
       }
     }
 
@@ -746,6 +1169,10 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
       role: 'assistant',
       content: textContent
     };
+
+    if (reasoningContent) {
+      message.reasoning_content = reasoningContent;
+    }
 
     if (toolCalls.length > 0) {
       message.tool_calls = toolCalls;
@@ -1193,9 +1620,6 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
       throw new Error('Anthropic client not initialized');
     }
 
-    const { system, messages } = this.convertToAnthropicMessages(request.messages);
-    const tools = this.convertToAnthropicTools(request.tools);
-
     // Anthropic doesn't support "model-router" - use configured Claude model instead
     let modelToUse = request.model || this.model;
     if (modelToUse === 'model-router' || modelToUse.includes('router')) {
@@ -1206,57 +1630,28 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
       }, '[AzureAIFoundryProvider] Overriding model-router for Anthropic API');
     }
 
-    // Anthropic doesn't allow both temperature and top_p
-    // Prefer temperature if both are provided
-    const anthropicRequest: any = {
-      model: modelToUse,
-      messages,
-      max_tokens: request.max_tokens ?? 8192,
-      stream: request.stream ?? true
-    };
-
-    // Only set temperature (Anthropic doesn't support both temperature and top_p)
-    // Use environment variable for default, no hardcoded fallback
+    // Phase 0.4 (2026-05-12) — SDK adapter is SoT for the Anthropic
+    // Messages wire shape on AIF. Same helper as direct Anthropic +
+    // Bedrock-Claude (proven via REAL round-trip tests).
     const anthropicDefaultTemp = parseFloat(process.env.AIF_TEMPERATURE || '1.0');
-    anthropicRequest.temperature = request.temperature ?? anthropicDefaultTemp;
-
-    if (system) {
-      anthropicRequest.system = system;
-    }
-
-    if (tools && tools.length > 0) {
-      anthropicRequest.tools = tools;
-
-      // Convert tool_choice
-      if (request.tool_choice) {
-        if (request.tool_choice === 'auto') {
-          anthropicRequest.tool_choice = { type: 'auto' };
-        } else if (request.tool_choice === 'required') {
-          anthropicRequest.tool_choice = { type: 'any' };
-        } else if (typeof request.tool_choice === 'object' && request.tool_choice.function) {
-          anthropicRequest.tool_choice = {
-            type: 'tool',
-            name: request.tool_choice.function.name
-          };
-        }
-      }
-    }
-
-    // Calculate payload size for diagnostics
-    const payloadSize = JSON.stringify(anthropicRequest).length;
-    const totalMessageChars = messages.reduce((sum: number, msg: any) =>
-      sum + (typeof msg.content === 'string' ? msg.content.length : JSON.stringify(msg.content).length), 0);
+    const anthropicRequest = buildAnthropicWireBody(
+      {
+        ...request,
+        temperature: request.temperature ?? anthropicDefaultTemp,
+      },
+      {
+        model: modelToUse,
+        parallelOn: true,
+      },
+    ) as any;
 
     this.logger.info({
       model: anthropicRequest.model,
-      messageCount: messages.length,
-      toolCount: tools?.length || 0,
-      hasSystem: !!system,
-      systemLength: system?.length || 0,
+      messageCount: anthropicRequest.messages?.length ?? 0,
+      toolCount: anthropicRequest.tools?.length ?? 0,
+      hasSystem: !!anthropicRequest.system,
       stream: request.stream,
-      payloadSizeKB: Math.round(payloadSize / 1024),
-      totalMessageChars,
-      maxTokens: anthropicRequest.max_tokens
+      maxTokens: anthropicRequest.max_tokens,
     }, '[AzureAIFoundryProvider] Creating Anthropic completion');
 
     // TODO: AIF Anthropic streaming has event format issues with the completion stage.
@@ -1297,27 +1692,32 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
       headers['api-key'] = this.apiKey;
     }
 
-    // Convert messages to Anthropic format
-    const { system, messages } = this.convertToAnthropicMessages(request.messages);
-    const tools = this.convertToAnthropicTools(request.tools);
-
+    // Phase 0.4 — SDK adapter is SoT for the Anthropic Messages wire
+    // shape. Same `OpenagenticToAnthropic` class proven via REAL Bedrock
+    // round-trip; AIF accepts identical body shape on /anthropic/v1/messages.
     const modelToUse = request.model || this.model;
-    const body: any = {
-      model: modelToUse,
-      messages,
-      max_tokens: request.max_tokens ?? 8192,
-      stream: request.stream ?? true,
-    };
-    if (system) body.system = system;
-    if (tools?.length) {
-      body.tools = tools;
-      if (request.tool_choice === 'auto') body.tool_choice = { type: 'auto' };
-    }
-    // Anthropic requires temperature=1 for thinking models
-    body.temperature = request.temperature ?? 1;
+    const body = buildAnthropicWireBody(
+      {
+        ...request,
+        // Anthropic requires temperature=1 for thinking models.
+        temperature: request.temperature ?? 1,
+      },
+      {
+        model: modelToUse,
+        parallelOn: true,
+      },
+    ) as any;
+    // Preserve stream flag on body (AIF's /anthropic/v1/messages reads
+    // body.stream, unlike Bedrock which uses InvokeModelWithResponseStream).
+    if (request.stream !== undefined) body.stream = request.stream;
 
-    this.logger.info({ url, model: modelToUse, stream: body.stream, messageCount: messages.length, toolCount: tools?.length || 0 },
-      '[AIF-Anthropic] Raw fetch to services.ai.azure.com');
+    this.logger.info({
+      url,
+      model: modelToUse,
+      stream: body.stream,
+      messageCount: body.messages?.length ?? 0,
+      toolCount: body.tools?.length ?? 0,
+    }, '[AIF-Anthropic] Raw fetch to services.ai.azure.com');
 
     const response = await fetch(url, {
       method: 'POST',
@@ -1427,68 +1827,21 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
     const selectedModel = request.model || this.model;
     const reason = `Using ${selectedModel} (from ${request.model ? 'pipeline request' : 'provider default'})`;
 
-    // Build OpenAI-compatible request - adapt parameters based on model
-    const maxTokens = request.max_tokens ?? 8192;
-
-    // GPT-5.x models only support temperature=1, so don't include temperature for those
-    const isGPT5 = selectedModel.toLowerCase().includes('gpt-5');
+    // Phase 0.4 (2026-05-12) — SDK adapter is SoT for wire shape.
+    // buildAifChatCompletionsBody handles:
+    //   - Anthropic → OpenAI message conversion (via completionRequestToCanonical)
+    //   - parallel tool_use folding into single assistant.tool_calls[] (Sev-0 #774)
+    //   - tool_result orphan filter
+    //   - GPT-5.x temperature strip, o-series top_p strip
+    //   - max_completion_tokens vs max_tokens model-family gate
+    //   - normalizeAifToolParameters on every tool's JSON Schema
+    //   - reasoning_effort pass-through
+    //   - stream_options { include_usage: true } on streaming only
     const defaultTemperature = parseFloat(process.env.AIF_TEMPERATURE || '1.0');
-
-    const aifRequest: any = {
+    const aifRequest = buildAifChatCompletionsBody(request, {
       model: selectedModel,
-      messages: request.messages,
-      top_p: request.top_p ?? 1,
-      stream: request.stream ?? true,
-      stream_options: request.stream ? { include_usage: true } : undefined
-    };
-
-    // o-series reasoning models and GPT-5 don't support temperature parameter
-    const isReasoningModel = selectedModel.toLowerCase().includes('o1') || selectedModel.toLowerCase().includes('o3') || selectedModel.toLowerCase().includes('o4');
-    if (!isGPT5 && !isReasoningModel) {
-      aifRequest.temperature = request.temperature ?? defaultTemperature;
-    }
-    // o-series also don't support top_p
-    if (isReasoningModel) {
-      delete aifRequest.top_p;
-    }
-
-    // GPT-5.1+ and o1/o3 models use max_completion_tokens instead of max_tokens
-    // Detect based on model name pattern
-    const usesMaxCompletionTokens = this.modelUsesMaxCompletionTokens(selectedModel);
-    if (usesMaxCompletionTokens) {
-      aifRequest.max_completion_tokens = maxTokens;
-    } else {
-      aifRequest.max_tokens = maxTokens;
-    }
-
-    // Add tools if present (OpenAI tool format)
-    // Ensure all tools have required 'type: "function"' field for Azure OpenAI API
-    if (request.tools && request.tools.length > 0) {
-      aifRequest.tools = request.tools.map((tool: any) => ({
-        type: 'function',
-        ...tool,
-        // If tool has nested 'function' property, keep it; otherwise wrap name/description/parameters
-        function: tool.function || {
-          name: tool.name,
-          description: tool.description,
-          parameters: tool.parameters || tool.input_schema || { type: 'object', properties: {} }
-        }
-      }));
-
-      // Optimize tool_choice for better function calling
-      // "auto" = model decides (best for GPT-5)
-      // "required" = force function call (not supported by all models)
-      aifRequest.tool_choice = request.tool_choice || 'auto';
-    }
-
-    // Pass through reasoning_effort if provided (let the API handle unsupported params)
-    if ((request as any).reasoning_effort) {
-      aifRequest.reasoning_effort = (request as any).reasoning_effort;
-      this.logger.info({
-        model: selectedModel,
-        reasoning_effort: aifRequest.reasoning_effort
-      }, '[AzureAIFoundryProvider] 🧠 Reasoning effort parameter included');
-    }
+      defaultTemperature,
+    });
 
     this.logger.info({
       requestedModel: request.model,
@@ -1640,11 +1993,11 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
         model: modelName,
         apiVersion: this.apiVersion,
       }, '[AzureAIFoundryProvider] Stream request URL');
-      const response = await fetch(endpointUrl, {
+      const response = await fetchWithRetry(endpointUrl, {
         method: 'POST',
         headers,
         body: JSON.stringify(aifRequest)
-      });
+      }, { logger: this.logger });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -1813,26 +2166,27 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
                 yield chunk;
               }
 
-              // Track tokens
+              // Track tokens — only set if this finish_reason chunk also
+              // happens to carry usage (rare; AIF normally puts usage on a
+              // separate trailing chunk, see else-branch below).
               if (chunk.usage) {
                 totalTokens = chunk.usage.total_tokens || 0;
               }
 
-              // Track success
-              const latency = Date.now() - startTime;
-              this.trackSuccess(latency, totalTokens, 0);
-
-              this.logger.info({
-                model: modelName,
-                duration: latency,
-                totalTokens,
-                hadDeepSeekMarkers: hasDeepSeekMarkers
-              }, '[AzureAIFoundryProvider] Stream completed');
+              // Note: do NOT log "Stream completed" here — when
+              // stream_options.include_usage:true is set, AIF emits a
+              // trailing chunk AFTER finish_reason with the populated
+              // usage block. Logging here means totalTokens=0 even when
+              // the model returned tokens correctly. The completion log
+              // fires once at end-of-stream below.
             } else {
               // Not done yet, yield the chunk as-is
               yield chunk;
 
-              // Track tokens
+              // Track tokens — captures the trailing usage chunk that
+              // arrives AFTER finish_reason when stream_options.include_usage
+              // is enabled. Real shape per chat-dev capture 2026-05-10:
+              // {choices:[], usage:{prompt_tokens, completion_tokens, total_tokens}}.
               if (chunk.usage) {
                 totalTokens = chunk.usage.total_tokens || 0;
               }
@@ -1842,6 +2196,18 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
           }
         }
       }
+
+      // End-of-stream — log AFTER the reader exhausted (so the trailing
+      // include_usage chunk has been consumed and totalTokens reflects
+      // the authoritative count). Mirrors `Completion completed` for the
+      // non-stream branch.
+      const finalLatency = Date.now() - startTime;
+      this.trackSuccess(finalLatency, totalTokens, 0);
+      this.logger.info({
+        model: modelName,
+        duration: finalLatency,
+        totalTokens,
+      }, '[AzureAIFoundryProvider] Stream completed');
 
     } catch (error) {
       this.trackFailure();
@@ -1896,14 +2262,19 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
   }
 
   /**
+   * @deprecated Phase 0.4 (audit §0.4) — wire-shape translation moved to the
+   * SDK adapter at `@agentic-work/llm-sdk/lib/adapters` via the thin helper
+   * `buildAifResponsesBody`. This method is kept temporarily for the admin
+   * "Test provider" probe at internal call sites that haven't migrated yet;
+   * the two streaming/non-streaming call paths inside this class use the
+   * SDK helper. To be deleted once arch test
+   * `outbound-adapter-wire-in-per-provider.source-regression.test.ts`
+   * proves no in-class callers remain.
+   *
+   * Original docstring:
    * Translate an internal OpenAI-chat-style messages array (system/user/
    * assistant, optional tool_result content parts) into the Responses API
    * `input` array, and hoist the system prompt into top-level `instructions`.
-   *
-   * Responses API content types used:
-   *   - input_text  (user text)
-   *   - output_text (assistant text, for replayed history)
-   *   - function_call / function_call_output (tool turns)
    */
   private buildResponsesApiBody(aifRequest: {
     model: string;
@@ -1945,6 +2316,38 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
       const partType = msg.role === 'assistant' ? 'output_text' : 'input_text';
       let textParts: Array<{ type: string; text: string }> = [];
 
+      // Sev-0 #774 fix — when convertAnthropicMessagesToOpenAI folded
+      // tool_use blocks into `msg.tool_calls[]` on the assistant message,
+      // `msg.content` is now the string (or empty), and the array branch
+      // below never sees the tool_use blocks. Without replaying these as
+      // `function_call` items the next turn's `function_call_output`
+      // entries get dropped as orphans (line ~2497 guard) and the model
+      // sees an empty tool result history → "I don't have those results".
+      // Replay tool_calls[] BEFORE the textParts so call_id pairing stays
+      // intact with the function_call_output items that follow.
+      if (
+        msg.role === 'assistant' &&
+        Array.isArray((msg as { tool_calls?: unknown }).tool_calls)
+      ) {
+        const tcs = (msg as { tool_calls: Array<{
+          id?: string;
+          function?: { name?: string; arguments?: string | object };
+        }> }).tool_calls;
+        for (const tc of tcs) {
+          const callId = typeof tc.id === 'string' ? tc.id : '';
+          if (!callId) continue;
+          const argsStr = typeof tc.function?.arguments === 'string'
+            ? tc.function.arguments
+            : JSON.stringify(tc.function?.arguments ?? {});
+          input.push({
+            type: 'function_call',
+            call_id: callId,
+            name: tc.function?.name || '',
+            arguments: argsStr,
+          });
+        }
+      }
+
       if (typeof msg.content === 'string') {
         textParts = [{ type: partType, text: msg.content }];
       } else if (Array.isArray(msg.content)) {
@@ -1983,10 +2386,64 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
       }
     }
 
+    // Defense-in-depth (2026-04-26): AIF Responses API 400s with
+    //   "No tool call found for function call output with call_id call_X"
+    // when a function_call_output references a call_id that has no
+    // matching function_call in the same `input` array. This can happen
+    // when:
+    //   - the assistant tool_use block had an empty/missing id (we
+    //     skipped it at line ~2018) but its tool_result still got pushed
+    //   - the daemon's resumed history dropped the tool_use turn but
+    //     kept the tool_result
+    //
+    // TWO-PASS so the filter is order-independent. The first pass
+    // collects every function_call call_id anywhere in `input`. The
+    // second pass drops function_call_output items whose call_id wasn't
+    // seen — including the case where the function_call appears AFTER
+    // the output in iteration order.
+    //
+    // Single-pass version (2026-04-26 first attempt) also dropped valid
+    // outputs when the upstream conversion happened to emit the
+    // function_call after its function_call_output, which then made
+    // gpt-5.3-codex stream `response.failed` because every assistant
+    // turn lost its tool result and the model had nothing to act on
+    // ("plan mode forever, nothing happens").
+    const allFunctionCallIds = new Set<string>();
+    for (const item of input) {
+      if (
+        (item as { type?: string }).type === 'function_call' &&
+        typeof (item as { call_id?: string }).call_id === 'string' &&
+        ((item as { call_id?: string }).call_id as string).length > 0
+      ) {
+        allFunctionCallIds.add((item as { call_id?: string }).call_id as string);
+      }
+    }
+    const filteredInput: Array<Record<string, unknown>> = [];
+    let droppedOrphans = 0;
+    for (const item of input) {
+      const itemType = (item as { type?: string }).type;
+      const callId = (item as { call_id?: string }).call_id;
+      if (itemType === 'function_call_output') {
+        if (typeof callId === 'string' && allFunctionCallIds.has(callId)) {
+          filteredInput.push(item);
+        } else {
+          droppedOrphans++;
+        }
+      } else {
+        filteredInput.push(item);
+      }
+    }
+    if (droppedOrphans > 0) {
+      this.logger?.warn?.(
+        { droppedOrphans, deployment },
+        '[AzureAIFoundryProvider] dropped orphan function_call_output items (no matching function_call)',
+      );
+    }
+
     const body: Record<string, unknown> = {
       model: deployment,
       stream: true,
-      input,
+      input: filteredInput,
       max_output_tokens: aifRequest.max_completion_tokens ?? aifRequest.max_tokens ?? 32768,
     };
     if (instructions) body.instructions = instructions;
@@ -2008,40 +2465,9 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
       // schema before sending.
       // Azure Responses API requires every tool parameters schema to be a
       // strict object: type="object", no oneOf/anyOf/allOf/enum/not at the
-      // top level, a properties map present. MCP authors can write any
-      // JSON Schema, which breaks this regularly. Normalize:
-      //  - null / non-object / array → empty object schema
-      //  - object with no type → coerce type="object"
-      //  - object with a forbidden top-level combinator keyword → strip it
-      //    (keep any already-valid fields; fall back to empty schema if the
-      //    result would be unusable)
-      const FORBIDDEN_TOP_LEVEL = ['oneOf', 'anyOf', 'allOf', 'enum', 'not'];
-      const emptyObj = () => ({ type: 'object' as const, properties: {}, additionalProperties: false });
-      const normalizeParams = (raw: unknown): Record<string, unknown> => {
-        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return emptyObj();
-        const obj: Record<string, unknown> = { ...(raw as Record<string, unknown>) };
-        let stripped = false;
-        for (const k of FORBIDDEN_TOP_LEVEL) {
-          if (k in obj) { delete obj[k]; stripped = true; }
-        }
-        if (typeof obj.type !== 'string') obj.type = 'object';
-        if (obj.type !== 'object') {
-          // Some tools declare type: "string" or "array" at the top level.
-          // Responses-API only accepts object at the root. Wrap the original
-          // as a single "value" property so the tool remains callable.
-          return { type: 'object', properties: { value: raw }, required: ['value'] };
-        }
-        if (obj.properties === undefined || obj.properties === null || typeof obj.properties !== 'object') {
-          obj.properties = {};
-        }
-        if (stripped && Object.keys(obj.properties as Record<string, unknown>).length === 0) {
-          // Schema was ONLY combinator-based and we stripped everything.
-          // Keep it valid by leaving an empty properties map.
-          obj.additionalProperties = obj.additionalProperties ?? true;
-        }
-        return obj;
-      };
-
+      // top level, a properties map present. Use the shared helper so the
+      // Chat Completions path (above) and Responses-API path (here) stay
+      // in lockstep.
       const mapped = (aifRequest.tools as Array<any>).map((t) => {
         const name: string =
           (typeof t?.function?.name === 'string' && t.function.name) ||
@@ -2051,7 +2477,7 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
           t?.function?.description ?? t?.description ?? undefined;
         const rawParams: unknown =
           t?.function?.parameters ?? t?.parameters ?? t?.input_schema;
-        const parameters = normalizeParams(rawParams);
+        const parameters = normalizeAifToolParameters(rawParams);
         if (!name) return null;
         return { type: 'function', name, description, parameters };
       }).filter(Boolean);
@@ -2098,7 +2524,15 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
   ): AsyncGenerator<any> {
     const endpointUrl = this.getResponsesApiEndpointUrl();
     const headers = await this.getAuthHeaders();
-    const body = this.buildResponsesApiBody(aifRequest, deployment);
+    // Phase 0.4 — SDK adapter is SoT for Responses API wire body.
+    // Provider layers AIF-specific decoration (deployment, reasoning_effort,
+    // max_output_tokens fallback chain).
+    const body = buildAifResponsesBody(aifRequest as unknown as CompletionRequest, {
+      deployment,
+      stream: true,
+      reasoningEffort: aifRequest.reasoning_effort,
+      maxOutputTokensOverride: aifRequest.max_completion_tokens ?? aifRequest.max_tokens,
+    });
 
     this.logger.info({
       endpointUrl,
@@ -2109,11 +2543,17 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
 
     let response: Response;
     try {
-      response = await fetch(endpointUrl, {
+      // 2026-05-11 fix — route through fetchWithRetry to survive transient
+      // Azure gateway 5xx (e.g. eastus2 "upstream connect error or
+      // disconnect/reset before headers" 503 captured during capstone
+      // synthesis turn). The non-streaming Responses API path and the
+      // legacy Chat Completions path already use this helper; the
+      // streaming path was the missing one.
+      response = await fetchWithRetry(endpointUrl, {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
-      });
+      }, { logger: this.logger });
     } catch (err) {
       this.trackFailure();
       this.logger.error({ err, deployment, endpointUrl }, '[AzureAIFoundryProvider] Responses API fetch error');
@@ -2145,6 +2585,14 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
     let messageStarted = false;
     let inputTokens = 0;
     let outputTokens = 0;
+    // 2026-05-10 fix — track function_call presence DURING streaming.
+    // AIF's `response.completed` event does not reliably populate
+    // `r.output` with function_call items in time for the stop_reason
+    // decision, so we set this flag when output_item.added arrives with
+    // `itemType === 'function_call'`. Without this, function-calling turns
+    // were mapped to stop_reason='end_turn' and chatLoop exited the turn
+    // before dispatching the tool (live wire capture proved the regression).
+    let hadFunctionCall = false;
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -2223,6 +2671,7 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
                 content_block: { type: 'text', text: '' },
               };
             } else if (itemType === 'function_call') {
+              hadFunctionCall = true;
               const info: BlockInfo = { index: nextBlockIndex++, kind: 'tool_use' };
               outputIndexToBlock.set(outputIndex, info);
               yield {
@@ -2292,11 +2741,20 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
             outputIndexToBlock.clear();
 
             const finishReason: string = r.incomplete_details?.reason || r.stop_reason || r.status || '';
+            // 2026-05-10 fix — prefer the in-stream `hadFunctionCall` flag.
+            // AIF's `response.completed` often arrives with an empty (or
+            // partial) `r.output` array, so inspecting it for function_call
+            // items is unreliable. We already saw the function_call item
+            // during streaming (output_item.added → set the flag), which is
+            // the authoritative signal. Falling back to r.output inspection
+            // is kept as a belt-and-suspenders for the rare case the
+            // streaming event was somehow missed but the final payload is
+            // populated.
+            const rOutputHasFunctionCall =
+              Array.isArray(r.output) &&
+              (r.output as Array<{ type?: string }>).some((o) => o?.type === 'function_call');
             const stopReason = mapStopReason(
-              outputIndexToBlock.size === 0 && Array.isArray(r.output) &&
-              (r.output as Array<{ type?: string }>).some((o) => o?.type === 'function_call')
-                ? 'tool_calls'
-                : finishReason
+              hadFunctionCall || rOutputHasFunctionCall ? 'tool_calls' : finishReason,
             );
             yield {
               type: 'message_delta',
@@ -2338,6 +2796,144 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
   }
 
   /**
+   * Responses-API non-streaming branch.
+   *
+   * Mirror of streamResponsesApi for callers that pass `stream: false` —
+   * notably the admin "Test provider" probe at
+   * POST /api/admin/llm-providers/:name/test, which previously 400'd on
+   * codex/pro/o-pro deployments because nonStreamCompletion always hit
+   * /chat/completions.
+   *
+   * Translates the Responses API JSON response shape (output[] of message /
+   * function_call items, usage.input_tokens/output_tokens) back into the
+   * OpenAI chat-completions CompletionResponse shape so callers don't need
+   * to branch on which underlying API was used.
+   */
+  private async nonStreamResponsesApi(
+    aifRequest: { model: string; messages: Array<{ role: string; content: unknown }>; tools?: unknown; max_tokens?: number; max_completion_tokens?: number; reasoning_effort?: string },
+    deployment: string,
+    startTime: number
+  ): Promise<CompletionResponse> {
+    const endpointUrl = this.getResponsesApiEndpointUrl();
+    const headers = await this.getAuthHeaders();
+    // Phase 0.4 — see streamResponsesApi for the SoT pattern. stream:false for
+    // the synchronous admin "Test provider" probe path.
+    const body = buildAifResponsesBody(aifRequest as unknown as CompletionRequest, {
+      deployment,
+      stream: false,
+      reasoningEffort: aifRequest.reasoning_effort,
+      maxOutputTokensOverride: aifRequest.max_completion_tokens ?? aifRequest.max_tokens,
+    });
+
+    let response: Response;
+    try {
+      response = await fetch(endpointUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      this.trackFailure();
+      this.logger.error({ err, deployment, endpointUrl }, '[AzureAIFoundryProvider] Responses API non-stream fetch error');
+      throw err;
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      this.trackFailure();
+      this.logger.error({
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText.slice(0, 500),
+        deployment,
+      }, '[AzureAIFoundryProvider] Responses API non-stream non-OK response');
+      throw new Error(`AIF Responses API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json() as {
+      id?: string;
+      model?: string;
+      output?: Array<{
+        type?: string;
+        role?: string;
+        call_id?: string;
+        id?: string;
+        name?: string;
+        arguments?: string;
+        content?: Array<{ type?: string; text?: string }>;
+      }>;
+      output_text?: string;
+      usage?: { input_tokens?: number; output_tokens?: number; total_tokens?: number };
+    };
+
+    // Collect text and tool_calls from output[].
+    let textContent = '';
+    const toolCalls: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }> = [];
+
+    for (const item of data.output ?? []) {
+      if (item.type === 'message' && Array.isArray(item.content)) {
+        for (const part of item.content) {
+          if ((part.type === 'output_text' || part.type === 'text') && typeof part.text === 'string') {
+            textContent += part.text;
+          }
+        }
+      } else if (item.type === 'function_call') {
+        toolCalls.push({
+          id: item.call_id || item.id || `call_${toolCalls.length}`,
+          type: 'function',
+          function: {
+            name: item.name || '',
+            arguments: typeof item.arguments === 'string' ? item.arguments : JSON.stringify(item.arguments ?? {}),
+          },
+        });
+      }
+    }
+
+    // Fallback: if no message item but output_text shorthand is present, use that.
+    if (!textContent && typeof data.output_text === 'string') {
+      textContent = data.output_text;
+    }
+
+    const promptTokens = data.usage?.input_tokens ?? 0;
+    const completionTokens = data.usage?.output_tokens ?? 0;
+    const totalTokens = data.usage?.total_tokens ?? promptTokens + completionTokens;
+    const latency = Date.now() - startTime;
+    this.trackSuccess(latency, totalTokens, 0);
+
+    this.logger.info({
+      model: deployment,
+      duration: latency,
+      totalTokens,
+      hasText: !!textContent,
+      toolCallCount: toolCalls.length,
+    }, '[AzureAIFoundryProvider] Responses API non-stream completed');
+
+    const message: { role: 'assistant'; content: string; tool_calls?: typeof toolCalls } = {
+      role: 'assistant',
+      content: textContent,
+    };
+    if (toolCalls.length > 0) message.tool_calls = toolCalls;
+
+    return {
+      id: data.id ?? `resp_${Date.now()}`,
+      object: 'chat.completion',
+      model: data.model ?? deployment,
+      choices: [
+        {
+          index: 0,
+          message,
+          finish_reason: toolCalls.length > 0 ? 'tool_calls' : 'stop',
+        },
+      ],
+      usage: {
+        prompt_tokens: promptTokens,
+        completion_tokens: completionTokens,
+        total_tokens: totalTokens,
+      },
+    } as unknown as CompletionResponse;
+  }
+
+  /**
    * Non-streaming completion
    */
   private async nonStreamCompletion(
@@ -2345,14 +2941,27 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
     modelName: string,
     startTime: number
   ): Promise<CompletionResponse> {
+    // Codex/pro/o-pro deployments reject /chat/completions with
+    // 400 "The requested operation is unsupported." — they require the
+    // Responses API. Mirror the streamCompletion() branch so the admin
+    // "Test provider" probe (which calls createCompletion with stream:false)
+    // works for those deployments instead of always 400'ing.
+    if (this.shouldUseResponsesApi(modelName)) {
+      this.logger.info(
+        { deployment: modelName, model: modelName, reason: 'responses-api-required' },
+        '[AzureAIFoundryProvider] Routing non-stream call to /openai/v1/responses (preview) — chat/completions unsupported for this deployment'
+      );
+      return this.nonStreamResponsesApi(aifRequest, modelName, startTime);
+    }
+
     try {
       const headers = await this.getAuthHeaders();
       const endpointUrl = this.getEndpointUrl(modelName);
-      const response = await fetch(endpointUrl, {
+      const response = await fetchWithRetry(endpointUrl, {
         method: 'POST',
         headers,
         body: JSON.stringify({ ...aifRequest, stream: false })
-      });
+      }, { logger: this.logger });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -2493,13 +3102,36 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
         };
       }
 
-      // Simple health check with minimal request
+      // ARM auto-discovery is itself a complete liveness signal: it requires
+      // a working Entra token + reachable ARM management plane + the AIF
+      // resource to exist. If we've discovered ≥1 deployment recently,
+      // AIF is healthy. Skip the chat-completion round-trip — it's wasteful
+      // and gpt-5.x-codex / pro models 404 on /chat/completions because
+      // they require /openai/v1/responses (#229). (#370)
+      if (Array.isArray(this.discoveredModels) && this.discoveredModels.length > 0) {
+        return {
+          status: 'healthy',
+          provider: this.name,
+          endpoint: this.endpointUrl.replace(/https:\/\/([^.]+)/, 'https://***'),
+          lastChecked: new Date()
+        };
+      }
+      // Fallback to chat-completion probe when no deployments discovered yet.
+      const probeModel = pickHealthProbeModel(this.discoveredModels, this.model);
+      if (!probeModel) {
+        return {
+          status: 'not_initialized',
+          provider: this.name,
+          error: 'No deployment discovered yet (ARM auto-discovery still in progress)',
+          lastChecked: new Date()
+        };
+      }
       // Use the appropriate API format
       if (this.isAnthropicFormat && this.anthropicClient) {
         // Anthropic Messages API health check
         try {
           await this.anthropicClient.messages.create({
-            model: this.model,
+            model: probeModel,
             messages: [{ role: 'user', content: 'test' }],
             max_tokens: 1
           });
@@ -2524,7 +3156,7 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
         const headers = await this.getAuthHeaders();
         const healthUrl = this.getEndpointUrl();
         // o3/o1 models use max_completion_tokens, not max_tokens
-        const isReasoningModel = this.model.includes('o3') || this.model.includes('o1');
+        const isReasoningModel = probeModel.includes('o3') || probeModel.includes('o1');
         const tokenParam = isReasoningModel
           ? { max_completion_tokens: 5 }
           : { max_tokens: 1 };
@@ -2532,7 +3164,7 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
           method: 'POST',
           headers,
           body: JSON.stringify({
-            model: this.model,
+            model: probeModel,
             messages: [{ role: 'user', content: 'test' }],
             ...tokenParam,
             stream: false
@@ -2608,33 +3240,16 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
       this.logger.warn({ error: err.message }, '[AIF] ARM deployment discovery failed');
     }
 
-    // ─── PHASE 2: Full Azure AI model catalog (all deployable models) ───
-    try {
-      const catalogModels = await this.listCatalogModels();
-      for (const cm of catalogModels) {
-        // Skip if already deployed (shown above)
-        if (deployedIds.has(cm.name)) continue;
-        const ml = cm.name.toLowerCase();
-        models.push({
-          id: cm.name,
-          name: `${cm.name}${cm.version ? ` (${cm.version})` : ''}`,
-          provider: 'azure-ai-foundry',
-          description: `Available — ${cm.format}. SKUs: ${cm.skus.join(', ')}`,
-          modelFormat: cm.format,
-          modelVersion: cm.version,
-          family: this.inferFamily(ml),
-          costTier: this.inferCostTier(ml),
-          capabilities: this.inferCapabilities(ml),
-          contextWindow: this.inferContextWindow(ml),
-          maxOutputTokens: this.inferMaxOutput(ml),
-          configured: false,
-          deployed: false,
-        } as any);
-      }
-      this.logger.info({ deployed: deployedIds.size, catalog: catalogModels.length, total: models.length }, '[AIF] Discovery complete (deployed + catalog)');
-    } catch (err: any) {
-      this.logger.warn({ error: err.message }, '[AIF] Catalog discovery failed — showing deployed only');
-    }
+    // PHASE 2 (full catalog dump) intentionally REMOVED. The previous
+    // behavior added ~114 "Available — Deploy" rows from the Azure region
+    // catalog into Model Garden, which both (a) overwhelmed the UI and
+    // (b) violated the hard rule that the Registry is the only SoT —
+    // any model the router can pick must come from a real deployment.
+    // To deploy a new AIF model: do it in Azure (or via the
+    // azure MCP `aif_create_deployment` tool) and it will auto-appear
+    // here on the next 5-min refresh + auto-populate the Registry via
+    // persistDiscoveredModelsToDb().
+    this.logger.info({ deployed: deployedIds.size, total: models.length }, '[AIF] Discovery complete (deployments only — catalog dump disabled)');
 
     return models;
   }
@@ -2715,7 +3330,18 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
     return results;
   }
 
-  // ─── Capability inference helpers (no hardcoded model lists) ───
+  // ─── H14 / discovery-only inference helpers ───
+  //
+  // Azure AI Foundry's deployments API returns model name + version, NOT
+  // capabilities. The substring checks below populate the *Add Model*
+  // discovery picker so the operator sees inferred family/cost-tier/
+  // context-window/capabilities BEFORE they save the row to
+  // admin.model_role_assignments.
+  //
+  // Once the row is persisted, ModelCapabilityRegistry.getCapabilities
+  // (the registry SoT) trumps every value below. This block MUST NOT be
+  // consulted for routing, pricing, or capability gating — only for the
+  // discovery picker. Cage exception: tracked in KNOWN_VIOLATORS at 9.
 
   private inferFamily(ml: string): string {
     if (ml.includes('claude')) return 'claude';
@@ -2797,6 +3423,112 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
     };
   }
 
+  /**
+   * #650 — Live provider-pulled model details. Pulls from ARM
+   * listDeployments for capabilities/limits and Azure Retail Prices
+   * for USD rates.
+   *
+   * Tests inject `injectedListDeployments` + `injectedPricingFetcher`
+   * so the suite runs offline. Production uses listDeploymentsViaARM()
+   * with Entra auth and the public Retail Prices API.
+   *
+   * Reuses existing inferFamily / inferCapabilities / inferContextWindow
+   * / inferMaxOutput helpers as private member methods (called via
+   * `this.inferXxx`) so capability inference stays consistent with the
+   * existing discoverModels() path. No regression to that path.
+   */
+  async discoverModelDetails(
+    modelId: string,
+    region?: string,
+  ): Promise<import('./discovery/ModelDiscoveryRecord.js').ModelDiscoveryRecord | null> {
+    if (!this.initialized) {
+      throw new Error('[AzureAIFoundryProvider] not initialized');
+    }
+    const inferenceRegion = region ?? 'eastus2';
+
+    // 1. ARM deployments — identity + canonical model name.
+    const listFn =
+      (this as any).injectedListDeployments ??
+      (() => this.listDeploymentsViaARM());
+    const deployments = await listFn();
+    const deployment = (deployments as any[]).find(
+      (d: any) => d.name === modelId,
+    );
+    if (!deployment) {
+      throw new Error(
+        `[AzureAIFoundryProvider] model ${modelId} is not deployed in this account`,
+      );
+    }
+    const ml = (deployment.modelName ?? deployment.name).toLowerCase();
+
+    // 2. Capabilities + limits via existing inference helpers.
+    const family = this.inferFamily(ml);
+    const caps = this.inferCapabilities(ml);
+    const contextWindow = this.inferContextWindow(ml);
+    const maxOutputTokens = this.inferMaxOutput(ml);
+    const isThinking = !!caps.thinking;
+
+    // 3. Pricing — Azure Retail Prices API (public, no auth).
+    const fetcher =
+      (this as any).injectedPricingFetcher ??
+      (await import('../pricing/AzureRetailPricesFetcher.js').then(
+        (m) => new m.AzureRetailPricesFetcher(),
+      ));
+    let pricing: any = {
+      source: 'azure-retail-prices',
+      fetchedAt: new Date().toISOString(),
+    };
+    try {
+      // Pricing is keyed by the underlying Azure base model (`deployment.modelName`,
+      // e.g. `gpt-5-mini`), NOT the deployment alias (`gpt-5.4`). Azure Retail
+      // Prices meters never reference customer-chosen deployment names.
+      const baseModel = (deployment.modelName ?? modelId) as string;
+      pricing = await fetcher.fetch({ modelId: baseModel, region: inferenceRegion });
+    } catch (err) {
+      this.logger.warn(
+        { modelId, err: (err as Error).message },
+        '[AIF] pricing fetch failed — leaving null',
+      );
+    }
+
+    return {
+      modelId,
+      providerType: 'azure-ai-foundry',
+      displayName: `${deployment.modelName || modelId}${
+        deployment.modelVersion ? ` (${deployment.modelVersion})` : ''
+      }`,
+      family,
+      capabilities: {
+        chat: !!caps.chat,
+        vision: !!caps.vision,
+        tools: !!caps.tools,
+        thinking: isThinking,
+        embeddings: !!caps.embeddings,
+        imageGeneration: !!caps.imageGeneration,
+        streaming: !!caps.streaming,
+        nativeToolCalling: !!caps.tools && !ml.includes('embed'),
+      },
+      contextWindow,
+      maxOutputTokens,
+      thinkingBudget: isThinking ? 8000 : null,
+      temperature: 1.0,
+      topP: ml.includes('claude') ? 0.999 : 1.0,
+      topK: ml.includes('claude') ? 40 : null,
+      pricing: {
+        inputTokenUsd: pricing.inputTokenUsd ?? null,
+        outputTokenUsd: pricing.outputTokenUsd ?? null,
+        cacheReadUsd: pricing.cacheReadUsd ?? null,
+        cacheWriteUsd: pricing.cacheWriteUsd ?? null,
+        thinkingTokenUsd: pricing.thinkingTokenUsd ?? null,
+        embeddingTokenUsd: pricing.embeddingTokenUsd ?? null,
+        perRequestUsd: pricing.imageGenPerRequestUsd ?? null,
+        source: pricing.source ?? 'azure-retail-prices',
+        fetchedAt: pricing.fetchedAt ?? new Date().toISOString(),
+        region: inferenceRegion,
+      },
+    };
+  }
+
   static getDefaultConfig(): import('./ILLMProvider.js').ProviderDefaultConfig {
     return {
       maxTokens: 8192, temperature: 1.0, topP: 1.0, topK: 40,
@@ -2807,14 +3539,6 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
       temperatureRange: [0, 2], maxTokensRange: [256, 128000], topKRange: [1, 500],
       defaultChatModel: '', defaultEmbeddingModel: '',
     };
-  }
-
-  /**
-   * Normalize a raw Azure AI Foundry stream chunk into NormalizedStreamEvents.
-   * Delegates to the exported pure function for testability.
-   */
-  normalizeChunk(rawChunk: any, state: NormalizerState): NormalizedStreamEvent[] {
-    return normalizeAzureAIFoundryChunk(rawChunk, state);
   }
 
   async generateImage(request: import('./ILLMProvider.js').ImageGenerationRequest): Promise<import('./ILLMProvider.js').ImageGenerationResponse> {
@@ -2883,267 +3607,3 @@ export class AzureAIFoundryProvider extends BaseLLMProvider {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Exported normalizer function — pure, per-chunk, state-mutating
-// ---------------------------------------------------------------------------
-
-/**
- * Normalizes a single raw Azure AI Foundry streaming chunk into zero or more
- * NormalizedStreamEvents. Handles two formats:
- *
- * Format A: Anthropic-style content_block_* events (from reasoning models like o3-mini
- *           that go through the streamCompletion thinking transform)
- * Format B: OpenAI-style choices[0].delta chunks (standard model streaming)
- *
- * State is mutated in place to track block types, thinking accumulation,
- * synthetic thinking, and pending tools across chunk boundaries.
- */
-export function normalizeAzureAIFoundryChunk(rawChunk: any, state: NormalizerState): NormalizedStreamEvent[] {
-  const events: NormalizedStreamEvent[] = [];
-
-  // Format A: Anthropic-style content_block events (from reasoning models)
-  if (typeof rawChunk.type === 'string' && rawChunk.type.startsWith('content_block')) {
-    return normalizeContentBlockChunk(rawChunk, state, events);
-  }
-
-  // Format B: OpenAI-style chunks
-  return normalizeOpenAIStyleChunk(rawChunk, state, events);
-}
-
-/**
- * Handles Anthropic-style content_block_start/delta/stop events that come
- * from the reasoning model path in streamCompletion().
- * Uses the same logic as the Anthropic normalizer.
- */
-function normalizeContentBlockChunk(
-  rawChunk: any,
-  state: NormalizerState,
-  events: NormalizedStreamEvent[]
-): NormalizedStreamEvent[] {
-  // Emit stream_start on the first Format A event (reasoning model path never sees an
-  // OpenAI-style first chunk, so we must emit it here instead).
-  if (!state.streamStartEmitted) {
-    state.streamStartEmitted = true;
-    events.push({
-      type: 'stream_start',
-      messageId: '',
-      model: state.model || '',
-      provider: 'azure-ai-foundry',
-    });
-  }
-
-  const blockTypes = state.blockTypes;
-
-  switch (rawChunk.type) {
-    case 'content_block_start': {
-      const block = rawChunk.content_block;
-      const index: number = rawChunk.index;
-      if (block?.type === 'thinking') {
-        const id = `tk-${index}`;
-        state.thinkingId = id;
-        state.thinkingStartTime = Date.now();
-        state.thinkingAccumulated = '';
-        blockTypes.set(index, { type: 'thinking', id });
-        events.push({ type: 'thinking_start', id });
-      } else if (block?.type === 'text') {
-        const id = `txt-${index}`;
-        state.textBlockId = id;
-        blockTypes.set(index, { type: 'text', id });
-        events.push({ type: 'text_start', id });
-      } else if (block?.type === 'tool_use') {
-        const id = block.id || `tool-${index}`;
-        blockTypes.set(index, { type: 'tool_use', id });
-        events.push({ type: 'tool_start', id, toolName: block.name || '', serverName: '' });
-      }
-      break;
-    }
-
-    case 'content_block_delta': {
-      const delta = rawChunk.delta;
-      const index: number = rawChunk.index;
-      const blockInfo = blockTypes.get(index);
-
-      if (delta?.type === 'thinking_delta') {
-        state.thinkingAccumulated += delta.thinking || '';
-        events.push({
-          type: 'thinking_delta',
-          id: blockInfo?.id || state.thinkingId || `tk-${index}`,
-          content: delta.thinking || '',
-          accumulated: state.thinkingAccumulated,
-        });
-      } else if (delta?.type === 'text_delta') {
-        events.push({
-          type: 'text_delta',
-          id: blockInfo?.id || state.textBlockId || `txt-${index}`,
-          content: delta.text || '',
-        });
-      } else if (delta?.type === 'input_json_delta') {
-        const toolId = blockInfo?.id || `tool-${index}`;
-        events.push({ type: 'tool_delta', id: toolId, argsFragment: delta.partial_json || '' });
-      }
-      break;
-    }
-
-    case 'content_block_stop': {
-      const index: number = rawChunk.index;
-      const blockInfo = blockTypes.get(index);
-      if (blockInfo?.type === 'thinking') {
-        const elapsed = state.thinkingStartTime ? Date.now() - state.thinkingStartTime : 0;
-        events.push({ type: 'thinking_stop', id: blockInfo.id, elapsedMs: elapsed });
-        state.thinkingId = null;
-        state.thinkingStartTime = null;
-        state.thinkingAccumulated = '';
-      } else if (blockInfo?.type === 'text') {
-        events.push({ type: 'text_stop', id: blockInfo.id });
-        state.textBlockId = null;
-      } else if (blockInfo?.type === 'tool_use') {
-        events.push({ type: 'tool_stop', id: blockInfo.id, result: null, durationMs: 0 });
-      }
-      blockTypes.delete(index);
-      break;
-    }
-  }
-
-  return events;
-}
-
-/**
- * Handles OpenAI-style streaming chunks (choices[0].delta).
- * Emits a synthetic thinking block on the first chunk so every response
- * has a thinking node in the activity tree.
- */
-function normalizeOpenAIStyleChunk(
-  rawChunk: any,
-  state: NormalizerState,
-  events: NormalizedStreamEvent[]
-): NormalizedStreamEvent[] {
-  const pendingTools = state.pendingTools;
-
-  const choice = rawChunk.choices?.[0];
-
-  // Usage-only chunk (no choices)
-  if (!choice && rawChunk.usage) {
-    events.push({
-      type: 'usage',
-      tokensIn: rawChunk.usage.prompt_tokens || 0,
-      tokensOut: rawChunk.usage.completion_tokens || 0,
-      cost: 0,
-      contextUsed: 0,
-      contextMax: 0,
-    });
-    return events;
-  }
-
-  if (!choice) return events;
-
-  const delta = choice.delta;
-  if (!delta && !choice.finish_reason) return events;
-
-  // -----------------------------------------------------------------------
-  // First chunk — role === 'assistant': emit stream_start + synthetic thinking
-  // -----------------------------------------------------------------------
-  if (delta?.role === 'assistant' && !state.streamStartEmitted) {
-    state.streamStartEmitted = true;
-    state.model = rawChunk.model || '';
-    events.push({
-      type: 'stream_start',
-      messageId: rawChunk.id || '',
-      model: rawChunk.model || '',
-      provider: 'azure-ai-foundry',
-    });
-
-    // Emit synthetic thinking block (closed when real content arrives)
-    const thinkId = 'tk-synth-0';
-    state.thinkingId = thinkId;
-    state.thinkingStartTime = Date.now();
-    events.push({ type: 'thinking_start', id: thinkId });
-    events.push({ type: 'thinking_delta', id: thinkId, content: 'Processing', accumulated: 'Processing' });
-    return events;
-  }
-
-  // -----------------------------------------------------------------------
-  // Helper: close synthetic thinking if still active
-  // -----------------------------------------------------------------------
-  const closeSyntheticThinking = () => {
-    if (state.thinkingId) {
-      const elapsed = state.thinkingStartTime ? Date.now() - state.thinkingStartTime : 0;
-      events.push({ type: 'thinking_stop', id: state.thinkingId, elapsedMs: elapsed });
-      state.thinkingId = null;
-      state.thinkingStartTime = null;
-    }
-  };
-
-  // -----------------------------------------------------------------------
-  // Text content delta
-  // -----------------------------------------------------------------------
-  if (delta?.content) {
-    closeSyntheticThinking();
-    if (!state.textBlockId) {
-      state.textBlockId = 'txt-0';
-      events.push({ type: 'text_start', id: state.textBlockId });
-    }
-    events.push({ type: 'text_delta', id: state.textBlockId, content: delta.content });
-  }
-
-  // -----------------------------------------------------------------------
-  // Tool call deltas
-  // -----------------------------------------------------------------------
-  if (delta?.tool_calls) {
-    closeSyntheticThinking();
-    for (const tc of delta.tool_calls) {
-      if (tc.function?.name) {
-        const toolId = tc.id || `tool-${tc.index}`;
-        pendingTools.set(toolId, tc.function.name);
-        state.toolIndexToId.set(tc.index, toolId);
-        events.push({ type: 'tool_start', id: toolId, toolName: tc.function.name, serverName: '' });
-      }
-      if (tc.function?.arguments) {
-        // Resolve tool ID: prefer explicit id, then toolIndexToId map, then fallback
-        const toolId = tc.id || state.toolIndexToId.get(tc.index) || `tool-${tc.index}`;
-        events.push({ type: 'tool_delta', id: toolId, argsFragment: tc.function.arguments });
-      }
-    }
-  }
-
-  // -----------------------------------------------------------------------
-  // Finish reason
-  // -----------------------------------------------------------------------
-  if (choice.finish_reason) {
-    if (choice.finish_reason === 'tool_calls') {
-      for (const [id] of pendingTools) {
-        events.push({ type: 'tool_stop', id, result: null, durationMs: 0 });
-      }
-      pendingTools.clear();
-    }
-
-    if (state.textBlockId) {
-      events.push({ type: 'text_stop', id: state.textBlockId });
-      state.textBlockId = null;
-    }
-
-    // Close any still-open synthetic thinking (e.g. response with no content)
-    closeSyntheticThinking();
-
-    events.push({
-      type: 'stream_end',
-      finishReason: choice.finish_reason === 'stop' ? 'stop' : choice.finish_reason,
-      totalDurationMs: 0,
-    });
-  }
-
-  // -----------------------------------------------------------------------
-  // Usage embedded in the same chunk
-  // -----------------------------------------------------------------------
-  if (rawChunk.usage) {
-    events.push({
-      type: 'usage',
-      tokensIn: rawChunk.usage.prompt_tokens || 0,
-      tokensOut: rawChunk.usage.completion_tokens || 0,
-      cost: 0,
-      contextUsed: 0,
-      contextMax: 0,
-    });
-  }
-
-  return events;
-}

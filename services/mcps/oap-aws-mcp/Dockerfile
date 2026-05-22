@@ -1,108 +1,107 @@
-# OpenAgentic AWS MCP Server - Isolated Container
-# AWS operations via Identity Center OBO authentication
+# OpenAgentic AWS MCP Server — Chainguard hardened runtime (2026-04-22)
 #
-# Service Discovery:
-#   - Service name: oap-aws-mcp
-#   - Port: 8082
-#   - Health: /health
-#   - Metrics: /metrics
+# Migrated from `python:3.11-slim` (157 HIGH / 19 CRITICAL per Harbor Trivy)
+# to cgr.dev/chainguard/python — distroless, non-root by default, daily CVE
+# rebuilds, SBOM attached. See harbor.openagentic.io for the before/after
+# scan delta.
 #
-# Observability:
-#   - OTEL traces: exports to OTEL_EXPORTER_OTLP_ENDPOINT
-#   - Prometheus metrics: /metrics endpoint
-#   - Structured JSON logs: scraped by Loki via stdout
+# Two stages:
+#   builder  — cgr.dev/chainguard/python:latest-dev (has apk + shell) for
+#              installing AWS CLI v2 + pip deps into a venv, then compiling
+#              the MCP server source to bytecode.
+#   runtime  — cgr.dev/chainguard/python:latest (no shell, no apk, no curl)
+#              carries only the venv, the AWS CLI install tree, and the
+#              pre-compiled .pyc. Image is uid 65532 by default.
 #
-# Build Note:
-#   Build from repo root with: docker build -f services/mcps/oap-aws-mcp/Dockerfile .
-#   Or use build.sh which handles the context correctly
+# Build from repo root with scripts/build.sh — this Dockerfile assumes the
+# build context is the repo root, not services/mcps/oap-aws-mcp.
 
-FROM python:3.11-slim
+ARG PYTHON_TAG=latest
 
-LABEL maintainer="OpenAgentic <devops@openagentic.io>"
-LABEL description="OpenAgentic AWS MCP Server - Universal AWS operations via Identity Center OBO"
-LABEL version="1.0.0"
+# =============================================================================
+# Stage 1: builder — install AWS CLI + Python deps + compile server code
+# =============================================================================
+FROM cgr.dev/chainguard/python:${PYTHON_TAG}-dev AS builder
 
-WORKDIR /app
+# apk requires root; drop back to nonroot for everything else.
+USER root
+RUN apk add --no-cache curl unzip groff less \
+ && ARCH=$(uname -m) \
+ && case "$ARCH" in \
+      x86_64) AWS_ARCH="x86_64" ;; \
+      aarch64) AWS_ARCH="aarch64" ;; \
+      *) AWS_ARCH="x86_64" ;; \
+    esac \
+ && curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_ARCH}.zip" -o /tmp/awscliv2.zip \
+ && cd /tmp && unzip -q awscliv2.zip \
+ && ./aws/install --install-dir /opt/aws-cli --bin-dir /opt/aws-cli/bin \
+ && rm -rf /tmp/awscliv2.zip /tmp/aws
 
-# Install AWS CLI v2 and system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    unzip \
-    groff \
-    less \
-    && ARCH=$(dpkg --print-architecture) \
-    && if [ "$ARCH" = "amd64" ]; then AWS_ARCH="x86_64"; \
-       elif [ "$ARCH" = "arm64" ]; then AWS_ARCH="aarch64"; \
-       else AWS_ARCH="x86_64"; fi \
-    && curl "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_ARCH}.zip" -o "awscliv2.zip" \
-    && unzip awscliv2.zip \
-    && ./aws/install \
-    && rm -rf awscliv2.zip aws \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+USER nonroot
+WORKDIR /home/nonroot
 
-# Verify AWS CLI installation
-RUN aws --version
+COPY --chown=nonroot:nonroot services/mcps/oap-aws-mcp/requirements.txt /home/nonroot/requirements.txt
 
-# Copy requirements first for layer caching
-COPY services/mcps/oap-aws-mcp/requirements.txt .
+RUN python -m venv /home/nonroot/.venv \
+ && /home/nonroot/.venv/bin/pip install --no-cache-dir -U pip setuptools wheel \
+ && /home/nonroot/.venv/bin/pip install --no-cache-dir -r /home/nonroot/requirements.txt \
+        fastapi uvicorn \
+        opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp \
+        opentelemetry-instrumentation-fastapi opentelemetry-instrumentation-httpx \
+        prometheus-client python-json-logger structlog
 
-# Install Python dependencies + observability packages
-RUN pip install --no-cache-dir -r requirements.txt \
-    # HTTP server for remote MCP mode
-    fastapi \
-    uvicorn \
-    # OTEL for distributed tracing
-    opentelemetry-api \
-    opentelemetry-sdk \
-    opentelemetry-exporter-otlp \
-    opentelemetry-instrumentation-fastapi \
-    opentelemetry-instrumentation-httpx \
-    # Prometheus metrics
-    prometheus-client \
-    # Structured logging for Loki
-    python-json-logger \
-    structlog
+# Pre-create /home/nonroot/app/ as nonroot so py_compile's atomic-write temp
+# file (`server.pyc.<rand>`) can be created in the same dir. Docker buildkit's
+# implicit-parent-dir creation for COPY leaves the dir root-owned even when
+# `--chown=nonroot:nonroot` is set on the COPY, which broke py_compile here.
+RUN mkdir -p /home/nonroot/app
+COPY --chown=nonroot:nonroot services/mcps/shared/ /home/nonroot/app/shared/
+COPY --chown=nonroot:nonroot services/mcps/oap-aws-mcp/server.py /home/nonroot/app/server.py
 
-# Copy shared utilities (http_transport module)
-COPY services/mcps/shared/ ./shared/
+# IP protection: compile source to bytecode then strip .py files.
+# Hard-fail mode (was || true / 2>/dev/null until 2026-05-18) — silent
+# compile failure shipped an image with no executable .pyc, which only
+# surfaced at container start as `python: can't open file 'server.pyc'`.
+# Now: any compile error aborts the build, and the final `test -f` asserts
+# server.pyc exists before we proceed to the runtime stage.
+RUN /home/nonroot/.venv/bin/python -m compileall -b /home/nonroot/app/shared/ \
+ && /home/nonroot/.venv/bin/python -c "import py_compile, sys; py_compile.compile('/home/nonroot/app/server.py', '/home/nonroot/app/server.pyc', doraise=True)" \
+ && /home/nonroot/.venv/bin/python -c "import os; [os.remove(os.path.join(r,f)) for r,_,fs in os.walk('/home/nonroot/app/shared') for f in fs if f.endswith('.py')]" \
+ && rm -f /home/nonroot/app/server.py \
+ && test -f /home/nonroot/app/server.pyc
 
-# Copy server code
-COPY services/mcps/oap-aws-mcp/server.py .
+# =============================================================================
+# Stage 2: runtime — distroless python, non-root, no shell, no package mgr
+# =============================================================================
+FROM cgr.dev/chainguard/python:${PYTHON_TAG}
 
-# IP Protection: compile Python source to bytecode and strip .py files
-RUN python -m compileall -b /app/shared/ 2>/dev/null; \
-    python -c "import py_compile; py_compile.compile('/app/server.py', '/app/server.pyc')" 2>/dev/null; \
-    find /app/shared/ -name '*.py' -delete 2>/dev/null; \
-    rm -f /app/server.py 2>/dev/null || true
+LABEL org.opencontainers.image.title="oap-aws-mcp"
+LABEL org.opencontainers.image.description="OpenAgentic AWS MCP — OBO-authenticated AWS operations"
 
-# Create non-root user for security (CRIT-004 compliance)
-RUN useradd -m -u 1000 -s /bin/bash mcp \
-    && chown -R mcp:mcp /app
+LABEL org.opencontainers.image.source="https://github.com/agentic-work/agentic/tree/main/services/mcps/oap-aws-mcp"
 
-USER mcp
+COPY --from=builder /opt/aws-cli /opt/aws-cli
+COPY --from=builder --chown=nonroot:nonroot /home/nonroot/.venv /home/nonroot/.venv
+COPY --from=builder --chown=nonroot:nonroot /home/nonroot/app  /home/nonroot/app
 
-# Environment variables for observability and HTTP mode
+USER nonroot
+WORKDIR /home/nonroot/app
+
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    # Enable HTTP mode for remote MCP control
+    PATH="/home/nonroot/.venv/bin:/opt/aws-cli/bin:/usr/local/bin:/usr/bin:/bin" \
     MCP_HTTP_MODE=true \
-    # Logging
     LOG_LEVEL=INFO \
     LOG_FORMAT=json \
-    # OTEL - set OTEL_EXPORTER_OTLP_ENDPOINT at runtime
     OTEL_SERVICE_NAME=oap-aws-mcp \
     OTEL_RESOURCE_ATTRIBUTES="service.namespace=openagentic,deployment.environment=production" \
-    # MCP Server config
     MCP_SERVER_NAME=oap-aws-mcp \
     MCP_SERVER_PORT=8082
 
-# Health check for Kubernetes probes
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${MCP_SERVER_PORT}/health || exit 1
-
-# Expose HTTP port
 EXPOSE 8082
 
-# Start server in HTTP mode
-CMD ["python", "server.pyc"]
+# No HEALTHCHECK directive — distroless runtime has no curl/wget. k8s
+# liveness/readiness probes in the Deployment manifest cover /health.
+
+ENTRYPOINT ["/home/nonroot/.venv/bin/python"]
+CMD ["/home/nonroot/app/server.pyc"]

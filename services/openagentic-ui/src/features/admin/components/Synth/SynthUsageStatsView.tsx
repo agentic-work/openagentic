@@ -22,6 +22,7 @@ import { AdminFilterBar } from '../Shared/AdminFilterBar';
 import { InfoTooltip } from '../Shared/AdminTooltip';
 import { AdminCard } from '../Shared/AdminCard';
 import { CHART_COLORS } from '../Shared/chartColors';
+import { PageHeader } from '../../primitives-v2';
 
 // ── Interfaces ────────────────────────────────────────────────────────
 
@@ -325,6 +326,16 @@ export const SynthUsageStatsView: React.FC<SynthUsageStatsViewProps> = ({ theme 
 
   return (
     <div className="space-y-6">
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Tools', 'Synthesis Stats']}
+        title="Synthesis Stats"
+        explainer="Usage analytics and cost tracking for Synth synthesis operations."
+        actions={[
+          { label: 'Refresh', onClick: fetchData },
+        ]}
+      />
+
       {/* Filter Bar */}
       <AdminFilterBar
         searchTerm={searchTerm}
@@ -868,7 +879,8 @@ export const SynthUsageStatsView: React.FC<SynthUsageStatsViewProps> = ({ theme 
                         {detail.capabilitiesUsed.map((c) => (
                           <span
                             key={c}
-                            className="text-xs px-2 py-0.5 rounded bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300"
+                            className="text-xs px-2 py-0.5 rounded"
+                            style={{ background: 'var(--ap-accent-soft)', color: 'var(--ap-accent)' }}
                           >
                             {c}
                           </span>

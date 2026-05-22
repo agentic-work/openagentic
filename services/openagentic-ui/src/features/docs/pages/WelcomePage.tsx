@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';
 import { useDocsStore } from '@/stores/useDocsStore';
+import { OpenAgenticWordmark } from '@/shared/components/OpenAgenticWordmark';
 
 // ============================================================================
 // CSS KEYFRAMES (injected once)
@@ -58,7 +59,7 @@ const architectureDiagram: DiagramDefinition = {
     { id: 'rag', label: 'RAG', description: 'pgvector + Milvus', shape: 'rounded', color: 'cyan' },
     { id: 'memory', label: 'Memory', description: 'Conversation context', shape: 'rounded', color: 'purple' },
     { id: 'prompt', label: 'Prompt Builder', description: 'System prompt assembly', shape: 'rounded', color: 'indigo' },
-    { id: 'router', label: 'Model Router', description: 'Intelligence slider', shape: 'diamond', color: 'orange' },
+    { id: 'router', label: 'Model Router', description: 'Capability + budget caps', shape: 'diamond', color: 'orange' },
     { id: 'mcp-proxy', label: 'MCP Proxy', description: '16 MCP servers', shape: 'server', color: 'orange' },
     { id: 'openagentic-proxy', label: 'Agent Proxy', description: '11 agent types', shape: 'server', color: 'purple' },
     { id: 'completion', label: 'LLM Completion', description: 'Multi-provider', shape: 'rounded', color: 'green' },
@@ -104,7 +105,7 @@ const modes: ModeData[] = [
     title: 'Chat',
     tagline: 'Conversational AI that selects the right model and tools for every message.',
     bullets: [
-      'Multi-model routing with intelligence slider',
+      'Multi-model routing with per-user × per-model budget caps',
       'Automatic MCP tool selection via vector similarity',
       'Agent delegation for complex multi-step tasks',
     ],
@@ -193,7 +194,7 @@ interface CapabilityData {
 const capabilities: CapabilityData[] = [
   {
     title: 'Multi-Model Routing',
-    description: 'Route requests across providers with a cost/quality slider per message.',
+    description: 'Route requests across providers with per-user × per-model budget caps.',
     badge: '5 providers',
     hoverDetail: 'OpenAI, Anthropic, Google, Azure, and local models.',
     iconSvg: (
@@ -281,7 +282,7 @@ const capabilities: CapabilityData[] = [
 // ============================================================================
 
 const exampleQuestions = [
-  'How does the intelligence slider route between models?',
+  'How does SmartModelRouter pick between Claude, GPT, and Gemini?',
   'What MCP servers are available and what can they do?',
   'Walk me through building a flow with human approval gates.',
 ];
@@ -399,49 +400,81 @@ const WelcomePage: React.FC = () => {
 
         {/* Hero content */}
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <h1
+          {/* 1. Animated [openagentic] wordmark — same per-char brand chord as the codemode boot splash */}
+          <div
             style={{
-              fontSize: '48px',
-              fontWeight: 800,
-              lineHeight: 1.1,
-              letterSpacing: '-0.03em',
-              marginBottom: '8px',
-              background: 'linear-gradient(90deg, #7C3AED, #3B82F6, #F59E0B, #FBBF24, #7C3AED)',
-              backgroundSize: '200% auto',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              animation: 'brandShimmer 6s linear infinite, heroWordReveal 0.7s ease-out forwards',
+              display: 'flex',
+              justifyContent: 'center',
+              marginBottom: 10,
+              animation: 'hereFadeIn 0.6s ease-out 0.1s both',
             }}
           >
-            OpenAgentic
-          </h1>
+            <OpenAgenticWordmark size={44} animate />
+          </div>
+
+          {/* 2. DOCUMENTATION subtitle */}
           <p
             style={{
-              fontSize: '20px',
-              fontWeight: 500,
+              fontSize: '14px',
+              fontWeight: 600,
               color: 'var(--color-textSecondary)',
-              marginBottom: '20px',
-              animation: 'hereFadeIn 0.6s ease-out 0.4s both',
+              marginBottom: 28,
+              animation: 'hereFadeIn 0.6s ease-out 0.3s both',
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
             }}
           >
             Documentation
           </p>
+
+          {/* 3. AGENTICHAT hero artwork — release v0.7.1.
+              Static PNG (atlas mp4 ripped 2026-05-11 alongside the codename
+              rename Atlas Donzo → AGENTICHAT). */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginBottom: 18,
+              animation: 'hereFadeIn 0.7s ease-out 0.45s both',
+            }}
+          >
+            <img
+              src="/agentichat.png"
+              alt="AGENTICHAT — v0.7.1 release artwork"
+              style={{
+                maxWidth: '100%',
+                maxHeight: 360,
+                width: 'auto',
+                height: 'auto',
+                objectFit: 'contain',
+                display: 'block',
+                borderRadius: 12,
+                filter:
+                  'drop-shadow(0 30px 40px rgba(0,0,0,0.45)) drop-shadow(0 12px 20px rgba(0,0,0,0.30))',
+                transform: 'perspective(1400px) rotateX(2deg)',
+                transformStyle: 'preserve-3d',
+              }}
+            />
+          </div>
+
+          {/* 4. Version pill */}
           <span
+            className="font-mono"
             style={{
               display: 'inline-block',
-              fontSize: '12px',
+              fontSize: 12,
               fontWeight: 600,
               letterSpacing: '0.06em',
+              padding: '5px 16px',
+              borderRadius: 20,
               color: 'var(--color-primary)',
               background: 'var(--color-surfaceSecondary)',
               border: '1px solid var(--color-border)',
-              borderRadius: '20px',
-              padding: '5px 16px',
-              animation: 'hereFadeIn 0.6s ease-out 0.8s both',
+              animation: 'hereFadeIn 0.6s ease-out 0.7s both',
             }}
           >
-            v0.6.3 Light It Up
+            v{import.meta.env.VITE_APP_VERSION || import.meta.env.VITE_VERSION || '0.0.0'}
+            {import.meta.env.VITE_CODENAME ? ` · ${import.meta.env.VITE_CODENAME}` : ''}
           </span>
         </div>
       </section>
@@ -1040,6 +1073,37 @@ const WelcomePage: React.FC = () => {
           </motion.button>
         </div>
       </motion.section>
+
+      {/* Site link footer */}
+      <footer
+        style={{
+          marginTop: '64px',
+          paddingTop: '24px',
+          borderTop: '1px solid var(--color-border)',
+          textAlign: 'center',
+        }}
+      >
+        <a
+          href="https://openagentic.io"
+          target="_blank"
+          rel="noreferrer noopener"
+          style={{
+            fontSize: '13px',
+            fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+            color: 'var(--color-primary)',
+            textDecoration: 'none',
+            letterSpacing: '0.04em',
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.textDecoration = 'underline';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.textDecoration = 'none';
+          }}
+        >
+          openagentic.io
+        </a>
+      </footer>
     </div>
   );
 };

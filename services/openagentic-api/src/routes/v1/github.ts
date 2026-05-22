@@ -82,7 +82,7 @@ export const githubRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
    * Initiate GitHub OAuth flow
    */
   fastify.get<{ Querystring: ConnectQuery }>('/connect', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['GitHub'],
       summary: 'Initiate GitHub OAuth flow',
@@ -150,20 +150,29 @@ export const githubRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
     const { code, state, error, error_description } = request.query;
     const service = getGitHubCredentialService(request.log);
 
+    // Default landing page — the legacy /settings page is being ripped
+    // (per user 2026-05-07). Bounce back to /admin#integrations so the
+    // admin can see the result, OR honor the per-flow redirectUrl that
+    // codemode passes when its "Connect GitHub" button kicks the OAuth
+    // dance from inside a session.
+    const DEFAULT_LANDING = '/admin#integrations/github';
+
     // Handle OAuth errors
     if (error) {
       logger.error({ error, error_description }, 'GitHub OAuth error');
-      return reply.redirect(`/settings?github_error=${encodeURIComponent(error_description || error)}`);
+      return reply.redirect(
+        `${DEFAULT_LANDING}?github_error=${encodeURIComponent(error_description || error)}`,
+      );
     }
 
     if (!code || !state) {
-      return reply.redirect('/settings?github_error=missing_parameters');
+      return reply.redirect(`${DEFAULT_LANDING}?github_error=missing_parameters`);
     }
 
     // Decode and validate state
     const stateData = service.decodeOAuthState(state);
     if (!stateData) {
-      return reply.redirect('/settings?github_error=invalid_state');
+      return reply.redirect(`${DEFAULT_LANDING}?github_error=invalid_state`);
     }
 
     try {
@@ -181,13 +190,17 @@ export const githubRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
         githubUsername: userInfo.login
       }, 'GitHub OAuth completed successfully');
 
-      // Redirect to settings or custom redirect URL
-      const redirectUrl = stateData.redirectUrl || '/settings?github_success=true';
+      // Honor the per-flow redirect (codemode session URL) if the connect
+      // call passed one. Otherwise bounce back to the admin integrations
+      // page so the operator can see "GitHub: connected".
+      const redirectUrl = stateData.redirectUrl || `${DEFAULT_LANDING}?github_success=true`;
       return reply.redirect(redirectUrl);
 
     } catch (err) {
       logger.error({ error: (err as Error).message }, 'GitHub OAuth callback failed');
-      return reply.redirect(`/settings?github_error=${encodeURIComponent((err as Error).message)}`);
+      return reply.redirect(
+        `${DEFAULT_LANDING}?github_error=${encodeURIComponent((err as Error).message)}`,
+      );
     }
   });
 
@@ -196,7 +209,7 @@ export const githubRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
    * Get current GitHub connection status
    */
   fastify.get('/status', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['GitHub'],
       summary: 'Get GitHub connection status',
@@ -227,7 +240,7 @@ export const githubRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
    * Disconnect GitHub account
    */
   fastify.post('/disconnect', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['GitHub'],
       summary: 'Disconnect GitHub account',
@@ -260,7 +273,7 @@ export const githubRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
    * Validate current GitHub token
    */
   fastify.post('/validate', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['GitHub'],
       summary: 'Validate GitHub token',
@@ -300,7 +313,7 @@ export const githubRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
    * Initiate GitHub Device Flow - returns code for user to enter at github.com/login/device
    */
   fastify.post('/device/start', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['GitHub'],
       summary: 'Start GitHub Device Flow',
@@ -367,7 +380,7 @@ export const githubRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
    * Poll for Device Flow completion
    */
   fastify.post<{ Body: { sessionId: string } }>('/device/poll', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['GitHub'],
       summary: 'Poll Device Flow status',
@@ -500,7 +513,7 @@ export const githubRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
    * Cancel a Device Flow session
    */
   fastify.delete<{ Params: { sessionId: string } }>('/device/:sessionId', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       tags: ['GitHub'],
       summary: 'Cancel Device Flow',

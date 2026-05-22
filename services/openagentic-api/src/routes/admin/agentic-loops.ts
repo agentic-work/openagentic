@@ -102,7 +102,7 @@ export default async function agentAdminRoutes(fastify: FastifyInstance) {
   // ===========================================================================
 
   fastify.get('/admin/agentic/dashboard', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['Agents'],
       summary: 'Get real-time dashboard metrics',
@@ -143,7 +143,7 @@ export default async function agentAdminRoutes(fastify: FastifyInstance) {
   // ===========================================================================
 
   fastify.get('/admin/agentic/agents', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['Agents'],
       summary: 'List all registered agents',
@@ -170,7 +170,7 @@ export default async function agentAdminRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/admin/agentic/agents/:agentId', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['Agents'],
       summary: 'Get agent details',
@@ -206,7 +206,7 @@ export default async function agentAdminRoutes(fastify: FastifyInstance) {
   });
 
   fastify.patch('/admin/agentic/agents/:agentId', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['Agents'],
       summary: 'Update agent configuration',
@@ -272,7 +272,7 @@ export default async function agentAdminRoutes(fastify: FastifyInstance) {
   // ===========================================================================
 
   fastify.get('/admin/agentic/config/:agentType', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['Agents'],
       summary: 'Get model config for agent type',
@@ -315,7 +315,7 @@ export default async function agentAdminRoutes(fastify: FastifyInstance) {
   });
 
   fastify.put('/admin/agentic/config/:agentType/model', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['Agents'],
       summary: 'Update model for agent type',
@@ -391,7 +391,7 @@ export default async function agentAdminRoutes(fastify: FastifyInstance) {
   // ===========================================================================
 
   fastify.get('/admin/agentic/stats/:agentType', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['Agents'],
       summary: 'Get statistics for agent type',
@@ -445,7 +445,7 @@ export default async function agentAdminRoutes(fastify: FastifyInstance) {
   // ===========================================================================
 
   fastify.get('/admin/agentic/executions', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['Agents'],
       summary: 'Get execution history',
@@ -522,7 +522,7 @@ export default async function agentAdminRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/admin/agentic/executions/:executionId', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['Agents'],
       summary: 'Get execution details',
@@ -574,7 +574,7 @@ export default async function agentAdminRoutes(fastify: FastifyInstance) {
   // ===========================================================================
 
   fastify.get('/admin/agentic/datasets', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['Agents'],
       summary: 'Get data layer statistics',
@@ -589,7 +589,7 @@ export default async function agentAdminRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/admin/agentic/datasets/cleanup', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['Agents'],
       summary: 'Cleanup expired datasets',
@@ -616,7 +616,7 @@ export default async function agentAdminRoutes(fastify: FastifyInstance) {
   // ===========================================================================
 
   fastify.get('/admin/agentic/models', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['Agents'],
       summary: 'List available models for agents',

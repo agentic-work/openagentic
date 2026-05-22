@@ -48,6 +48,10 @@ export type AgentType =
   | 'flows_agent'          // Workflow/flows execution agent
   | 'oat_function_builder' // OAT function builder agent
   | 'cloud_operations'     // Long-horizon multi-cloud (Azure/AWS/GCP) provisioning + audit
+  | 'finops_analyst'       // Cloud cost / FinOps dashboards (per-service, per-region spend)
+  | 'security_auditor'     // IAM graphs, data-class heatmaps, compliance scorecards
+  | 'engineering_metrics'  // DORA dashboards, pipeline health, per-service SLO status
+  | 'product_analyst'      // Roadmap swimlanes, OKR scorecards, funnel metrics
   | 'custom';              // Custom agent type
 
 /**
@@ -199,7 +203,7 @@ export interface RegisteredAgent {
 // DEFAULT CONFIGURATIONS
 // =============================================================================
 
-const DEFAULT_MODEL_CONFIGS: Record<AgentType, AgentModelConfig> = {
+export const DEFAULT_MODEL_CONFIGS: Record<AgentType, AgentModelConfig> = {
   data_query: {
     agentType: 'data_query',
     primaryModel: 'auto',
@@ -381,6 +385,58 @@ const DEFAULT_MODEL_CONFIGS: Record<AgentType, AgentModelConfig> = {
     preferredTier: 'premium',
     contextWindowMin: 1_000_000,
   },
+  finops_analyst: {
+    agentType: 'finops_analyst',
+    primaryModel: 'auto',
+    fallbackModel: 'auto',
+    maxTokens: 32768,
+    temperature: 0.4,
+    thinkingEnabled: true,
+    thinkingBudget: 8192,
+    costBudgetPerCall: 200,
+    timeoutMs: 180000,
+    retryAttempts: 1,
+    preferredTier: 'premium',
+  },
+  security_auditor: {
+    agentType: 'security_auditor',
+    primaryModel: 'auto',
+    fallbackModel: 'auto',
+    maxTokens: 32768,
+    temperature: 0.4,
+    thinkingEnabled: true,
+    thinkingBudget: 8192,
+    costBudgetPerCall: 200,
+    timeoutMs: 180000,
+    retryAttempts: 1,
+    preferredTier: 'premium',
+  },
+  engineering_metrics: {
+    agentType: 'engineering_metrics',
+    primaryModel: 'auto',
+    fallbackModel: 'auto',
+    maxTokens: 32768,
+    temperature: 0.4,
+    thinkingEnabled: true,
+    thinkingBudget: 8192,
+    costBudgetPerCall: 200,
+    timeoutMs: 180000,
+    retryAttempts: 1,
+    preferredTier: 'premium',
+  },
+  product_analyst: {
+    agentType: 'product_analyst',
+    primaryModel: 'auto',
+    fallbackModel: 'auto',
+    maxTokens: 32768,
+    temperature: 0.4,
+    thinkingEnabled: true,
+    thinkingBudget: 8192,
+    costBudgetPerCall: 200,
+    timeoutMs: 180000,
+    retryAttempts: 1,
+    preferredTier: 'premium',
+  },
   custom: {
     agentType: 'custom',
     primaryModel: 'auto',
@@ -393,6 +449,90 @@ const DEFAULT_MODEL_CONFIGS: Record<AgentType, AgentModelConfig> = {
     retryAttempts: 2,
     preferredTier: 'balanced',
   }
+};
+
+// =============================================================================
+// DEFAULT TOOL WHITELISTS
+// Exported so tests and admin tooling can assert membership without needing
+// to spin up the database. Mirrors SEED_AGENTS in admin-agents.ts.
+// Empty array = all tools available; non-empty = restricted to listed tools.
+// =============================================================================
+
+export const DEFAULT_TOOLS_WHITELIST: Record<string, string[]> = {
+  reasoning: ['web_search', 'web_fetch', 'sequential_thinking'],
+  data_query: ['admin_postgres_raw_query', 'query_data'],
+  tool_orchestration: [], // all tools
+  summarization: [],
+  code_execution: ['openagentic_execute'],
+  planning: [],
+  validation: ['web_search'],
+  synthesis: [],
+  // 2026-04-24: expanded from ['generate_image','synth_synthesize','web_search','web_fetch']
+  // to [] (all tools). When a user says "show me my azure resources in an
+  // interactive architecture diagram", the artifact_creation subagent needs
+  // to be able to actually FETCH the azure data via the user's MCP
+  // azure_* tools — not default to web_search. Same pattern as
+  // cloud_operations: empty whitelist = all tools available, prompt does
+  // the scoping (the artifact-creation prompt module tells the subagent
+  // to focus on visualization output). Previously the subagent would
+  // apologize "I don't have direct access to your Azure subscription"
+  // even when the session already had azure_* tools bound.
+  artifact_creation: [],
+  oat_function_builder: [],
+  docs_assistant: ['web_search', 'web_fetch'],
+  flows_agent: [],
+  data_extraction: ['web_search', 'web_fetch'],
+  // cloud_operations: multi-cloud infra. Empty = all tools (we let the system prompt
+  // and the typed cloud SDK tools guide it). Synth and web are explicitly listed for
+  // documentation lookups and last-resort SDK escapes.
+  cloud_operations: [],
+  // Persona agents: MCP tool access is enforced at the user-session OBO layer.
+  // Tool whitelists here are empty; per-session tool scoping is a follow-up task.
+  finops_analyst: [],
+  security_auditor: [],
+  engineering_metrics: [],
+  product_analyst: [],
+  custom: [],
+};
+
+// =============================================================================
+// DEFAULT PROMPT MODULES
+// Exported so tests and admin tooling can assert module membership.
+// Used by both new-row creation (seedDefaultLoops) AND the repair pass so
+// upgrades pick up new modules without requiring a manual /seed call.
+// =============================================================================
+
+export const DEFAULT_PROMPT_MODULES: Record<string, string[]> = {
+  reasoning: ['identity-default', 'safety', 'tool-calling-strategy', 'continuation'],
+  data_query: ['identity-default', 'safety', 'tool-calling-strategy', 'data-efficiency', 'continuation'],
+  tool_orchestration: ['identity-default', 'safety', 'tool-calling-strategy', 'provisioning-loops', 'error-recovery', 'continuation'],
+  summarization: ['identity-default', 'safety', 'continuation'],
+  code_execution: ['identity-default', 'safety', 'tool-calling-strategy', 'code-mode', 'continuation'],
+  planning: ['identity-default', 'safety', 'agent-delegation', 'continuation'],
+  validation: ['identity-default', 'safety', 'tool-calling-strategy', 'grounding-instructions', 'continuation'],
+  synthesis: ['identity-default', 'safety', 'continuation'],
+  artifact_creation: ['identity-default', 'safety', 'artifact-creation', 'architecture-diagram', 'continuation'],
+  oat_function_builder: ['identity-default', 'safety', 'oat-guidance', 'continuation'],
+  docs_assistant: ['identity-default', 'safety', 'continuation'],
+  flows_agent: ['identity-default', 'safety', 'tool-calling-strategy', 'continuation'],
+  data_extraction: ['identity-default', 'safety', 'data-efficiency', 'continuation'],
+  cloud_operations: [
+    'identity-default', 'safety', 'tool-calling-strategy',
+    'cloud-ops-identity-discovery', 'cloud-ops-typed-tools-first',
+    'cloud-ops-quota-fallback', 'cloud-ops-region-fallback',
+    'cloud-ops-dependency-ordering', 'cloud-ops-long-running',
+    'cloud-ops-cleanup', 'cloud-ops-hitl-denial',
+    'cloud-ops-no-early-termination', 'cloud-ops-token-failure',
+    'provisioning-loops', 'error-recovery',
+    'azure-ops', 'aws-ops', 'gcp-ops',
+    'react-reasoning', 'continuation',
+  ],
+  // Persona agents share the visualization + architecture module set from Task 3.
+  finops_analyst: ['identity-default', 'safety', 'artifact-creation', 'architecture-diagram', 'continuation'],
+  security_auditor: ['identity-default', 'safety', 'artifact-creation', 'architecture-diagram', 'continuation'],
+  engineering_metrics: ['identity-default', 'safety', 'artifact-creation', 'architecture-diagram', 'continuation'],
+  product_analyst: ['identity-default', 'safety', 'artifact-creation', 'architecture-diagram', 'continuation'],
+  custom: ['identity-default', 'safety', 'tool-calling-strategy', 'continuation'],
 };
 
 // =============================================================================
@@ -458,60 +598,6 @@ export class AgentRegistry {
    * the SEED_AGENTS list with the same content for upgrade scenarios.
    */
   private async seedDefaultLoops(): Promise<void> {
-    // Default tool whitelists per agent role. Mirrors SEED_AGENTS in admin-agents.ts.
-    // Empty array = all tools available; non-empty = restricted.
-    const DEFAULT_TOOLS_WHITELIST: Record<string, string[]> = {
-      reasoning: ['web_search', 'web_fetch', 'sequential_thinking'],
-      data_query: ['admin_postgres_raw_query', 'query_data'],
-      tool_orchestration: [], // all tools
-      summarization: [],
-      code_execution: ['openagentic_execute'],
-      planning: [],
-      validation: ['web_search'],
-      synthesis: [],
-      // GAP-3: artifact_creation needs synth (compute/render) + web (research) + image gen
-      artifact_creation: ['generate_image', 'synth_synthesize', 'web_search', 'web_fetch'],
-      oat_function_builder: [],
-      docs_assistant: ['web_search', 'web_fetch'],
-      flows_agent: [],
-      data_extraction: ['web_search', 'web_fetch'],
-      // cloud_operations: multi-cloud infra. Empty = all tools (we let the system prompt
-      // and the typed cloud SDK tools guide it). Synth and web are explicitly listed for
-      // documentation lookups and last-resort SDK escapes.
-      cloud_operations: [],
-      custom: [],
-    };
-
-    // Default composable prompt module lists per agent role. Mirrors SEED_AGENTS in
-    // admin-agents.ts. Used by both new-row creation AND the repair pass below
-    // (so upgrades pick up new modules without requiring a manual /seed call).
-    const DEFAULT_PROMPT_MODULES: Record<string, string[]> = {
-      reasoning: ['identity-default', 'safety', 'tool-calling-strategy', 'continuation'],
-      data_query: ['identity-default', 'safety', 'tool-calling-strategy', 'data-efficiency', 'continuation'],
-      tool_orchestration: ['identity-default', 'safety', 'tool-calling-strategy', 'provisioning-loops', 'error-recovery', 'continuation'],
-      summarization: ['identity-default', 'safety', 'continuation'],
-      code_execution: ['identity-default', 'safety', 'tool-calling-strategy', 'code-mode', 'continuation'],
-      planning: ['identity-default', 'safety', 'agent-delegation', 'continuation'],
-      validation: ['identity-default', 'safety', 'tool-calling-strategy', 'grounding-instructions', 'continuation'],
-      synthesis: ['identity-default', 'safety', 'continuation'],
-      artifact_creation: ['identity-default', 'safety', 'artifact-creation', 'continuation'],
-      oat_function_builder: ['identity-default', 'safety', 'oat-guidance', 'continuation'],
-      docs_assistant: ['identity-default', 'safety', 'continuation'],
-      flows_agent: ['identity-default', 'safety', 'tool-calling-strategy', 'continuation'],
-      data_extraction: ['identity-default', 'safety', 'data-efficiency', 'continuation'],
-      cloud_operations: [
-        'identity-default', 'safety', 'tool-calling-strategy',
-        'cloud-ops-identity-discovery', 'cloud-ops-typed-tools-first',
-        'cloud-ops-quota-fallback', 'cloud-ops-region-fallback',
-        'cloud-ops-dependency-ordering', 'cloud-ops-long-running',
-        'cloud-ops-cleanup', 'cloud-ops-hitl-denial',
-        'cloud-ops-no-early-termination', 'cloud-ops-token-failure',
-        'provisioning-loops', 'error-recovery',
-        'azure-ops', 'aws-ops', 'gcp-ops',
-        'react-reasoning', 'continuation',
-      ],
-      custom: ['identity-default', 'safety', 'tool-calling-strategy', 'continuation'],
-    };
 
     for (const [agentType, config] of Object.entries(DEFAULT_MODEL_CONFIGS)) {
       const existing = await prisma.agent.findFirst({
@@ -544,18 +630,25 @@ export class AgentRegistry {
 
         this.log.info({ agentType, tools: DEFAULT_TOOLS_WHITELIST[agentType] || [], modules: DEFAULT_PROMPT_MODULES[agentType] || [] }, 'Seeded default agent loop');
       } else if (agentType === 'artifact_creation') {
-        // GAP-3 upgrade path: existing rows with the old single-tool whitelist need to
-        // pick up the new tool list. Only update if the current value matches the old default
-        // (so we don't overwrite admin customizations).
+        // Upgrade path: existing rows with old whitelist variants need to pick
+        // up the new empty (= all tools) list so the subagent can call MCP
+        // azure_/aws_/gcp_ tools directly for "show me my X as diagram" prompts.
+        // Only replace the known stale shapes — never overwrite admin edits
+        // beyond those.
         const current = (existing as any).tools_whitelist || [];
         const isOldDefault = current.length === 1 && current[0] === 'generate_image';
-        const isEmpty = current.length === 0;
-        if (isOldDefault || isEmpty) {
+        const isPreGapDefault =
+          current.length === 4 &&
+          current.includes('generate_image') &&
+          current.includes('synth_synthesize') &&
+          current.includes('web_search') &&
+          current.includes('web_fetch');
+        if (isOldDefault || isPreGapDefault) {
           await prisma.agent.update({
             where: { id: existing.id },
             data: { tools_whitelist: DEFAULT_TOOLS_WHITELIST.artifact_creation, updated_at: new Date() },
           });
-          this.log.info({ agentType, oldTools: current, newTools: DEFAULT_TOOLS_WHITELIST.artifact_creation }, 'Upgraded artifact_creation tools_whitelist (GAP-3)');
+          this.log.info({ agentType, oldTools: current, newTools: DEFAULT_TOOLS_WHITELIST.artifact_creation }, 'Upgraded artifact_creation tools_whitelist (all tools for live-data visualization)');
         }
       }
     }

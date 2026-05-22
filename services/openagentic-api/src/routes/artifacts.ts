@@ -84,7 +84,7 @@ export const artifactsRoutes = async (fastify: FastifyInstance) => {
   };
   // Upload artifact endpoint
   fastify.post('/api/artifacts/upload', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       // consumes: ['multipart/form-data'], // Not supported in Fastify schema
       body: UploadArtifactSchema
@@ -127,7 +127,7 @@ export const artifactsRoutes = async (fastify: FastifyInstance) => {
 
   // Search artifacts endpoint
   fastify.post('/api/artifacts/search', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       body: SearchArtifactsSchema
     }
@@ -152,7 +152,7 @@ export const artifactsRoutes = async (fastify: FastifyInstance) => {
 
   // List artifacts endpoint
   fastify.get('/api/artifacts', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       querystring: ArtifactListSchema
     }
@@ -186,7 +186,7 @@ export const artifactsRoutes = async (fastify: FastifyInstance) => {
 
   // Delete artifact endpoint
   fastify.delete('/api/artifacts/:id', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     
     try {
@@ -213,7 +213,7 @@ export const artifactsRoutes = async (fastify: FastifyInstance) => {
 
   // Get single artifact metadata
   fastify.get('/api/artifacts/:id', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     try {
       const userId = getUserId(request);
@@ -228,7 +228,7 @@ export const artifactsRoutes = async (fastify: FastifyInstance) => {
 
   // Download artifact file
   fastify.get('/api/artifacts/:id/download', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     try {
       const userId = getUserId(request);
@@ -249,7 +249,7 @@ export const artifactsRoutes = async (fastify: FastifyInstance) => {
 
   // Get artifact statistics endpoint
   fastify.get('/api/artifacts/stats', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     
     try {
@@ -274,7 +274,7 @@ export const artifactsRoutes = async (fastify: FastifyInstance) => {
     Params: { id: string };
     Body: { target: 'personal' | 'global'; title?: string; tags?: string[] };
   }>('/api/artifacts/:id/to-knowledge-base', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
   }, async (request: FastifyRequest<{
     Params: { id: string };
     Body: { target: 'personal' | 'global'; title?: string; tags?: string[] };

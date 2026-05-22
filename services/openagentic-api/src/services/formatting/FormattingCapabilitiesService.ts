@@ -189,23 +189,12 @@ export class FormattingCapabilitiesService {
       guidance.tips.push('Use ```chart JSON (Chart.js) for data viz; ```reactflow JSON for flows/architectures; ```svg for static illustrations');
     }
 
-    // Interactive artifacts - for games, emulators, demos, simulations
-    if (/\b(game|emulator|simulator|interactive|demo|play|canvas|animation|widget|app|application)\b/i.test(query)) {
-      this.addIfNotPresent(guidance.recommendedCapabilities, ['artifact-html', 'artifact-react']);
-      guidance.tips.push('Use ```artifact:html for interactive HTML/CSS/JS that renders inline in a sandboxed iframe');
-      guidance.tips.push('Use ```artifact:react for React components with state and hooks');
-      guidance.tips.push('IMPORTANT: Plain ```html will NOT render - you MUST use ```artifact:html for it to work');
-    }
-
-    if (/\b(commodore|c64|nes|gameboy|retro|8.?bit|pixel|snake|tetris|pong)\b/i.test(query)) {
-      this.addIfNotPresent(guidance.recommendedCapabilities, ['artifact-html']);
-      guidance.tips.push('Use ```artifact:html for retro game emulators and interactive demos');
-      guidance.tips.push('Include complete HTML with DOCTYPE, styles, and JavaScript');
-    }
-
-    if (/\b(react|component|useState|hooks|jsx)\b/i.test(query)) {
-      this.addIfNotPresent(guidance.recommendedCapabilities, ['artifact-react']);
-      guidance.tips.push('Use ```artifact:react to render React components inline with live preview');
+    // #781 Phase A4 — legacy "artifact-html" / "artifact-react" / "artifact-svg"
+    // code-fence capability hints removed. Interactive artifacts now flow
+    // through the compose_app meta-tool (sandboxed React app slide-out via
+    // synth-cdn + AppRenderer) or compose_visual (ECharts/d3 chart slide-out).
+    if (/\b(game|emulator|simulator|interactive|demo|play|canvas|animation|widget|app|application|component|useState|hooks|jsx|commodore|c64|nes|gameboy|retro|8.?bit|pixel|snake|tetris|pong|react)\b/i.test(query)) {
+      guidance.tips.push('For interactive artifacts (games, demos, simulators, dashboards, React apps), call the compose_app meta-tool — it emits a sandboxed iframe slide-out with full HTML/CSS/JS or React support.');
     }
 
     // Anti-pattern warnings
@@ -333,31 +322,16 @@ export class FormattingCapabilitiesService {
       sections.push('');
     }
 
-    // Add artifacts and diagrams section - CRITICAL for interactive content
+    // #781 Phase A4 — rich artifacts now route through meta-tools, NOT code
+    // fences. The model emits a tool_use block (compose_app / compose_visual)
+    // and the dispatcher builds a sandboxed slide-out via synth-cdn.
     sections.push('---');
     sections.push('');
-    sections.push('## 🎮 INTERACTIVE ARTIFACTS - CRITICAL INSTRUCTIONS');
+    sections.push('## 🎮 INTERACTIVE ARTIFACTS');
     sections.push('');
-    sections.push('When users ask for interactive content, games, demos, visualizations, or anything that should "work", you MUST use artifacts:');
+    sections.push('When the user asks for interactive content (games, demos, dashboards, simulators, React apps), DO NOT emit code fences. Call the **compose_app** meta-tool instead — it returns a sandboxed iframe slide-out with HTML/CSS/JS or React + hooks support.');
     sections.push('');
-    sections.push('### When to use `artifact:html` (ALWAYS for interactive HTML):');
-    sections.push('- Games (snake, tetris, pong, emulators)');
-    sections.push('- Interactive demos and simulations');
-    sections.push('- Data visualizations with animations');
-    sections.push('- Mini-applications and widgets');
-    sections.push('- Anything that needs to actually RUN in the browser');
-    sections.push('');
-    sections.push('**⚠️ CRITICAL: Plain \\`\\`\\`html WILL NOT RENDER. You MUST use \\`\\`\\`artifact:html for it to work!**');
-    sections.push('');
-    sections.push('### When to use `artifact:react`:');
-    sections.push('- React component demos');
-    sections.push('- Stateful UI widgets');
-    sections.push('- Interactive forms and dashboards');
-    sections.push('');
-    sections.push('### When to use `artifact:svg`:');
-    sections.push('- Animated graphics');
-    sections.push('- Interactive infographics');
-    sections.push('- Custom visualizations');
+    sections.push('For single-figure charts (sankey, bar, line, sunburst, etc.), call the **compose_visual** meta-tool — it returns an ECharts/d3 slide-out with full pan/zoom and CSV/PNG export.');
     sections.push('');
     sections.push('## 📊 DIAGRAMS AND FLOWCHARTS');
     sections.push('');
@@ -412,7 +386,7 @@ export class FormattingCapabilitiesService {
     sections.push('8. **Use bold for emphasis**, not backticks');
     sections.push('9. **Use ```reactflow JSON or inline ```svg** for diagrams — Mermaid is deprecated on this platform');
     sections.push('10. **Validate your output** - check for unclosed code blocks, unbalanced math delimiters');
-    sections.push('11. **PROACTIVELY use artifacts** - when the user wants something interactive, use artifact:html without being asked');
+    sections.push('11. **PROACTIVELY use artifact meta-tools** - when the user wants something interactive, call compose_app (full app) or compose_visual (single chart) without being asked');
     sections.push('12. **Professional tone** - your audience is enterprise IT executives (CIOs, CTOs, AIOps). Keep responses precise and data-driven');
     sections.push('');
 

@@ -2,13 +2,19 @@ import React, { memo, useMemo, useState, useEffect, useRef, useCallback } from '
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { remarkCiteMarker } from './remarkCiteMarker';
+import { rehypeSemanticTokens } from '@/features/shared/markdown/rehypeSemanticTokens';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import 'katex/dist/katex.min.css';
 
 import ShikiCodeBlock from './ShikiCodeBlock';
-import ArtifactRenderer from './ArtifactRenderer';
+// v0.6.7 task #159 — EnhancedShikiCodeBlock does tail-only incremental
+// highlighting while code streams in, so we swap it in for streaming
+// code blocks (isStreaming === true). Non-streaming renders still use
+// ShikiCodeBlock so static messages keep their existing appearance.
+import EnhancedShikiCodeBlock from './EnhancedShikiCodeBlock';
 import ChartRenderer from './ChartRenderer';
 import SvgDiagram from './SvgDiagram';
 import ReactFlowDiagram from '@/components/diagrams/ReactFlowDiagram';
@@ -16,9 +22,21 @@ import { VennDiagram, parseVennJson } from '@/components/diagrams/VennDiagram';
 import { DrawioDiagramViewer } from '@/components/diagrams/DrawioDiagramViewer';
 import { Code, ChevronDown, ChevronRight } from '@/shared/icons';
 import { detectCitation } from '../../utils/citations';
+import { StreamingTable as V2StreamingTable } from '../v2/StreamingTable';
+import type {
+  StreamingTable as V2StreamingTableData,
+  StreamingTableColumn as V2StreamingTableColumn,
+  StreamingTableCell as V2StreamingTableCell,
+} from '../../hooks/useChatStream';
 
-// Custom sanitize schema that allows KaTeX elements and image:// protocol
-const sanitizeSchema = {
+// Custom sanitize schema that allows KaTeX elements, image:// protocol,
+// and inline base64 images (data: URIs). The `data` protocol is needed
+// for the generate_image tool's base64 fallback path — when MinIO is
+// unreachable, the API emits `![...](data:image/png;base64,...)` and
+// rehype-sanitize's default schema would strip the data: URI → image
+// tag becomes invalid → empty <p></p>. Adding `data` here is safe for
+// images specifically (rendered via <img src>, no script execution).
+export const sanitizeSchema = {
   ...defaultSchema,
   tagNames: [
     ...(defaultSchema.tagNames || []),
@@ -31,13 +49,102 @@ const sanitizeSchema = {
   attributes: {
     ...defaultSchema.attributes,
     '*': [...(defaultSchema.attributes?.['*'] || []), 'className', 'class', 'style'],
-    a: [...(defaultSchema.attributes?.a || []), 'target', 'rel']
+    a: [...(defaultSchema.attributes?.a || []), 'target', 'rel'],
+    // Phase 4 — allow the citation chip's data-cite attr to survive sanitize.
+    sup: [...(defaultSchema.attributes?.sup || []), 'className', 'class', 'data-cite']
   },
   protocols: {
     ...defaultSchema.protocols,
-    src: [...(defaultSchema.protocols?.src || []), 'image']
+    src: [...(defaultSchema.protocols?.src || []), 'image', 'data']
   }
 };
+
+// ============================================================================
+// extractTableShape — walk a remark-gfm `<table>` hast Element node and
+// pull semantic columns + rows for the v2 <StreamingTable> primitive.
+//
+// Mock 01:385-462 anatomy. Both render paths (model-prose markdown
+// tables AND `streaming_table` NDJSON frames) converge on the same
+// React component so the user sees one consistent table skin
+// everywhere, with the staggered row-fade-in declared in
+// chatmode-v2.css.
+//
+// Numeric columns (every cell matches /^\$?-?[\d.,%]+$/) get
+// `align: 'right'` + `cellClass: 'tnum'` for tabular-num alignment.
+// ============================================================================
+
+function _hastNodeText(node: any): string {
+  if (!node) return '';
+  if (node.type === 'text') return typeof node.value === 'string' ? node.value : '';
+  if (Array.isArray(node.children)) {
+    return node.children.map(_hastNodeText).join('');
+  }
+  return '';
+}
+
+function _hastFindChild(node: any, tagName: string): any | null {
+  if (!node?.children) return null;
+  for (const child of node.children) {
+    if (child?.type === 'element' && child.tagName === tagName) return child;
+  }
+  return null;
+}
+
+function _hastFindChildren(node: any, tagName: string): any[] {
+  if (!node?.children) return [];
+  return node.children.filter(
+    (c: any) => c?.type === 'element' && c.tagName === tagName,
+  );
+}
+
+const _NUMERIC_CELL_RE = /^\s*\$?-?[\d.,%]+\s*$/;
+
+export function extractTableShape(tableNode: any): {
+  columns: V2StreamingTableColumn[];
+  rows: Array<Record<string, V2StreamingTableCell>>;
+} {
+  const thead = _hastFindChild(tableNode, 'thead');
+  const tbody = _hastFindChild(tableNode, 'tbody');
+  if (!thead || !tbody) return { columns: [], rows: [] };
+
+  const headerRow = _hastFindChild(thead, 'tr');
+  if (!headerRow) return { columns: [], rows: [] };
+
+  const ths = _hastFindChildren(headerRow, 'th');
+  if (ths.length === 0) return { columns: [], rows: [] };
+
+  const columns: V2StreamingTableColumn[] = ths.map((th: any, i: number) => ({
+    key: `c${i}`,
+    label: _hastNodeText(th).trim(),
+  }));
+
+  const trs = _hastFindChildren(tbody, 'tr');
+  const rows: Array<Record<string, V2StreamingTableCell>> = trs.map((tr: any) => {
+    const tds = _hastFindChildren(tr, 'td');
+    const row: Record<string, V2StreamingTableCell> = {};
+    tds.forEach((td: any, i: number) => {
+      const colKey = columns[i]?.key ?? `c${i}`;
+      row[colKey] = _hastNodeText(td).trim();
+    });
+    return row;
+  });
+
+  // Numeric-column detection: every cell in the column matches the
+  // numeric regex → right-align + tnum (parity with autoEmitStreamingTable).
+  for (const col of columns) {
+    if (rows.length === 0) break;
+    const allNumeric = rows.every((r) => {
+      const v = r[col.key];
+      return typeof v === 'string' && _NUMERIC_CELL_RE.test(v);
+    });
+    if (allNumeric) {
+      col.align = 'right';
+      col.cellClass = 'tnum';
+    }
+  }
+
+  return { columns, rows };
+}
 
 // ============================================================================
 // MilvusImage Component - Handles image:// protocol for Milvus-stored images
@@ -56,6 +163,11 @@ const MilvusImage: React.FC<MilvusImageProps> = memo(({ src, alt, theme }) => {
   const [loading, setLoading] = useState(isImageProtocol);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
+  // MUST live with the other useStates above the early returns below —
+  // previously hoisted from inside the render body where it caused React
+  // error #310 ("rendered fewer/more hooks than during the previous
+  // render") every time the loading/error branches fired.
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   useEffect(() => {
     if (src?.startsWith('image://')) {
@@ -63,7 +175,14 @@ const MilvusImage: React.FC<MilvusImageProps> = memo(({ src, alt, theme }) => {
       setLoading(true);
       setImageError(false);
 
-      fetch(`/api/images/${imageId}`, { credentials: 'include' })
+      // Accept: application/json forces /api/images/:id into its JSON
+      // branch. Without this header the route content-negotiates on the
+      // browser default `*/*` and returns raw PNG bytes, which then blow
+      // up `.json()` below.
+      fetch(`/api/images/${imageId}`, {
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      })
         .then(res => {
           if (!res.ok) throw new Error(`Failed to load image: ${res.status}`);
           return res.json();
@@ -121,11 +240,15 @@ const MilvusImage: React.FC<MilvusImageProps> = memo(({ src, alt, theme }) => {
   }
 
   if (imageError) {
-    return (
-      <div className="rounded-lg my-4 flex items-center justify-center" style={{ ...containerStyle, border: '1px solid var(--callout-error-border)', backgroundColor: 'var(--callout-error-bg)' }}>
-        <div className="text-sm" style={{ color: 'var(--color-error)' }}>Failed to load image</div>
-      </div>
-    );
+    // Suppress the broken-image placeholder entirely. Models occasionally
+    // fabricate `image://<id>` URLs into prose without an actual image
+    // having been generated this turn. The old behavior — a giant 512×512
+    // "Failed to load image" callout — dominates the screen and makes
+    // every arch_diagram / chart turn look broken. Render nothing for
+    // the user instead; the error is already logged to console for
+    // debugging. If a legitimate image-gen DID fail, the tool_use card
+    // surfaces that path separately.
+    return null;
   }
 
   const finalSrc = isImageProtocol ? imageSrc : (imageSrc || src);
@@ -136,8 +259,6 @@ const MilvusImage: React.FC<MilvusImageProps> = memo(({ src, alt, theme }) => {
       </div>
     );
   }
-
-  const [imgLoaded, setImgLoaded] = useState(false);
 
   if (!finalSrc) return null;
 
@@ -338,15 +459,26 @@ const ArtifactSourceToggle: React.FC<ArtifactSourceToggleProps> = memo(({
 ArtifactSourceToggle.displayName = 'ArtifactSourceToggle';
 
 /**
- * URL transform to allow custom protocols
+ * URL transform — controls which hrefs/srcs survive markdown rendering.
+ *
+ * Exported because the unit tests pin the allowlist (see
+ * __tests__/SharedMarkdownRenderer.urlTransform.test.ts). When you add a
+ * new accepted form here, add a matching test there too.
  */
-const urlTransform = (url: string): string => {
+export const urlTransform = (url: string): string => {
   // Allow our custom image:// protocol
   if (url.startsWith('image://')) return url;
   // Allow data URLs
   if (url.startsWith('data:')) return url;
   // Allow standard protocols
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')) return url;
+  // Hash-only anchors are the admin AI agent's deep-link form,
+  // [Open <label>](#<slug>). The shell intercepts these on click and
+  // dispatches a navigation event. Without this branch the renderer
+  // strips the href to "" and the click reloads the app at /admin.
+  if (url.startsWith('#')) return url;
+  // mailto: is safe for plain email links inside agent answers.
+  if (url.startsWith('mailto:')) return url;
   // Block other protocols for security
   return '';
 };
@@ -407,6 +539,71 @@ const ReactStageBadge: React.FC<{ stage: keyof typeof REACT_STAGE_TONES; rest: R
     </>
   );
 };
+
+/**
+ * Status-keyword wrapper (task #174). Walks rendered React children
+ * (inside <p> and <li>) and replaces known k8s/cloud status strings
+ * with <span data-status="ok|warn|err"> so mockup-v067.css can paint
+ * them OK-green / WARN-amber / ERR-red. Keyword list is intentionally
+ * narrow — we only tint when the string is clearly a status token
+ * (word boundaries, not substrings of unrelated words).
+ */
+const STATUS_OK_WORDS = [
+  'Ready', 'Running', 'Active', 'Healthy', 'Succeeded', 'OK', 'Pass',
+  'Passed', 'stream complete', 'schema valid',
+];
+const STATUS_WARN_WORDS = [
+  'Pending', 'Degraded', 'Throttled', 'Warn', 'Warning', 'Probe failing',
+];
+const STATUS_ERR_WORDS = [
+  'Failed', 'Failing', 'Error', 'ERR', 'OOMKilled', 'OOMKilling',
+  'CrashLoopBackOff', 'BackOff', 'Evicted', 'Unknown', 'Unavailable',
+  'NotReady', 'NodeNotReady', 'MemoryPressure', 'DiskPressure',
+  'PIDPressure', 'NodePressure',
+];
+const STATUS_REGEX = new RegExp(
+  `(?<![\\w-])(${[
+    ...STATUS_ERR_WORDS.map(w => w.replace(/[.*+?^${}()|[\\]/g, '\\$&')),
+    ...STATUS_WARN_WORDS.map(w => w.replace(/[.*+?^${}()|[\\]/g, '\\$&')),
+    ...STATUS_OK_WORDS.map(w => w.replace(/[.*+?^${}()|[\\]/g, '\\$&')),
+  ].join('|')})(?![\\w-])`,
+  'g',
+);
+
+function classifyStatus(word: string): 'ok' | 'warn' | 'err' | null {
+  if (STATUS_ERR_WORDS.includes(word)) return 'err';
+  if (STATUS_WARN_WORDS.includes(word)) return 'warn';
+  if (STATUS_OK_WORDS.includes(word)) return 'ok';
+  return null;
+}
+
+function wrapStatusKeywords(children: React.ReactNode): React.ReactNode {
+  const out: React.ReactNode[] = [];
+  React.Children.forEach(children, (child, i) => {
+    if (typeof child !== 'string') {
+      out.push(child);
+      return;
+    }
+    const parts = child.split(STATUS_REGEX);
+    if (parts.length === 1) {
+      out.push(child);
+      return;
+    }
+    parts.forEach((piece, j) => {
+      const cls = classifyStatus(piece);
+      if (cls) {
+        out.push(
+          <span key={`status-${i}-${j}`} data-status={cls}>
+            {piece}
+          </span>,
+        );
+      } else if (piece) {
+        out.push(piece);
+      }
+    });
+  });
+  return out;
+}
 
 /**
  * Fix incomplete markdown constructs during streaming
@@ -552,6 +749,21 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
     // This prevents markdown parsing from breaking when code blocks are incomplete
     let result = fixIncompleteCodeFences(contentToProcess, isStreaming);
 
+    // STRIP stray <artifact:*> tokens that the model emits as decorative
+    // prose (paired AND self-closing). Server strips these at persistence
+    // time, but during streaming the raw deltas hit the UI uncleaned —
+    // this strips them in real-time so the user never sees them.
+    // Kinds: html | svg | react | mermaid. Reference:
+    // services/openagentic-api/src/routes/chat/pipeline/response.stripArtifactProseTokens.ts
+    result = result.replace(
+      /<artifact:(?:html|svg|react|mermaid)\b[^>]*>[\s\S]*?<\/artifact:(?:html|svg|react|mermaid)>/gi,
+      '',
+    );
+    result = result.replace(
+      /<artifact:(?:html|svg|react|mermaid)(?:\s+[^>]*?)?\s*\/>/gi,
+      '',
+    );
+
     // Convert \( ... \) to $...$
     result = result.replace(/\\\((.*?)\\\)/g, '$$$1$$');
     // Convert \[ ... \] to $$...$$
@@ -575,6 +787,39 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
       return line.replace(/\|\s+\|/g, '|\n|');
     }).join('\n');
 
+    // Split prose from a table header that was emitted on the same line.
+    // gpt-5.4-mini (and others) sometimes glue a paragraph and the first
+    // table row together, e.g.
+    //   "Found 2 subs.| Subscription ID | Name | State |\n|---|---|---|\n| ... |"
+    // remark-gfm needs the header row to start the line. When the NEXT
+    // line is a separator (|---|---|...|), split this line at the first
+    // pipe and inject a blank line so GFM detects the table.
+    const splitLines = result.split('\n');
+    const splitOut: string[] = [];
+    const isSeparatorLine = (s: string) =>
+      /^\s*\|?\s*:?-{2,}:?\s*(?:\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(s);
+    for (let i = 0; i < splitLines.length; i++) {
+      const line = splitLines[i];
+      const next = splitLines[i + 1] || '';
+      if (
+        line.includes('|') &&
+        !/^\s*\|/.test(line) && // line does NOT start with a pipe
+        isSeparatorLine(next)
+      ) {
+        const firstPipe = line.indexOf('|');
+        const prose = line.slice(0, firstPipe).trimEnd();
+        const header = line.slice(firstPipe);
+        if (prose.length > 0 && /\|/.test(header)) {
+          splitOut.push(prose);
+          splitOut.push('');
+          splitOut.push(header);
+          continue;
+        }
+      }
+      splitOut.push(line);
+    }
+    result = splitOut.join('\n');
+
     // Note: ReAct stage badges (THINK/ACT/OBSERVE/REFLECT) are rendered
     // inside the `p` component override below — not via preprocessing —
     // because react-markdown 9.x escapes raw HTML unless rehype-raw is
@@ -595,24 +840,31 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
   return (
     <div
       className={`prose dark:prose-invert max-w-none ${className}`}
-      // Inline style: fontSize needs to be explicit (prose-sm-tight CSS
-      // handles the rest of the typography scale). lineHeight + color
-      // pulled forward from the previous duplicate style block that was
-      // left in place during a merge — collapsed into one object here.
-      // F₂.1 typography rhythm: codemode / claude.ai read tighter than
-      // our old 15.5px/1.65. Dropped to 15px/1.6 so headings + body
-      // breathe less and the response feels like conversation, not
-      // a generated document.
+      // Editorial typography — mirror codemode .cm-markdown so chatmode
+      // and codemode read the SAME (user ask: chatmode should use the
+      // "badass" codemode font). Inter first, tighter letter-spacing,
+      // full font-feature set for single-story 'a' + ligatures + tabular
+      // nums. max-width is driven by the shared --transcript-max-width
+      // token so chatmode and codemode share one column (no width jump
+      // on sidebar flip). 2026-04-24: 820 -> 902px (10% wider).
       style={{
+        fontFamily:
+          '"Inter", "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
         fontSize: '15px',
         lineHeight: 1.6,
+        letterSpacing: '-0.005em',
+        fontFeatureSettings: '"kern" 1, "liga" 1, "calt" 1, "tnum" 1, "cv11" 1',
+        WebkitFontSmoothing: 'antialiased',
+        textRendering: 'optimizeLegibility',
         color: 'var(--color-text)',
+        maxWidth: 'var(--transcript-max-width)',
       }}
     >
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
+        remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: false }], remarkCiteMarker]}
         rehypePlugins={[
           rehypeKatex as any,
+          rehypeSemanticTokens,
           [rehypeSanitize, sanitizeSchema]
         ]}
         urlTransform={urlTransform}
@@ -639,12 +891,13 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
                 <code
                   className="font-mono"
                   style={{
-                    fontSize: '0.875em',
-                    background: 'rgba(255, 255, 255, 0.10)',
-                    color: 'var(--color-text, #e8e8ed)',
-                    padding: '0.5px 5px',
-                    borderRadius: '4px',
-                    border: 'none',
+                    fontSize: '0.88em',
+                    background: 'var(--accent-soft, rgba(139, 92, 246, 0.14))',
+                    color: 'var(--fg-0, #f8fafc)',
+                    padding: '0.1em 0.42em',
+                    borderRadius: '6px',
+                    border: '1px solid var(--accent-line, rgba(139, 92, 246, 0.32))',
+                    fontFamily: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
                     fontWeight: 500,
                   }}
                   {...props}
@@ -767,36 +1020,10 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
               );
             }
 
-            // Mermaid is deprecated — platform emits `reactflow` JSON or `svg` for diagrams.
-            // Show the source so the user can still see the model's intent, but don't render.
-            if (language === 'mermaid') {
-              return (
-                <div className="my-4 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-3 text-sm">
-                  <div className="mb-2 text-xs font-medium text-amber-800 dark:text-amber-300">
-                    Mermaid is deprecated on this platform — prefer <code className="px-1 rounded bg-amber-100 dark:bg-amber-900/60">reactflow</code> JSON or inline <code className="px-1 rounded bg-amber-100 dark:bg-amber-900/60">svg</code> code blocks.
-                  </div>
-                  <pre className="bg-gray-900 text-gray-100 p-3 rounded overflow-x-auto text-xs"><code>{codeString}</code></pre>
-                </div>
-              );
-            }
-
-            // LaTeX/math blocks
-            if (language === 'latex' || language === 'tex' || language === 'math') {
-              return (
-                <ArtifactSourceToggle code={codeString} language="latex" theme={theme} onCopy={handleCopy}>
-                  <ArtifactRenderer code={codeString} type="latex" theme={theme} />
-                </ArtifactSourceToggle>
-              );
-            }
-
-            // CSV data tables
-            if (language === 'csv') {
-              return (
-                <ArtifactSourceToggle code={codeString} language="plaintext" theme={theme} onCopy={handleCopy}>
-                  <ArtifactRenderer code={codeString} type="csv" theme={theme} />
-                </ArtifactSourceToggle>
-              );
-            }
+            // Legacy ArtifactRenderer pipeline (latex/csv inline iframe) ripped
+            // 2026-05-13 (#781 Phase D.4). LaTeX/CSV fences now fall through to
+            // standard Shiki code-block rendering. Interactive viz arrives via
+            // Message.visualizations[] + ArtifactSlideOutLauncher.
 
             // ═══════════════════════════════════════════════════════════
             // ARTIFACT RENDERING: Show clickable ArtifactTag + open Canvas
@@ -815,7 +1042,16 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
               }
             };
 
-            // Interactive artifacts
+            // Interactive artifacts — explicit `artifact:*` fence is the
+            // primary opt-in. Bare `html`/`htm`/`jsx`/`tsx`/`react` fences
+            // are also auto-promoted as a fallback (some models won't
+            // emit the explicit form even when prompted). The
+            // server-side strip in
+            // services/openagentic-api/src/routes/chat/pipeline/response.artifactStrip.ts
+            // already downgrades these fences to ```plaintext when the
+            // user's intent is NOT visualization, so by the time we get
+            // here, a plain ```html block legitimately means "the user
+            // asked to see something visual." See #417.
             if (language.startsWith('artifact:')) {
               const artifactType = language.replace('artifact:', '') as string;
               const artifactTitle = extractTitle(codeString)
@@ -830,7 +1066,6 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
               );
             }
 
-            // HTML blocks
             if (language === 'html' || language === 'htm') {
               const htmlTitle = extractTitle(codeString) || 'HTML Document';
               return (
@@ -841,7 +1076,6 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
               );
             }
 
-            // React/JSX blocks
             if (language === 'jsx' || language === 'tsx' || language === 'react') {
               const reactTitle = extractTitle(codeString) || 'React Component';
               return (
@@ -853,6 +1087,11 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
             }
 
             // Default: Syntax-highlighted code block
+            // v0.6.7 task #159 — use EnhancedShikiCodeBlock during streaming
+            // so only the appended tail is re-highlighted on each delta.
+            // Non-streaming renders keep the standard ShikiCodeBlock path
+            // (it supports onExecute + executable which the enhanced
+            // variant intentionally does not).
             return (
               <div className="my-4 relative">
                 {isStreaming && (
@@ -861,15 +1100,25 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
                     Live
                   </div>
                 )}
-                <ShikiCodeBlock
-                  code={codeString}
-                  language={language || 'plaintext'}
-                  theme={theme}
-                  onCopy={handleCopy}
-                  onExecute={onExecute}
-                  executable={executable}
-                  isStreaming={isStreaming}
-                />
+                {isStreaming ? (
+                  <EnhancedShikiCodeBlock
+                    code={codeString}
+                    language={language || 'plaintext'}
+                    theme={theme}
+                    onCopy={handleCopy}
+                    isStreaming={true}
+                  />
+                ) : (
+                  <ShikiCodeBlock
+                    code={codeString}
+                    language={language || 'plaintext'}
+                    theme={theme}
+                    onCopy={handleCopy}
+                    onExecute={onExecute}
+                    executable={executable}
+                    isStreaming={false}
+                  />
+                )}
               </div>
             );
           },
@@ -882,71 +1131,27 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
           ),
 
           // ================================================================
-          // Excel-style professional table styling with alternating accent colors
-          // Uses --color-primary as the accent color for headers and alternating rows
-          // NO row numbers - clean professional table appearance
+          // Tables route through the v2 <StreamingTable> primitive
+          // (mock 01:385-462) so model-prose markdown tables share the
+          // same anatomy as `streaming_table` NDJSON frames emitted by
+          // autoEmitStreamingTable. Single source of truth for tabular
+          // rendering; staggered row-fade-in keyed off `tbody tr:nth-child`
+          // in chatmode-v2.css. Empty / malformed tables fall back to a
+          // plain HTML <table> so we never silently lose data.
           // ================================================================
-          table: ({ children }) => (
-            <div className="overflow-x-auto my-4 rounded-lg excel-table-container">
-              <table className="min-w-full border-collapse excel-table">
-                {children}
-              </table>
-            </div>
-          ),
-          thead: ({ children }) => (
-            <thead className="sticky top-0 z-10">
-              {children}
-            </thead>
-          ),
-          tbody: ({ children }) => (
-            <tbody className="excel-tbody">
-              {children}
-            </tbody>
-          ),
-          tr: ({ children, ...props }) => {
-            // Check if this is in thead (has th children)
-            const childArray = React.Children.toArray(children);
-            const isHeader = childArray.some(
-              (child: any) => child?.type === 'th' || child?.props?.node?.tagName === 'th'
-            );
-
-            if (isHeader) {
-              return (
-                <tr {...props}>
-                  {children}
-                </tr>
-              );
+          table: ({ node, children }) => {
+            const { columns, rows } = extractTableShape(node);
+            if (columns.length === 0) {
+              return <table>{children}</table>;
             }
-
-            // Data row - uses CSS nth-child for alternating colors
-            return (
-              <tr className="excel-data-row transition-colors" {...props}>
-                {children}
-              </tr>
-            );
+            const tableData: V2StreamingTableData = {
+              artifactId: 'md-table',
+              title: '',
+              columns,
+              rows,
+            };
+            return <V2StreamingTable table={tableData} />;
           },
-          th: ({ children }) => (
-            <th
-              className="px-4 py-2.5 text-left font-semibold border-r border-white/20 last:border-r-0 whitespace-nowrap"
-              style={{
-                fontSize: '13px',
-                textTransform: 'none',
-                letterSpacing: '0',
-              }}
-            >
-              {children}
-            </th>
-          ),
-          td: ({ children }) => (
-            <td
-              className="px-4 py-2 border-r border-b border-[var(--color-border)] last:border-r-0"
-              style={{
-                fontSize: '13px',
-              }}
-            >
-              {children}
-            </td>
-          ),
 
           // ================================================================
           // Headings (F₂.1 — match codemode's tighter rhythm).
@@ -958,23 +1163,43 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
           // and pulled the top/bottom margins in so dense markdown
           // doesn't feel like it's breathing past its lungs.
           // ================================================================
+          // v0.6.7 mockup parity — h2 gets a line-1 rule underneath, h3 picks
+          // up the violet accent, h4 stays muted. Inline styles beat the
+          // prose plugin's defaults without a specificity war.
           h1: ({ children }) => (
-            <h1 className="text-xl font-semibold mt-5 mb-3 text-[var(--color-text)]">
+            <h1
+              className="text-xl font-semibold mt-5 mb-3"
+              style={{ color: 'var(--fg-0, #f8fafc)', letterSpacing: '-0.02em' }}
+            >
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="text-lg font-semibold mt-4 mb-2 text-[var(--color-text)]">
+            <h2
+              className="text-lg font-semibold mt-5 mb-2"
+              style={{
+                color: 'var(--cm-fg-0)',
+                letterSpacing: '-0.015em',
+                borderBottom: '1px solid var(--cm-line-1)',
+                paddingBottom: 4,
+              }}
+            >
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-base font-semibold mt-3 mb-2 text-[var(--color-text)]">
+            <h3
+              className="text-base font-semibold mt-4 mb-2"
+              style={{ color: 'var(--cm-fg-0)', letterSpacing: '-0.01em' }}
+            >
               {children}
             </h3>
           ),
           h4: ({ children }) => (
-            <h4 className="text-sm font-semibold mt-3 mb-1.5 text-[var(--color-text-secondary)]">
+            <h4
+              className="text-sm font-semibold mt-3 mb-1.5"
+              style={{ color: 'var(--cm-fg-1)' }}
+            >
               {children}
             </h4>
           ),
@@ -1007,7 +1232,7 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
           ),
           li: ({ children }) => (
             <li className="pl-1 leading-snug">
-              {children}
+              {wrapStatusKeywords(children)}
             </li>
           ),
 
@@ -1047,7 +1272,7 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
             }
             return (
               <p className="my-3 leading-relaxed">
-                {children}
+                {wrapStatusKeywords(children)}
               </p>
             );
           },
@@ -1056,7 +1281,10 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
           // Strong/bold with subtle color
           // ================================================================
           strong: ({ children }) => (
-            <strong className="font-semibold text-[var(--color-text)]">
+            <strong
+              className="font-semibold"
+              style={{ color: 'var(--fg-0, #f8fafc)', fontWeight: 600 }}
+            >
               {children}
             </strong>
           ),

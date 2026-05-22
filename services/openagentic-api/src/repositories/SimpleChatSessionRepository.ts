@@ -7,6 +7,7 @@
 
 import { PrismaClient, ChatSession } from '@prisma/client';
 import { Redis } from 'ioredis';
+import { buildSessionListWhere } from './sessionListWhere.js';
 
 export interface CreateChatSessionData {
   id: string;
@@ -144,11 +145,12 @@ export class SimpleChatSessionRepository {
     }
 
     try {
+      // Sev-0 2026-05-08 — hide empty sessions older than the
+      // freshness window. Old empty Playwright probe rows pollute
+      // the sidebar; new fresh-empty rows still surface immediately.
+      // See repositories/sessionListWhere.ts for the contract.
       const sessions = await this.prisma.chatSession.findMany({
-        where: {
-          user_id: userId,
-          deleted_at: null
-        },
+        where: buildSessionListWhere(userId),
         orderBy: { updated_at: 'desc' },
         take: limit
       });

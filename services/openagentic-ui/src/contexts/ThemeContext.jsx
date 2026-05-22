@@ -139,15 +139,79 @@ export const ThemeProvider = ({ children }) => {
     return 'dark';
   };
 
-  // Apply accent color to CSS variables
+  // Apply accent color to CSS variables.
+  //
+  // Chatmode-v2 (mocks/UX/01-cloud-ops.html design system) reads
+  // --user-accent-primary directly for the solid accent, plus
+  // --user-accent-soft (alpha 0.14) and --user-accent-line (alpha 0.32)
+  // for tinted backgrounds and 1px borders on inline cards. Without these
+  // soft+line derivations, the accent dropdown only repaints chrome and
+  // leaves chatmode tool cards stuck on the canonical purple. Caught
+  // 2026-04-30 — see docs/superpowers/specs/2026-04-30-chatmode-ux-parity-punchlist.md.
   const applyAccentColor = (accent) => {
     const root = document.documentElement;
     root.style.setProperty('--user-accent-primary', accent.primary);
     root.style.setProperty('--user-accent-secondary', accent.secondary);
     root.style.setProperty('--user-accent-color', accent.primary);
 
+    // Derive --user-accent-soft / --user-accent-line for chatmode-v2.
+    // We pass through CSS color-mix() so any input form (#hex, rgb(),
+    // hsl(), oklch(), or already-themed CSS var) yields a correctly
+    // tinted alpha — no hand-rolled regex parsing of the picker value.
+    // Falls back gracefully on browsers without color-mix (Safari < 16.4)
+    // because the .cm-v2 declarations carry literal-rgba defaults.
+    root.style.setProperty(
+      '--user-accent-soft',
+      `color-mix(in srgb, ${accent.primary} 14%, transparent)`
+    );
+    root.style.setProperty(
+      '--user-accent-line',
+      `color-mix(in srgb, ${accent.primary} 32%, transparent)`
+    );
+    root.style.setProperty(
+      '--user-accent-soft-light',
+      `color-mix(in srgb, ${accent.primary} 10%, transparent)`
+    );
+
+    // 2026-05-13 fix: admin v3 paints --accent / --accent-dim / --accent-glow
+    // from html[data-accent="<token>"] selectors in admin-v2-accents.css.
+    // We write the token here too so changing the accent in this menu also
+    // repaints the admin shell live (was previously broken — admin's own
+    // useTheme hook only re-read on `storage` event, which doesn't fire on
+    // same-tab writes). Map our accentColors[] names → admin tokens; unknown
+    // names fall through with the user-accent-* CSS vars still set.
+    const nameToAdminToken = {
+      'Dark Blue': 'gcp',
+      'Blue': 'gcp',
+      'Green': 'green',
+      'Teal': 'teal',
+      'Amber': 'amber',
+      'Orange': 'amber',
+      'Violet': 'violet',
+      'Purple': 'violet',
+      'Magenta': 'magenta',
+      'Pink': 'magenta',
+    };
+    const token = nameToAdminToken[accent.name];
+    if (token) {
+      root.dataset.accent = token;
+      document.body.dataset.accent = token;
+      try { localStorage.setItem('openagentic-accent', token); } catch { /* ignore */ }
+    }
+
     // Save to localStorage
     localStorage.setItem('ac-accent-color', JSON.stringify(accent));
+
+    // Same-tab notify: admin shell's useTheme listens for `storage` (which
+    // does NOT fire same-tab) and `focus` — so changing accent from the chat
+    // dropdown while admin is open silently failed before. Dispatch a manual
+    // storage event so admin re-reads accent immediately.
+    try {
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'ac-accent-color',
+        newValue: JSON.stringify(accent),
+      }));
+    } catch { /* older browsers: best-effort */ }
   };
 
   // CSS-only themes are now scoped to code mode only (.code-mode[data-cm-theme])
@@ -191,8 +255,16 @@ export const ThemeProvider = ({ children }) => {
       }
     }
 
-    // Apply theme class to body
-    document.body.className = `${themeName}-theme`;
+    // Preserve any existing body classes (tailwind, plugins) and replace
+    // only the legacy theme-class marker. The class is kept because a few
+    // third-party components (not in this repo) key off it, but it no
+    // longer drives any CSS rules — body bg reads var(--bg-0) directly
+    // from the tokenized theme.
+    const classes = document.body.className
+      .split(/\s+/)
+      .filter((c) => c && !c.endsWith('-theme'));
+    classes.push(`${themeName}-theme`);
+    document.body.className = classes.join(' ');
   };
 
   // Apply theme and accent color immediately on mount

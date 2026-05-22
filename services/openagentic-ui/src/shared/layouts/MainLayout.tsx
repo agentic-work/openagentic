@@ -154,23 +154,28 @@ const Layout: React.FC<LayoutProps> = ({ children, theme, onNewChat, onToggleTok
             </Link>
           )}
           
+          {/* 2026-05-07 — legacy /settings route ripped (it was a duplicate
+              of admin v3 panes). Sidebar settings icon now bounces straight
+              to /admin#integrations where tenant-wide config (GitHub OAuth,
+              providers, MCP) actually lives. Per-user GitHub OAuth surfaces
+              inside codemode (where it's used). */}
           <Link
-            to="/settings"
+            to="/admin#integrations"
             className="relative group block"
-            title="Settings"
+            title="Settings (admin)"
           >
             <motion.div
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
               className={`p-3 rounded-lg transition-all ${
-                location.pathname === '/settings'
+                location.pathname.startsWith('/admin')
                   ? 'theme-bg-secondary theme-text-primary'
                   : 'theme-text-secondary hover:theme-text-primary hover:theme-bg-secondary/50'
               }`}
             >
               <SettingsIcon size={20} />
             </motion.div>
-            
+
             {/* Tooltip */}
             <div className="absolute left-full ml-2 px-2 py-1 rounded theme-bg-tertiary theme-text-primary text-sm opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap">
               Settings

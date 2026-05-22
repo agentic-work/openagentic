@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiRequest } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 import {
   Activity,
   DollarSign,
@@ -58,7 +59,8 @@ export const FlowCostsView: React.FC<FlowCostsViewProps> = ({ theme }) => {
   const [groupBy, setGroupBy] = useState('workflow');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
-  const isDark = theme === 'dark';
+  const _isDark = theme === 'dark';
+  void _isDark;
 
   const fetchCosts = useCallback(async () => {
     setLoading(true);
@@ -83,27 +85,31 @@ export const FlowCostsView: React.FC<FlowCostsViewProps> = ({ theme }) => {
       : tokens.toLocaleString();
 
   const cardStyle: React.CSSProperties = {
-    background: isDark ? '#161b22' : '#fff',
-    border: `1px solid ${isDark ? '#30363d' : '#d0d7de'}`,
+    background: 'var(--ap-bg-1)',
+    border: '1px solid var(--ap-ln-1)',
     borderRadius: 12,
     padding: 16,
   };
 
-  const headerColor = isDark ? '#e6edf3' : '#1f2328';
-  const mutedColor = isDark ? '#8b949e' : '#656d76';
-  const accentGreen = '#2ea043';
-  const accentBlue = '#388bfd';
+  const headerColor = 'var(--ap-fg-0)';
+  const mutedColor = 'var(--ap-fg-3)';
+  const accentGreen = 'var(--ap-ok)';
+  const accentBlue = 'var(--ap-accent)';
 
   return (
     <div style={{ padding: '20px 24px', maxWidth: 1200 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div>
-          <h2 style={{ color: headerColor, margin: 0, fontSize: 20, fontWeight: 700 }}>Flow Costs</h2>
-          <p style={{ color: mutedColor, margin: '4px 0 0', fontSize: 13 }}>
-            Per-workflow cost tracking from real LLM usage
-          </p>
-        </div>
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Flows', 'Flow Costs']}
+        title="Flow Costs"
+        explainer="Per-workflow cost tracking from real LLM usage. Drill into model-level breakdowns by row."
+        actions={[
+          { label: 'Refresh', onClick: fetchCosts },
+        ]}
+      />
+
+      {/* Filter bar */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20, marginTop: 16 }}>
         <div style={{ display: 'flex', gap: 8 }}>
           {/* Period selector */}
           {['7d', '30d', '90d'].map(p => (
@@ -113,9 +119,9 @@ export const FlowCostsView: React.FC<FlowCostsViewProps> = ({ theme }) => {
               style={{
                 padding: '6px 14px',
                 borderRadius: 8,
-                border: `1px solid ${isDark ? '#30363d' : '#d0d7de'}`,
+                border: '1px solid var(--ap-ln-1)',
                 background: period === p ? accentBlue : 'transparent',
-                color: period === p ? '#fff' : mutedColor,
+                color: period === p ? 'var(--ap-fg-0)' : mutedColor,
                 cursor: 'pointer',
                 fontSize: 12,
                 fontWeight: 600,
@@ -131,8 +137,8 @@ export const FlowCostsView: React.FC<FlowCostsViewProps> = ({ theme }) => {
             style={{
               padding: '6px 10px',
               borderRadius: 8,
-              border: `1px solid ${isDark ? '#30363d' : '#d0d7de'}`,
-              background: isDark ? '#0d1117' : '#fff',
+              border: '1px solid var(--ap-ln-1)',
+              background: 'var(--ap-bg-0)',
               color: headerColor,
               fontSize: 12,
               cursor: 'pointer',
@@ -150,8 +156,8 @@ export const FlowCostsView: React.FC<FlowCostsViewProps> = ({ theme }) => {
           {[
             { icon: <DollarSign className="w-4 h-4" />, label: 'Total Cost', value: formatCost(data.summary.totalCost), color: accentGreen },
             { icon: <Activity className="w-4 h-4" />, label: 'Executions', value: data.summary.totalExecutions.toLocaleString(), color: accentBlue },
-            { icon: <Zap className="w-4 h-4" />, label: 'Total Tokens', value: formatTokens(data.summary.totalTokens), color: '#d29922' },
-            { icon: <TrendingUp className="w-4 h-4" />, label: 'Avg Cost/Run', value: formatCost(data.summary.avgCostPerExecution), color: '#a371f7' },
+            { icon: <Zap className="w-4 h-4" />, label: 'Total Tokens', value: formatTokens(data.summary.totalTokens), color: 'var(--ap-warn)' },
+            { icon: <TrendingUp className="w-4 h-4" />, label: 'Avg Cost/Run', value: formatCost(data.summary.avgCostPerExecution), color: 'var(--ap-accent)' },
           ].map((card, i) => (
             <div key={i} style={cardStyle}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -175,7 +181,7 @@ export const FlowCostsView: React.FC<FlowCostsViewProps> = ({ theme }) => {
         <div style={cardStyle}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr style={{ borderBottom: `1px solid ${isDark ? '#30363d' : '#d0d7de'}` }}>
+              <tr style={{ borderBottom: '1px solid var(--ap-ln-1)' }}>
                 {['Name', 'Executions', 'Tokens', 'Total Cost', 'Avg/Run'].map(h => (
                   <th key={h} style={{ textAlign: h === 'Name' ? 'left' : 'right', padding: '10px 12px', color: mutedColor, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>
                     {h}
@@ -189,9 +195,9 @@ export const FlowCostsView: React.FC<FlowCostsViewProps> = ({ theme }) => {
                   <tr
                     onClick={() => setExpandedRow(expandedRow === row.key ? null : row.key)}
                     style={{
-                      borderBottom: `1px solid ${isDark ? '#21262d' : '#eaeef2'}`,
+                      borderBottom: '1px solid var(--ap-ln-3)',
                       cursor: 'pointer',
-                      background: expandedRow === row.key ? (isDark ? '#1c2128' : '#f6f8fa') : 'transparent',
+                      background: expandedRow === row.key ? 'var(--ap-bg-2)' : 'transparent',
                     }}
                   >
                     <td style={{ padding: '10px 12px', color: headerColor, fontWeight: 600 }}>{row.label}</td>
@@ -215,7 +221,7 @@ export const FlowCostsView: React.FC<FlowCostsViewProps> = ({ theme }) => {
                           </thead>
                           <tbody>
                             {row.models.map((m, i) => (
-                              <tr key={i} style={{ borderTop: `1px solid ${isDark ? '#21262d' : '#eaeef2'}` }}>
+                              <tr key={i} style={{ borderTop: '1px solid var(--ap-ln-3)' }}>
                                 <td style={{ padding: '4px 8px', color: headerColor, fontFamily: 'monospace' }}>{m.model}</td>
                                 <td style={{ padding: '4px 8px', textAlign: 'right', color: headerColor }}>{m.calls}</td>
                                 <td style={{ padding: '4px 8px', textAlign: 'right', color: headerColor }}>{formatTokens(m.tokens)}</td>

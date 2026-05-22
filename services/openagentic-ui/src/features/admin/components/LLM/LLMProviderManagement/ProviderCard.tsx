@@ -5,6 +5,7 @@ import React from 'react';
 import { Edit2, ChevronRight, Plus } from '@/shared/icons';
 import { Server } from '../../Shared/AdminIcons';
 import { AdminStatusBadge } from '../../Shared/AdminStatusBadge';
+import { StateMachineToggle } from '../../../primitives-v2';
 import {
   type DbProvider, type HealthInfo, type MetricsInfo, type HealthStatus,
   PROVIDER_META, btnPrimary, resolveHealthStatus, healthToBadgeStatus, countModels,
@@ -20,7 +21,7 @@ interface ProviderCardProps {
   onEdit: () => void;
   onDelete: () => void;
   onTest: () => void;
-  onToggleEnabled: () => void;
+  onCommit: (next: boolean) => Promise<boolean>;
   onPauseResume: (durationMinutes?: number) => void;
   onRotateCredentials: () => void;
   onCapabilityToggle: (capability: string, enabled: boolean) => void;
@@ -29,17 +30,17 @@ interface ProviderCardProps {
 
 export const ProviderCard: React.FC<ProviderCardProps> = ({
   provider, health, metrics, isExpanded, onToggleExpand,
-  onEdit, onDelete, onTest, onToggleEnabled,
+  onEdit, onDelete, onTest, onCommit,
   onPauseResume, onRotateCredentials, onCapabilityToggle, testing,
 }) => {
   const meta = PROVIDER_META[provider.provider_type] || PROVIDER_META.ollama;
   const isEnv = provider.id.startsWith('env-');
   const mc = provider.model_config || {};
   const hStatus = resolveHealthStatus(provider, health);
-  const modelCount = countModels(mc);
+  const modelCount = countModels(provider);
 
   return (
-    <div className="rounded-xl border overflow-hidden transition-all" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+    <div className="rounded-card overflow-hidden transition-[background,transform,box-shadow] duration-200 ease-emphasized bg-surface-1">
       {/* Card Header */}
       <div className="flex items-center justify-between px-5 py-4 cursor-pointer select-none hover:brightness-105 transition-all"
         onClick={onToggleExpand}>
@@ -50,7 +51,7 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
             <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2"
               style={{
                 borderColor: 'var(--color-surface)',
-                backgroundColor: hStatus === 'healthy' ? '#00D26A' : hStatus === 'paused' ? '#f59e0b' : hStatus === 'unhealthy' ? '#ef4444' : hStatus === 'disabled' ? 'var(--text-tertiary)' : '#8b5cf6',
+                backgroundColor: hStatus === 'healthy' ? 'var(--ap-ok)' : hStatus === 'paused' ? 'var(--ap-warn)' : hStatus === 'unhealthy' ? 'var(--ap-err)' : hStatus === 'disabled' ? 'var(--text-tertiary)' : 'var(--ap-accent)',
               }} />
           </div>
           <div>
@@ -61,7 +62,7 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
               </span>
               {isEnv && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30">ENV</span>}
               {modelCount > 0 && (
-                <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#6366f115', color: '#6366f1', border: '1px solid #6366f130' }}>
+                <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--ap-accent-soft)', color: 'var(--ap-accent)', border: '1px solid var(--ap-accent-line)' }}>
                   {modelCount} model{modelCount > 1 ? 's' : ''}
                 </span>
               )}
@@ -82,17 +83,19 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
           <AdminStatusBadge status={healthToBadgeStatus(hStatus)} size="sm" />
           {!isEnv && (
             <button onClick={e => { e.stopPropagation(); onEdit(); }}
-              className="p-1.5 rounded-lg border transition-colors hover:brightness-110"
-              style={{ borderColor: 'var(--color-border)', color: 'var(--text-secondary)' }} title="Edit">
+              className="h-9 w-9 rounded-btn flex items-center justify-center transition-[background,transform] duration-200 ease-emphasized active:scale-[0.98] hover:bg-surface-2"
+              style={{ color: 'var(--text-secondary)' }} title="Edit">
               <Edit2 size={14} />
             </button>
           )}
-          <button onClick={e => { e.stopPropagation(); if (!isEnv) onToggleEnabled(); }}
-            className={`relative w-9 h-5 rounded-full transition-colors ${isEnv ? 'opacity-50 cursor-not-allowed' : ''} ${provider.enabled ? 'bg-emerald-500' : ''}`}
-            style={!provider.enabled ? { backgroundColor: 'var(--color-border)' } : undefined}
-            disabled={isEnv} title={provider.enabled ? 'Disable' : 'Enable'}>
-            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${provider.enabled ? 'left-4' : 'left-0.5'}`} />
-          </button>
+          <div onClick={e => e.stopPropagation()}>
+            <StateMachineToggle
+              checked={provider.enabled}
+              onCommit={onCommit}
+              label={`Toggle provider ${provider.display_name}`}
+              disabled={isEnv}
+            />
+          </div>
           <span className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`} style={{ color: 'var(--text-muted)' }}>
             <ChevronRight size={16} />
           </span>
@@ -124,7 +127,7 @@ export const EmptyProviderState: React.FC<{
   searchTerm: string;
   onAddProvider: () => void;
 }> = ({ searchTerm, onAddProvider }) => (
-  <div className="text-center py-16 rounded-xl border" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surfaceSecondary)' }}>
+  <div className="text-center py-16 rounded-card bg-surface-1">
     <Server size={40} className="mx-auto mb-3 opacity-30" style={{ color: 'var(--text-muted)' }} />
     <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
       {searchTerm ? 'No matching providers' : 'No providers configured'}

@@ -1,0 +1,172 @@
+{
+  "slug": "azure-security-posture-snapshot",
+  "name": "Azure Security Posture Snapshot",
+  "description": "Snapshot a subscription's Microsoft Defender for Cloud security posture: pull the overall secure score (azure_security_secure_score) and the active assessments (azure_security_list_assessments) in parallel via the live openagentic_azure MCP. The analyze transform classifies each finding by severity, sorts unhealthy findings descending (High → Medium → Low), takes the top 10, pre-computes the rows_html, and folds an empty-banner when zero unhealthy assessments are returned. The platform LLM writes a 3-4 bullet operator-facing narrative on the top posture concerns ordered by severity, CoT preamble is stripped, and a webhook_response renders the final HTML report. Empty-subscription case (no Defender plan, or a fully clean posture — common for small subs) renders a 'No unhealthy assessments' banner instead of an empty table. Note: a 401/403 from Azure (caller lacks Defender Reader / Security Reader) surfaces as a hard node_error from the oap-azure-mcp error_response wrapper — same engine-level UX as every other MCP-driven template.",
+  "category": "aiops",
+  "template": true,
+  "meta": {
+    "purpose": "Snapshot an Azure subscription's Microsoft Defender for Cloud security posture: secure score plus the top 10 unhealthy assessments ranked by severity, with an LLM narrative on what to fix first.",
+    "how_it_works": [
+      "1. Fans the trigger out to two parallel openagentic_azure MCP calls: azure_security_secure_score and azure_security_list_assessments.",
+      "2. A merge converges both branches keyed by source.",
+      "3. A single analyze transform classifies each assessment by severity, sorts unhealthy findings (High → Medium → Low), keeps the top 10, and pre-renders rows_html.",
+      "4. The platform LLM writes a 3-4 bullet operator narrative on the top posture concerns ordered by severity.",
+      "5. A CoT-stripper transform removes any LLM preamble.",
+      "6. webhook_response renders the HTML posture snapshot. Clean-posture short-circuit: when no unhealthy assessments exist, a 'No unhealthy assessments' banner renders instead of an empty table."
+    ],
+    "expected_output": "HTML posture snapshot with: secure score, count of unhealthy assessments by severity, top 10 finding rows, and a 3-4 bullet LLM 'what to fix first' narrative.",
+    "useful_when": "Monthly security review, pre-audit posture check, after a high-CVSS CVE drop, or when a customer/internal CISO asks 'what's our Defender posture this week?'.",
+    "tools_used": ["openagentic_azure.azure_security_secure_score", "openagentic_azure.azure_security_list_assessments", "llm_completion", "merge", "transform", "webhook_response"],
+    "version": "1.0",
+    "tags": ["aiops", "azure", "security", "defender", "posture", "compliance"]
+  },
+  "defaultInputs": {
+    "subscription_id": ""
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "data": {
+          "triggerType": "manual",
+          "label": "Azure Security Posture",
+          "input_schema": {
+            "subscription_id": "string"
+          }
+        }
+      },
+      {
+        "id": "secure_score",
+        "type": "mcp_tool",
+        "data": {
+          "label": "secure_score",
+          "toolServer": "openagentic_azure",
+          "toolName": "azure_security_secure_score",
+          "arguments": {
+            "subscription_id": "{{input.subscription_id}}"
+          }
+        }
+      },
+      {
+        "id": "assessments",
+        "type": "mcp_tool",
+        "data": {
+          "label": "assessments",
+          "toolServer": "openagentic_azure",
+          "toolName": "azure_security_list_assessments",
+          "arguments": {
+            "subscription_id": "{{input.subscription_id}}"
+          }
+        }
+      },
+      {
+        "id": "merge",
+        "type": "merge",
+        "data": {
+          "label": "merge",
+          "mode": "labeled"
+        }
+      },
+      {
+        "id": "analyze",
+        "type": "transform",
+        "data": {
+          "label": "analyze",
+          "operations": [
+            {
+              "op": "set",
+              "target": "subscription_label",
+              "value": "{{ (() => { const b = input; const get = (o) => { if (!o || typeof o !== 'object') return null; if (typeof o.subscription_id === 'string' && o.subscription_id) return o.subscription_id; if (typeof o.content === 'string') { try { const p = JSON.parse(o.content); if (p && typeof p.subscription_id === 'string') return p.subscription_id; } catch (e) {} } return null; }; return get(b && b.secure_score) || get(b && b.assessments) || 'unknown'; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "secure_score_pct",
+              "value": "{{ (() => { const branch = input && input.secure_score; if (!branch || typeof branch !== 'object') return null; let payload = branch; if (typeof branch.content === 'string') { try { payload = JSON.parse(branch.content); } catch (e) { payload = null; } } if (!payload || !Array.isArray(payload.secure_scores)) return null; const ascScore = payload.secure_scores.find(s => (s && (s.name === 'ascScore' || (s.display_name || '').toLowerCase().includes('overall')))); const pick = ascScore || payload.secure_scores[0]; if (!pick) return null; const p = (typeof pick.percentage === 'number') ? pick.percentage : null; if (p === null) return null; return Math.round(p * 1000) / 10; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "assessments_array",
+              "value": "{{ (() => { const branch = input && input.assessments; if (!branch || typeof branch !== 'object') return []; let payload = branch; if (typeof branch.content === 'string') { try { payload = JSON.parse(branch.content); } catch (e) { payload = null; } } if (!payload || !Array.isArray(payload.assessments)) return []; const sevOrder = { High: 0, Medium: 1, Low: 2, Informational: 3 }; const unhealthy = payload.assessments.filter(a => { if (!a || typeof a !== 'object') return false; const status = String(a.status || '').toLowerCase(); return status !== 'healthy' && status !== ''; }); const copy = unhealthy.map(a => { const sev = String(a && a.severity || 'Low'); const rank = sevOrder[sev] !== undefined ? sevOrder[sev] : 4; return Object.assign({}, a, { __sev_rank: rank }); }); copy.sort((x, y) => { const xr = (typeof x.__sev_rank === 'number') ? x.__sev_rank : 4; const yr = (typeof y.__sev_rank === 'number') ? y.__sev_rank : 4; return xr - yr; }); return copy; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "top_findings",
+              "value": "{{ (() => { const a = Array.isArray(input.assessments_array) ? input.assessments_array : []; return a.slice(0, 10); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "finding_count",
+              "value": "{{ (() => { const a = Array.isArray(input.assessments_array) ? input.assessments_array : []; return a.length; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "severity_summary",
+              "value": "{{ (() => { const a = Array.isArray(input.assessments_array) ? input.assessments_array : []; const out = { High: 0, Medium: 0, Low: 0, Other: 0 }; for (const f of a) { const s = String((f && f.severity) || 'Other'); if (out[s] !== undefined) out[s] += 1; else out.Other += 1; } return out; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "rows_html",
+              "value": "{{ (() => { const a = Array.isArray(input.top_findings) ? input.top_findings : []; if (a.length === 0) return '<tr><td colspan=\"4\"><em>No unhealthy security assessments found.</em></td></tr>'; const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); return a.map(f => { const sev = esc((f && f.severity) || 'Unknown'); const name = esc((f && (f.display_name || f.name)) || ''); const status = esc((f && f.status) || ''); const desc = esc(((f && f.description) || '')).slice(0, 240); return `<tr><td>${sev}</td><td>${name}</td><td>${status}</td><td>${desc}</td></tr>`; }).join(''); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "empty_banner",
+              "value": "{{ (() => { const c = (typeof input.finding_count === 'number') ? input.finding_count : 0; if (c === 0) return '<p class=\"empty-findings\"><strong>No unhealthy security assessments.</strong> Microsoft Defender for Cloud reports zero unhealthy assessments for this subscription. This usually means the subscription is small, recently remediated, or Defender is not yet enrolled on its resource types.</p>'; return ''; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "summary_payload",
+              "value": "{{ (() => { const a = Array.isArray(input.top_findings) ? input.top_findings : []; const top = a.slice(0, 5).map(f => ({ severity: (f && f.severity) || 'Unknown', display_name: (f && (f.display_name || f.name)) || '', status: (f && f.status) || '', description: ((f && f.description) || '').slice(0, 240), categories: (f && f.categories) || null })); return { finding_count: (typeof input.finding_count === 'number') ? input.finding_count : 0, severity_summary: input.severity_summary || { High: 0, Medium: 0, Low: 0, Other: 0 }, secure_score_pct: (typeof input.secure_score_pct === 'number') ? input.secure_score_pct : null, top_findings: top }; })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "narrative",
+        "type": "llm_completion",
+        "data": {
+          "label": "Security Posture Narrative",
+          "prompt": "You are a security operator writing a 3-4 bullet operator-facing narrative on the Azure security posture for subscription {{steps.analyze.subscription_label}}.\n\nSecure score: {{steps.analyze.secure_score_pct}}%\nUnhealthy assessments: {{steps.analyze.finding_count}} (High: {{steps.analyze.severity_summary.High}}, Medium: {{steps.analyze.severity_summary.Medium}}, Low: {{steps.analyze.severity_summary.Low}})\nTop findings (JSON):\n{{steps.analyze.summary_payload}}\n\nOutput rules (MUST follow):\n1. Start the response with a single `-` character — no preamble, no \"Here is\", no \"The user wants\", no thinking out loud.\n2. 3-4 short bullets, each on its own line, each beginning with `-`.\n3. Bullet 1: the single highest-severity finding — call out the display_name, the severity, and a concrete one-sentence remediation step.\n4. Bullet 2: the second-highest concern with the same structure.\n5. Bullet 3: a roll-up of the remaining Medium / Low findings — combined count + one-line theme (e.g. 'three more storage public-network-access findings').\n6. Bullet 4 (optional): a posture observation (the secure-score number plus whether it improved or regressed if trend data were available — for now just contextualize the current value, e.g. 'A 62% secure score leaves significant headroom for remediation').\n7. If finding_count is 0, emit one bullet stating no unhealthy assessments were found and one bullet recommending a Defender enrollment check.",
+          "model": "auto",
+          "temperature": 0.2,
+          "maxTokens": 500
+        }
+      },
+      {
+        "id": "clean_narrative",
+        "type": "transform",
+        "data": {
+          "label": "Strip CoT Preamble",
+          "operations": [
+            {
+              "op": "set",
+              "target": "clean_content",
+              "value": "{{ (() => { const raw = String(input.content || ''); const inlineMatch = raw.match(/([\\.\\!\\?\\:]|\\n)\\s*(-\\s+\\S)/); const lines = raw.split(/\\r?\\n/); let firstBulletIdx = -1; for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (t.startsWith('-') || t.startsWith('•') || t.startsWith('*')) { firstBulletIdx = i; break; } } if (firstBulletIdx !== -1) { const fromLineIdx = lines.slice(firstBulletIdx).join('\\n').trim(); if (inlineMatch && inlineMatch.index !== undefined) { const fromInline = raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); if (fromInline.length < fromLineIdx.length || lines[firstBulletIdx].trim().length > 8 === false) { return fromInline; } } return fromLineIdx; } if (inlineMatch && inlineMatch.index !== undefined) { return raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); } return raw.trim(); })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "report",
+        "type": "webhook_response",
+        "data": {
+          "label": "HTML Security Posture Report",
+          "statusCode": 200,
+          "headers": { "Content-Type": "text/html" },
+          "bodyTemplate": "<div class=\"azure-security-posture-snapshot\"><h2>Azure Security Posture Snapshot — subscription {{steps.analyze.subscription_label}}</h2><p><strong>Secure score:</strong> {{steps.analyze.secure_score_pct}}% &middot; <strong>Unhealthy assessments:</strong> {{steps.analyze.finding_count}} &middot; <strong>High:</strong> {{steps.analyze.severity_summary.High}} &middot; <strong>Medium:</strong> {{steps.analyze.severity_summary.Medium}} &middot; <strong>Low:</strong> {{steps.analyze.severity_summary.Low}}</p>{{steps.analyze.empty_banner}}<h3>Operator Narrative</h3><pre class=\"narrative\">{{steps.clean_narrative.clean_content}}</pre><h3>Top Findings</h3><table class=\"findings-table\"><thead><tr><th>Severity</th><th>Finding</th><th>Status</th><th>Description</th></tr></thead><tbody>{{steps.analyze.rows_html}}</tbody></table></div>"
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "trigger", "target": "secure_score" },
+      { "id": "e2", "source": "trigger", "target": "assessments" },
+      { "id": "e3", "source": "secure_score", "target": "merge" },
+      { "id": "e4", "source": "assessments", "target": "merge" },
+      { "id": "e5", "source": "merge", "target": "analyze" },
+      { "id": "e6", "source": "analyze", "target": "narrative" },
+      { "id": "e7", "source": "narrative", "target": "clean_narrative" },
+      { "id": "e8", "source": "clean_narrative", "target": "report" }
+    ]
+  }
+}

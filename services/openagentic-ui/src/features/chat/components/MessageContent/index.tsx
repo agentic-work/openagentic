@@ -41,7 +41,6 @@ import SvgDiagram from './SvgDiagram';
 import ReactFlowDiagram from '@/components/diagrams/ReactFlowDiagram';
 import { DrawioDiagramViewer } from '@/components/diagrams/DrawioDiagramViewer';
 import ChartRenderer from './ChartRenderer';
-import ArtifactRenderer from './ArtifactRenderer';
 import { ChatMessage } from '@/types/index';
 import ImageViewer from '../ImageViewer';
 
@@ -51,7 +50,7 @@ interface MessageContentProps {
 }
 
 interface ParsedContent {
-  type: 'text' | 'code' | 'visualization' | 'metric' | 'callout' | 'summary' | 'diagram' | 'chart' | 'svg' | 'drawio' | 'artifact';
+  type: 'text' | 'code' | 'visualization' | 'metric' | 'callout' | 'summary' | 'diagram' | 'chart' | 'svg' | 'drawio';
   content: any;
 }
 
@@ -152,14 +151,12 @@ const MessageContent: React.FC<MessageContentProps> = ({ message, theme }) => {
     // Use the processed content for further parsing
     content = processedContent;
     
-    // Check if message contains visualization data
-    if (message.visualizations && Array.isArray(message.visualizations)) {
-      message.visualizations.forEach(viz => {
-        if (viz && typeof viz === 'object') {
-          parsed.push({ type: 'visualization', content: viz });
-        }
-      });
-    }
+    // #971 (2026-05-20) — DO NOT mount artifacts from message.visualizations[]
+    // here. MessageContent renders MARKDOWN PROSE ONLY.
+    // visualizations[] is consumed by AgenticActivityStream (inline iframe at
+    // tool_use position) + ArtifactSlideOutLauncher (SlideOut buttons).
+    // Pushing them here too produced duplicate iframes at the bottom of
+    // finished replies. See task #971.
     
     // Check if message contains Prometheus metrics
     if (message.prometheusData && Array.isArray(message.prometheusData)) {
@@ -257,44 +254,6 @@ const MessageContent: React.FC<MessageContentProps> = ({ message, theme }) => {
               content: {
                 xml: xmlCode,
                 title: extractDrawioTitle(xmlCode)
-              }
-            });
-            currentBlock = [];
-            inCodeBlock = false;
-            codeLanguage = '';
-            return;
-          }
-
-          // Check if this is an interactive artifact (HTML, React, or SVG).
-          // Accept multiple fence variants the LLMs emit in the wild:
-          //   ```artifact:html      (canonical)
-          //   ```html:artifact-type (Claude Sonnet variant — capital or not)
-          //   ```artifact-html      (hyphen variant)
-          // All map to the same artifact type.
-          const codeLangLower = codeLanguage.toLowerCase();
-          const isCanonicalArtifact = codeLangLower.startsWith('artifact:');
-          const isSuffixArtifact = codeLangLower.endsWith(':artifact-type') || codeLangLower.endsWith('-artifact-type');
-          const isHyphenArtifact = codeLangLower.startsWith('artifact-');
-          if (isCanonicalArtifact || isSuffixArtifact || isHyphenArtifact) {
-            let artifactType: 'html' | 'react' | 'svg';
-            if (isCanonicalArtifact) {
-              artifactType = codeLangLower.replace('artifact:', '') as 'html' | 'react' | 'svg';
-            } else if (isSuffixArtifact) {
-              artifactType = codeLangLower.replace(/[-:]artifact-type$/, '') as 'html' | 'react' | 'svg';
-            } else {
-              artifactType = codeLangLower.replace('artifact-', '') as 'html' | 'react' | 'svg';
-            }
-            // Normalize htm → html
-            if ((artifactType as string) === 'htm') artifactType = 'html';
-            const artifactCode = currentBlock.join('\n');
-            // Extract title from first line comment if present
-            const titleMatch = artifactCode.match(/^(?:\/\/|<!--)\s*(.+?)(?:-->)?\s*$/m);
-            parsed.push({
-              type: 'artifact',
-              content: {
-                code: artifactCode,
-                artifactType,
-                title: titleMatch ? titleMatch[1].trim() : undefined
               }
             });
             currentBlock = [];
@@ -592,18 +551,6 @@ const MessageContent: React.FC<MessageContentProps> = ({ message, theme }) => {
                   />
                 );
 
-              case 'artifact':
-                return (
-                  <ArtifactRenderer
-                    key={index}
-                    code={block.content.code}
-                    type={block.content.artifactType}
-                    title={block.content.title}
-                    theme={theme}
-                    className="my-4"
-                  />
-                );
-
               case 'chart':
                 // Use DataVisualization for client-side rendering with Recharts
                 return (
@@ -640,7 +587,7 @@ const MessageContent: React.FC<MessageContentProps> = ({ message, theme }) => {
                 return (
                   <div key={index} className="prose-sm-tight max-w-none">
                     <ReactMarkdown
-                      remarkPlugins={[remarkGfm, remarkMath]}
+                      remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: false }]]}
                       rehypePlugins={[
                         rehypeKatex as any,
                         [rehypeSanitize, sanitizeSchema]
@@ -708,36 +655,10 @@ const MessageContent: React.FC<MessageContentProps> = ({ message, theme }) => {
                             );
                           }
 
-                          // Interactive artifacts - render in sandboxed iframe.
-                          // Accept multiple fence variants: artifact:html (canonical),
-                          // html:artifact-type (Sonnet variant), artifact-html (hyphen).
-                          const langLower = (language || '').toLowerCase();
-                          const isCanonical = langLower.startsWith('artifact:');
-                          const isSuffix = langLower.endsWith(':artifact-type') || langLower.endsWith('-artifact-type');
-                          const isHyphen = langLower.startsWith('artifact-') && !isSuffix;
-                          if (isCanonical || isSuffix || isHyphen) {
-                            let artifactType: 'html' | 'react' | 'svg';
-                            if (isCanonical) {
-                              artifactType = langLower.replace('artifact:', '') as 'html' | 'react' | 'svg';
-                            } else if (isSuffix) {
-                              artifactType = langLower.replace(/[-:]artifact-type$/, '') as 'html' | 'react' | 'svg';
-                            } else {
-                              artifactType = langLower.replace('artifact-', '') as 'html' | 'react' | 'svg';
-                            }
-                            if ((artifactType as string) === 'htm') artifactType = 'html';
-                            const titleMatch = codeContent.match(/^(?:\/\/|<!--)\s*(.+?)(?:-->)?\s*$/m);
-                            return (
-                              <ArtifactRenderer
-                                code={codeContent}
-                                type={artifactType}
-                                title={titleMatch ? titleMatch[1].trim() : undefined}
-                                theme={theme}
-                                className="my-4"
-                              />
-                            );
-                          }
-
                           // Code blocks - syntax highlighting
+                          // Legacy artifact:html|react|svg fence pipeline ripped 2026-05-13
+                          // (#781 Phase D.4). Interactive artifacts now flow via
+                          // Message.visualizations[] + ArtifactSlideOutLauncher.
                           return (
                             <ShikiCodeBlock
                               code={codeContent}
@@ -820,4 +741,3 @@ export { default as CalloutBox } from './CalloutBox';
 export { default as RichCallout } from './RichCallout';
 export { default as HighlightedText } from './HighlightedText';
 export { default as ChartRenderer } from './ChartRenderer';
-export { default as ArtifactRenderer } from './ArtifactRenderer';

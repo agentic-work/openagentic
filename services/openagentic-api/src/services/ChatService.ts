@@ -11,6 +11,7 @@ import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
 import type { Logger } from 'pino';
 import { TokenUsageService, TokenUsageRecord } from './TokenUsageService.js';
+import { ModelConfigurationService } from './ModelConfigurationService.js';
 import { getRedisClient } from '../utils/redis-client.js';
 import { createHash } from 'crypto';
 
@@ -363,10 +364,11 @@ export class ChatService {
         return 'New Chat';
       }
 
-      // Generate title using LLM
-      const titleModel = process.env.TITLE_GENERATION_MODEL || process.env.DEFAULT_MODEL;
+      // Generate title using LLM — resolve model from DB (SoT), no env reads
+      const titleAssignment = await ModelConfigurationService.getServiceModel('titleGeneration');
+      const titleModel = titleAssignment?.modelId ?? await ModelConfigurationService.getDefaultChatModel();
       if (!titleModel) {
-        throw new Error('TITLE_GENERATION_MODEL or DEFAULT_MODEL must be set');
+        throw new Error('No title-generation model available — configure default chat model in admin UI');
       }
 
       const response = await axios.post(

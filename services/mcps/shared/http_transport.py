@@ -201,6 +201,52 @@ except ImportError:
 
 logger = logging.getLogger("mcp-http-transport")
 
+def _serialize_tool_for_wire(tool: Any, fallback_name: Optional[str] = None) -> Dict[str, Any]:
+    """Serialize ANY FastMCP Tool variant to its MCP-spec wire dict.
+
+    Handles both:
+      - mcp.server.fastmcp (bundled): list_tools() returns clean MCPTool
+        spec objects — no `fn` callable in the Pydantic field set.
+      - fastmcp (standalone): list_tools() returns FastMCP Tool objects
+        that carry `fn` (the wrapped function) and `fn_metadata`. Those
+        must be excluded (or convert via `to_mcp_tool()`) before dumping
+        — Pydantic's JSON serializer cannot encode <class 'function'>.
+
+    Output: a dict with by_alias=True (so Pydantic field `meta` renders
+    as wire field `_meta` per MCP spec) and exclude_none=True (no null
+    clutter the proxy then has to filter).
+    """
+    # Fast path: standalone fastmcp + bundled mcp.server.fastmcp both
+    # expose `to_mcp_tool()` which returns a CLEAN mcp.types.Tool spec
+    # object (no `fn`, no `fn_metadata`). That's the canonical wire shape.
+    to_mcp = getattr(tool, 'to_mcp_tool', None)
+    if callable(to_mcp):
+        try:
+            spec_tool = to_mcp()
+            if hasattr(spec_tool, 'model_dump'):
+                return spec_tool.model_dump(by_alias=True, exclude_none=True, mode='json')
+        except Exception:
+            pass
+
+    # Mid path: tool is already an mcp.types.Tool — model_dump is safe.
+    if hasattr(tool, 'model_dump'):
+        try:
+            return tool.model_dump(by_alias=True, exclude_none=True, mode='json',
+                                   exclude={'fn', 'fn_metadata'})
+        except Exception:
+            # Last-ditch: drop fn manually, retry without exclude
+            try:
+                return tool.model_dump(by_alias=True, exclude_none=True,
+                                       exclude={'fn', 'fn_metadata'})
+            except Exception:
+                pass
+
+    # Defensive fallback for plain dict-shaped tools.
+    name = getattr(tool, 'name', None) or (tool.get('name') if isinstance(tool, dict) else None) or fallback_name
+    desc = getattr(tool, 'description', None) or (tool.get('description') if isinstance(tool, dict) else None) or ''
+    schema = getattr(tool, 'inputSchema', None) or (tool.get('inputSchema') if isinstance(tool, dict) else None) or {}
+    return {'name': name, 'description': desc, 'inputSchema': schema}
+
 class MCPHTTPServer:
     """
     HTTP server wrapper for FastMCP servers with full observability.
@@ -516,8 +562,12 @@ class MCPHTTPServer:
                 tool_name = params.get("name", "")
                 tool_args = params.get("arguments", {})
 
-                # Extract user context from meta for structured logging
-                meta = tool_args.get("meta", {}) if isinstance(tool_args, dict) else {}
+                # Extract user context from meta for structured logging.
+                # `.get("meta", {})` returns None (not the default) when meta is
+                # an explicit JSON null — which mcp-proxy passes when the tool
+                # schema declares `meta: {default: null}`. Coerce with `or {}`
+                # so the subsequent `.get()`s don't AttributeError on NoneType.
+                meta = (tool_args.get("meta") if isinstance(tool_args, dict) else None) or {}
                 user_email = meta.get("user_email", meta.get("userEmail", "unknown"))
                 user_name = meta.get("user_name", meta.get("userName", "unknown"))
 
@@ -646,20 +696,39 @@ class MCPHTTPServer:
             }
 
     async def _get_tools(self) -> list:
-        """Get the list of tools from the FastMCP server."""
+        """Get the list of tools from the FastMCP server.
+
+        Returns full MCP-spec Tool dicts with EVERY field FastMCP populates:
+        name, title, description, inputSchema, outputSchema, annotations,
+        icons, _meta. Earlier revisions hand-projected only name/desc/schema
+        which silently dropped the cascade-load-bearing _meta + annotations
+        blocks (the openagentic-api indexer reads goldenPrompts/category/
+        hitlRisk from there).
+
+        FastMCP variants emit two different Tool shapes:
+          - mcp.server.fastmcp (bundled SDK): list_tools() returns MCPTool
+            spec objects with no `fn` field — clean to model_dump.
+          - fastmcp (standalone): list_tools() returns FastMCP Tool objects
+            that carry the live `fn` callable + Pydantic fn_metadata. Both
+            need `to_mcp_tool()` first (or exclude={'fn'}) to be JSON-
+            serializable. Without that, model_dump raises
+            PydanticSerializationError: Unable to serialize <class 'function'>.
+
+        Strategy: prefer `tool.to_mcp_tool()` when available (standalone +
+        bundled both expose it). Fall back to model_dump with `exclude={'fn',
+        'fn_metadata'}`.
+        """
         tools = []
 
-        # FastMCP 2.x: use public list_tools() method directly
+        # FastMCP 2.x / mcp.server.fastmcp 1.27+: public list_tools() returns
+        # MCP-spec Tool Pydantic models. model_dump(by_alias=True) is the
+        # canonical wire shape per modelcontextprotocol.io.
         if hasattr(self.mcp, 'list_tools') and callable(self.mcp.list_tools):
             import asyncio
             result = self.mcp.list_tools()
             tool_list = (await result) if asyncio.iscoroutine(result) else result
             for tool in tool_list:
-                tools.append({
-                    "name": tool.name,
-                    "description": tool.description or "",
-                    "inputSchema": tool.inputSchema if hasattr(tool, 'inputSchema') else {}
-                })
+                tools.append(_serialize_tool_for_wire(tool))
         # FastMCP 1.x fallback: internal tool manager
         elif hasattr(self.mcp, '_tool_manager'):
             tool_manager = self.mcp._tool_manager
@@ -668,19 +737,11 @@ class MCPHTTPServer:
                 result = tool_manager.list_tools()
                 tool_list = (await result) if asyncio.iscoroutine(result) else result
                 for tool in tool_list:
-                    tools.append({
-                        "name": tool.name,
-                        "description": tool.description or "",
-                        "inputSchema": tool.inputSchema if hasattr(tool, 'inputSchema') else {}
-                    })
+                    tools.append(_serialize_tool_for_wire(tool))
         elif hasattr(self.mcp, '_tools'):
-            # Direct access to tools dict
+            # Direct access to tools dict — last-resort path
             for name, tool in self.mcp._tools.items():
-                tools.append({
-                    "name": name,
-                    "description": getattr(tool, 'description', '') or '',
-                    "inputSchema": getattr(tool, 'inputSchema', {}) or {}
-                })
+                tools.append(_serialize_tool_for_wire(tool, fallback_name=name))
 
         return tools
 

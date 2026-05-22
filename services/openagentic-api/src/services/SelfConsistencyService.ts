@@ -8,6 +8,7 @@ import { PrismaClient } from '@prisma/client';
 import { AzureOpenAI } from 'openai';
 import type { Logger } from 'pino';
 import { prisma } from '../utils/prisma.js';
+import { ModelConfigurationService } from './ModelConfigurationService.js';
 
 interface ChatCompletionMessageParam {
   role: 'system' | 'user' | 'assistant' | 'function' | 'tool';
@@ -54,8 +55,12 @@ export interface SelfConsistencyConfig {
 export class SelfConsistencyService {
   private logger: any;
   private azureOpenAI: AzureOpenAI | null = null;
-  private model: string;
   private isConfigured: boolean;
+
+  /** DB is SoT — resolved per-request via resolveModel(). */
+  private async resolveModel(): Promise<string> {
+    return ModelConfigurationService.getDefaultChatModel().catch(() => '');
+  }
 
   constructor(logger: any) {
     this.logger = logger;
@@ -63,7 +68,6 @@ export class SelfConsistencyService {
     // Use Azure OpenAI for all AI calls
     const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
     const apiKey = process.env.AZURE_OPENAI_API_KEY;
-    this.model = process.env.AZURE_OPENAI_DEPLOYMENT || process.env.DEFAULT_MODEL;
 
     if (endpoint && apiKey) {
       try {
@@ -74,8 +78,7 @@ export class SelfConsistencyService {
         });
         this.isConfigured = true;
         this.logger.info({
-          endpoint,
-          model: this.model
+          endpoint
         }, 'SelfConsistencyService configured with Azure OpenAI');
       } catch (error) {
         this.isConfigured = false;
@@ -122,9 +125,10 @@ REASONING: [your explanation]`;
         throw new Error('Azure OpenAI client not initialized');
       }
 
+      const model = await this.resolveModel();
       const samplingPromises = Array(samples).fill(null).map(async (_, index) => {
         const response = await this.azureOpenAI!.chat.completions.create({
-          model: this.model,
+          model,
           messages: [{ role: 'user', content: enhancedPrompt }],
           temperature: temperature + (index * 0.1), // Vary temperature slightly
           max_tokens: maxTokens

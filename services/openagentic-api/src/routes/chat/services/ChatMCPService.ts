@@ -14,6 +14,48 @@ import type { Logger } from 'pino';
 
 const MCP_PROXY_URL = process.env.MCP_PROXY_URL || 'http://mcp-proxy:8080';
 
+/**
+ * Build the Authorization header value sent to the MCP proxy from this
+ * service. Mirrors the shape that `buildMcpProxyHeaders` in
+ * services/buildChatV2Deps.ts produces for `/mcp/tool` POSTs — the
+ * MCP proxy validates either bearer (user JWT or internal-signed JWT).
+ *
+ * Precedence:
+ *  1. Inbound `authHeader` from the request (already a `Bearer <token>` string)
+ *  2. Internal HS256 JWT signed with `JWT_SECRET` / `SIGNING_SECRET`
+ *     (used for system / startup calls when no inbound bearer exists)
+ *  3. Service-to-service `Bearer ${API_INTERNAL_KEY}` (last-ditch)
+ *
+ * Returns `null` only when none of the above are available, in which case
+ * the caller may choose to still attempt the request (it'll 401) or
+ * short-circuit. The contract: the function NEVER omits an Authorization
+ * header when ANY credential source is configured.
+ */
+function buildMcpProxyAuthHeader(
+  authHeader: string | undefined,
+  userId: string | undefined,
+): string | null {
+  if (authHeader && authHeader.length > 0) return authHeader;
+  const jwtSecret = process.env.JWT_SECRET || process.env.SIGNING_SECRET;
+  if (jwtSecret && userId) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const jwt = require('jsonwebtoken');
+      const internalToken = jwt.sign(
+        { userId, source: 'chatmcpservice-internal' },
+        jwtSecret,
+        { expiresIn: '5m' },
+      );
+      return `Bearer ${internalToken}`;
+    } catch {
+      /* fall through */
+    }
+  }
+  const apiInternalKey = process.env.API_INTERNAL_KEY;
+  if (apiInternalKey) return `Bearer ${apiInternalKey}`;
+  return null;
+}
+
 export class ChatMCPService {
   private prisma = prisma;
   private cachedServers: MCPServer[] | null = null;
@@ -184,6 +226,13 @@ export class ChatMCPService {
   /**
    * List tools - fetches all available tools from MCP Proxy
    * NOTE: Azure MCP tools now use OBO tokens per-request, no separate per-user sessions
+   *
+   * SEV-0 (2026-05-12): the MCP proxy `/tools` endpoint requires auth. The
+   * Authorization header builder mirrors `buildMcpProxyHeaders` in
+   * services/buildChatV2Deps.ts — the same proxy validates both routes.
+   * Without this, every listTools call returns 401 and the T2 catalog is
+   * empty → tool_search has no substrate → "tools don't work".
+   * Regression pinned by ChatMCPService.listToolsAuth.test.ts.
    */
   async listTools(authHeader?: string, userId?: string): Promise<any> {
     this.logger.info({ userId }, 'listTools called - fetching tools from MCP Proxy');
@@ -194,7 +243,23 @@ export class ChatMCPService {
     // Fetch all tools from MCP Proxy
     try {
       const mcpProxyUrl = process.env.MCP_PROXY_URL || 'http://mcp-proxy:8080';
-      const response = await fetch(`${mcpProxyUrl}/tools`);
+      const headers: Record<string, string> = {
+        'content-type': 'application/json',
+      };
+      const proxyAuth = buildMcpProxyAuthHeader(authHeader, userId);
+      if (!proxyAuth) {
+        // Defensive short-circuit — no inbound bearer, no JWT_SECRET, and
+        // no API_INTERNAL_KEY means the MCP proxy will 401 every request.
+        // Logging once + returning empty tools beats an in-flight 401 that
+        // shows up as a confusing "tools loaded: 0" downstream.
+        this.logger.warn(
+          { userId },
+          'listTools: no MCP-proxy credential available (authHeader/JWT_SECRET/API_INTERNAL_KEY all unset) — skipping fetch',
+        );
+        return { tools: allTools, toolsByServer, functions: allTools };
+      }
+      headers['Authorization'] = proxyAuth;
+      const response = await fetch(`${mcpProxyUrl}/tools`, { headers });
 
       if (response.ok) {
         const data = await response.json();

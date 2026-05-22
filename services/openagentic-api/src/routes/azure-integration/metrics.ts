@@ -48,7 +48,7 @@ export const azureMetricsRoutes: FastifyPluginAsync = async (fastify) => {
       granularity?: 'daily' | 'weekly' | 'monthly';
     };
   }>('/costs', {
-    preHandler: [authMiddleware],
+    onRequest: authMiddleware,
     schema: {
       querystring: {
         type: 'object',
@@ -155,7 +155,7 @@ export const azureMetricsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: { period?: string };
   }>('/usage', {
-    preHandler: [authMiddleware],
+    onRequest: authMiddleware,
     schema: {
       querystring: {
         type: 'object',

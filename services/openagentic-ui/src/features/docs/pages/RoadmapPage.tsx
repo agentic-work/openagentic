@@ -10,18 +10,16 @@ import { DocsFlowIcon } from '../components/DocsIcons';
 const timelineDiagram: DiagramDefinition = {
   type: 'timeline',
   title: 'OpenAgentic Roadmap Timeline',
-  description: 'Planned milestones from v0.6 through v1.0',
+  description: 'Milestones from v0.7 through v1.0',
   layout: 'horizontal',
   nodes: [
-    { id: 'v06', label: 'v0.6.3', description: 'Current: Light It Up', shape: 'rounded', color: 'green' },
-    { id: 'v07', label: 'v0.7.0', description: 'A2A + Multi-tenant', shape: 'rounded', color: 'primary' },
-    { id: 'v08', label: 'v0.8.0', description: 'Marketplace', shape: 'rounded', color: 'purple' },
-    { id: 'v09', label: 'v0.9.0', description: 'FedRAMP + SOC 2', shape: 'rounded', color: 'orange' },
+    { id: 'v071', label: `v${import.meta.env.VITE_APP_VERSION || '0.7.1'}`, description: `Current: ${import.meta.env.VITE_CODENAME || 'AGENTICHAT'}`, shape: 'rounded', color: 'green' },
+    { id: 'v08', label: 'v0.8.0', description: 'A2A + Marketplace', shape: 'rounded', color: 'primary' },
+    { id: 'v09', label: 'v0.9.0', description: 'FedRAMP + SOC 2', shape: 'rounded', color: 'purple' },
     { id: 'v10', label: 'v1.0.0', description: 'General Availability', shape: 'rounded', color: 'cyan' },
   ],
   edges: [
-    { source: 'v06', target: 'v07', animated: true },
-    { source: 'v07', target: 'v08' },
+    { source: 'v071', target: 'v08', animated: true },
     { source: 'v08', target: 'v09' },
     { source: 'v09', target: 'v10' },
   ],
@@ -31,7 +29,45 @@ const timelineDiagram: DiagramDefinition = {
 // DATA
 // ============================================================================
 
-const v07Features = [
+const currentReleaseHighlights: ReadonlyArray<{ title: string; description: string }> = [
+  {
+    title: 'Enterprise chatmode (Claude-Code-grade)',
+    description:
+      'Single chatmode pipeline, 12 T1 primitives (tool_search, agent_search, Task, agent_send/list/stop, read_large_result, web_search, web_fetch, synth, pattern_save, pattern_recall), per-T1 description builders, full SDK canonical events.',
+  },
+  {
+    title: 'Glob-based permissions UI',
+    description:
+      "Claude-Code allow/deny/ask rules replace the legacy regex-tier ToolApprovalGate. Admin editor at /admin#tool-permissions. 48/48 TDD'd.",
+  },
+  {
+    title: 'Inline tool-result summary',
+    description:
+      'Completed tool cards now show "· N items" / "· N subscriptions" inline in the header (mock 01 §863 contract). Drillable INPUT/RESULT body preserved.',
+  },
+  {
+    title: 'Learned patterns memory',
+    description:
+      'learned_patterns Milvus collection (model-write-only via pattern_save, RBAC-filtered recall via pattern_recall). Exemplars, not prescriptions. DLP-redacted at write.',
+  },
+  {
+    title: 'LargeResultStorage end-to-end',
+    description:
+      'Redis-backed offload at 30KB threshold with auto-tokens ({{count}}/{{sample_names}}) in 9 cloud-list seed templates. Handle survives multi-pod restarts via Redis (48h TTL).',
+  },
+  {
+    title: 'OBO end-to-end',
+    description:
+      'AD User → Azure access_token → MCP user-identity 1-1. 6-case real TDD harness pins the wire-in (commit 6df31d57).',
+  },
+  {
+    title: 'Admin-configurable max_turns',
+    description:
+      'chat_loop.max_turns knob in SystemConfiguration. Default 24, range [4, 100]. No more silent 12-turn cap on capstone work.',
+  },
+];
+
+const v08PlannedFeatures = [
   {
     title: 'A2A (Agent-to-Agent) Protocol',
     description:
@@ -45,21 +81,9 @@ const v07Features = [
     status: 'Planned',
   },
   {
-    title: 'Enhanced FedRAMP Compliance',
-    description:
-      'Expanded compliance controls including FIPS 140-2 encryption modules, enhanced audit logging, and authorization boundary documentation for FedRAMP Moderate.',
-    status: 'Planned',
-  },
-  {
     title: 'MCP Ecosystem Expansion',
     description:
       'Deeper integration with the MCP ecosystem including a marketplace for community-contributed MCP servers, versioned tool schemas, and automated compatibility testing.',
-    status: 'Planned',
-  },
-  {
-    title: 'Advanced Cost Attribution',
-    description:
-      'Granular cost tracking and chargeback across teams, projects, and individual users. Per-model token pricing, budget alerts, and cost optimization recommendations.',
     status: 'Planned',
   },
   {
@@ -67,6 +91,23 @@ const v07Features = [
     description:
       'A curated library of pre-built workflow templates for common enterprise tasks. Import, customize, and share workflows across teams and organizations.',
     status: 'Planned',
+  },
+];
+
+const pastReleases: ReadonlyArray<{ version: string; codename: string; date: string; summary: string }> = [
+  {
+    version: '0.7.0',
+    codename: 'Atlas Donzo',
+    date: 'April 2026',
+    summary:
+      'Universal admin chrome, theme audit + sweep (0 leaks/contrast/undefined), AIF non-stream Responses API for gpt-5-pro / gpt-5-codex / o-pro, animated [openagentic] wordmark.',
+  },
+  {
+    version: '0.6.6',
+    codename: 'No Backdoor',
+    date: 'April 2026',
+    summary:
+      'HITL backdoor deleted, DLP pre-LLM redaction, synth_execute, tenant isolation (RLS + MilvusAuditGuard + DataAccessAuditService), AWS MCP 8→31, GCP MCP 28→46.',
   },
 ];
 
@@ -215,7 +256,7 @@ const RoadmapPage: React.FC = () => {
             letterSpacing: '0.04em',
           }}
         >
-          Current: v0.6.3
+          Current: v{import.meta.env.VITE_APP_VERSION || '0.7.1'} {import.meta.env.VITE_CODENAME || 'AGENTICHAT'}
         </span>
       </motion.section>
 
@@ -231,7 +272,7 @@ const RoadmapPage: React.FC = () => {
         <p style={sectionHeadingStyle}>Timeline</p>
         <h2 style={sectionTitleStyle}>Release Milestones</h2>
         <p style={{ ...sectionDescStyle, marginBottom: '32px' }}>
-          The path from the current v0.6.3 Light It Up release through general availability.
+          The path from the current v{import.meta.env.VITE_APP_VERSION || '0.7.1'} {import.meta.env.VITE_CODENAME || 'AGENTICHAT'} release through general availability.
           Each release builds on the previous, expanding protocol support,
           compliance coverage, and ecosystem depth.
         </p>
@@ -246,28 +287,91 @@ const RoadmapPage: React.FC = () => {
       </motion.section>
 
       {/* ================================================================
-          v0.7.0 PLANNED FEATURES
+          JUST SHIPPED — v0.7.1 AGENTICHAT
           ================================================================ */}
       <motion.section
         style={sectionStyle}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.25, duration: 0.5 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
       >
-        <p style={sectionHeadingStyle}>Next Release</p>
-        <h2 style={sectionTitleStyle}>v0.7.0 Planned Features</h2>
+        <p style={sectionHeadingStyle}>Just Shipped</p>
+        <h2 style={sectionTitleStyle}>v0.7.1 AGENTICHAT — shipped today</h2>
         <p style={{ ...sectionDescStyle, marginBottom: '24px' }}>
-          The next major release focuses on inter-agent communication,
-          multi-tenant isolation, and expanded compliance coverage.
+          The chatmode-rip enterprise upgrade — single Claude-Code-grade
+          pipeline, 12 T1 primitives, glob permissions, learned patterns,
+          Redis-backed large-result offload, OBO end-to-end, and admin-configurable max_turns.
         </p>
 
+        <img
+          src="/agentichat.png"
+          alt="AGENTICHAT — v0.7.1"
+          style={{
+            width: '100%',
+            maxHeight: 320,
+            objectFit: 'cover',
+            borderRadius: 12,
+            border: '1px solid var(--color-border)',
+            marginBottom: 24,
+          }}
+        />
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-          {v07Features.map((feature, i) => (
+          {currentReleaseHighlights.map((feature, i) => (
             <motion.div
               key={feature.title}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 + i * 0.06, duration: 0.35 }}
+              transition={{ delay: 0.25 + i * 0.05, duration: 0.35 }}
+              style={cardStyle}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                <h4 style={{ ...cardTitleStyle, marginBottom: 0 }}>{feature.title}</h4>
+                <span
+                  style={{
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    color: '#22c55e',
+                    background: '#22c55e20',
+                    border: '1px solid #22c55e40',
+                    borderRadius: '4px',
+                    padding: '2px 8px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  Shipped
+                </span>
+              </div>
+              <p style={cardDescStyle}>{feature.description}</p>
+            </motion.div>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* ================================================================
+          v0.8.0 PLANNED FEATURES
+          ================================================================ */}
+      <motion.section
+        style={sectionStyle}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3, duration: 0.5 }}
+      >
+        <p style={sectionHeadingStyle}>Next Release</p>
+        <h2 style={sectionTitleStyle}>v0.8.0 Planned Features</h2>
+        <p style={{ ...sectionDescStyle, marginBottom: '24px' }}>
+          The next major release focuses on inter-agent communication,
+          multi-tenant isolation, and ecosystem depth.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+          {v08PlannedFeatures.map((feature, i) => (
+            <motion.div
+              key={feature.title}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 + i * 0.06, duration: 0.35 }}
               style={cardStyle}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
@@ -289,6 +393,48 @@ const RoadmapPage: React.FC = () => {
                 </span>
               </div>
               <p style={cardDescStyle}>{feature.description}</p>
+            </motion.div>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* ================================================================
+          PAST RELEASES
+          ================================================================ */}
+      <motion.section
+        style={sectionStyle}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.35, duration: 0.5 }}
+      >
+        <p style={sectionHeadingStyle}>History</p>
+        <h2 style={sectionTitleStyle}>Past Releases</h2>
+        <p style={{ ...sectionDescStyle, marginBottom: '24px' }}>
+          Prior shipped releases. See the full Changelog for every version
+          since v0.1.0 Genesis.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+          {pastReleases.map((rel, i) => (
+            <motion.div
+              key={rel.version}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 + i * 0.06, duration: 0.35 }}
+              style={cardStyle}
+            >
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
+                <h4 style={{ ...cardTitleStyle, marginBottom: 0 }}>
+                  v{rel.version}
+                </h4>
+                <span style={{ fontSize: '12px', color: 'var(--color-textMuted)' }}>
+                  {rel.codename}
+                </span>
+                <span style={{ fontSize: '11px', color: 'var(--color-textMuted)', marginLeft: 'auto' }}>
+                  {rel.date}
+                </span>
+              </div>
+              <p style={cardDescStyle}>{rel.summary}</p>
             </motion.div>
           ))}
         </div>

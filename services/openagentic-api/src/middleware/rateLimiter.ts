@@ -104,13 +104,14 @@ export function rateLimitMiddleware(options: RateLimitOptions, redis?: any) {
           ipAddress: request.ip
         }).catch(() => {});
 
-        return reply.code(429).send({
+        await reply.code(429).send({
           error: {
             code: 'RATE_LIMITED',
             message: 'Too many requests per minute',
             retryAfter: Math.ceil((minuteResult.resetTime.getTime() - Date.now()) / 1000)
           }
         });
+        return;
       }
       
       // Check hour limit if configured
@@ -130,13 +131,14 @@ export function rateLimitMiddleware(options: RateLimitOptions, redis?: any) {
             ipAddress: request.ip
           }).catch(() => {});
 
-          return reply.code(429).send({
+          await reply.code(429).send({
             error: {
               code: 'RATE_LIMITED',
               message: 'Too many requests per hour',
               retryAfter: Math.ceil((hourResult.resetTime.getTime() - Date.now()) / 1000)
             }
           });
+          return;
         }
       }
       
@@ -217,13 +219,14 @@ export function burstRateLimitMiddleware(options: {
       const current = await store.increment(key, options.windowMs);
       
       if (current.totalHits > options.maxBurst) {
-        return reply.code(429).send({
+        await reply.code(429).send({
           error: {
             code: 'BURST_RATE_LIMITED',
             message: 'Too many expensive operations',
             retryAfter: Math.ceil((current.resetTime.getTime() - Date.now()) / 1000)
           }
         });
+        return;
       }
       
       // Increment by cost for future requests

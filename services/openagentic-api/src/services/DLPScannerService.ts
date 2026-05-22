@@ -591,3 +591,11 @@ export async function initializeDLPScanner(logger: Logger): Promise<DLPScannerSe
 
   return _instance;
 }
+
+/**
+ * No-arg singleton read — returns the instance set by initializeDLPScanner().
+ * Returns null if the scanner has not been initialized yet.
+ */
+export function getDLPScannerInstance(): DLPScannerService | null {
+  return _instance;
+}

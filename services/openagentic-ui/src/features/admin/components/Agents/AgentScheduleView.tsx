@@ -358,7 +358,7 @@ export const AgentScheduleView: React.FC<AgentScheduleViewProps> = ({ theme }) =
                   {/* Status indicator */}
                   <div
                     className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: schedule.enabled ? 'var(--color-success, #00D26A)' : 'color-mix(in srgb, var(--color-text-tertiary) 40%, transparent)' }}
+                    style={{ backgroundColor: schedule.enabled ? 'var(--color-success)' : 'color-mix(in srgb, var(--color-text-tertiary) 40%, transparent)' }}
                   />
 
                   {/* Info */}

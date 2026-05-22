@@ -7,6 +7,8 @@
 
 import type { WorkflowDefinition, WorkflowNode, WorkflowEdge } from './WorkflowExecutionEngine.js';
 import { loggers } from '../utils/logger.js';
+import { registry as nodeRegistry } from '../nodes/registry.js';
+import type { NodeSchema, NodeSetting } from '../nodes/types.js';
 
 const logger = loggers.services;
 
@@ -53,6 +55,10 @@ const VALID_NODE_TYPES = new Set([
   'text_splitter', 'embedding', 'vector_store', 'document_loader', 'structured_output', 'guardrails',
   'sub_workflow',
 ]);
+// Note (Task #46): every type above is now also in the schema-driven registry,
+// so the `isSchemaDriven` branch in compile() handles ALL node types. This
+// VALID_NODE_TYPES set is now strictly a fallback safety net — kept until
+// a future commit retires the legacy validateNodeData path.
 
 export class WorkflowCompiler {
   /**
@@ -81,12 +87,20 @@ export class WorkflowCompiler {
       }
       nodeIds.add(node.id);
 
-      if (!VALID_NODE_TYPES.has(node.type)) {
+      // Schema-driven types (migrated nodes) live in the registry; legacy
+      // hard-coded types live in VALID_NODE_TYPES. Either is acceptable.
+      const isSchemaDriven = nodeRegistry.has(node.type);
+      if (!isSchemaDriven && !VALID_NODE_TYPES.has(node.type)) {
         errors.push({ code: 'UNKNOWN_NODE_TYPE', message: `Unknown node type: ${node.type}`, nodeId: node.id });
       }
 
-      // Type-specific validation
-      this.validateNodeData(node, errors, warnings);
+      // Type-specific validation: schema-driven for migrated nodes,
+      // hand-written switch for the rest.
+      if (isSchemaDriven) {
+        this.validateAgainstSchema(node, nodeRegistry.get(node.type)!.schema, errors, warnings);
+      } else {
+        this.validateNodeData(node, errors, warnings);
+      }
     }
 
     // 3. Edge validation
@@ -173,217 +187,153 @@ export class WorkflowCompiler {
 
   private validateNodeData(node: WorkflowNode, errors: CompilationError[], warnings: CompilationWarning[]): void {
     switch (node.type) {
-      case 'llm_completion':
-      case 'bedrock':
-      case 'vertex':
-      case 'azure_ai':
-        if (!node.data.prompt) {
-          errors.push({ code: 'MISSING_PROMPT', message: `${node.type} node requires a prompt`, nodeId: node.id });
-        }
-        break;
-      case 'mcp_tool':
-        if (!node.data.toolName) {
-          errors.push({ code: 'MISSING_TOOL_NAME', message: 'MCP tool node requires a toolName', nodeId: node.id });
-        }
-        break;
-      case 'code':
-      case 'openagentic':
-        if (!node.data.code) {
-          errors.push({ code: 'MISSING_CODE', message: `${node.type} node requires code`, nodeId: node.id });
-        }
-        break;
+      // (llm_completion, bedrock, vertex, azure_ai, mcp_tool — now schema-driven via nodes/<type>/; validation handled by schema-driven path)
+      // (code, openagentic — now schema-driven via nodes/<type>/; validation handled by schema-driven path (Task #46))
       case 'http_request':
         if (!node.data.url) {
           errors.push({ code: 'MISSING_URL', message: 'HTTP request node requires a URL', nodeId: node.id });
         }
         break;
-      case 'condition':
-        if (!node.data.condition && !node.data.expression) {
-          warnings.push({ code: 'MISSING_CONDITION', message: 'Condition node has no condition expression', nodeId: node.id });
-        }
-        break;
-      case 'openagentic_llm':
-      case 'openagentic_chat':
-        if (!node.data.prompt) {
-          errors.push({ code: 'MISSING_PROMPT', message: `${node.type} node requires a prompt`, nodeId: node.id });
-        }
-        break;
-      case 'multi_agent':
-        if (!node.data.agents || !Array.isArray(node.data.agents) || node.data.agents.length === 0) {
-          errors.push({ code: 'MISSING_AGENTS', message: `${node.type} node requires a non-empty agents array`, nodeId: node.id });
-        }
-        break;
-      case 'agent_spawn':
-        if (!node.data.task && !node.data.taskDescription) {
-          errors.push({ code: 'MISSING_TASK', message: `${node.type} node requires a task description`, nodeId: node.id });
-        }
-        break;
-      case 'synth':
-      case 'oat':
-      case 'synth_synthesize':
-      case 'oat_synthesize':
-        if (!node.data.intent) {
-          errors.push({ code: 'MISSING_INTENT', message: `${node.type} node requires an intent`, nodeId: node.id });
-        }
-        break;
-      case 'rag_query':
-        if (!node.data.collection) {
-          warnings.push({ code: 'MISSING_COLLECTION', message: 'RAG query node has no collection specified (will use "default")', nodeId: node.id });
-        }
-        break;
-      case 'vector_store':
-        if (!node.data.collection) {
-          warnings.push({ code: 'MISSING_COLLECTION', message: 'Vector store node has no collection specified', nodeId: node.id });
-        }
-        break;
-      case 'document_loader':
-        if (node.data.sourceType === 'url' && !node.data.url) {
-          warnings.push({ code: 'MISSING_URL', message: 'Document loader URL source has no URL configured (will use upstream input)', nodeId: node.id });
-        }
-        break;
-      case 'structured_output':
-        if (!node.data.schema || node.data.schema === '{}') {
-          errors.push({ code: 'MISSING_SCHEMA', message: 'Structured output node requires a JSON schema', nodeId: node.id });
-        }
-        break;
-      case 'transform':
-        if (node.data.transformType && node.data.transformType !== 'extract' && !node.data.transformExpression && !node.data.expression) {
-          warnings.push({ code: 'MISSING_EXPRESSION', message: 'Transform node has no expression configured', nodeId: node.id });
-        }
-        break;
-      case 'loop':
-        if (!node.data.collection && !node.data.iterations) {
-          warnings.push({ code: 'MISSING_LOOP_CONFIG', message: 'Loop node has no collection or iteration count', nodeId: node.id });
-        }
-        break;
-      case 'slack_message':
-        if (!node.data.webhookUrl && !node.data.channel) {
-          warnings.push({ code: 'MISSING_SLACK_CONFIG', message: 'Slack node has no webhook URL or channel', nodeId: node.id });
-        }
-        break;
-      case 'teams_message':
-        if (!node.data.webhookUrl) {
-          warnings.push({ code: 'MISSING_TEAMS_WEBHOOK', message: 'Teams node has no webhook URL', nodeId: node.id });
-        }
-        break;
-      case 'a2a':
-        if (!node.data.prompt) {
-          errors.push({ code: 'MISSING_PROMPT', message: 'A2A node requires a prompt', nodeId: node.id });
-        }
-        break;
-      case 'reasoning':
-        if (!node.data.prompt) {
-          errors.push({ code: 'MISSING_PROMPT', message: 'Reasoning node requires a prompt', nodeId: node.id });
-        }
-        break;
-      case 'agent_single':
-        if (!node.data.prompt && !node.data.task && !node.data.agentId) {
-          errors.push({ code: 'MISSING_AGENT_CONFIG', message: 'Agent node requires a task/prompt or agentId', nodeId: node.id });
-        }
-        break;
-      case 'agent_pool':
-      case 'agent_supervisor':
-        if (!node.data.agents || !Array.isArray(node.data.agents) || node.data.agents.length === 0) {
-          errors.push({ code: 'MISSING_AGENTS', message: `${node.type} node requires a non-empty agents array`, nodeId: node.id });
-        }
-        break;
-      case 'switch':
-        if (!node.data.expression) {
-          errors.push({ code: 'MISSING_EXPRESSION', message: 'Switch node requires an expression', nodeId: node.id });
-        }
-        break;
-      case 'wait':
-        if (!node.data.duration || Number(node.data.duration) <= 0) {
-          warnings.push({ code: 'MISSING_DURATION', message: 'Wait node has no duration configured', nodeId: node.id });
-        }
-        break;
-      case 'outlook_email':
-      case 'send_email':
-        if (!node.data.to) {
-          errors.push({ code: 'MISSING_RECIPIENT', message: `${node.type} node requires a "to" address`, nodeId: node.id });
-        }
-        if (!node.data.subject) {
-          warnings.push({ code: 'MISSING_SUBJECT', message: `${node.type} node has no subject`, nodeId: node.id });
-        }
-        break;
-      case 'pagerduty_incident':
-        if (!node.data.routingKey) {
-          errors.push({ code: 'MISSING_ROUTING_KEY', message: 'PagerDuty node requires a routing key', nodeId: node.id });
-        }
-        break;
-      case 'servicenow_ticket':
-        if (!node.data.instanceUrl) {
-          errors.push({ code: 'MISSING_INSTANCE_URL', message: 'ServiceNow node requires an instance URL', nodeId: node.id });
-        }
-        break;
-      case 'jira_issue':
-        if (!node.data.projectKey) {
-          errors.push({ code: 'MISSING_PROJECT_KEY', message: 'Jira node requires a project key', nodeId: node.id });
-        }
-        break;
-      case 'discord_message':
-        if (!node.data.webhookUrl) {
-          warnings.push({ code: 'MISSING_DISCORD_WEBHOOK', message: 'Discord node has no webhook URL', nodeId: node.id });
-        }
-        break;
-      case 'guardrails':
-        if (!node.data.checks || !Array.isArray(node.data.checks) || node.data.checks.length === 0) {
-          errors.push({ code: 'MISSING_CHECKS', message: 'Guardrails node requires safety checks', nodeId: node.id });
-        }
-        break;
-      case 'data_query':
-        if (!node.data.collection && !node.data.collectionName) {
-          warnings.push({ code: 'MISSING_COLLECTION', message: 'Data query node has no collection (will use "default")', nodeId: node.id });
-        }
-        break;
-      case 'embedding':
-        if (!node.data.model) {
-          warnings.push({ code: 'MISSING_MODEL', message: 'Embedding node has no model specified', nodeId: node.id });
-        }
-        break;
-      case 'text_splitter':
-        if (!node.data.strategy) {
-          warnings.push({ code: 'MISSING_STRATEGY', message: 'Text splitter has no splitting strategy', nodeId: node.id });
-        }
-        break;
-      case 'error_handler':
-        if (!node.data.errorAction) {
-          warnings.push({ code: 'MISSING_ACTION', message: 'Error handler has no action configured', nodeId: node.id });
-        }
-        break;
-      case 'sub_workflow':
-        if (!node.data.workflowId) {
-          errors.push({ code: 'MISSING_WORKFLOW_ID', message: 'Sub-workflow node requires a workflow to execute', nodeId: node.id });
-        }
-        break;
+      // (condition — now schema-driven via nodes/condition/; validation handled by schema-driven path (Task #45))
+      // (openagentic_chat — now schema-driven via nodes/openagentic_chat/; validation handled by schema-driven path)
+      // (openagentic_llm — schema-driven alias for openagentic_chat; validation handled by schema-driven path)
+      // (multi_agent — now schema-driven via nodes/multi_agent/; validation handled by schema-driven path)
+      // (agent_spawn — now schema-driven via nodes/agent_spawn/; validation handled by schema-driven path)
+      // (synth + synth_synthesize + oat + oat_synthesize — now schema-driven
+      //  via nodes/synth/ (aliases share the schema); validation handled by
+      //  schema-driven path (Task #46))
+      // (rag_query, vector_store, document_loader — now schema-driven via nodes/; validation handled by schema-driven path)
+      // (structured_output — now schema-driven via nodes/structured_output/; validation handled by schema-driven path)
+      // (transform — now schema-driven via nodes/transform/; validation handled by schema-driven path)
+      // (loop — now schema-driven via nodes/loop/; validation handled by schema-driven path (Task #45))
+      // (slack_message, teams_message — now schema-driven via nodes/; validation handled by schema-driven path)
+      // (a2a — now schema-driven via nodes/a2a/; validation handled by schema-driven path)
+      // (reasoning — now schema-driven via nodes/reasoning/; validation handled by schema-driven path)
+      // (agent_single, agent_pool, agent_supervisor — now schema-driven via nodes/<type>/; validation handled by schema-driven path)
+      // (switch — now schema-driven via nodes/switch/; validation handled by schema-driven path (Task #45))
+      // (parallel — now schema-driven via nodes/parallel/; validation handled by schema-driven path (Task #45))
+      // (wait — now schema-driven via nodes/wait/; validation handled by schema-driven path)
+      // (outlook_email, send_email, pagerduty_incident, servicenow_ticket,
+      //  jira_issue, discord_message — now schema-driven via nodes/; validation
+      //  handled by schema-driven path)
+      // (guardrails — now schema-driven via nodes/guardrails/; validation handled by schema-driven path)
+      // (data_query — now schema-driven via nodes/data_query/; validation handled by schema-driven path)
+      // (embedding, text_splitter — now schema-driven via nodes/; validation handled by schema-driven path)
+      // (error_handler — now schema-driven via nodes/error_handler/; validation handled by schema-driven path)
+      // (sub_workflow — now schema-driven via nodes/sub_workflow/; validation handled by schema-driven path)
     }
 
-    // Validate code syntax in code nodes (syntax check only, server-side validation)
-    // openagentic nodes use natural language prompts for Claude Code — skip syntax validation
-    if (node.type === 'code' && node.data.code) {
-      try {
-        // Parse-only check using Function constructor - this is intentional for workflow validation
-        // eslint-disable-next-line no-new-func
-        new Function('input', node.data.code);
-      } catch (e: any) {
-        errors.push({ code: 'INVALID_CODE_SYNTAX', message: `Code syntax error: ${e.message}`, nodeId: node.id });
+    // (Task #46) Code syntax pre-check is now dead code — `code` nodes are
+    // schema-driven (validateAgainstSchema). The schema-driven validation path
+    // does not run a JS-syntax pre-check; the V8 isolate sandbox surfaces the
+    // syntax error at execution time. The legacy code below is retained until
+    // Task #15 retires legacy validateNodeData. No code node will reach this
+    // branch because the call site routes registered types to
+    // validateAgainstSchema.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _legacyCodeSyntaxPrecheckRetained = false;
+
+    // (Task #45) Condition syntax pre-check is now dead code — condition nodes
+    // are schema-driven (validateAgainstSchema). Retained until Task #15 retires
+    // legacy validateNodeData. No condition node will reach this branch because
+    // the call site at line 95-99 routes registered types to validateAgainstSchema.
+  }
+
+  /**
+   * Schema-driven validation for migrated (registry-backed) nodes.
+   * Reads the per-setting metadata in schema.settings and emits the same
+   * shape of errors/warnings the legacy switch produced.
+   */
+  private validateAgainstSchema(
+    node: WorkflowNode,
+    schema: NodeSchema,
+    errors: CompilationError[],
+    warnings: CompilationWarning[],
+  ): void {
+    const settings = schema.settings ?? [];
+    for (const setting of settings) {
+      const value = node.data?.[setting.name];
+      const present =
+        value !== undefined &&
+        value !== null &&
+        !(typeof value === 'string' && value.trim() === '');
+
+      if (setting.required && !present) {
+        errors.push({
+          code: `MISSING_${setting.name.toUpperCase()}`,
+          message: `${schema.label} node requires "${setting.label || setting.name}"`,
+          nodeId: node.id,
+        });
+        continue;
+      }
+
+      if (!present) continue;
+
+      // Per-type sanity checks — only when present and not template-bound
+      const isTemplated = typeof value === 'string' && value.includes('{{');
+      if (!isTemplated) {
+        this.validateSettingValue(node, setting, value, errors, warnings);
       }
     }
+  }
 
-    // Validate condition expressions (skip if they contain {{template}} vars — resolved at runtime)
-    if (node.type === 'condition' && (node.data.condition || node.data.expression)) {
-      const expr = node.data.condition || node.data.expression;
-      // Template variables like {{steps.X.output}} are resolved at runtime by
-      // WorkflowExecutionEngine.evaluateCondition() — can't validate syntax at compile time
-      if (!expr.includes('{{')) {
-        try {
-          // Parse-only: admin-authored workflow expressions, same pattern as n8n/Flowise
-          // eslint-disable-next-line no-new-func
-          new Function('input', `return (${expr})`);
-        } catch (e: any) {
-          errors.push({ code: 'INVALID_CONDITION', message: `Condition expression error: ${e.message}`, nodeId: node.id });
+  private validateSettingValue(
+    node: WorkflowNode,
+    setting: NodeSetting,
+    value: unknown,
+    errors: CompilationError[],
+    _warnings: CompilationWarning[],
+  ): void {
+    switch (setting.type) {
+      case 'enum':
+        if (Array.isArray(setting.values) && !setting.values.includes(String(value))) {
+          errors.push({
+            code: `INVALID_${setting.name.toUpperCase()}`,
+            message: `${setting.name} must be one of: ${setting.values.join(', ')}`,
+            nodeId: node.id,
+          });
         }
-      }
+        break;
+      case 'number':
+        if (typeof value !== 'number') {
+          errors.push({
+            code: `INVALID_${setting.name.toUpperCase()}`,
+            message: `${setting.name} must be a number`,
+            nodeId: node.id,
+          });
+          return;
+        }
+        if (typeof setting.min === 'number' && value < setting.min) {
+          errors.push({
+            code: `INVALID_${setting.name.toUpperCase()}`,
+            message: `${setting.name} must be >= ${setting.min}`,
+            nodeId: node.id,
+          });
+        }
+        if (typeof setting.max === 'number' && value > setting.max) {
+          errors.push({
+            code: `INVALID_${setting.name.toUpperCase()}`,
+            message: `${setting.name} must be <= ${setting.max}`,
+            nodeId: node.id,
+          });
+        }
+        break;
+      case 'string':
+        if (setting.validation?.pattern && typeof value === 'string') {
+          try {
+            const re = new RegExp(setting.validation.pattern);
+            if (!re.test(value)) {
+              errors.push({
+                code: `INVALID_${setting.name.toUpperCase()}`,
+                message: setting.validation.errorMessage || `${setting.name} failed pattern check`,
+                nodeId: node.id,
+              });
+            }
+          } catch {
+            // bad regex in schema — ignore at validate time
+          }
+        }
+        break;
     }
   }
 
@@ -391,9 +341,39 @@ export class WorkflowCompiler {
    * Detect cycles using DFS with coloring (white/gray/black)
    */
   private detectCycles(nodes: WorkflowNode[], edges: WorkflowEdge[]): boolean {
+    // Control-flow node types are LEGITIMATE iteration anchors. A back-edge
+    // through one of these is intentional (e.g. loop iterates, human_approval
+    // can re-route on rejection, condition can branch back). The engine knows
+    // how to break the cycle at run time. Plain back-edges (a → b → a where
+    // none of a/b are control-flow) are still rejected.
+    //
+    // Caught 2026-04-26: Deep Research Team and PagerDuty Auto-Triage were
+    // both being rejected by the cycle detector even though their cycles
+    // close through `loop` and `human_approval` nodes respectively.
+    const CONTROL_FLOW_TYPES = new Set([
+      'loop',
+      'human_approval',
+      'approval',
+      'condition',
+      'switch',
+      'merge',
+      'parallel',
+      'wait',
+      'error_handler',
+      'sub_workflow',
+    ]);
+    const nodeType = new Map<string, string>();
+    for (const n of nodes) nodeType.set(n.id, n.type);
+
     const adjacency = new Map<string, string[]>();
     for (const node of nodes) adjacency.set(node.id, []);
     for (const edge of edges) {
+      // Skip edges where either endpoint is a control-flow node — the engine
+      // governs iteration through those, so a "cycle" via them is legal.
+      if (CONTROL_FLOW_TYPES.has(nodeType.get(edge.source)!) ||
+          CONTROL_FLOW_TYPES.has(nodeType.get(edge.target)!)) {
+        continue;
+      }
       adjacency.get(edge.source)?.push(edge.target);
     }
 

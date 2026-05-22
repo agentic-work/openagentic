@@ -4,6 +4,7 @@ import {
   Shield, AlertTriangle, CheckCircle, XCircle, Lock
 } from '../Shared/AdminIcons';
 import { apiRequestJson } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -160,8 +161,15 @@ const WebhookSecurityView: React.FC<WebhookSecurityViewProps> = ({ theme }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" />
+      <div className="space-y-6">
+        <PageHeader
+          crumbs={['Admin', 'Security', 'Webhook Security']}
+          title="Webhook Security"
+          explainer="Enterprise-grade inbound webhook protection."
+        />
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderBottomColor: 'var(--ap-accent)' }} />
+        </div>
       </div>
     );
   }
@@ -175,39 +183,15 @@ const WebhookSecurityView: React.FC<WebhookSecurityViewProps> = ({ theme }) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-purple-500/20">
-            <Shield size={24} className="text-purple-400" />
-          </div>
-          <div>
-            <h2 className={`text-xl font-bold ${textPrimary}`}>Webhook Security</h2>
-            <p className={textMuted}>Enterprise-grade inbound webhook protection</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Kill Switch */}
-          <button
-            onClick={toggleKillSwitch}
-            disabled={saving}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-              config?.globalEnabled
-                ? 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'
-                : 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'
-            }`}
-          >
-            {config?.globalEnabled ? (
-              <><CheckCircle size={16} /> Webhooks Active</>
-            ) : (
-              <><XCircle size={16} /> Kill Switch ON</>
-            )}
-          </button>
-          <button onClick={fetchAll} className={`p-2 rounded-lg ${hoverBg} ${textMuted}`}>
-            <RefreshCw size={16} />
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        crumbs={['Admin', 'Security', 'Webhook Security']}
+        title="Webhook Security"
+        explainer="Enterprise-grade inbound webhook protection — HMAC verification, rate limits, and audit log."
+        actions={[
+          { label: config?.globalEnabled ? 'Webhooks Active' : 'Kill Switch ON', onClick: () => { void toggleKillSwitch(); }, disabled: saving },
+          { label: 'Refresh', onClick: () => { void fetchAll(); } },
+        ]}
+      />
 
       {/* Status Messages */}
       {error && (
@@ -229,9 +213,10 @@ const WebhookSecurityView: React.FC<WebhookSecurityViewProps> = ({ theme }) => {
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
               activeTab === tab.id
-                ? 'bg-purple-500/20 text-purple-400'
+                ? ''
                 : `${textMuted} ${hoverBg}`
             }`}
+            style={activeTab === tab.id ? { background: 'var(--ap-accent-soft)', color: 'var(--ap-accent)' } : undefined}
           >
             {tab.label}
           </button>
@@ -290,8 +275,9 @@ const OverviewTab: React.FC<{
             key={h}
             onClick={() => setStatsHours(h)}
             className={`px-3 py-1 rounded text-xs font-medium transition-all ${
-              statsHours === h ? 'bg-purple-500/20 text-purple-400' : `${textMuted} hover:bg-white/5`
+              statsHours === h ? '' : `${textMuted} hover:bg-white/5`
             }`}
+            style={statsHours === h ? { background: 'var(--ap-accent-soft)', color: 'var(--ap-accent)' } : undefined}
           >
             {h < 24 ? `${h}h` : h === 24 ? '1d' : h === 168 ? '7d' : '30d'}
           </button>
@@ -422,7 +408,8 @@ const ConfigTab: React.FC<{
       </div>
       <button
         onClick={() => onChange(!checked)}
-        className={`relative w-11 h-6 rounded-full transition-colors ${checked ? 'bg-purple-500' : 'bg-[var(--color-border)]'}`}
+        className={`relative w-11 h-6 rounded-full transition-colors ${checked ? '' : 'bg-[var(--color-border)]'}`}
+        style={checked ? { background: 'var(--ap-accent)' } : undefined}
       >
         <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${checked ? 'translate-x-5' : ''}`} />
       </button>
@@ -503,7 +490,8 @@ const ConfigTab: React.FC<{
         <button
           onClick={() => onSave(local)}
           disabled={saving}
-          className="px-6 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium text-sm transition-all disabled:opacity-50"
+          className="px-6 py-2 rounded-lg font-medium text-sm transition-all disabled:opacity-50"
+          style={{ background: 'var(--ap-accent)', color: 'var(--ap-fg-on-accent)' }}
         >
           {saving ? 'Saving...' : 'Save Configuration'}
         </button>
@@ -532,10 +520,15 @@ const PlatformsTab: React.FC<{
     if (config?.platformAllowlists) setLocalPlatforms({ ...config.platformAllowlists });
   }, [config]);
 
+  // Vendor brand colors (Slack #4a154b, PagerDuty #06AC38, Jira #0052CC, Teams
+  // #6264A7, ServiceNow #81B5A1, Discord #5865F2). Non-themeable by design —
+  // equivalent to chart palettes / brand-icon SVGs.
+  /* eslint-disable admin-tokens/no-hardcoded-admin-color */
   const platformColors: Record<string, string> = {
-    slack: '#4a154b', github: '#24292f', pagerduty: '#06AC38', jira: '#0052CC',
+    slack: '#4a154b', github: 'var(--ap-bg-2)', pagerduty: '#06AC38', jira: '#0052CC',
     teams: '#6264A7', servicenow: '#81B5A1', discord: '#5865F2',
   };
+  /* eslint-enable admin-tokens/no-hardcoded-admin-color */
 
   const updatePlatform = (id: string, update: Partial<PlatformAllowlist>) => {
     setLocalPlatforms(prev => ({
@@ -554,7 +547,7 @@ const PlatformsTab: React.FC<{
         <div key={id} className={`rounded-xl border ${borderColor} ${cardBg} overflow-hidden`}>
           <div className={`flex items-center justify-between px-4 py-3 border-b ${borderColor}`}>
             <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platformColors[id] || '#888' }} />
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platformColors[id] || 'var(--ap-fg-2)' }} />
               <div>
                 <span className={`font-semibold capitalize ${textPrimary}`}>{id}</span>
                 <span className={`ml-2 text-xs ${textMuted}`}>{platform.description}</span>
@@ -562,7 +555,8 @@ const PlatformsTab: React.FC<{
             </div>
             <button
               onClick={() => updatePlatform(id, { enabled: !platform.enabled })}
-              className={`relative w-11 h-6 rounded-full transition-colors ${platform.enabled ? 'bg-purple-500' : 'bg-[var(--color-border)]'}`}
+              className={`relative w-11 h-6 rounded-full transition-colors ${platform.enabled ? '' : 'bg-[var(--color-border)]'}`}
+              style={platform.enabled ? { background: 'var(--ap-accent)' } : undefined}
             >
               <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${platform.enabled ? 'translate-x-5' : ''}`} />
             </button>
@@ -612,7 +606,8 @@ const PlatformsTab: React.FC<{
         <button
           onClick={() => onSave({ platformAllowlists: localPlatforms })}
           disabled={saving}
-          className="px-6 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium text-sm transition-all disabled:opacity-50"
+          className="px-6 py-2 rounded-lg font-medium text-sm transition-all disabled:opacity-50"
+          style={{ background: 'var(--ap-accent)', color: 'var(--ap-fg-on-accent)' }}
         >
           {saving ? 'Saving...' : 'Save Platform Settings'}
         </button>
@@ -753,7 +748,8 @@ const AddItemInput: React.FC<{ placeholder: string; onAdd: (value: string) => vo
       />
       <button
         onClick={() => { if (value.trim()) { onAdd(value.trim()); setValue(''); } }}
-        className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium"
+        className="px-3 py-1.5 rounded-lg text-xs font-medium"
+        style={{ background: 'var(--ap-accent)', color: 'var(--ap-fg-on-accent)' }}
       >
         Add
       </button>

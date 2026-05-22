@@ -89,9 +89,10 @@ export function requireMCPAuth() {
     const userContext = extractUserContext(request);
     
     if (!userContext) {
-      return reply.status(401).send({
+      await reply.status(401).send({
         error: 'Authentication required for MCP operations'
       });
+      return;
     }
     
     // User context is valid, continue

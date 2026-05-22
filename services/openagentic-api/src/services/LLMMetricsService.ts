@@ -19,6 +19,7 @@ import { logger } from '../utils/logger.js';
 import { Decimal } from '@prisma/client/runtime/library';
 import { getModelCapabilityRegistry } from './ModelCapabilityRegistry.js';
 import { bedrockPricingService } from './BedrockPricingService.js';
+import { trackLLMRequest } from '../metrics/index.js';
 
 export interface LLMRequestMetrics {
   userId?: string;
@@ -75,6 +76,12 @@ export interface LLMRequestMetrics {
   status?: 'success' | 'error' | 'timeout' | 'rate_limited';
   errorCode?: string;
   errorMessage?: string;
+  /** Provider's stop_reason / finish_reason / stopReason / done_reason —
+   *  passed through to gen_ai_finish_reasons_total when status='success'. */
+  finishReason?: string;
+  /** Coarse error class for gen_ai_errors_total (timeout / rate_limit /
+   *  client_error / server_error / network / unknown). */
+  errorClass?: string;
 
   // Provider metadata
   providerMetadata?: Record<string, any>;
@@ -112,6 +119,17 @@ export class LLMMetricsService {
     let inputCostPer1k: number;
     let outputCostPer1k: number;
     let pricingSource = 'fallback';
+
+    // #651: Embedding-shape calls (no completion tokens, model name has 'embed')
+    // don't belong in the chat-completion pricing path. The legacy in-memory
+    // ModelCapabilityRegistry tracks input/outputCostPer1k for chat models;
+    // embeddings price via embeddingCostPer1k (separate ledger). Short-circuit
+    // to a silent zero-cost result so we don't (a) charge bogus chat rates for
+    // embeddings or (b) spam a misleading "Model not found in registry" warn
+    // on every embedding call.
+    if (completionTokens === 0 && /embed/i.test(model)) {
+      return { promptCost: 0, completionCost: 0, totalCost: 0, pricingSource: 'embedding-skip' };
+    }
 
     // Ollama models are free (local inference)
     // Calculate estimated_savings: what this would have cost on the nearest cloud equivalent
@@ -209,22 +227,41 @@ export class LLMMetricsService {
    * Log an LLM request with all metrics
    */
   async logRequest(metrics: LLMRequestMetrics): Promise<string | null> {
+    // Calculate costs + tokens-per-second up front so the Prom emit
+    // always fires, even when the Postgres DB write fails. Operations
+    // dashboard is Prom-driven; per-request fact-table drill-down is
+    // Postgres-driven; keep the two failure modes independent.
+    const costs = this.calculateCost(
+      metrics.providerType,
+      metrics.model,
+      metrics.promptTokens,
+      metrics.completionTokens,
+      metrics.cachedTokens
+    );
+    let tokensPerSecond: number | null = null;
+    if (metrics.completionTokens && metrics.totalDurationMs && metrics.totalDurationMs > 0) {
+      tokensPerSecond = (metrics.completionTokens / metrics.totalDurationMs) * 1000;
+    }
+
+    // Tier-1 Prom emit — fire-and-forget, never throws (per metrics/index.ts
+    // implementation). Always runs, even if the DB write below fails.
+    trackLLMRequest({
+      provider: metrics.providerType,
+      model: metrics.model,
+      operation: (metrics.requestType ?? 'chat') as 'chat' | 'embedding' | 'completion' | 'image',
+      status: metrics.status ?? 'success',
+      durationMs: metrics.totalDurationMs ?? metrics.latencyMs ?? 0,
+      ttftMs: metrics.timeToFirstTokenMs,
+      tokensPerSecond: tokensPerSecond ?? metrics.tokensPerSecond,
+      promptTokens: metrics.promptTokens,
+      completionTokens: metrics.completionTokens,
+      cachedTokens: metrics.cachedTokens,
+      reasoningTokens: metrics.reasoningTokens,
+      finishReason: metrics.finishReason,
+      errorClass: metrics.errorClass ?? metrics.errorCode,
+    });
+
     try {
-      // Calculate costs
-      const costs = this.calculateCost(
-        metrics.providerType,
-        metrics.model,
-        metrics.promptTokens,
-        metrics.completionTokens,
-        metrics.cachedTokens
-      );
-
-      // Calculate tokens per second if we have the data
-      let tokensPerSecond: number | null = null;
-      if (metrics.completionTokens && metrics.totalDurationMs && metrics.totalDurationMs > 0) {
-        tokensPerSecond = (metrics.completionTokens / metrics.totalDurationMs) * 1000;
-      }
-
       const record = await prisma.lLMRequestLog.create({
         data: {
           user_id: metrics.userId || null,
@@ -669,27 +706,47 @@ export class LLMMetricsService {
   }
 
   /**
-   * Map a local/self-hosted model to its nearest cloud equivalent.
-   * Used for calculating "estimated savings" — what it WOULD have cost on a cloud provider.
-   * The mapping is based on model capability tier, not hardcoded pricing.
+   * Map a local/self-hosted model to its nearest cloud equivalent for the
+   * "estimated savings" metric. Reads from the registry SoT
+   * (admin.model_role_assignments) — picks the cheapest enabled non-Ollama
+   * chat-role assignment by token cost. No substring inference, no
+   * hardcoded model literals.
+   *
+   * Synchronous: relies on a cache populated lazily by a background
+   * refresh. Returns null until the first refresh lands; the savings
+   * metric is best-effort, not load-bearing.
    */
-  private getCloudEquivalent(model: string): { provider: string; model: string } | null {
-    const m = model.toLowerCase();
-    // Map by capability tier — local model → nearest cloud model with known pricing
-    if (m.includes('gpt-oss') || m.includes('llama') || m.includes('mistral') || m.includes('qwen')) {
-      // Mid-tier local models → GPT-4o-mini (cheap cloud equivalent)
-      return { provider: 'azure-openai', model: 'gpt-4o-mini' };
+  private cloudEquivalentCache: { provider: string; model: string } | null = null;
+  private cloudEquivalentRefreshing = false;
+  private cloudEquivalentRefreshedAt = 0;
+  private getCloudEquivalent(_model: string): { provider: string; model: string } | null {
+    // Lazy refresh — fire-and-forget, don't block calculateCost.
+    const FIVE_MIN = 5 * 60_000;
+    if (Date.now() - this.cloudEquivalentRefreshedAt > FIVE_MIN && !this.cloudEquivalentRefreshing) {
+      this.cloudEquivalentRefreshing = true;
+      void prisma.modelRoleAssignment.findFirst({
+        where: {
+          role: 'chat',
+          state: 'active' as any,
+          enabled: true,
+          provider: { not: 'ollama' },
+        },
+        orderBy: [
+          { cost_per_input_token_usd: 'asc' },
+          { priority: 'asc' },
+        ],
+        select: { model: true, provider: true },
+      }).then(row => {
+        this.cloudEquivalentCache = row ? { provider: row.provider, model: row.model } : null;
+        this.cloudEquivalentRefreshedAt = Date.now();
+      }).catch(() => {
+        this.cloudEquivalentCache = null;
+        this.cloudEquivalentRefreshedAt = Date.now();
+      }).finally(() => {
+        this.cloudEquivalentRefreshing = false;
+      });
     }
-    if (m.includes('deepseek') || m.includes('codestral')) {
-      // Code-focused local models → Claude Haiku (cheap code-capable cloud model)
-      return { provider: 'aws-bedrock', model: 'anthropic.claude-3-haiku-20240307-v1:0' };
-    }
-    if (m.includes('gemma') || m.includes('phi')) {
-      // Small local models → GPT-4o-mini
-      return { provider: 'azure-openai', model: 'gpt-4o-mini' };
-    }
-    // Default: map to cheapest cloud model with similar capability
-    return { provider: 'azure-openai', model: 'gpt-4o-mini' };
+    return this.cloudEquivalentCache;
   }
 
   /**

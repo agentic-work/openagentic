@@ -664,9 +664,9 @@ export const ModelGardenTab: React.FC<{
                                       backgroundColor: model.costTier === 'premium' ? 'rgba(168,85,247,0.1)' :
                                         model.costTier === 'high' ? 'rgba(245,158,11,0.1)' :
                                         model.costTier === 'low' || model.costTier === 'free' ? 'rgba(16,185,129,0.1)' : 'rgba(59,130,246,0.1)',
-                                      color: model.costTier === 'premium' ? '#a855f7' :
-                                        model.costTier === 'high' ? '#f59e0b' :
-                                        model.costTier === 'low' || model.costTier === 'free' ? '#10b981' : '#3b82f6',
+                                      color: model.costTier === 'premium' ? 'var(--ap-accent)' :
+                                        model.costTier === 'high' ? 'var(--ap-warn)' :
+                                        model.costTier === 'low' || model.costTier === 'free' ? 'var(--ap-ok)' : 'var(--ap-accent)',
                                     }}>
                                     {model.costTier}
                                   </span>

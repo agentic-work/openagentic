@@ -51,7 +51,7 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
   
   // List all registered MCP servers
   fastify.get('/admin/mcp/servers', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['MCP'],
       summary: 'List all MCP servers',
@@ -73,30 +73,77 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
     }
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      // Get from our database
+      // Source 1: DB-registered server configs (manually added by admins).
       const dbServers = await prisma.mCPServerConfig.findMany({
         include: {
           status: true,
-          _count: {
-            select: { instances: true }
-          }
-        }
+          _count: { select: { instances: true } },
+        },
       });
 
-      // Get from MCP Proxy to verify sync
+      // Source 2: actually-loaded servers from mcp-proxy (the live truth —
+      // includes internal pod-hosted servers AND user-connected remotes).
+      // Same endpoint ChatMCPService uses (chat UI's "11 internal · 318
+      // connected" comes from this list).
       const proxyServers = await mcpSync.getMCPProxyServers();
 
-      // Combine and mark sync status
-      const servers = dbServers.map(server => ({
-        ...server,
-        synced_to_proxy: proxyServers.some(ls => ls.alias === server.id),
-        instance_count: server._count.instances
-      }));
+      // Union: keyed by name/alias. proxy entry wins for status/health
+      // (it knows what's actually running); db entry contributes config
+      // details (transport, isolation flags, etc).
+      const byKey = new Map<string, any>();
+
+      for (const ps of proxyServers) {
+        const key = String(ps.name ?? ps.alias ?? ps.id ?? '').trim();
+        if (!key) continue;
+        byKey.set(key, {
+          name: key,
+          status: ps.status === 'running' || ps.status === 'connected' ? 'healthy'
+                : ps.status === 'degraded' ? 'degraded'
+                : ps.status === 'down' || ps.status === 'failed' ? 'down'
+                : 'unknown',
+          tier: ps.tier,
+          category: ps.category ?? ps.namespace ?? 'mcp',
+          hosted: ps.hosted ?? (ps.user_isolated || ps.userIsolated ? 'remote' : 'pod'),
+          toolCount: ps.tool_count ?? ps.toolCount ?? (Array.isArray(ps.tools) ? ps.tools.length : 0),
+          callsLastMinute: ps.calls_last_minute ?? ps.callsLastMinute,
+          lastCallAt: ps.last_call_at ?? ps.lastCallAt,
+          source: 'mcp-proxy',
+          synced_to_proxy: true,
+        });
+      }
+
+      for (const db of dbServers) {
+        const key = String(db.id ?? db.name ?? '').trim();
+        if (!key) continue;
+        const existing = byKey.get(key);
+        if (existing) {
+          // proxy already has it — just mark that it's also DB-registered.
+          existing.id = db.id;
+          existing.transport = (db as any).transport ?? existing.transport;
+          existing.user_isolated = (db as any).user_isolated;
+          existing.instance_count = (db as any)._count?.instances;
+          existing.db_registered = true;
+        } else {
+          byKey.set(key, {
+            ...db,
+            name: db.name ?? db.id,
+            status: 'unknown',
+            synced_to_proxy: false,
+            instance_count: (db as any)._count?.instances ?? 0,
+            source: 'db',
+            db_registered: true,
+          });
+        }
+      }
+
+      const servers = Array.from(byKey.values());
 
       return reply.send({
         servers,
         total: servers.length,
-        synced_count: servers.filter(s => s.synced_to_proxy).length
+        synced_count: servers.filter(s => s.synced_to_proxy).length,
+        proxy_count: proxyServers.length,
+        db_count: dbServers.length,
       });
     } catch (error) {
       logger.error({ error }, 'Failed to list MCP servers');
@@ -105,18 +152,26 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
   });
 
   // List all available MCP tools from all servers (returns all tools from MCP proxy)
-  fastify.get('/api/admin/mcp/tools-list', { preHandler: adminMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/api/admin/mcp/tools-list', { onRequest: adminMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       // Fetch tools directly from MCP Proxy
       const mcpProxyUrl = process.env.MCP_PROXY_URL || 'http://mcp-proxy:8080';
 
       logger.info({ mcpProxyUrl }, 'Fetching tools from MCP Proxy');
 
+      // Forward the user's bearer to mcp-proxy. Without this, mcp-proxy
+      // refuses with 401 "missing Authorization header" → UI propagates the
+      // 401 → global response interceptor signs the user out. Regression
+      // pinned by mcp-tools-list-auth-forward.test.ts (LIVE 2026-05-11).
+      const user = (request as any).user;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (user?.accessToken) {
+        headers['Authorization'] = `Bearer ${user.accessToken}`;
+      }
+
       const response = await fetch(`${mcpProxyUrl}/tools`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers,
       });
 
       if (!response.ok) {
@@ -152,7 +207,7 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
 
   // Execute an MCP tool (used by tool testing in Admin Portal)
   fastify.post('/api/mcp', {
-    preHandler: adminMiddleware,
+    onRequest: adminMiddleware,
     schema: {
       tags: ['MCP'],
       summary: 'Execute MCP tool',
@@ -223,7 +278,7 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
   });
 
   // Register a new MCP server
-  fastify.post('/admin/mcp/servers', { preHandler: adminMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/admin/mcp/servers', { onRequest: adminMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const body = RegisterMCPSchema.parse(request.body);
       
@@ -327,7 +382,7 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
   });
   
   // Update an MCP server
-  fastify.patch('/admin/mcp/servers/:serverId', { preHandler: adminMiddleware }, async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
+  fastify.patch('/admin/mcp/servers/:serverId', { onRequest: adminMiddleware }, async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
     try {
       const { serverId } = request.params;
       const body = UpdateMCPSchema.parse(request.body);
@@ -371,7 +426,7 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
   });
   
   // Delete an MCP server
-  fastify.delete('/admin/mcp/servers/:serverId', { preHandler: adminMiddleware }, async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
+  fastify.delete('/admin/mcp/servers/:serverId', { onRequest: adminMiddleware }, async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
     try {
       const { serverId } = request.params;
       
@@ -433,7 +488,7 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
   });
   
   // Force sync all servers
-  fastify.post('/admin/mcp/sync', { preHandler: adminMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/admin/mcp/sync', { onRequest: adminMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       await mcpSync.syncMCPServers();
 
@@ -453,7 +508,7 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
   });
   
   // Test an MCP server connection
-  fastify.post('/admin/mcp/servers/:serverId/test', { preHandler: adminMiddleware }, async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
+  fastify.post('/admin/mcp/servers/:serverId/test', { onRequest: adminMiddleware }, async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
     try {
       const { serverId } = request.params;
       

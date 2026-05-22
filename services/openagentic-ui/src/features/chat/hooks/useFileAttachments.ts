@@ -5,10 +5,34 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 
-// Supported file types
-const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-const SUPPORTED_DOCUMENT_TYPES = ['application/pdf', 'text/plain', 'text/markdown'];
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+// Supported file types — must stay in sync with the server-side validator
+// at services/openagentic-api/src/routes/chat/handlers/attachmentValidator.ts
+// + extractAttachmentText. Anything outside this list will be rejected
+// with a clear error rather than silently sent as an unparseable data: url.
+const SUPPORTED_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml',
+];
+const SUPPORTED_DOCUMENT_TYPES = [
+  'application/pdf',
+  // .docx (Office Open XML wordprocessingml) — server uses mammoth.
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+  'text/markdown',
+  'text/csv',
+  'text/html',
+  'application/json',
+  'application/xml',
+  'application/yaml',
+  'application/x-yaml',
+];
+// Match server cap (25 MiB). Inline-base64 path inflates ~33% so a 25MiB
+// file becomes ~33MiB on the wire — still well under the 256MB request
+// body limit.
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MiB
 const MAX_FILES = 5;
 
 export interface FileWithPreview extends File {
@@ -44,18 +68,28 @@ export const useFileAttachments = (options: UseFileAttachmentsOptions = {}) => {
     };
   }, []);
 
-  // Validate a single file
+  // Validate a single file. Mirrors the server-side gate at
+  // services/openagentic-api/src/routes/chat/handlers/attachmentValidator.ts —
+  // we still rely on the server for the authoritative check, but failing
+  // fast on the client gives the user a snappier error.
   const validateFile = useCallback((file: File): string | null => {
-    // Check file size
     if (file.size > maxFileSize) {
-      return `File "${file.name}" exceeds maximum size of ${Math.round(maxFileSize / 1024 / 1024)}MB`;
+      const fileMb = (file.size / 1024 / 1024).toFixed(1);
+      const maxMb = (maxFileSize / 1024 / 1024).toFixed(0);
+      return `File "${file.name}" is ${fileMb} MiB which exceeds the ${maxMb} MiB per-file limit. Please attach a smaller file.`;
     }
-
-    // Check file type
-    if (allowedTypes.length > 0 && !allowedTypes.includes(file.type)) {
-      return `File type "${file.type}" is not supported`;
+    // Some clients (Edge on certain MIME registrations) report empty type
+    // for known extensions; allow text/* by file extension as a safety net.
+    const t = (file.type || '').toLowerCase();
+    const ext = (file.name.split('.').pop() ?? '').toLowerCase();
+    const TEXT_EXT = new Set(['txt', 'md', 'markdown', 'json', 'csv', 'html', 'xml', 'yaml', 'yml']);
+    if (allowedTypes.length > 0) {
+      const inList = allowedTypes.includes(t);
+      const looksLikeText = t.startsWith('text/') || (t === '' && TEXT_EXT.has(ext));
+      if (!inList && !looksLikeText) {
+        return `File "${file.name}" has unsupported type "${file.type || 'unknown'}". Supported: PDF, DOCX, images (PNG/JPEG/GIF/WEBP/SVG), and text-based files (TXT, MD, JSON, CSV, XML, YAML, code).`;
+      }
     }
-
     return null;
   }, [maxFileSize, allowedTypes]);
 

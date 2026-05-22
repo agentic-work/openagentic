@@ -88,8 +88,15 @@ export const messageHandler = {
           });
         }
 
-        // Get messages from session
-        let messages = session.messages || [];
+        // Sev-0 #777 — read messages straight from the storage layer.
+        // The cached `session.messages` projection drifts to `[]` whenever
+        // the chat stream pipeline persists via `chatStorage.addMessage`
+        // (no cache invalidation), so trusting `session.messages` here
+        // showed every chat session as empty in the UI.
+        let messages = await sessionService.getMessages(sessionId, {
+          limit: options.limit,
+          offset: options.offset,
+        });
 
         // Filter system messages if not requested
         if (!options.includeSystem) {

@@ -746,15 +746,15 @@ async def admin_system_user_sessions() -> Dict[str, Any]:
             # Recent sessions (last 24h)
             cur.execute("""
                 SELECT
-                    id, title, "userId",
-                    "messageCount",
-                    "createdAt", "updatedAt",
+                    id, title, user_id,
+                    message_count,
+                    created_at, updated_at,
                     metadata->>'model' as model,
                     metadata->>'source' as source,
-                    EXTRACT(EPOCH FROM (now() - "updatedAt"))::int as idle_seconds
+                    EXTRACT(EPOCH FROM (now() - updated_at))::int as idle_seconds
                 FROM chat_sessions
-                WHERE "updatedAt" > now() - interval '24 hours'
-                ORDER BY "updatedAt" DESC
+                WHERE updated_at > now() - interval '24 hours'
+                ORDER BY updated_at DESC
                 LIMIT 50
             """)
             sessions = [{
@@ -770,7 +770,7 @@ async def admin_system_user_sessions() -> Dict[str, Any]:
             total = cur.fetchone()[0]
             cur.execute("""
                 SELECT count(*) FROM chat_sessions
-                WHERE "updatedAt" > now() - interval '1 hour'
+                WHERE updated_at > now() - interval '1 hour'
             """)
             active_1h = cur.fetchone()[0]
 

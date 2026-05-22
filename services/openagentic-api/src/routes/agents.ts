@@ -199,20 +199,25 @@ export const agentRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
 
   /**
    * GET /api/agents/resolve
-   * Resolve agent config with composed prompt from DB + PromptComposer.
-   * Used by openagentic-proxy to get the full agent config including composed system prompt.
+   * Resolve agent config with the agent row's raw `system_prompt` body.
+   *
+   * Phase E.3 (2026-05-10) — the legacy `prompt_strategy === 'composite'`
+   * branch (which read `agent.prompt_modules` and ran them through the
+   * dynamic prompt assembler) is ripped. Sub-agent prompts are now plain markdown
+   * in `agent.system_prompt`. Composable-module assembly belongs to
+   * chatmode's static-section + RBAC overlay, NOT per-agent.
+   *
+   * Used by openagentic-proxy to get the full agent config.
    * Query: ?role=reasoning OR ?id=uuid
-   * Optional: ?mode=chat|code|flow (for mode-specific module selection)
    */
   fastify.get('/resolve', async (request, reply) => {
     try {
-      const { role, id, mode = 'chat' } = request.query as { role?: string; id?: string; mode?: string };
+      const { role, id } = request.query as { role?: string; id?: string };
 
       if (!role && !id) {
         return reply.code(400).send({ error: 'Provide role or id query param' });
       }
 
-      // Import prisma and PromptComposer
       const { prisma } = await import('../utils/prisma.js');
 
       const where = id ? { id } : { agent_type: role, is_default: true, enabled: true };
@@ -223,41 +228,7 @@ export const agentRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
       }
 
       const modelConfig = (agent.model_config as any) || {};
-      let systemPrompt = agent.system_prompt || '';
-
-      // If agent uses composable prompt strategy, compose from modules
-      if (agent.prompt_strategy === 'composite' && agent.prompt_modules?.length > 0) {
-        try {
-          const { PromptComposer } = await import('../services/prompt/PromptComposer.js');
-          const composer = new PromptComposer();
-          // Role-derived intent hints: the artifact_creation agent is
-          // dispatched ONLY to render visualizations. Declare that intent
-          // explicitly so intent-gated modules (artifact-creation, and any
-          // other future requiresUserIntent:['visualization'] module) make
-          // it into the composed prompt — otherwise they'd be filtered out
-          // because the resolve endpoint doesn't receive the user's original
-          // message to re-evaluate via ArtifactIntentGate. See openagentic-omhs#327.
-          const derivedUserIntent =
-            agent.agent_type === 'artifact_creation' ? 'visualization' : undefined;
-          const composed = await composer.compose({
-            message: '',
-            mode: (mode || 'chat') as any,
-            model: 'auto',
-            availableTools: [],
-            userId: '',
-            sessionId: '',
-            agentRole: agent.agent_type,
-            agentModules: agent.prompt_modules,
-            sliderPosition: 0.6,
-            userIntent: derivedUserIntent,
-          });
-          if (composed?.systemPrompt) {
-            systemPrompt = composed.systemPrompt;
-          }
-        } catch (composeErr: any) {
-          logger.warn({ error: composeErr.message, agent: agent.name }, 'Failed to compose prompt, using raw system_prompt');
-        }
-      }
+      const systemPrompt = agent.system_prompt || '';
 
       return reply.send({
         id: agent.id,

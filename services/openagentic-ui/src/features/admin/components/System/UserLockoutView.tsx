@@ -29,6 +29,7 @@ import { apiRequest } from '@/utils/api';
 import SlideInPanel, { SlideInPanelSection, SlideInPanelFooter } from '@/shared/components/SlideInPanel';
 import { AdminTable, TableActionButton, TableBadge } from '../Shared';
 import type { AdminTableColumn } from '../Shared';
+import { PageHeader } from '../../primitives-v2';
 
 interface LockedUser {
   id: string;
@@ -380,14 +381,12 @@ const UserLockoutView: React.FC<UserLockoutViewProps> = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
-          User Lockout Management
-        </h2>
-        <p style={{ color: 'var(--text-secondary)' }}>
-          Manage locked user accounts and warning counts from scope violations
-        </p>
-      </div>
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Security', 'Lockouts']}
+        title="User Lockouts"
+        explainer="Manage locked user accounts and warning counts from scope violations."
+      />
 
       {/* Messages */}
       {error && (
@@ -527,7 +526,7 @@ const UserLockoutView: React.FC<UserLockoutViewProps> = () => {
               onClick={handleBulkUnlock}
               disabled={actionLoading === 'bulk'}
               className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-              style={{ backgroundColor: 'var(--color-success)', color: '#FFFFFF' }}
+              style={{ backgroundColor: 'var(--color-success)', color: 'var(--ap-fg-0)' }}
             >
               <Unlock size={16} />
               {actionLoading === 'bulk' ? 'Unlocking...' : `Unlock ${selectedUsers.size} Selected`}

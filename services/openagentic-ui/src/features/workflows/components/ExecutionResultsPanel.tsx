@@ -25,6 +25,8 @@ import { nodeTypeConfigs } from '../utils/nodeConfigs';
 import { useAIFlowChat, type AIFlowMessage, type CanvasContext, type ExecutionContext, type WorkflowPatch } from '../hooks/useAIFlowChat';
 import type { WorkflowDefinition } from '../types/workflow.types';
 import { SharedMarkdownRenderer } from '@/features/chat/components/MessageContent/SharedMarkdownRenderer';
+import { SafeHtmlIframe } from '@/shared/components/SafeHtmlIframe';
+import { detectOutputType, extractRenderable } from '../utils/detectOutputType';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -52,6 +54,10 @@ export interface NodeExecution {
   error?: string;
   tokens?: number;
   cost?: number;
+  /** True when the failure was an output assertion check, not a runtime error */
+  assertionFailed?: boolean;
+  /** The human-readable assertion error message */
+  assertionErrorMessage?: string;
 }
 
 export interface ExecutionData {
@@ -96,6 +102,7 @@ type SnippetLang = 'curl' | 'python' | 'javascript' | 'typescript' | 'mcp_tool';
 const SC: Record<string, string> = {
   completed: '#2ea043', running: '#d29922', failed: '#f85149',
   pending: '#8b949e', skipped: '#8b949e', completed_with_errors: '#d29922',
+  assertion_failed: '#f97316',
 };
 
 function fmt(ms?: number): string {
@@ -216,17 +223,38 @@ const nColor = (t: string) => nodeTypeConfigs[t]?.color || '#58a6ff';
 const nIcon = (t: string) => nodeTypeConfigs[t]?.icon || '\u25CF';
 const isObj = (v: any): boolean => v !== null && typeof v === 'object' && !Array.isArray(v);
 
-function syntaxHL(json: string): string {
-  return json.replace(
-    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
-    (match) => {
-      let cls = 'wf-json-number';
-      if (/^"/.test(match)) cls = /:$/.test(match) ? 'wf-json-key' : 'wf-json-string';
-      else if (/true|false/.test(match)) cls = 'wf-json-boolean';
-      else if (/null/.test(match)) cls = 'wf-json-null';
-      return `<span class="${cls}">${match}</span>`;
-    },
-  );
+/**
+ * Tokenize a JSON string into class-tagged spans for syntax highlighting.
+ * Returns React nodes — NOT an HTML string — so the renderer never needs
+ * `dangerouslySetInnerHTML`. The tokenizer regex is identical to the
+ * previous `syntaxHL` (string -> string) version; only the output shape
+ * changed.
+ *
+ * S6: untrusted JSON content is rendered through React's automatic
+ * escaping, eliminating the XSS surface in `JsonBlock`.
+ */
+export function tokenizeJson(json: string): React.ReactNode[] {
+  const re = /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g;
+  const out: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let key = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(json)) !== null) {
+    if (m.index > lastIndex) {
+      out.push(json.slice(lastIndex, m.index));
+    }
+    const match = m[0];
+    let cls = 'wf-json-number';
+    if (/^"/.test(match)) cls = /:$/.test(match) ? 'wf-json-key' : 'wf-json-string';
+    else if (/true|false/.test(match)) cls = 'wf-json-boolean';
+    else if (/null/.test(match)) cls = 'wf-json-null';
+    out.push(<span key={key++} className={cls}>{match}</span>);
+    lastIndex = m.index + match.length;
+  }
+  if (lastIndex < json.length) {
+    out.push(json.slice(lastIndex));
+  }
+  return out;
 }
 
 // ── Micro-components ─────────────────────────────────────────────────────
@@ -282,10 +310,10 @@ const TableView: React.FC<{ data: any }> = ({ data }) => {
   );
 };
 
-const JsonBlock: React.FC<{ data: any }> = ({ data }) => {
+export const JsonBlock: React.FC<{ data: any }> = ({ data }) => {
   const str = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
   if (typeof data === 'string') return <pre className="wf-json-block wf-scrollbar">{str}</pre>;
-  return <pre className="wf-json-block wf-scrollbar" dangerouslySetInnerHTML={{ __html: syntaxHL(str) }} />;
+  return <pre className="wf-json-block wf-scrollbar">{tokenizeJson(str)}</pre>;
 };
 
 /** Download content as a file */
@@ -407,13 +435,37 @@ const DataSection: React.FC<{
   const has = data !== undefined && data !== null;
   const envelope = outputEnvelope;
 
-  // Auto-detect markdown content even without envelope
+  // Auto-detect markdown content even without envelope (or with a
+  // useless format:'json' envelope — see hasUsefulEnvelope below).
   const autoMarkdown = useMemo(() => {
-    if (envelope) return null; // envelope handles its own rendering
+    if (envelope && (envelope.format === 'html' || envelope.format === 'markdown' || envelope.format === 'table')) return null;
     if (typeof data === 'string' && (data.startsWith('#') || data.includes('\n## ') || data.includes('**'))) return data;
     if (data && typeof data.content === 'string' && (data.content.startsWith('#') || data.content.includes('\n## ') || data.content.includes('**'))) return data.content;
     return null;
   }, [data, envelope]);
+
+  /**
+   * n8n/Langflow-style rendered output (2026-05-14):
+   *   classify the raw `data` by node type + shape so the "Rendered"
+   *   toggle actually renders HTML reports inline (iframe), surfaces
+   *   markdown narratives with formatting, and shows tables / images
+   *   inline — instead of dumping a JSON tree of the body string.
+   *
+   *   Explicit envelope with format='html'/'markdown' still wins (handled
+   *   by the existing switch below). An envelope with format='json' (the
+   *   workflow engine's default when no node calls produceOutputEnvelope)
+   *   is treated as "no useful envelope" — we re-detect from the raw
+   *   shape so a webhook_response with a serialized HTML body still
+   *   routes to the iframe renderer.
+   */
+  const hasUsefulEnvelope =
+    !!envelope && (envelope.format === 'html' || envelope.format === 'markdown' || envelope.format === 'table');
+  const autoRoute = useMemo(() => {
+    if (hasUsefulEnvelope) return null;
+    if (!has) return null;
+    const t = detectOutputType(nodeType, data);
+    return { type: t, content: extractRenderable(nodeType, data, t) };
+  }, [data, hasUsefulEnvelope, has, nodeType]);
 
   const handleDownload = () => {
     if (!envelope && !data && !autoMarkdown) return;
@@ -519,11 +571,49 @@ const DataSection: React.FC<{
             <SharedMarkdownRenderer content={envelope.content} theme="dark" />
           </div>
         ) : envelope?.format === 'html' ? (
-          <div className="wf-rendered-output wf-scrollbar" style={{ maxHeight: 400, overflowY: 'auto', padding: '8px 12px' }}
-            dangerouslySetInnerHTML={{ __html: envelope.content }} />
+          <div className="wf-rendered-output wf-scrollbar" style={{ maxHeight: 400, overflowY: 'auto', padding: '8px 12px' }}>
+            {/* S6: route untrusted tool/model HTML envelopes through a
+                sandboxed iframe (allow-scripts only, no allow-same-origin).
+                Previous code passed envelope.content to dangerouslySetInnerHTML
+                directly — XSS surface for any tool that emits unfiltered HTML. */}
+            <SafeHtmlIframe content={envelope.content} title={envelope.title || 'workflow-output'} minHeight={400} />
+          </div>
         ) : autoMarkdown ? (
           <div className="wf-rendered-output wf-scrollbar" style={{ maxHeight: 400, overflowY: 'auto', padding: '8px 12px' }}>
             <SharedMarkdownRenderer content={autoMarkdown} theme="dark" />
+          </div>
+        ) : autoRoute?.type === 'html' && typeof autoRoute.content === 'string' ? (
+          // webhook_response body / http_request HTML body / standalone
+          // HTML string — render in a sandboxed iframe with CSP-nonce
+          // gating so untrusted tool/model HTML can't reach the parent.
+          <div className="wf-rendered-output wf-scrollbar" style={{ maxHeight: 520, overflowY: 'auto', padding: '8px 12px' }}>
+            <SafeHtmlIframe content={autoRoute.content} title={`${nodeType}-output`} minHeight={440} />
+          </div>
+        ) : autoRoute?.type === 'markdown' && typeof autoRoute.content === 'string' ? (
+          <div className="wf-rendered-output wf-scrollbar" style={{ maxHeight: 400, overflowY: 'auto', padding: '8px 12px' }}>
+            <SharedMarkdownRenderer content={autoRoute.content} theme="dark" />
+          </div>
+        ) : autoRoute?.type === 'image' && typeof autoRoute.content === 'string' ? (
+          <div className="wf-rendered-output wf-scrollbar" style={{ maxHeight: 520, overflowY: 'auto', padding: 12, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.3)' }}>
+            <img
+              src={autoRoute.content}
+              alt={`${nodeType} output`}
+              style={{ maxWidth: '100%', maxHeight: 480, borderRadius: 6, border: '1px solid var(--color-border, #30363d)' }}
+            />
+          </div>
+        ) : autoRoute?.type === 'text' && typeof autoRoute.content === 'string' && autoRoute.content.length > 0 ? (
+          <div className="wf-rendered-output wf-scrollbar" style={{ maxHeight: 400, overflowY: 'auto', padding: '8px 12px' }}>
+            <pre style={{
+              margin: 0,
+              fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace",
+              fontSize: 11.5,
+              lineHeight: 1.55,
+              color: 'var(--color-text, #e6edf3)',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}>
+              <code>{autoRoute.content}</code>
+            </pre>
           </div>
         ) : (
           <div className="wf-rendered-output wf-scrollbar" style={{ maxHeight: 400, overflowY: 'auto' }}>
@@ -581,6 +671,8 @@ const OutputTab: React.FC<{
   const input = d.executionInput ?? ne?.input;
   const error = d.executionError ?? ne?.error;
   const duration = d.executionTimeMs ?? ne?.duration;
+  const streamingText = d.streamingText as string | undefined;
+  const isStreaming = status === 'running' && typeof streamingText === 'string' && streamingText.length > 0;
 
   return (
     <div className="wf-exec-content wf-scrollbar" style={{ overflowY: 'auto' }}>
@@ -594,13 +686,60 @@ const OutputTab: React.FC<{
           <div className="wf-noh-type">{nType}</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-          <span className={`wf-status-pill ${status}`}>{status.replace(/_/g, ' ')}</span>
+          {isStreaming ? (
+            <span
+              data-testid="streaming-pill"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600,
+                background: 'rgba(88,166,255,0.12)', border: '1px solid rgba(88,166,255,0.3)',
+                color: '#58a6ff',
+              }}
+            >
+              <span style={{
+                width: 5, height: 5, borderRadius: '50%', background: '#58a6ff',
+                animation: 'wf-agent-pulse 1.4s ease-in-out infinite',
+                display: 'inline-block',
+              }} />
+              Streaming…
+            </span>
+          ) : (
+            <span className={`wf-status-pill ${status}`}>{status.replace(/_/g, ' ')}</span>
+          )}
           <div className="wf-noh-stats">
             {duration != null && <span><Clock className="w-3 h-3" />{fmt(duration)}</span>}
             {ne?.tokens != null && <span><Zap className="w-3 h-3" />{ne.tokens.toLocaleString()}</span>}
           </div>
         </div>
       </div>
+
+      {/* S5: Live streaming output preview for in-flight LLM nodes */}
+      {isStreaming && (
+        <div
+          data-testid="output-streaming-preview"
+          style={{
+            margin: '0 12px 8px',
+            padding: '8px 10px',
+            background: 'rgba(88,166,255,0.05)',
+            border: '1px solid rgba(88,166,255,0.15)',
+            borderRadius: 6,
+            fontSize: 11,
+            fontFamily: "'SF Mono', Monaco, monospace",
+            color: '#c9d1d9',
+            lineHeight: 1.5,
+            maxHeight: 160,
+            overflowY: 'auto',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+          }}
+        >
+          {streamingText}
+          <span style={{
+            display: 'inline-block', color: '#58a6ff',
+            animation: 'wf-cursor-blink 1s step-start infinite', marginLeft: 1,
+          }}>▎</span>
+        </div>
+      )}
 
       <DataSection title="Input" data={input} nodeType={nType} />
       <DataSection title="Output" data={output} nodeType={nType} error={error}
@@ -682,17 +821,33 @@ const TimelineTab: React.FC<{
   const { nodeExecutions: nes, status, executionId, startedAt, totalDuration } = executionData;
   const completed = nes.filter(n => n.status === 'completed').length;
   const failed = nes.filter(n => n.status === 'failed').length;
+  const assertionFailed = nes.filter(n => n.assertionFailed).length;
+  // The overall status label flips to assertion-failure description when any node had assertion errors
+  const displayStatus = assertionFailed > 0 && status === 'completed_with_errors'
+    ? 'Failed (output validation)'
+    : status;
 
   return (
     <div className="wf-exec-content wf-scrollbar" style={{ overflowY: 'auto' }}>
       {/* Run header */}
-      <div className="wf-run-header">
+      <div className="wf-run-header" data-testid="timeline-run-header">
         <span className={`wf-run-status-dot ${status}`} />
         <div className="wf-run-info">
-          <div className="wf-run-title">Run {executionId.slice(0, 8)}</div>
+          <div className="wf-run-title">
+            Run {executionId.slice(0, 8)}
+            {assertionFailed > 0 && (
+              <span
+                data-testid="assertion-failed-status"
+                style={{ marginLeft: 8, fontSize: 11, color: '#f97316', fontWeight: 600 }}
+              >
+                {displayStatus}
+              </span>
+            )}
+          </div>
           <div className="wf-run-meta">
             manual &middot; {ago(startedAt)} &middot; {completed}/{nes.length} nodes
             {failed > 0 && <span style={{ color: '#f85149' }}> &middot; {failed} failed</span>}
+            {assertionFailed > 0 && <span style={{ color: '#f97316' }}> &middot; {assertionFailed} assertion{assertionFailed !== 1 ? 's' : ''} failed</span>}
           </div>
         </div>
         {isExecuting && <div className="wf-exec-spinner" style={{ width: 14, height: 14 }} />}
@@ -733,7 +888,17 @@ const TimelineTab: React.FC<{
                   </div>
                   <span className="wf-tc-name">{ne.nodeLabel || ne.nodeId}</span>
                   {ne.duration != null && <span className="wf-tc-time">{fmt(ne.duration)}</span>}
-                  <span className={`wf-status-pill ${ne.status}`}>{ne.status}</span>
+                  {ne.assertionFailed ? (
+                    <span
+                      data-testid="timeline-assertion-pill"
+                      className="wf-status-pill"
+                      style={{ backgroundColor: 'rgba(249,115,22,0.15)', color: '#f97316', borderColor: 'rgba(249,115,22,0.3)' }}
+                    >
+                      assertion failed
+                    </span>
+                  ) : (
+                    <span className={`wf-status-pill ${ne.status}`}>{ne.status}</span>
+                  )}
                 </div>
 
                 <AnimatePresence>
@@ -756,7 +921,20 @@ const TimelineTab: React.FC<{
                         ))}
                       </div>
                       <div className="wf-tc-output-body wf-scrollbar">
-                        {ne.error ? (
+                        {ne.assertionFailed && ne.assertionErrorMessage ? (
+                          <div data-testid="assertion-error-message" style={{
+                            display: 'flex', flexDirection: 'column', gap: 4,
+                            background: 'rgba(249,115,22,0.08)',
+                            border: '1px solid rgba(249,115,22,0.25)',
+                            borderRadius: 6, padding: '8px 10px',
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#f97316' }} />
+                              <span style={{ color: '#f97316', fontWeight: 700, fontSize: 11 }}>Output validation failed</span>
+                            </div>
+                            <div style={{ color: '#fdba74', fontSize: 11, marginLeft: 20 }}>{ne.assertionErrorMessage}</div>
+                          </div>
+                        ) : ne.error ? (
                           <TimelineError error={ne.error} nodeLabel={ne.nodeLabel} nodeType={ne.nodeType} />
                         ) : ne.output != null ? (
                           view === 'json' ? <JsonBlock data={ne.outputEnvelope?.raw ?? ne.output} />

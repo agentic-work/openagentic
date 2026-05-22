@@ -22,7 +22,7 @@ export const authenticate = async (
     // Extract token from header
     const token = extractBearerToken(request.headers.authorization);
     if (!token) {
-      reply.code(401).send({
+      await reply.code(401).send({
         error: 'Unauthorized',
         message: 'No authentication token provided'
       });
@@ -35,7 +35,7 @@ export const authenticate = async (
     });
 
     if (!result.isValid) {
-      reply.code(401).send({
+      await reply.code(401).send({
         error: 'Unauthorized',
         message: result.error || 'Invalid authentication token'
       });
@@ -54,7 +54,7 @@ export const authenticate = async (
     return;
   } catch (error) {
     request.log.error({ error }, 'Authentication error');
-    reply.code(500).send({
+    await reply.code(500).send({
       error: 'Internal Server Error',
       message: 'Failed to authenticate'
     });

@@ -81,7 +81,7 @@ function stripCursorEscapes(s: string): string {
 }
 
 /**
- * Build xterm theme from --cm-* CSS variables (set by CodeModeLayoutV2 theme dots).
+ * Build xterm theme from --cm-* CSS variables (set by CodeModeLayout theme dots).
  * Falls back to DARK_THEME/LIGHT_THEME when no variables are set.
  */
 function getThemeFromCSSVars(el: HTMLElement, baseTheme: string): Record<string, string> {

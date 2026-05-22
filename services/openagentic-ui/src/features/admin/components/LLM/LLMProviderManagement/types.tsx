@@ -59,6 +59,11 @@ export interface DbProvider {
   created_at: string;
   updated_at: string;
   deleted_at?: string | null;
+  /** §11.5 optimistic concurrency token. POST this back on PUT
+   *  so the server can detect concurrent saves and 409 instead of
+   *  silently clobbering. */
+  version?: number;
+  updated_by?: string | null;
 }
 
 export interface HealthInfo {
@@ -131,6 +136,29 @@ export type ProviderConfigField = {
   default?: any;
 };
 
+/**
+ * Auth-field shape used by both the legacy single-mode `authFields` and
+ * the multi-mode `authModes` map (azure-* providers).
+ */
+export type AuthFieldDef = {
+  key: string;
+  label: string;
+  type: 'text' | 'password' | 'textarea';
+  required?: boolean;
+  placeholder?: string;
+};
+
+/**
+ * Multi-mode auth schema. When defined on a provider's META entry, the
+ * Add/Edit form renders a radio toggle (api-key | entra-id) and swaps
+ * the rendered field set per selection. azure-ai-foundry and
+ * azure-openai use this shape so admins can pick API Key OR Entra-ID
+ * (AAD app reg with tenantId/clientId/clientSecret) — the original
+ * Entra-only deploy pattern was unreachable through the form before
+ * this 2026-05-01 fix.
+ */
+export type AuthMode = 'api-key' | 'entra-id';
+
 export const PROVIDER_META: Record<ProviderType, {
   label: string;
   icon: React.ReactNode;
@@ -138,23 +166,43 @@ export const PROVIDER_META: Record<ProviderType, {
   bgColor: string;
   borderColor: string;
   description: string;
-  authFields: Array<{ key: string; label: string; type: 'text' | 'password' | 'textarea'; required?: boolean; placeholder?: string }>;
+  authFields: Array<AuthFieldDef>;
+  /** Multi-mode auth (azure-*). When present, takes precedence over `authFields`. */
+  authModes?: Partial<Record<AuthMode, Array<AuthFieldDef>>>;
   /** (#70) Per-provider SDK-exposed configuration knobs. */
   providerConfigFields?: ProviderConfigField[];
 }> = {
   'azure-openai': {
-    label: 'Azure OpenAI', icon: <AzureIcon size={20} />, color: 'var(--provider-azure, #0078D4)',
+    label: 'Azure OpenAI', icon: <AzureIcon size={20} />, color: 'var(--provider-azure)',
     bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/30',
     description: 'Microsoft Azure hosted GPT models',
+    // Legacy single-mode `authFields` kept as a fallback for non-azure consumers
+    // and tests that read the union; the form uses `authModes` when present.
     authFields: [
       { key: 'endpoint', label: 'Endpoint URL', type: 'text', required: true, placeholder: 'https://your-resource.openai.azure.com' },
       { key: 'apiKey', label: 'API Key', type: 'password', required: true },
       { key: 'deploymentName', label: 'Deployment Name', type: 'text', required: true },
       { key: 'apiVersion', label: 'API Version', type: 'text', placeholder: '2024-08-01-preview' },
     ],
+    authModes: {
+      'api-key': [
+        { key: 'endpoint', label: 'Endpoint URL', type: 'text', required: true, placeholder: 'https://your-resource.openai.azure.com' },
+        { key: 'apiKey', label: 'API Key', type: 'password', required: true },
+        { key: 'deploymentName', label: 'Deployment Name', type: 'text', required: true },
+        { key: 'apiVersion', label: 'API Version', type: 'text', placeholder: '2024-08-01-preview' },
+      ],
+      'entra-id': [
+        { key: 'endpoint', label: 'Endpoint URL', type: 'text', required: true, placeholder: 'https://your-resource.openai.azure.com' },
+        { key: 'tenantId', label: 'Tenant ID', type: 'text', required: true, placeholder: 'aad tenant guid' },
+        { key: 'clientId', label: 'Client ID', type: 'text', required: true, placeholder: 'app registration appId' },
+        { key: 'clientSecret', label: 'Client Secret', type: 'password', required: true, placeholder: 'app registration secret' },
+        { key: 'deploymentName', label: 'Deployment Name', type: 'text', required: true },
+        { key: 'apiVersion', label: 'API Version', type: 'text', placeholder: '2024-08-01-preview' },
+      ],
+    },
   },
   'azure-ai-foundry': {
-    label: 'Azure AI Foundry', icon: <AzureAIIcon size={20} />, color: 'var(--provider-azure, #0078D4)',
+    label: 'Azure AI Foundry', icon: <AzureAIIcon size={20} />, color: 'var(--provider-azure)',
     bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/30',
     description: 'Azure AI Foundry unified model router',
     authFields: [
@@ -163,6 +211,22 @@ export const PROVIDER_META: Record<ProviderType, {
       { key: 'deploymentName', label: 'Deployment Name', type: 'text', placeholder: 'model-router (only used in deployment mode)' },
       { key: 'apiVersion', label: 'API Version', type: 'text', placeholder: '2024-08-01-preview' },
     ],
+    authModes: {
+      'api-key': [
+        { key: 'endpoint', label: 'Endpoint URL', type: 'text', required: true, placeholder: 'https://your-foundry.services.ai.azure.com' },
+        { key: 'apiKey', label: 'API Key', type: 'password', required: true },
+        { key: 'deploymentName', label: 'Deployment Name', type: 'text', placeholder: 'model-router (only used in deployment mode)' },
+        { key: 'apiVersion', label: 'API Version', type: 'text', placeholder: '2024-08-01-preview' },
+      ],
+      'entra-id': [
+        { key: 'endpoint', label: 'Endpoint URL', type: 'text', required: true, placeholder: 'https://your-foundry.services.ai.azure.com' },
+        { key: 'tenantId', label: 'Tenant ID', type: 'text', required: true, placeholder: 'aad tenant guid' },
+        { key: 'clientId', label: 'Client ID', type: 'text', required: true, placeholder: 'app registration appId' },
+        { key: 'clientSecret', label: 'Client Secret', type: 'password', required: true, placeholder: 'app registration secret' },
+        { key: 'deploymentName', label: 'Deployment Name', type: 'text', placeholder: 'model-router (only used in deployment mode)' },
+        { key: 'apiVersion', label: 'API Version', type: 'text', placeholder: '2024-08-01-preview' },
+      ],
+    },
     // (#70) AIF-specific provider settings — exposes SDK features that
     // don't fit in the auth/credential model.
     providerConfigFields: [
@@ -188,7 +252,7 @@ export const PROVIDER_META: Record<ProviderType, {
     ],
   },
   'vertex-ai': {
-    label: 'Google Vertex AI', icon: <VertexAIIcon size={20} />, color: 'var(--provider-google, #4285F4)',
+    label: 'Google Vertex AI', icon: <VertexAIIcon size={20} />, color: 'var(--provider-google)',
     bgColor: 'bg-red-500/10', borderColor: 'border-red-500/30',
     description: 'Google Cloud Gemini models',
     authFields: [
@@ -220,7 +284,7 @@ export const PROVIDER_META: Record<ProviderType, {
     ],
   },
   'aws-bedrock': {
-    label: 'AWS Bedrock', icon: <AWSIcon size={20} />, color: 'var(--provider-aws, #FF9900)',
+    label: 'AWS Bedrock', icon: <AWSIcon size={20} />, color: 'var(--provider-aws)',
     bgColor: 'bg-orange-500/10', borderColor: 'border-orange-500/30',
     description: 'Amazon hosted Claude, Llama, Titan models',
     authFields: [
@@ -229,6 +293,13 @@ export const PROVIDER_META: Record<ProviderType, {
       { key: 'awsSecretAccessKey', label: 'Secret Access Key', type: 'password' },
     ],
     providerConfigFields: [
+      {
+        key: 'endpoint',
+        label: 'Endpoint URL (optional)',
+        type: 'text',
+        placeholder: 'https://bedrock-runtime.us-east-1.amazonaws.com or https://vpce-xxxx.bedrock-runtime.us-east-1.vpce.amazonaws.com',
+        help: 'Override the default AWS Bedrock endpoint — use for VPC endpoint / AWS PrivateLink, FIPS endpoint (https://bedrock-runtime-fips.<region>.amazonaws.com), or a custom proxy. Leave blank to use the public AWS endpoint for the configured region.',
+      },
       {
         key: 'crossRegionInference',
         label: 'Cross-Region Inference',
@@ -253,7 +324,7 @@ export const PROVIDER_META: Record<ProviderType, {
     ],
   },
   ollama: {
-    label: 'Ollama', icon: <OllamaIcon size={20} />, color: 'var(--provider-ollama, #22C55E)',
+    label: 'Ollama', icon: <OllamaIcon size={20} />, color: 'var(--provider-ollama)',
     bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/30',
     description: 'Self-hosted open source models',
     authFields: [
@@ -288,7 +359,7 @@ export const PROVIDER_META: Record<ProviderType, {
     ],
   },
   anthropic: {
-    label: 'Anthropic', icon: <AnthropicIcon size={20} />, color: 'var(--provider-anthropic, #D4A574)',
+    label: 'Anthropic', icon: <AnthropicIcon size={20} />, color: 'var(--provider-anthropic)',
     bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/30',
     description: 'Direct Claude API access',
     authFields: [
@@ -319,7 +390,7 @@ export const PROVIDER_META: Record<ProviderType, {
     ],
   },
   openai: {
-    label: 'OpenAI', icon: <OpenAIIcon size={20} />, color: 'var(--provider-openai, #10A37F)',
+    label: 'OpenAI', icon: <OpenAIIcon size={20} />, color: 'var(--provider-openai)',
     bgColor: 'bg-green-500/10', borderColor: 'border-green-500/30',
     description: 'Direct GPT API or compatible endpoints',
     authFields: [
@@ -349,11 +420,13 @@ export const PROVIDER_META: Record<ProviderType, {
 // SHARED STYLES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const inputCls = "w-full px-3 py-2 rounded-lg border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/50";
-export const inputStyle: React.CSSProperties = { backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--text-primary)' };
-export const btnPrimary = "px-4 py-2 rounded-lg text-sm font-medium bg-primary-500 text-white hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
-export const btnSecondary = "px-4 py-2 rounded-lg text-sm font-medium border transition-colors hover:brightness-110";
-export const btnDanger = "px-4 py-2 rounded-lg text-sm font-medium bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 transition-colors";
+// M3 Expressive (task #160): inputs at rounded-input-sm (16px), no hard
+// border at rest. Pill-shaped primary / danger buttons; btn (12px) secondary.
+export const inputCls = "w-full px-4 py-2.5 rounded-input-sm border text-sm transition-[border-color,box-shadow] duration-200 ease-emphasized focus:outline-none focus:shadow-focus-ring";
+export const inputStyle: React.CSSProperties = { backgroundColor: 'var(--surface-1)', borderColor: 'var(--color-border)', color: 'var(--text-primary)' };
+export const btnPrimary = "px-6 py-2 rounded-pill text-sm font-medium bg-primary-500 text-white hover:bg-primary-600 transition-[background,transform] duration-200 ease-emphasized active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:shadow-focus-ring";
+export const btnSecondary = "px-4 py-2 rounded-btn text-sm font-medium border transition-[background,transform] duration-200 ease-emphasized active:scale-[0.98] hover:brightness-110 focus-visible:outline-none focus-visible:shadow-focus-ring";
+export const btnDanger = "px-6 py-2 rounded-pill text-sm font-medium bg-red-500/15 text-red-400 border border-red-500/30 transition-[background,transform] duration-200 ease-emphasized active:scale-[0.98] hover:bg-red-500/25 focus-visible:outline-none focus-visible:shadow-focus-ring";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // UTILITY FUNCTIONS
@@ -379,8 +452,22 @@ export function healthToBadgeStatus(s: HealthStatus): string {
   return map[s] || 'unknown';
 }
 
-/** Count configured models on a provider */
-export function countModels(mc: Record<string, any>): number {
+/** Count configured models on a provider.
+ *  Prefers the top-level `models` array (server-built from the Registry
+ *  SoT — admin.model_role_assignments — by GET /admin/llm-providers),
+ *  then the legacy provider_config.models[] for back-compat with any
+ *  older response shape, and finally role-key counting on model_config.
+ *  Accepts either a full provider or a bare model_config map. */
+export function countModels(input: Record<string, any>): number {
+  const topLevelModels = input?.models;
+  if (Array.isArray(topLevelModels) && topLevelModels.length > 0) {
+    return topLevelModels.length;
+  }
+  const pcModels = input?.provider_config?.models;
+  if (Array.isArray(pcModels) && pcModels.length > 0) {
+    return pcModels.length;
+  }
+  const mc = input?.model_config ?? input ?? {};
   let n = 0;
   if (mc.chatModel) n++;
   if (mc.embeddingModel) n++;

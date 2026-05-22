@@ -21,6 +21,7 @@ import {
 } from '../Shared/AdminIcons';
 import { apiRequest } from '../../../../utils/api';
 import { useConfirm } from '@/shared/hooks/useConfirm';
+import { PageHeader } from '../../primitives-v2';
 import {
   BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -118,10 +119,13 @@ interface ChargebackViewProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
+// Chart palette fallback (Recharts series colors). Teal #14b8a6 has no semantic
+// --ap-* equivalent — it's an extended-palette slot for cost-by-category bars.
 const CHART_PALETTE_FALLBACKS = [
-  '#6366f1', '#8b5cf6', '#a855f7', '#d946ef',
-  '#ec4899', '#f43f5e', '#f97316', '#eab308',
-  '#00D26A', '#14b8a6', '#06b6d4', '#3b82f6',
+  'var(--ap-accent)', 'var(--ap-accent)', 'var(--ap-accent)', 'var(--ap-accent)',
+  'var(--ap-accent)', 'var(--ap-err)', 'var(--ap-warn)', 'var(--ap-warn)',
+  // eslint-disable-next-line admin-tokens/no-hardcoded-admin-color
+  'var(--ap-ok)', '#14b8a6', 'var(--ap-info)', 'var(--ap-accent)',
 ];
 
 const CSS_COLOR_VARS = [
@@ -176,18 +180,18 @@ function formatNumber(num: number): string {
 }
 
 function budgetBarColor(pct: number): string {
-  if (pct >= 90) return 'var(--ap-error, #ef4444)';
-  if (pct >= 75) return 'var(--ap-warning, #f59e0b)';
-  if (pct >= 50) return '#eab308';
-  return 'var(--color-success, #00D26A)';
+  if (pct >= 90) return 'var(--ap-err)';
+  if (pct >= 75) return 'var(--ap-warn)';
+  if (pct >= 50) return 'var(--ap-warn)';
+  return 'var(--ap-ok)';
 }
 
 function statusColor(status: string): string {
   switch (status) {
-    case 'draft': return 'var(--ap-info, #3b82f6)';
-    case 'finalized': return 'var(--ap-warning, #f59e0b)';
-    case 'exported': return '#8b5cf6';
-    case 'paid': return 'var(--color-success, #00D26A)';
+    case 'draft': return 'var(--ap-info)';
+    case 'finalized': return 'var(--ap-warn)';
+    case 'exported': return 'var(--ap-accent)';
+    case 'paid': return 'var(--ap-ok)';
     default: return 'var(--color-textSecondary)';
   }
 }
@@ -210,7 +214,7 @@ const TabButton: React.FC<{ active: boolean; onClick: () => void; children: Reac
     className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
     style={{
       background: active ? 'var(--color-primary)' : 'transparent',
-      color: active ? '#fff' : 'var(--color-textSecondary)',
+      color: active ? 'var(--ap-fg-0)' : 'var(--color-textSecondary)',
       border: active ? 'none' : '1px solid var(--color-border)',
     }}
   >
@@ -255,7 +259,7 @@ const BudgetUsageBar: React.FC<{ percent: number }> = ({ percent }) => {
         className="h-full rounded-full transition-all duration-500"
         style={{
           width: `${clamped}%`,
-          background: `linear-gradient(90deg, var(--color-success, #00D26A) 0%, ${budgetBarColor(clamped)} 100%)`,
+          background: `linear-gradient(90deg, var(--color-success, var(--ap-ok)) 0%, ${budgetBarColor(clamped)} 100%)`,
         }}
       />
     </div>
@@ -623,9 +627,16 @@ export const ChargebackView: React.FC<ChargebackViewProps> = ({ theme: _theme })
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--color-primary)' }} />
-        <span className="ml-4 text-lg" style={{ color: 'var(--color-textSecondary)' }}>Loading chargeback data...</span>
+      <div className="space-y-6">
+        <PageHeader
+          crumbs={['Admin', 'Chargeback', 'Cost Management']}
+          title="Cost Management"
+          explainer="Track spending, manage budgets, and generate chargeback reports across users, groups, and providers."
+        />
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--color-primary)' }} />
+          <span className="ml-4 text-lg" style={{ color: 'var(--color-textSecondary)' }}>Loading chargeback data...</span>
+        </div>
       </div>
     );
   }
@@ -636,38 +647,24 @@ export const ChargebackView: React.FC<ChargebackViewProps> = ({ theme: _theme })
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-3xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>
-            Chargeback & Cost Management
-          </h2>
-          <p style={{ color: 'var(--color-textSecondary)' }}>
-            Track spending, manage budgets, and generate chargeback reports
-          </p>
-        </div>
-        <button
-          onClick={() => fetchAll()}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-80"
-          style={{
-            background: 'var(--color-surfaceHover)',
-            color: 'var(--color-text)',
-            border: '1px solid var(--color-border)',
-          }}
-        >
-          <RefreshCw size={14} />
-          Refresh
-        </button>
-      </div>
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Chargeback', 'Cost Management']}
+        title="Cost Management"
+        explainer="Track spending, manage budgets, and generate chargeback reports across users, groups, and providers."
+        actions={[
+          { label: 'Refresh', onClick: () => fetchAll() },
+        ]}
+      />
 
       {/* Error banner */}
       {error && (
         <div
           className="rounded-lg p-3 flex items-center gap-2 text-sm"
           style={{
-            background: 'color-mix(in srgb, var(--ap-error, #ef4444) 10%, transparent)',
-            border: '1px solid color-mix(in srgb, var(--ap-error, #ef4444) 30%, transparent)',
-            color: 'var(--ap-error, #ef4444)',
+            background: 'var(--ap-err-soft)',
+            border: '1px solid color-mix(in srgb, var(--ap-err) 30%, transparent)',
+            color: 'var(--ap-err)',
           }}
         >
           <AlertCircle size={16} />
@@ -680,9 +677,9 @@ export const ChargebackView: React.FC<ChargebackViewProps> = ({ theme: _theme })
       <div
         className="rounded-lg px-4 py-2 text-xs flex items-center gap-2"
         style={{
-          background: 'color-mix(in srgb, var(--ap-info, #3b82f6) 8%, transparent)',
-          border: '1px solid color-mix(in srgb, var(--ap-info, #3b82f6) 20%, transparent)',
-          color: 'var(--ap-info, #3b82f6)',
+          background: 'color-mix(in srgb, var(--ap-info) 8%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--ap-info) 20%, transparent)',
+          color: 'var(--ap-info)',
         }}
       >
         <Activity size={14} />
@@ -849,8 +846,8 @@ export const ChargebackView: React.FC<ChargebackViewProps> = ({ theme: _theme })
                   <AreaChart data={dailyCostTimeSeries}>
                     <defs>
                       <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#6366f1" stopOpacity={0.4} />
-                        <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+                        <stop offset="0%" stopColor="var(--ap-accent)" stopOpacity={0.4} />
+                        <stop offset="100%" stopColor="var(--ap-accent)" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid
@@ -874,7 +871,7 @@ export const ChargebackView: React.FC<ChargebackViewProps> = ({ theme: _theme })
                     <Area
                       type="monotone"
                       dataKey="cost"
-                      stroke="#6366f1"
+                      stroke="var(--ap-accent)"
                       strokeWidth={2}
                       fill="url(#costGradient)"
                       name="Daily Cost"
@@ -927,7 +924,7 @@ export const ChargebackView: React.FC<ChargebackViewProps> = ({ theme: _theme })
                     width={95}
                   />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="cost" name="Cost" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="cost" name="Cost" fill="var(--ap-accent)" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1052,7 +1049,7 @@ export const ChargebackView: React.FC<ChargebackViewProps> = ({ theme: _theme })
                       className="p-1.5 rounded-lg transition-all hover:opacity-70"
                       style={{ background: 'var(--color-surfaceHover)' }}
                     >
-                      <Trash2 size={14} style={{ color: 'var(--ap-error, #ef4444)' }} />
+                      <Trash2 size={14} style={{ color: 'var(--ap-err)' }} />
                     </button>
                   </div>
                 </div>
@@ -1203,7 +1200,7 @@ export const ChargebackView: React.FC<ChargebackViewProps> = ({ theme: _theme })
                             className="p-1 rounded hover:opacity-70"
                             title={`Advance to ${nextStatus(r.status)}`}
                           >
-                            <CheckCircle size={14} style={{ color: 'var(--color-success, #00D26A)' }} />
+                            <CheckCircle size={14} style={{ color: 'var(--ap-ok)' }} />
                           </button>
                         )}
                         <button
@@ -1522,7 +1519,7 @@ export const ChargebackView: React.FC<ChargebackViewProps> = ({ theme: _theme })
               onClick={() => { handleAdvanceReportStatus(r); }}
               disabled={actionLoading}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:opacity-90"
-              style={{ background: 'var(--color-success, #00D26A)' }}
+              style={{ background: 'var(--ap-ok)' }}
             >
               <CheckCircle size={12} />
               Advance to {nextStatus(r.status)}
@@ -1613,7 +1610,7 @@ export const ChargebackView: React.FC<ChargebackViewProps> = ({ theme: _theme })
                   <XAxis dataKey="name" tick={{ fill: 'var(--color-textSecondary)', fontSize: 10 }} />
                   <YAxis tickFormatter={(v) => `$${v.toFixed(2)}`} tick={{ fill: 'var(--color-textSecondary)', fontSize: 10 }} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="value" name="Cost" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="value" name="Cost" fill="var(--ap-accent)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1631,7 +1628,7 @@ export const ChargebackView: React.FC<ChargebackViewProps> = ({ theme: _theme })
                   <XAxis type="number" tickFormatter={(v) => `$${v.toFixed(2)}`} tick={{ fill: 'var(--color-textSecondary)', fontSize: 10 }} />
                   <YAxis type="category" dataKey="name" width={75} tick={{ fill: 'var(--color-textSecondary)', fontSize: 10 }} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="value" name="Cost" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="value" name="Cost" fill="var(--ap-accent)" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

@@ -6,6 +6,9 @@
  *   - ingestDocs()       — fetch manifests from UI service, chunk, embed, upsert
  *   - search()           — embed a query and return top-K relevant chunks
  *   - getCollectionStats() — admin monitoring helper
+ *   - fetchVersion()         — pull _version.json fingerprint from UI (task #157)
+ *   - readMilvusMetaHash()   — read stored fingerprint from platform_docs_meta
+ *   - writeMilvusMetaHash()  — upsert fingerprint after ingest
  *
  * Uses UniversalEmbeddingService for provider-agnostic embedding generation
  * (Azure OpenAI, Bedrock, Vertex, Ollama, etc.) — NO hardcoded model names
@@ -14,7 +17,7 @@
 
 import { MilvusClient } from '@zilliz/milvus2-sdk-node';
 import type { Logger } from 'pino';
-import { MilvusConnectionManager } from '../utils/MilvusConnectionManager.js';
+import { MilvusConnectionManager, getMilvusClient } from '../utils/MilvusConnectionManager.js';
 import { UniversalEmbeddingService } from './UniversalEmbeddingService.js';
 
 // ---------------------------------------------------------------------------
@@ -54,11 +57,71 @@ interface DocManifest {
   sections: DocSection[];
 }
 
+/**
+ * Shape of `_version.json` as written by the UI `generate-docs.ts` script
+ * (task #157). Fetched by `fetchVersion()` below and consumed by
+ * `RAGInitService.reconcileDocsIngest()` to decide whether to re-embed.
+ */
+export interface DocsVersionManifest {
+  version: string;
+  generatedAt: string;
+  manifestHash: string;
+  manifestCount: number;
+  manifests: Array<{
+    name: string;
+    hash: string;
+    bytes: number;
+    generatedAt: string;
+  }>;
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const COLLECTION_NAME = 'platform_docs';
+const META_COLLECTION_NAME = 'platform_docs_meta';
+
+/**
+ * Extract useful fields from a thrown error / rejection for pino. Milvus
+ * client errors are plain objects like `{status, reason, code}` with no
+ * `.message`, which makes both `String(err)` ("[object Object]") and
+ * `err.message` (undefined) produce garbage when logged — task #165 was
+ * filed against exactly that. This helper drops both and returns a full
+ * structured object pino can walk. Non-Error throws still serialize to
+ * something useful via JSON stringify of enumerable fields.
+ */
+function serializeRagErr(err: unknown): Record<string, unknown> {
+  if (err instanceof Error) {
+    return {
+      err: {
+        name: err.name,
+        message: err.message,
+        stack: err.stack,
+        ...(err as any).code ? { code: (err as any).code } : {},
+      },
+    };
+  }
+  if (err && typeof err === 'object') {
+    const e = err as Record<string, unknown>;
+    const pickedMessage =
+      typeof e.message === 'string' ? e.message :
+      typeof e.reason === 'string' ? e.reason :
+      typeof e.error === 'string' ? e.error :
+      JSON.stringify(e).slice(0, 500);
+    return {
+      err: {
+        name: (e.name as string) ?? 'NonErrorThrown',
+        message: pickedMessage,
+        ...(typeof e.code !== 'undefined' ? { code: e.code } : {}),
+        ...(typeof e.status !== 'undefined' ? { status: e.status } : {}),
+        ...(typeof e.reason === 'string' ? { reason: e.reason } : {}),
+        raw: e,
+      },
+    };
+  }
+  return { err: { name: 'NonObjectThrown', message: String(err) } };
+}
 const FEEDBACK_COLLECTION = 'docs_feedback';
 // EMBEDDING_DIM removed 2026-04-11 — collection dim is now read from the
 // active embedding provider at create time. See docs/rules/no-hardcoded-models.md.
@@ -137,8 +200,8 @@ export class DocsRAGService {
       return this.milvusClient;
     }
 
-    // Try the global client first (set by server startup)
-    const globalClient: MilvusClient | undefined = (global as any).milvusClient || (global as any).milvus;
+    // Try the singleton client first (set by server startup)
+    const globalClient: MilvusClient | undefined = getMilvusClient() ?? undefined;
     if (globalClient) {
       this.milvusClient = globalClient;
       return this.milvusClient;
@@ -452,6 +515,186 @@ export class DocsRAGService {
   }
 
   // -----------------------------------------------------------------------
+  // Manifest fingerprint (task #157)
+  //
+  // Reconciliation flow lives in RAGInitService.reconcileDocsIngest();
+  // this service provides the three primitives it composes:
+  //   - fetchVersion()        — pull _version.json from the UI
+  //   - readMilvusMetaHash()  — read stored hash from platform_docs_meta
+  //   - writeMilvusMetaHash() — upsert a new hash after ingest succeeds
+  // -----------------------------------------------------------------------
+
+  /**
+   * Fetch the `_version.json` sibling written by UI generate-docs.ts.
+   *
+   * Returns null if the file is missing, unreachable, or malformed. Callers
+   * treat null as "can't reconcile — fall back to rowCount==0 check".
+   */
+  async fetchVersion(): Promise<DocsVersionManifest | null> {
+    try {
+      const res = await fetch(`${UI_DOCS_BASE_URL}/_version.json`, {
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) {
+        this.logger.debug(
+          { status: res.status },
+          '[DocsRAG] _version.json not available (older UI image?)',
+        );
+        return null;
+      }
+      const json = (await res.json()) as DocsVersionManifest;
+      if (!json?.manifestHash || typeof json.manifestHash !== 'string') {
+        this.logger.warn('[DocsRAG] _version.json missing manifestHash field');
+        return null;
+      }
+      return json;
+    } catch (err: any) {
+      this.logger.warn(
+        { error: err?.message || String(err) },
+        '[DocsRAG] Failed to fetch _version.json (treating as unavailable)',
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Read the currently-stored manifest hash from the `platform_docs_meta`
+   * Milvus collection. Returns null when:
+   *   - Milvus unavailable
+   *   - platform_docs_meta collection does not exist yet
+   *   - collection exists but is empty (first-boot)
+   *   - query fails
+   */
+  async readMilvusMetaHash(): Promise<{
+    manifestHash: string;
+    ingestedAt: string;
+    manifestCount: number;
+  } | null> {
+    const client = await this.getClient();
+    if (!client) return null;
+
+    try {
+      const has = await client.hasCollection({ collection_name: META_COLLECTION_NAME });
+      if (!has.value) return null;
+
+      // Ensure loaded before query
+      try {
+        await client.loadCollection({ collection_name: META_COLLECTION_NAME });
+      } catch { /* already loaded */ }
+
+      const queryResult = await client.query({
+        collection_name: META_COLLECTION_NAME,
+        filter: 'id >= 0',
+        output_fields: ['manifest_hash', 'ingested_at', 'manifest_count'],
+        limit: 1,
+      });
+
+      const row = (queryResult?.data || [])[0];
+      if (!row) return null;
+
+      return {
+        manifestHash: String(row.manifest_hash || ''),
+        ingestedAt: String(row.ingested_at || ''),
+        manifestCount: Number(row.manifest_count || 0),
+      };
+    } catch (err: any) {
+      this.logger.warn(
+        serializeRagErr(err),
+        '[DocsRAG] Failed to read platform_docs_meta — treating as missing',
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Upsert the manifest fingerprint into `platform_docs_meta`. Creates the
+   * collection on first call. Single-row semantics — any prior rows are
+   * deleted before insert so the collection always has exactly one row
+   * (the current hash).
+   */
+  async writeMilvusMetaHash(params: {
+    manifestHash: string;
+    manifestCount: number;
+  }): Promise<boolean> {
+    const client = await this.getClient();
+    if (!client) return false;
+
+    try {
+      const has = await client.hasCollection({ collection_name: META_COLLECTION_NAME });
+      if (!has.value) {
+        // Milvus requires at least one vector field per collection, so we
+        // attach a 2-D dummy vector to satisfy the schema even though this
+        // is effectively a scalar KV row. Milvus 2.6 rejects dim=1 with
+        // "invalid dimension: 1. should be in range 2 ~ 32768" — task #165
+        // surfaced this (previously masked as "[object Object]" in logs).
+        await client.createCollection({
+          collection_name: META_COLLECTION_NAME,
+          fields: [
+            { name: 'id', data_type: 'Int64', is_primary_key: true, autoID: true },
+            { name: 'manifest_hash', data_type: 'VarChar', max_length: 200 },
+            { name: 'ingested_at', data_type: 'VarChar', max_length: 40 },
+            { name: 'manifest_count', data_type: 'Int64' },
+            { name: 'dummy_vec', data_type: 'FloatVector', dim: 2 },
+          ],
+        });
+        await client.createIndex({
+          collection_name: META_COLLECTION_NAME,
+          field_name: 'dummy_vec',
+          index_type: 'FLAT',
+          metric_type: 'L2',
+          params: {},
+        });
+        await client.loadCollection({ collection_name: META_COLLECTION_NAME });
+        this.logger.info('[DocsRAG] Created platform_docs_meta collection');
+      } else {
+        // Ensure loaded + delete the prior row for single-row semantics
+        try {
+          await client.loadCollection({ collection_name: META_COLLECTION_NAME });
+        } catch { /* already loaded */ }
+        try {
+          await client.deleteEntities({
+            collection_name: META_COLLECTION_NAME,
+            filter: 'id >= 0',
+          });
+        } catch (err: any) {
+          this.logger.debug(
+            { error: err?.message },
+            '[DocsRAG] deleteEntities on platform_docs_meta (non-fatal)',
+          );
+        }
+      }
+
+      await client.insert({
+        collection_name: META_COLLECTION_NAME,
+        data: [
+          {
+            manifest_hash: params.manifestHash.substring(0, 200),
+            ingested_at: new Date().toISOString(),
+            manifest_count: params.manifestCount,
+            dummy_vec: [0, 0],
+          },
+        ],
+      });
+
+      try {
+        await client.flush({ collection_names: [META_COLLECTION_NAME] });
+      } catch { /* best-effort */ }
+
+      this.logger.info(
+        { manifestHash: params.manifestHash, manifestCount: params.manifestCount },
+        '[DocsRAG] Wrote platform_docs_meta fingerprint',
+      );
+      return true;
+    } catch (err: any) {
+      this.logger.warn(
+        serializeRagErr(err),
+        '[DocsRAG] Failed to write platform_docs_meta',
+      );
+      return false;
+    }
+  }
+
+  // -----------------------------------------------------------------------
   // Private helpers
   // -----------------------------------------------------------------------
 
@@ -500,12 +743,22 @@ export class DocsRAGService {
    * Azure OpenAI / Bedrock / Vertex / Ollama / OpenAI-compatible.
    */
   private async generateEmbedding(text: string): Promise<number[]> {
+    // Hard timeout — embeddings must NEVER block a docs-chat response. If the
+    // embedding provider is slow (e.g. Ollama with the chat model hogging
+    // VRAM), we abandon RAG and let the chat handler proceed with no context
+    // rather than hanging the user's stream for minutes. Tunable via
+    // DOCS_RAG_EMBED_TIMEOUT_MS (default 4000 ms).
+    const timeoutMs = Number(process.env.DOCS_RAG_EMBED_TIMEOUT_MS) || 4000;
     try {
-      const result = await this.embeddingService.generateEmbedding(text.substring(0, 4000));
+      const embedPromise = this.embeddingService.generateEmbedding(text.substring(0, 4000));
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`embedding timeout after ${timeoutMs}ms`)), timeoutMs),
+      );
+      const result = await Promise.race([embedPromise, timeoutPromise]);
       const vec = Array.isArray(result) ? result : (result as any)?.embedding;
       return Array.isArray(vec) ? vec : [];
     } catch (err: any) {
-      this.logger.error({ error: err.message }, '[DocsRAG] Embedding generation failed');
+      this.logger.warn({ error: err.message, timeoutMs }, '[DocsRAG] Embedding generation failed or timed out — proceeding without RAG');
       return [];
     }
   }

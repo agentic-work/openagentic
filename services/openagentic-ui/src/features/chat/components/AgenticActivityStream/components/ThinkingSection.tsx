@@ -20,24 +20,18 @@ import {
   AlertCircle,
 } from '@/shared/icons';
 
-// Mini animated thinking indicator using think.svg
-// Note: Reduced default size from 16 to 14 for more compact display
+// 2026-05-07 — was a static `/think.svg` square that pulse-scaled. User
+// asked to swap it for the existing animated ThinkingSphere (canvas-
+// based sparkles + rotating arcs) so the chatmode thinking indicator
+// matches the rest of the app's aesthetic. ThinkingSphere already
+// supports a `size` prop and `state` enum; we just render it inline
+// at a small size while thinking is active.
+import { ThinkingSphere } from '@/shared/components/ThinkingSphere';
+
 const MiniThinkingIndicator: React.FC<{ isAnimating?: boolean; size?: number }> = ({ isAnimating, size = 14 }) => (
-  <motion.div
-    animate={isAnimating ? { scale: [1, 1.1, 1] } : {}}
-    transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-    style={{ width: size, height: size, flexShrink: 0 }}
-  >
-    <img
-      src="/think.svg"
-      alt=""
-      style={{
-        width: '100%',
-        height: '100%',
-        filter: isAnimating ? 'drop-shadow(0 0 3px rgba(139, 92, 246, 0.5))' : 'none',
-      }}
-    />
-  </motion.div>
+  <div style={{ width: size, height: size, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+    <ThinkingSphere state={isAnimating ? 'thinking' : 'hidden'} size={size} />
+  </div>
 );
 
 import type { ThinkingSectionProps } from '../types/activity.types';
@@ -201,6 +195,16 @@ export const ThinkingSection: React.FC<ThinkingSectionProps> = ({
   const hasRepetitions = repetitionCount > 0;
   const collapsedCount = sections.length - visibleSections.length;
 
+  // First-line preview for the collapsed header. Strips markdown markers,
+  // hard-clamps to ~80 chars so it fits on a single line in the chat.
+  const firstLinePreview = useMemo(() => {
+    const first = (sections[0]?.title && sections[0].title !== 'Thinking')
+      ? sections[0].title
+      : (content.split('\n').find(l => l.trim().length > 0) || '');
+    const cleaned = first.trim().replace(/^[#>\-*\s]+/, '').replace(/\s+/g, ' ');
+    return cleaned.length > 80 ? cleaned.slice(0, 78).trimEnd() + '…' : cleaned;
+  }, [sections, content]);
+
   const handleToggle = useCallback(() => {
     onToggle?.();
   }, [onToggle]);
@@ -220,11 +224,13 @@ export const ThinkingSection: React.FC<ThinkingSectionProps> = ({
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}
       >
-        {/* Header - minimal, clickable */}
+        {/* Header - minimal, clickable. Shows the first line of thinking
+            content as a preview while collapsed; chevron sits at the right
+            edge so the line reads like one composed thought header. */}
         <button
           onClick={handleToggle}
           style={{
-            display: 'inline-flex',
+            display: 'flex',
             alignItems: 'center',
             gap: '6px',
             padding: '4px 0',
@@ -233,6 +239,8 @@ export const ThinkingSection: React.FC<ThinkingSectionProps> = ({
             cursor: 'pointer',
             textAlign: 'left',
             color: 'var(--color-textMuted)',
+            width: '100%',
+            maxWidth: '100%',
           }}
         >
           <MiniThinkingIndicator isAnimating={isStreaming} size={16} />
@@ -240,13 +248,33 @@ export const ThinkingSection: React.FC<ThinkingSectionProps> = ({
             fontSize: '12px',
             fontWeight: 500,
             color: 'var(--color-textSecondary)',
+            whiteSpace: 'nowrap',
           }}>
-            {isStreaming ? 'Reasoning...' : 'Thought process'}
+            {isStreaming ? 'Reasoning' : 'Thought'}
           </span>
+          {firstLinePreview && (
+            <span
+              style={{
+                fontSize: '12px',
+                fontWeight: 400,
+                color: 'var(--color-textMuted)',
+                fontStyle: 'italic',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: '60ch',
+                opacity: isCollapsed ? 1 : 0.55,
+                transition: 'opacity 150ms',
+              }}
+              title={firstLinePreview}
+            >
+              · {firstLinePreview}
+            </span>
+          )}
           <motion.span
             animate={{ rotate: isCollapsed ? 0 : 180 }}
             transition={{ duration: 0.15 }}
-            style={{ display: 'inline-flex', alignItems: 'center' }}
+            style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 'auto' }}
           >
             <ChevronDown size={14} />
           </motion.span>

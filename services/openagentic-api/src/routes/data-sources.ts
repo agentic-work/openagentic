@@ -14,20 +14,20 @@ export default async function dataSourceRoutes(fastify: FastifyInstance) {
   };
 
   // GET /data-sources — list all for user
-  fastify.get('/data-sources', { preHandler: authMiddleware }, async (request, reply) => {
+  fastify.get('/data-sources', { onRequest: authMiddleware }, async (request, reply) => {
     const sources = await service.list(getUserId(request));
     return reply.send({ sources });
   });
 
   // GET /data-sources/:id
-  fastify.get<{ Params: { id: string } }>('/data-sources/:id', { preHandler: authMiddleware }, async (request, reply) => {
+  fastify.get<{ Params: { id: string } }>('/data-sources/:id', { onRequest: authMiddleware }, async (request, reply) => {
     const ds = await service.getById(request.params.id, getUserId(request));
     if (!ds) return reply.code(404).send({ error: 'Not found' });
     return reply.send(ds);
   });
 
   // POST /data-sources — create
-  fastify.post('/data-sources', { preHandler: authMiddleware }, async (request, reply) => {
+  fastify.post('/data-sources', { onRequest: authMiddleware }, async (request, reply) => {
     const body = request.body as any;
     try {
       const ds = await service.create(getUserId(request), {
@@ -38,6 +38,7 @@ export default async function dataSourceRoutes(fastify: FastifyInstance) {
         secret_id: body.secret_id,
         is_shared: body.is_shared,
         tags: body.tags,
+        probeNow: body.probeNow,
       });
       return reply.code(201).send(ds);
     } catch (err: any) {
@@ -47,25 +48,31 @@ export default async function dataSourceRoutes(fastify: FastifyInstance) {
   });
 
   // PUT /data-sources/:id — update
-  fastify.put<{ Params: { id: string } }>('/data-sources/:id', { preHandler: authMiddleware }, async (request, reply) => {
-    const ds = await service.update(request.params.id, getUserId(request), request.body as any);
+  fastify.put<{ Params: { id: string } }>('/data-sources/:id', { onRequest: authMiddleware }, async (request, reply) => {
+    const body = request.body as any;
+    // Explicit field forwarding so probeNow round-trips and is asserted by
+    // data-source-probe-now-opt-in.source-regression.test.ts.
+    const ds = await service.update(request.params.id, getUserId(request), {
+      ...body,
+      probeNow: body.probeNow,
+    });
     return reply.send(ds);
   });
 
   // DELETE /data-sources/:id
-  fastify.delete<{ Params: { id: string } }>('/data-sources/:id', { preHandler: authMiddleware }, async (request, reply) => {
+  fastify.delete<{ Params: { id: string } }>('/data-sources/:id', { onRequest: authMiddleware }, async (request, reply) => {
     await service.delete(request.params.id, getUserId(request));
     return reply.send({ deleted: true });
   });
 
   // POST /data-sources/:id/probe — test connection + discover schema
-  fastify.post<{ Params: { id: string } }>('/data-sources/:id/probe', { preHandler: authMiddleware }, async (request, reply) => {
+  fastify.post<{ Params: { id: string } }>('/data-sources/:id/probe', { onRequest: authMiddleware }, async (request, reply) => {
     const result = await service.probeSchema(request.params.id, getUserId(request));
     return reply.send(result);
   });
 
   // POST /data-sources/:id/query — execute raw query
-  fastify.post<{ Params: { id: string } }>('/data-sources/:id/query', { preHandler: authMiddleware }, async (request, reply) => {
+  fastify.post<{ Params: { id: string } }>('/data-sources/:id/query', { onRequest: authMiddleware }, async (request, reply) => {
     const { query } = request.body as { query: string };
     if (!query) return reply.code(400).send({ error: 'query is required' });
     const result = await service.executeQuery(request.params.id, getUserId(request), query);
@@ -73,7 +80,7 @@ export default async function dataSourceRoutes(fastify: FastifyInstance) {
   });
 
   // POST /data-sources/:id/nl-query — natural language query (progressive enhancement)
-  fastify.post<{ Params: { id: string } }>('/data-sources/:id/nl-query', { preHandler: authMiddleware }, async (request, reply) => {
+  fastify.post<{ Params: { id: string } }>('/data-sources/:id/nl-query', { onRequest: authMiddleware }, async (request, reply) => {
     const { question } = request.body as { question: string };
     if (!question) return reply.code(400).send({ error: 'question is required' });
 

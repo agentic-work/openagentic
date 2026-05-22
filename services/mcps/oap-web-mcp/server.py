@@ -61,6 +61,8 @@ import httpx
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 
+from ssrf_guard import deny_if_private, FetchError  # SSRF guard (substrate fix S3)
+
 # Server instructions to help LLMs know when to use web tools
 WEB_SERVER_INSTRUCTIONS = """
 ## OpenAgentic Web MCP - Tool Selection Guide
@@ -165,6 +167,63 @@ def extract_page_links(soup: BeautifulSoup, base_url: str) -> List[Dict[str, str
                 "url": absolute_url
             })
     return links[:50]  # Limit to 50 links
+
+# ============================================================================
+# SSRF-GUARDED FETCH HELPER (substrate fix S3)
+# ============================================================================
+#
+# httpx's ``follow_redirects=True`` does NOT re-validate redirect targets
+# against any guard, so a 302 → 169.254.169.254 is silently followed. To
+# prevent rebinding-to-IMDS-via-302 (and the other SSRF classes guarded by
+# ``ssrf_guard.deny_if_private``), every user-controlled fetch in this
+# module disables httpx redirect handling and walks the redirect chain
+# manually here, calling ``deny_if_private`` on every hop.
+#
+# Operator-trusted internal RPC (e.g. SearXNG configured via env) does NOT
+# go through this helper — those calls keep their original httpx invocations.
+
+async def fetch_with_ssrf_guard(
+    url: str,
+    headers: Optional[Dict[str, str]] = None,
+    timeout: Optional[float] = None,
+    max_redirects: int = 5,
+) -> httpx.Response:
+    """Fetch a URL with SSRF guards on every redirect hop.
+
+    Pre-flight calls :func:`ssrf_guard.deny_if_private`. On 30x responses,
+    re-validates the ``Location`` target before following. Caps the redirect
+    chain at ``max_redirects`` to bound chain-of-IMDS attempts.
+
+    Raises :class:`ssrf_guard.FetchError` on any guard rejection or chain
+    overflow. All other exceptions (httpx timeouts, connect errors, status
+    errors) propagate to the caller, which already has handlers for them.
+    """
+    await deny_if_private(url)
+    request_timeout = timeout if timeout is not None else REQUEST_TIMEOUT
+    request_headers = headers or {}
+
+    async with httpx.AsyncClient(
+        timeout=request_timeout,
+        follow_redirects=False,
+        verify=SSL_CONTEXT,
+    ) as client:
+        current_url = url
+        for _hop in range(max_redirects + 1):
+            response = await client.get(current_url, headers=request_headers)
+            if response.is_redirect:
+                location = response.headers.get("location", "")
+                if not location:
+                    return response
+                # Resolve relative redirects against the current URL so we
+                # validate the absolute target.
+                next_url = urljoin(current_url, location)
+                # CRITICAL: re-validate every hop. ``deny_if_private`` is the
+                # only thing standing between a 302 and IMDS.
+                await deny_if_private(next_url)
+                current_url = next_url
+                continue
+            return response
+        raise FetchError("too_many_redirects", url)
 
 # ============================================================================
 # SEARCH IMPLEMENTATIONS
@@ -283,9 +342,8 @@ async def _search_via_google_scrape(
             "Upgrade-Insecure-Requests": "1",
         }
 
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, follow_redirects=True, verify=SSL_CONTEXT) as client:
-            response = await client.get(search_url, headers=headers)
-            response.raise_for_status()
+        response = await fetch_with_ssrf_guard(search_url, headers=headers)
+        response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
         results = []
@@ -329,9 +387,8 @@ async def _search_via_bing_scrape(
             "Accept-Language": "en-US,en;q=0.9",
         }
 
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, follow_redirects=True, verify=SSL_CONTEXT) as client:
-            response = await client.get(search_url, headers=headers)
-            response.raise_for_status()
+        response = await fetch_with_ssrf_guard(search_url, headers=headers)
+        response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
         results = []
@@ -376,9 +433,8 @@ async def _search_via_html_web(
             "Accept-Language": "en-US,en;q=0.9",
         }
 
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, follow_redirects=True, verify=SSL_CONTEXT) as client:
-            response = await client.get(search_url, headers=headers)
-            response.raise_for_status()
+        response = await fetch_with_ssrf_guard(search_url, headers=headers)
+        response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
         results = []
@@ -539,9 +595,8 @@ async def _do_web_fetch(
             "Accept-Language": "en-US,en;q=0.5",
         }
 
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, follow_redirects=True, verify=SSL_CONTEXT) as client:
-            response = await client.get(url, headers=headers)
-            response.raise_for_status()
+        response = await fetch_with_ssrf_guard(url, headers=headers)
+        response.raise_for_status()
 
         # Check content type
         content_type = response.headers.get("content-type", "")
@@ -611,6 +666,17 @@ async def _do_web_fetch(
             **result_data
         }
 
+    except FetchError as e:
+        # SSRF guard refusal — surface ``reason`` so chatmode can branch on
+        # the deny class (imds / rfc1918 / cluster_local / ...).
+        logger.warning(f"SSRF guard blocked fetch: reason={e.reason} target={e.target}")
+        return {
+            "success": False,
+            "error": f"Fetch refused by SSRF guard: {e.reason} (target={e.target})",
+            "ssrf_blocked": True,
+            "ssrf_reason": e.reason,
+            "url": url,
+        }
     except httpx.TimeoutException:
         return {
             "success": False,
@@ -918,10 +984,11 @@ async def web_extract_structured_data(
         if not fetch_result.get("success"):
             return fetch_result
 
-        # Re-fetch and parse HTML for structured extraction
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, follow_redirects=True, verify=SSL_CONTEXT) as client:
-            response = await client.get(url, headers={"User-Agent": get_user_agent()})
-            response.raise_for_status()
+        # Re-fetch and parse HTML for structured extraction (SSRF-guarded;
+        # the original web_fetch already guarded the same URL but we re-check
+        # because DNS rebinding could shift the answer between calls).
+        response = await fetch_with_ssrf_guard(url, headers={"User-Agent": get_user_agent()})
+        response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
         extracted_data = {
@@ -978,6 +1045,15 @@ async def web_extract_structured_data(
             }
         }
 
+    except FetchError as e:
+        logger.warning(f"SSRF guard blocked extract: reason={e.reason} target={e.target}")
+        return {
+            "success": False,
+            "error": f"Fetch refused by SSRF guard: {e.reason} (target={e.target})",
+            "ssrf_blocked": True,
+            "ssrf_reason": e.reason,
+            "url": url,
+        }
     except Exception as e:
         logger.error(f"Extraction error: {e}")
         return {

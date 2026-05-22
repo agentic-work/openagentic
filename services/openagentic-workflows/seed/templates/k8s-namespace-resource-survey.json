@@ -1,0 +1,201 @@
+{
+  "slug": "k8s-namespace-resource-survey",
+  "name": "K8s Namespace Resource Survey",
+  "description": "Snapshot a Kubernetes namespace's resource inventory by fanning the trigger out to three parallel openagentic_kubernetes MCP calls (k8s_list_pods, k8s_list_deployments, k8s_list_services). A labeled merge node converges the three native-dict branches keyed by source-node label (pods/deployments/services), a single analyze transform normalizes each branch into a typed array + pre-computes counts + per-section HTML <tr> rows for direct interpolation, the platform LLM produces a 3-4 bullet narrative characterizing the namespace's resource footprint (what runs here, signs of risk, capacity headroom), CoT preamble is stripped via clean_narrative, and the final webhook_response renders an HTML survey report with per-resource tables + narrative. Empty-namespace case (zero pods, deployments, services — the typical state for unused namespaces) is handled: the report renders an explicit 'No resources' banner per section instead of blank tables.",
+  "category": "aiops",
+  "template": true,
+  "meta": {
+    "purpose": "Inventory a Kubernetes namespace by listing pods, deployments, and services in parallel and producing a single HTML survey with per-section tables plus an LLM narrative on what runs there.",
+    "how_it_works": [
+      "1. Fans the trigger out to three parallel openagentic_kubernetes MCP calls: k8s_list_pods, k8s_list_deployments, k8s_list_services.",
+      "2. A labeled merge converges the three native-dict branches keyed by source-node label.",
+      "3. A single analyze transform normalizes each branch into a typed array, pre-computes counts, and renders per-section HTML <tr> rows.",
+      "4. The platform LLM writes a 3-4 bullet narrative characterizing the namespace footprint (what runs here, signs of risk, capacity headroom).",
+      "5. A CoT-stripper transform removes any LLM preamble.",
+      "6. webhook_response renders the HTML survey. Empty-namespace short-circuit: each section gets an explicit 'No resources' banner instead of a blank table."
+    ],
+    "expected_output": "HTML survey report with three resource tables (pods, deployments, services), per-section counts, and a 3-4 bullet LLM characterization of the namespace.",
+    "useful_when": "Onboarding a new namespace, post-migration verification, capacity planning, or oncall context-building when a namespace you don't own pages.",
+    "tools_used": ["openagentic_kubernetes.k8s_list_pods", "openagentic_kubernetes.k8s_list_deployments", "openagentic_kubernetes.k8s_list_services", "llm_completion", "merge", "transform", "webhook_response"],
+    "version": "1.0",
+    "tags": ["aiops", "observability", "kubernetes", "k8s", "inventory", "survey"]
+  },
+  "defaultInputs": {
+    "namespace": "agentic-dev"
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "data": {
+          "triggerType": "manual",
+          "label": "Namespace Resource Survey",
+          "input_schema": {
+            "namespace": "string"
+          }
+        }
+      },
+      {
+        "id": "pods",
+        "type": "mcp_tool",
+        "data": {
+          "label": "pods",
+          "toolServer": "openagentic_kubernetes",
+          "toolName": "k8s_list_pods",
+          "arguments": {
+            "namespace": "{{input.namespace || \"agentic-dev\"}}"
+          }
+        }
+      },
+      {
+        "id": "deployments",
+        "type": "mcp_tool",
+        "data": {
+          "label": "deployments",
+          "toolServer": "openagentic_kubernetes",
+          "toolName": "k8s_list_deployments",
+          "arguments": {
+            "namespace": "{{input.namespace || \"agentic-dev\"}}"
+          }
+        }
+      },
+      {
+        "id": "services",
+        "type": "mcp_tool",
+        "data": {
+          "label": "services",
+          "toolServer": "openagentic_kubernetes",
+          "toolName": "k8s_list_services",
+          "arguments": {
+            "namespace": "{{input.namespace || \"agentic-dev\"}}"
+          }
+        }
+      },
+      {
+        "id": "merge_inventory",
+        "type": "merge",
+        "data": {
+          "label": "Merge Inventory",
+          "mergeStrategy": "object"
+        }
+      },
+      {
+        "id": "analyze",
+        "type": "transform",
+        "data": {
+          "label": "analyze",
+          "operations": [
+            {
+              "op": "set",
+              "target": "pods_array",
+              "value": "{{ (() => { const branch = input && input.pods; if (!branch || typeof branch !== 'object') return []; if (Array.isArray(branch.pods)) return branch.pods; if (typeof branch.content === 'string') { try { const p = JSON.parse(branch.content).pods; return Array.isArray(p) ? p : []; } catch (e) { return []; } } return []; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "deployments_array",
+              "value": "{{ (() => { const branch = input && input.deployments; if (!branch || typeof branch !== 'object') return []; if (Array.isArray(branch.deployments)) return branch.deployments; if (typeof branch.content === 'string') { try { const d = JSON.parse(branch.content).deployments; return Array.isArray(d) ? d : []; } catch (e) { return []; } } return []; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "services_array",
+              "value": "{{ (() => { const branch = input && input.services; if (!branch || typeof branch !== 'object') return []; if (Array.isArray(branch.services)) return branch.services; if (typeof branch.content === 'string') { try { const s = JSON.parse(branch.content).services; return Array.isArray(s) ? s : []; } catch (e) { return []; } } return []; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "namespace_label",
+              "value": "{{ (() => { const tryNs = (b) => { if (!b || typeof b !== 'object') return null; if (typeof b.namespace === 'string' && b.namespace) return b.namespace; if (typeof b.content === 'string') { try { return JSON.parse(b.content).namespace || null; } catch (e) { return null; } } return null; }; return tryNs(input && input.pods) || tryNs(input && input.deployments) || tryNs(input && input.services) || 'unknown'; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "pod_count",
+              "value": "{{ (() => { const a = Array.isArray(input.pods_array) ? input.pods_array : []; return a.length; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "deployment_count",
+              "value": "{{ (() => { const a = Array.isArray(input.deployments_array) ? input.deployments_array : []; return a.length; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "service_count",
+              "value": "{{ (() => { const a = Array.isArray(input.services_array) ? input.services_array : []; return a.length; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "pods_rows_html",
+              "value": "{{ (() => { const a = Array.isArray(input.pods_array) ? input.pods_array : []; if (a.length === 0) return '<tr><td colspan=\"4\"><em>No pods in this namespace.</em></td></tr>'; const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); return a.slice(0, 10).map(p => { const name = esc(p && p.name); const status = esc((p && p.status) || ''); const ready = esc((p && p.ready) || ''); const restarts = (p && typeof p.restarts === 'number') ? p.restarts : 0; return `<tr><td>${name}</td><td>${status}</td><td>${ready}</td><td>${restarts}</td></tr>`; }).join(''); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "deployments_rows_html",
+              "value": "{{ (() => { const a = Array.isArray(input.deployments_array) ? input.deployments_array : []; if (a.length === 0) return '<tr><td colspan=\"4\"><em>No deployments in this namespace.</em></td></tr>'; const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); return a.slice(0, 10).map(d => { const name = esc(d && d.name); const desired = (d && typeof d.replicas === 'number') ? d.replicas : 0; const ready = (d && typeof d.ready_replicas === 'number') ? d.ready_replicas : 0; const available = (d && typeof d.available_replicas === 'number') ? d.available_replicas : 0; return `<tr><td>${name}</td><td>${ready}/${desired}</td><td>${available}</td><td>${esc((d && d.created) || '')}</td></tr>`; }).join(''); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "services_rows_html",
+              "value": "{{ (() => { const a = Array.isArray(input.services_array) ? input.services_array : []; if (a.length === 0) return '<tr><td colspan=\"4\"><em>No services in this namespace.</em></td></tr>'; const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); return a.slice(0, 10).map(s => { const name = esc(s && s.name); const type = esc((s && s.type) || ''); const clusterIp = esc((s && s.cluster_ip) || ''); const ports = Array.isArray(s && s.ports) ? s.ports.map(p => (p && p.port) ? String(p.port) : '').filter(x => x).join(',') : ''; return `<tr><td>${name}</td><td>${type}</td><td>${clusterIp}</td><td>${esc(ports)}</td></tr>`; }).join(''); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "empty_banner",
+              "value": "{{ (() => { const pc = (typeof input.pod_count === 'number') ? input.pod_count : 0; const dc = (typeof input.deployment_count === 'number') ? input.deployment_count : 0; const sc = (typeof input.service_count === 'number') ? input.service_count : 0; if (pc === 0 && dc === 0 && sc === 0) return '<p class=\"empty-ns\"><strong>No resources found in this namespace.</strong> The namespace is empty (zero pods, deployments, and services).</p>'; return ''; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "summary_payload",
+              "value": "{{ (() => { const pc = (typeof input.pod_count === 'number') ? input.pod_count : 0; const dc = (typeof input.deployment_count === 'number') ? input.deployment_count : 0; const sc = (typeof input.service_count === 'number') ? input.service_count : 0; const podNames = (Array.isArray(input.pods_array) ? input.pods_array : []).slice(0, 10).map(p => p && p.name).filter(x => x); const depNames = (Array.isArray(input.deployments_array) ? input.deployments_array : []).slice(0, 10).map(d => d && d.name).filter(x => x); const svcNames = (Array.isArray(input.services_array) ? input.services_array : []).slice(0, 10).map(s => s && s.name).filter(x => x); return { pod_count: pc, deployment_count: dc, service_count: sc, sample_pod_names: podNames, sample_deployment_names: depNames, sample_service_names: svcNames }; })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "narrative",
+        "type": "llm_completion",
+        "data": {
+          "label": "Resource Footprint Narrative",
+          "prompt": "You are an SRE writing a 3-4 bullet operator-facing characterization of namespace {{steps.analyze.namespace_label}}'s resource footprint.\n\nTotals: {{steps.analyze.pod_count}} pods, {{steps.analyze.deployment_count}} deployments, {{steps.analyze.service_count}} services.\n\nResource sample (JSON):\n{{steps.analyze.summary_payload}}\n\nOutput rules (MUST follow):\n1. Start the response with a single `-` character — no preamble, no \"Here is\", no \"The user wants\", no thinking out loud.\n2. 3-4 short bullets, each on its own line, each beginning with `-`.\n3. Bullet 1: what kind of workload runs here (based on the resource names you see).\n4. Bullet 2: any signs of risk worth calling out (concentrated components, unfamiliar services, single-replica deployments).\n5. Bullet 3: network exposure observation (service types — ClusterIP vs LoadBalancer vs NodePort).\n6. Bullet 4 (optional): a capacity/headroom note if relevant.\n7. If the namespace is empty (pod_count, deployment_count, and service_count all 0), emit one bullet stating the namespace is empty and one bullet suggesting verification.",
+          "model": "auto",
+          "temperature": 0.2,
+          "maxTokens": 500
+        }
+      },
+      {
+        "id": "clean_narrative",
+        "type": "transform",
+        "data": {
+          "label": "Strip CoT Preamble",
+          "operations": [
+            {
+              "op": "set",
+              "target": "clean_content",
+              "value": "{{ (() => { const raw = String(input.content || ''); const inlineMatch = raw.match(/([\\.\\!\\?\\:]|\\n)\\s*(-\\s+\\S)/); const lines = raw.split(/\\r?\\n/); let firstBulletIdx = -1; for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (t.startsWith('-') || t.startsWith('•') || t.startsWith('*')) { firstBulletIdx = i; break; } } if (firstBulletIdx !== -1) { const fromLineIdx = lines.slice(firstBulletIdx).join('\\n').trim(); if (inlineMatch && inlineMatch.index !== undefined) { const fromInline = raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); if (fromInline.length < fromLineIdx.length || lines[firstBulletIdx].trim().length > 8 === false) { return fromInline; } } return fromLineIdx; } if (inlineMatch && inlineMatch.index !== undefined) { return raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); } return raw.trim(); })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "report",
+        "type": "webhook_response",
+        "data": {
+          "label": "HTML Resource Survey Report",
+          "statusCode": 200,
+          "headers": { "Content-Type": "text/html" },
+          "bodyTemplate": "<div class=\"k8s-namespace-resource-survey\"><h2>K8s Namespace Resource Survey — namespace {{steps.analyze.namespace_label}}</h2><p><strong>Pods:</strong> {{steps.analyze.pod_count}} &middot; <strong>Deployments:</strong> {{steps.analyze.deployment_count}} &middot; <strong>Services:</strong> {{steps.analyze.service_count}}</p>{{steps.analyze.empty_banner}}<h3>Operator Narrative</h3><pre class=\"narrative\">{{steps.clean_narrative.clean_content}}</pre><h3>Pods</h3><table class=\"pods-table\"><thead><tr><th>Name</th><th>Status</th><th>Ready</th><th>Restarts</th></tr></thead><tbody>{{steps.analyze.pods_rows_html}}</tbody></table><h3>Deployments</h3><table class=\"deployments-table\"><thead><tr><th>Name</th><th>Ready/Desired</th><th>Available</th><th>Created</th></tr></thead><tbody>{{steps.analyze.deployments_rows_html}}</tbody></table><h3>Services</h3><table class=\"services-table\"><thead><tr><th>Name</th><th>Type</th><th>ClusterIP</th><th>Ports</th></tr></thead><tbody>{{steps.analyze.services_rows_html}}</tbody></table></div>"
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "trigger", "target": "pods" },
+      { "id": "e2", "source": "trigger", "target": "deployments" },
+      { "id": "e3", "source": "trigger", "target": "services" },
+      { "id": "e4", "source": "pods", "target": "merge_inventory" },
+      { "id": "e5", "source": "deployments", "target": "merge_inventory" },
+      { "id": "e6", "source": "services", "target": "merge_inventory" },
+      { "id": "e7", "source": "merge_inventory", "target": "analyze" },
+      { "id": "e8", "source": "analyze", "target": "narrative" },
+      { "id": "e9", "source": "narrative", "target": "clean_narrative" },
+      { "id": "e10", "source": "clean_narrative", "target": "report" }
+    ]
+  }
+}

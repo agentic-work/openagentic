@@ -651,6 +651,334 @@ const adminAnalyticsRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
+  /**
+   * GET /api/admin/analytics/system/timeseries
+   *
+   * Primary-metrics-over-time feed for the admin Analytics Dashboard
+   * "01 — Primary Metrics" section (Sev-1 #929).
+   *
+   * Query:
+   *   metric  ∈ { tokens, ttft, tools }   — required
+   *   window  ∈ { 7d, 30d, 90d }          — default 30d
+   *   bucket  ∈ { 1h, 1d }                — default 1d
+   *
+   * Response (stable shape — UI charts depend on it):
+   *   {
+   *     metric, window, bucket,
+   *     buckets:  [{ t: <iso>, byModel: { [model]: number } }],   // tokens, ttft
+   *     topTools?: [{ tool: string, count: number }]              // tools only
+   *   }
+   *
+   * Data sources:
+   *   tokens → LLMRequestLog.total_tokens summed per (model, time-bucket)
+   *   ttft   → LLMRequestLog.time_to_first_token_ms p50 per (model, time-bucket)
+   *   tools  → MCPUsage.tool_name count desc over window
+   *
+   * Notes:
+   *  - No hardcoded model literals (CLAUDE.md Rule 7) — top-5 models surface
+   *    from the data itself, not from a static allow-list.
+   *  - p50 (not mean) for TTFT — robust to single-outlier cold starts.
+   */
+  fastify.get<{
+    Querystring: { metric?: string; window?: string; bucket?: string };
+  }>('/system/timeseries', async (request, reply) => {
+    try {
+      const metric = String(request.query.metric ?? '');
+      const window = String(request.query.window ?? '30d');
+      const bucket = String(request.query.bucket ?? '1d');
+
+      if (!['tokens', 'ttft', 'tools'].includes(metric)) {
+        return reply.code(400).send({
+          success: false,
+          error: `Invalid metric '${metric}'. Must be one of: tokens, ttft, tools.`,
+        });
+      }
+      if (!['7d', '30d', '90d'].includes(window)) {
+        return reply.code(400).send({
+          success: false,
+          error: `Invalid window '${window}'. Must be one of: 7d, 30d, 90d.`,
+        });
+      }
+      if (!['1h', '1d'].includes(bucket)) {
+        return reply.code(400).send({
+          success: false,
+          error: `Invalid bucket '${bucket}'. Must be one of: 1h, 1d.`,
+        });
+      }
+
+      const daysMap: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90 };
+      const since = new Date(Date.now() - daysMap[window] * 24 * 60 * 60 * 1000);
+      const bucketMs = bucket === '1h' ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+
+      // Round a timestamp down to the bucket boundary. For 1d buckets we
+      // normalize to UTC midnight; for 1h we floor to the hour.
+      const floorToBucket = (d: Date): Date => {
+        const t = d.getTime();
+        return new Date(t - (t % bucketMs));
+      };
+
+      // ── tools: MCPUsage count, descending ──────────────────────────────
+      if (metric === 'tools') {
+        const grouped = await prisma.mCPUsage.groupBy({
+          by: ['tool_name'],
+          where: { timestamp: { gte: since } },
+          _count: { id: true },
+          orderBy: { _count: { id: 'desc' } },
+          take: 12,
+        });
+        const topTools = grouped.map((g) => ({
+          tool: g.tool_name,
+          count: g._count.id,
+        }));
+        return reply.send({
+          success: true,
+          metric,
+          window,
+          bucket,
+          buckets: [],
+          topTools,
+        });
+      }
+
+      // ── tokens / ttft: read LLMRequestLog rows in window ──────────────
+      const rows = await prisma.lLMRequestLog.findMany({
+        where: { created_at: { gte: since } },
+        select: {
+          model: true,
+          total_tokens: true,
+          time_to_first_token_ms: true,
+          latency_ms: true,
+          created_at: true,
+        },
+      });
+
+      // Pick top-5 models by total volume across the entire window so the
+      // chart isn't crowded with one-shot models. Volume = token sum (for
+      // tokens metric) or request count (for ttft metric).
+      const modelVolume: Record<string, number> = {};
+      for (const r of rows) {
+        const m = r.model || 'unknown';
+        if (metric === 'tokens') {
+          modelVolume[m] = (modelVolume[m] ?? 0) + (r.total_tokens ?? 0);
+        } else {
+          modelVolume[m] = (modelVolume[m] ?? 0) + 1;
+        }
+      }
+      const topModels = new Set(
+        Object.entries(modelVolume)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([m]) => m),
+      );
+
+      // Group rows by (bucket, model). For tokens we sum; for ttft we
+      // collect samples and compute p50 below.
+      type Cell = { tokens: number; ttftSamples: number[] };
+      const grid: Map<number, Map<string, Cell>> = new Map();
+      for (const r of rows) {
+        const m = r.model || 'unknown';
+        if (!topModels.has(m)) continue;
+        const bucketT = floorToBucket(r.created_at).getTime();
+        let modelMap = grid.get(bucketT);
+        if (!modelMap) {
+          modelMap = new Map();
+          grid.set(bucketT, modelMap);
+        }
+        let cell = modelMap.get(m);
+        if (!cell) {
+          cell = { tokens: 0, ttftSamples: [] };
+          modelMap.set(m, cell);
+        }
+        cell.tokens += r.total_tokens ?? 0;
+        // Fall back to latency_ms when TTFT wasn't recorded (older rows
+        // pre-streaming-instrumentation). Doesn't poison the median —
+        // these are rare.
+        const ttft = r.time_to_first_token_ms ?? r.latency_ms ?? null;
+        if (ttft != null && ttft > 0) {
+          cell.ttftSamples.push(ttft);
+        }
+      }
+
+      const p50 = (arr: number[]): number => {
+        if (arr.length === 0) return 0;
+        const sorted = [...arr].sort((a, b) => a - b);
+        return sorted[Math.floor(sorted.length / 2)];
+      };
+
+      const buckets = Array.from(grid.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([t, modelMap]) => {
+          const byModel: Record<string, number> = {};
+          for (const [model, cell] of modelMap.entries()) {
+            byModel[model] = metric === 'tokens' ? cell.tokens : p50(cell.ttftSamples);
+          }
+          return { t: new Date(t).toISOString(), byModel };
+        });
+
+      return reply.send({
+        success: true,
+        metric,
+        window,
+        bucket,
+        buckets,
+      });
+    } catch (error) {
+      logger.error({ error }, 'Failed to get system timeseries');
+      return reply.code(500).send({
+        success: false,
+        error: 'Failed to fetch system timeseries',
+      });
+    }
+  });
+
+  /**
+   * GET /api/admin/analytics/extended-thinking
+   *
+   * Extended thinking usage analytics (Task B.3, 2026-05-19).
+   *
+   * Query:
+   *   window  ∈ { 7d, 30d, 90d }  — default 7d
+   *   groupBy ∈ { model, user, day } — informational; response always includes
+   *             both byModel and byDay sections regardless of groupBy.
+   *
+   * Response:
+   *   {
+   *     windowStart: ISO, windowEnd: ISO,
+   *     totals: { requested, delivered, requestedNotDelivered,
+   *               avgThinkingTokens, avgThinkingDurationMs },
+   *     byModel: [{ model, requested, delivered, avgTokens }],
+   *     byDay:   [{ date: 'YYYY-MM-DD', requested, delivered }]
+   *   }
+   *
+   * Data source: admin.extended_thinking_metrics (written by stream.handler.ts
+   * post-turn fire-and-forget).
+   */
+  fastify.get<{
+    Querystring: { window?: string; groupBy?: string };
+  }>('/extended-thinking', async (request, reply) => {
+    try {
+      const window = String(request.query.window ?? '7d');
+      if (!['7d', '30d', '90d'].includes(window)) {
+        return reply.code(400).send({
+          success: false,
+          error: `Invalid window '${window}'. Must be one of: 7d, 30d, 90d.`,
+        });
+      }
+
+      const daysMap: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90 };
+      const windowEnd = new Date();
+      const windowStart = new Date(windowEnd.getTime() - daysMap[window] * 24 * 60 * 60 * 1000);
+
+      // Read all rows in window from admin.extended_thinking_metrics.
+      const rows = await (prisma as any).extendedThinkingMetric.findMany({
+        where: { created_at: { gte: windowStart } },
+        select: {
+          created_at: true,
+          model: true,
+          requested: true,
+          delivered: true,
+          thinking_tokens: true,
+          thinking_duration_ms: true,
+        },
+      }) as Array<{
+        created_at: Date;
+        model: string;
+        requested: boolean;
+        delivered: boolean;
+        thinking_tokens: number | null;
+        thinking_duration_ms: number | null;
+      }>;
+
+      // ── totals ──────────────────────────────────────────────────────────
+      let totalRequested = 0;
+      let totalDelivered = 0;
+      let totalRequestedNotDelivered = 0;
+      let tokenSum = 0;
+      let tokenCount = 0;
+      let durationSum = 0;
+      let durationCount = 0;
+
+      for (const r of rows) {
+        if (r.requested) totalRequested++;
+        if (r.delivered) totalDelivered++;
+        if (r.requested && !r.delivered) totalRequestedNotDelivered++;
+        if (typeof r.thinking_tokens === 'number' && r.thinking_tokens > 0) {
+          tokenSum += r.thinking_tokens;
+          tokenCount++;
+        }
+        if (typeof r.thinking_duration_ms === 'number' && r.thinking_duration_ms > 0) {
+          durationSum += r.thinking_duration_ms;
+          durationCount++;
+        }
+      }
+
+      const totals = {
+        requested: totalRequested,
+        delivered: totalDelivered,
+        requestedNotDelivered: totalRequestedNotDelivered,
+        avgThinkingTokens: tokenCount > 0 ? Math.round(tokenSum / tokenCount) : 0,
+        avgThinkingDurationMs: durationCount > 0 ? Math.round(durationSum / durationCount) : 0,
+      };
+
+      // ── byModel ─────────────────────────────────────────────────────────
+      const modelMap: Map<string, { requested: number; delivered: number; tokenSum: number; tokenCount: number }> = new Map();
+      for (const r of rows) {
+        const key = r.model || 'unknown';
+        let entry = modelMap.get(key);
+        if (!entry) {
+          entry = { requested: 0, delivered: 0, tokenSum: 0, tokenCount: 0 };
+          modelMap.set(key, entry);
+        }
+        if (r.requested) entry.requested++;
+        if (r.delivered) entry.delivered++;
+        if (typeof r.thinking_tokens === 'number' && r.thinking_tokens > 0) {
+          entry.tokenSum += r.thinking_tokens;
+          entry.tokenCount++;
+        }
+      }
+      const byModel = Array.from(modelMap.entries())
+        .map(([model, e]) => ({
+          model,
+          requested: e.requested,
+          delivered: e.delivered,
+          avgTokens: e.tokenCount > 0 ? Math.round(e.tokenSum / e.tokenCount) : 0,
+        }))
+        .sort((a, b) => b.requested - a.requested);
+
+      // ── byDay ────────────────────────────────────────────────────────────
+      const dayMap: Map<string, { requested: number; delivered: number }> = new Map();
+      for (const r of rows) {
+        const d = r.created_at;
+        const dateKey = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+        let entry = dayMap.get(dateKey);
+        if (!entry) {
+          entry = { requested: 0, delivered: 0 };
+          dayMap.set(dateKey, entry);
+        }
+        if (r.requested) entry.requested++;
+        if (r.delivered) entry.delivered++;
+      }
+      const byDay = Array.from(dayMap.entries())
+        .map(([date, e]) => ({ date, ...e }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      return reply.send({
+        success: true,
+        windowStart: windowStart.toISOString(),
+        windowEnd: windowEnd.toISOString(),
+        totals,
+        byModel,
+        byDay,
+      });
+    } catch (error) {
+      logger.error({ error }, 'Failed to get extended thinking metrics');
+      return reply.code(500).send({
+        success: false,
+        error: 'Failed to fetch extended thinking metrics',
+      });
+    }
+  });
+
   logger.info('Admin analytics routes registered (database-backed)');
 };
 

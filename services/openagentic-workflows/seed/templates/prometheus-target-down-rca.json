@@ -1,0 +1,213 @@
+{
+  "slug": "prometheus-target-down-rca",
+  "name": "Prometheus Target Down RCA",
+  "description": "Query Prometheus for scrape targets currently `up == 0` via openagentic_prometheus.prometheus_query, parse the formatted-text response into a structured down-targets array (one entry per JSON-stringified label dict), correlate each down target back to recent error logs from openagentic_loki.loki_search_errors (filtered to the down namespace), pre-compute per-target log excerpts + HTML rows in a single transform via a labeled merge of analyze + loki_query, ask the platform LLM for a 2-bullet root-cause-analysis per down target referencing concrete log signals, strip any chain-of-thought preamble, then render an HTML RCA report via webhook_response. Empty-cluster case (zero down targets — the operational default in stable clusters) is handled — when the up==0 query returns Results: 0, the report explicitly says 'All targets up' instead of rendering a blank table.",
+  "category": "aiops",
+  "template": true,
+  "meta": {
+    "purpose": "Investigate which Prometheus scrape targets are currently DOWN (up == 0) and produce a root-cause analysis correlating each down target with its recent error logs.",
+    "how_it_works": [
+      "1. Queries Prometheus for `up == 0` via openagentic_prometheus.prometheus_query and parses the text payload into a structured down-targets array (one entry per JSON-stringified label dict).",
+      "2. Pulls recent error logs from openagentic_loki.loki_search_errors filtered to the affected namespace and time range.",
+      "3. A labeled-merge transform joins each down target with its log excerpt and pre-computes the HTML rows.",
+      "4. The platform LLM writes a 2-bullet RCA per down target citing concrete log signals (auth failure, network partition, misconfigured endpoint, etc).",
+      "5. A CoT-stripper transform removes any LLM preamble.",
+      "6. webhook_response renders the HTML RCA report. All-targets-up short-circuit: when zero down targets exist, the report says 'All targets up' instead of a blank table."
+    ],
+    "expected_output": "HTML RCA report with: total down-target count, per-target row containing labels + log excerpt, and a 2-bullet LLM RCA per target.",
+    "useful_when": "Oncall pages about scrape-target gaps, post-incident verification that monitoring is back to healthy, or daily 'is observability itself healthy?' check.",
+    "tools_used": ["openagentic_prometheus.prometheus_query", "openagentic_loki.loki_search_errors", "llm_completion", "transform", "merge", "webhook_response"],
+    "version": "1.0",
+    "tags": ["aiops", "observability", "prometheus", "loki", "rca", "scrape-targets"]
+  },
+  "defaultInputs": {
+    "namespace": "agentic-dev",
+    "time_range": "1h",
+    "limit": 5
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "data": {
+          "triggerType": "manual",
+          "label": "Target Down RCA",
+          "input_schema": {
+            "namespace": "string",
+            "time_range": "string",
+            "limit": "number"
+          }
+        }
+      },
+      {
+        "id": "targets",
+        "type": "mcp_tool",
+        "data": {
+          "label": "Get Down Targets",
+          "toolServer": "openagentic_prometheus",
+          "toolName": "prometheus_query",
+          "arguments": {
+            "query": "up == 0"
+          }
+        }
+      },
+      {
+        "id": "analyze",
+        "type": "transform",
+        "data": {
+          "label": "analyze",
+          "operations": [
+            {
+              "op": "set",
+              "target": "down_targets",
+              "value": "{{ (() => { const text = String(input.content || ''); const lines = text.split(/\\r?\\n/); const out = []; for (const raw of lines) { const line = String(raw).trim(); if (!line || !line.startsWith('{')) continue; const colonIdx = line.lastIndexOf('}: '); if (colonIdx < 0) continue; const jsonStr = line.slice(0, colonIdx + 1); let metric = null; try { metric = JSON.parse(jsonStr); } catch (e) { continue; } if (!metric || typeof metric !== 'object') continue; const pod_name = String(metric.kubernetes_pod_name || metric.pod || ''); const namespace = String(metric.kubernetes_namespace || metric.namespace || ''); const app = String(metric.app || metric.app_kubernetes_io_name || metric.app_kubernetes_io_instance || ''); const instance = String(metric.instance || ''); const job = String(metric.job || ''); out.push({ pod_name: pod_name, namespace: namespace, app: app, instance: instance, job: job }); } return out; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "total_down",
+              "value": "{{ (() => { const text = String(input.content || ''); const m = text.match(/Results:\\s*(\\d+)/i); return m ? parseInt(m[1], 10) : 0; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "limit_label",
+              "value": "{{ (typeof input.limit === 'number' && input.limit > 0) ? input.limit : 5 }}"
+            },
+            {
+              "op": "set",
+              "target": "namespace_label",
+              "value": "{{ (() => { const dts = Array.isArray(input.down_targets) ? input.down_targets : []; if (dts.length === 0) return 'agentic-dev'; for (const t of dts) { if (t && t.namespace) return t.namespace; } return 'agentic-dev'; })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "loki_query",
+        "type": "mcp_tool",
+        "data": {
+          "label": "loki_query",
+          "toolServer": "openagentic_loki",
+          "toolName": "loki_search_errors",
+          "arguments": {
+            "namespace": "{{steps.analyze.namespace_label}}",
+            "time_range": "1h",
+            "limit": 200
+          }
+        }
+      },
+      {
+        "id": "merge_data",
+        "type": "merge",
+        "data": {
+          "label": "Merge Analyze + Loki",
+          "mergeStrategy": "object"
+        }
+      },
+      {
+        "id": "correlate",
+        "type": "transform",
+        "data": {
+          "label": "Per-Target Correlation",
+          "operations": [
+            {
+              "op": "set",
+              "target": "down_targets",
+              "value": "{{ (Array.isArray(input.analyze && input.analyze.down_targets)) ? input.analyze.down_targets : [] }}"
+            },
+            {
+              "op": "set",
+              "target": "loki_content",
+              "value": "{{ String((input.loki_query && input.loki_query.content) || '') }}"
+            },
+            {
+              "op": "set",
+              "target": "per_target_logs",
+              "value": "{{ (() => { const dts = Array.isArray(input.down_targets) ? input.down_targets : []; const text = String(input.loki_content || ''); const logLines = text.split(/\\r?\\n/).filter(l => l && l.startsWith('[')); const result = {}; for (const t of dts) { if (!t || !t.pod_name) continue; const pod = String(t.pod_name); const app = String(t.app || ''); const matched = []; for (const line of logLines) { if (pod && line.indexOf(pod) !== -1) { matched.push(line); } else if (app && app.length > 2 && line.toLowerCase().indexOf(app.toLowerCase()) !== -1) { matched.push(line); } if (matched.length >= 5) break; } if (matched.length === 0) { result[pod] = 'no correlated error logs in window'; } else { result[pod] = matched.join('\\n').slice(0, 800); } } return result; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "limit_label",
+              "value": "{{ (input.analyze && typeof input.analyze.limit_label === 'number') ? input.analyze.limit_label : 5 }}"
+            },
+            {
+              "op": "set",
+              "target": "sliced_targets",
+              "value": "{{ (() => { const dts = Array.isArray(input.down_targets) ? input.down_targets : []; const lim = (typeof input.limit_label === 'number' && input.limit_label > 0) ? input.limit_label : 5; return dts.slice(0, lim); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "total_correlated",
+              "value": "{{ (() => { const ptl = input.per_target_logs || {}; let n = 0; for (const k of Object.keys(ptl)) { if (String(ptl[k] || '').indexOf('no correlated') === -1) n++; } return n; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "namespace_label",
+              "value": "{{ (input.analyze && input.analyze.namespace_label) ? String(input.analyze.namespace_label) : 'agentic-dev' }}"
+            },
+            {
+              "op": "set",
+              "target": "total_down",
+              "value": "{{ (input.analyze && typeof input.analyze.total_down === 'number') ? input.analyze.total_down : (Array.isArray(input.down_targets) ? input.down_targets.length : 0) }}"
+            },
+            {
+              "op": "set",
+              "target": "rows_html",
+              "value": "{{ (() => { const dts = Array.isArray(input.sliced_targets) ? input.sliced_targets : (Array.isArray(input.down_targets) ? input.down_targets : []); if (dts.length === 0) return '<tr><td colspan=\"4\">No down targets — all scrape targets are healthy.</td></tr>'; const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); const ptl = input.per_target_logs || {}; return dts.map(t => { const pod = String(t.pod_name || ''); const logs = String(ptl[pod] || 'no correlated error logs in window'); return `<tr><td>${esc(pod)}</td><td>${esc(t.app)}</td><td>${esc(t.namespace)}</td><td><pre>${esc(logs.slice(0, 400))}</pre></td></tr>`; }).join(''); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "all_up_banner",
+              "value": "{{ (() => { const td = (typeof input.total_down === 'number') ? input.total_down : 0; if (td === 0) return '<p class=\"all-up\"><strong>All targets up</strong> — Prometheus reports zero scrape targets currently down. No RCA needed.</p>'; return ''; })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "rca",
+        "type": "llm_completion",
+        "data": {
+          "label": "Per-Target RCA",
+          "prompt": "You are an SRE producing a root-cause-analysis per Prometheus scrape target currently DOWN (up == 0) in namespace {{steps.correlate.namespace_label}}.\n\nDown targets (JSON array of { pod_name, namespace, app, instance, job } — sliced to top {{steps.correlate.limit_label}}; may be empty):\n{{steps.correlate.sliced_targets}}\n\nCorrelated error logs per target (map pod_name → log excerpt; 'no correlated error logs in window' means the log search returned no matching lines for that pod):\n{{steps.correlate.per_target_logs}}\n\nTotal targets down: {{steps.correlate.total_down}} ({{steps.correlate.total_correlated}} with correlated logs).\n\nOutput rules (MUST follow):\n1. Start the response with a single `-` character — no preamble, no \"Here is\", no \"The user wants\", no thinking out loud.\n2. Exactly ONE bullet per down target (so N bullets total for N down targets), each on its own line, each beginning with `-`.\n3. Each bullet references the pod_name verbatim, identifies the likely root cause from the log excerpt (or states 'no correlated logs' if the excerpt is empty), and suggests a concrete operator next-action.\n4. If the down_targets array is empty, emit a single bullet stating all scrape targets are up and recommend a routine future check.",
+          "model": "auto",
+          "temperature": 0.2,
+          "maxTokens": 600
+        }
+      },
+      {
+        "id": "clean_rca",
+        "type": "transform",
+        "data": {
+          "label": "Strip CoT Preamble",
+          "operations": [
+            {
+              "op": "set",
+              "target": "clean_content",
+              "value": "{{ (() => { const raw = String(input.content || ''); const inlineMatch = raw.match(/([\\.\\!\\?\\:]|\\n)\\s*(-\\s+\\S)/); const lines = raw.split(/\\r?\\n/); let firstBulletIdx = -1; for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (t.startsWith('-') || t.startsWith('•') || t.startsWith('*')) { firstBulletIdx = i; break; } } if (firstBulletIdx !== -1) { const fromLineIdx = lines.slice(firstBulletIdx).join('\\n').trim(); if (inlineMatch && inlineMatch.index !== undefined) { const fromInline = raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); if (fromInline.length < fromLineIdx.length || lines[firstBulletIdx].trim().length > 8 === false) { return fromInline; } } return fromLineIdx; } if (inlineMatch && inlineMatch.index !== undefined) { return raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); } return raw.trim(); })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "report",
+        "type": "webhook_response",
+        "data": {
+          "label": "HTML RCA Report",
+          "statusCode": 200,
+          "headers": { "Content-Type": "text/html" },
+          "bodyTemplate": "<div class=\"prometheus-target-down-rca\"><h2>Prometheus Target Down RCA — namespace {{steps.correlate.namespace_label}}</h2><p><strong>Total down targets:</strong> {{steps.correlate.total_down}} &middot; <strong>Correlated with logs:</strong> {{steps.correlate.total_correlated}} &middot; <strong>Limit:</strong> {{steps.correlate.limit_label}}</p>{{steps.correlate.all_up_banner}}<h3>Operator RCA (per target)</h3><pre class=\"rca\">{{steps.clean_rca.clean_content}}</pre><h3>Per-Target Detail</h3><table class=\"targets-table\"><thead><tr><th>Pod</th><th>App</th><th>Namespace</th><th>Correlated Log Excerpt</th></tr></thead><tbody>{{steps.correlate.rows_html}}</tbody></table></div>"
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "trigger", "target": "targets" },
+      { "id": "e2", "source": "targets", "target": "analyze" },
+      { "id": "e3", "source": "analyze", "target": "loki_query" },
+      { "id": "e4", "source": "analyze", "target": "merge_data" },
+      { "id": "e5", "source": "loki_query", "target": "merge_data" },
+      { "id": "e6", "source": "merge_data", "target": "correlate" },
+      { "id": "e7", "source": "correlate", "target": "rca" },
+      { "id": "e8", "source": "rca", "target": "clean_rca" },
+      { "id": "e9", "source": "clean_rca", "target": "report" }
+    ]
+  }
+}

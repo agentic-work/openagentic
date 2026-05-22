@@ -17,11 +17,13 @@
 import type { PrismaClient, ChatSession as PrismaChatSession, ChatMessage as PrismaChatMessage } from '@prisma/client';
 import { nanoid } from 'nanoid';
 import type { Logger } from 'pino';
-import { prisma } from '../utils/prisma.js';
+import { prisma, prismaBase } from '../utils/prisma.js';
 import { AITitleGenerationService } from './AITitleGenerationService.js';
 import { TitleGenerationClient } from './TitleGenerationClient.js';
+import { ChatSummaryService } from './ChatSummaryService.js';
 // Repository pattern - gradual integration
 import { SimpleChatSessionRepository } from '../repositories/SimpleChatSessionRepository.js';
+import { buildSessionListWhere } from '../repositories/sessionListWhere.js';
 
 // Define MessageRole since it's not an enum in our schema - it's a string field
 export type MessageRole = 'user' | 'assistant' | 'system' | 'tool';
@@ -39,6 +41,18 @@ export interface SessionCreateOptions {
   userId?: string;
   tenantId?: string;
   settings?: Record<string, any>;
+  /**
+   * Sev-0 Bug A — defensive user upsert.
+   * SSO tokens carry an `oid` claim that may not match a `users.id` row when
+   * the user was created via a different bootstrap path (e.g. helm
+   * InitializationService creates admin user with id `65e27ed0-...` but the
+   * SSO token's oid is `66c199d9-...`). When the userId lookup misses but
+   * userEmail is provided, fall back to email-keyed lookup, then upsert.
+   */
+  userEmail?: string;
+  userName?: string;
+  azureOid?: string;
+  azureTenantId?: string;
 }
 
 export interface SessionUpdateOptions {
@@ -106,6 +120,7 @@ export class ChatStorageService {
   private isInitialized = false;
   private titleGenerationService: AITitleGenerationService;
   private titleClient?: TitleGenerationClient;
+  private chatSummaryService: ChatSummaryService;
   private realTimeKnowledgeService?: any;
   // Repository pattern - gradual integration
   private sessionRepo: SimpleChatSessionRepository;
@@ -138,16 +153,23 @@ export class ChatStorageService {
     // query event emission so the slow-query logger below still works.
     this.prisma = prisma;
 
+    // Bug 3 (2026-05-18): chat_sessions.summary / structured_summary refresh.
+    // Heuristic-only (no LLM call), runs after assistant persists.
+    this.chatSummaryService = new ChatSummaryService(this.prisma as any, logger);
+
     // Initialize repository
     this.sessionRepo = new SimpleChatSessionRepository(this.prisma, this.logger, true);
 
-    // Log slow queries for debugging
-    this.prisma.$on('query', (e) => {
+    // Log slow queries for debugging.
+    // NOTE: $on is only available on the raw PrismaClient (`prismaBase`),
+    // not on the tenant-extended client (`prisma`) which is a proxy that
+    // strips top-level $-methods.
+    (prismaBase as any).$on('query', (e: any) => {
       if (e.duration > 1000) { // Log queries taking > 1 second
-        this.logger.warn({ 
-          query: e.query, 
+        this.logger.warn({
+          query: e.query,
           duration: e.duration,
-          params: e.params 
+          params: e.params
         }, 'Slow database query detected');
       }
     });
@@ -159,9 +181,10 @@ export class ChatStorageService {
     try {
       this.logger.info('Connecting to PostgreSQL via Prisma...');
       
-      // Test the connection
-      await this.prisma.$connect();
-      await this.prisma.$queryRaw`SELECT 1`;
+      // Test the connection — $-methods only exist on the raw PrismaClient,
+      // not on the tenant-extended proxy that backs `this.prisma`.
+      await (prismaBase as any).$connect();
+      await (prismaBase as any).$queryRaw`SELECT 1`;
       
       this.logger.info('Prisma connection established');
       
@@ -193,13 +216,64 @@ export class ChatStorageService {
   async createSession(userId: string, options: SessionCreateOptions & { sessionId?: string } = {}): Promise<string> {
     const sessionId = options.sessionId || nanoid();
     const title = options.title || `Chat ${new Date().toLocaleString()}`;
-    
+
     try {
       // CRITICAL: Validate user exists before creating session
-      const userExists = await this.prisma.user.findUnique({
+      let userExists: any = await this.prisma.user.findUnique({
         where: { id: userId }
       });
-      
+
+      // Sev-0 Bug A — defensive user upsert when token-id misses but email is present.
+      // The SSO token's `oid` may not match an existing `users.id` (different bootstrap
+      // path created the user). Fall back to email lookup, then upsert. The token has
+      // already been validated upstream by unifiedAuthHook, so this is safe.
+      if (!userExists && options.userEmail) {
+        try {
+          userExists = await this.prisma.user.findFirst({
+            where: { email: options.userEmail },
+          });
+          if (userExists) {
+            this.logger.info({
+              tokenUserId: userId,
+              dbUserId: userExists.id,
+              email: options.userEmail,
+            }, '[ChatStorage] Sev-0 A — token userId did not match DB; recovered via email lookup. Remapping session to existing user.');
+            userId = userExists.id;
+          } else {
+            // Upsert by email — token is already validated, user is authenticated.
+            const upserted = await this.prisma.user.upsert({
+              where: { email: options.userEmail },
+              update: {
+                ...(options.azureOid ? { azure_oid: options.azureOid } : {}),
+                ...(options.userName ? { name: options.userName } : {}),
+                updated_at: new Date(),
+              },
+              create: {
+                id: userId,
+                email: options.userEmail,
+                name: options.userName || options.userEmail,
+                ...(options.azureOid ? { azure_oid: options.azureOid } : {}),
+                ...(options.azureTenantId ? { azure_tenant_id: options.azureTenantId } : {}),
+                created_at: new Date(),
+                updated_at: new Date(),
+              },
+            });
+            userExists = upserted;
+            userId = upserted.id;
+            this.logger.info({
+              userId: upserted.id,
+              email: options.userEmail,
+            }, '[ChatStorage] Sev-0 A — upserted authenticated user by email (first chat after SSO bootstrap).');
+          }
+        } catch (recoveryErr: any) {
+          this.logger.warn({
+            err: recoveryErr?.message,
+            tokenUserId: userId,
+            email: options.userEmail,
+          }, '[ChatStorage] Sev-0 A — defensive email upsert failed; falling through to original error');
+        }
+      }
+
       if (!userExists) {
         // SECURITY: AUTH_MODE=local admin fallback removed in v0.5.0 FedRAMP hardening (Bolt 01)
         // All users must exist in the database before creating sessions.
@@ -327,7 +401,7 @@ export class ChatStorageService {
    * This is the FASTEST path for loading the session list on every page load
    */
   async getSidebarSessions(userId: string, limit: number = 50): Promise<ChatSession[]> {
-    const cacheKey = `sidebar:sessions:${userId}`;
+    const cacheKey = `sidebar:sessions:v2:${userId}`;
 
     // Try Redis cache first (instant return)
     if (this.redis) {
@@ -342,12 +416,19 @@ export class ChatStorageService {
       }
     }
 
-    // Cache miss - fetch lightweight session data (NO messages, just metadata)
+    // Cache miss - fetch lightweight session data (NO messages, just metadata).
+    // Exclude codemode-originated sessions: the v2-bespoke codemode handler
+    // wrote user prompts into this same table with title="Code Session", which
+    // made them appear in the chat sidebar — a real privacy bug since chatmode
+    // and codemode transcripts should be siloed. CCR (task #218) persists
+    // codemode transcripts to the pod's MinIO workspace instead, so new rows
+    // won't show up, but legacy v2 rows need the title filter to stay hidden.
     try {
       const sessions = await this.prisma.chatSession.findMany({
         where: {
           user_id: userId,
           deleted_at: null,
+          NOT: { title: 'Code Session' },
         },
         select: {
           id: true,
@@ -398,7 +479,7 @@ export class ChatStorageService {
   async invalidateSidebarCache(userId: string): Promise<void> {
     if (this.redis) {
       try {
-        await this.redis.del(`sidebar:sessions:${userId}`);
+        await this.redis.del(`sidebar:sessions:v2:${userId}`);
         this.logger.debug({ userId }, 'Sidebar cache invalidated');
       } catch (error) {
         this.logger.debug({ error }, 'Failed to invalidate sidebar cache');
@@ -421,7 +502,7 @@ export class ChatStorageService {
       (options.sortBy === 'updated_at' || !options.sortBy) && 
       (options.sortOrder === 'desc' || !options.sortOrder);
     
-    const cacheKey = `sidebar:sessions:${userId}`;
+    const cacheKey = `sidebar:sessions:v2:${userId}`;
     
     // Try Redis cache first for sidebar queries (instant return)
     if (isDefaultSidebarQuery && this.redis) {
@@ -445,15 +526,14 @@ export class ChatStorageService {
     orderBy[options.sortBy || 'updated_at'] = options.sortOrder || 'desc';
 
     try {
+      // Sev-0 2026-05-08 — buildSessionListWhere hides empty sessions
+      // (message_count=0) older than 5 minutes so old Playwright probe
+      // rows + abandoned new-chat sessions stop polluting the sidebar
+      // forever. Fresh empty sessions still show inside the freshness
+      // window so legit "I just opened a chat" UX is preserved.
+      // Contract pinned at repositories/__tests__/sessionListWhere.test.ts.
       const sessions = await this.prisma.chatSession.findMany({
-        where: {
-          user_id: userId,
-          deleted_at: null,
-          // NOTE: Do NOT use Prisma NOT + JSON path filter here. When the JSON key
-          // doesn't exist, Prisma generates SQL that evaluates to NULL (not false),
-          // causing NOT NULL = NULL which silently excludes ALL rows without that key.
-          // flows-ai sessions are filtered out in application code below instead.
-        },
+        where: buildSessionListWhere(userId),
         orderBy,
         take: options.limit || 50,
         skip: options.offset,
@@ -656,6 +736,11 @@ export class ChatStorageService {
       branchId?: string;
       visualizations?: any[];
       attachments?: any[]; // Accept attachments to pass through
+      // Phase 3 persistence keystone (plan §3): canonical ContentBlock[] in
+      // wire-emit order. Used on assistant messages so reload renders the
+      // chronological interleave instead of falling back to flat
+      // content + tool_calls reconstruction.
+      contentBlocks?: any[];
     } = {}
   ): Promise<ChatMessage> {
     const messageId = nanoid();
@@ -692,8 +777,55 @@ export class ChatStorageService {
           user_id: userId || null,
           parent_id: options.parentId || null,
           branch_id: options.branchId || null,
-        },
+          // Phase 3 (plan §3): persist canonical ContentBlock[] when caller
+          // supplied them (assistant turns from chatLoop finalize). Null
+          // safe — column was added forward-only, existing rows render via
+          // the buildFinalContentBlocks fallback.
+          content_blocks: (options.contentBlocks ?? undefined) as any,
+        } as any,
       });
+
+      // Task #134 fix: persist attachments so they survive reload.
+      // Pre-fix the pipeline passed the base64 through to the LLM in-memory
+      // and never wrote FileAttachment rows; on reload the image thumbnail
+      // vanished and users saw text-only history. We inline the base64 into
+      // FileAttachment.metadata (capped at ~5MB per file — larger ones fall
+      // back to "blob-pending" which a follow-up task will migrate to MinIO).
+      if (Array.isArray(options.attachments) && options.attachments.length > 0) {
+        try {
+          const BASE64_INLINE_CAP = 5 * 1024 * 1024;
+          const rows = options.attachments.map((att: any, idx: number) => {
+            const b64: string | null = typeof att.base64Data === 'string' ? att.base64Data : null;
+            const inlineOk = b64 !== null && b64.length <= BASE64_INLINE_CAP;
+            return {
+              id: (att.id as string) || `att_${messageId}_${idx}`,
+              filename: (att.originalName as string) || `file-${idx}`,
+              original_name: (att.originalName as string) || `file-${idx}`,
+              mime_type: (att.mimeType as string) || 'application/octet-stream',
+              size: typeof att.size === 'number' ? att.size : 0,
+              file_size: typeof att.size === 'number' ? att.size : 0,
+              upload_path: `inline://${messageId}/${idx}`,
+              file_path: `inline://${messageId}/${idx}`,
+              user_id: userId || '',
+              session_id: sessionId,
+              message_id: messageId,
+              upload_status: 'completed',
+              metadata: inlineOk
+                ? { base64Data: b64 }
+                : { base64Data: null, pending: 'blob-storage', size: att.size ?? 0 },
+            };
+          });
+          await (this.prisma as any).fileAttachment.createMany({
+            data: rows,
+            skipDuplicates: true,
+          });
+        } catch (attErr: any) {
+          this.logger.warn(
+            { err: { message: attErr?.message, name: attErr?.name }, messageId },
+            '[ChatStorage] Failed to persist attachments — message saved without them',
+          );
+        }
+      }
 
       // If we have comprehensive metrics, save to chat_metrics table
       if (messageRole === 'assistant' && (options.model || tokenUsage)) {
@@ -751,6 +883,16 @@ export class ChatStorageService {
           // Don't fail the message save if title generation fails
           this.logger.warn({ error, sessionId }, 'Failed to generate title for session');
         }
+      }
+
+      // Bug 3 (2026-05-18): refresh chat_sessions.summary + structured_summary
+      // after assistant writes once the session has enough turns. Heuristic
+      // engine — no LLM call. Non-blocking on failure (the service catches
+      // and warns internally; we still .catch() here for belt-and-braces).
+      if (messageRole === 'assistant') {
+        this.chatSummaryService
+          .maybeRefreshSummary(sessionId)
+          .catch(() => { /* already logged inside the service */ });
       }
 
       // Index significant messages into unified context layer (Phase 16)
@@ -912,12 +1054,15 @@ export class ChatStorageService {
     limit?: number;
     offset?: number;
     cursor?: string;  // Message ID for cursor-based pagination
-    includeAttachments?: boolean;  // Lazy load attachments (default: false for performance)
+    includeAttachments?: boolean;  // Lazy load attachments (default: true after task #134)
   }): Promise<ChatMessage[]> {
     try {
       // Default to 100 messages max per request for performance
       const limit = options?.limit ?? 100;
-      const includeAttachments = options?.includeAttachments ?? false;
+      // Task #134: default includeAttachments=true so chat history preserves
+      // image thumbnails on reload. Was false which left users seeing text-
+      // only history for the image-aware turns they had earlier.
+      const includeAttachments = options?.includeAttachments ?? true;
 
       const messages = await this.prisma.chatMessage.findMany({
         where: {
@@ -960,6 +1105,11 @@ export class ChatStorageService {
         toolCallId: msg.tool_call_id || null,
         tokenUsage: msg.token_usage as any,
         visualizations: (msg.visualizations as any) || [],
+        // Sev-0 #924/#925/#926 — canonical content_blocks chronology. Read
+        // back on session reload so MessageBubble renders byte-identical
+        // DOM to the live stream. Null/undefined falls through to the
+        // legacy reconstruction path for messages persisted before Phase 3.
+        content_blocks: (msg.content_blocks as any) || undefined,
         mcpCalls: (msg.mcp_calls as any) || [],
         // PERFORMANCE: Only map attachments if they were loaded (lazy loading)
         // When not loaded, return empty array - client can fetch via separate API call
@@ -968,9 +1118,12 @@ export class ChatStorageService {
           originalName: att.original_name || att.filename,
           mimeType: att.mime_type,
           size: att.file_size || att.size,
-          // PERFORMANCE: Don't read file synchronously - provide download URL instead
-          base64Data: null,
-          url: att.upload_path ? `/api/files/${att.id}/download` : undefined,
+          // Task #134: rehydrate base64 from metadata when inline-stored.
+          // Falls back to download URL for migrated blob-storage attachments.
+          base64Data: (att.metadata as any)?.base64Data ?? null,
+          url: att.upload_path && !(att.metadata as any)?.base64Data
+            ? `/api/files/${att.id}/download`
+            : undefined,
           metadata: att.metadata as any
         })) : [],
         parentId: msg.parent_id,

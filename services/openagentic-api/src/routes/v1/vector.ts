@@ -66,49 +66,24 @@ interface VectorSearchResponse {
   collection: string;
 }
 
-// Embedding generation (uses the same model as indexing)
+// Embedding generation — uses the same model as indexing.
+//
+// M17 / H7-class fix (2026-05-05): the previous body did a bespoke
+// fetch to EMBEDDING_ENDPOINT with an env-driven `model` plus a hardcoded
+// model literal as fallback, then fell back to OpenAI directly with the
+// same literal. Both paths bypassed admin.model_role_assignments and
+// could pick a model the operator never registered. Now goes through
+// UniversalEmbeddingService — the only authorized embedding caller per
+// docs/rules/no-hardcoded-models.md.
+let _embeddingServiceSingleton: any = null;
 async function generateEmbedding(text: string): Promise<number[]> {
-  const embeddingEndpoint = process.env.EMBEDDING_ENDPOINT || 'http://localhost:8000/api/embeddings';
-  const embeddingApiKey = process.env.EMBEDDING_API_KEY || process.env.OPENAI_API_KEY;
-
+  if (!_embeddingServiceSingleton) {
+    const { UniversalEmbeddingService } = await import('../../services/UniversalEmbeddingService.js');
+    _embeddingServiceSingleton = new UniversalEmbeddingService();
+  }
   try {
-    // Try internal embedding service first
-    const response = await fetch(embeddingEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${embeddingApiKey}`,
-      },
-      body: JSON.stringify({
-        input: text,
-        model: process.env.EMBEDDING_MODEL || 'text-embedding-ada-002',
-      }),
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return data.data?.[0]?.embedding || data.embedding;
-    }
-
-    // Fallback to OpenAI directly
-    const openaiResponse = await fetch('https://api.openai.com/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        input: text,
-        model: 'text-embedding-ada-002',
-      }),
-    });
-
-    if (!openaiResponse.ok) {
-      throw new Error(`Embedding generation failed: ${openaiResponse.status}`);
-    }
-
-    const openaiData = await openaiResponse.json();
-    return openaiData.data[0].embedding;
+    const result = await _embeddingServiceSingleton.generateEmbedding(text);
+    return result.embedding;
   } catch (error: any) {
     logger.error({ error: error.message }, 'Failed to generate embedding');
     throw new Error(`Embedding generation failed: ${error.message}`);
@@ -132,7 +107,7 @@ export const vectorRoutes: FastifyPluginAsync = async (fastify) => {
    * Semantic search using Milvus vector database
    */
   fastify.post<{ Body: VectorSearchBody }>('/search', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
     schema: {
       body: {
         type: 'object',
@@ -342,7 +317,7 @@ export const vectorRoutes: FastifyPluginAsync = async (fastify) => {
    * List available collections
    */
   fastify.get('/collections', {
-    preHandler: authMiddleware,
+    onRequest: authMiddleware,
   }, async (request, reply) => {
     try {
       const client = getMilvusClient();

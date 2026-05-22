@@ -15,6 +15,7 @@ import {
 } from '@/shared/icons';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiRequest } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 
 type ActivityState = 'idle' | 'thinking' | 'writing' | 'editing' | 'executing' | 'artifact' | 'error';
 
@@ -66,8 +67,8 @@ const ACTIVITY_COLORS: Record<ActivityState, string> = {
   thinking: 'var(--color-warning)',
   writing: 'var(--color-success)',
   editing: 'var(--color-primary)',
-  executing: '#f97316',
-  artifact: '#a855f7',
+  executing: 'var(--ap-warn)',
+  artifact: 'var(--ap-accent)',
   error: 'var(--color-error)',
 };
 
@@ -218,16 +219,12 @@ export const CodeModeUsersView: React.FC<CodeModeUsersViewProps> = ({ theme }) =
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div>
-        <h2 className="text-base font-bold mb-1 text-text-primary flex items-center gap-2">
-          <Users size={20} />
-          CodeMode Users
-        </h2>
-        <p className="text-sm text-text-secondary">
-          Monitor active sessions and manage user access
-        </p>
-      </div>
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Code Mode', 'Users']}
+        title="Code Mode · Users & Sessions"
+        explainer="Monitor active sessions and manage user access for code mode."
+      />
 
       {/* Messages */}
       {success && <div className="p-3 rounded-lg bg-success-500/10 border border-success/30 ap-text-success text-sm">{success}</div>}

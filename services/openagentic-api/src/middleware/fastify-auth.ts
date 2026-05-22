@@ -22,13 +22,15 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
   const authHeader = request.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return reply.status(401).send({ error: 'No authorization token provided' });
+    await reply.status(401).send({ error: 'No authorization token provided' });
+    return;
   }
-  
+
   const token = authHeader.split(' ')[1];
-  
+
   if (!token) {
-    return reply.status(401).send({ error: 'No authorization token provided' });
+    await reply.status(401).send({ error: 'No authorization token provided' });
+    return;
   }
   
   // Validate Azure AD JWT token
@@ -42,10 +44,11 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
     if (allAuthorizedGroups.length > 0) {
       const userGroupsList = payload.groups || [];
       if (!isUserAuthorized(userGroupsList, allAuthorizedGroups)) {
-        return reply.status(403).send({ 
+        await reply.status(403).send({
           error: 'Access denied',
           message: `You must be a member of one of these groups: ${allAuthorizedGroups.join(', ')}`
         });
+        return;
       }
     }
     
@@ -68,7 +71,8 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
     return;
   } catch (error) {
     console.error('Authentication error:', error);
-    return reply.status(401).send({ error: 'Invalid or expired token' });
+    await reply.status(401).send({ error: 'Invalid or expired token' });
+    return;
   }
 }
 

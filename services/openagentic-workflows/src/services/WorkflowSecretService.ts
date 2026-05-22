@@ -19,6 +19,8 @@
 import crypto from 'node:crypto';
 import { prisma } from '../utils/prisma.js';
 import { loggers } from '../utils/logger.js';
+import { checkSecretAcl } from './secretAcl.js';
+import type { AclDecisionContext, AclSecretRow } from './secretAcl.js';
 
 const logger = loggers.services;
 
@@ -160,6 +162,22 @@ export interface SecretListFilter {
 export interface ResolveContext {
   workflowId?: string;
   groupId?: string;
+  /**
+   * ACL context — used by checkSecretAcl() to enforce allowed_node_types /
+   * allowed_users / allowed_groups at resolution time (S0-9 / B5).
+   *
+   * All three fields are optional for backward compatibility:
+   *   - If nodeType is absent, the node-type check is skipped.
+   *   - If userId is absent, the user check is skipped.
+   *   - If userGroups is absent, the group check is skipped.
+   *
+   * This means the pre-load pass (engine startup, no current node) can
+   * call resolveSecretValue() with only workflowId and the ACL gate is
+   * bypassed — the real gate fires per-node during interpolation.
+   */
+  nodeType?: string;
+  userId?: string;
+  userGroups?: readonly string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -326,7 +344,10 @@ export class WorkflowSecretService {
       const secret = await prisma.workflowSecret.findFirst({
         where: { name, scope: 'workflow', workflow_id: context.workflowId },
       });
-      if (secret) return this.decryptSecret(secret);
+      if (secret) {
+        if (!this.checkAcl(secret, name, context)) return null;
+        return this.decryptSecret(secret);
+      }
     }
 
     // 2. Group-scoped
@@ -334,16 +355,82 @@ export class WorkflowSecretService {
       const secret = await prisma.workflowSecret.findFirst({
         where: { name, scope: 'group', group_id: context.groupId },
       });
-      if (secret) return this.decryptSecret(secret);
+      if (secret) {
+        if (!this.checkAcl(secret, name, context)) return null;
+        return this.decryptSecret(secret);
+      }
     }
 
     // 3. Global
     const globalSecret = await prisma.workflowSecret.findFirst({
       where: { name, scope: 'global' },
     });
-    if (globalSecret) return this.decryptSecret(globalSecret);
+    if (globalSecret) {
+      if (!this.checkAcl(globalSecret, name, context)) return null;
+      return this.decryptSecret(globalSecret);
+    }
 
     return null;
+  }
+
+  /**
+   * Run the ACL decision for a resolved secret row.
+   *
+   * Returns true if the caller is allowed (or if no ACL context was
+   * provided — legacy pre-load path).  Returns false and emits a warn
+   * log when access is denied.
+   *
+   * Checks are skipped per-dimension when the corresponding context field
+   * is absent (undefined):
+   *   - nodeType absent  → skip node_type check
+   *   - userId absent    → skip user check
+   *   - userGroups absent → skip group check
+   *
+   * S0-9 / B5
+   */
+  private checkAcl(
+    secret: { id: string; name: string; allowed_node_types: string[]; allowed_users: string[]; allowed_groups: string[] },
+    secretName: string,
+    context: ResolveContext,
+  ): boolean {
+    const { nodeType, userId, userGroups } = context;
+
+    // If ALL three context fields are absent, skip the ACL check entirely
+    // (backward-compatible pre-load path).
+    if (nodeType === undefined && userId === undefined && userGroups === undefined) {
+      return true;
+    }
+
+    // Build a partial AclSecretRow, masking lists whose corresponding
+    // context field is absent so checkSecretAcl skips that dimension.
+    const aclRow: AclSecretRow = {
+      allowed_node_types: nodeType !== undefined ? secret.allowed_node_types : null,
+      allowed_users: userId !== undefined ? secret.allowed_users : null,
+      allowed_groups: userGroups !== undefined ? secret.allowed_groups : null,
+    };
+
+    const aclCtx: AclDecisionContext = {
+      nodeType: nodeType ?? '',
+      userId: userId ?? '',
+      userGroups: userGroups ?? [],
+    };
+
+    const decision = checkSecretAcl(aclRow, aclCtx);
+    if (!decision.allowed) {
+      logger.warn(
+        {
+          secretName,
+          secretId: secret.id,
+          reason: decision.reason,
+          nodeType: nodeType ?? null,
+          userId: userId ?? null,
+          details: decision.details,
+        },
+        '[WorkflowSecrets] Secret ACL denied — returning null',
+      );
+      return false;
+    }
+    return true;
   }
 
   // -----------------------------------------------------------------------

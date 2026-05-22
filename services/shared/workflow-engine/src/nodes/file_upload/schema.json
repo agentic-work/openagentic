@@ -1,0 +1,82 @@
+{
+  "type": "file_upload",
+  "category": "data",
+  "label": "File Upload (Embed)",
+  "description": "Upload content for chunking + embedding into a Milvus collection via the platform's /api/files/embed endpoint.",
+  "icon": "upload",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "collection": "string",
+          "fileName": "string",
+          "chunkCount": "number",
+          "status": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "collection",
+      "label": "Collection",
+      "type": "string",
+      "required": false,
+      "default": "default",
+      "supportsTemplating": true
+    },
+    {
+      "name": "content",
+      "label": "Content",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Raw content to embed. If unset, falls back to upstream input (input.content / input.text / raw string)."
+    },
+    {
+      "name": "fileName",
+      "label": "File name",
+      "type": "string",
+      "required": false,
+      "default": "workflow-upload",
+      "supportsTemplating": true
+    },
+    {
+      "name": "chunkSize",
+      "label": "Chunk size",
+      "type": "number",
+      "required": false,
+      "default": 512,
+      "min": 0,
+      "max": 8192
+    },
+    {
+      "name": "chunkOverlap",
+      "label": "Chunk overlap",
+      "type": "number",
+      "required": false,
+      "default": 50,
+      "min": 0,
+      "max": 1024
+    },
+    {
+      "name": "metadata",
+      "label": "Metadata",
+      "type": "json",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Free-form metadata attached to every chunk. JSON string or object."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Embed file content into a Milvus collection.",
+    "whenToUse": "When the workflow has document content (loaded, generated, or transformed) that should be searchable later via RAG.",
+    "examplePrompt": "embed the cleaned doc text into the 'support-docs' collection with chunkSize=1024",
+    "promptHints": "Reference output via {{steps.<id>.result.chunkCount}}. Falls back to upstream input.content if no content set on the node."
+  },
+  "outputAssertions": []
+}

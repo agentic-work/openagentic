@@ -16,7 +16,11 @@
 
 import { prisma } from '../utils/prisma.js';
 import { loggers } from '../utils/logger.js';
-import { executeWorkflow } from './WorkflowExecutionEngine.js';
+// Phase B (#15): scheduled workflow runs go through the dedicated
+// workflows-svc pod via this proxy instead of constructing the
+// in-process api engine. Drop-in same signature so the call site below
+// is unchanged.
+import { executeViaWorkflowsService as executeWorkflow } from './executeViaWorkflowsService.js';
 import { WorkflowCompiler } from './WorkflowCompiler.js';
 
 const logger = loggers.services;
@@ -417,14 +421,21 @@ export class WorkflowScheduler {
       cronExpression: schedule.cron_expression,
     }, '[WorkflowScheduler] Triggering scheduled workflow execution');
 
-    // Execute workflow (fire-and-forget)
+    // Execute workflow (fire-and-forget).
+    // Task 1.3 (V3 Enterprise Chatmode S5): no JWT here (scheduler runs out
+    // of band), so tenantId comes from the workflow row's tenant_id. The
+    // wrapper fail-CLOSES if the column is null/empty — surfaces as a
+    // schedule-level error rather than a silent cross-tenant write.
+    const tenantId = (workflow as any).tenant_id || null;
     executeWorkflow(
       workflow.id,
       execution.id,
       { nodes: definition.nodes, edges: definition.edges || [] },
       inputData,
       workflow.created_by,
-      undefined // No auth token for scheduled executions
+      undefined, // No auth token for scheduled executions
+      undefined, // No event sink — scheduled executions don't stream
+      { tenantId }
     ).then(async (result) => {
       // Update schedule stats
       await prisma.workflowSchedule.update({

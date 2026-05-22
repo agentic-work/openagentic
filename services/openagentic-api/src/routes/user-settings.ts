@@ -97,7 +97,7 @@ export const userSettingsRoutes = async (fastify: FastifyInstance) => {
 
   // Get user settings
   fastify.get('/api/user/settings', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: AuthenticatedRequest, reply: FastifyReply) => {
     
     try {
@@ -122,7 +122,7 @@ export const userSettingsRoutes = async (fastify: FastifyInstance) => {
     schema: {
       body: UserSettingsUpdateSchema
     },
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: AuthenticatedRequest & { Body: UserSettingsUpdate }, reply: FastifyReply) => {
     
     try {
@@ -155,7 +155,7 @@ export const userSettingsRoutes = async (fastify: FastifyInstance) => {
     schema: {
       body: ThemeUpdateSchema
     },
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: AuthenticatedRequest & { Body: { theme: Theme } }, reply: FastifyReply) => {
     
     try {
@@ -185,7 +185,7 @@ export const userSettingsRoutes = async (fastify: FastifyInstance) => {
 
   // Reset settings to defaults
   fastify.post('/api/user/settings/reset', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: AuthenticatedRequest, reply: FastifyReply) => {
     
     try {
@@ -218,7 +218,7 @@ export const userSettingsRoutes = async (fastify: FastifyInstance) => {
 
   // Export settings
   fastify.get('/api/user/settings/export', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: AuthenticatedRequest, reply: FastifyReply) => {
     
     try {
@@ -243,7 +243,7 @@ export const userSettingsRoutes = async (fastify: FastifyInstance) => {
     schema: {
       body: UserSettingsUpdateSchema
     },
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: AuthenticatedRequest & { Body: UserSettingsUpdate }, reply: FastifyReply) => {
     
     try {

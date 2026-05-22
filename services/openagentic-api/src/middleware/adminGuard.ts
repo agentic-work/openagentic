@@ -21,7 +21,7 @@ export async function adminGuard(
     // Extract token from header
     const token = extractBearerToken(request.headers.authorization);
     if (!token) {
-      reply.code(401).send({
+      await reply.code(401).send({
         error: 'Unauthorized',
         message: 'No authentication token provided'
       });
@@ -36,7 +36,7 @@ export async function adminGuard(
 
     if (!result.isValid) {
       const statusCode = result.error?.includes('Administrator') ? 403 : 401;
-      reply.code(statusCode).send({
+      await reply.code(statusCode).send({
         error: statusCode === 403 ? 'Forbidden' : 'Unauthorized',
         message: result.error || 'Invalid authentication token'
       });
@@ -48,7 +48,7 @@ export async function adminGuard(
     return;
   } catch (error) {
     request.log.error({ error }, 'Admin guard error');
-    reply.code(500).send({
+    await reply.code(500).send({
       error: 'Internal Server Error',
       message: 'Failed to verify admin access'
     });

@@ -12,6 +12,7 @@ import SlideInPanel, {
   SlideInPanelFooter,
   SlideInPanelField,
 } from '@/shared/components/SlideInPanel';
+import { PageHeader } from '../../primitives-v2';
 
 interface WorkflowSecret {
   id: string;
@@ -223,19 +224,14 @@ const WorkflowCredentialsView: React.FC<WorkflowCredentialsViewProps> = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold mb-2 text-text-primary">Workflow Credentials</h2>
-          <p className="text-text-secondary">
-            Manage encrypted secrets for workflow nodes (PagerDuty, ServiceNow, etc.)
-          </p>
-        </div>
-        <button onClick={handleCreate} className="ap-btn-primary px-4 py-2 rounded-lg flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          Add Secret
-        </button>
-      </div>
+      <PageHeader
+        crumbs={['Admin', 'Flows', 'Credentials']}
+        title="Workflow Credentials"
+        explainer="Manage encrypted secrets for workflow nodes (PagerDuty, ServiceNow, etc.)."
+        actions={[
+          { label: 'Add Secret', primary: true, onClick: handleCreate },
+        ]}
+      />
 
       {/* Messages */}
       {error && (

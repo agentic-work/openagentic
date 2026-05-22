@@ -19,6 +19,9 @@
 import crypto from 'node:crypto';
 import { prisma } from '../utils/prisma.js';
 import { loggers } from '../utils/logger.js';
+import { checkSecretAcl } from './secretAcl.js';
+import type { AclDecisionContext, AclSecretRow } from './secretAcl.js';
+import { auditLogService } from './AuditLogService.js';
 
 const logger = loggers.services;
 
@@ -160,6 +163,18 @@ export interface SecretListFilter {
 export interface ResolveContext {
   workflowId?: string;
   groupId?: string;
+  /**
+   * ACL context — used by checkSecretAcl() to enforce allowed_node_types /
+   * allowed_users / allowed_groups at resolution time (S0-9 / B5).
+   *
+   * All three fields are optional for backward compatibility:
+   *   - If nodeType is absent, the node-type check is skipped.
+   *   - If userId is absent, the user check is skipped.
+   *   - If userGroups is absent, the group check is skipped.
+   */
+  nodeType?: string;
+  userId?: string;
+  userGroups?: readonly string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -326,7 +341,31 @@ export class WorkflowSecretService {
       const secret = await prisma.workflowSecret.findFirst({
         where: { name, scope: 'workflow', workflow_id: context.workflowId },
       });
-      if (secret) return this.decryptSecret(secret);
+      if (secret) {
+        if (!this.checkAcl(secret, name, context)) {
+          auditLogService.write({
+            action: 'secret.acl_denied',
+            target_type: 'secret',
+            target_id: secret.id,
+            outcome: 'denied',
+            actor: { userId: context.userId },
+            metadata: { secretName: name, scope: 'workflow', nodeType: context.nodeType },
+          }).catch(() => {/* audit failures never surface */});
+          return null;
+        }
+        const value = await this.decryptSecret(secret);
+        if (value !== null) {
+          auditLogService.write({
+            action: 'secret.resolve',
+            target_type: 'secret',
+            target_id: secret.id,
+            outcome: 'success',
+            actor: { userId: context.userId },
+            metadata: { secretName: name, scope: 'workflow', nodeType: context.nodeType },
+          }).catch(() => {/* audit failures never surface */});
+        }
+        return value;
+      }
     }
 
     // 2. Group-scoped
@@ -334,16 +373,105 @@ export class WorkflowSecretService {
       const secret = await prisma.workflowSecret.findFirst({
         where: { name, scope: 'group', group_id: context.groupId },
       });
-      if (secret) return this.decryptSecret(secret);
+      if (secret) {
+        if (!this.checkAcl(secret, name, context)) {
+          auditLogService.write({
+            action: 'secret.acl_denied',
+            target_type: 'secret',
+            target_id: secret.id,
+            outcome: 'denied',
+            actor: { userId: context.userId },
+            metadata: { secretName: name, scope: 'group', nodeType: context.nodeType },
+          }).catch(() => {/* audit failures never surface */});
+          return null;
+        }
+        const value = await this.decryptSecret(secret);
+        if (value !== null) {
+          auditLogService.write({
+            action: 'secret.resolve',
+            target_type: 'secret',
+            target_id: secret.id,
+            outcome: 'success',
+            actor: { userId: context.userId },
+            metadata: { secretName: name, scope: 'group', nodeType: context.nodeType },
+          }).catch(() => {/* audit failures never surface */});
+        }
+        return value;
+      }
     }
 
     // 3. Global
     const globalSecret = await prisma.workflowSecret.findFirst({
       where: { name, scope: 'global' },
     });
-    if (globalSecret) return this.decryptSecret(globalSecret);
+    if (globalSecret) {
+      if (!this.checkAcl(globalSecret, name, context)) {
+        auditLogService.write({
+          action: 'secret.acl_denied',
+          target_type: 'secret',
+          target_id: globalSecret.id,
+          outcome: 'denied',
+          actor: { userId: context.userId },
+          metadata: { secretName: name, scope: 'global', nodeType: context.nodeType },
+        }).catch(() => {/* audit failures never surface */});
+        return null;
+      }
+      const value = await this.decryptSecret(globalSecret);
+      if (value !== null) {
+        auditLogService.write({
+          action: 'secret.resolve',
+          target_type: 'secret',
+          target_id: globalSecret.id,
+          outcome: 'success',
+          actor: { userId: context.userId },
+          metadata: { secretName: name, scope: 'global', nodeType: context.nodeType },
+        }).catch(() => {/* audit failures never surface */});
+      }
+      return value;
+    }
 
     return null;
+  }
+
+  /**
+   * Run the ACL decision for a resolved secret row.
+   * Mirrors the same method in the workflows-side WorkflowSecretService.
+   * S0-9 / B5 — DRIFT-TODO: keep in sync with openagentic-workflows copy.
+   */
+  private checkAcl(
+    secret: { id: string; name: string; allowed_node_types: string[]; allowed_users: string[]; allowed_groups: string[] },
+    secretName: string,
+    context: ResolveContext,
+  ): boolean {
+    const { nodeType, userId, userGroups } = context;
+    if (nodeType === undefined && userId === undefined && userGroups === undefined) {
+      return true;
+    }
+    const aclRow: AclSecretRow = {
+      allowed_node_types: nodeType !== undefined ? secret.allowed_node_types : null,
+      allowed_users: userId !== undefined ? secret.allowed_users : null,
+      allowed_groups: userGroups !== undefined ? secret.allowed_groups : null,
+    };
+    const aclCtx: AclDecisionContext = {
+      nodeType: nodeType ?? '',
+      userId: userId ?? '',
+      userGroups: userGroups ?? [],
+    };
+    const decision = checkSecretAcl(aclRow, aclCtx);
+    if (decision.allowed) return true;
+    const denyDecision = decision as { allowed: false; reason: string; details: string };
+    logger.warn(
+      {
+        secretName,
+        secretId: secret.id,
+        reason: denyDecision.reason,
+        nodeType: nodeType ?? null,
+        userId: userId ?? null,
+        details: denyDecision.details,
+      },
+      '[WorkflowSecrets] Secret ACL denied — returning null',
+    );
+    return false;
   }
 
   // -----------------------------------------------------------------------

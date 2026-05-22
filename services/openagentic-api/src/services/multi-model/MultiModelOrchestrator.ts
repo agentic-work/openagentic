@@ -60,23 +60,14 @@ export class MultiModelOrchestrator {
   }
 
   /**
-   * Get admin-configured role assignments based on slider position
-   * All models are configured via environment variables with tier suffixes
+   * Get admin-configured role assignments.
+   * 2026-04-19 — slider ripped (task #144). Tier is fixed at PREMIUM so
+   * the multi-model path always uses the best models admin has configured;
+   * UserModelBudgetService enforces per-user spend caps at dispatch time.
    */
-  async getAdminRoleAssignments(sliderPosition: number): Promise<{ roles: MultiModelConfig['roles'] }> {
-    // This would query ModelRoleAssignment table filtered by slider position
-    // For now, return roles from environment variables based on tier
+  async getAdminRoleAssignments(): Promise<{ roles: MultiModelConfig['roles'] }> {
     const baseConfig = getDefaultMultiModelConfig();
-
-    // Determine tier based on slider position
-    let tier: 'ECONOMY' | 'BALANCED' | 'PREMIUM';
-    if (sliderPosition < 75) {
-      tier = 'ECONOMY';
-    } else if (sliderPosition < 90) {
-      tier = 'BALANCED';
-    } else {
-      tier = 'PREMIUM';
-    }
+    const tier = 'PREMIUM' as const;
 
     // Override models from tier-specific env vars if set
     const reasoningModel = process.env[`MULTI_MODEL_${tier}_REASONING`];
@@ -93,26 +84,25 @@ export class MultiModelOrchestrator {
       baseConfig.roles[ModelRole.SYNTHESIS].primaryModel = synthesisModel;
     }
 
-    // Premium tier: enable extended thinking with higher budget
-    if (tier === 'PREMIUM') {
-      baseConfig.roles[ModelRole.REASONING].options = {
-        ...baseConfig.roles[ModelRole.REASONING].options,
-        enableThinking: true
-      };
-      baseConfig.roles[ModelRole.REASONING].thinkingBudget =
-        parseInt(process.env.MULTI_MODEL_PREMIUM_THINKING_BUDGET || '16000', 10);
-    }
+    // Always-on extended thinking + generous budget for multi-model path
+    baseConfig.roles[ModelRole.REASONING].options = {
+      ...baseConfig.roles[ModelRole.REASONING].options,
+      enableThinking: true
+    };
+    baseConfig.roles[ModelRole.REASONING].thinkingBudget =
+      parseInt(process.env.MULTI_MODEL_PREMIUM_THINKING_BUDGET || '16000', 10);
 
     return { roles: baseConfig.roles };
   }
 
   /**
-   * Analyze request to determine if multi-model is beneficial
+   * Analyze request to determine if multi-model is beneficial.
+   * 2026-04-19 — slider ripped (task #144); admin enables multi-model
+   * explicitly, and the orchestrator falls back to complexity analysis.
    */
   async analyzeRequest(
     messages: unknown[],
     availableTools: unknown[],
-    sliderConfig?: { position: number }
   ): Promise<MultiModelRoutingDecision> {
     const lastMessage = messages[messages.length - 1] as { content?: string } | undefined;
     const query = typeof lastMessage?.content === 'string' ? lastMessage.content : '';
@@ -157,11 +147,6 @@ export class MultiModelOrchestrator {
     } else if (complexity === 'expert') {
       useMultiModel = true;
       reason = 'Expert-level complexity detected';
-    } else if (sliderConfig && sliderConfig.position >= config.sliderOverrides.enableAbovePosition) {
-      if (complexity === 'complex') {
-        useMultiModel = true;
-        reason = 'Slider position and complexity warrant multi-model';
-      }
     }
 
     if (!useMultiModel && complexity === 'simple') {
@@ -227,8 +212,8 @@ export class MultiModelOrchestrator {
     const rolesExecuted: ModelRole[] = [];
     let finalResponse = '';
 
-    // Determine initial role based on config
-    const routingDecision = await this.analyzeRequest(messages, tools || [], request.sliderConfig);
+    // Determine initial role based on config (slider removed 2026-04-19)
+    const routingDecision = await this.analyzeRequest(messages, tools || []);
     const executionPlan = routingDecision.executionPlan || {
       roles: [ModelRole.SYNTHESIS],
       estimatedCost: 0,

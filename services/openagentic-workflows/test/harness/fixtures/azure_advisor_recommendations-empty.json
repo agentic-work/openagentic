@@ -1,0 +1,14 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_azure.azure_advisor_recommendations when the subscription has zero Cost recommendations (either no findings, or subscription is small/young enough that Advisor hasn't generated any). success:true with count:0 and an empty recommendations array. Matches oap-azure-mcp src/server.py azure_advisor_recommendations success path with an empty AdvisorManagementClient.recommendations.list() iterator.",
+  "result": {
+    "result": {
+      "success": true,
+      "subscription_id": "99999999-8888-7777-6666-555555555555",
+      "count": 0,
+      "filters": { "category": "Cost", "impact": null },
+      "summary": { "by_category": {}, "by_impact": {} },
+      "recommendations": [],
+      "executed_as": { "upn": "mcp-tester@phatoldsungmail.onmicrosoft.com" }
+    }
+  }
+}

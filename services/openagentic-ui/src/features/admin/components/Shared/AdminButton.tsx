@@ -17,7 +17,7 @@ export interface AdminButtonProps {
 const variantStyles: Record<string, React.CSSProperties> = {
   primary: {
     backgroundColor: 'var(--color-primary)',
-    color: '#FFFFFF',
+    color: 'var(--ap-fg-0)',
     border: 'none',
   },
   secondary: {
@@ -27,7 +27,7 @@ const variantStyles: Record<string, React.CSSProperties> = {
   },
   danger: {
     backgroundColor: 'var(--color-error)',
-    color: '#FFFFFF',
+    color: 'var(--ap-fg-0)',
     border: 'none',
   },
   ghost: {
@@ -52,14 +52,22 @@ export const AdminButton: React.FC<AdminButtonProps> = ({
   const isSm = size === 'sm';
   const isDisabled = disabled || loading;
 
+  // M3 Expressive (task #160): primary/danger get rounded-pill, secondary/
+  // ghost get rounded-btn (12px). All variants pick up the emphasized
+  // transition + press-scale feedback.
+  const shapeCls =
+    variant === 'primary' || variant === 'danger' ? 'rounded-pill' : 'rounded-btn';
+
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={isDisabled}
       title={title}
-      className={`inline-flex items-center gap-1.5 font-medium rounded-lg transition-all
-        ${isSm ? 'px-2.5 py-1 text-xs' : 'px-4 py-1.5 text-xs'}
+      className={`inline-flex items-center gap-1.5 font-medium ${shapeCls}
+        transition-[background,border,color,box-shadow,transform] duration-200 ease-emphasized active:scale-[0.98]
+        focus-visible:outline-none focus-visible:shadow-focus-ring
+        ${isSm ? 'px-3 py-1 text-xs' : 'px-4 py-1.5 text-xs'}
         ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         ${variant === 'secondary' ? 'hover:bg-[var(--color-surfaceHover)]' : ''}
         ${variant === 'ghost' ? 'hover:bg-[var(--color-surfaceHover)]' : ''}

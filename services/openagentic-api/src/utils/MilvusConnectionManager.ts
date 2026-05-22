@@ -148,3 +148,31 @@ export class MilvusConnectionManager {
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Singleton accessor (Phase 4 — replaces (global as any).milvusConnectionManager)
+// ---------------------------------------------------------------------------
+
+let _milvusConnectionManagerInstance: MilvusConnectionManager | null = null;
+
+export function setMilvusConnectionManager(mgr: MilvusConnectionManager): void {
+  _milvusConnectionManagerInstance = mgr;
+}
+
+export function getMilvusConnectionManager(): MilvusConnectionManager | null {
+  return _milvusConnectionManagerInstance;
+}
+
+// ---------------------------------------------------------------------------
+// MilvusClient singleton (Phase 4 — replaces (global as any).milvusClient)
+// ---------------------------------------------------------------------------
+
+let _milvusClientInstance: MilvusClient | null = null;
+
+export function setMilvusClient(client: MilvusClient): void {
+  _milvusClientInstance = client;
+}
+
+export function getMilvusClient(): MilvusClient | null {
+  return _milvusClientInstance;
+}

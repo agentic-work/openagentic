@@ -3,6 +3,40 @@ import { prisma } from '../utils/prisma.js';
 
 const logger = loggers.services;
 
+const EMBEDDING_NAME_PATTERNS = [
+  /embed/i,         // any name with 'embed'
+  /^nomic-/i,
+  /^mxbai-/i,
+  /^bge[-:]/i,
+  /^bge$/i,
+  /^e5[-:]/i,
+  /^gte[-:]/i,
+  /arctic-embed/i,
+];
+
+export function isEmbeddingModelName(name: string): boolean {
+  if (!name) return false;
+  return EMBEDDING_NAME_PATTERNS.some(re => re.test(name));
+}
+
+/**
+ * #591 — Pick a chat-capable fallback when the previous chatModel was
+ * removed from the host. Returns the first non-embedding model in the
+ * input list, or `null` if the host has no chat-capable models. The
+ * caller MUST treat `null` as "clear chatModel + defaultModel" — do
+ * NOT silently re-stamp the embedding model as chat (the bug that
+ * surfaced as "hal" provider stuck on `nomic-embed-text:latest" after
+ * sync). Uses `isEmbeddingModelName` (regex set), not the weaker
+ * `.includes('embed')` substring — bge-m3 / e5-large-v2 / gte-large /
+ * arctic-embed all need to be excluded.
+ */
+export function selectChatModelFallback(hostModelNames: string[]): string | null {
+  for (const name of hostModelNames) {
+    if (!isEmbeddingModelName(name)) return name;
+  }
+  return null;
+}
+
 interface OllamaTagModel {
   name: string;
   size: number;
@@ -110,7 +144,10 @@ export class OllamaModelSyncService {
   private async syncSingleProvider(provider: any): Promise<SyncResult> {
     const providerConfig = provider.provider_config as any || {};
     const modelConfig = provider.model_config as any || {};
-    const baseUrl = providerConfig.baseUrl || providerConfig.host || providerConfig.endpoint || 'http://localhost:11434';
+    const authConfig = provider.auth_config as any || {};
+    const baseUrl = providerConfig.baseUrl || providerConfig.host || providerConfig.endpoint
+                  || authConfig.baseUrl || authConfig.endpoint
+                  || 'http://localhost:11434';
 
     const result: SyncResult = {
       providerId: provider.id,
@@ -153,8 +190,7 @@ export class OllamaModelSyncService {
       for (const hostModel of hostModels) {
         if (!knownModelNames.has(hostModel.name)) {
           // Skip embedding models — they shouldn't appear in chat selector
-          const lower = hostModel.name.toLowerCase();
-          if (lower.includes('embed') || lower.includes('nomic')) continue;
+          if (isEmbeddingModelName(hostModel.name)) continue;
 
           newModels.push({
             id: hostModel.name,
@@ -186,30 +222,77 @@ export class OllamaModelSyncService {
         result.modelsRemoved.push(modelConfig.chatModel);
       }
 
+      // Sanitize chatModel if it's actually an embedding model.
+      // (User may have hand-set an embedding tag as chatModel via the wizard
+      // before sanitizer landed, or before isEmbeddingModelName was extended.)
+      if (modelConfig.chatModel && isEmbeddingModelName(modelConfig.chatModel)) {
+        chatModelRemoved = true;
+        result.modelsRemoved.push(`${modelConfig.chatModel} (sanitized: was embedding model)`);
+      }
+
       // Only update DB if there are changes
       if (newModels.length > 0 || result.modelsRemoved.length > 0) {
-        const updatedModels = [...modelsToKeep, ...newModels];
-
-        // Build updated configs
+        // Legacy models[] write removed — Registry is SoT (admin.model_role_assignments).
+        // The Registry upsert further down handles enable/disable semantics.
         const updatedProviderConfig = {
           ...providerConfig,
-          models: updatedModels,
           lastSync: new Date().toISOString(),
-          hostModels: hostModelNames, // Full list for reference
+          hostModels: hostModelNames, // Full host catalog for reference / debugging
         };
 
         const updatedModelConfig = { ...modelConfig };
 
-        // If chatModel was removed, switch to first available model on host
-        if (chatModelRemoved && hostModelNames.length > 0) {
-          const fallback = hostModelNames.find(m => !m.toLowerCase().includes('embed')) || hostModelNames[0];
-          updatedModelConfig.chatModel = fallback;
-          updatedModelConfig.defaultModel = fallback;
-          logger.warn({
-            provider: provider.name,
-            removedModel: modelConfig.chatModel,
-            newDefault: fallback,
-          }, '[OllamaSync] Chat model removed from host, switched to fallback');
+        // If chatModel was removed, switch to first chat-capable model on
+        // the host. #591 — `selectChatModelFallback` returns null on
+        // embed-only hosts (e.g. nomic-only Ollama instances dedicated to
+        // embedding). In that case we MUST clear chatModel + defaultModel
+        // rather than re-stamp the embedding model as a chat default.
+        if (chatModelRemoved) {
+          const fallback = selectChatModelFallback(hostModelNames);
+          if (fallback) {
+            updatedModelConfig.chatModel = fallback;
+            updatedModelConfig.defaultModel = fallback;
+            logger.warn({
+              provider: provider.name,
+              removedModel: modelConfig.chatModel,
+              newDefault: fallback,
+            }, '[OllamaSync] Chat model removed from host, switched to fallback');
+          } else {
+            // Embed-only host: drop the chat slots entirely so downstream
+            // routers/UIs don't see a stale (or worse, embedding-as-chat)
+            // selection. Smart Router will skip this provider for chat.
+            delete (updatedModelConfig as any).chatModel;
+            delete (updatedModelConfig as any).defaultModel;
+            logger.warn({
+              provider: provider.name,
+              removedModel: modelConfig.chatModel,
+              hostModels: hostModelNames,
+            }, '[OllamaSync] Embed-only host — cleared chatModel + defaultModel (#591)');
+          }
+        }
+
+        // Scrub host-removed models from every model_config list so they
+        // don't leak as phantom options in the UI model picker or Smart
+        // Router. The DELETE admin endpoint already does this for single
+        // admin-initiated removes; this path handles the case where a user
+        // pulls a model directly from Ollama (`ollama rm X`) and the next
+        // sync needs to clean up. Bug surfaced by gemma4 lingering in
+        // additionalModels after the tag was removed from the host.
+        const listFields = ['additionalModels', 'disabledModels'] as const;
+        for (const f of listFields) {
+          if (Array.isArray((updatedModelConfig as any)[f])) {
+            (updatedModelConfig as any)[f] = (updatedModelConfig as any)[f].filter(
+              (m: string) => hostModelSet.has(m),
+            );
+          }
+        }
+        // Same scrub for scalar role-slot fields that can pin a removed model.
+        const roleFields = ['toolModel', 'visionModel', 'embeddingModel', 'imageModel', 'compactionModel'] as const;
+        for (const f of roleFields) {
+          const cur = (updatedModelConfig as any)[f];
+          if (typeof cur === 'string' && cur && !hostModelSet.has(cur)) {
+            delete (updatedModelConfig as any)[f];
+          }
         }
 
         // Update the provider record
@@ -227,7 +310,7 @@ export class OllamaModelSyncService {
           host: baseUrl,
           added: result.modelsAdded,
           removed: result.modelsRemoved,
-          total: updatedModels.length,
+          total: hostModelNames.length,
         }, '[OllamaSync] Provider synced');
 
         // Invalidate all caches so new/removed models are instantly available for routing
@@ -235,6 +318,78 @@ export class OllamaModelSyncService {
           const { invalidateAllModelCaches } = await import('./llm-providers/ProviderManager.js');
           await invalidateAllModelCaches(logger);
         } catch { /* non-fatal */ }
+      }
+
+      // Registry SoT sync (Ollama): mirror the host's deployed model list
+      // into admin.model_role_assignments so the Smart Router considers
+      // them. Upsert covers both adds and updates idempotently. Removals
+      // are handled by disabling rows whose `model` is no longer on the host.
+      try {
+        const { upsertDiscoveredModels } = await import('./model-routing/RegistryUpsertService.js');
+        const discoveredForRegistry = hostModels
+          .filter(m => !isEmbeddingModelName(m.name))
+          .map(m => ({
+            id: m.name,
+            name: m.name,
+            provider: 'ollama',
+            description: `Deployed on ${baseUrl}`,
+            family: m.details?.family,
+            capabilities: { chat: true, tools: true, streaming: true },
+          } as any));
+
+        if (discoveredForRegistry.length > 0) {
+          // Resolve a valid createdBy — provider.created_by may be null for
+          // helm-bootstrapped providers. Fall back to ADMIN_USER_EMAIL → user.id.
+          // If neither exists, skip the upsert (warn) instead of using a sentinel
+          // UUID that violates the FK to `users`.
+          let createdBy: string | null = provider.created_by ?? null;
+          if (!createdBy) {
+            const adminEmail = (process.env.ADMIN_USER_EMAIL ?? '').trim();
+            if (adminEmail) {
+              const adminRow = await (prisma as any).user?.findUnique?.({
+                where: { email: adminEmail },
+                select: { id: true },
+              });
+              if (adminRow?.id) createdBy = adminRow.id as string;
+            }
+          }
+          if (createdBy) {
+            await upsertDiscoveredModels(
+              {
+                providerName: provider.name,
+                discovered: discoveredForRegistry,
+                createdBy,
+                providerType: 'ollama',
+                region: null,
+              },
+              prisma as any,
+            );
+          } else {
+            logger.warn(
+              { provider: provider.name, count: discoveredForRegistry.length },
+              '[OllamaSync] No valid createdBy (provider.created_by null + ADMIN_USER_EMAIL unresolvable) — skipping registry upsert',
+            );
+          }
+        }
+
+        // Disable Registry rows for this provider whose model is no longer on the host.
+        const { prisma: pr } = await import('../utils/prisma.js');
+        const stale = await (pr as any).modelRoleAssignment.findMany({
+          where: { provider: provider.name, enabled: true },
+          select: { id: true, model: true },
+        });
+        const toDisable = stale.filter((r: any) => !hostModelSet.has(r.model));
+        if (toDisable.length > 0) {
+          await Promise.all(toDisable.map((r: any) =>
+            (pr as any).modelRoleAssignment.update({
+              where: { id: r.id },
+              data: { enabled: false, options: { auto: true, disabledReason: 'host_removed', disabledAt: new Date().toISOString() } },
+            }),
+          ));
+          logger.info({ provider: provider.name, disabled: toDisable.map((r: any) => r.model) }, '[OllamaSync] Disabled Registry rows for host-removed models');
+        }
+      } catch (e: any) {
+        logger.warn({ provider: provider.name, error: e.message }, '[OllamaSync] Registry upsert failed (non-fatal)');
       }
     } catch (error: any) {
       result.status = 'unreachable';

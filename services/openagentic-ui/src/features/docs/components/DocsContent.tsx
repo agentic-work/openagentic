@@ -23,6 +23,7 @@ import {
   DocManifestItem,
 } from '@/stores/useDocsStore';
 import { DocsBookIcon, DocsChatIcon, getDocsIcon } from './DocsIcons';
+import { OpenAgenticWordmark } from '@/shared/components/OpenAgenticWordmark';
 
 // ============================================================================
 // Mermaid Diagram Component
@@ -322,7 +323,7 @@ const MethodBadge: React.FC<{ method: string }> = ({ method }) => {
   );
 };
 
-const TierBadge: React.FC<{ config: Record<string, unknown> }> = ({ config }) => {
+const DocsTierLabel: React.FC<{ config: Record<string, unknown> }> = ({ config }) => {
   const temp = Number(config.temperature ?? 0);
   const thinking = Boolean(config.thinkingEnabled);
   const maxTok = Number(config.maxTokens ?? 0);
@@ -394,7 +395,7 @@ const AgentTypeCard: React.FC<{ item: DocManifestItem; query: string }> = ({ ite
         <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
           <HighlightText text={item.name} query={query} />
         </span>
-        {item.properties && <TierBadge config={item.properties} />}
+        {item.properties && <DocsTierLabel config={item.properties} />}
       </div>
       {item.description && (
         <p className="text-xs mb-2" style={{ color: 'var(--color-textSecondary)' }}>
@@ -902,18 +903,88 @@ export const DocsContent: React.FC = () => {
 
   const showSwagger = currentDomain === 'api-routes';
 
-  // No domain selected -- landing page
+  // No domain selected -- landing page (atlas hero + animated wordmark inside the card)
   if (!currentDomain) {
     return (
       <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: 'var(--color-background)' }}>
-        <div className="text-center max-w-md">
-          <DocsBookIcon size={48} className="mx-auto mb-4" />
-          <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
-            OpenAgentic Documentation
-          </h2>
-          <p className="text-sm" style={{ color: 'var(--color-textMuted)' }}>
-            Select a topic from the sidebar to view documentation.
-          </p>
+        <div
+          className="rounded-xl overflow-hidden"
+          style={{
+            width: 'min(640px, 90%)',
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            // Layered shadows + faint perspective tilt = subtle 3-D feel without parallax JS.
+            boxShadow:
+              '0 1px 0 rgba(255,255,255,0.04) inset, 0 30px 60px -20px rgba(0,0,0,0.55), 0 12px 24px -10px rgba(0,0,0,0.35)',
+            transform: 'perspective(1200px) rotateX(0.6deg)',
+            transformStyle: 'preserve-3d',
+          }}
+        >
+          {/* Cropped atlas hero — fixed-height crop, parallax shadow under it */}
+          <div
+            style={{
+              position: 'relative',
+              height: 200,
+              backgroundImage:
+                'linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%), url("/atlas.png")',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center 30%',
+              backgroundRepeat: 'no-repeat',
+              borderBottom: '1px solid var(--color-border)',
+              boxShadow: 'inset 0 -16px 24px -16px rgba(0,0,0,0.45)',
+            }}
+          >
+            {/* Wordmark + Documentation title inside the hero, on the dark gradient base */}
+            <div
+              style={{
+                position: 'absolute',
+                left: 24,
+                bottom: 16,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                textShadow: '0 1px 4px rgba(0,0,0,0.6)',
+              }}
+            >
+              <OpenAgenticWordmark size={22} animate />
+              <span
+                style={{
+                  color: '#ffffff',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Documentation
+              </span>
+            </div>
+            {/* Version pill, top-right of the hero */}
+            <span
+              className="font-mono"
+              style={{
+                position: 'absolute',
+                top: 14,
+                right: 14,
+                fontSize: 11,
+                padding: '3px 8px',
+                borderRadius: 999,
+                backgroundColor: 'rgba(0,0,0,0.55)',
+                color: '#ffffff',
+                border: '1px solid rgba(255,255,255,0.18)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              v{import.meta.env.VITE_APP_VERSION || import.meta.env.VITE_VERSION || '0.0.0'}
+              {import.meta.env.VITE_CODENAME ? ` · ${import.meta.env.VITE_CODENAME}` : ''}
+            </span>
+          </div>
+          {/* Body of the landing card */}
+          <div className="px-6 py-5 text-center">
+            <p className="text-sm" style={{ color: 'var(--color-textMuted)' }}>
+              Select a topic from the sidebar to view documentation.
+            </p>
+          </div>
         </div>
       </div>
     );

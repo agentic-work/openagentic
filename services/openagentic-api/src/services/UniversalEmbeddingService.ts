@@ -16,6 +16,7 @@ import { ClientSecretCredential, DefaultAzureCredential, getBearerTokenProvider 
 import type { Logger } from 'pino';
 import { pino } from 'pino';
 import { LLMMetricsService } from './LLMMetricsService.js';
+import { capEmbeddingDimForHnsw, truncateVectorToColumnDim } from './halfvecHnswCap.js';
 
 export type EmbeddingProvider = 'azure-openai' | 'aws-bedrock' | 'vertex-ai' | 'openai-compatible' | 'ollama';
 
@@ -173,54 +174,55 @@ export class UniversalEmbeddingService {
       return this.loadProviderConfig(userConfig.provider, userConfig);
     }
 
-    // Precedence (2026-04-11):
+    // Precedence (2026-04-23 — DB is SoT):
     //   1. userConfig.provider (already handled above)
-    //   2. EMBEDDING_PROVIDER env var — deploy-time config wins over DB
-    //   3. _dbEmbeddingConfig (set by server.ts after LLMProviderSeeder)
-    //   4. Auto-detection from other env vars
+    //   2. _dbEmbeddingConfig (admin-edited state in DB, set by server.ts
+    //      after LLMProviderSeeder) — THE authoritative choice
+    //   3. EMBEDDING_PROVIDER env var — bootstrap/fallback ONLY when DB is
+    //      empty (first-boot, DB unreachable). Never overrides a live DB row.
+    //   4. Auto-detection from other env vars — bootstrap only.
     //
-    // Why env var beats DB: server.ts's findFirst picker is
-    // non-deterministic when multiple providers share a priority, and
-    // picked ollama even with EMBEDDING_PROVIDER=azure-openai set. Deploy
-    // config in env vars is authoritative; DB is a fallback for admin-edited
-    // state. See docs/rules/no-hardcoded-models.md.
+    // Previous revision inverted this ("deploy-time config wins over DB")
+    // to paper over a non-deterministic Prisma findFirst picker. The fix for
+    // that bug lives in server.ts's loader (deterministic ordering), not
+    // here. Env-over-DB breaks the promise that admin UI edits stick across
+    // pod restarts. See CLAUDE.md "database is SoT" rule.
 
     const ollamaEnabled = process.env.OLLAMA_ENABLED === 'true';
 
-    // FIRST: Check explicit EMBEDDING_PROVIDER environment variable
+    // FIRST: DB-backed config (set by server.ts after LLMProviderSeeder).
+    if (_dbEmbeddingConfig?.provider) {
+      this.logger.info({ provider: _dbEmbeddingConfig.provider }, 'Using DB-backed embedding config (SoT)');
+      return this.loadProviderConfig(_dbEmbeddingConfig.provider, { ...userConfig, ..._dbEmbeddingConfig });
+    }
+
+    // SECOND: Explicit EMBEDDING_PROVIDER env (bootstrap fallback only — no DB row yet)
     const explicitProvider = process.env.EMBEDDING_PROVIDER?.toLowerCase();
     if (explicitProvider) {
       if (explicitProvider === 'ollama') {
         if (!ollamaEnabled) {
           this.logger.warn('EMBEDDING_PROVIDER is set to ollama but OLLAMA_ENABLED is not true - skipping Ollama');
         } else {
-          this.logger.info('Using Ollama embedding provider (from EMBEDDING_PROVIDER)');
+          this.logger.info('Using Ollama embedding provider (env fallback — no DB row)');
           return this.loadProviderConfig('ollama', userConfig);
         }
       }
       if (explicitProvider === 'azure-openai' || explicitProvider === 'azure' || explicitProvider === 'azureopenai') {
-        this.logger.info('Using Azure OpenAI embedding provider (from EMBEDDING_PROVIDER)');
+        this.logger.info('Using Azure OpenAI embedding provider (env fallback — no DB row)');
         return this.loadProviderConfig('azure-openai', userConfig);
       }
       if (explicitProvider === 'aws-bedrock' || explicitProvider === 'aws' || explicitProvider === 'bedrock') {
-        this.logger.info('Using AWS Bedrock embedding provider (from EMBEDDING_PROVIDER)');
+        this.logger.info('Using AWS Bedrock embedding provider (env fallback — no DB row)');
         return this.loadProviderConfig('aws-bedrock', userConfig);
       }
       if (explicitProvider === 'vertex-ai' || explicitProvider === 'vertex' || explicitProvider === 'gcp') {
-        this.logger.info('Using Vertex AI embedding provider (from EMBEDDING_PROVIDER)');
+        this.logger.info('Using Vertex AI embedding provider (env fallback — no DB row)');
         return this.loadProviderConfig('vertex-ai', userConfig);
       }
       if (explicitProvider === 'openai-compatible' || explicitProvider === 'openai') {
-        this.logger.info('Using OpenAI-compatible embedding provider (from EMBEDDING_PROVIDER)');
+        this.logger.info('Using OpenAI-compatible embedding provider (env fallback — no DB row)');
         return this.loadProviderConfig('openai-compatible', userConfig);
       }
-    }
-
-    // SECOND: DB-backed config (set by server.ts after LLMProviderSeeder).
-    // Used only if no env var forced a provider. Fill in gaps from env.
-    if (_dbEmbeddingConfig?.provider) {
-      this.logger.info({ provider: _dbEmbeddingConfig.provider }, 'Using DB-backed embedding config');
-      return this.loadProviderConfig(_dbEmbeddingConfig.provider, { ...userConfig, ..._dbEmbeddingConfig });
     }
 
     // THIRD: Auto-detect from environment variables
@@ -799,7 +801,11 @@ export class UniversalEmbeddingService {
         throw new Error(`Unsupported provider: ${this.provider}`);
     }
 
-    return { embedding, usage };
+    // qwen3-embedding:8b returns 4096-d but halfvec HNSW caps at 4000 — Matryoshka prefix preserves semantics.
+    const columnDim = capEmbeddingDimForHnsw(this.dimensions ?? embedding.length);
+    const truncated = truncateVectorToColumnDim(embedding, columnDim);
+
+    return { embedding: truncated, usage };
   }
 
   /**

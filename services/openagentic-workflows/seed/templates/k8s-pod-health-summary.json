@@ -1,0 +1,124 @@
+{
+  "slug": "k8s-pod-health-summary",
+  "name": "K8s Pod Health Summary",
+  "description": "Audit pod health across a Kubernetes namespace. Calls the live openagentic_kubernetes MCP, flags pods that are not Running or have crash-looped more than 5 times, asks the platform LLM to write a 3-bullet operator summary, strips any chain-of-thought preamble, and renders an HTML report via webhook_response.",
+  "category": "aiops",
+  "template": true,
+  "meta": {
+    "purpose": "Audit pod health in a Kubernetes namespace and produce a 3-bullet operator-facing summary plus an HTML report listing unhealthy pods.",
+    "how_it_works": [
+      "1. Lists every pod in the chosen namespace via openagentic_kubernetes.k8s_list_pods (live cluster, not cached).",
+      "2. Flags any pod that is not Running or has restart count > 5 — these are the 'unhealthy' rows.",
+      "3. Computes total pod count + namespace label in a single analyze transform.",
+      "4. The platform LLM writes a 3-bullet operator narrative naming the worst offenders.",
+      "5. A CoT-stripper transform removes any 'Here is...' / 'The user wants...' preamble so the output is presentation-ready.",
+      "6. webhook_response renders the final HTML report with operator summary on top and the raw unhealthy-pods JSON underneath."
+    ],
+    "expected_output": "HTML report containing a 3-bullet operator summary at the top and the raw unhealthy-pods JSON array underneath. Status code 200, Content-Type text/html.",
+    "useful_when": "Daily morning health check, pre-deploy sanity check, or when oncall pages about a noisy namespace and you need a one-shot 'is everything OK?' answer.",
+    "tools_used": ["openagentic_kubernetes.k8s_list_pods", "llm_completion", "transform", "webhook_response"],
+    "version": "1.0",
+    "tags": ["aiops", "observability", "kubernetes", "k8s", "pods"]
+  },
+  "defaultInputs": {
+    "namespace": "agentic-dev"
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "data": {
+          "triggerType": "manual",
+          "label": "Pod Health Audit",
+          "input_schema": {
+            "namespace": "string"
+          }
+        }
+      },
+      {
+        "id": "kubectl_pods",
+        "type": "mcp_tool",
+        "data": {
+          "label": "List Pods",
+          "toolServer": "openagentic_kubernetes",
+          "toolName": "k8s_list_pods",
+          "arguments": {
+            "namespace": "{{input.namespace || \"agentic-dev\"}}"
+          }
+        }
+      },
+      {
+        "id": "filter",
+        "type": "transform",
+        "data": {
+          "label": "Flag Unhealthy",
+          "operations": [
+            {
+              "op": "set",
+              "target": "unhealthy",
+              "value": "{{ (() => { let pods = []; if (Array.isArray(input.pods)) { pods = input.pods; } else if (typeof input.content === 'string') { try { const parsed = JSON.parse(input.content); if (Array.isArray(parsed.pods)) pods = parsed.pods; } catch (e) {} } return pods.filter(p => p && (p.status !== 'Running' || (p.restarts || 0) > 5)); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "namespace_label",
+              "value": "{{ (() => { if (typeof input.namespace === 'string') return input.namespace; if (typeof input.content === 'string') { try { return JSON.parse(input.content).namespace || 'unknown'; } catch (e) {} } return 'unknown'; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "pod_count",
+              "value": "{{ (() => { if (Array.isArray(input.pods)) return input.pods.length; if (typeof input.content === 'string') { try { const p = JSON.parse(input.content).pods; return Array.isArray(p) ? p.length : 0; } catch (e) { return 0; } } return 0; })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "summary",
+        "type": "llm_completion",
+        "data": {
+          "label": "Summarize Findings",
+          "prompt": "Operator-facing 3-bullet summary of unhealthy Kubernetes pods in namespace {{input.namespace_label}}.\n\nUnhealthy pods (JSON array, may be empty):\n{{input.unhealthy}}\n\nTotal pods in namespace: {{input.pod_count}}.\n\nOutput rules (MUST follow):\n1. Start the response with a single `-` character — no preamble, no \"Here is\", no \"The user wants\", no thinking out loud.\n2. Exactly 3 short bullets, each on its own line, each beginning with `-`.\n3. Reference pod names verbatim when applicable.\n4. If the unhealthy array is empty, state that all pods are healthy and recommend a routine future check.",
+          "model": "auto",
+          "temperature": 0.2,
+          "maxTokens": 400
+        }
+      },
+      {
+        "id": "clean_summary",
+        "type": "transform",
+        "data": {
+          "label": "Strip CoT Preamble",
+          "operations": [
+            {
+              "op": "set",
+              "target": "clean_content",
+              "value": "{{ (() => { const raw = String(input.content || ''); const lines = raw.split(/\\r?\\n/); let firstBulletIdx = -1; for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (t.startsWith('-') || t.startsWith('•') || t.startsWith('*')) { firstBulletIdx = i; break; } } if (firstBulletIdx === -1) { return raw.trim(); } return lines.slice(firstBulletIdx).join('\\n').trim(); })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "report",
+        "type": "webhook_response",
+        "data": {
+          "label": "HTML Report",
+          "statusCode": 200,
+          "headers": { "Content-Type": "text/html" },
+          "bodyTemplate": "<div class=\"pod-health-report\"><h2>K8s Pod Health Report — namespace {{steps.filter.namespace_label}}</h2><h3>Operator Summary</h3><pre class=\"summary\">{{steps.clean_summary.clean_content}}</pre><h3>Unhealthy Pods (raw)</h3><pre>{{steps.filter.unhealthy}}</pre></div>",
+          "persistAsArtifact": true,
+          "artifactTitle": "K8s Pod Health Report — {{steps.filter.namespace_label}}",
+          "artifactDescription": "Pod health audit produced by the k8s-pod-health-summary template.",
+          "artifactKind": "html_report",
+          "artifactTags": ["aiops", "kubernetes", "pod-health"]
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "trigger", "target": "kubectl_pods" },
+      { "id": "e2", "source": "kubectl_pods", "target": "filter" },
+      { "id": "e3", "source": "filter", "target": "summary" },
+      { "id": "e4", "source": "summary", "target": "clean_summary" },
+      { "id": "e5", "source": "clean_summary", "target": "report" }
+    ]
+  }
+}

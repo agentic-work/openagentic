@@ -6,7 +6,8 @@ import type {
   SkillDetail,
   AgentDetail,
   SystemInitDetail,
-} from '../../types/streamJson';
+} from '../../types/_sdk-bindings';
+import { useEscToClose } from './CommandModals';
 
 // ── Design tokens (same as StatusModal / StatsModal) ──────────────
 
@@ -38,7 +39,13 @@ interface RichModalShellProps {
 
 const RichModalShell: React.FC<RichModalShellProps> = ({
   title, subtitle, onClose, children, width = 520, tabs, activeTab, onTabChange,
-}) => (
+}) => {
+  // Document-level Esc — the dialog's onKeyDown only fires while the
+  // dialog owns focus, but the floating composer textarea swallows
+  // Escape before it bubbles. Pinning at document scope routes around
+  // that. See `useEscToClose` for full rationale.
+  useEscToClose(onClose);
+  return (
   <div
     role="dialog"
     aria-modal="true"
@@ -48,7 +55,6 @@ const RichModalShell: React.FC<RichModalShellProps> = ({
       backgroundColor: 'rgba(0,0,0,0.55)', fontFamily: MONO, padding: 16,
     }}
     onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onClose(); } }}
   >
     <div style={{
       maxWidth: width, width: '100%', maxHeight: 'calc(100vh - 80px)',
@@ -100,7 +106,8 @@ const RichModalShell: React.FC<RichModalShellProps> = ({
       </div>
     </div>
   </div>
-);
+  );
+};
 
 const StatusDot: React.FC<{ status: string }> = ({ status }) => {
   const color =
@@ -781,7 +788,10 @@ export const SkillsModal: React.FC<SkillsModalProps> = ({ skills, fallbackSkills
   const bySource = useMemo(() => {
     const map = new Map<string, SkillDetail[]>();
     for (const s of filtered) {
-      const src = s.source || s.loadedFrom || 'unknown';
+      // SDKSystemInitDetail.skills only carries `loadedFrom` — the
+      // older hand-rolled type also had `source` but it was never
+      // populated by the daemon (dead-code drift, removed in Phase B).
+      const src = s.loadedFrom || 'unknown';
       if (!map.has(src)) map.set(src, []);
       map.get(src)!.push(s);
     }
@@ -802,12 +812,23 @@ export const SkillsModal: React.FC<SkillsModalProps> = ({ skills, fallbackSkills
       {SOURCE_ORDER.filter(src => bySource.has(src)).map(src => (
         <div key={src}>
           <SectionHeader label={SOURCE_LABELS[src] ?? src} count={bySource.get(src)!.length} />
-          {bySource.get(src)!.sort((a, b) => a.name.localeCompare(b.name)).map(s => (
+          {bySource.get(src)!.sort((a, b) => a.name.localeCompare(b.name)).map(s => {
+            // TUI parity (tui-skills.txt): the picker annotates each
+            // skill with "~<N> description tokens". The SDK SkillDetail
+            // doesn't yet expose a tokenCost field, but tests + future
+            // daemon payloads can pass one through; render when present.
+            const tokenCost = (s as { tokenCost?: number }).tokenCost;
+            return (
             <div key={s.name} style={{
               padding: '5px 0', borderBottom: `1px solid ${BORDER}11`,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 12, fontWeight: 500, color: ACCENT }}>/{s.name}</span>
+                {typeof tokenCost === 'number' && (
+                  <span style={{ fontSize: 10, color: DIM, fontFamily: MONO }}>
+                    · ~{tokenCost} description tokens
+                  </span>
+                )}
                 <span style={{ flex: 1 }} />
                 <button
                   onClick={() => onSend(`/${s.name}`)}
@@ -824,7 +845,7 @@ export const SkillsModal: React.FC<SkillsModalProps> = ({ skills, fallbackSkills
                 }}>{s.description}</div>
               )}
             </div>
-          ))}
+          );})}
         </div>
       ))}
     </RichModalShell>
@@ -842,13 +863,20 @@ interface AgentsModalProps {
   onSend: (cmd: string) => void;
 }
 
+// TUI parity (2026-05-02 — tui-vs-codemode-artifacts/tui-agents.txt):
+// Section headers in the TUI's /agents picker are phrased as
+//   "Plugin agents"
+//   "Built-in agents (always available)"
+// Codemode previously used the bare bucket names ("Built-in", "Plugin"),
+// which read like a stub next to the TUI. Bring the labels in line so
+// the "feels the same" test passes the eye-test.
 const AGENT_SOURCE_LABELS: Record<string, string> = {
-  'built-in': 'Built-in',
-  plugin: 'Plugin',
-  userSettings: 'User',
-  projectSettings: 'Project',
-  policySettings: 'Managed',
-  flagSettings: 'Flag',
+  'built-in': 'Built-in agents (always available)',
+  plugin: 'Plugin agents',
+  userSettings: 'User agents',
+  projectSettings: 'Project agents',
+  policySettings: 'Managed agents',
+  flagSettings: 'Flag agents',
 };
 
 export const AgentsModal: React.FC<AgentsModalProps> = ({ agents, fallbackAgents, onClose, onSend }) => {
@@ -877,15 +905,38 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ agents, fallbackAgents
   return (
     <RichModalShell
       title="Agents"
-      subtitle={`${items.length} agent types available`}
+      // TUI parity (tui-agents.txt): the picker shows "<N> agents".
+      // Codemode previously said "<N> agent types available" which
+      // read awkwardly; align with the TUI phrasing.
+      subtitle={`${items.length} agents`}
       onClose={onClose}
       width={560}
     >
       <SearchBar value={search} onChange={setSearch} placeholder="Filter agents..." />
 
+      {/* TUI parity (tui-agents.txt): "Create new agent" appears as the
+          first selectable row above the source-grouped list. Mirrors the
+          AgentsPicker's "+ New Agent" header button so users typing
+          /agents in either UI see the same affordance. */}
+      <button
+        type="button"
+        onClick={() => onSend('/agents create')}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          width: '100%', padding: '8px 10px', marginBottom: 6,
+          background: 'transparent', border: `1px dashed ${ACCENT}`,
+          color: ACCENT, borderRadius: 4, cursor: 'pointer',
+          fontFamily: MONO, fontSize: 12, textAlign: 'left',
+        }}
+      >
+        <span style={{ fontSize: 14 }}>+</span>
+        <span>Create new agent</span>
+      </button>
+
       {filtered.length === 0 && <EmptyState text="No agents configured" />}
 
-      {['built-in', 'plugin', 'userSettings', 'projectSettings', 'policySettings'].filter(src => bySource.has(src)).map(src => (
+      {/* TUI capture orders Plugin agents BEFORE Built-in agents. */}
+      {['plugin', 'built-in', 'userSettings', 'projectSettings', 'policySettings'].filter(src => bySource.has(src)).map(src => (
         <div key={src}>
           <SectionHeader label={AGENT_SOURCE_LABELS[src] ?? src} count={bySource.get(src)!.length} />
           {bySource.get(src)!.sort((a, b) => a.name.localeCompare(b.name)).map(a => (
@@ -948,71 +999,254 @@ interface ConfigModalProps {
   onSend: (cmd: string) => void;
 }
 
+// TUI parity (tui-config.txt): the /config picker shows three tabs
+// — Status / Config / Usage — plus a search box and a list of toggle
+// settings (Auto-compact, Show tips, Reduce motion, Thinking mode,
+// Theme, Notifications, etc). Codemode's previous Configuration modal
+// dumped read-only Session/Resources/Actions rows; rebuild around tabs
+// + toggleable settings so the surface matches what TUI users expect.
+type ConfigTabId = 'status' | 'config' | 'usage';
+
+// Each setting exposes its own getter / setter so the toggle is
+// directly bound to localStorage (or a daemon RPC, post-Phase 1). For
+// now everything that can be advisory uses localStorage with the
+// `cm-setting-<key>` prefix — non-destructive even if a setting maps
+// to a no-op until the daemon side wires up.
+interface BoolSetting {
+  key: string;
+  label: string;
+  description?: string;
+  defaultValue: boolean;
+}
+
+const BOOL_SETTINGS: BoolSetting[] = [
+  { key: 'auto-compact', label: 'Auto-compact', description: 'Compact when context fills', defaultValue: true },
+  { key: 'show-tips', label: 'Show tips', description: 'Show contextual tips in the composer', defaultValue: true },
+  { key: 'reduce-motion', label: 'Reduce motion', defaultValue: false },
+  { key: 'thinking-mode', label: 'Thinking mode', description: 'Surface model reasoning when available', defaultValue: true },
+  { key: 'rewind-checkpoints', label: 'Rewind code (checkpoints)', defaultValue: true },
+  { key: 'verbose-output', label: 'Verbose output', defaultValue: false },
+  { key: 'terminal-progress', label: 'Terminal progress bar', defaultValue: true },
+  { key: 'show-turn-duration', label: 'Show turn duration', defaultValue: true },
+];
+
+// Single-select settings (Theme / Notifications / etc) shown as a
+// label + value row (no toggle widget — clicking the row dispatches
+// the matching slash command).
+interface ChoiceSetting {
+  key: string;
+  label: string;
+  value: string;
+  onClick?: () => void;
+}
+
+function readBool(key: string, fallback: boolean): boolean {
+  try {
+    const v = localStorage.getItem(`cm-setting-${key}`);
+    if (v === null) return fallback;
+    return v === 'on' || v === 'true';
+  } catch {
+    return fallback;
+  }
+}
+
+function writeBool(key: string, value: boolean): void {
+  try { localStorage.setItem(`cm-setting-${key}`, value ? 'on' : 'off'); }
+  catch { /* quota */ }
+}
+
+const ConfigToggleRow: React.FC<{
+  label: string;
+  description?: string;
+  value: boolean;
+  onChange: (next: boolean) => void;
+}> = ({ label, description, value, onChange }) => (
+  <div style={{
+    display: 'flex', alignItems: 'center', gap: 12,
+    padding: '6px 0', borderBottom: `1px solid ${BORDER}22`,
+  }}>
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ fontSize: 12, color: TEXT }}>{label}</div>
+      {description && <div style={{ fontSize: 10, color: DIM, marginTop: 1 }}>{description}</div>}
+    </div>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={value}
+      aria-label={label}
+      onClick={() => onChange(!value)}
+      style={{
+        width: 36, height: 20, borderRadius: 10, border: 'none',
+        cursor: 'pointer', flexShrink: 0,
+        backgroundColor: value ? SUCCESS : BORDER,
+        position: 'relative', transition: 'background-color 150ms',
+      }}
+    >
+      <span style={{
+        position: 'absolute', top: 2, left: value ? 18 : 2,
+        width: 16, height: 16, borderRadius: '50%',
+        backgroundColor: '#fff', transition: 'left 150ms',
+      }} />
+    </button>
+  </div>
+);
+
+const ConfigChoiceRow: React.FC<{ setting: ChoiceSetting }> = ({ setting }) => (
+  <button
+    type="button"
+    onClick={setting.onClick}
+    style={{
+      display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+      padding: '6px 0', borderBottom: `1px solid ${BORDER}22`,
+      background: 'transparent', border: 'none', cursor: setting.onClick ? 'pointer' : 'default',
+      textAlign: 'left',
+    }}
+  >
+    <span style={{ fontSize: 12, color: TEXT, flex: 1 }}>{setting.label}</span>
+    <span style={{ fontSize: 11, color: DIM, fontFamily: MONO }}>{setting.value}</span>
+  </button>
+);
+
 export const ConfigModal: React.FC<ConfigModalProps> = (props) => {
   const { model, permissionMode, cwd, version, toolCount, mcpServerCount, agentCount, pluginCount, skillCount, onClose, onSend } = props;
+  const [tab, setTab] = useState<ConfigTabId>('status');
+  const [search, setSearch] = useState('');
+  // Mirror the bool-setting state in React so toggles re-render. Using
+  // a single object keeps the toggle handlers simple.
+  const [bools, setBools] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(BOOL_SETTINGS.map((s) => [s.key, readBool(s.key, s.defaultValue)])),
+  );
+  const setBool = (key: string, value: boolean) => {
+    writeBool(key, value);
+    setBools((b) => ({ ...b, [key]: value }));
+  };
 
-  const sections = [
-    {
-      label: 'Session',
-      items: [
-        { key: 'Model', value: model, action: () => onSend('/model') },
-        { key: 'Permission Mode', value: permissionMode, action: () => onSend('/permissions') },
-        { key: 'Working Dir', value: cwd },
-        { key: 'Version', value: version },
-      ],
-    },
-    {
-      label: 'Resources',
-      items: [
-        { key: 'Tools', value: `${toolCount} available`, action: () => onSend('/tools') },
-        { key: 'MCP Servers', value: `${mcpServerCount} configured`, action: () => onSend('/mcp') },
-        { key: 'Agents', value: `${agentCount} types`, action: () => onSend('/agents') },
-        { key: 'Plugins', value: `${pluginCount} installed`, action: () => onSend('/plugins') },
-        { key: 'Skills', value: `${skillCount} available`, action: () => onSend('/skills') },
-      ],
-    },
-    {
-      label: 'Actions',
-      items: [
-        { key: 'Edit Config', value: 'Open settings', action: () => onSend('/config edit') },
-        { key: 'Reload Plugins', value: 'Refresh all', action: () => onSend('/reload-plugins') },
-        { key: 'Compact', value: 'Reduce context', action: () => onSend('/compact') },
-      ],
-    },
+  // Theme / notifications / etc — single-select rows.
+  const choices: ChoiceSetting[] = [
+    { key: 'theme', label: 'Theme', value: 'Dark mode', onClick: () => { onSend('/theme'); onClose(); } },
+    { key: 'notifications', label: 'Notifications', value: 'Auto' },
+    { key: 'output-style', label: 'Output style', value: 'default' },
+    { key: 'editor-mode', label: 'Editor mode', value: 'vim' },
+  ];
+
+  const filteredBools = BOOL_SETTINGS.filter((s) =>
+    !search || s.label.toLowerCase().includes(search.toLowerCase()),
+  );
+  const filteredChoices = choices.filter((s) =>
+    !search || s.label.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const tabs = [
+    { id: 'status' as const, label: 'Status' },
+    { id: 'config' as const, label: 'Config' },
+    { id: 'usage' as const, label: 'Usage' },
   ];
 
   return (
     <RichModalShell
       title="Configuration"
-      subtitle="Session settings and resource overview"
       onClose={onClose}
-      width={480}
+      width={560}
+      tabs={tabs}
+      activeTab={tab}
+      onTabChange={(id) => setTab(id as ConfigTabId)}
     >
-      {sections.map(sec => (
-        <div key={sec.label}>
-          <SectionHeader label={sec.label} />
-          {sec.items.map(item => (
-            <div key={item.key} style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '5px 0', fontSize: 12,
-            }}>
-              <span style={{ color: DIM, minWidth: 120 }}>{item.key}</span>
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {item.value}
-              </span>
-              {item.action && (
-                <button
-                  onClick={() => { item.action!(); onClose(); }}
-                  style={{
-                    background: 'none', border: 'none', color: ACCENT,
-                    cursor: 'pointer', fontSize: 11, fontFamily: MONO,
-                  }}
-                >open</button>
-              )}
-            </div>
-          ))}
+      {tab === 'status' && (
+        <div>
+          <SectionHeader label="Session" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
+            <span style={{ color: DIM, minWidth: 120 }}>Version</span>
+            <span style={{ flex: 1 }}>{version}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
+            <span style={{ color: DIM, minWidth: 120 }}>Model</span>
+            <span style={{ flex: 1 }}>{model}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
+            <span style={{ color: DIM, minWidth: 120 }}>Permission Mode</span>
+            <span style={{ flex: 1 }}>{permissionMode}</span>
+            <button
+              onClick={() => { onSend('/permissions'); onClose(); }}
+              style={{ background: 'none', border: 'none', color: ACCENT, cursor: 'pointer', fontSize: 11, fontFamily: MONO }}
+            >open</button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
+            <span style={{ color: DIM, minWidth: 120 }}>Working Dir</span>
+            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cwd}</span>
+          </div>
         </div>
-      ))}
+      )}
+
+      {tab === 'config' && (
+        <div>
+          <SearchBar value={search} onChange={setSearch} placeholder="Search settings…" />
+
+          {filteredBools.map((s) => (
+            <ConfigToggleRow
+              key={s.key}
+              label={s.label}
+              description={s.description}
+              value={bools[s.key] ?? s.defaultValue}
+              onChange={(next) => setBool(s.key, next)}
+            />
+          ))}
+
+          {filteredChoices.length > 0 && filteredBools.length > 0 && (
+            <div style={{ marginTop: 8 }} />
+          )}
+
+          {filteredChoices.map((s) => (
+            <ConfigChoiceRow key={s.key} setting={s} />
+          ))}
+
+          {filteredBools.length === 0 && filteredChoices.length === 0 && (
+            <EmptyState text="No settings match your search" />
+          )}
+        </div>
+      )}
+
+      {tab === 'usage' && (
+        <div>
+          <SectionHeader label="Resources" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
+            <span style={{ color: DIM, minWidth: 120 }}>Tools</span>
+            <span style={{ flex: 1 }}>{toolCount} available</span>
+            <button onClick={() => { onSend('/tools'); onClose(); }} style={{ background: 'none', border: 'none', color: ACCENT, cursor: 'pointer', fontSize: 11, fontFamily: MONO }}>open</button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
+            <span style={{ color: DIM, minWidth: 120 }}>MCP Servers</span>
+            <span style={{ flex: 1 }}>{mcpServerCount} configured</span>
+            <button onClick={() => { onSend('/mcp'); onClose(); }} style={{ background: 'none', border: 'none', color: ACCENT, cursor: 'pointer', fontSize: 11, fontFamily: MONO }}>open</button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
+            <span style={{ color: DIM, minWidth: 120 }}>Agents</span>
+            <span style={{ flex: 1 }}>{agentCount} types</span>
+            <button onClick={() => { onSend('/agents'); onClose(); }} style={{ background: 'none', border: 'none', color: ACCENT, cursor: 'pointer', fontSize: 11, fontFamily: MONO }}>open</button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
+            <span style={{ color: DIM, minWidth: 120 }}>Plugins</span>
+            <span style={{ flex: 1 }}>{pluginCount} installed</span>
+            <button onClick={() => { onSend('/plugins'); onClose(); }} style={{ background: 'none', border: 'none', color: ACCENT, cursor: 'pointer', fontSize: 11, fontFamily: MONO }}>open</button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 12 }}>
+            <span style={{ color: DIM, minWidth: 120 }}>Skills</span>
+            <span style={{ flex: 1 }}>{skillCount} available</span>
+            <button onClick={() => { onSend('/skills'); onClose(); }} style={{ background: 'none', border: 'none', color: ACCENT, cursor: 'pointer', fontSize: 11, fontFamily: MONO }}>open</button>
+          </div>
+
+          <SectionHeader label="Actions" />
+          <button
+            type="button"
+            onClick={() => { onSend('/reload-plugins'); onClose(); }}
+            style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 0', background: 'transparent', border: 'none', color: ACCENT, cursor: 'pointer', fontFamily: MONO, fontSize: 12 }}
+          >Reload Plugins</button>
+          <button
+            type="button"
+            onClick={() => { onSend('/compact'); onClose(); }}
+            style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 0', background: 'transparent', border: 'none', color: ACCENT, cursor: 'pointer', fontFamily: MONO, fontSize: 12 }}
+          >Compact context</button>
+        </div>
+      )}
     </RichModalShell>
   );
 };
@@ -1026,26 +1260,100 @@ interface PermissionsModalProps {
   tools: string[];
   onClose: () => void;
   onSend: (cmd: string) => void;
+  /**
+   * Update the local React mode state. Without this prop the modal's
+   * mode-switch buttons couldn't propagate to the composer chip — they
+   * only sent a `/permissions <key>` slash that the daemon ignores in
+   * remote-session mode. The chip's `useEffect` on `mode` is what sends
+   * `set_permission_mode` to the running child, so we MUST update the
+   * local state to make a UI mode switch real.
+   */
+  onSetMode?: (mode: string) => void;
 }
 
+/**
+ * Modal mode rows. Keys are SDK names (must match permissionMode.ts:
+ * `default | acceptEdits | plan | bypassPermissions`) so the
+ * `permissionMode === key` highlight check works against the wire value
+ * the chip emits. `bypassPermissions` is labelled "Permissive" in the
+ * UI to match the openagentic TUI footer chip — internal id stays SDK.
+ */
 const PERMISSION_MODE_LABELS: Record<string, { label: string; color: string; desc: string }> = {
   default: { label: 'Default', color: ACCENT, desc: 'Ask before potentially dangerous actions' },
-  permissive: { label: 'Permissive', color: WARNING, desc: 'Allow most actions without asking' },
+  acceptEdits: { label: 'Accept edits', color: '#3fb950', desc: 'Auto-approve file edits, still ask for shell commands' },
   plan: { label: 'Plan', color: PURPLE, desc: 'Read-only — suggest changes but don\'t execute' },
+  bypassPermissions: { label: 'Permissive', color: WARNING, desc: 'Allow every tool without asking' },
 };
 
-export const PermissionsModal: React.FC<PermissionsModalProps> = ({ permissionMode, tools, onClose, onSend }) => {
+// TUI parity (tui-permissions.txt): the picker offers tabs along the
+// top — `Recently denied / Allow / Ask / Deny / Workspace` — plus a
+// search box and an "Add a new rule…" first row. Codemode previously
+// dumped all 73 tools in a single grid, so users couldn't see which
+// rule scope they were editing.
+type PermissionTab = 'recently-denied' | 'allow' | 'ask' | 'deny' | 'workspace';
+const PERMISSION_TABS: { id: PermissionTab; label: string }[] = [
+  { id: 'recently-denied', label: 'Recently denied' },
+  { id: 'allow', label: 'Allow' },
+  { id: 'ask', label: 'Ask' },
+  { id: 'deny', label: 'Deny' },
+  { id: 'workspace', label: 'Workspace' },
+];
+
+export const PermissionsModal: React.FC<PermissionsModalProps> = ({ permissionMode, tools, onClose, onSend, onSetMode }) => {
   const mode = PERMISSION_MODE_LABELS[permissionMode] ?? {
     label: permissionMode, color: DIM, desc: '',
   };
+  const [tab, setTab] = useState<PermissionTab>('allow');
+  const [search, setSearch] = useState('');
 
   return (
     <RichModalShell
       title="Permissions"
       subtitle={`Mode: ${mode.label}`}
       onClose={onClose}
-      width={480}
+      width={520}
     >
+      {/* Tab bar — matches TUI capture. */}
+      <div style={{
+        display: 'flex', gap: 0, marginBottom: 12,
+        borderBottom: `1px solid ${BORDER}`,
+      }}>
+        {PERMISSION_TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              padding: '6px 12px', fontSize: 11, fontFamily: MONO,
+              color: tab === t.id ? ACCENT : DIM,
+              borderBottom: tab === t.id ? `2px solid ${ACCENT}` : '2px solid transparent',
+              fontWeight: tab === t.id ? 600 : 400,
+              marginBottom: -1,
+            }}
+          >{t.label}</button>
+        ))}
+      </div>
+
+      <SearchBar value={search} onChange={setSearch} placeholder="Search rules…" />
+
+      {/* "Add a new rule…" row — TUI-parity affordance for opening the
+          rule editor. Routes through the daemon's /permissions add path. */}
+      <button
+        type="button"
+        onClick={() => onSend(`/permissions add ${tab}`)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          width: '100%', padding: '8px 10px', marginBottom: 12,
+          background: 'transparent', border: `1px dashed ${ACCENT}`,
+          color: ACCENT, borderRadius: 4, cursor: 'pointer',
+          fontFamily: MONO, fontSize: 12, textAlign: 'left',
+        }}
+      >
+        <span style={{ fontSize: 14 }}>+</span>
+        <span>Add a new rule…</span>
+      </button>
+
       {/* Current mode */}
       <div style={{
         padding: '10px 12px', borderRadius: 6,
@@ -1064,15 +1372,29 @@ export const PermissionsModal: React.FC<PermissionsModalProps> = ({ permissionMo
         <div style={{ fontSize: 11, color: DIM }}>{mode.desc}</div>
       </div>
 
-      {/* Mode switcher */}
+      {/* Mode switcher.
+
+          The previous implementation only sent `/permissions ${key}` as
+          a slash command. In remote-session mode that text just goes to
+          the LLM — the daemon never updates the local `mode` state, so
+          the composer chip stayed stale and `set_permission_mode`
+          control_request never fired. Calling `onSetMode(key)` updates
+          the React state which triggers the `useEffect` in
+          CodeModeChatView that sends the SDK control frame — same path
+          the chip click uses. The slash is no longer needed. */}
       <SectionHeader label="Switch Mode" />
-      <div style={{ display: 'flex', gap: 8, padding: '8px 0' }}>
+      <div style={{ display: 'flex', gap: 8, padding: '8px 0', flexWrap: 'wrap' }}>
         {Object.entries(PERMISSION_MODE_LABELS).map(([key, val]) => (
           <button
             key={key}
-            onClick={() => { onSend(`/permissions ${key}`); onClose(); }}
+            onClick={() => {
+              if (onSetMode) onSetMode(key);
+              else onSend(`/permissions ${key}`); // fallback for test harness
+              onClose();
+            }}
             style={{
-              flex: 1, padding: '8px 0', borderRadius: 6, fontSize: 12, fontFamily: MONO,
+              flex: '1 1 calc(50% - 8px)', minWidth: 110,
+              padding: '8px 0', borderRadius: 6, fontSize: 12, fontFamily: MONO,
               border: `1px solid ${key === permissionMode ? val.color : BORDER}`,
               backgroundColor: key === permissionMode ? `${val.color}18` : 'transparent',
               color: key === permissionMode ? val.color : DIM,

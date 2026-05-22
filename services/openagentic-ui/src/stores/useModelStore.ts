@@ -13,6 +13,12 @@ export interface ModelInfo {
   description?: string;
   provider?: string;
   capabilities?: string[];
+  /** True when the model natively supports extended thinking (sourced from
+   * the Registry's capabilities.thinking column — never hardcoded). */
+  thinking?: boolean;
+  contextWindow?: number;
+  maxOutputTokens?: number;
+  type?: 'chat' | 'embedding' | 'image' | 'vision';
 }
 
 interface ModelState {

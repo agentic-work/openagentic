@@ -41,7 +41,7 @@ for FILE in $STAGED_FILES; do
     *.png|*.jpg|*.gif|*.ico|*.woff*|*.ttf|*.lock|package-lock.json|*.wasm) continue ;;
     .githooks/*) continue ;;
     *.template) continue ;;
-    */tests/*|*/test/*|*test*.sh|*test*.spec.*|*/e2e/*|*/docs/*) continue ;;
+    */tests/*|*/test/*|*/__tests__/*|*test*.sh|*test*.spec.*|*.test.*|*/e2e/*|*/docs/*) continue ;;
   esac
   [ -f "$FILE" ] || continue
 

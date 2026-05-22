@@ -26,6 +26,64 @@ const AZURE_CLIENT_ID = process.env.AZURE_CLIENT_ID || process.env.AAD_CLIENT_ID
 const AZURE_CLIENT_SECRET = process.env.AZURE_CLIENT_SECRET || process.env.AAD_CLIENT_SECRET || '';
 const AZURE_TENANT_ID = process.env.AZURE_TENANT_ID || process.env.AAD_TENANT_ID || '';
 
+/**
+ * Sev-1 #789 — MFA freshness window on cached OBO access tokens.
+ *
+ * Azure Conditional Access can enforce a "sign-in frequency" / MFA-freshness
+ * policy that is independent of access-token `exp`. A token can still be
+ * `exp`-valid while its `auth_time` (the moment MFA was last performed) has
+ * aged past the policy window — AAD then returns 401/claims-challenge on
+ * downstream calls. We treat such tokens as expired so the cache layer
+ * forces a refresh BEFORE handing them to mcp-proxy / Azure MCP, which would
+ * otherwise produce opaque 401s mid-conversation (the U/D-after-first-action
+ * symptom in #789).
+ *
+ * Default 30 minutes — comfortably inside typical CA windows (1-4 hours).
+ * Overridable via AZURE_OBO_MFA_FRESHNESS_MINUTES.
+ */
+const DEFAULT_MFA_FRESHNESS_MINUTES = 30;
+
+function getMfaFreshnessSeconds(): number {
+  const raw = process.env.AZURE_OBO_MFA_FRESHNESS_MINUTES;
+  const parsed = raw ? parseInt(raw, 10) : NaN;
+  const minutes = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MFA_FRESHNESS_MINUTES;
+  return minutes * 60;
+}
+
+/**
+ * Decode the JWT payload (no signature verification — only the auth_time /
+ * iat claims are inspected, AAD already validated the token at issue time).
+ * Returns null on malformed tokens.
+ */
+function decodeJwtPayload(token: string): Record<string, any> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const padded = parts[1] + '='.repeat((4 - (parts[1].length % 4)) % 4);
+    return JSON.parse(Buffer.from(padded, 'base64').toString('utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * True iff the token's MFA authentication is older than the freshness window.
+ * Prefer `auth_time` (RFC 9068 / OIDC ID-token claim) and fall back to `iat`
+ * when AAD didn't surface auth_time. Returns false (NOT stale) when neither
+ * claim is present — we don't penalize tokens that simply don't expose
+ * auth_time; the exp check still applies.
+ */
+export function isMfaStale(token: string, nowSec: number = Math.floor(Date.now() / 1000)): boolean {
+  const payload = decodeJwtPayload(token);
+  if (!payload) return false;
+  const stamp = typeof payload.auth_time === 'number'
+    ? payload.auth_time
+    : (typeof payload.iat === 'number' ? payload.iat : undefined);
+  if (stamp === undefined) return false;
+  const ageSec = nowSec - stamp;
+  return ageSec > getMfaFreshnessSeconds();
+}
+
 export interface AzureTokenInfo {
   access_token: string;
   id_token?: string;  // ID token for AWS Identity Center OBO (has app's client ID as audience)
@@ -344,6 +402,14 @@ export class AzureTokenService {
   /**
    * Get a valid Azure OBO token, refreshing if necessary
    * This is the primary method to use when you need a valid token
+   *
+   * Sev-1 #789: ALSO refreshes when the cached token's MFA stamp
+   * (`auth_time` / `iat`) is older than the configured MFA freshness
+   * window — even if `exp` is still in the future. This prevents
+   * mid-conversation 401s on the 2nd/3rd Azure MCP Update/Delete call
+   * once Conditional-Access flags the stale MFA. Service-principal
+   * tokens (refresh_token === 'service_principal') are exempt — they
+   * have no MFA dimension to be stale against.
    */
   async getOrRefreshToken(userId: string): Promise<AzureTokenInfo | null> {
     try {
@@ -355,22 +421,54 @@ export class AzureTokenService {
         return null;
       }
 
-      // If token is valid, return it
-      if (!tokenInfo.is_expired) {
+      // Determine if this is a service-principal-issued token. SP tokens
+      // are issued by client_credentials and have no MFA dimension, so
+      // they bypass freshness checks (they only expire by `exp`). We re-read
+      // refresh_token to detect this — getUserAzureToken doesn't surface it.
+      let isServicePrincipal = false;
+      try {
+        const raw = await prisma.userAuthToken.findUnique({
+          where: { user_id: userId },
+          select: { refresh_token: true },
+        });
+        isServicePrincipal = raw?.refresh_token === 'service_principal';
+      } catch {
+        // If the lookup fails we treat as regular user token (safer to refresh).
+      }
+
+      const mfaStale = !isServicePrincipal && isMfaStale(tokenInfo.access_token);
+
+      // If token is valid AND MFA is fresh, return it.
+      if (!tokenInfo.is_expired && !mfaStale) {
         return tokenInfo;
       }
 
-      // Token is expired, try to refresh
-      this.logger.info({ userId }, 'Azure token expired, attempting refresh');
+      if (mfaStale && !tokenInfo.is_expired) {
+        this.logger.info(
+          { userId, freshnessMinutes: Math.floor(getMfaFreshnessSeconds() / 60) },
+          'Azure token MFA freshness expired (Sev-1 #789), forcing refresh',
+        );
+      } else {
+        this.logger.info({ userId }, 'Azure token expired, attempting refresh');
+      }
+
       const refreshedToken = await this.refreshToken(userId);
 
       if (refreshedToken) {
         return refreshedToken;
       }
 
-      // Refresh failed, return the expired token info (caller should handle)
-      this.logger.warn({ userId }, 'Token refresh failed - returning expired token info');
-      return tokenInfo;
+      // Refresh failed. Surface as expired (even if `exp` is still future)
+      // so the caller can short-circuit to re-auth instead of forwarding a
+      // stale token to AAD where it produces an opaque MFA-required 401.
+      this.logger.warn(
+        { userId, mfaStale, expExpired: tokenInfo.is_expired },
+        'Token refresh failed - surfacing as expired so caller re-auths',
+      );
+      return {
+        ...tokenInfo,
+        is_expired: true,
+      };
 
     } catch (error: any) {
       this.logger.error({ userId, error: error.message }, 'Failed to get or refresh Azure token');

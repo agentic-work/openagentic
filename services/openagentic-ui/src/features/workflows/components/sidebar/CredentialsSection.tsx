@@ -82,7 +82,7 @@ export const CredentialsSection: React.FC<CredentialsSectionProps> = ({ workflow
   const fetchProviders = useCallback(async () => {
     try {
       const headers = getAuthHeaders();
-      const res = await fetch('/api/admin/providers', { headers });
+      const res = await fetch('/api/admin/llm-providers', { headers });
       if (res.ok) {
         const data = await res.json();
         setProviderCount(Array.isArray(data) ? data.length : data.providers?.length || 0);

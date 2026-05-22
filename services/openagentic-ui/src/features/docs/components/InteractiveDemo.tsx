@@ -49,7 +49,7 @@ const pipelineStages = [
   {
     name: 'Completion',
     brief: 'Streaming LLM',
-    detail: 'The assembled prompt is sent to the selected LLM provider. The intelligence slider (0-100) determines which model is used via the SmartModelRouter. Responses stream via SSE.',
+    detail: 'The assembled prompt is sent to the selected LLM provider. SmartModelRouter picks the model from capability scoring and per-user per-model budget caps. Responses stream via SSE.',
   },
   {
     name: 'Response',
@@ -260,173 +260,11 @@ export const PipelineVisualizer: React.FC = () => {
 };
 
 // ============================================================================
-// SLIDER DEMO
 // ============================================================================
-
-interface TierInfo {
-  name: string;
-  color: string;
-  description: string;
-}
-
-const getTier = (value: number): TierInfo => {
-  if (value <= 40) {
-    return {
-      name: 'Economical',
-      color: '#22c55e',
-      description:
-        'Fast, cost-efficient models for simple tasks: lookups, short answers, basic formatting. Models like GPT-4o-mini and Claude Haiku handle these well at a fraction of the cost.',
-    };
-  }
-  if (value <= 60) {
-    return {
-      name: 'Balanced',
-      color: '#eab308',
-      description:
-        'Mid-range models that balance quality and cost. Good for multi-step tasks, moderate analysis, and content generation where some reasoning is needed but extreme depth is not.',
-    };
-  }
-  return {
-    name: 'Premium',
-    color: '#3b82f6',
-    description:
-      'Top-tier reasoning models for complex analysis, code review, long-form writing, and multi-step problem solving. Models like GPT-4o, Claude Opus, and Gemini Pro with extended thinking.',
-  };
-};
-
-export const SliderDemo: React.FC = () => {
-  const [value, setValue] = useState(50);
-  const tier = getTier(value);
-
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setValue(Number(e.target.value));
-  }, []);
-
-  return (
-    <div
-      style={{
-        background: 'var(--color-surface)',
-        border: '1px solid var(--color-border)',
-        borderRadius: '14px',
-        padding: '28px 24px',
-      }}
-    >
-      {/* Gradient bar */}
-      <div
-        style={{
-          height: '8px',
-          borderRadius: '4px',
-          background: 'linear-gradient(90deg, #22c55e, #eab308, #3b82f6)',
-          marginBottom: '8px',
-          position: 'relative',
-        }}
-      />
-
-      {/* Slider input */}
-      <div style={{ position: 'relative', marginBottom: '20px' }}>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={value}
-          onChange={handleChange}
-          style={{
-            width: '100%',
-            accentColor: tier.color,
-            cursor: 'pointer',
-          }}
-        />
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            marginTop: '4px',
-          }}
-        >
-          {[0, 20, 40, 60, 80, 100].map((v) => (
-            <span
-              key={v}
-              style={{
-                fontSize: '11px',
-                color: 'var(--color-textMuted)',
-                fontWeight: 500,
-              }}
-            >
-              {v}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Current value and tier */}
-      <motion.div
-        key={tier.name}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
-        style={{
-          padding: '20px',
-          background: 'var(--color-surfaceSecondary)',
-          borderRadius: '10px',
-          border: '1px solid var(--color-border)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            marginBottom: '10px',
-          }}
-        >
-          <span
-            style={{
-              fontSize: '24px',
-              fontWeight: 700,
-              color: 'var(--color-text)',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            {value}
-          </span>
-          <span
-            style={{
-              fontSize: '13px',
-              fontWeight: 600,
-              color: tier.color,
-              background: `${tier.color}18`,
-              padding: '4px 10px',
-              borderRadius: '6px',
-            }}
-          >
-            {tier.name}
-          </span>
-        </div>
-        <p
-          style={{
-            fontSize: '13px',
-            color: 'var(--color-textSecondary)',
-            lineHeight: 1.65,
-            marginBottom: '12px',
-          }}
-        >
-          {tier.description}
-        </p>
-        <p
-          style={{
-            fontSize: '12px',
-            color: 'var(--color-textMuted)',
-            fontStyle: 'italic',
-          }}
-        >
-          Models are selected automatically by the SmartRouter based on
-          configured providers.
-        </p>
-      </motion.div>
-    </div>
-  );
-};
-
+// SLIDER DEMO — deleted 2026-04-19 (task #144, slider rip).
+// Model selection goes through SmartModelRouter; per-user x per-model
+// budget caps live in UserModelBudgetService.
+// ============================================================================
 // ============================================================================
 // AGENT TYPE EXPLORER
 // ============================================================================
@@ -719,9 +557,9 @@ const ConfigRow: React.FC<{ label: string; value: string }> = ({ label, value })
 // DEFAULT EXPORT
 // ============================================================================
 
+// 2026-04-19 — SliderDemo removed (task #144, slider rip).
 const InteractiveDemo = {
   PipelineVisualizer,
-  SliderDemo,
   AgentTypeExplorer,
 };
 

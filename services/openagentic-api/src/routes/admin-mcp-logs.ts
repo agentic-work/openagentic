@@ -39,7 +39,7 @@ const adminMCPLogsRoutes: FastifyPluginAsync = async (fastify) => {
    * Returns paginated MCP call logs with full request/response data
    */
   fastify.get('/api/admin/mcp-logs', {
-    preHandler: adminMiddleware
+    onRequest: adminMiddleware
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const query = request.query as any;
     const page = parseInt(query.page) || 1;
@@ -128,7 +128,7 @@ const adminMCPLogsRoutes: FastifyPluginAsync = async (fastify) => {
    * Returns aggregate statistics for MCP calls
    */
   fastify.get('/api/admin/mcp-logs/stats', {
-    preHandler: adminMiddleware
+    onRequest: adminMiddleware
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -220,7 +220,7 @@ const adminMCPLogsRoutes: FastifyPluginAsync = async (fastify) => {
    * Returns a single MCP call log with full details
    */
   fastify.get('/api/admin/mcp-logs/:id', {
-    preHandler: adminMiddleware
+    onRequest: adminMiddleware
   }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     const { id } = request.params;
 
@@ -267,7 +267,7 @@ const adminMCPLogsRoutes: FastifyPluginAsync = async (fastify) => {
    * Query params: lines (default 200), server (optional filter)
    */
   fastify.get('/api/admin/mcp/logs', {
-    preHandler: adminMiddleware
+    onRequest: adminMiddleware
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const query = request.query as { lines?: string; server?: string };
     const lines = parseInt(query.lines || '200');
@@ -373,6 +373,28 @@ const adminMCPLogsRoutes: FastifyPluginAsync = async (fastify) => {
       const { spawn } = await import('child_process');
       const dockerLogs = spawn('docker', ['logs', 'openagentic-mcp-proxy', '-f', '--tail', '0'], {
         stdio: ['ignore', 'pipe', 'pipe']
+      });
+
+      // CRITICAL: handle spawn 'error' event so a missing docker binary
+      // (k8s pods don't have docker installed) doesn't propagate as an
+      // uncaught exception that kills the API process. When this fires
+      // ECONNREFUSED on Liveness probe → pod restart.
+      dockerLogs.on('error', (err: any) => {
+        loggers.services.warn(
+          { err: err?.message, code: err?.code },
+          '[mcp-logs/stream] docker spawn failed (likely k8s deployment without docker binary) — closing stream gracefully',
+        );
+        try {
+          writeNDJSON(reply, 'error', {
+            message:
+              'Live log streaming unavailable (no docker binary in pod). ' +
+              'Use /api/admin/mcp-logs for the polled REST log feed.',
+            code: err?.code ?? 'spawn_failed',
+          });
+          reply.raw.end();
+        } catch {
+          /* response already closed */
+        }
       });
 
       const sendLogEntry = (line: string) => {

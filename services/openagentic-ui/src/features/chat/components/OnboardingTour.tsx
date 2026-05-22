@@ -27,15 +27,9 @@ const TOUR_STEPS: TourStep[] = [
     targetSelector: 'textarea',
     fallbackPosition: { top: '80%', left: '50%' },
   },
-  {
-    id: 'intelligence-slider',
-    title: 'Intelligence Slider',
-    description:
-      'Adjust the cost/quality tradeoff. Low = fast & economical (Haiku, GPT-4o-mini). High = powerful & precise (Opus, o1).',
-    icon: <Zap size={20} />,
-    targetSelector: '[data-testid="intelligence-slider"], input[type="range"]',
-    fallbackPosition: { top: '85%', left: '30%' },
-  },
+  // 2026-04-19 — intelligence-slider tour step removed (task #144,
+  // slider rip). Model selection goes through SmartModelRouter +
+  // per-user × per-model budget caps.
   {
     id: 'mcp-tools',
     title: 'MCP Tools',

@@ -1,0 +1,61 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_kubernetes.k8s_list_deployments — the all-healthy operational default. Mirrors the live agentic-dev cluster state on 2026-05-13 (every deployment ready_replicas === replicas, available_replicas >= replicas). Exercises the empty-case 'no unhealthy deployments' path of the analyze + filter transforms and the conditional 'all healthy' branch of the report HTML.",
+  "result": {
+    "result": {
+      "success": true,
+      "namespace": "agentic-dev",
+      "is_protected": false,
+      "deployments": [
+        {
+          "name": "openagentic-api",
+          "namespace": "agentic-dev",
+          "replicas": 1,
+          "ready_replicas": 1,
+          "available_replicas": 1,
+          "updated_replicas": 1,
+          "created": "2026-05-11T16:41:17Z",
+          "labels": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "openagentic"
+          },
+          "selector": {
+            "app.kubernetes.io/component": "api"
+          }
+        },
+        {
+          "name": "openagentic-ui",
+          "namespace": "agentic-dev",
+          "replicas": 1,
+          "ready_replicas": 1,
+          "available_replicas": 1,
+          "updated_replicas": 1,
+          "created": "2026-05-11T16:41:17Z",
+          "labels": {
+            "app.kubernetes.io/component": "ui",
+            "app.kubernetes.io/instance": "openagentic"
+          },
+          "selector": {
+            "app.kubernetes.io/component": "ui"
+          }
+        },
+        {
+          "name": "openagentic-mcp-proxy",
+          "namespace": "agentic-dev",
+          "replicas": 1,
+          "ready_replicas": 1,
+          "available_replicas": 1,
+          "updated_replicas": 1,
+          "created": "2026-05-11T16:57:23Z",
+          "labels": {
+            "app.kubernetes.io/component": "mcp-proxy",
+            "app.kubernetes.io/instance": "openagentic"
+          },
+          "selector": {
+            "app.kubernetes.io/component": "mcp-proxy"
+          }
+        }
+      ],
+      "count": 3
+    }
+  }
+}

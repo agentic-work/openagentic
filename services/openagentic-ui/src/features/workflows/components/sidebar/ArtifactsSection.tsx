@@ -56,25 +56,36 @@ export const ArtifactsSection: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
+  // Fix 2026-05-14: switched from POST /api/knowledge/search (chat-RAG,
+  // returns chat knowledge entries — wrong domain, also UI was doing
+  // GET against a POST-only route → 404) to GET /api/artifacts which
+  // is the actual user-artifacts list endpoint registered via
+  // misc.plugin.ts → routes/artifacts.ts. For text search we POST to
+  // /api/artifacts/search instead.
   const fetchArtifacts = useCallback(async (query?: string) => {
     try {
       setLoading(true);
       const headers = getAuthHeaders();
-      const params = new URLSearchParams();
-      if (query) params.set('query', query);
-      params.set('source', 'workflow');
-      params.set('limit', '20');
-
-      const res = await fetch(`/api/knowledge/search?${params}`, { headers });
+      let res: Response;
+      if (query) {
+        res = await fetch('/api/artifacts/search', {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, limit: 20 }),
+        });
+      } else {
+        res = await fetch('/api/artifacts?limit=20&sortBy=created&sortOrder=desc', { headers });
+      }
       if (res.ok) {
         const data = await res.json();
-        const items = (data.results || data.artifacts || []).map((item: any) => ({
+        const raw = Array.isArray(data) ? data : (data.artifacts || data.results || []);
+        const items = raw.map((item: any) => ({
           id: item.id || item.artifact_id || `artifact-${Math.random()}`,
-          title: item.title || item.metadata?.title || 'Untitled',
-          content: item.content || item.text || '',
-          format: item.metadata?.format || item.format || 'json',
+          title: item.title || item.filename || item.originalName || item.metadata?.title || 'Untitled',
+          content: item.content || item.extractedText || item.text || '',
+          format: item.metadata?.format || item.mime_type || item.format || 'json',
           metadata: item.metadata || {},
-          created_at: item.created_at || item.metadata?.created_at,
+          created_at: item.created_at || item.uploaded_at || item.metadata?.created_at,
           score: item.score,
         }));
         setArtifacts(items);

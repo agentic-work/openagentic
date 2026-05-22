@@ -390,3 +390,17 @@ export class VaultInitService {
     return this.initialized;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Singleton accessor
+// ---------------------------------------------------------------------------
+
+let _vaultInstance: VaultInitService | null = null;
+
+export function setVaultService(svc: VaultInitService): void {
+  _vaultInstance = svc;
+}
+
+export function getVaultService(): VaultInitService | null {
+  return _vaultInstance;
+}

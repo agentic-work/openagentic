@@ -1,470 +1,421 @@
 {
   "domain": "llm-providers",
   "title": "LLM Providers",
-  "description": "Multi-provider LLM routing with 8 provider types, failover, load balancing, and per-provider metrics.",
+  "description": "Provider manager + adapter taxonomy",
   "icon": "brain",
   "category": "core",
-  "generatedAt": "2026-04-06T02:45:19.432Z",
+  "generatedAt": "2026-05-13T20:48:20.634Z",
   "sourceFiles": [
-    "services/openagentic-api/src/services/llm-providers/ProviderManager.ts",
-    "services/openagentic-api/src/services/llm-providers/AWSBedrockProvider.ts",
-    "services/openagentic-api/src/services/llm-providers/AnthropicProvider.ts",
-    "services/openagentic-api/src/services/llm-providers/AzureAIFoundryProvider.ts",
-    "services/openagentic-api/src/services/llm-providers/AzureOpenAIProvider.ts",
-    "services/openagentic-api/src/services/llm-providers/GoogleVertexProvider.ts",
-    "services/openagentic-api/src/services/llm-providers/ILLMProvider.ts",
-    "services/openagentic-api/src/services/llm-providers/OllamaProvider.ts",
-    "services/openagentic-api/src/services/llm-providers/OpenAIProvider.ts"
+    "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
   ],
   "sections": [
     {
-      "id": "provider-types",
-      "title": "LLM Provider Types",
-      "description": "OpenAgentic supports 8 LLM provider backends for model routing and failover.",
+      "id": "ProviderConfig",
+      "title": "ProviderConfig",
+      "description": "Interface ProviderConfig",
       "adminOnly": false,
       "items": [
         {
-          "id": "provider-azure-openai",
-          "name": "azure-openai",
-          "description": "LLM provider type: azure-openai",
-          "type": "provider-type"
-        },
-        {
-          "id": "provider-aws-bedrock",
-          "name": "aws-bedrock",
-          "description": "LLM provider type: aws-bedrock",
-          "type": "provider-type"
-        },
-        {
-          "id": "provider-google-vertex",
-          "name": "google-vertex",
-          "description": "LLM provider type: google-vertex",
-          "type": "provider-type"
-        },
-        {
-          "id": "provider-vertex-ai",
-          "name": "vertex-ai",
-          "description": "LLM provider type: vertex-ai",
-          "type": "provider-type"
-        },
-        {
-          "id": "provider-ollama",
-          "name": "ollama",
-          "description": "LLM provider type: ollama",
-          "type": "provider-type"
-        },
-        {
-          "id": "provider-azure-ai-foundry",
-          "name": "azure-ai-foundry",
-          "description": "LLM provider type: azure-ai-foundry",
-          "type": "provider-type"
-        },
-        {
-          "id": "provider-anthropic",
-          "name": "anthropic",
-          "description": "LLM provider type: anthropic",
-          "type": "provider-type"
-        },
-        {
-          "id": "provider-openai",
-          "name": "openai",
-          "description": "LLM provider type: openai",
-          "type": "provider-type"
-        }
-      ]
-    },
-    {
-      "id": "provider-config",
-      "title": "Provider Configuration",
-      "description": "Configuration interface for individual LLM providers.",
-      "adminOnly": true,
-      "items": [
-        {
-          "id": "config-name",
+          "id": "ProviderConfig.name",
           "name": "name",
-          "description": "string field",
-          "type": "interface-field",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "type": "string",
-            "optional": false
-          }
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
         },
         {
-          "id": "config-type",
+          "id": "ProviderConfig.type",
           "name": "type",
-          "description": "'azure-openai' | 'aws-bedrock' | 'google-vertex' | 'vertex-ai' | 'ollama' | 'azure-ai-foundry' | 'anthropic' | 'openai' field",
-          "type": "interface-field",
+          "description": "'azure-openai' | 'aws-bedrock' | 'google-vertex' | 'vertex-ai' | 'ollama' | 'azure-ai-foundry' | 'anthropic' | 'openai'",
+          "type": "ts-field",
           "properties": {
-            "type": "'azure-openai' | 'aws-bedrock' | 'google-vertex' | 'vertex-ai' | 'ollama' | 'azure-ai-foundry' | 'anthropic' | 'openai'",
-            "optional": false
-          }
+            "tsType": "'azure-openai' | 'aws-bedrock' | 'google-vertex' | 'vertex-ai' | 'ollama' | 'azure-ai-foundry' | 'anthropic' | 'openai'"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
         },
         {
-          "id": "config-enabled",
+          "id": "ProviderConfig.enabled",
           "name": "enabled",
-          "description": "boolean field",
-          "type": "interface-field",
+          "description": "boolean",
+          "type": "ts-field",
           "properties": {
-            "type": "boolean",
-            "optional": false
-          }
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
         },
         {
-          "id": "config-priority",
+          "id": "ProviderConfig.priority",
           "name": "priority",
-          "description": "Lower number = higher priority",
-          "type": "interface-field",
+          "description": "number",
+          "type": "ts-field",
           "properties": {
-            "type": "number",
-            "optional": false
-          }
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
         },
         {
-          "id": "config-config",
+          "id": "ProviderConfig.config",
           "name": "config",
-          "description": "Record<string, any> field",
-          "type": "interface-field",
+          "description": "Record<string",
+          "type": "ts-field",
           "properties": {
-            "type": "Record<string, any>",
-            "optional": false
-          }
+            "tsType": "Record<string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
         }
       ]
     },
     {
-      "id": "manager-config",
-      "title": "Provider Manager Configuration",
-      "description": "Top-level configuration for the multi-provider LLM routing layer.",
-      "adminOnly": true,
-      "items": [
-        {
-          "id": "manager-providers",
-          "name": "providers",
-          "description": "ProviderConfig[] setting",
-          "type": "interface-field",
-          "properties": {
-            "type": "ProviderConfig[]",
-            "optional": false
-          }
-        },
-        {
-          "id": "manager-defaultProvider",
-          "name": "defaultProvider",
-          "description": "string setting",
-          "type": "interface-field",
-          "properties": {
-            "type": "string",
-            "optional": true
-          }
-        },
-        {
-          "id": "manager-enableFailover",
-          "name": "enableFailover",
-          "description": "boolean setting",
-          "type": "interface-field",
-          "properties": {
-            "type": "boolean",
-            "optional": false
-          }
-        },
-        {
-          "id": "manager-failoverTimeout",
-          "name": "failoverTimeout",
-          "description": "ms",
-          "type": "interface-field",
-          "properties": {
-            "type": "number",
-            "optional": false
-          }
-        },
-        {
-          "id": "manager-enableLoadBalancing",
-          "name": "enableLoadBalancing",
-          "description": "boolean setting",
-          "type": "interface-field",
-          "properties": {
-            "type": "boolean",
-            "optional": false
-          }
-        },
-        {
-          "id": "manager-loadBalancingStrategy",
-          "name": "loadBalancingStrategy",
-          "description": "'round-robin' | 'least-latency' | 'priority' setting",
-          "type": "interface-field",
-          "properties": {
-            "type": "'round-robin' | 'least-latency' | 'priority'",
-            "optional": false
-          }
-        }
-      ]
-    },
-    {
-      "id": "provider-metrics",
-      "title": "Provider Metrics",
-      "description": "Per-provider observability metrics for request tracking, latency, cost, and health.",
-      "adminOnly": true,
-      "items": [
-        {
-          "id": "metric-provider",
-          "name": "provider",
-          "description": "string metric",
-          "type": "metric-field",
-          "properties": {
-            "type": "string"
-          }
-        },
-        {
-          "id": "metric-totalRequests",
-          "name": "totalRequests",
-          "description": "number metric",
-          "type": "metric-field",
-          "properties": {
-            "type": "number"
-          }
-        },
-        {
-          "id": "metric-successfulRequests",
-          "name": "successfulRequests",
-          "description": "number metric",
-          "type": "metric-field",
-          "properties": {
-            "type": "number"
-          }
-        },
-        {
-          "id": "metric-failedRequests",
-          "name": "failedRequests",
-          "description": "number metric",
-          "type": "metric-field",
-          "properties": {
-            "type": "number"
-          }
-        },
-        {
-          "id": "metric-averageLatency",
-          "name": "averageLatency",
-          "description": "number metric",
-          "type": "metric-field",
-          "properties": {
-            "type": "number"
-          }
-        },
-        {
-          "id": "metric-totalTokens",
-          "name": "totalTokens",
-          "description": "number metric",
-          "type": "metric-field",
-          "properties": {
-            "type": "number"
-          }
-        },
-        {
-          "id": "metric-totalCost",
-          "name": "totalCost",
-          "description": "number metric",
-          "type": "metric-field",
-          "properties": {
-            "type": "number"
-          }
-        },
-        {
-          "id": "metric-lastHealthCheck",
-          "name": "lastHealthCheck",
-          "description": "ProviderHealth metric",
-          "type": "metric-field",
-          "properties": {
-            "type": "ProviderHealth"
-          }
-        },
-        {
-          "id": "metric-uptime",
-          "name": "uptime",
-          "description": "percentage",
-          "type": "metric-field",
-          "properties": {
-            "type": "number"
-          }
-        },
-        {
-          "id": "metric-lastUsed",
-          "name": "lastUsed",
-          "description": "Date metric",
-          "type": "metric-field",
-          "properties": {
-            "type": "Date"
-          }
-        },
-        {
-          "id": "metric-imageGenRequests",
-          "name": "imageGenRequests",
-          "description": "number metric",
-          "type": "metric-field",
-          "properties": {
-            "type": "number"
-          }
-        },
-        {
-          "id": "metric-imageGenSuccessful",
-          "name": "imageGenSuccessful",
-          "description": "number metric",
-          "type": "metric-field",
-          "properties": {
-            "type": "number"
-          }
-        },
-        {
-          "id": "metric-imageGenFailed",
-          "name": "imageGenFailed",
-          "description": "number metric",
-          "type": "metric-field",
-          "properties": {
-            "type": "number"
-          }
-        },
-        {
-          "id": "metric-imageGenAvgLatency",
-          "name": "imageGenAvgLatency",
-          "description": "number metric",
-          "type": "metric-field",
-          "properties": {
-            "type": "number"
-          }
-        }
-      ]
-    },
-    {
-      "id": "failover-metadata",
-      "title": "Failover Metadata",
-      "description": "Metadata returned when a provider fails and another takes over.",
-      "adminOnly": true,
-      "items": [
-        {
-          "id": "failover-occurred",
-          "name": "occurred",
-          "description": "boolean field",
-          "type": "interface-field",
-          "properties": {
-            "type": "boolean",
-            "optional": false
-          }
-        },
-        {
-          "id": "failover-originalProvider",
-          "name": "originalProvider",
-          "description": "string field",
-          "type": "interface-field",
-          "properties": {
-            "type": "string",
-            "optional": false
-          }
-        },
-        {
-          "id": "failover-failedProvider",
-          "name": "failedProvider",
-          "description": "string field",
-          "type": "interface-field",
-          "properties": {
-            "type": "string",
-            "optional": true
-          }
-        },
-        {
-          "id": "failover-failoverProvider",
-          "name": "failoverProvider",
-          "description": "string field",
-          "type": "interface-field",
-          "properties": {
-            "type": "string",
-            "optional": true
-          }
-        },
-        {
-          "id": "failover-failureReason",
-          "name": "failureReason",
-          "description": "string field",
-          "type": "interface-field",
-          "properties": {
-            "type": "string",
-            "optional": true
-          }
-        },
-        {
-          "id": "failover-failoverTime",
-          "name": "failoverTime",
-          "description": "ms",
-          "type": "interface-field",
-          "properties": {
-            "type": "number",
-            "optional": true
-          }
-        },
-        {
-          "id": "failover-attemptCount",
-          "name": "attemptCount",
-          "description": "number field",
-          "type": "interface-field",
-          "properties": {
-            "type": "number",
-            "optional": true
-          }
-        }
-      ]
-    },
-    {
-      "id": "provider-implementations",
-      "title": "Provider Implementations",
-      "description": "7 provider implementations discovered in the codebase.",
+      "id": "ProviderManagerConfig",
+      "title": "ProviderManagerConfig",
+      "description": "Interface ProviderManagerConfig",
       "adminOnly": false,
       "items": [
         {
-          "id": "impl-AWSBedrockProvider",
-          "name": "AWSBedrockProvider",
-          "description": "Provider implementation: AWSBedrock",
-          "type": "provider-impl",
-          "sourceFile": "services/openagentic-api/src/services/llm-providers/AWSBedrockProvider.ts"
+          "id": "ProviderManagerConfig.providers",
+          "name": "providers",
+          "description": "ProviderConfig[]",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "ProviderConfig[]"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
         },
         {
-          "id": "impl-AnthropicProvider",
-          "name": "AnthropicProvider",
-          "description": "Provider implementation: Anthropic",
-          "type": "provider-impl",
-          "sourceFile": "services/openagentic-api/src/services/llm-providers/AnthropicProvider.ts"
+          "id": "ProviderManagerConfig.defaultProvider",
+          "name": "defaultProvider",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
         },
         {
-          "id": "impl-AzureAIFoundryProvider",
-          "name": "AzureAIFoundryProvider",
-          "description": "Provider implementation: Azure AIFoundry",
-          "type": "provider-impl",
-          "sourceFile": "services/openagentic-api/src/services/llm-providers/AzureAIFoundryProvider.ts"
+          "id": "ProviderManagerConfig.enableFailover",
+          "name": "enableFailover",
+          "description": "boolean",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
         },
         {
-          "id": "impl-AzureOpenAIProvider",
-          "name": "AzureOpenAIProvider",
-          "description": "Provider implementation: Azure Open AI",
-          "type": "provider-impl",
-          "sourceFile": "services/openagentic-api/src/services/llm-providers/AzureOpenAIProvider.ts"
+          "id": "ProviderManagerConfig.failoverTimeout",
+          "name": "failoverTimeout",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
         },
         {
-          "id": "impl-GoogleVertexProvider",
-          "name": "GoogleVertexProvider",
-          "description": "Provider implementation: Google Vertex",
-          "type": "provider-impl",
-          "sourceFile": "services/openagentic-api/src/services/llm-providers/GoogleVertexProvider.ts"
+          "id": "ProviderManagerConfig.nonStreamFailoverTimeout",
+          "name": "nonStreamFailoverTimeout",
+          "description": "Timeout budget for non-streaming chat completions (ms). Separate from `failoverTimeout` because non-streaming requests dominated by reasoning models (gpt-5.4, claude-sonnet-4-x, o-series) legitimately take 60-300s for complete answers — the entire generation must finish before th",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
         },
         {
-          "id": "impl-OllamaProvider",
-          "name": "OllamaProvider",
-          "description": "Provider implementation: Ollama",
-          "type": "provider-impl",
-          "sourceFile": "services/openagentic-api/src/services/llm-providers/OllamaProvider.ts"
+          "id": "ProviderManagerConfig.imageGenTimeout",
+          "name": "imageGenTimeout",
+          "description": "Timeout budget for image generation (ms). Separate from failoverTimeout because DALL-E / Imagen inference reliably exceeds the 30s chat budget (15-30s inference + embed + Milvus insert + MinIO upload).",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
         },
         {
-          "id": "impl-OpenAIProvider",
-          "name": "OpenAIProvider",
-          "description": "Provider implementation: Open AI",
-          "type": "provider-impl",
-          "sourceFile": "services/openagentic-api/src/services/llm-providers/OpenAIProvider.ts"
+          "id": "ProviderManagerConfig.enableLoadBalancing",
+          "name": "enableLoadBalancing",
+          "description": "boolean",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "ProviderManagerConfig.loadBalancingStrategy",
+          "name": "loadBalancingStrategy",
+          "description": "'round-robin' | 'least-latency' | 'priority'",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "'round-robin' | 'least-latency' | 'priority'"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        }
+      ]
+    },
+    {
+      "id": "ProviderMetrics",
+      "title": "ProviderMetrics",
+      "description": "Interface ProviderMetrics",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "ProviderMetrics.provider",
+          "name": "provider",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "ProviderMetrics.totalRequests",
+          "name": "totalRequests",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "ProviderMetrics.successfulRequests",
+          "name": "successfulRequests",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "ProviderMetrics.failedRequests",
+          "name": "failedRequests",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "ProviderMetrics.averageLatency",
+          "name": "averageLatency",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "ProviderMetrics.totalTokens",
+          "name": "totalTokens",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "ProviderMetrics.totalCost",
+          "name": "totalCost",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "ProviderMetrics.lastHealthCheck",
+          "name": "lastHealthCheck",
+          "description": "ProviderHealth",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "ProviderHealth"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "ProviderMetrics.uptime",
+          "name": "uptime",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "ProviderMetrics.lastUsed",
+          "name": "lastUsed",
+          "description": "Date",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "Date"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "ProviderMetrics.imageGenRequests",
+          "name": "imageGenRequests",
+          "description": "Image generation metrics (separate from completion metrics)",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "ProviderMetrics.imageGenSuccessful",
+          "name": "imageGenSuccessful",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "ProviderMetrics.imageGenFailed",
+          "name": "imageGenFailed",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "ProviderMetrics.imageGenAvgLatency",
+          "name": "imageGenAvgLatency",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        }
+      ]
+    },
+    {
+      "id": "FailoverMetadata",
+      "title": "FailoverMetadata",
+      "description": "Interface FailoverMetadata",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "FailoverMetadata.occurred",
+          "name": "occurred",
+          "description": "boolean",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "FailoverMetadata.originalProvider",
+          "name": "originalProvider",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "FailoverMetadata.failedProvider",
+          "name": "failedProvider",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "FailoverMetadata.failoverProvider",
+          "name": "failoverProvider",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "FailoverMetadata.failureReason",
+          "name": "failureReason",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "FailoverMetadata.failoverTime",
+          "name": "failoverTime",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "FailoverMetadata.attemptCount",
+          "name": "attemptCount",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        }
+      ]
+    },
+    {
+      "id": "CostLimits",
+      "title": "CostLimits",
+      "description": "Interface CostLimits",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "CostLimits.dailyMaxCostCents",
+          "name": "dailyMaxCostCents",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "CostLimits.warningThresholdCents",
+          "name": "warningThresholdCents",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
+        },
+        {
+          "id": "CostLimits.enforced",
+          "name": "enforced",
+          "description": "boolean",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/llm-providers/ProviderManager.ts"
         }
       ]
     }

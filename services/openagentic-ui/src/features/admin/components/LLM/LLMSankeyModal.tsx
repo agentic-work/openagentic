@@ -179,7 +179,12 @@ const CustomNode = ({
   );
 };
 
-// Custom link with gradient
+// Custom link with gradient — gradientId is DETERMINISTIC (was
+// `linkGradient-${index}-${Date.now()}` which forced a new <defs>
+// every render, causing the gradient to flicker on hover/resize and
+// orphaning <linearGradient> nodes in the SVG. Stable id keys to
+// (index + source + target) so React reconciliation reuses the
+// existing <defs> entry.
 const CustomLink = (props: any) => {
   const {
     sourceX,
@@ -190,14 +195,22 @@ const CustomLink = (props: any) => {
     targetControlX,
     linkWidth,
     index,
-    payload
+    payload,
   } = props;
 
   const gradientColors = GRADIENT_COLORS[index % GRADIENT_COLORS.length];
-  const gradientId = `linkGradient-${index}-${Date.now()}`;
+  const stableKey =
+    payload && typeof payload.source === 'number' && typeof payload.target === 'number'
+      ? `${payload.source}-${payload.target}`
+      : `idx-${index}`;
+  const gradientId = `linkGradient-${stableKey}`;
+
+  // Guard: if Sankey hands us a NaN width (single-node degenerate
+  // graphs) clamp to a visible 2px so the user still sees the link.
+  const safeWidth = Number.isFinite(linkWidth) && linkWidth > 0 ? linkWidth : 2;
 
   return (
-    <Layer key={`link-${index}`}>
+    <Layer key={`link-${stableKey}`}>
       <defs>
         <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor={gradientColors[0]} stopOpacity={0.6} />
@@ -212,7 +225,7 @@ const CustomLink = (props: any) => {
         `}
         fill="none"
         stroke={`url(#${gradientId})`}
-        strokeWidth={Math.max(linkWidth, 2)}
+        strokeWidth={Math.max(safeWidth, 2)}
         strokeOpacity={0.8}
         style={{
           transition: 'stroke-width 0.3s ease, stroke-opacity 0.3s ease',
@@ -220,16 +233,239 @@ const CustomLink = (props: any) => {
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.strokeOpacity = '1';
-          e.currentTarget.style.strokeWidth = `${Math.max(linkWidth * 1.2, 3)}`;
+          e.currentTarget.style.strokeWidth = `${Math.max(safeWidth * 1.2, 3)}`;
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.strokeOpacity = '0.8';
-          e.currentTarget.style.strokeWidth = `${Math.max(linkWidth, 2)}`;
+          e.currentTarget.style.strokeWidth = `${Math.max(safeWidth, 2)}`;
         }}
       />
     </Layer>
   );
 };
+
+// Build the sankey graph data from a flat ModelUsageData[]. Exported
+// so the inline dashboard sankey card can call it with the same shape
+// the modal uses, no logic divergence.
+//
+// Value selection: prefers tokens (the natural unit for an LLM flow
+// diagram). If every row has tokens === 0 but request counts are
+// present, falls back to using count — operators still see a sankey
+// shape that encodes relative volume, instead of a degenerate empty
+// graph that the host then replaces with a bar list. The user wants
+// a sankey, always.
+export function buildSankeyData(modelUsage: ModelUsageData[]): {
+  nodes: SankeyNode[]
+  links: SankeyLink[]
+} {
+  if (!modelUsage || modelUsage.length === 0) {
+    return { nodes: [], links: [] }
+  }
+  const allTokensZero = modelUsage.every((m) => (m.tokens ?? 0) <= 0)
+  const valueOf = (m: ModelUsageData) =>
+    allTokensZero ? (m.count ?? 0) : (m.tokens ?? 0)
+  const nodes: SankeyNode[] = []
+  const links: SankeyLink[] = []
+  const nodeIndex: Map<string, number> = new Map()
+  const addNode = (name: string, displayName: string, value: number, category: 'total' | 'provider' | 'model') => {
+    if (!nodeIndex.has(name)) {
+      nodeIndex.set(name, nodes.length)
+      nodes.push({ name, displayName, tokens: value, category })
+    }
+    return nodeIndex.get(name)!
+  }
+  const providerGroups: { [key: string]: ModelUsageData[] } = {}
+  modelUsage.forEach((m) => {
+    let provider = 'Other'
+    const ml = m.model.toLowerCase()
+    if (ml.includes('claude') || ml.includes('anthropic') || ml.includes('opus') || ml.includes('sonnet') || ml.includes('haiku')) provider = 'Anthropic'
+    else if (ml.includes('gpt') || ml.includes('o1') || ml.includes('o3') || ml.includes('openai') || ml.includes('chatgpt')) provider = 'OpenAI'
+    else if (ml.includes('gemini') || ml.includes('google') || ml.includes('palm') || ml.includes('bard')) provider = 'Google'
+    else if (ml.includes('llama') || ml.includes('mistral') || ml.includes('mixtral') || ml.includes('qwen') || ml.includes('deepseek') || ml.includes('phi')) provider = 'Open Source'
+    else if (ml.includes('azure')) provider = 'Azure'
+    if (!providerGroups[provider]) providerGroups[provider] = []
+    providerGroups[provider].push(m)
+  })
+  const totalValue = modelUsage.reduce((s, m) => s + valueOf(m), 0)
+  const rootLabel = allTokensZero ? 'Total Request Flow' : 'Total Token Flow'
+  const rootIdx = addNode('total-tokens', rootLabel, totalValue, 'total')
+  Object.entries(providerGroups)
+    .sort((a, b) => b[1].reduce((s, m) => s + valueOf(m), 0) - a[1].reduce((s, m) => s + valueOf(m), 0))
+    .forEach(([provider, models]) => {
+      const providerValue = models.reduce((s, m) => s + valueOf(m), 0)
+      if (providerValue > 0) {
+        const providerIdx = addNode(`provider-${provider}`, provider, providerValue, 'provider')
+        links.push({ source: rootIdx, target: providerIdx, value: providerValue })
+        models
+          .sort((a, b) => valueOf(b) - valueOf(a))
+          .forEach((m) => {
+            const v = valueOf(m)
+            if (v > 0) {
+              const modelIdx = addNode(`model-${m.model}`, m.model, v, 'model')
+              links.push({ source: providerIdx, target: modelIdx, value: v })
+            }
+          })
+      }
+    })
+  return { nodes, links }
+}
+
+// Number formatter shared between modal + inline sankey.
+export function formatTokensCompact(num: number): string {
+  if (num >= 1_000_000_000) return `${(num / 1_000_000_000).toFixed(2)}B`
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(2)}M`
+  if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`
+  return num.toLocaleString()
+}
+
+/**
+ * SankeyChartHost — renders the actual Sankey OR a graceful fallback.
+ *
+ * Three cases handled:
+ *   1. modelUsage empty / nodes empty → empty state with copy
+ *   2. nodes present but every link value === 0 → fallback bar list
+ *      (recharts Sankey throws on all-zero links; this keeps the
+ *      modal from going blank)
+ *   3. healthy data → full Sankey diagram with measured width so node
+ *      labels flip side correctly at any viewport
+ *
+ * Width is measured via ResizeObserver on the container ref. The
+ * CustomNode reads `containerWidth` from the prop passed in here, so
+ * label `isOut` math is now actually correct.
+ */
+export const SankeyChartHost: React.FC<{
+  modelUsage: ModelUsageData[]
+  sankeyData: { nodes: SankeyNode[]; links: SankeyLink[] }
+  colors: any
+  isDark: boolean
+  formatTokens: (n: number) => string
+  /** Override the default 480px modal-sized height for inline use. */
+  height?: number
+  /** Hide the outer padding for inline embedding. */
+  flush?: boolean
+}> = ({ modelUsage, sankeyData, colors, isDark, formatTokens, height = 480, flush = false }) => {
+  const ref = React.useRef<HTMLDivElement | null>(null)
+  const [width, setWidth] = React.useState(1100)
+
+  React.useEffect(() => {
+    if (!ref.current) return
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) setWidth(e.contentRect.width)
+    })
+    ro.observe(ref.current)
+    return () => ro.disconnect()
+  }, [])
+
+  // The sankey can't render meaningfully when:
+  //   - there are no links at all (single root node — happens when all
+  //     models have tokens=0 because the provider loop skips zero-total
+  //     providers, leaving only the synthetic root)
+  //   - every link has a zero/negative value (recharts crashes)
+  // In either case we drop to the per-model fallback bar list so the
+  // modal NEVER goes blank.
+  const noSankeyPossible =
+    sankeyData.links.length === 0 ||
+    sankeyData.links.every((l) => !l.value || l.value <= 0)
+
+  // Case 1: nothing to show at all (no models in window)
+  if (modelUsage.length === 0 || sankeyData.nodes.length === 0) {
+    return (
+      <div className={flush ? 'relative' : 'px-8 py-6 relative'} style={{ height }}>
+        <div
+          className="flex flex-col items-center justify-center h-full gap-4"
+          style={{ color: colors.textSecondary }}
+        >
+          <Zap size={48} style={{ opacity: 0.3 }} />
+          <p>No token usage data available for the selected time range</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Case 2: sankey can't render (sparse / all-zero / single-node) —
+  // fall back to a per-model bar list so the modal never goes blank.
+  if (noSankeyPossible) {
+    // Use tokens as the primary metric; if every row has tokens=0 but
+    // there ARE requests, fall back to using the request count so the
+    // bars still encode relative volume (rather than rendering a row
+    // of all-zero-width bars that look identical).
+    const allTokensZero = modelUsage.every((m) => (m.tokens ?? 0) <= 0)
+    const useRequests = allTokensZero
+    const valueOf = (m: ModelUsageData) =>
+      useRequests ? (m.count ?? 0) : (m.tokens ?? 0)
+
+    const sorted = [...modelUsage]
+      .filter((m) => valueOf(m) > 0)
+      .sort((a, b) => valueOf(b) - valueOf(a))
+
+    if (sorted.length === 0) {
+      return (
+        <div className={flush ? 'relative' : 'px-8 py-6 relative'} style={{ height }}>
+          <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: colors.textSecondary }}>
+            <Zap size={48} style={{ opacity: 0.3 }} />
+            <p>Models present but no token or request activity in the selected window</p>
+          </div>
+        </div>
+      )
+    }
+
+    const max = sorted.reduce((m, r) => Math.max(m, valueOf(r)), 0) || 1
+    return (
+      <div className={flush ? 'relative' : 'px-8 py-6 relative'} style={{ height, overflow: 'auto' }}>
+        <div style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 12 }}>
+          token-flow detail (
+          {useRequests
+            ? 'showing per-model REQUEST counts — token telemetry returned 0 for every row in this window'
+            : 'showing per-model TOKEN totals — sankey requires multi-edge non-zero data to render'}
+          )
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {sorted.map((m) => {
+            const v = valueOf(m)
+            const pct = (v / max) * 100
+            return (
+              <div key={m.model} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ flex: '0 0 200px', color: colors.textPrimary, fontFamily: 'var(--font-v3-mono, monospace)', fontSize: 12 }}>
+                  {m.model}
+                </span>
+                <div style={{ flex: 1, height: 14, background: 'color-mix(in srgb, var(--color-text) 5%, transparent)', borderRadius: 2, position: 'relative', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      width: `${pct}%`,
+                      height: '100%',
+                      background: 'linear-gradient(90deg, var(--color-primary), var(--color-secondary))',
+                      transition: 'width .3s ease',
+                    }}
+                  />
+                </div>
+                <span style={{ flex: '0 0 90px', textAlign: 'right', color: colors.textSecondary, fontFamily: 'var(--font-v3-mono, monospace)', fontSize: 12 }}>
+                  {useRequests ? `${v} req` : formatTokens(v)}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // Case 3: healthy sankey
+  return (
+    <div ref={ref} className="px-8 py-6 relative" style={{ height: '480px' }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <Sankey
+          data={sankeyData}
+          node={<CustomNode isDark={isDark} containerWidth={width} />}
+          link={<CustomLink />}
+          nodePadding={30}
+          nodeWidth={12}
+          margin={{ top: 20, right: 220, bottom: 20, left: 20 }}
+          sort={false}
+        />
+      </ResponsiveContainer>
+    </div>
+  )
+}
 
 export const LLMSankeyModal: React.FC<LLMSankeyModalProps> = ({
   isOpen,
@@ -590,35 +826,23 @@ export const LLMSankeyModal: React.FC<LLMSankeyModalProps> = ({
               ))}
             </div>
 
-            {/* Chart Container */}
-            <div className="px-8 py-6 relative" style={{ height: '480px' }}>
-              {modelUsage.length === 0 || sankeyData.nodes.length === 0 ? (
-                <div
-                  className="flex flex-col items-center justify-center h-full gap-4"
-                  style={{ color: colors.textSecondary }}
-                >
-                  <Zap size={48} style={{ opacity: 0.3 }} />
-                  <p>No token usage data available for the selected time range</p>
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <Sankey
-                    data={sankeyData}
-                    node={<CustomNode isDark={isDark} containerWidth={1100} />}
-                    link={<CustomLink />}
-                    nodePadding={30}
-                    nodeWidth={12}
-                    margin={{ top: 20, right: 220, bottom: 20, left: 20 }}
-                    sort={false}
-                  >
-                    <Tooltip
-                      content={<CustomTooltip />}
-                      cursor={{ stroke: colors.accent, strokeWidth: 2, strokeOpacity: 0.3 }}
-                    />
-                  </Sankey>
-                </ResponsiveContainer>
-              )}
-            </div>
+            {/* Chart Container — measured width via ref so CustomNode
+                can flip label-side based on actual rendered space (was
+                hardcoded 1100, which mis-positioned labels at any
+                viewport != 1100px wide).
+
+                Sparse-data guard: if there are nodes but every link
+                is zero (recharts Sankey crashes on 0-value links),
+                skip the Sankey and render a fallback bar list so the
+                chart "always works" per the user's mandate. */}
+            <SankeyChartHost
+              modelUsage={modelUsage}
+              sankeyData={sankeyData}
+              colors={colors}
+              isDark={isDark}
+              formatTokens={formatTokens}
+            />
+            {/* (host renders empty-state OR sankey OR fallback bar) */}
 
             {/* Footer Legend */}
             <div

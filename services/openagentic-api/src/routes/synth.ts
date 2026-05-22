@@ -219,6 +219,99 @@ so the tool runs AS YOU with your permissions.
   });
 
   /**
+   * POST /api/synth/exec — Phase 4 #482
+   *
+   * Direct code execution path used by T3 compose_app iframe mini-apps.
+   * The LLM has already authored Python; this skips the synthesis step
+   * and runs the code in the synth-executor sandbox with the AD user's
+   * OBO-injected credentials (ARM + Graph). Same identity boundary as
+   * the chatmode synth_execute tool — code runs AS the authenticated user.
+   *
+   * Auth: AAD JWT cookie (unifiedAuth middleware on /api/synth/*).
+   * OBO:  request.cloudCredentials populated by the preHandler above.
+   * Risk: LOW — payload pre-validated server-side by composeAppValidator
+   *       + CdnAllowList before reaching the iframe. No approval gate.
+   */
+  fastify.post('/exec', {
+    schema: {
+      tags: ['Synth'],
+      summary: 'Execute Python code in synth sandbox (T3 iframe direct path)',
+      body: {
+        type: 'object',
+        required: ['code'],
+        properties: {
+          code: { type: 'string', minLength: 1, maxLength: 200_000 },
+          capabilities: { type: 'array', items: { type: 'string' } },
+          timeoutSeconds: { type: 'number', minimum: 1, maximum: 120 },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            executionId: { type: 'string' },
+            result: {},
+            stdout: { type: 'string' },
+            stderr: { type: 'string' },
+            error: { type: 'string' },
+            executionTimeMs: { type: 'number' },
+          },
+        },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+        400: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = (request as any).user;
+    if (!user) {
+      return reply.code(401).send({ error: 'Authentication required' });
+    }
+
+    // #484 C4 — reject internal-service callers. unifiedAuth populates a
+    // service-shaped request.user when an internal caller presents
+    // x-request-from + x-internal-secret. The OBO preHandler skips those
+    // (no user accessToken to exchange), so reaching the executor here
+    // would run code with NO user identity, NO OBO creds, AS the executor
+    // service account — violating the "AD user must flow through" boundary.
+    // /exec is iframe-direct path; only AD-cookie-bearing requests are
+    // legitimate.
+    if (
+      user.accessToken === 'internal-service-token' ||
+      (typeof user.id === 'string' && user.id.startsWith('service-'))
+    ) {
+      request.log.warn({ userId: user.id }, '[SYNTH /exec] internal-service caller blocked');
+      return reply.code(403).send({
+        error: 'POST /api/synth/exec requires an authenticated end-user (AAD JWT). Internal-service tokens are not accepted.',
+      });
+    }
+
+    const body = request.body as {
+      code: string;
+      capabilities?: string[];
+      timeoutSeconds?: number;
+    };
+
+    request.log.info({
+      userId: user.id,
+      codeLength: body.code?.length ?? 0,
+      capabilities: body.capabilities,
+    }, '[SYNTH /exec] T3 iframe direct exec requested');
+
+    const result = await synthService.executeCode({
+      userId: user.id,
+      userEmail: user.email,
+      code: body.code,
+      capabilities: body.capabilities,
+      // Forward the OBO-injected creds the preHandler stamped on the request.
+      credentials: (request as any).cloudCredentials,
+      timeoutSeconds: body.timeoutSeconds,
+    });
+
+    return reply.code(result.success ? 200 : 500).send(result);
+  });
+
+  /**
    * GET /api/synth/history
    * Get user's synthesis history
    */

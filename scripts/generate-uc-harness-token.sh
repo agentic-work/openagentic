@@ -56,8 +56,32 @@ fi
 user_id="${UC_HARNESS_USER_ID:-}"
 email="${UC_HARNESS_EMAIL:-mcp-tester@phatoldsungmail.onmicrosoft.com}"
 if [[ -z "$user_id" ]]; then
-  # Canonical mcp-tester id — confirmed live 2026-04-18.
-  user_id="azure_696cf712-372c-4bb0-94c6-a881d8d033d9"
+  # Canonical mcp-tester id — confirmed live 2026-04-20.
+  # The pre-2026-04-18 `azure_696cf...` id was a stale copy; after the
+  # fresh-deploy rebuild the DB got repopulated with 37b2f0e2-cdff... as
+  # the mcp-tester row. Session creation fails with "User not found"
+  # when the hardcoded id drifts from whatever the users table has, so
+  # look it up at mint-time when possible.
+  if command -v kubectl >/dev/null 2>&1; then
+    pg_secret=$(kubectl get secret -n "$NAMESPACE" pgvector-postgresql \
+      -o jsonpath='{.data.postgres-password}' 2>/dev/null | base64 -d 2>/dev/null || true)
+    if [[ -n "$pg_secret" ]]; then
+      looked_up=$(kubectl exec -n "$NAMESPACE" pgvector-postgresql-primary-0 \
+        -c postgresql -- \
+        env "PGPASSWORD=$pg_secret" \
+        psql -U postgres -d openagentic -tAc \
+        "SELECT id FROM users WHERE email = '$email' ORDER BY last_login DESC NULLS LAST LIMIT 1;" \
+        2>/dev/null | tr -d '[:space:]' || true)
+      if [[ -n "$looked_up" ]]; then
+        user_id="$looked_up"
+      fi
+    fi
+  fi
+  # Fallback if DB lookup didn't work (e.g., running against AKS with no
+  # direct pg pod, or kubectl context mismatch).
+  if [[ -z "$user_id" ]]; then
+    user_id="37b2f0e2-cdff-4277-bc9a-acbdcc43fba2"
+  fi
 fi
 
 now=$(date +%s)

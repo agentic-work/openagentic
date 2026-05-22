@@ -5,6 +5,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Download, Trash2, X, Edit } from '@/shared/icons';
+import { PageHeader } from '../../primitives-v2';
 
 interface AgentSkill {
   id: string;
@@ -142,11 +143,27 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
   const typeStyle = (type: string) => TYPE_STYLES[type] || { bg: 'color-mix(in srgb, var(--text-tertiary) 12%, transparent)', text: 'var(--text-tertiary)' };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-sm" style={{ color: 'var(--text-secondary)' }}>Loading skills...</div>;
+    return (
+      <div className="space-y-4 pt-2">
+        <PageHeader
+          crumbs={['Admin', 'Agents', 'Skills']}
+          title="Skills & Plugins"
+          explainer="Composable prompt-engineering modules that agents can mount at runtime."
+        />
+        <div className="flex items-center justify-center h-64 text-sm" style={{ color: 'var(--text-secondary)' }}>Loading skills...</div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-4 pt-2">
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Agents', 'Skills']}
+        title="Skills & Plugins"
+        explainer="Composable prompt-engineering modules that agents can mount at runtime."
+      />
+
       {/* Header bar */}
       <div className="flex items-center justify-between">
         <div className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-tertiary)', letterSpacing: '1.2px' }}>
@@ -165,7 +182,7 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
           <button
             onClick={() => setShowImportModal(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all hover:brightness-110"
-            style={{ backgroundColor: 'var(--color-accent, var(--color-primary))', color: '#fff' }}
+            style={{ backgroundColor: 'var(--color-accent, var(--color-primary))', color: 'var(--ap-fg-0)' }}
           >
             <Plus size={12} /> Create Skill
           </button>
@@ -295,7 +312,7 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
                 onClick={handleImport}
                 disabled={importing}
                 className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-md transition-all hover:brightness-110 disabled:opacity-50"
-                style={{ backgroundColor: 'var(--color-accent, var(--color-primary))', color: '#fff' }}
+                style={{ backgroundColor: 'var(--color-accent, var(--color-primary))', color: 'var(--ap-fg-0)' }}
               >
                 <Download size={12} /> {importing ? 'Importing...' : 'Import'}
               </button>
@@ -307,7 +324,7 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
       {/* Edit Skill Modal */}
       {editingSkill && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-          <div className="w-full max-w-lg rounded-xl p-5 shadow-xl" style={{ backgroundColor: 'var(--color-surface, #1c1c1c)', border: '1px solid var(--color-border)' }}>
+          <div className="w-full max-w-lg rounded-xl p-5 shadow-xl" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Edit Skill: {editingSkill.name}</h3>
               <button onClick={() => setEditingSkill(null)} className="p-1 rounded-md transition-colors" style={{ color: 'var(--text-tertiary)' }}>
@@ -318,17 +335,17 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
               <div>
                 <label className="text-[10px] font-semibold uppercase mb-1 block" style={{ color: 'var(--text-tertiary)' }}>Display Name</label>
                 <input value={editForm.display_name} onChange={e => setEditForm(f => ({ ...f, display_name: e.target.value }))}
-                  className="w-full px-3 py-1.5 text-xs rounded-md border outline-none" style={{ backgroundColor: 'var(--color-surfaceSecondary, #111)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }} />
+                  className="w-full px-3 py-1.5 text-xs rounded-md border outline-none" style={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }} />
               </div>
               <div>
                 <label className="text-[10px] font-semibold uppercase mb-1 block" style={{ color: 'var(--text-tertiary)' }}>Description</label>
                 <textarea value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} rows={3}
-                  className="w-full px-3 py-1.5 text-xs rounded-md border outline-none resize-none" style={{ backgroundColor: 'var(--color-surfaceSecondary, #111)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }} />
+                  className="w-full px-3 py-1.5 text-xs rounded-md border outline-none resize-none" style={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }} />
               </div>
               <div>
                 <label className="text-[10px] font-semibold uppercase mb-1 block" style={{ color: 'var(--text-tertiary)' }}>Type</label>
                 <select value={editForm.type} onChange={e => setEditForm(f => ({ ...f, type: e.target.value }))}
-                  className="w-full px-3 py-1.5 text-xs rounded-md border outline-none" style={{ backgroundColor: 'var(--color-surfaceSecondary, #111)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}>
+                  className="w-full px-3 py-1.5 text-xs rounded-md border outline-none" style={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}>
                   <option value="prompt_injection">prompt_injection</option>
                   <option value="tool_bundle">tool_bundle</option>
                   <option value="workflow">workflow</option>
@@ -339,12 +356,12 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
               <div>
                 <label className="text-[10px] font-semibold uppercase mb-1 block" style={{ color: 'var(--text-tertiary)' }}>Tags (comma-separated)</label>
                 <input value={editForm.tags} onChange={e => setEditForm(f => ({ ...f, tags: e.target.value }))}
-                  className="w-full px-3 py-1.5 text-xs rounded-md border outline-none" style={{ backgroundColor: 'var(--color-surfaceSecondary, #111)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }} />
+                  className="w-full px-3 py-1.5 text-xs rounded-md border outline-none" style={{ backgroundColor: 'var(--color-surfaceSecondary)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }} />
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setEditingSkill(null)} className="px-4 py-1.5 text-xs rounded-md" style={{ color: 'var(--text-secondary)', border: '1px solid var(--color-border)' }}>Cancel</button>
-              <button onClick={handleEditSave} className="px-4 py-1.5 text-xs font-semibold rounded-md" style={{ backgroundColor: 'var(--color-accent, var(--color-primary))', color: '#fff' }}>Save</button>
+              <button onClick={handleEditSave} className="px-4 py-1.5 text-xs font-semibold rounded-md" style={{ backgroundColor: 'var(--color-accent, var(--color-primary))', color: 'var(--ap-fg-0)' }}>Save</button>
             </div>
           </div>
         </div>

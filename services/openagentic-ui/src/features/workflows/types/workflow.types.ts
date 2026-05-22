@@ -141,7 +141,7 @@ export interface NodeData {
     boundaries?: string;
     bootstrapInstructions?: string;
   };
-  intelligenceLevel?: number;
+  // 2026-04-19 — intelligenceLevel removed (task #144, slider rip).
   modelOverride?: string;
   maxTurns?: number;
   enableThinking?: boolean;
@@ -220,6 +220,22 @@ export interface WorkflowDefinition {
   };
 }
 
+/**
+ * Human-readable legend block authored on template JSON under `meta`.
+ * Surfaces in the template gallery card + canvas-side "About this
+ * workflow" panel. Persisted server-side in `settings.meta`; the API
+ * pulls it out to the top-level `meta` field in transformWorkflow().
+ */
+export interface WorkflowMeta {
+  purpose?: string;
+  how_it_works?: string[];
+  expected_output?: string;
+  useful_when?: string;
+  tools_used?: string[];
+  version?: string;
+  tags?: string[];
+}
+
 export interface Workflow {
   id: string;
   user_id: string;
@@ -238,6 +254,7 @@ export interface Workflow {
   lastExecutedAt?: string;
   executionCount?: number;
   settings?: WorkflowSettings;
+  meta?: WorkflowMeta | null;
 }
 
 export interface ExecutionLog {
@@ -344,8 +361,8 @@ export interface ValidationWarning {
 
 export interface WorkflowSettings {
   // Execution Defaults
+  // 2026-04-19 — defaultIntelligenceLevel removed (task #144, slider rip).
   defaultModel?: string;
-  defaultIntelligenceLevel?: number;
   defaultTimeoutMs?: number;
   maxExecutionTimeMs?: number;
 
@@ -386,8 +403,9 @@ export interface AdminWorkflowSettings {
   onBudgetExceeded?: 'pause' | 'downgrade' | 'abort';
 
   // Model Restrictions
-  defaultIntelligenceLevel?: number;
-  maxIntelligenceLevel?: number;
+  // 2026-04-19 — defaultIntelligenceLevel / maxIntelligenceLevel removed
+  // (task #144, slider rip). Per-user × per-model budgets live in
+  // UserModelBudgetService (admin console).
   allowedModels?: string[];
 
   // Agent Restrictions

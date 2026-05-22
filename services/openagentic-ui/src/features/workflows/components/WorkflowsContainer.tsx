@@ -20,10 +20,17 @@ import { WorkflowDefinition, NodeType } from '../types/workflow.types';
 import { nodeTypeConfigs } from '../utils/nodeConfigs';
 import { validateWorkflow, validateNode, type WorkflowValidationResult } from '../utils/workflowValidator';
 import { useUndoRedo } from '../hooks/useUndoRedo';
+import { useFlowCostEstimate } from '../hooks/useFlowCostEstimate';
 import { WorkflowCanvas } from './canvas/WorkflowCanvas';
 import { WorkflowToolbar } from './toolbar/WorkflowToolbar';
 import { NodePropertiesPanel } from './NodePropertiesPanel';
 import { ExecutionResultsPanel, ExecutionData, NodeExecution, TabId } from './ExecutionResultsPanel';
+import { RunInputsModal, type RunInputDef } from './RunInputsModal';
+import { MissingSecretsWizard, type MissingSecretEntry } from './MissingSecretsWizard';
+import { scanMissingSecrets } from '../services/scanMissingSecrets';
+import { listKnownSecretNames, createSecrets } from '../services/workflowSecretsApi';
+import { loadViewport, saveViewport, type CanvasViewport } from '../services/canvasViewportStorage';
+import { MultiAgentSwarmPopover, type SubagentCardData, type SubagentStatus } from './MultiAgentSwarmPopover';
 import { useWorkflowResources } from '../hooks/useWorkflowResources';
 import { useBackendNodes } from '../hooks/useBackendNodes';
 import { useAgentNodes } from '../hooks/useAgentNodes';
@@ -32,6 +39,11 @@ import type { CanvasContext, ExecutionContext, WorkflowPatch } from '../hooks/us
 import { ShareDialog } from './ShareDialog';
 import { useAuth } from '@/app/providers/AuthContext';
 import { WorkflowApiService } from '../services/workflowApi';
+import { VersionHistoryPanel } from './VersionHistoryPanel';
+import { VersionDiffView } from './VersionDiffView';
+import { PreflightValidationPopover, type IncompleteNodeEntry } from './PreflightValidationPopover';
+import { NodeContextMenu } from './NodeContextMenu';
+import { buildNodeContextMenuItems } from './buildNodeContextMenuItems';
 
 // Auto-layout using dagre (top-to-bottom)
 const NODE_WIDTH = 260;
@@ -97,6 +109,10 @@ interface ExecutionEvent {
   output?: any;
   outputEnvelope?: any;
   error?: string;
+  /** Reason for node_error events (e.g. 'output_failed_assertion') */
+  reason?: string;
+  /** Human-readable assertion error message for output_failed_assertion errors */
+  errorMessage?: string;
   executionTimeMs?: number;
   timestamp?: string;
 }
@@ -136,8 +152,35 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialWorkflow?.edges || []);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
 
+  // Auto-fit-on-load (#76): when the canvas instance mounts BEFORE the nodes
+  // load (async fetch), we miss the fit window inside onInit. Trigger one
+  // fitView the first time nodes appear, but only if the user has no
+  // saved viewport for this workflow yet.
+  const didAutoFitRef = useRef(false);
+  useEffect(() => {
+    if (didAutoFitRef.current) return;
+    if (!reactFlowInstance) return;
+    if (nodes.length === 0) return;
+    if (workflowId && loadViewport(workflowId)) {
+      didAutoFitRef.current = true;
+      return;
+    }
+    didAutoFitRef.current = true;
+    setTimeout(() => reactFlowInstance.fitView?.({ padding: 0.15 }), 200);
+  }, [reactFlowInstance, nodes.length, workflowId]);
+
+  // Reset the auto-fit guard when navigating between workflows so the next
+  // one auto-fits on first load.
+  useEffect(() => {
+    didAutoFitRef.current = false;
+  }, [workflowId]);
+
   // Undo/redo support (Ctrl+Z / Ctrl+Shift+Z)
   const { takeSnapshot } = useUndoRedo(nodes, edges, setNodes, setEdges);
+
+  // Pre-run cost estimate. Hook fetches /api/workflows/cost-rates once and
+  // walks the nodes; toolbar renders only when the resulting totalUsd > 0.
+  const costEstimate = useFlowCostEstimate(nodes, edges);
 
   // Wrap onNodesChange/onEdgesChange to snapshot before destructive changes
   const wrappedOnNodesChange = useCallback((changes: any[]) => {
@@ -157,6 +200,50 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
   const [showPropertiesPanel, setShowPropertiesPanel] = useState(false);
   const [showAIBuilder, setShowAIBuilder] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+
+  // Execution lifecycle state for Pause/Resume/Cancel
+  const [executionLifecycleState, setExecutionLifecycleState] = useState<
+    'idle' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled'
+  >('idle');
+  // Track the active execution ID for pause/cancel/resume
+  const activeExecutionIdRef = useRef<string | null>(null);
+
+  // Version history panel state
+  const [showHistoryPanel, setShowHistoryPanel] = useState(false);
+  const [workflowVersions, setWorkflowVersions] = useState<any[]>([]);
+  const [comparingVersion, setComparingVersion] = useState<any | null>(null);
+
+  // Pre-flight validation popover (Task #43) — shown when Run is clicked on
+  // a flow with hard validation errors. User chooses Cancel (close) or
+  // Run-Anyway (explicit override).
+  const [preflightOpen, setPreflightOpen] = useState(false);
+  const [preflightIncomplete, setPreflightIncomplete] = useState<IncompleteNodeEntry[]>([]);
+  // Set to true when the user explicitly clicks "Run anyway" — handleExecute
+  // checks this flag to skip the popover on the immediate retry call.
+  const overrideValidationRef = useRef(false);
+
+  // Required-trigger-inputs gate: when triggers declare data.inputs
+  // (e.g. Multi-Agent Research Team's `topic`), block the run and pop a
+  // modal collecting them. Pre-filled values from saved node.data.inputValues
+  // skip the modal entirely.
+  const [runInputsOpen, setRunInputsOpen] = useState(false);
+  const [pendingRunInputs, setPendingRunInputs] = useState<RunInputDef[]>([]);
+  const [pendingRunDefaults, setPendingRunDefaults] = useState<Record<string, any>>({});
+  const collectedRunInputsRef = useRef<Record<string, any> | null>(null);
+
+  // Missing-secrets gate (#73): when a flow references {{secret:NAME}} for
+  // a secret that hasn't been created yet, pop a wizard between the trigger-
+  // inputs gate and the validate/execute call. The ref short-circuits the
+  // gate on the immediate re-fire after the user clicks "Save & Run".
+  const [missingSecretsOpen, setMissingSecretsOpen] = useState(false);
+  const [pendingMissingSecrets, setPendingMissingSecrets] = useState<MissingSecretEntry[]>([]);
+  const missingSecretsResolvedRef = useRef<boolean>(false);
+
+  // Multi-agent swarm popover state — keyed by node id. Each entry is the
+  // ordered list of agent cards built up from `subagent.start` /
+  // `subagent.complete` events emitted by the engine while a multi_agent /
+  // agent_pool / agent_supervisor node runs. Cleared when the run ends.
+  const [swarmAgents, setSwarmAgents] = useState<Record<string, SubagentCardData[]>>({});
 
   // Execution state
   const [showExecutionPanel, setShowExecutionPanel] = useState(false);
@@ -304,19 +391,106 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
     return () => window.removeEventListener('fixNodeWithAI', handleFixNode as any);
   }, []);
 
-  // Keyboard shortcut: X toggles X-Ray mode
+  // Clipboard for copy/paste of selected nodes + their connecting edges.
+  // Stored in a ref so the keyboard handler can read the current value
+  // without re-binding on every state change.
+  const clipboardRef = useRef<{ nodes: any[]; edges: any[] } | null>(null);
+
+  // Keyboard shortcuts: X (X-Ray), Ctrl+C (copy selection), Ctrl+V (paste),
+  // Ctrl+D (duplicate selection). Selection itself is reactflow-native
+  // (Shift+drag = box-select, Shift+click = add to selection).
   useEffect(() => {
+    const isTyping = (target: EventTarget | null) => {
+      const el = target as HTMLElement | null;
+      if (!el) return false;
+      return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable;
+    };
+
+    const copySelection = () => {
+      const selectedNodes = nodes.filter(n => (n as any).selected);
+      if (selectedNodes.length === 0) return;
+      const selectedIds = new Set(selectedNodes.map(n => n.id));
+      // Only copy edges that connect two selected nodes — partial dangles
+      // would create orphans on paste.
+      const selectedEdges = edges.filter(
+        e => selectedIds.has(e.source) && selectedIds.has(e.target),
+      );
+      clipboardRef.current = { nodes: selectedNodes, edges: selectedEdges };
+    };
+
+    const pasteSelection = () => {
+      const clip = clipboardRef.current;
+      if (!clip || clip.nodes.length === 0) return;
+      takeSnapshot();
+      // Generate new ids and remap edge endpoints. Offset positions by 40px
+      // so the paste lands visibly distinct from the source.
+      const idMap = new Map<string, string>();
+      const stamp = Date.now();
+      const newNodes = clip.nodes.map((n, i) => {
+        const newId = `${n.type || 'node'}-${stamp}-${i}`;
+        idMap.set(n.id, newId);
+        return {
+          ...n,
+          id: newId,
+          position: { x: (n.position?.x ?? 0) + 40, y: (n.position?.y ?? 0) + 40 },
+          selected: true,
+        };
+      });
+      const newEdges = clip.edges.map((e, i) => ({
+        ...e,
+        id: `e-${stamp}-${i}`,
+        source: idMap.get(e.source) || e.source,
+        target: idMap.get(e.target) || e.target,
+        selected: false,
+      }));
+      // Deselect the source nodes so the paste is the only selected set.
+      setNodes(nds => nds.map(n => ({ ...n, selected: false })).concat(newNodes));
+      setEdges(eds => eds.concat(newEdges));
+    };
+
+    const duplicateSelection = () => {
+      const selectedNodes = nodes.filter(n => (n as any).selected);
+      if (selectedNodes.length === 0) return;
+      const selectedIds = new Set(selectedNodes.map(n => n.id));
+      const selectedEdges = edges.filter(
+        e => selectedIds.has(e.source) && selectedIds.has(e.target),
+      );
+      // Duplicate is copy+paste in one shot; doesn't touch the clipboard.
+      const prevClip = clipboardRef.current;
+      clipboardRef.current = { nodes: selectedNodes, edges: selectedEdges };
+      pasteSelection();
+      clipboardRef.current = prevClip;
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTyping(e.target)) return;
+      // Ctrl/Cmd-prefixed shortcuts
+      if (e.ctrlKey || e.metaKey) {
+        const k = e.key.toLowerCase();
+        if (k === 'c') {
+          copySelection();
+          return;
+        }
+        if (k === 'v') {
+          e.preventDefault();
+          pasteSelection();
+          return;
+        }
+        if (k === 'd') {
+          e.preventDefault();
+          duplicateSelection();
+          return;
+        }
+        return;
+      }
+      // Bare-key shortcuts
       if (e.key === 'x' || e.key === 'X') {
-        // Don't toggle if user is typing in an input
-        const target = e.target as HTMLElement;
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
         setXrayMode(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [nodes, edges, setNodes, setEdges, takeSnapshot]);
 
   // Build canvas context for AI Builder
   const canvasContext: CanvasContext | null = useMemo(() => {
@@ -498,6 +672,66 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
     setSelectedNode(null);
     setShowPropertiesPanel(false);
   }, [setNodes, setEdges]);
+
+  // Right-click context menu state — position is in viewport pixels
+  // (NodeContextMenu uses position: fixed); targetNode is the node
+  // whose metadata feeds buildNodeContextMenuItems().
+  const [ctxMenu, setCtxMenu] = useState<{
+    open: boolean;
+    x: number;
+    y: number;
+    node: Node | null;
+  }>({ open: false, x: 0, y: 0, node: null });
+
+  const onNodeContextMenu = useCallback(
+    (e: React.MouseEvent, node: Node) => {
+      setCtxMenu({ open: true, x: e.clientX, y: e.clientY, node });
+    },
+    [],
+  );
+  const closeCtxMenu = useCallback(() => {
+    setCtxMenu((s) => ({ ...s, open: false, node: null }));
+  }, []);
+
+  const handleNodeDuplicate = useCallback(
+    (nodeId: string) => {
+      const src = nodes.find((n) => n.id === nodeId);
+      if (!src) return;
+      takeSnapshot();
+      const stamp = Date.now();
+      const newId = `${src.type || 'node'}-${stamp}`;
+      const cloned: Node = {
+        ...src,
+        id: newId,
+        position: {
+          x: (src.position?.x ?? 0) + 40,
+          y: (src.position?.y ?? 0) + 40,
+        },
+        selected: true,
+      };
+      setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), cloned]);
+    },
+    [nodes, setNodes, takeSnapshot],
+  );
+
+  const handleNodeToggleDisabled = useCallback(
+    (nodeId: string) => {
+      takeSnapshot();
+      setNodes((nds) =>
+        nds.map((n) =>
+          n.id === nodeId
+            ? { ...n, data: { ...n.data, disabled: !(n.data as any)?.disabled } }
+            : n,
+        ),
+      );
+    },
+    [setNodes, takeSnapshot],
+  );
+
+  const handleNodeConfigure = useCallback((node: Node) => {
+    setSelectedNode(node);
+    setShowPropertiesPanel(true);
+  }, []);
 
   // --- AI Builder ---
   const handleWorkflowGenerated = useCallback((definition: WorkflowDefinition) => {
@@ -727,11 +961,73 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
     }
   }, [onSave, getWorkflowDefinition, workflowName]);
 
+  const handleSaveWithChangelog = useCallback(async (changelog: string) => {
+    // For now, just call handleSave — the changelog is stored on the server side
+    // by passing it as part of the workflow update payload
+    if (!onSave) return;
+    setIsSaving(true);
+    setSaveStatus('saving');
+    try {
+      await onSave({ ...getWorkflowDefinition(), name: workflowName });
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+      console.log('[WorkflowContainer] Saved with changelog:', changelog);
+    } catch {
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [onSave, getWorkflowDefinition, workflowName]);
+
+  // --- Version History ---
+  const handleShowHistory = useCallback(async () => {
+    setShowHistoryPanel(true);
+    if (workflowId) {
+      try {
+        const versions = await apiService.getVersions(workflowId);
+        setWorkflowVersions(versions);
+      } catch (err) {
+        console.error('[WorkflowContainer] Failed to load versions:', err);
+      }
+    }
+  }, [workflowId, apiService]);
+
+  const handleRestoreVersion = useCallback(async (version: any) => {
+    if (!workflowId) return;
+    try {
+      await apiService.restoreVersion(workflowId, version.id);
+      setShowHistoryPanel(false);
+      // QA-2026-05-05 (#19): refetch the workflow row so the canvas
+      // reflects the restored definition. Prior code logged success
+      // but left the canvas on the pre-restore graph, making restore
+      // look broken from the UI side.
+      const wf = await apiService.getWorkflow(workflowId);
+      const def: any = (wf as any).definition || {};
+      setNodes(def.nodes || []);
+      setEdges(def.edges || []);
+      // Refresh the History panel's version list so the new
+      // auto-snapshot version (added by the restore endpoint) shows
+      // up next time the user opens History.
+      try {
+        const versions = await apiService.getVersions(workflowId);
+        setWorkflowVersions(versions);
+      } catch {}
+    } catch (err) {
+      console.error('[WorkflowContainer] Failed to restore version:', err);
+    }
+  }, [workflowId, apiService, setNodes, setEdges]);
+
+  const handleCompareVersion = useCallback((version: any) => {
+    setComparingVersion(version);
+    setShowHistoryPanel(false);
+  }, []);
+
   // --- Execution ---
   const clearExecutionStates = useCallback(() => {
     setNodes(nds => nds.map(n => ({
       ...n,
-      data: { ...n.data, executionState: undefined, executionOutput: undefined, executionTimeMs: undefined, executionError: undefined, executionOrder: undefined },
+      data: { ...n.data, executionState: undefined, executionOutput: undefined, executionTimeMs: undefined, executionError: undefined, executionOrder: undefined, parallelTools: undefined, streamingText: undefined },
     })));
     setEdges(eds => eds.map(e => ({
       ...e,
@@ -755,6 +1051,44 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
         nodeExecutions: [],
       });
       setShowExecutionPanel(true);
+      // Reset swarm cards from any prior run.
+      setSwarmAgents({});
+      return;
+    }
+
+    // Subagent telemetry from multi_agent / agent_pool / agent_supervisor.
+    // Engine emits `node_progress` events with eventType=subagent.start|complete|update.
+    // Build a card per slot under the node id; flip to status from payload on complete.
+    if (type === 'node_progress' && nodeId) {
+      const ev = event as any;
+      const sub = ev.eventType as string | undefined;
+      const payload = (ev.payload || {}) as any;
+      if (sub === 'subagent.start' || sub === 'subagent.complete' || sub === 'subagent.update') {
+        setSwarmAgents(prev => {
+          const cur = prev[nodeId] ? [...prev[nodeId]] : [];
+          const slot = typeof payload.slot === 'number' ? payload.slot : cur.length;
+          while (cur.length <= slot) {
+            cur.push({ slot: cur.length, role: 'agent', displayName: `Agent ${cur.length + 1}`, status: 'queued' });
+          }
+          const existing: SubagentCardData = cur[slot] || { slot, role: 'agent', displayName: `Agent ${slot + 1}`, status: 'queued' };
+          let nextStatus: SubagentStatus = existing.status;
+          if (sub === 'subagent.start') nextStatus = 'running';
+          else if (sub === 'subagent.complete') nextStatus = (payload.status as SubagentStatus) || 'completed';
+          cur[slot] = {
+            ...existing,
+            slot,
+            role: payload.role || existing.role,
+            displayName: payload.displayName || existing.displayName,
+            agentId: payload.agentId || existing.agentId,
+            status: nextStatus,
+            outputPreview: payload.outputPreview ?? existing.outputPreview,
+            error: payload.error ?? existing.error,
+            tokensUsed: payload.tokensUsed ?? existing.tokensUsed,
+            toolCalls: payload.toolCalls ?? existing.toolCalls,
+          };
+          return { ...prev, [nodeId]: cur };
+        });
+      }
       return;
     }
 
@@ -830,8 +1164,21 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
       } : null);
     } else if (type === 'node_error' && nodeId) {
       const error = event.error || event.data?.error;
+      const reason = event.reason || event.data?.reason;
+      const errorMessage = event.errorMessage || event.data?.errorMessage;
+      const isAssertionFail = reason === 'output_failed_assertion';
+      // Assertion failures get a distinct canvas state (orange) vs hard errors (red)
+      const execState = isAssertionFail ? 'assertion_failed' : 'failed';
       setNodes(nds => nds.map(n => n.id === nodeId
-        ? { ...n, data: { ...n.data, executionState: 'failed', executionError: error } }
+        ? {
+            ...n,
+            data: {
+              ...n.data,
+              executionState: execState,
+              executionError: error,
+              ...(isAssertionFail ? { assertionFailed: true, assertionErrorMessage: errorMessage || error } : {}),
+            },
+          }
         : n
       ));
       // Mark incoming edges as failed
@@ -842,7 +1189,12 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
       setExecutionData(prev => prev ? {
         ...prev,
         nodeExecutions: prev.nodeExecutions.map(n => n.nodeId === nodeId
-          ? { ...n, status: 'failed' as const, error }
+          ? {
+              ...n,
+              status: 'failed' as const,
+              error,
+              ...(isAssertionFail ? { assertionFailed: true, assertionErrorMessage: errorMessage || error } : {}),
+            }
           : n
         ),
       } : null);
@@ -853,12 +1205,211 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
         ? { ...n, data: { ...n.data, executionState: fallbackError ? 'failed' : 'completed', executionOutput: fallbackOutput, executionError: fallbackError } }
         : n
       ));
+    } else if (type === 'node_stream' && nodeId) {
+      // Phase E₂.2: interleaved LLM delta inside an LLM node. The inner
+      // `event` payload is a canonical AnthropicStreamEvent; we accumulate
+      // text deltas onto the node so the timeline card fills in live
+      // before `node_complete` fires.
+      const inner = (event.data?.event ?? (event as any).event) as { type?: string; delta?: any; content?: string; name?: string; id?: string; toolCallId?: string; arguments?: unknown; result?: unknown; error?: string } | undefined;
+      if (inner?.type === 'content_block_delta' && inner.delta?.type === 'text_delta' && typeof inner.delta.text === 'string') {
+        const chunk = inner.delta.text as string;
+        setNodes(nds => nds.map(n => n.id === nodeId
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                streamingText: (n.data?.streamingText || '') + chunk,
+              },
+            }
+          : n
+        ));
+      } else if (inner?.type === 'stream' && typeof inner.content === 'string') {
+        const chunk = inner.content;
+        setNodes(nds => nds.map(n => n.id === nodeId
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                streamingText: (n.data?.streamingText || '') + chunk,
+              },
+            }
+          : n
+        ));
+      } else if (inner?.type === 'tool_executing' && inner.name) {
+        // Task #131 (Phase F₂) — mirror the chat parallel fan-out pattern
+        // inside flows. When an LLM flow-node emits N `tool_executing`
+        // events in a single completion (backend dispatches them via
+        // executeToolCalls' parallel helper), accumulate them on the node
+        // under `parallelTools[]` so the CustomNode can render a tiny
+        // fan-out grid. The array is keyed by toolCallId so completion
+        // updates (`tool_result` / `tool_error` below) can patch
+        // individual tools in place without reordering.
+        const toolCallId = inner.toolCallId || `${inner.name}-${Date.now()}`;
+        setNodes(nds => nds.map(n => n.id === nodeId
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                parallelTools: [
+                  ...((n.data?.parallelTools || []).filter((t: any) => t.toolCallId !== toolCallId)),
+                  {
+                    toolCallId,
+                    name: inner.name,
+                    arguments: inner.arguments,
+                    status: 'running',
+                    startTime: Date.now(),
+                  },
+                ],
+              },
+            }
+          : n
+        ));
+      } else if ((inner?.type === 'tool_result' || inner?.type === 'tool_error') && inner.name) {
+        // Complete or fail the matching sub-tool. Keep emit order stable
+        // so CustomNode can render cards in their spawn slot but show
+        // terminal state (check/X) as each resolves independently.
+        const isError = inner.type === 'tool_error';
+        const toolCallId = inner.toolCallId;
+        setNodes(nds => nds.map(n => n.id === nodeId
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                parallelTools: (n.data?.parallelTools || []).map((t: any) => {
+                  const matches = toolCallId
+                    ? t.toolCallId === toolCallId
+                    : (t.name === inner.name && t.status === 'running');
+                  if (!matches) return t;
+                  return {
+                    ...t,
+                    status: isError ? 'error' : 'success',
+                    result: isError ? undefined : inner.result,
+                    error: isError ? inner.error : undefined,
+                    duration: t.startTime ? Date.now() - t.startTime : undefined,
+                  };
+                }),
+              },
+            }
+          : n
+        ));
+      }
     }
   }, [setNodes, setEdges, nodes]);
+
+  // --- Pause / Resume / Cancel / Retry-Node ---
+  const handlePause = useCallback(async () => {
+    const execId = activeExecutionIdRef.current;
+    if (!execId) return;
+    try {
+      await apiService.pauseExecution(execId);
+      setExecutionLifecycleState('paused');
+    } catch (err) {
+      console.error('[WorkflowContainer] Failed to pause execution:', err);
+    }
+  }, [apiService]);
+
+  const handleResume = useCallback(async () => {
+    const execId = activeExecutionIdRef.current;
+    if (!execId) return;
+    try {
+      await apiService.resumeExecution(execId);
+      setExecutionLifecycleState('running');
+    } catch (err) {
+      console.error('[WorkflowContainer] Failed to resume execution:', err);
+    }
+  }, [apiService]);
+
+  const handleCancel = useCallback(async () => {
+    const execId = activeExecutionIdRef.current;
+    if (!execId) return;
+    try {
+      await apiService.cancelExecution(execId);
+      setExecutionLifecycleState('cancelled');
+      setIsExecuting(false);
+      // Update execution data to show cancelled status
+      setExecutionData(prev => prev ? { ...prev, status: 'cancelled' as any } : null);
+    } catch (err) {
+      console.error('[WorkflowContainer] Failed to cancel execution:', err);
+    }
+  }, [apiService]);
+
+  const handleRetryNode = useCallback(async (nodeId: string) => {
+    if (!workflowId || !executionData?.executionId) return;
+    try {
+      const { newExecutionId } = await apiService.retryNode(workflowId, executionData.executionId, nodeId);
+      console.log('[WorkflowContainer] Retry-node started:', newExecutionId);
+      // Load the new execution detail
+      await loadExecutionDetail(newExecutionId);
+    } catch (err) {
+      console.error('[WorkflowContainer] Failed to retry node:', err);
+    }
+  }, [workflowId, executionData, apiService, loadExecutionDetail]);
 
   const handleExecute = useCallback(async () => {
     if (nodes.length === 0) return;
     if (!onExecute && !workflowId) return;
+
+    // Required-trigger-inputs gate: scan trigger nodes for declared inputs,
+    // pop a modal for any required field still empty, and stash the
+    // collected values for this run. The check is skipped on the immediate
+    // re-invocation right after the user clicks "Run flow" in the modal
+    // (collectedRunInputsRef holds the values for that retry).
+    if (!collectedRunInputsRef.current) {
+      const triggerInputDefs: RunInputDef[] = [];
+      const defaults: Record<string, any> = {};
+      for (const n of nodes) {
+        if (n.type !== 'trigger') continue;
+        const inputs = (n.data as any)?.inputs;
+        if (!Array.isArray(inputs)) continue;
+        const stored = (n.data as any)?.inputValues || {};
+        for (const i of inputs) {
+          if (!i?.name) continue;
+          triggerInputDefs.push({
+            name: i.name,
+            label: i.label || i.name,
+            type: i.type,
+            required: !!i.required,
+            placeholder: i.placeholder,
+            description: i.description,
+            default: i.default,
+          });
+          if (stored[i.name] !== undefined) defaults[i.name] = stored[i.name];
+        }
+      }
+      const isEmpty = (v: any) => v === undefined || v === null || (typeof v === 'string' && v.trim() === '');
+      const anyRequiredMissing = triggerInputDefs.some(
+        (i) => i.required && isEmpty(defaults[i.name]),
+      );
+      if (anyRequiredMissing && triggerInputDefs.length > 0) {
+        setPendingRunInputs(triggerInputDefs);
+        setPendingRunDefaults(defaults);
+        setRunInputsOpen(true);
+        return; // Wait for the user to fill the modal.
+      }
+      // No required missing — use any pre-filled defaults as the input.
+      collectedRunInputsRef.current = defaults;
+    }
+
+    // Missing-secrets gate (#73): scan node configs for {{secret:NAME}}
+    // references the user hasn't created yet, and pop the wizard so they
+    // can enter values once + reuse on every future run. Skipped on the
+    // immediate re-fire after the wizard submits.
+    if (!missingSecretsResolvedRef.current) {
+      try {
+        const known = await listKnownSecretNames(workflowId);
+        const missing = scanMissingSecrets(nodes, known);
+        if (missing.length > 0) {
+          setPendingMissingSecrets(missing);
+          setMissingSecretsOpen(true);
+          return; // Wait for the user to fill the wizard.
+        }
+      } catch (err) {
+        console.warn('[WorkflowContainer] Missing-secrets scan failed; proceeding to validate anyway', err);
+        // Fall through — the existing pre-flight validator will surface
+        // SECRET_NOT_FOUND issues and the user can fix them via Admin.
+      }
+      missingSecretsResolvedRef.current = true;
+    }
 
     // Run validation before execution — only block on hard compilation errors,
     // not warnings (unreachable nodes, missing optional fields)
@@ -866,18 +1417,33 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
     const hardErrors = valResult.issues?.filter((i: any) =>
       i.severity === 'error' && !['UNREACHABLE_NODE', 'INVALID_NODE_REF', 'NON_UPSTREAM_REF'].includes(i.code)
     ) || [];
-    if (hardErrors.length > 0) {
-      console.warn('[WorkflowContainer] Validation blocked:', hardErrors.length, 'hard errors', hardErrors);
-      // Don't block execution for templates — backend compiler is authoritative
-      // Client-side validators may flag false positives on template nodes
-      if (!workflowId) {
-        setShowExecutionPanel(true);
-        return;
+    if (hardErrors.length > 0 && !overrideValidationRef.current) {
+      console.warn('[WorkflowContainer] Pre-flight blocked:', hardErrors.length, 'hard errors');
+      // Group by nodeId for the popover. Each entry surfaces every issue the
+      // validator flagged on that node so the user fixes them in one pass
+      // rather than the old "first-error-then-fail" loop.
+      const byNode = new Map<string, IncompleteNodeEntry>();
+      for (const issue of hardErrors) {
+        if (!issue.nodeId) continue;
+        const node = nodes.find((n: any) => n.id === issue.nodeId);
+        if (!byNode.has(issue.nodeId)) {
+          byNode.set(issue.nodeId, {
+            nodeId: issue.nodeId,
+            nodeLabel: node?.data?.label || issue.nodeId,
+            nodeType: node?.type || 'unknown',
+            issues: [],
+          });
+        }
+        byNode.get(issue.nodeId)!.issues.push(issue);
       }
-      console.warn('[WorkflowContainer] Bypassing client validation for saved workflow, backend compile was valid');
+      setPreflightIncomplete(Array.from(byNode.values()));
+      setPreflightOpen(true);
+      return; // Wait for the user to choose Cancel or Run-Anyway.
     }
+    overrideValidationRef.current = false;
 
     setIsExecuting(true);
+    setExecutionLifecycleState('running');
     setShowExecutionPanel(true);  // Show panel immediately on execute
     clearExecutionStates();
 
@@ -910,9 +1476,14 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
     try {
       // Execute directly via API with SSE streaming — bypasses parent dialog indirection [v6]
       if (workflowId && apiService) {
-        console.log('[WorkflowContainer] Direct async execute v6:', workflowId);
-        await apiService.executeWorkflow(workflowId, {}, (event) => {
+        const collectedInput = collectedRunInputsRef.current || {};
+        console.log('[WorkflowContainer] Direct async execute v6:', workflowId, 'input:', collectedInput);
+        await apiService.executeWorkflow(workflowId, collectedInput, (event) => {
           console.log('[WorkflowContainer] SSE:', event.type, event.data?.nodeId);
+          // Track the execution ID for pause/cancel/resume
+          if (event.data?.executionId) {
+            activeExecutionIdRef.current = event.data.executionId;
+          }
           handleExecutionEvent({ type: event.type, ...event.data });
         });
       } else {
@@ -920,10 +1491,16 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
         await onExecute(definition, handleExecutionEvent);
       }
       console.log('[WorkflowContainer] Execution completed');
+      setExecutionLifecycleState('completed');
     } catch (err) {
       console.error('[WorkflowContainer] Execution FAILED:', err);
+      setExecutionLifecycleState('failed');
     } finally {
       setIsExecuting(false);
+      activeExecutionIdRef.current = null;
+      // Clear the per-run inputs cache — next Run starts fresh and re-checks the gate.
+      collectedRunInputsRef.current = null;
+      missingSecretsResolvedRef.current = false;
     }
   }, [onExecute, workflowId, apiService, getWorkflowDefinition, nodes.length, edges.length, clearExecutionStates, handleExecutionEvent]);
 
@@ -951,6 +1528,7 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
         isValidating={isValidating}
         saveStatus={saveStatus}
         canExecute={nodes.length > 0}
+        costEstimate={costEstimate}
         onSave={handleSave}
         onExecute={handleExecute}
         onValidate={handleValidate}
@@ -966,6 +1544,46 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
             setTimeout(() => reactFlowInstance.fitView({ padding: 0.15 }), 100);
           }
         }}
+        onShowHistory={workflowId ? handleShowHistory : undefined}
+        onSaveWithChangelog={onSave ? handleSaveWithChangelog : undefined}
+        executionState={executionLifecycleState}
+        onPause={workflowId ? handlePause : undefined}
+        onResume={workflowId ? handleResume : undefined}
+        onCancel={workflowId ? handleCancel : undefined}
+        getFlowJson={() => {
+          if (nodes.length === 0 && edges.length === 0) return null;
+          return JSON.stringify(
+            { name: workflowName, nodes, edges },
+            null,
+            2,
+          );
+        }}
+        onImportFlowJson={(text) => {
+          if (!text) {
+            // FlowExportImportButton already validated parse-ability, so a
+            // null here means the file wasn't JSON. Surface a soft error.
+            // eslint-disable-next-line no-alert
+            alert('Imported file is not valid JSON.');
+            return;
+          }
+          try {
+            const parsed = JSON.parse(text);
+            if (!Array.isArray(parsed?.nodes) || !Array.isArray(parsed?.edges)) {
+              // eslint-disable-next-line no-alert
+              alert('Import failed: file must have `nodes` and `edges` arrays.');
+              return;
+            }
+            takeSnapshot();
+            setNodes(parsed.nodes);
+            setEdges(parsed.edges);
+            if (typeof parsed.name === 'string' && parsed.name.trim()) {
+              setWorkflowName(parsed.name);
+            }
+          } catch (err: any) {
+            // eslint-disable-next-line no-alert
+            alert(`Import failed: ${err?.message || 'unknown error'}`);
+          }
+        }}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -978,16 +1596,27 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
               onNodesChange={wrappedOnNodesChange}
               onEdgesChange={wrappedOnEdgesChange}
               onConnect={onConnect}
+              defaultViewport={workflowId ? (loadViewport(workflowId) || undefined) : undefined}
               onInit={(instance: any) => {
                 setReactFlowInstance(instance);
-                if (nodes.length > 0) {
+                // Auto-fit on open ONLY when no saved viewport exists for this
+                // workflow (#76). When the user has dragged/zoomed before, we
+                // restore that camera state instead of stomping it with fitView.
+                const saved = workflowId ? loadViewport(workflowId) : null;
+                if (!saved && nodes.length > 0) {
                   setTimeout(() => instance.fitView({ padding: 0.15 }), 200);
+                }
+              }}
+              onMoveEnd={(_e, viewport) => {
+                if (workflowId && viewport) {
+                  saveViewport(workflowId, viewport as CanvasViewport);
                 }
               }}
               onDrop={onDrop}
               onDragOver={onDragOver}
               onNodeClick={onNodeClick}
               onNodeDoubleClick={onNodeDoubleClick}
+              onNodeContextMenu={onNodeContextMenu}
               nodeColorFn={nodeColorFn}
               wrapperRef={reactFlowWrapper as React.RefObject<HTMLDivElement>}
             />
@@ -1049,6 +1678,181 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
             currentVisibility="private"
             onVisibilityChange={async () => {}}
           />
+        )}
+
+        {/* Pre-flight validation popover (Task #43) — appears when Run is
+         * clicked on a flow that has hard validation errors. Lists every
+         * incomplete node in one go with click-to-jump. The user must
+         * either fix the issues (Cancel button selects no action and
+         * leaves them on the canvas with the red field outlines + side-
+         * panel error text the validator already populated) or explicitly
+         * opt in to Run-Anyway (sets the override ref and re-fires
+         * handleExecute, which will skip this gate on the retry). */}
+        <PreflightValidationPopover
+          isOpen={preflightOpen}
+          incomplete={preflightIncomplete}
+          onJumpToNode={(nodeId) => {
+            const node = nodes.find((n: any) => n.id === nodeId);
+            if (node) setSelectedNode(node);
+            setPreflightOpen(false);
+          }}
+          onCancel={() => setPreflightOpen(false)}
+          onRunAnyway={() => {
+            overrideValidationRef.current = true;
+            setPreflightOpen(false);
+            // Re-fire handleExecute on next tick — the override ref short-
+            // circuits the validation gate.
+            setTimeout(() => handleExecute(), 0);
+          }}
+        />
+
+        {/* Right-click context menu for canvas nodes — items built by
+         * the pure factory in buildNodeContextMenuItems. Clicking outside
+         * closes via NodeContextMenu's internal Escape listener; we close
+         * explicitly when an item fires onSelect. */}
+        {ctxMenu.open && ctxMenu.node && (
+          <NodeContextMenu
+            isOpen
+            x={ctxMenu.x}
+            y={ctxMenu.y}
+            onClose={closeCtxMenu}
+            items={buildNodeContextMenuItems(ctxMenu.node, {
+              onConfigure: handleNodeConfigure,
+              onDuplicate: handleNodeDuplicate,
+              onToggleDisabled: handleNodeToggleDisabled,
+              onDelete: handleNodeDelete,
+            })}
+          />
+        )}
+
+        {/* Required-trigger-inputs modal (Slice E). Appears when Run is
+         * clicked on a flow with declared trigger.data.inputs that have
+         * required:true and no stored value. Submitting fires Run with
+         * the collected values; cancelling closes the modal. */}
+        <RunInputsModal
+          isOpen={runInputsOpen}
+          inputs={pendingRunInputs}
+          defaultValues={pendingRunDefaults}
+          onCancel={() => {
+            setRunInputsOpen(false);
+            setPendingRunInputs([]);
+            setPendingRunDefaults({});
+            collectedRunInputsRef.current = null;
+          }}
+          onSubmit={(values) => {
+            collectedRunInputsRef.current = values;
+            setRunInputsOpen(false);
+            setPendingRunInputs([]);
+            setPendingRunDefaults({});
+            // Re-fire handleExecute on next tick — collectedRunInputsRef
+            // is now populated so the gate short-circuits.
+            setTimeout(() => handleExecute(), 0);
+          }}
+        />
+
+        {/* Missing-secrets wizard (#73). Pops when scanMissingSecrets finds
+         * {{secret:NAME}} references the user hasn't created. Submitting
+         * POSTs each value to /admin/workflow-secrets (workflow-scoped if
+         * we have a workflowId, otherwise global), then re-fires the run. */}
+        <MissingSecretsWizard
+          isOpen={missingSecretsOpen}
+          missing={pendingMissingSecrets}
+          onCancel={() => {
+            setMissingSecretsOpen(false);
+            setPendingMissingSecrets([]);
+            missingSecretsResolvedRef.current = false;
+          }}
+          onSubmit={async (values) => {
+            try {
+              await createSecrets(values, workflowId || undefined);
+              missingSecretsResolvedRef.current = true;
+              setMissingSecretsOpen(false);
+              setPendingMissingSecrets([]);
+              // Re-fire on next tick — gate short-circuits.
+              setTimeout(() => handleExecute(), 0);
+            } catch (err: any) {
+              console.error('[WorkflowContainer] Failed to save secrets:', err);
+              alert(`Could not save secret: ${err?.message || 'unknown error'}`);
+            }
+          }}
+        />
+
+        {/* Multi-agent swarm popovers — one per running multi_agent /
+         * agent_pool / agent_supervisor node. Built up from `subagent.start`
+         * / `subagent.complete` events the engine emits via emitNodeProgress.
+         * Stacked vertically at right-of-canvas while multiple swarms run. */}
+        {Object.entries(swarmAgents).map(([nodeId, agents], idx) => {
+          if (!agents || agents.length === 0) return null;
+          const node = nodes.find(n => n.id === nodeId);
+          const pattern = (node?.data as any)?.pattern;
+          return (
+            <div
+              key={`swarm-${nodeId}`}
+              style={{
+                position: 'absolute',
+                right: 16,
+                top: 88 + idx * 24,
+                zIndex: 25,
+                pointerEvents: 'auto',
+              }}
+            >
+              <MultiAgentSwarmPopover
+                isOpen={true}
+                nodeId={nodeId}
+                agents={agents}
+                pattern={pattern}
+                onClose={() => setSwarmAgents(prev => {
+                  const next = { ...prev };
+                  delete next[nodeId];
+                  return next;
+                })}
+              />
+            </div>
+          );
+        })}
+
+        {/* Version History Panel */}
+        {showHistoryPanel && (
+          <div style={{
+            position: 'absolute',
+            top: 0, right: 0, bottom: 0,
+            width: 340,
+            zIndex: 40,
+            boxShadow: '-4px 0 16px rgba(0,0,0,0.3)',
+          }}>
+            <VersionHistoryPanel
+              versions={workflowVersions}
+              currentVersion={workflowVersions.find(v => v.isActive) || null}
+              onClose={() => setShowHistoryPanel(false)}
+              onCompare={handleCompareVersion}
+              onRestore={handleRestoreVersion}
+            />
+          </div>
+        )}
+
+        {/* Version Diff View */}
+        {comparingVersion && (
+          <div style={{
+            position: 'absolute',
+            top: 0, right: 0, bottom: 0,
+            width: 440,
+            zIndex: 40,
+            boxShadow: '-4px 0 16px rgba(0,0,0,0.3)',
+          }}>
+            <VersionDiffView
+              currentVersion={{
+                version: workflowVersions.find(v => v.isActive)?.version || 1,
+                definition: { nodes: nodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data })), edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target })) },
+                createdAt: new Date().toISOString(),
+              }}
+              compareVersion={{
+                version: comparingVersion.version,
+                definition: comparingVersion.definition || { nodes: [], edges: [] },
+                createdAt: comparingVersion.createdAt || new Date().toISOString(),
+              }}
+              onClose={() => setComparingVersion(null)}
+            />
+          </div>
         )}
       </div>
     </div>

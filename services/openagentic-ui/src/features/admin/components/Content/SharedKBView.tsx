@@ -16,6 +16,7 @@ import {
   CheckCircle, AlertCircle, X,
 } from '@/shared/icons';
 import type { IconComponent } from '@/shared/icons';
+import { PageHeader } from '../../primitives-v2';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -204,22 +205,19 @@ export function SharedKBView() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-bold mb-2 text-text-primary flex items-center gap-2">
-            <Sparkles size={20} className="text-purple-400" />
-            Shared Knowledge Base
-          </h2>
-          <p className="text-text-secondary max-w-3xl text-sm">
-            Cluster-wide RAG available to every user and every platform AI. Ingest a webpage, document,
-            feed, or database once — Chat mode, Code mode, Flows, and every multi-agent workflow can all
-            search against it.
-          </p>
-        </div>
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Content', 'Shared KB']}
+        title="Shared Knowledge Base"
+        explainer="Cluster-wide RAG available to every user and every platform AI. Ingest a webpage, document, feed, or database once — Chat mode, Code mode, Flows, and every multi-agent workflow can all search against it."
+      />
+
+      {/* Add-source action bar */}
+      <div className="flex items-center justify-end">
         <button
           onClick={() => setAddDialogOpen(true)}
-          className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-2 transition-colors"
+          className="px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          style={{ background: 'var(--ap-accent)', color: 'var(--ap-fg-on-accent)' }}
         >
           <Plus size={16} />
           Add Source
@@ -260,7 +258,8 @@ export function SharedKBView() {
           </p>
           <button
             onClick={() => setAddDialogOpen(true)}
-            className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white inline-flex items-center gap-2 transition-colors"
+            className="px-4 py-2 rounded-lg inline-flex items-center gap-2 transition-colors"
+            style={{ background: 'var(--ap-accent)', color: 'var(--ap-fg-on-accent)' }}
           >
             <Plus size={16} />
             Add your first source
@@ -542,10 +541,12 @@ function AddSourceDialog({
                     key={type}
                     disabled={!meta.available}
                     onClick={() => meta.available && setStep(type as 'webpage')}
-                    className="text-left rounded-lg border border-border bg-[color:var(--color-surface-secondary)] p-4 hover:border-purple-500/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="text-left rounded-lg border border-border bg-[color:var(--color-surface-secondary)] p-4 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    onMouseEnter={(e) => { if (meta.available) e.currentTarget.style.borderColor = 'var(--ap-accent-line)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = ''; }}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <Icon size={20} className="text-purple-400" />
+                      <Icon size={20} style={{ color: 'var(--ap-accent)' }} />
                       {!meta.available && (
                         <span className="text-[10px] text-text-tertiary uppercase">Soon</span>
                       )}
@@ -613,7 +614,8 @@ function AddSourceDialog({
             <button
               onClick={handleSubmit}
               disabled={saving || !name.trim() || !url.trim()}
-              className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 rounded disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+              style={{ background: 'var(--ap-accent)', color: 'var(--ap-fg-on-accent)' }}
             >
               {saving ? 'Creating…' : 'Create Source'}
             </button>

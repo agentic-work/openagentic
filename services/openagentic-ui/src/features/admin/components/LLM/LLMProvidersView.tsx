@@ -5,6 +5,10 @@ import { Server, CheckCircle, XCircle, AlertCircle, RefreshCw } from '../Shared/
 import { useAuth } from '../../../../app/providers/AuthContext';
 
 // ── Provider Icons (matching LLMProviderManagement) ─────────────────────────
+// Hex literals below are vendor BRAND IDENTITY colors (Microsoft #0078D4/#0089D6,
+// Google #4285F4/#EA4335/#34A853/#FBBC05, AWS #FF9900, Anthropic #D4A574/#C4956A,
+// OpenAI #10A37F). Non-themeable by design — see Shared/ProviderIcons.tsx.
+/* eslint-disable admin-tokens/no-hardcoded-admin-color */
 const PROVIDER_ICONS: Record<string, React.ReactNode> = {
   'azure-openai': (
     <svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -25,7 +29,7 @@ const PROVIDER_ICONS: Record<string, React.ReactNode> = {
     </svg>
   ),
   ollama: (
-    <img src="https://ollama.com/public/ollama.png" width={24} height={24} alt="Ollama" style={{ borderRadius: 4, backgroundColor: '#fff', padding: 1 }} />
+    <img src="https://ollama.com/public/ollama.png" width={24} height={24} alt="Ollama" style={{ borderRadius: 4, backgroundColor: 'var(--ap-fg-0)', padding: 1 }} />
   ),
   anthropic: (
     <svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -39,6 +43,7 @@ const PROVIDER_ICONS: Record<string, React.ReactNode> = {
     </svg>
   ),
 };
+/* eslint-enable admin-tokens/no-hardcoded-admin-color */
 
 function getProviderIcon(name: string): React.ReactNode {
   const lowerName = name.toLowerCase();

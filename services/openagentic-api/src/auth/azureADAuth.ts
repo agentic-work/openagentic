@@ -474,6 +474,14 @@ export class AzureADAuthService {
    * @returns True if user is in admin groups
    */
   async isUserAdmin(accessToken: string, tokenGroups?: string[]): Promise<boolean> {
+    // Dev escape valve — same gate as validateToken at L332. When group
+    // validation is disabled (k3s dev / no AAD groups enumerated), every
+    // tenant-authenticated user is treated as admin. Without this branch,
+    // routes/auth.ts:181 overwrites the validateToken-set isAdmin=true
+    // back to false when a Graph token is present (SSO callback path).
+    if (process.env.SKIP_GROUP_VALIDATION === 'true') {
+      return true;
+    }
     const graphGroups = await this.getGroupMemberships(accessToken);
 
     // Use environment variables for group configuration - NO HARDCODED FALLBACKS

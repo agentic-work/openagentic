@@ -15,6 +15,13 @@ import {
   MemorySearchResult
 } from '../types/Memory.js';
 import { SessionCache, ContextCacheEntry } from '../types/Cache.js';
+import { DEFAULT_SERVICE_PROMPTS } from '../../services/prompt/ServicePromptService.js';
+import { loggers } from '../../utils/logger.js';
+
+// Minimal interface for injected ServicePromptService (Sprint W).
+interface ServicePromptLike {
+  getPrompt(key: string): Promise<string>;
+}
 
 export interface MemoryContextConfig {
   cache: RedisMemoryCache;
@@ -34,8 +41,10 @@ export class MemoryContextService {
     cacheHitRate: number[];
     memoryRetrievalTimes: number[];
   };
+  /** Sprint W (2026-05-19) — optional injected ServicePromptService for DB-backed prompts. */
+  private _servicePromptSvc?: ServicePromptLike;
 
-  constructor(config: MemoryContextConfig) {
+  constructor(config: MemoryContextConfig, servicePromptSvc?: ServicePromptLike) {
     this.config = {
       cacheEnabled: true,
       debugMode: false,
@@ -47,6 +56,42 @@ export class MemoryContextService {
       cacheHitRate: [],
       memoryRetrievalTimes: []
     };
+    this._servicePromptSvc = servicePromptSvc;
+  }
+
+  /**
+   * Sprint W (2026-05-19) — DB-backed memory context system prompt.
+   *
+   * @param servicePromptSvc Optional override service (falls back to instance field).
+   * @param variant 'context_system' | 'context_build' — selects the prompt key.
+   */
+  async getContextSystemPrompt(
+    servicePromptSvc?: ServicePromptLike,
+    variant: 'context_system' | 'context_build' = 'context_system',
+  ): Promise<string> {
+    const svc = servicePromptSvc ?? this._servicePromptSvc;
+    const key = `memory.${variant}`;
+    let fallbackReason = 'NO-SVC-INJECTED';
+    if (svc) {
+      try {
+        return await svc.getPrompt(key);
+      } catch (err) {
+        fallbackReason = 'DB-READ-THREW';
+        // Prefer instance-injected logger if present (tests), fall back to module logger
+        const log = (this as any).logger ?? loggers.services;
+        log.warn(
+          { err, key, reason: fallbackReason },
+          '[MemoryContext] getContextSystemPrompt DB read failed, using inline default',
+        );
+      }
+    }
+    // Gap #3 — loud fallback signal so DEFAULT_SERVICE_PROMPTS drift becomes visible.
+    const log = (this as any).logger ?? loggers.services;
+    log.warn(
+      { key, reason: fallbackReason },
+      `[ServicePrompt fallback] using DEFAULT_SERVICE_PROMPTS constant — DB row missing or read failed (${key})`,
+    );
+    return DEFAULT_SERVICE_PROMPTS[key]?.body ?? DEFAULT_SERVICE_PROMPTS['memory.context_system'].body;
   }
 
   /**
@@ -81,7 +126,7 @@ export class MemoryContextService {
           cacheTime = Date.now() - cacheStartTime;
           
           if (cachedContext && this.isCacheValid(cachedContext)) {
-            return this.buildResultFromCache(cachedContext, startTime, cacheTime, debug);
+            return await this.buildResultFromCache(cachedContext, startTime, cacheTime, debug);
           }
         } catch (error) {
           console.warn('Cache lookup failed, continuing without cache:', error);
@@ -140,7 +185,7 @@ export class MemoryContextService {
       // Step 5: Build final augmented context
       if (debug) debug.steps.push('Context assembly');
       const context: AugmentedContext = {
-        systemPrompt: this.buildSystemPrompt(),
+        systemPrompt: await this.buildSystemPrompt(),
         contextPrompt: this.buildContextPrompt(tiers),
         totalTokens: budget.allocation.system + tiers.tier1.usedTokens + tiers.tier2.usedTokens + tiers.tier3.usedTokens,
         tiers,
@@ -397,16 +442,16 @@ export class MemoryContextService {
     return cache.expiresAt > Date.now();
   }
 
-  private buildResultFromCache(
+  private async buildResultFromCache(
     cachedContext: ContextCacheEntry,
     startTime: number,
     cacheTime: number,
     debug?: any
-  ): ContextAssemblyResult {
+  ): Promise<ContextAssemblyResult> {
     // Ensure cacheTime is at least 1ms for tests
     const actualCacheTime = Math.max(cacheTime, 1);
     const context: AugmentedContext = {
-      systemPrompt: 'You are a helpful AI assistant.',
+      systemPrompt: await this.getContextSystemPrompt(undefined, 'context_system'),
       contextPrompt: cachedContext.promptTemplate,
       totalTokens: cachedContext.totalTokens,
       tiers: {
@@ -439,8 +484,8 @@ export class MemoryContextService {
     };
   }
 
-  private buildSystemPrompt(): string {
-    return 'You are a helpful AI assistant with access to conversation history and relevant context.';
+  private async buildSystemPrompt(): Promise<string> {
+    return this.getContextSystemPrompt(undefined, 'context_build');
   }
 
   private buildContextPrompt(tiers: any): string {

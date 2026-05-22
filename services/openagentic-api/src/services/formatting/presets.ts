@@ -64,7 +64,7 @@ The final result is $result$.`,
 **Visualization** - Choose based on complexity:
 - **Flowcharts / architecture / sequence / ERDs**: \`\`\`reactflow JSON with nodes/edges
 - **Static illustration**: inline \`\`\`svg
-- **Rich interactive**: \`\`\`artifact:html or \`\`\`artifact:react
+- **Rich interactive**: call the compose_app meta-tool (sandboxed React app slide-out)
 - **Do NOT emit \`\`\`mermaid** — deprecated on this platform and will not render.
 
 | Component | Responsibility |
@@ -217,7 +217,7 @@ The final result is $result$.`,
 **Visualization** - Choose based on complexity:
 - **Cloud architecture**: \`\`\`reactflow JSON with cloud/cylinder/rectangle shapes
 - **Static overview**: inline \`\`\`svg
-- **Interactive dashboard**: \`\`\`artifact:react with professional enterprise styling
+- **Interactive dashboard**: call the compose_app meta-tool with professional enterprise styling
 - **Do NOT emit \`\`\`mermaid** — deprecated on this platform.
 
 ### Component Details
@@ -290,7 +290,7 @@ The final result is $result$.`,
 
 **Visualization** - Choose based on complexity:
 - **Timelines and roadmaps**: \`\`\`reactflow JSON with horizontal layout, circle milestones, "type":"timeline"
-- **Rich interactive**: \`\`\`artifact:react for animated timeline
+- **Rich interactive**: call the compose_app meta-tool for animated timeline
 - **Do NOT emit \`\`\`mermaid** — deprecated on this platform.
 
 ### Milestones
@@ -350,7 +350,7 @@ The final result is $result$.`,
 
 **Visualization** - Choose based on complexity:
 - **Flowcharts and decision trees**: \`\`\`reactflow JSON with decision diamonds, Yes/No edges
-- **Animated process**: \`\`\`artifact:react for step-by-step animation
+- **Animated process**: call the compose_app meta-tool for step-by-step animation
 - **Do NOT emit \`\`\`mermaid** — deprecated on this platform.
 
 ### Step-by-Step

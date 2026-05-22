@@ -1,0 +1,37 @@
+{
+  "type": "transform",
+  "category": "data",
+  "label": "Transform",
+  "description": "Apply map, filter, reduce, or extract operations to the input using sandboxed JavaScript expressions.",
+  "icon": "shuffle",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [{ "name": "result", "type": "any", "required": true }]
+  },
+  "settings": [
+    {
+      "name": "transformType",
+      "label": "Operation",
+      "type": "enum",
+      "values": ["map", "filter", "reduce", "extract"],
+      "default": "map",
+      "required": false
+    },
+    {
+      "name": "transformExpression",
+      "label": "Expression",
+      "type": "code",
+      "required": false,
+      "supportsTemplating": false,
+      "description": "JS expression. Variables: `input` (current item), `item` (alias for map/filter), `index`, `acc` (for reduce). Return value used as output.",
+      "placeholder": "input.price * 1.1"
+    }
+  ],
+  "ai": {
+    "shortDescription": "Map, filter, reduce, or extract data with a JS expression.",
+    "whenToUse": "When you need to reshape an array or extract a specific field from the upstream output before passing it to the next node.",
+    "examplePrompt": "filter the list to only include items where status === 'active'",
+    "promptHints": "Use `input` to refer to each element (map/filter/reduce) or the whole value (extract). `acc` holds the accumulator in reduce. Expressions run sandboxed — no Node.js globals."
+  },
+  "outputAssertions": []
+}

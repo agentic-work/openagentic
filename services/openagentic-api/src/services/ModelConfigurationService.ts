@@ -9,7 +9,7 @@
  * - Falls back to environment variables
  * - If ONE model: it's the default for everything
  * - If multiple: order by provider priority (prio 1 = default, prio 2 = fallback, etc.)
- * - Auto-configures slider based on available models
+ * - Derives economy/balanced/premium tier mapping from available models
  */
 
 import { logger } from '../utils/logger.js';
@@ -42,6 +42,12 @@ export interface CriticalServiceModels {
   imageGeneration: ModelAssignment | null;
 }
 
+export interface ModelTierMap {
+  economical: ModelAssignment | null;
+  balanced: ModelAssignment | null;
+  premium: ModelAssignment | null;
+}
+
 export interface ModelConfiguration {
   // All available models ordered by priority
   availableModels: ModelAssignment[];
@@ -49,16 +55,8 @@ export interface ModelConfiguration {
   defaultModel: ModelAssignment;
   // Assignments for critical services
   services: CriticalServiceModels;
-  // Slider configuration based on available models
-  sliderConfig: {
-    autoConfigured: boolean;
-    defaultPosition: number; // 0-100
-    tiers: {
-      economical: ModelAssignment | null;  // 0-40%
-      balanced: ModelAssignment | null;    // 41-60%
-      premium: ModelAssignment | null;     // 61-100%
-    };
-  };
+  // Tier mapping (economical / balanced / premium) derived from available models
+  tiers: ModelTierMap;
   // Source of configuration
   source: 'database' | 'environment' | 'fallback';
   // Last refresh timestamp
@@ -126,11 +124,74 @@ class ModelConfigurationServiceClass {
   }
 
   /**
-   * Get the default chat model (quick access)
+   * Get the default code model for Code Mode sessions.
+   * Reads from default_models.code (admin-configurable via PUT /api/admin/default-models).
+   * Falls through to the chat default if code is unset.
+   */
+  async getDefaultCodeModel(): Promise<string> {
+    const { prisma } = await import('../utils/prisma.js');
+    const row = await prisma.systemConfiguration.findUnique({ where: { key: 'default_models' } });
+    const v = row?.value as any;
+    if (v && typeof v.code === 'string' && v.code.trim() !== '') {
+      return v.code.trim();
+    }
+    if (v && typeof v.chat === 'string' && v.chat.trim() !== '') {
+      return v.chat.trim();
+    }
+    return this.getDefaultChatModel();
+  }
+
+  /**
+   * Get the default chat model (quick access).
+   *
+   * Registry SoT: admin.model_role_assignments row with role='chat' &
+   * enabled=true, ordered by priority ASC.
+   *
+   * #508 Phase 2 (FedRAMP overhaul §5.3) — NO self-heal, NO write-inside-read.
+   * The Phase 1 cascade trigger guarantees the registry can never go empty
+   * while a provider exists, and the #509 tombstone gate blocks discovery
+   * from re-resurrecting admin-deleted rows. The only way to hit "registry
+   * empty" is admin deleting every row by hand — that IS the actionable
+   * state. Throw with the existing actionable message; caller surfaces it.
+   *
+   * Predecessor: the #504 self-heal that auto-INSERTed registry rows from
+   * llm_providers.model_config was ripped here (commit landing this method
+   * change). It was the diffuse-writer anti-pattern that caused 9+
+   * sequential bugs (admin deletes silently undone, capability metadata
+   * stomped, etc.). All registry mutations now go through RegistryWriter.
    */
   async getDefaultChatModel(): Promise<string> {
-    const config = await this.getConfig();
-    return config.defaultModel.modelId;
+    const { prisma } = await import('../utils/prisma.js');
+    // #653: cross-check the assignment's provider name against the live
+    // enabled+non-deleted provider set. The Registry's enabled flag and
+    // the Provider's enabled flag are independent; without this filter we
+    // return models whose backing provider was disabled by an admin —
+    // ProviderManager subsequently rejects with "no enabled provider serves
+    // it" and every chat turn that hits the default-model path fails.
+    //
+    // Two-step query (string-match on provider name) works for both legacy
+    // rows (provider_id NULL) and new rows. Cheap: ~5 rows per role × 5
+    // providers, served from Postgres in a single round-trip each.
+    const [rows, enabledProviders] = await Promise.all([
+      prisma.modelRoleAssignment.findMany({
+        where: { role: 'chat', enabled: true },
+        orderBy: { priority: 'asc' },
+        select: { model: true, provider: true },
+      }),
+      prisma.lLMProvider.findMany({
+        where: { enabled: true, deleted_at: null },
+        select: { name: true },
+      }),
+    ]);
+    const enabledNames = new Set(enabledProviders.map(p => p.name));
+    const row = rows.find(r => enabledNames.has(r.provider));
+    if (row?.model) {
+      return row.model;
+    }
+
+    throw new Error(
+      'No chat model configured. Enable at least one row with role="chat" in admin.model_role_assignments whose provider is also enabled.',
+    );
   }
 
   /**
@@ -192,8 +253,8 @@ class ModelConfigurationServiceClass {
 
   /**
    * Resolve which provider owns a given model ID.
-   * Scans cached config first, then does a fresh DB scan for models
-   * in provider_config.models (added via Add Model dialog).
+   * Scans cached config first, then queries the Registry SoT
+   * (admin.model_role_assignments) for the model's provider name.
    */
   async resolveModelProvider(modelId: string): Promise<{ providerName: string; providerType: string; providerId: string } | null> {
     const config = await this.getConfig();
@@ -209,9 +270,26 @@ class ModelConfigurationServiceClass {
       }
     }
 
-    // Not in cache — fresh DB scan (provider_config.models may have been added recently)
+    // Not in cache — query the Registry directly. The Registry is the
+    // single source of truth for which provider owns which model.
     try {
       const { prisma } = await import('../utils/prisma.js');
+      const registryHit = await prisma.modelRoleAssignment.findFirst({
+        where: { model: modelId, enabled: true },
+        select: { provider: true },
+      });
+      if (registryHit) {
+        const p = await prisma.lLMProvider.findFirst({
+          where: { name: registryHit.provider, deleted_at: null },
+          select: { id: true, name: true, provider_type: true },
+        });
+        if (p) return { providerName: p.name, providerType: p.provider_type, providerId: p.id };
+      }
+
+      // Fallback: scan model_config routing-hint fields. These are admin-
+      // pinned default-slot assignments, NOT registry rows — but if a
+      // freshly-added pin hasn't propagated to the Registry yet we can
+      // still resolve the provider for routing.
       const providers = await prisma.lLMProvider.findMany({
         where: { enabled: true, deleted_at: null },
       });
@@ -221,7 +299,6 @@ class ModelConfigurationServiceClass {
         const allModelIds = [
           mc.chatModel, mc.defaultModel, mc.embeddingModel, mc.visionModel,
           mc.thinkingModel, mc.imageModel, mc.compactionModel, pc.modelId,
-          ...(Array.isArray(pc.models) ? pc.models.map((m: any) => m.id || m.name) : []),
         ].filter(Boolean);
 
         if (allModelIds.includes(modelId)) {
@@ -234,15 +311,15 @@ class ModelConfigurationServiceClass {
   }
 
   /**
-   * Get slider tier model IDs (economy/balanced/premium) from DB.
-   * Used by TieredFC, TaskAnalysis, AgentSpawnManager, SynthService.
+   * Get tier model IDs (economy/balanced/premium) from DB.
+   * Used by TieredFC, TaskAnalysis, the legacy in-api orchestrator, SynthService.
    */
-  async getSliderTiers(): Promise<{ economical: string; balanced: string; premium: string }> {
+  async getTierModels(): Promise<{ economical: string; balanced: string; premium: string }> {
     const config = await this.getConfig();
     return {
-      economical: config.sliderConfig.tiers.economical?.modelId || config.defaultModel.modelId,
-      balanced: config.sliderConfig.tiers.balanced?.modelId || config.defaultModel.modelId,
-      premium: config.sliderConfig.tiers.premium?.modelId || config.defaultModel.modelId,
+      economical: config.tiers.economical?.modelId || config.defaultModel.modelId,
+      balanced: config.tiers.balanced?.modelId || config.defaultModel.modelId,
+      premium: config.tiers.premium?.modelId || config.defaultModel.modelId,
     };
   }
 
@@ -252,7 +329,7 @@ class ModelConfigurationServiceClass {
    */
   async getAvailableModelsForDisplay(): Promise<Array<{ modelId: string; provider: string; tier: string; contextWindow: number }>> {
     const config = await this.getConfig();
-    const tiers = await this.getSliderTiers();
+    const tiers = await this.getTierModels();
     const IMAGE_ONLY = ['imagen', 'nova-canvas', 'dall-e', 'stable-diffusion'];
     return config.availableModels
       .filter(m => !m.modelId.includes('embed') && !IMAGE_ONLY.some(p => m.modelId.toLowerCase().includes(p)))
@@ -304,20 +381,48 @@ class ModelConfigurationServiceClass {
     // Sort by priority (lower = higher priority)
     models.sort((a, b) => a.priority - b.priority);
 
-    // Determine default model (first by priority)
-    const defaultModel = models[0];
+    // Default model: Registry SoT wins. Query admin.model_role_assignments
+    // for the highest-priority enabled role='chat' row and pin that as the
+    // platform default. Fall through to models[0] only if the Registry has
+    // no enabled chat rows (pre-provider-registration or misconfigured env).
+    // This is the same query getDefaultChatModel() issues; keeping them in
+    // agreement is deliberate — UI's /api/chat/models.defaultModel must
+    // match the stage-2 summarizer's pick so admins don't see one model in
+    // the picker while a different model answers.
+    let defaultModel = models[0];
+    try {
+      const { prisma } = await import('../utils/prisma.js');
+      const chatRow = await prisma.modelRoleAssignment.findFirst({
+        where: { role: 'chat', enabled: true },
+        orderBy: { priority: 'asc' },
+        select: { model: true, provider: true },
+      });
+      if (chatRow?.model) {
+        const preferred = models.find(m => m.modelId === chatRow.model);
+        if (preferred) {
+          defaultModel = preferred;
+        } else {
+          logger.warn({
+            registryChatModel: chatRow.model,
+            candidateModels: models.map(m => m.modelId),
+          }, '[ModelConfig] Registry role="chat" row references a model not present in availableModels — falling back to priority sort');
+        }
+      }
+    } catch (err) {
+      logger.warn({ err }, '[ModelConfig] Registry lookup for chat default failed — using priority-sorted models[0]');
+    }
 
     // Assign models to services
     const services = this.assignServicesToModels(models);
 
-    // Configure slider based on available models
-    const sliderConfig = this.configureSlider(models);
+    // Derive tier mapping from available models
+    const tiers = this.computeTiers(models);
 
     const config: ModelConfiguration = {
       availableModels: models,
       defaultModel,
       services,
-      sliderConfig,
+      tiers,
       source,
       lastRefresh: new Date(),
     };
@@ -326,7 +431,9 @@ class ModelConfigurationServiceClass {
       defaultModel: defaultModel.modelId,
       modelCount: models.length,
       source,
-      sliderPosition: sliderConfig.defaultPosition,
+      economical: tiers.economical?.modelId,
+      balanced: tiers.balanced?.modelId,
+      premium: tiers.premium?.modelId,
       supportsThinking: defaultModel.supportsThinking,
     }, '[ModelConfig] Configuration loaded');
 
@@ -338,6 +445,7 @@ class ModelConfigurationServiceClass {
    */
   private async loadFromDatabase(): Promise<ModelAssignment[]> {
     const { prisma } = await import('../utils/prisma.js');
+    const { listRegistryCandidatePool } = await import('./model-routing/RegistryCandidatePool.js');
 
     {
       const providers = await prisma.lLMProvider.findMany({
@@ -350,6 +458,16 @@ class ModelConfigurationServiceClass {
         },
       });
 
+      // Registry (admin.model_role_assignments) is the SoT for which
+      // (provider, model) pairs the platform will actually dispatch to.
+      // Auto-discovered provider_config.models[] advertises everything
+      // the CSP serves (hundreds of rows, including EOL ids like
+      // us.anthropic.claude-3-opus-20240229-v1:0 that AWS still catalogues
+      // but Converse rejects at inference). Any model not in the Registry
+      // must not leak into availableModels / tiers / capability-gate.
+      const registryPool = await listRegistryCandidatePool(prisma as any);
+      const registryAllowlist = new Set(registryPool.map(r => r.model));
+
       const models: ModelAssignment[] = [];
 
       for (const provider of providers) {
@@ -360,7 +478,7 @@ class ModelConfigurationServiceClass {
         // Get chat model from config
         const chatModelId = modelConfig?.chatModel || providerConfig?.modelId || modelConfig?.defaultModel || providerConfig?.chatModel;
 
-        if (chatModelId && !disabledModels.includes(chatModelId)) {
+        if (chatModelId && !disabledModels.includes(chatModelId) && registryAllowlist.has(chatModelId)) {
           models.push({
             modelId: chatModelId,
             provider: provider.name,
@@ -379,7 +497,7 @@ class ModelConfigurationServiceClass {
 
         // Get embedding model
         const embeddingModelId = modelConfig?.embeddingModel || providerConfig?.embeddingModel;
-        if (embeddingModelId && !disabledModels.includes(embeddingModelId) && !models.find(m => m.modelId === embeddingModelId)) {
+        if (embeddingModelId && !disabledModels.includes(embeddingModelId) && registryAllowlist.has(embeddingModelId) && !models.find(m => m.modelId === embeddingModelId)) {
           models.push({
             modelId: embeddingModelId,
             provider: provider.name,
@@ -394,29 +512,33 @@ class ModelConfigurationServiceClass {
           });
         }
 
-        // Also load models from provider_config.models (added via Add Model dialog)
-        if (Array.isArray(providerConfig?.models)) {
-          for (const m of providerConfig.models) {
-            const mId = m.id || m.name;
-            // Check both disabledModels array AND per-model config.enabled flag
-            const isModelDisabled = disabledModels.includes(mId) || m.config?.enabled === false;
-            if (mId && !isModelDisabled && !models.find(x => x.modelId === mId)) {
-              const isEmbed = mId.toLowerCase().includes('embed');
-              models.push({
-                modelId: mId,
-                provider: provider.name,
-                providerType: provider.provider_type,
-                providerId: provider.id,
-                priority: provider.priority + (isEmbed ? 100 : 10),
-                supportsThinking: this.supportsThinking(mId),
-                supportsTools: !isEmbed && this.supportsToolCalling(mId),
-                supportsVision: mId.toLowerCase().includes('gemini') || mId.toLowerCase().includes('claude'),
-                maxTokens: m.config?.maxOutputTokens || 8192,
-                contextWindow: m.contextWindow || 128000,
-              });
-            }
-          }
+        // Also load each Registry row whose `provider` matches this provider.
+        // Replaces the legacy provider_config.models[] iteration — Registry
+        // is the SoT and already filtered by enabled=true via registryPool.
+        for (const r of registryPool.filter(rp => rp.provider === provider.name)) {
+          const mId = r.model;
+          if (!mId || disabledModels.includes(mId)) continue;
+          if (models.find(x => x.modelId === mId)) continue;
+          const isEmbed = mId.toLowerCase().includes('embed') || r.role === 'embeddings';
+          models.push({
+            modelId: mId,
+            provider: provider.name,
+            providerType: provider.provider_type,
+            providerId: provider.id,
+            priority: provider.priority + (isEmbed ? 100 : 10),
+            supportsThinking: this.supportsThinking(mId),
+            supportsTools: !isEmbed && this.supportsToolCalling(mId),
+            supportsVision: mId.toLowerCase().includes('gemini') || mId.toLowerCase().includes('claude'),
+            maxTokens: 8192,
+            contextWindow: 128000,
+          });
         }
+      }
+
+      if (models.length === 0 && registryAllowlist.size === 0) {
+        logger.warn({}, '[ModelConfig] Registry (admin.model_role_assignments) is empty — no models available. Admin must enable at least one role→model pair.');
+      } else if (models.length === 0) {
+        logger.warn({ registryModels: [...registryAllowlist] }, '[ModelConfig] No models matched Registry — provider configs advertise none of the enabled Registry rows.');
       }
 
       return models;
@@ -559,9 +681,10 @@ class ModelConfigurationServiceClass {
   }
 
   /**
-   * Configure slider based on available models
+   * Compute economy/balanced/premium tier mapping from available models,
+   * sorted by quality score. With a single model, all tiers collapse to it.
    */
-  private configureSlider(models: ModelAssignment[]): ModelConfiguration['sliderConfig'] {
+  private computeTiers(models: ModelAssignment[]): ModelTierMap {
     // Filter out non-chat models: embeddings AND image-only models
     const IMAGE_ONLY_PATTERNS = ['imagen', 'nova-canvas', 'dall-e', 'stable-diffusion'];
     const chatModels = models.filter(m => {
@@ -571,91 +694,27 @@ class ModelConfigurationServiceClass {
       return true;
     });
 
-    // If only one model, auto-configure slider to that model's tier
+    // If only one model, it serves all tiers
     if (chatModels.length === 1) {
       const model = chatModels[0];
-      const defaultPosition = this.getModelSliderPosition(model.modelId);
-
       return {
-        autoConfigured: true,
-        defaultPosition,
-        tiers: {
-          economical: model,
-          balanced: model,
-          premium: model,
-        },
+        economical: model,
+        balanced: model,
+        premium: model,
       };
     }
 
-    // Multiple models: assign to tiers by priority
-    // Sort by "quality" (inverse of typical pricing)
-    const sortedByQuality = [...chatModels].sort((a, b) => {
-      const aScore = this.getModelQualityScore(a.modelId);
-      const bScore = this.getModelQualityScore(b.modelId);
-      return bScore - aScore; // Higher score = better quality
-    });
+    // H3: tier sort by registry priority — operator's explicit ranking
+    // (admin.model_role_assignments.priority). Higher priority = premium tier.
+    // Replaces a 17-pattern substring quality-score guess. Per
+    // docs/rules/no-hardcoded-models.md.
+    const sortedByPriority = [...chatModels].sort((a, b) => b.priority - a.priority);
 
     return {
-      autoConfigured: true,
-      defaultPosition: 50, // Default to balanced
-      tiers: {
-        economical: sortedByQuality[sortedByQuality.length - 1] || null, // Cheapest
-        balanced: sortedByQuality[Math.floor(sortedByQuality.length / 2)] || sortedByQuality[0],
-        premium: sortedByQuality[0] || null, // Best quality
-      },
+      economical: sortedByPriority[sortedByPriority.length - 1] || null, // Lowest priority
+      balanced: sortedByPriority[Math.floor(sortedByPriority.length / 2)] || sortedByPriority[0],
+      premium: sortedByPriority[0] || null, // Highest priority
     };
-  }
-
-  /**
-   * Get slider position (0-100) for a model
-   */
-  private getModelSliderPosition(modelId: string): number {
-    const modelLower = modelId.toLowerCase();
-
-    // Premium tier (61-100)
-    if (modelLower.includes('opus') || modelLower.includes('gpt-4') && !modelLower.includes('mini')) {
-      return 80;
-    }
-
-    // Balanced tier (41-60)
-    if (modelLower.includes('sonnet') || modelLower.includes('gpt-4o') || modelLower.includes('gemini-pro')) {
-      return 50;
-    }
-
-    // Economical tier (0-40)
-    if (modelLower.includes('haiku') || modelLower.includes('mini') || modelLower.includes('flash') || modelLower.includes('nova')) {
-      return 25;
-    }
-
-    // Default to balanced
-    return 50;
-  }
-
-  /**
-   * Get quality score for model sorting (higher = better)
-   */
-  private getModelQualityScore(modelId: string): number {
-    const modelLower = modelId.toLowerCase();
-
-    if (modelLower.includes('opus')) return 100;
-    if (modelLower.includes('gpt-5')) return 95;
-    if (modelLower.includes('o3') && !modelLower.includes('mini')) return 92;
-    if (modelLower.includes('o1') && !modelLower.includes('mini')) return 90;
-    if (modelLower.includes('sonnet') && (modelLower.includes('4.5') || modelLower.includes('4-5'))) return 85;
-    if (modelLower.includes('o3-mini') || modelLower.includes('o1-mini')) return 82;
-    if (modelLower.includes('sonnet')) return 80;
-    if (modelLower.includes('gpt-4o') && !modelLower.includes('mini')) return 75;
-    if (modelLower.includes('gemini-2.5-pro') || modelLower.includes('gemini-pro')) return 70;
-    if (modelLower.includes('gemini-2.5-flash') || modelLower.includes('gemini-flash')) return 50;
-    if (modelLower.includes('gpt-4o-mini')) return 45;
-    if (modelLower.includes('gpt-4.1')) return 78;
-    if (modelLower.includes('haiku')) return 40;
-    if (modelLower.includes('nova-pro')) return 35;
-    if (modelLower.includes('nova-lite')) return 25;
-    if (modelLower.includes('nova-micro')) return 20;
-    if (modelLower.includes('gpt-oss') || modelLower.includes('llama') || modelLower.includes('qwen')) return 15;
-
-    return 50; // Default
   }
 
   /**

@@ -18,7 +18,7 @@ export async function modelSelectorRoutes(fastify: FastifyInstance) {
   
   // Get LLM provider health status
   fastify.get('/model-selector/status', {
-    preHandler: [authMiddleware, adminMiddleware]
+    onRequest: adminMiddleware
   }, async (request: AuthenticatedRequest, reply: FastifyReply) => {
     try {
       // Get MCP Proxy health status
@@ -48,7 +48,7 @@ export async function modelSelectorRoutes(fastify: FastifyInstance) {
 
   // Get detailed model information
   fastify.get('/model-selector/models/:modelId', {
-    preHandler: [authMiddleware, adminMiddleware]
+    onRequest: adminMiddleware
   }, async (request: AuthenticatedRequest & { params: { modelId: string } }, reply: FastifyReply) => {
     try {
       const { modelId } = request.params;
@@ -74,7 +74,7 @@ export async function modelSelectorRoutes(fastify: FastifyInstance) {
 
   // Refresh models list (MCP Proxy automatically discovers models)
   fastify.post('/model-selector/refresh', {
-    preHandler: [authMiddleware, adminMiddleware]
+    onRequest: adminMiddleware
   }, async (request: AuthenticatedRequest, reply: FastifyReply) => {
     try {
       // With MCP Proxy, models are discovered from the config file
@@ -96,7 +96,7 @@ export async function modelSelectorRoutes(fastify: FastifyInstance) {
 
   // Test a specific model
   fastify.post('/model-selector/test', {
-    preHandler: [authMiddleware, adminMiddleware]
+    onRequest: adminMiddleware
   }, async (request: AuthenticatedRequest & { body: { model: string; prompt?: string } }, reply: FastifyReply) => {
     try {
       const { model, prompt = 'Hello, this is a test.' } = request.body;

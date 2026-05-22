@@ -332,6 +332,20 @@ export const useChatSessions = () => {
                 : undefined,
               tokenUsage: msg.tokenUsage,
               toolCallId: msg.toolCallId,  // For tool result messages — links to parent tool call
+              // Persistence Sev-1: inline render frames captured during the
+              // streaming turn and persisted to chat_messages.visualizations.
+              // Without this pass-through the saved widgets vanish on reload.
+              visualizations: Array.isArray(msg.visualizations) ? msg.visualizations
+                : Array.isArray(msg.metadata?.visualizations) ? msg.metadata.visualizations
+                : undefined,
+              // Sev-0 persist-non-empty-content Bug B: pass the canonical
+              // content_blocks chronology from the DB so MessageBubble renders
+              // byte-identical DOM to the live-stream state on reload.
+              // Without this, the persisted content_blocks (written by the api's
+              // contentBlocksAccumulator) were silently discarded here, forcing
+              // the UI to fall back to a reconstructed view that loses interleaved
+              // text, follow_up chips, and thinking blocks.
+              content_blocks: Array.isArray(msg.content_blocks) ? msg.content_blocks : undefined,
             } as any);
           });
         }

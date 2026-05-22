@@ -7,8 +7,6 @@ export { SlideInPanel, PanelButton } from './SlideInPanel';
 export type { SlideInPanelProps } from './SlideInPanel';
 export { AdminTable, TableActionButton, TableBadge } from './AdminTable';
 export type { AdminTableColumn, AdminTableProps } from './AdminTable';
-export { SliderControl, SliderDisplay, getSliderTier, getSliderTierInfo } from './SliderControl';
-export type { SliderControlProps, SliderTier } from './SliderControl';
 export { AdminTooltip, InfoTooltip } from './AdminTooltip';
 export type { AdminTooltipProps } from './AdminTooltip';
 export { AdminMetricCard } from './AdminMetricCard';

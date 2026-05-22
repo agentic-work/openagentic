@@ -1,11 +1,20 @@
 import type { Logger } from 'pino';
 
+/**
+ * ModelResolutionService
+ *
+ * 2026-04-19 — slider ripped (task #144). Model resolution now honours
+ * explicit model requests (for admin / opt-in users) and otherwise picks
+ * the highest-priority enabled provider's chatModel. SmartModelRouter
+ * applies FCA floors and capability escalation downstream; per-user
+ * × per-model caps live in UserModelBudgetService at dispatch time.
+ */
+
 interface ModelResolutionContext {
   explicitModel?: string;
   userId: string;
   isAdmin: boolean;
   complexity?: number;
-  sliderPosition?: number;
   hasImages?: boolean;
   hasTools?: boolean;
 }
@@ -49,7 +58,7 @@ export class ModelResolutionService {
       }
     }
 
-    return this.resolveByComplexity(context, providers);
+    return this.resolveDefault(providers);
   }
 
   private async resolveExplicitModel(model: string, providers: any[]): Promise<ModelResolutionResult> {
@@ -68,35 +77,20 @@ export class ModelResolutionService {
     return { model, provider: 'auto', reason: `User selected: ${model} (provider auto-detected)` };
   }
 
-  private async resolveByComplexity(context: ModelResolutionContext, providers: any[]): Promise<ModelResolutionResult> {
+  /**
+   * 2026-04-19 — slider ripped. Use the highest-priority provider's chat
+   * model as the default; SmartModelRouter applies FCA floors /
+   * destructive / infra-ops escalation and UserModelBudgetService
+   * enforces per-model spend caps downstream.
+   */
+  private async resolveDefault(providers: any[]): Promise<ModelResolutionResult> {
     const sorted = [...providers].sort((a, b) => (a.priority || 99) - (b.priority || 99));
-
-    if (sorted.length === 1) {
-      const p = sorted[0];
-      const model = (p.model_config as any)?.chatModel || 'default';
-      return { model, provider: p.provider_type, reason: 'Only provider available' };
-    }
-
-    const sliderPos = context.sliderPosition ?? 50;
-    let tier: 'economical' | 'balanced' | 'premium';
-    if (sliderPos <= 40) tier = 'economical';
-    else if (sliderPos <= 70) tier = 'balanced';
-    else tier = 'premium';
-
-    if (tier === 'economical') {
-      const p = sorted[sorted.length - 1];
-      const model = (p.model_config as any)?.chatModel || 'default';
-      return { model, provider: p.provider_type, reason: `Economical tier (slider: ${sliderPos})` };
-    } else if (tier === 'premium') {
-      const p = sorted[0];
-      const model = (p.model_config as any)?.chatModel || 'default';
-      return { model, provider: p.provider_type, reason: `Premium tier (slider: ${sliderPos})` };
-    } else {
-      const midIdx = Math.floor(sorted.length / 2);
-      const p = sorted[midIdx];
-      const model = (p.model_config as any)?.chatModel || 'default';
-      return { model, provider: p.provider_type, reason: `Balanced tier (slider: ${sliderPos})` };
-    }
+    const p = sorted[0];
+    const model = (p.model_config as any)?.chatModel || 'default';
+    const reason = sorted.length === 1
+      ? 'Only provider available'
+      : `Top-priority provider (${sorted.length} configured)`;
+    return { model, provider: p.provider_type, reason };
   }
 
   private async getEnabledProviders(): Promise<any[]> {

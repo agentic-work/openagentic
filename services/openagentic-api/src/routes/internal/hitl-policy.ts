@@ -1,11 +1,15 @@
 /**
  * Internal HITL Policy API
  *
- * Single source of truth for HITL approval timeout + risk-classification
- * config. Read by openagentic-proxy AgentRunner so the inline chat ReAct loop and
- * the sub-agent loop wait for the same duration on a HITL approval.
+ * Single source of truth for the approval timeout consumed by openagentic-proxy
+ * AgentRunner so the inline chat ReAct loop and the sub-agent loop wait
+ * for the same duration on a pending approval.
  *
  * Not exposed publicly — internal network only.
+ *
+ * The legacy regex-tier policy fields were ripped 2026-05-11 along with
+ * the old gate; agents only need the timeout. The endpoint returns a `mode`
+ * hint (`default`) for forward-compat with the PermissionService 5-mode shape.
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
@@ -13,23 +17,19 @@ import { prisma } from '../../utils/prisma.js';
 
 interface HitlPolicyRow {
   timeoutMs?: number;
-  mediumRiskRequiresApproval?: boolean;
-  trustThreshold?: number;
-  minCallsForTrust?: number;
+  mode?: 'default' | 'acceptEdits' | 'bypassPermissions' | 'dontAsk' | 'plan';
 }
 
 const DEFAULT_POLICY: HitlPolicyRow = {
   timeoutMs: 120_000,
-  mediumRiskRequiresApproval: true,
-  trustThreshold: 0.85,
-  minCallsForTrust: 5,
+  mode: 'default',
 };
 
 export async function registerHitlPolicyRoutes(fastify: FastifyInstance) {
   // GET /api/internal/hitl/policy
-  // Returns the current HITL policy from admin.system_configuration.hitl_policy.
+  // Returns the current approval policy from admin.system_configuration.hitl_policy.
   // Falls back to in-process defaults if the row is missing (matches the
-  // ToolApprovalGate seed defaults).
+  // PermissionService seed defaults).
   fastify.get('/api/internal/hitl/policy', async (
     _request: FastifyRequest,
     reply: FastifyReply
@@ -42,9 +42,7 @@ export async function registerHitlPolicyRoutes(fastify: FastifyInstance) {
         const val = typeof row.value === 'string' ? JSON.parse(row.value) : (row.value as HitlPolicyRow);
         return reply.send({
           timeoutMs: val.timeoutMs ?? DEFAULT_POLICY.timeoutMs,
-          mediumRiskRequiresApproval: val.mediumRiskRequiresApproval ?? DEFAULT_POLICY.mediumRiskRequiresApproval,
-          trustThreshold: val.trustThreshold ?? DEFAULT_POLICY.trustThreshold,
-          minCallsForTrust: val.minCallsForTrust ?? DEFAULT_POLICY.minCallsForTrust,
+          mode: val.mode ?? DEFAULT_POLICY.mode,
           source: 'db',
         });
       }

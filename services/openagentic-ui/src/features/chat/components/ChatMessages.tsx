@@ -12,16 +12,47 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { ChatMessage } from '@/types/index';
 import { normalizeMessages } from '../utils/messageNormalizer';
-import { COTStep } from './ChainOfThoughtDisplay';
+// COTStep — inlined here after ChainOfThoughtDisplay component was ripped
+// (367 LOC of dead chrome). Only the type was still used downstream.
+export interface COTStep {
+  id: string;
+  type: 'thinking' | 'tool_call' | 'rag_lookup' | 'fetch' | 'memory' | 'reasoning';
+  description: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'error';
+  startTime?: number;
+  endTime?: number;
+  request?: any;
+  response?: any;
+  error?: string;
+  content?: string;
+}
 import StreamErrorBoundary from '@/shared/components/StreamErrorBoundary';
 import MessageBubble from './MessageBubble';
+import { WidgetRenderer } from './v2/WidgetRenderer';
+import { AppRenderer } from './v2/AppRenderer';
+import { ToolShortlistChip } from './v2/ToolShortlistChip';
+import { ToolArray, type ToolArrayItem, type ToolTier } from './v2/ToolArray';
+import { SubAgentCard, StreamingTable, Findings, LiveTurnStatus } from './v2';
+import { InlineWidgetStrip } from './v2/InlineWidgetStrip';
+import { SynthCard } from './v2/SynthCard';
+import { DownloadTile } from './v2/DownloadTile';
+import {
+  subAgentVariantFor,
+  type SubAgentEntry,
+  type ToolShortlist,
+} from '../hooks/useChatStream';
+import { mergePersistedSubAgents } from './mergePersistedSubAgents';
 import { type AgentState } from './UnifiedAgentActivity';
 import { ContentBlock } from '../hooks/useChatStream';
 import { StarterPrompts, type StarterPrompt } from './StarterPrompts';
-import { ThinkingSphere, type ThinkingSphereState } from '@/shared/components/ThinkingSphere';
+// 2026-05-07 — bottom-center floating ThinkingSphere instance ripped per
+// user feedback. The inline thinking-block sphere lives in
+// ThinkingSection / ThinkingGlobeIndicator and naturally hides when
+// streaming ends.
 import type { ThinkingProgress } from './AgenticActivityStream/types/activity.types';
-import type { NormalizedStreamEvent } from '../../../types/NormalizedStreamTypes';
+import type { NormalizedStreamEvent } from '../../../types/AnthropicStreamEvent';
 import ToolApprovalPopup from './ToolApprovalPopup';
+import { ContentFilterBanner } from './ContentFilterBanner';
 // AgentExecutionTree no longer rendered here — MessageBubble's
 // AgenticActivityStream is the single render path for orchestrations
 // (consumed from the normalizedEvents SSE stream). The store stays imported
@@ -70,8 +101,100 @@ interface ChatMessagesProps {
   cotSteps?: COTStep[];  // Chain of Thought steps for streaming display
   agentState?: AgentState;  // Unified agent state for inline activity display
   contentBlocks?: ContentBlock[];  // Interleaved content blocks for thinking/text display
+  canonicalContentBlocks?: ContentBlock[];  // Preferred when non-empty (pure-reducer shape)
   thinkingProgress?: ThinkingProgress;  // Thinking progress for real progress indicator
   normalizedEvents?: NormalizedStreamEvent[];  // Normalized stream events for UnifiedActivityTree
+  runningCost?: number | null;  // v0.6.7 fix 2 — streaming running cost (USD) from cost_delta
+  // LiveTurnStatus inputs (codemode-style live time + ↑/↓ tokens + activity)
+  ttftMs?: number | null;
+  turnStartedAt?: number | null;
+  liveTokensIn?: number;
+  liveTokensOut?: number;
+  liveActivity?: string;
+  currentStage?: string | null;
+  // visualRenders / appRenders / artifactRenders props removed — those
+  // wire frames now route through the typed-block path (ContentBlock of
+  // type viz_render / app_render) and render inline inside
+  // AgenticActivityStream at the wire-emit chronological position.
+  // Wave 3 (#525) — per-message tool shortlist driven by `tool_shortlist`
+  // NDJSON frame from prompt.stage. Renders as ToolShortlistChip in the
+  // assistant message header.
+  toolShortlists?: Record<string, ToolShortlist>;
+  // #502 — sub-agent dispatches for the in-flight assistant message.
+  // Driven by sub_agent_started / sub_agent_completed NDJSON envelopes
+  // from useChatStream. Rendered as SubAgentCard inside the assistant
+  // fragment (mock 01 lines 1083-1133). Body content (nested ToolCards,
+  // sa-subthink, sa-return) is a follow-up — for this PR we render the
+  // head row + return-value strip only.
+  subAgents?: SubAgentEntry[];
+  /**
+   * P0-1 part 2 — per-message scoped sub-agent state. When supplied, each
+   * MessageBubble renders only the sub-agents dispatched DURING ITS OWN
+   * turn instead of every bubble showing the latest session-global
+   * snapshot. Older message bubbles read their own entries via
+   * `subAgentsByMessageId[message.id]`. Missing keys fall back to the flat
+   * `subAgents` array for the in-flight (streaming) message so existing
+   * test fixtures + live behavior keep working during the rollout.
+   */
+  subAgentsByMessageId?: Record<string, SubAgentEntry[]>;
+  /**
+   * P1-6 — per-message streaming-table state from `streaming_table` NDJSON
+   * frames. Renders mock 01:385-462 anatomy inline inside the message
+   * bubble (right-sizing tables, IAM drift rows, cost summaries). Scoped
+   * so older bubbles render only their own tables.
+   */
+  streamingTablesByMessageId?: Record<string, import('../hooks/useChatStream').StreamingTable[]>;
+  /** Phase 27 — per-message findings artifacts (mocks 03, 07, 08, 09). */
+  findingsByMessageId?: Record<string, import('../hooks/useChatStream').FindingsArtifact[]>;
+  /**
+   * #502 — per-message inline-widget artifacts (kpi_grid / savings_card /
+   * stages_strip / wave_timeline / runbook / stack_grid / annotated_code).
+   * One unified `inline_widget` NDJSON frame; one render dispatcher.
+   */
+  inlineWidgetsByMessageId?: Record<string, import('../hooks/useChatStream').InlineWidget[]>;
+  /**
+   * AC-C — per-message synth lifecycle entries. ChatMessages renders
+   * one <SynthCard> per entry, threading the approve/deny callbacks
+   * through so the consumer (ChatContainer) can POST to
+   * /api/synth/approvals/:id/[approve|reject].
+   */
+  synthsByMessageId?: Record<string, import('../hooks/useChatStream').Synth[]>;
+  onApproveSynth?: (artifactId: string) => void;
+  onDenySynth?: (artifactId: string) => void;
+  /**
+   * AC-D — per-message download tiles. Each ArtifactEmit renders one
+   * <DownloadTile> chip with mimetype-icon + filename + size + click
+   * → presigned MinIO URL (download attribute matches filename).
+   */
+  artifactEmitsByMessageId?: Record<string, import('../hooks/useChatStream').ArtifactEmit[]>;
+  // follow-up chip-row props ripped 2026-05-12 (user directive).
+  /**
+   * Audit §10 step 16 — per-message HITL approval cards (mocks #9, #15).
+   * Rendered inline with Approve/Deny buttons. Status drives card state.
+   */
+  hitlApprovalsByMessageId?: Record<
+    string,
+    Array<{
+      requestId: string;
+      toolName: string;
+      serverName?: string;
+      reason: string;
+      timeoutMs: number;
+      arguments?: unknown;
+      status: 'pending' | 'approved' | 'denied' | 'expired';
+    }>
+  >;
+  onApproveHitl?: (requestId: string) => void;
+  onDenyHitl?: (requestId: string) => void;
+  /**
+   * B8 (2026-05-12) — per-message compliance banner shown when the
+   * assistant turn ended with canonical stop_reason='content_filter' /
+   * 'safety' / 'recitation'. Replaces the silent-truncate end_turn UX.
+   */
+  contentFilterBannerByMessageId?: Record<
+    string,
+    { kind: string; model: string; message: string }
+  >;
   onExpandToCanvas?: (content: any, type: string, title: string, language?: string) => void;
   onExecuteCode?: (code: string, language: string) => void;
   onMessageUpdate?: (messageId: string, content: string) => void;
@@ -113,8 +236,40 @@ export default function ChatMessages({
   cotSteps = [],  // Chain of Thought steps
   agentState,  // Unified agent state for inline display
   contentBlocks = [],  // Interleaved content blocks
+  canonicalContentBlocks = [],  // Pure-reducer slice; preferred when non-empty
   thinkingProgress,  // Thinking progress for real progress indicator
   normalizedEvents,  // Normalized stream events for UnifiedActivityTree
+  runningCost,  // v0.6.7 fix 2 — streaming running cost (USD) from cost_delta
+  ttftMs,
+  turnStartedAt,
+  liveTokensIn,
+  liveTokensOut,
+  liveActivity,
+  currentStage,
+  // Wave 3 (#525) — tool shortlist chip state (one entry per assistant message).
+  toolShortlists,
+  // #502 — sub-agent lifecycle entries (from sub_agent_* envelopes).
+  subAgents,
+  // P0-1 part 2 — per-message scoped sub-agent state.
+  subAgentsByMessageId,
+  // P1-6 — per-message streaming-table state.
+  streamingTablesByMessageId,
+  findingsByMessageId,
+  // #502 — per-message inline-widget state.
+  inlineWidgetsByMessageId,
+  // AC-C — per-message synth lifecycle state + approve/deny callbacks.
+  synthsByMessageId,
+  onApproveSynth,
+  onDenySynth,
+  // AC-D — per-message clickable download tiles.
+  artifactEmitsByMessageId,
+  // follow-up chip-row destructures ripped 2026-05-12 (user directive).
+  // Audit §10 step 16 — HITL approval cards (mocks #9, #15).
+  hitlApprovalsByMessageId,
+  onApproveHitl,
+  onDenyHitl,
+  // B8 — content_filter compliance banner state (FedRAMP-Hi audit).
+  contentFilterBannerByMessageId,
   onExpandToCanvas,
   onExecuteCode,
   onMessageUpdate,
@@ -242,6 +397,19 @@ export default function ChatMessages({
     return { turnGroups: groups, messageTurnInfo: info };
   }, [normalizedMessages]);
 
+  // Sev-0 #838 — fold persisted sub-agents from message.visualizations
+  // into the per-message map so AgenticActivityStream renders inline at
+  // the Task tool_use position even after reload. Live entries win on
+  // key collision so the streaming reducer's snapshot isn't clobbered
+  // by stale persistence. Test: __tests__/mergePersistedSubAgents.test.ts.
+  const effectiveSubAgentsByMessageId = useMemo(
+    () => mergePersistedSubAgents(subAgentsByMessageId, normalizedMessages) as Record<
+      string,
+      SubAgentEntry[]
+    >,
+    [subAgentsByMessageId, normalizedMessages],
+  );
+
   // Memoized edit handlers to prevent MessageBubble re-renders
   const handleEditStart = useCallback((message: ChatMessage) => {
     setEditingMessageId(message.id);
@@ -287,11 +455,17 @@ export default function ChatMessages({
   return (
     <div className="h-full w-full gpu-accelerated">
       <div
-        className="w-full max-w-full px-2 sm:px-4 md:px-6 lg:px-10 xl:px-12"
+        data-transcript-root
+        className="cm-v2 cm-chat w-full max-w-full px-4 sm:px-6 md:px-8"
         style={{
-          maxWidth: 'min(1800px, 98vw)',
+          // Content column width. 902px == --transcript-max-width
+          // (single source of truth in styles/design-tokens.css). Layout
+          // (display:flex, flex-direction:column, gap:32px) is owned by
+          // .cm-chat (chatmode-v2.css:68-74) so the inline style only
+          // pins the column width.
+          maxWidth: 'var(--transcript-max-width)',
           margin: '0 auto',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
         }}
       >
         <StreamErrorBoundary>
@@ -313,6 +487,46 @@ export default function ChatMessages({
               const turnIndices = turnGroups.get(turnInfo.turnId)!;
               aggregatedMessages = turnIndices.map(i => normalizedMessages[i]);
             }
+
+            // Wave 3 (#525) — per-message tool shortlist (assistant only).
+            const toolShortlist =
+              message.role === 'assistant' && toolShortlists
+                ? toolShortlists[message.id]
+                : undefined;
+
+            // Sev-1 #922 — resolve HITL approvals for THIS assistant message
+            // so MessageBubble can hand them straight to AgenticActivityStream.
+            // Live-state first, then fall back to the persisted-visualization
+            // shape (#91) so historical approval cards survive session
+            // reload. Cards are deduped by requestId because the api
+            // dual-emitted `hitl_approval` + `mcp_approval_required` before
+            // the rip — old session rows still carry both frames.
+            const messageHitlApprovals = (() => {
+              if (message.role !== 'assistant') return undefined;
+              const live = hitlApprovalsByMessageId?.[message.id] ?? [];
+              if (live.length > 0) return live;
+              const persisted = (message as any).visualizations;
+              if (!Array.isArray(persisted)) return undefined;
+              const seenIds = new Set<string>();
+              const out = persisted
+                .filter((f: any) => f && (f.type === 'hitl_approval' || f.type === 'mcp_approval_required') && f.data)
+                .filter((f: any) => {
+                  const rid = typeof f.data.requestId === 'string' ? f.data.requestId : '';
+                  if (!rid || seenIds.has(rid)) return false;
+                  seenIds.add(rid);
+                  return true;
+                })
+                .map((f: any) => ({
+                  requestId: f.data.requestId,
+                  toolName: f.data.toolName ?? 'unknown',
+                  serverName: f.data.serverName,
+                  reason: f.data.reason ?? '',
+                  timeoutMs: f.data.timeoutMs ?? 60_000,
+                  arguments: f.data.arguments,
+                  status: 'expired' as const,
+                }));
+              return out.length > 0 ? out : undefined;
+            })();
 
             return (
               <React.Fragment key={message.id}>
@@ -340,7 +554,25 @@ export default function ChatMessages({
                   // FIXED: Pass contentBlocks to MessageBubble for streaming messages
                   // MessageBubble's AgenticActivityStream handles interleaved rendering
                   // renderStreamingMessage() has been REMOVED to prevent duplicate rendering
-                  streamingContentBlocks={message.status === 'streaming' ? contentBlocks : undefined}
+                  streamingContentBlocks={
+                    // F1-6 (2026-05-17) — keep passing the canonical/legacy
+                    // contentBlocks slot at finalize too, but ONLY for the
+                    // most-recent assistant message in the list. Blocks
+                    // emitted AFTER the final text_delta (e.g. `follow_up`
+                    // chip rows at end_turn) must survive the streaming →
+                    // finalize handoff. Previously this was `undefined`
+                    // post-stream and AAS fell back to finalContentBlocks
+                    // (rebuilt from steps), which never contained those
+                    // late blocks. Scoped to last assistant message so we
+                    // don't leak the in-memory reducer state into older
+                    // bubbles in the conversation.
+                    (message.status === 'streaming'
+                      || (message.role === 'assistant'
+                          && idx === normalizedMessages.length - 1
+                          && (canonicalContentBlocks.length > 0 || contentBlocks.length > 0)))
+                      ? (canonicalContentBlocks.length > 0 ? canonicalContentBlocks : contentBlocks)
+                      : undefined
+                  }
                   thinkingProgress={message.status === 'streaming' ? thinkingProgress : undefined}
                   normalizedEvents={
                     // Pass normalizedEvents to streaming messages AND the last assistant message
@@ -352,6 +584,35 @@ export default function ChatMessages({
                   onThumbsUp={onFeedback ? (msgId: string) => onFeedback(msgId, 'thumbs_up') : undefined}
                   onThumbsDown={onFeedback ? (msgId: string) => onFeedback(msgId, 'thumbs_down') : undefined}
                   onCopy={onFeedback ? (msgId: string) => onFeedback(msgId, 'copy') : undefined}
+                  runningCost={message.status === 'streaming' ? runningCost : undefined}
+                  // #646 Option B — sub-agent props forwarded into AgenticActivityStream
+                  // so the rich SubAgentCard renders INLINE at the agent_group's
+                  // timeline position (mock 01:1077-1140). Trailing strip below was
+                  // RIPPED — AAS owns this render now.
+                  subAgents={subAgents}
+                  subAgentsByMessageId={effectiveSubAgentsByMessageId}
+                  hitlApprovals={messageHitlApprovals}
+                  onApproveHitl={onApproveHitl}
+                  onDenyHitl={onDenyHitl}
+                  // Sev-0 dup-render rip (2026-05-21) — forward streaming-table
+                  // data into the bubble so AAS can render the native
+                  // <StreamingTable> INLINE at the viz_render(template=table)
+                  // tool_use position. The sibling strip below the bubble that
+                  // used to render these is RIPPED — single source of truth.
+                  streamingTables={
+                    message.role === 'assistant'
+                      ? streamingTablesByMessageId?.[message.id]
+                      : undefined
+                  }
+                  // LiveTurnStatus inputs — only thread these through for the
+                  // currently streaming message so the strip renders directly
+                  // to the right of the spinning ThinkingSphere with live
+                  // ↑in / ↓out tokens + a one-line activity summary.
+                  turnStartedAt={message.status === 'streaming' ? turnStartedAt : null}
+                  ttftMs={message.status === 'streaming' ? ttftMs : null}
+                  liveTokensIn={message.status === 'streaming' ? liveTokensIn : undefined}
+                  liveTokensOut={message.status === 'streaming' ? liveTokensOut : undefined}
+                  liveActivity={message.status === 'streaming' ? liveActivity : undefined}
                 />
                 {/*
                  * REMOVED: inline <AgentExecutionTree> render.
@@ -369,6 +630,363 @@ export default function ChatMessages({
                  * the legacy event handlers in useSSEChat — we just stop
                  * rendering them as a separate tree here.
                  */}
+                {/*
+                 * #646 Option B — sub-agent card render moved INTO
+                 * AgenticActivityStream's timeline (between the parent's
+                 * narration tool calls and the parent's final synthesis
+                 * prose), matching mock 01:1077-1140 where
+                 * `<article class="subagent">` slots inside the parent
+                 * agent's timeline. The trailing `cm-subagent-strip` IIFE
+                 * was ripped here — MessageBubble now forwards `subAgents`
+                 * + `subAgentsByMessageId` straight into AAS, which owns
+                 * the SubAgentCard render at the agent_group position.
+                 */}
+                {/*
+                 * Sev-0 dup-render rip (2026-05-21) — RIPPED. The sibling
+                 * `<StreamingTable>` strip that used to render BELOW the
+                 * MessageBubble was producing a third duplicate render of
+                 * `compose_visual({template:'table'})` data (alongside the
+                 * InlineVizBadge iframe and the ToolCard JSON wall). AAS
+                 * now owns the streaming-table render INLINE at the
+                 * viz_render(template=table) wire-emit position via the
+                 * `streamingTables` prop threaded from MessageBubble.
+                 *
+                 * The reducer (`applyStreamingTableFrame`) still populates
+                 * `streamingTablesByMessageId[message.id]` so persistence
+                 * and the AAS inline render path both see the data — only
+                 * the sibling-after-bubble JSX is gone.
+                 *
+                 * Live evidence:
+                 *   reports/verify-cadence/one-shot-redeploy-2026-05-21/07-table-dup-fullpage.png
+                 * Pin: __tests__/MessageBubble.dup-render-rip.test.tsx
+                 */}
+                {/*
+                 * Phase 27 — findings strip (mocks 03, 07, 08, 09).
+                 * Severity-tagged audit/review list emitted by
+                 * `findings_emit` NDJSON frame.
+                 */}
+                {(() => {
+                  const findings = findingsByMessageId?.[message.id];
+                  if (!findings || findings.length === 0 || message.role !== 'assistant') return null;
+                  return (
+                    <div className="cm-v2" data-testid="findings-strip">
+                      {findings.map((art) => (
+                        <Findings key={art.artifactId} items={art.items} />
+                      ))}
+                    </div>
+                  );
+                })()}
+                {/*
+                 * #502 — unified inline-widget render dispatcher. Drives
+                 * KpiGrid / SavingsCard / StagesStrip / WaveTimeline /
+                 * Runbook / StackGrid / AnnotatedCode from one NDJSON
+                 * frame keyed by `kind`. Component decides what to render
+                 * (test at v2/__tests__/InlineWidgetStrip.test.tsx).
+                 */}
+                {message.role === 'assistant' && (
+                  <InlineWidgetStrip widgets={inlineWidgetsByMessageId?.[message.id] ?? []} />
+                )}
+                {/*
+                 * Persistence Sev-1 — saved-on-message fallback. When the
+                 * live per-message reducer maps are empty (i.e. on session
+                 * reload after refresh), render directly from the
+                 * `message.visualizations` array the API persisted to
+                 * chat_messages.visualizations during the streaming turn.
+                 *
+                 * Frame types handled:
+                 *   - visual_render    → WidgetRenderer (ECharts/SVG/HTML)
+                 *   - app_render       → AppRenderer (sandboxed iframe srcdoc)
+                 *   - artifact_render  → WidgetRenderer (mermaid/svg/html) +
+                 *                        AppRenderer (react)
+                 *   - streaming_table  → StreamingTable
+                 *   - inline_widget    → InlineWidgetStrip
+                 *   - sub_agent_complete / sub_agent_completed → SubAgentCard
+                 *   - findings_emit    → Findings (severity-tagged artifact)
+                 *   - artifact_emit    → DownloadTile (presigned MinIO link)
+                 *   - synth_*          → SynthCard (synth lifecycle replay)
+                 *
+                 * Live-render-already-fired guard: if the matching live map
+                 * has any entry for this messageId, skip the fallback to
+                 * avoid double-rendering. Otherwise render the saved frames.
+                 *
+                 * E1 (2026-05-12): extended past the original 5-frame set to
+                 * cover the full inline-frame catalogue persisted by api/
+                 * persistableInlineFrames.ts. Reload-survival regression cage
+                 * lives in ChatMessages.persistedE1Hydration.test.tsx.
+                 */}
+                {(() => {
+                  if (message.role !== 'assistant') return null;
+                  const persisted = (message as any).visualizations;
+                  if (!Array.isArray(persisted) || persisted.length === 0) return null;
+                  const liveTables = streamingTablesByMessageId?.[message.id];
+                  const liveWidgets = inlineWidgetsByMessageId?.[message.id];
+                  const liveSubAgents = subAgentsByMessageId?.[message.id];
+                  const liveFindings = findingsByMessageId?.[message.id];
+                  const liveSynths = synthsByMessageId?.[message.id];
+                  const liveArtifactEmits = artifactEmitsByMessageId?.[message.id];
+                  // visual_render / app_render / artifact_render persisted
+                  // hydration is handled by the typed-block path
+                  // (Message.content_blocks → ContentBlock[type=viz_render|
+                  // app_render] → AgenticActivityStream inline render).
+                  // The persisted strip below covers only the frame types
+                  // that haven't migrated to content_blocks yet.
+                  const streamingTablesFromSaved = persisted
+                    .filter((f: any) => f && f.type === 'streaming_table' && f.data)
+                    .map((f: any) => f.data);
+                  const inlineWidgetsFromSaved = persisted
+                    .filter((f: any) => f && f.type === 'inline_widget' && f.data)
+                    .map((f: any) => f.data);
+                  // sub_agent_complete (legacy) + sub_agent_completed (canonical)
+                  // both fold to the same SubAgentCard render — emitter site
+                  // varied historically, persisted blobs may carry either.
+                  const subAgentCompleteFromSaved = persisted
+                    .filter(
+                      (f: any) =>
+                        f &&
+                        (f.type === 'sub_agent_complete' || f.type === 'sub_agent_completed') &&
+                        f.data,
+                    )
+                    .map((f: any) => f.data);
+                  const findingsFromSaved = persisted
+                    .filter((f: any) => f && f.type === 'findings_emit' && f.data)
+                    .map((f: any) => f.data);
+                  const artifactEmitsFromSaved = persisted
+                    .filter((f: any) => f && f.type === 'artifact_emit' && f.data)
+                    .map((f: any) => f.data);
+                  // E1 — synth lifecycle replay. Fold the 8 frame types back
+                  // through applySynthLifecycleFrame so the same Synth shape
+                  // SynthCard expects emerges. Drop orphan frames silently
+                  // (planned wins; other frames update by artifact_id).
+                  const synthFrames = persisted.filter(
+                    (f: any) =>
+                      f &&
+                      typeof f.type === 'string' &&
+                      f.type.startsWith('synth_') &&
+                      f.data,
+                  );
+                  let synthsFromSaved: any[] = [];
+                  if (synthFrames.length > 0) {
+                    // Avoid an import cycle — replay inline rather than
+                    // pulling applySynthLifecycleFrame into the JSX closure.
+                    const byId: Record<string, any> = {};
+                    for (const f of synthFrames) {
+                      const d = f.data ?? {};
+                      const aid = typeof d.artifact_id === 'string' ? d.artifact_id : '';
+                      if (!aid) continue;
+                      if (f.type === 'synth_planned') {
+                        byId[aid] = {
+                          artifactId: aid,
+                          stage: 'planned',
+                          intent: typeof d.intent === 'string' ? d.intent : '',
+                          capabilities: Array.isArray(d.capabilities) ? d.capabilities : [],
+                          riskLevel:
+                            d.risk_level === 'low' || d.risk_level === 'medium' ||
+                            d.risk_level === 'high' || d.risk_level === 'critical'
+                              ? d.risk_level
+                              : 'medium',
+                          riskReason: typeof d.risk_reason === 'string' ? d.risk_reason : undefined,
+                          code: '',
+                          codeLang: typeof d.code_lang === 'string' ? d.code_lang : 'python',
+                          stdout: '',
+                          stderr: '',
+                        };
+                      } else if (!byId[aid]) {
+                        continue;
+                      } else if (f.type === 'synth_code_chunk') {
+                        byId[aid].code += typeof d.code_fragment === 'string' ? d.code_fragment : '';
+                      } else if (f.type === 'synth_approval_requested') {
+                        byId[aid].stage = 'awaiting_approval';
+                      } else if (f.type === 'synth_approved') {
+                        byId[aid].stage = 'approved';
+                      } else if (f.type === 'synth_denied') {
+                        byId[aid].stage = 'denied';
+                        if (typeof d.reason === 'string') byId[aid].denialReason = d.reason;
+                      } else if (f.type === 'synth_executing') {
+                        byId[aid].stage = 'executing';
+                        if (typeof d.started_at === 'number') byId[aid].startedAt = d.started_at;
+                      } else if (f.type === 'synth_stdout') {
+                        const chunk = typeof d.chunk === 'string' ? d.chunk : '';
+                        if (d.stream === 'stderr') byId[aid].stderr += chunk;
+                        else byId[aid].stdout += chunk;
+                      } else if (f.type === 'synth_completed') {
+                        const exitCode = typeof d.exit_code === 'number' ? d.exit_code : 0;
+                        const failed = exitCode !== 0 || typeof d.error === 'string';
+                        byId[aid].stage = failed ? 'failed' : 'completed';
+                        byId[aid].exitCode = exitCode;
+                        if (typeof d.duration_ms === 'number') byId[aid].durationMs = d.duration_ms;
+                        if (typeof d.error === 'string') byId[aid].error = d.error;
+                      }
+                    }
+                    synthsFromSaved = Object.values(byId);
+                  }
+                  const hasLive =
+                    (liveTables && liveTables.length > 0) ||
+                    (liveWidgets && liveWidgets.length > 0) ||
+                    (liveSubAgents && liveSubAgents.length > 0) ||
+                    (liveFindings && liveFindings.length > 0) ||
+                    (liveSynths && liveSynths.length > 0) ||
+                    (liveArtifactEmits && liveArtifactEmits.length > 0);
+                  if (hasLive) return null;
+                  return (
+                    <div className="cm-v2 cm-persisted-strip" data-testid="persisted-visualizations">
+                      {streamingTablesFromSaved.length > 0 && (
+                        <div data-testid="persisted-streaming-tables">
+                          {streamingTablesFromSaved.map((tbl: any, idx: number) => (
+                            <StreamingTable
+                              key={`saved-tbl-${idx}-${tbl.artifactId ?? idx}`}
+                              table={tbl}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {inlineWidgetsFromSaved.length > 0 && (
+                        <InlineWidgetStrip widgets={inlineWidgetsFromSaved} />
+                      )}
+                      {/* Sev-0 #838 — persisted sub-agent cards now flow through
+                          mergePersistedSubAgents → effectiveSubAgentsByMessageId →
+                          AgenticActivityStream, rendering INLINE at the Task
+                          tool_use position regardless of hydration source. The
+                          old trailing `<div data-testid="persisted-sub-agents">`
+                          render path is RIPPED. The persisted slice is still
+                          extracted into `subAgentCompleteFromSaved` above so the
+                          guard logic for other persisted blocks continues to
+                          work; it just no longer renders here. */}
+                      {findingsFromSaved.length > 0 && (
+                        <div data-testid="persisted-findings">
+                          {findingsFromSaved.map((fnd: any, idx: number) => (
+                            <Findings
+                              key={`saved-fnd-${idx}-${fnd.artifact_id ?? fnd.artifactId ?? idx}`}
+                              items={Array.isArray(fnd.items) ? fnd.items : []}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {synthsFromSaved.length > 0 && (
+                        <div data-testid="persisted-synths">
+                          {synthsFromSaved.map((synth: any) => (
+                            <SynthCard
+                              key={`saved-synth-${synth.artifactId}`}
+                              synth={synth}
+                              onApprove={onApproveSynth}
+                              onDeny={onDenySynth}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {artifactEmitsFromSaved.length > 0 && (
+                        <div data-testid="persisted-download-tiles">
+                          {artifactEmitsFromSaved.map((a: any, idx: number) => (
+                            <DownloadTile
+                              key={`saved-ae-${idx}-${a.artifactId ?? idx}`}
+                              artifact={a}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+                {/*
+                 * AC-C — synth lifecycle strip. One <SynthCard> per
+                 * artifactId tracked by the synth lifecycle reducer.
+                 * Streams the model's authored Python + approval CTA
+                 * + executing/stdout/completed states inline.
+                 */}
+                {(() => {
+                  const synths =
+                    message.role === 'assistant'
+                      ? synthsByMessageId?.[message.id] ?? []
+                      : [];
+                  if (synths.length === 0) return null;
+                  return (
+                    <div className="cm-v2" data-testid="synth-card-strip">
+                      {synths.map((synth) => (
+                        <SynthCard
+                          key={synth.artifactId}
+                          synth={synth}
+                          onApprove={onApproveSynth}
+                          onDeny={onDenySynth}
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
+                {/*
+                 * AC-D — download-tile strip. One <DownloadTile> per
+                 * artifact_emit. Click → presigned MinIO URL.
+                 */}
+                {(() => {
+                  const tiles =
+                    message.role === 'assistant'
+                      ? artifactEmitsByMessageId?.[message.id] ?? []
+                      : [];
+                  if (tiles.length === 0) return null;
+                  return (
+                    <div className="cm-v2" data-testid="download-tile-strip">
+                      {tiles.map((a) => (
+                        <DownloadTile key={a.artifactId} artifact={a} />
+                      ))}
+                    </div>
+                  );
+                })()}
+                {/* Sev-1 #922 (2026-05-17) — per-message HITL footer strip
+                    RIPPED. AAS now owns the HITL render INLINE next to the
+                    matching tool_use block (CLAUDE.md rule 8a chronological
+                    interleave). HITL approvals are threaded into AAS via the
+                    `hitlApprovals` prop on MessageBubble; see the
+                    `messageHitlApprovals` resolver above. The original
+                    footer-strip is preserved in git history at this site
+                    (search: "Audit §10 step 16" pre-2026-05-17).
+                */}
+                {/* B8 (2026-05-12) — content_filter compliance banner.
+                    Rendered when canonical stop_reason was content_filter /
+                    safety / recitation. Replaces the silent-truncate
+                    end_turn UX so the user sees a distinct compliance
+                    signal per FedRAMP-Hi audit. */}
+                {message.role === 'assistant' &&
+                  contentFilterBannerByMessageId?.[message.id] && (
+                    <ContentFilterBanner
+                      kind={contentFilterBannerByMessageId[message.id].kind}
+                      model={contentFilterBannerByMessageId[message.id].model}
+                      message={contentFilterBannerByMessageId[message.id].message}
+                    />
+                  )}
+                {/* follow-up chip-row render ripped 2026-05-12 (user directive). */}
+                {/*
+                 * Wave 3 (#525) — tool-shortlist chip rendered in the
+                 * assistant header row. Driven by the `tool_shortlist`
+                 * NDJSON frame (Wave 2 backend). Renders null when no
+                 * frame received (toolShortlist undef).
+                 */}
+                {toolShortlist && (
+                  <div
+                    data-message-id={message.id}
+                    data-testid="tool-shortlist-chip-row"
+                  >
+                    <ToolShortlistChip
+                      totalAvailable={toolShortlist.totalAvailable}
+                      count={toolShortlist.count}
+                      intent={toolShortlist.intent}
+                      kept={toolShortlist.kept}
+                    />
+                  </div>
+                )}
+                {/* Phase 2 — mock 10:227-241 inline tool-loadout chip row.
+                    Renders ABOVE the activity stream so the user can see
+                    which tools were available for the turn. Tier inferred
+                    from the tool-name namespace (no separator → T1
+                    internal; otherwise T2 MCP-connected). */}
+                {toolShortlist && toolShortlist.kept && toolShortlist.kept.length > 0 && (
+                  <div className="cm-v2" data-testid="tool-array-row">
+                    <ToolArray
+                      tools={toolShortlist.kept.map((name): ToolArrayItem => {
+                        const t: ToolTier =
+                          /[._:]|__/.test(name) ? 2 : 1;
+                        return { name, tier: t };
+                      })}
+                    />
+                  </div>
+                )}
               </React.Fragment>
             );
           })}
@@ -378,35 +996,28 @@ export default function ChatMessages({
           {/* Live Agent Execution Trees — rendered INLINE after the last assistant message */}
           {/* NOT at bottom — appears right after the streaming message bubble */}
 
-          {/* Persistent ThinkingSphere - Always visible while LLM is working */}
-          {/* Shows throughout the entire streaming process with state-appropriate animations */}
-          {(() => {
-            // Determine ThinkingSphere state based on current activity
-            let sphereState: ThinkingSphereState = 'hidden';
+          {/* LiveTurnStatus has been moved INTO MessageBubble so the strip
+              renders directly to the right of the spinning ThinkingSphere
+              instead of as a trailing block below all messages. The
+              co-located version inherits live ↑in / ↓out token bumps from
+              every NDJSON delta + a short activity summary. */}
 
-            if (isLoading) {
-              // Always show when loading/streaming - this is the key change
-              if (activeMcpCalls && activeMcpCalls.length > 0) {
-                // Tool execution phase
-                sphereState = 'processing';
-              } else if (thinkingContent?.trim() || (contentBlocks && contentBlocks.some(b => b.type === 'thinking' && b.content?.trim()))) {
-                // Active thinking
-                sphereState = 'thinking';
-              } else if (streamingContent?.trim() || (contentBlocks && contentBlocks.some(b => b.type === 'text' && b.content?.trim()))) {
-                // Generating text response
-                sphereState = 'generating';
-              } else {
-                // Initial connection / waiting for response
-                sphereState = 'connecting';
-              }
-            }
+          {/* visual_render / app_render / artifact_render sidecars were ripped.
+              Those frames now flow through applyCanonicalFrame into typed
+              ContentBlocks (viz_render / app_render) that render inline at
+              their wire-emit chronological position inside
+              AgenticActivityStream — no parent-level pooling. */}
 
-            return (
-              <div className="flex justify-center py-6">
-                <ThinkingSphere state={sphereState} size={24} />
-              </div>
-            );
-          })()}
+          {/* 2026-05-07 — RIPPED bottom-center floating ThinkingSphere.
+              User feedback: "the sphere should be where the square is
+              and disappear when thinking/request is done." The square
+              indicator lived INSIDE the inline thinking block; the
+              sphere now lives in that same spot (ThinkingSection.tsx
+              MiniThinkingIndicator + AgenticActivityStream
+              ThinkingGlobeIndicator), and naturally hides when
+              `isAnimating` becomes false at end-of-stream. The extra
+              floating sphere here was a distinct visual element with
+              no square-equivalent and is no longer needed. */}
 
           {/* HITL approval modal — full-screen overlay via portal */}
           <ToolApprovalPopup

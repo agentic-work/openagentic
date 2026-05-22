@@ -90,6 +90,13 @@ export class TitleGenerationHandler {
       // Generate new title
       const title = await this.titleService.generateTitle(messages);
 
+      // M17a: titleModel metadata reflects the registry's titleGeneration row
+      // (admin.model_role_assignments role='titleGeneration' or role='compaction'
+      // — the cheap-model slot ModelConfigurationService chose). Replaces an
+      // env-driven bypass that pinned a model the operator never selected.
+      const { ModelConfigurationService } = await import('../../../services/ModelConfigurationService.js');
+      const titleAssignment = await ModelConfigurationService.getServiceModel('titleGeneration').catch(() => null);
+
       // Update session with new title
       await this.chatStorage.updateSession(sessionId, userId, {
         title,
@@ -97,7 +104,7 @@ export class TitleGenerationHandler {
           ...session.metadata,
           titleGeneratedAt: new Date().toISOString(),
           titleGeneratedBy: 'ai',
-          titleModel: process.env.TITLE_GENERATION_MODEL || process.env.DEFAULT_MODEL
+          titleModel: titleAssignment?.modelId ?? null,
         }
       });
 

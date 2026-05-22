@@ -64,14 +64,14 @@ let JWT_SECRET: string;
   JWT_SECRET = await getJWTSecret();
 })();
 
-// Helper function to get default model from environment
-const getDefaultModel = (): string => {
-  // Allow model router as valid "model" - it will handle routing internally
-  const defaultModel = process.env.AZURE_OPENAI_DEPLOYMENT || process.env.DEFAULT_MODEL;
-  if (!defaultModel) {
-    throw new Error('AZURE_OPENAI_DEPLOYMENT or DEFAULT_MODEL environment variable is required');
-  }
-  return defaultModel;
+// M17i: registry SoT for the initial session model. Replaces an
+// env-driven `AZURE_OPENAI_DEPLOYMENT || DEFAULT_MODEL` bypass that
+// pinned new-user sessions to a model the operator may not have
+// configured. Empty string (no chat row) is informative — the new-user
+// session shows "no model" until the operator seeds the registry.
+const getDefaultModel = async (): Promise<string> => {
+  const { ModelConfigurationService } = await import('../services/ModelConfigurationService.js');
+  return (await ModelConfigurationService.getDefaultChatModel().catch(() => null)) ?? '';
 };
 
 // Password hashing utilities using bcrypt
@@ -334,7 +334,7 @@ export const localAuthRoutes: FastifyPluginAsync = async (fastify) => {
 
         if (existingSessions.length === 0) {
           // Create initial "New Chat" session for first-time users
-          const defaultModel = getDefaultModel();
+          const defaultModel = await getDefaultModel();
           await prisma.chatSession.create({
             data: {
               id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -602,7 +602,7 @@ export const localAuthRoutes: FastifyPluginAsync = async (fastify) => {
           });
 
           if (existingSessions.length === 0) {
-            const defaultModel = getDefaultModel();
+            const defaultModel = await getDefaultModel();
             await prisma.chatSession.create({
               data: {
                 id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,

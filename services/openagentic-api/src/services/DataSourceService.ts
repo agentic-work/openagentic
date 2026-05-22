@@ -100,10 +100,18 @@ export class DataSourceService {
       secret_id?: string;
       is_shared?: boolean;
       tags?: string[];
+      /**
+       * Opt-in: when true, immediately probe the new data source's schema
+       * after the row is persisted and merge the result into the returned
+       * record. Default false — auto-probing on every create would issue a
+       * network call to internal hosts and slow CRUD; the caller must
+       * explicitly request it.
+       */
+      probeNow?: boolean;
     },
   ): Promise<any> {
     this.logger.info({ userId, name: input.name, type: input.type }, 'Creating data source');
-    return prisma.dataSource.create({
+    const created = await prisma.dataSource.create({
       data: {
         name: input.name,
         description: input.description,
@@ -115,6 +123,11 @@ export class DataSourceService {
         created_by: userId,
       },
     });
+    if (input.probeNow === true) {
+      await this.probeSchema(created.id, userId);
+      return prisma.dataSource.findUnique({ where: { id: created.id } });
+    }
+    return created;
   }
 
   async update(
@@ -128,12 +141,20 @@ export class DataSourceService {
       secret_id: string | null;
       is_shared: boolean;
       tags: string[];
+      /**
+       * Opt-in: re-probe schema after the update lands. Default false;
+       * see `create` docstring for why this is gated rather than automatic.
+       */
+      probeNow: boolean;
     }>,
   ): Promise<any> {
     this.logger.info({ id, userId }, 'Updating data source');
 
+    // probeNow is a flow control flag, not a column — strip before persist.
+    const { probeNow, ...persisted } = updates;
+
     // If connection_config changes, invalidate cached schema
-    const data: any = { ...updates };
+    const data: any = { ...persisted };
     if (updates.connection_config !== undefined) {
       data.schema_cache = null;
       data.schema_probed_at = null;
@@ -142,12 +163,14 @@ export class DataSourceService {
       data.connection_config = updates.connection_config as any;
     }
 
-    return prisma.dataSource.updateMany({
+    await prisma.dataSource.updateMany({
       where: { id, created_by: userId },
       data,
-    }).then(async () => {
-      return prisma.dataSource.findUnique({ where: { id } });
     });
+    if (probeNow === true) {
+      await this.probeSchema(id, userId);
+    }
+    return prisma.dataSource.findUnique({ where: { id } });
   }
 
   async delete(id: string, userId: string): Promise<void> {

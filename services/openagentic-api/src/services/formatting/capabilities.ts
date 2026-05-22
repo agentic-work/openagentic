@@ -172,10 +172,14 @@ export const FORMATTING_CAPABILITIES: FormattingCapability[] = [
   },
 
   // ========== CHARTS & VISUALIZATIONS ==========
-  // LLM chooses the best visualization approach:
-  // - ReactFlow (```diagram JSON) for complex interactive diagrams
-  // - Mermaid for simple flowcharts (LLMs know this natively)
-  // - artifact:html/react for rich interactive visualizations
+  // Mermaid is removed from this platform. The canonical primitives are:
+  //   - compose_visual meta-tool — single-frame charts + arch diagrams (d3 +
+  //     ECharts via /api/cdn/lib/*; templates: sankey, bar_chart, line_chart,
+  //     kpi_grid, arch_diagram, treemap, heatmap, etc.)
+  //   - compose_app meta-tool — interactive mini-apps (registry templates or
+  //     freestyle HTML with /api/cdn/lib/ scripts only)
+  //   - ```svg / ```reactflow code-fences — static escape hatches for prose
+  //     responses; NEVER for first-class diagram surfaces.
 
   // ========== LATEX/MATH ==========
   {
@@ -224,18 +228,19 @@ export const FORMATTING_CAPABILITIES: FormattingCapability[] = [
     supportLevel: 'full',
     requiresBlock: true,
     usageRules: [
-      'ALWAYS use ```reactflow JSON for diagrams — mermaid is deprecated on this platform',
-      'For simple static illustrations, inline ```svg is also acceptable',
-      'Use ```artifact:react for: animated diagrams, custom interactive visualizations',
-      'ReactFlow supports: flowchart, sequence, architecture, mindmap, orgchart, statechart, erd, network, timeline, process',
+      'PREFER the compose_visual meta-tool with template:"arch_diagram" for architecture / sequence / flowchart / class / ER / state / network diagrams — it renders d3 stencils with dagre auto-layout and inherits chat theme tokens (--cm-* / --accent)',
+      'Use ```reactflow JSON code-fence ONLY when answering INSIDE PROSE and a full slide-out is overkill — for first-class diagram surfaces, use compose_visual',
+      'For simple static illustrations inside prose, inline ```svg is acceptable',
+      'For animated diagrams or custom interactive visualizations, call the compose_app meta-tool',
+      'ReactFlow code-fence supports: flowchart, sequence, architecture, mindmap, orgchart, statechart, erd, network, timeline, process',
       'Node shapes: rounded (default), rectangle, diamond, circle, hexagon, cylinder, cloud, parallelogram, document',
       'Edge styles: solid (default), dashed, dotted, animated',
       'Layouts: vertical (default), horizontal, radial',
       'Colors: Use semantic names (primary, secondary, success, warning, error, info, muted) - system maps to theme CSS variables'
     ],
     antiPatterns: [
-      'Emitting ```mermaid — not rendered; use ```reactflow JSON or ```svg instead',
-      'Hardcoding hex colors instead of semantic color names',
+      'Emitting ```mermaid code-fences — Mermaid is removed from this platform. The renderer drops them silently. Use compose_visual template:"arch_diagram" instead',
+      'Hardcoding hex colors instead of semantic color names — chatmode resolves --cm-* / --accent at paint time',
       'Not specifying node colors/shapes when the diagram needs visual hierarchy'
     ]
   },
@@ -410,85 +415,15 @@ export const FORMATTING_CAPABILITIES: FormattingCapability[] = [
     engine: 'native',
     supportLevel: 'full',
     usageRules: [
-      'Use for simple diagrams when D2/Mermaid is overkill',
+      'Use ONLY inside terminal-style code blocks for pre/post-flight steps; for any first-class diagram surface, use compose_visual template:"arch_diagram" instead',
       'Good for terminal-style output',
       'Box drawing characters: ┌ ┐ └ ┘ │ ─ ├ ┤ ┬ ┴ ┼'
     ]
   },
-  // ========== INTERACTIVE ARTIFACTS ==========
-  {
-    id: 'artifact-html',
-    name: 'Interactive HTML Artifact',
-    category: 'interactive',
-    syntax: '```artifact:html\n<html content>\n```',
-    example: '```artifact:html\n<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { background: #0f172a; color: #e2e8f0; font-family: Inter, system-ui, sans-serif; padding: 24px; }\n    h1 { color: #f1f5f9; font-weight: 600; }\n    button { background: #3b82f6; color: white; padding: 10px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; }\n  </style>\n</head>\n<body>\n  <h1>Interactive Demo</h1>\n  <button onclick="alert(\'Hello!\')">Click Me</button>\n</body>\n</html>\n```',
-    engine: 'iframe-sandbox',
-    supportLevel: 'full',
-    requiresBlock: true,
-    usageRules: [
-      'CRITICAL: ALWAYS use ```artifact:html for HTML that should RENDER inline',
-      'NEVER use plain ```html if you want it to render - it will only show code!',
-      'Plain html blocks are for DOCUMENTATION only - they show code, not render it',
-      'ALWAYS include FULL styling with a professional dark theme (background: #0f172a or #1e293b) and complete CSS',
-      'Include complete HTML structure: DOCTYPE, html, head with styles, body',
-      'Runs in sandboxed iframe - safe for user interaction',
-      'Full HTML/CSS/JS support - creates mini-applications inline',
-      'Use for dashboards, data visualizations, interactive reports, calculators, games, simulations',
-      'STYLING GUIDE: Use professional enterprise color palette - background: #0f172a (slate-900), text: #e2e8f0 (slate-200), accent: #3b82f6 (blue-500), success: #22c55e, warning: #f59e0b, error: #ef4444',
-      'TYPOGRAPHY: Use Inter or system-ui font stack, clean line heights, proper hierarchy with font-weight 400/500/600',
-      'LAYOUT: Use CSS Grid or Flexbox for clean layouts. Add proper padding (24px), rounded corners (8px), subtle borders (1px solid rgba(255,255,255,0.1))'
-    ],
-    antiPatterns: [
-      'Using plain ```html expecting it to render (WRONG - only shows code)',
-      'Creating HTML without styling (looks broken with white background)',
-      'Forgetting DOCTYPE and full html structure',
-      'Using garish neon colors or gaming-style themes - keep it enterprise professional'
-    ]
-  },
-  {
-    id: 'artifact-react',
-    name: 'Interactive React Component',
-    category: 'interactive',
-    syntax: '```artifact:react\nfunction App() { return <div>...</div>; }\n```',
-    example: '```artifact:react\nfunction App() {\n  const [count, setCount] = React.useState(0);\n  return (\n    <div style={{padding: 24, background: "#0f172a", color: "#e2e8f0", borderRadius: 8, fontFamily: "Inter, system-ui, sans-serif"}}>\n      <h1 style={{color: "#f1f5f9", fontWeight: 600}}>Counter: {count}</h1>\n      <button style={{background: "#3b82f6", color: "white", padding: "10px 24px", border: "none", borderRadius: 6, fontWeight: 500}} onClick={() => setCount(c => c+1)}>Increment</button>\n    </div>\n  );\n}\n```',
-    engine: 'babel-iframe',
-    supportLevel: 'full',
-    requiresBlock: true,
-    usageRules: [
-      'CRITICAL: ALWAYS use ```artifact:react for React components that should RENDER inline',
-      'NEVER use plain ```jsx or ```tsx if you want the component to render!',
-      'Plain jsx/tsx blocks are for DOCUMENTATION only - they show code, not render it',
-      'ALWAYS include FULL styling (inline styles or tailwind) in the component',
-      'Components run in sandboxed iframe with React/ReactDOM available globally',
-      'Define a function called App() - this is what gets rendered',
-      'Supports all hooks: useState, useEffect, useRef, useMemo, useCallback',
-      'Include complete self-contained components with all styles/logic',
-      'Use inline styles or className for styling (Tailwind available)',
-      'STYLING: Professional enterprise palette - slate-900 backgrounds, blue-500 accents, Inter/system-ui fonts'
-    ],
-    antiPatterns: [
-      'Using ```jsx or ```tsx for components you want to render (WRONG - use artifact:react)',
-      'Creating components without any styling (looks broken)',
-      'Forgetting to wrap in artifact:react and expecting it to render',
-      'Using garish neon/gaming colors - keep it enterprise professional'
-    ]
-  },
-  {
-    id: 'artifact-svg',
-    name: 'Interactive SVG Graphic',
-    category: 'interactive',
-    syntax: '```artifact:svg\n<svg>...</svg>\n```',
-    example: '```artifact:svg\n<svg viewBox="0 0 100 100" width="200">\n  <circle cx="50" cy="50" r="40" fill="#6366f1" />\n  <text x="50" y="55" text-anchor="middle" fill="white">Click</text>\n</svg>\n```',
-    engine: 'iframe-sandbox',
-    supportLevel: 'full',
-    requiresBlock: true,
-    usageRules: [
-      'Use for interactive SVG graphics with animation or scripting',
-      'Runs in sandboxed iframe for safety',
-      'Can include CSS animations and JavaScript',
-      'Good for animated diagrams, interactive infographics'
-    ]
-  }
+  // #781 Phase A4 — legacy "artifact-html" / "artifact-react" / "artifact-svg"
+  // code-fence capability entries removed. Rich-artifact emission now flows
+  // through `compose_visual` (charts) and `compose_app` (interactive React
+  // apps) — those route to `synth-cdn` + `AppRenderer` for sandboxed rendering.
 ];
 
 export const CAPABILITY_CATEGORIES: Record<string, CapabilityCategory> = {

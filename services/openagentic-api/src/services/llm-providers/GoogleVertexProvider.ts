@@ -15,6 +15,7 @@
 
 import { GoogleGenAI } from '@google/genai';
 import { GoogleAuth } from 'google-auth-library';
+import { buildVertexAuthOptions } from './GoogleVertexAuth.js';
 import type { Logger } from 'pino';
 import {
   BaseLLMProvider,
@@ -23,9 +24,8 @@ import {
   type CompletionResponse,
   type ProviderHealth,
   type DiscoveredModel,
-  type NormalizerState,
 } from './ILLMProvider.js';
-import { NormalizedStreamEvent } from '../NormalizedStreamTypes.js';
+import type { CanonicalStreamFormat } from '@agentic-work/llm-sdk/lib/normalizers/index.js';
 import {
   GoogleVertexCacheManager,
   getVertexCacheManager,
@@ -54,7 +54,34 @@ export interface VertexConfig {
 export class GoogleVertexProvider extends BaseLLMProvider {
   readonly name = 'Google Vertex AI';
   readonly type = 'google-vertex' as const;
-  readonly streamFormat = 'gemini' as const; // Gemini models use Google's format with thinking support
+  // D-1.4 — Vertex is multi-mode: Gemini (default; Google's native format
+  // with thinking support) and Anthropic Claude on Model Garden
+  // (`publishers/anthropic/models/...` per :1237-1239 — uses Anthropic
+  // Messages API shape). Static default reflects the dominant Gemini
+  // path; `getStreamFormat(request)` selects per-request.
+  readonly streamFormat = 'gemini' as const;
+
+  /**
+   * Per-request stream-format dispatch (D-1.4).
+   *
+   * Mirrors the Model Garden routing at GoogleVertexProvider.ts:1230-1254:
+   *   - model id starts with `'claude-'` → `'vertex-anthropic'`
+   *     (Vertex AI Anthropic Claude endpoints — handled by
+   *     createVertexAnthropicToOpenagenticNormalizer)
+   *   - otherwise → `'gemini'`
+   *     (default Gemini SSE; non-Claude non-Gemini models on Model Garden
+   *     — GPT / Mistral / Llama — use OpenAI-shape but the wire-in for
+   *     those publishers is deferred; the static `'gemini'` default keeps
+   *     the type contract honest until a `'vertex-openai'` discriminator
+   *     lands as a follow-up to D-2.7).
+   */
+  getStreamFormat(request: CompletionRequest): CanonicalStreamFormat {
+    const modelId = (request.model || '').toLowerCase();
+    if (modelId.startsWith('claude-')) {
+      return 'vertex-anthropic';
+    }
+    return 'gemini';
+  }
 
   private genAI?: GoogleGenAI;
   private config?: VertexConfig;
@@ -1229,6 +1256,11 @@ export class GoogleVertexProvider extends BaseLLMProvider {
    * Gemini models are auto-resolved by the SDK; third-party models need explicit publisher paths.
    */
   private resolveModelGardenPath(model: string): string {
+    if (!model) {
+      throw new Error(
+        'resolveModelGardenPath requires a model argument — set VERTEX_DEFAULT_MODEL or supply a model in the request'
+      );
+    }
     const m = model.toLowerCase();
     // Claude models on Vertex AI Model Garden → publishers/anthropic
     if (m.startsWith('claude-')) {
@@ -1637,18 +1669,11 @@ export class GoogleVertexProvider extends BaseLLMProvider {
       // so we need to use the prediction endpoint directly
       const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${embeddingModel}:predict`;
 
-      // Initialize GoogleAuth for authentication
-      const authOptions: any = {
-        scopes: ['https://www.googleapis.com/auth/cloud-platform']
-      };
-
-      // Use explicit credentials if available
-      if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-        try {
-          authOptions.credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
-        } catch (error) {
-          this.logger.warn('Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON, falling back to ADC');
-        }
+      // Shared helper — see GoogleVertexAuth.ts for why every GoogleAuth
+      // construction in this provider must route through it.
+      const authOptions = buildVertexAuthOptions();
+      if (!authOptions.credentials && process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+        this.logger.warn('Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON, falling back to ADC');
       }
 
       const auth = new GoogleAuth(authOptions);
@@ -1762,11 +1787,7 @@ export class GoogleVertexProvider extends BaseLLMProvider {
         // Fallback to REST API
         const projectId = this.config?.projectId || process.env.GOOGLE_CLOUD_PROJECT;
         const location = this.config?.location || process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
-        const authOptions: any = { scopes: ['https://www.googleapis.com/auth/cloud-platform'] };
-        if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-          try { authOptions.credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON); } catch {}
-        }
-        const auth = new GoogleAuth(authOptions);
+        const auth = new GoogleAuth(buildVertexAuthOptions());
         const client = await auth.getClient();
         const accessToken = await client.getAccessToken();
         // Try multiple endpoint formats
@@ -1891,6 +1912,179 @@ export class GoogleVertexProvider extends BaseLLMProvider {
     return null;
   }
 
+  /**
+   * #650 — Live provider-pulled model details. Pulls from the Vertex AI
+   * Publishers REST API (`/v1/publishers/google/models/{modelId}`) for
+   * `inputTokenLimit`, `outputTokenLimit`, and `supportedGenerationMethods`.
+   *
+   * Pricing: vendored sheet via VertexPublisherListFetcher (GCP doesn't
+   * publish a public REST endpoint for per-model GenAI pricing — see
+   * services/openagentic-api/src/services/pricing/data/vertex-publisher-list.json
+   * for the rate sheet and refresh runbook).
+   *
+   * Tests inject `injectedFetch` + `injectedPricingFetcher` so the suite
+   * runs offline; live network is used in production.
+   */
+  async discoverModelDetails(
+    modelId: string,
+    region?: string,
+  ): Promise<import('./discovery/ModelDiscoveryRecord.js').ModelDiscoveryRecord | null> {
+    if (!this.initialized) {
+      throw new Error('[GoogleVertexProvider] not initialized');
+    }
+    const inferenceRegion =
+      region ??
+      (this.config?.location as string | undefined) ??
+      process.env.GOOGLE_CLOUD_LOCATION ??
+      'us-central1';
+
+    // 1. Publishers REST GET — capabilities + limits. Best-effort: when
+    //    auth fails or the response isn't valid JSON (GCP returns HTML for
+    //    some 401/403 paths — caught live as "Unexpected token 'i'…
+    //    illegal ba…"), fall back to family-slug-driven defaults so we
+    //    still write a useful row instead of erroring the whole refresh.
+    const url = `https://${inferenceRegion}-aiplatform.googleapis.com/v1/publishers/google/models/${encodeURIComponent(modelId)}`;
+    let data: {
+      name?: string;
+      displayName?: string;
+      version?: string;
+      description?: string;
+      inputTokenLimit?: number;
+      outputTokenLimit?: number;
+      supportedGenerationMethods?: string[];
+    } = {};
+    try {
+      let resp: { ok: boolean; status: number; json: () => Promise<any> };
+      if ((this as any).injectedFetch) {
+        resp = await (this as any).injectedFetch(url);
+      } else {
+        const { GoogleAuth } = await import('google-auth-library');
+        const auth = new GoogleAuth(buildVertexAuthOptions());
+        const client = await auth.getClient();
+        const tokenResult = await client.getAccessToken();
+        resp = await globalThis.fetch(url, {
+          headers: { Authorization: `Bearer ${tokenResult.token}` },
+          signal: AbortSignal.timeout(10000),
+        });
+      }
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}`);
+      }
+      data = (await resp.json()) as typeof data;
+    } catch (err) {
+      this.logger.warn(
+        { modelId, region: inferenceRegion, err: (err as Error).message },
+        '[GoogleVertexProvider] publishers REST failed — using family-slug fallback',
+      );
+    }
+
+    // Family classification by id substring (slug derivation, NOT a
+    // hardcoded model id — admins override per-row via Refresh).
+    const m = modelId.toLowerCase();
+    let family = 'google';
+    if (m.includes('gemini-3')) family = 'gemini-3';
+    else if (m.includes('gemini-2.5')) family = 'gemini-2.5';
+    else if (m.includes('gemini-2')) family = 'gemini-2.0';
+    else if (m.includes('gemini-1.5')) family = 'gemini-1.5';
+    else if (m.includes('embed')) family = 'embedding';
+    else if (m.includes('imagen')) family = 'imagen';
+    else if (m.includes('claude')) family = 'anthropic-on-vertex';
+
+    // When Publishers REST gave us methods, use those (authoritative).
+    // Otherwise synthesize from family slug so capabilities + limits still
+    // populate. Non-Gemini families fall through and capabilities stay
+    // false — admin must edit the row by hand.
+    const methods = new Set(data.supportedGenerationMethods ?? []);
+    if (methods.size === 0) {
+      if (family === 'embedding') {
+        methods.add('embedContent');
+      } else if (family.startsWith('gemini') || family === 'anthropic-on-vertex') {
+        methods.add('generateContent');
+        methods.add('streamGenerateContent');
+        methods.add('countTokens');
+      }
+    }
+
+    // Limit fallbacks per family.
+    const familyLimits: Record<string, { input: number; output: number }> = {
+      'gemini-3':            { input: 1_048_576, output: 65_536 },
+      'gemini-2.5':          { input: 1_048_576, output: 65_536 },
+      'gemini-2.0':          { input: 1_048_576, output: 8_192 },
+      'gemini-1.5':          { input: 1_048_576, output: 8_192 },
+      'anthropic-on-vertex': { input: 200_000,   output: 64_000 },
+      'imagen':              { input: 480,       output: 480 },
+      'embedding':           { input: 2_048,     output: 768 },
+    };
+    const fallbackLimits = familyLimits[family] ?? { input: 0, output: 0 };
+
+    const isEmbedding = methods.has('embedContent') || family === 'embedding';
+    const isImageGen = family === 'imagen';
+    const supportsThinking =
+      family === 'gemini-2.5' ||
+      family === 'gemini-3' ||
+      family === 'anthropic-on-vertex';
+    const supportsVision =
+      family === 'gemini-2.5' ||
+      family === 'gemini-3' ||
+      family === 'gemini-1.5' ||
+      family === 'gemini-2.0' ||
+      family === 'anthropic-on-vertex';
+
+    // 2. Pricing — VertexPublisherListFetcher (vendored sheet).
+    const fetcher =
+      (this as any).injectedPricingFetcher ??
+      (await import('../pricing/VertexPublisherListFetcher.js').then(
+        (mod) => new mod.VertexPublisherListFetcher(),
+      ));
+    let pricing: any = {
+      source: 'vertex-publisher-list',
+      fetchedAt: new Date().toISOString(),
+    };
+    try {
+      pricing = await fetcher.fetch({ modelId, region: inferenceRegion });
+    } catch (err) {
+      this.logger.warn(
+        { modelId, err: (err as Error).message },
+        '[GoogleVertexProvider] pricing fetch failed — leaving null',
+      );
+    }
+
+    return {
+      modelId,
+      providerType: 'google-vertex',
+      displayName: data.displayName ?? modelId,
+      family,
+      capabilities: {
+        chat: methods.has('generateContent') && !isEmbedding && !isImageGen,
+        vision: supportsVision && !isEmbedding && !isImageGen,
+        tools: methods.has('generateContent') && !isEmbedding,
+        thinking: supportsThinking,
+        embeddings: isEmbedding,
+        imageGeneration: isImageGen,
+        streaming: methods.has('streamGenerateContent'),
+        nativeToolCalling: methods.has('generateContent') && !isEmbedding,
+      },
+      contextWindow: data.inputTokenLimit ?? (fallbackLimits.input || null),
+      maxOutputTokens: data.outputTokenLimit ?? (fallbackLimits.output || null),
+      thinkingBudget: supportsThinking ? 8000 : null,
+      temperature: 1.0,
+      topP: 0.95,
+      topK: family.startsWith('gemini') ? 40 : null,
+      pricing: {
+        inputTokenUsd: pricing.inputTokenUsd ?? null,
+        outputTokenUsd: pricing.outputTokenUsd ?? null,
+        cacheReadUsd: pricing.cacheReadUsd ?? null,
+        cacheWriteUsd: pricing.cacheWriteUsd ?? null,
+        thinkingTokenUsd: pricing.thinkingTokenUsd ?? null,
+        embeddingTokenUsd: pricing.embeddingTokenUsd ?? null,
+        perRequestUsd: pricing.imageGenPerRequestUsd ?? null,
+        source: pricing.source ?? 'vertex-publisher-list',
+        fetchedAt: pricing.fetchedAt ?? new Date().toISOString(),
+        region: inferenceRegion,
+      },
+    };
+  }
+
   static getDefaultConfig(): import('./ILLMProvider.js').ProviderDefaultConfig {
     return {
       maxTokens: 8192, temperature: 1.0, topP: 0.95, topK: 40,
@@ -1901,14 +2095,6 @@ export class GoogleVertexProvider extends BaseLLMProvider {
       temperatureRange: [0, 2], maxTokensRange: [256, 65536], topKRange: [1, 40],
       defaultChatModel: 'gemini-2.0-flash', defaultEmbeddingModel: 'text-embedding-005',
     };
-  }
-
-  /**
-   * Normalize a raw Google Vertex stream chunk into NormalizedStreamEvents.
-   * Delegates to the exported pure function for testability.
-   */
-  normalizeChunk(rawChunk: any, state: NormalizerState): NormalizedStreamEvent[] {
-    return normalizeGoogleVertexChunk(rawChunk, state);
   }
 
   /**
@@ -1971,9 +2157,13 @@ export class GoogleVertexProvider extends BaseLLMProvider {
     const location = this.config?.location || process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
     if (!projectId) throw new Error('[GoogleVertexProvider] No projectId for Imagen');
 
-    // Get access token from the genAI client's auth
+    // Get access token. Routes through buildVertexAuthOptions() so the
+    // service-account credentials the DB seeded via initialize() actually
+    // reach google-auth-library — before this, generateImage() built a
+    // bare GoogleAuth and fell through to Application Default Credentials,
+    // which k3s-local doesn't have.
     const { GoogleAuth } = await import('google-auth-library');
-    const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/cloud-platform'] });
+    const auth = new GoogleAuth(buildVertexAuthOptions());
     const client = await auth.getClient();
     const tokenResult = await client.getAccessToken();
     const accessToken = tokenResult.token;
@@ -2009,265 +2199,3 @@ export class GoogleVertexProvider extends BaseLLMProvider {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Exported normalizer function — pure, per-chunk, state-mutating
-// ---------------------------------------------------------------------------
-
-/**
- * Normalizes a single raw Google Vertex streaming chunk into zero or more
- * NormalizedStreamEvents. Handles two formats:
- *
- * Format A: Anthropic-style content_block_* events (emitted by streamCompletion's
- *           thinking transform for Gemini models with thinking enabled)
- * Format B: OpenAI-style choices[0].delta chunks (standard streaming output)
- *
- * State is mutated in place to track block types, thinking accumulation,
- * synthetic thinking, and pending tools across chunk boundaries.
- */
-export function normalizeGoogleVertexChunk(rawChunk: any, state: NormalizerState): NormalizedStreamEvent[] {
-  const events: NormalizedStreamEvent[] = [];
-
-  // Format A: Anthropic-style content_block events (from thinking transform)
-  if (typeof rawChunk.type === 'string' && rawChunk.type.startsWith('content_block')) {
-    return normalizeVertexContentBlockChunk(rawChunk, state, events);
-  }
-
-  // Format B: OpenAI-style chunks
-  return normalizeVertexOpenAIStyleChunk(rawChunk, state, events);
-}
-
-/**
- * Handles Anthropic-style content_block_start/delta/stop events from the
- * thinking model path in streamCompletion().
- */
-function normalizeVertexContentBlockChunk(
-  rawChunk: any,
-  state: NormalizerState,
-  events: NormalizedStreamEvent[]
-): NormalizedStreamEvent[] {
-  // Emit stream_start on the first Format A event (thinking model path never sees an
-  // OpenAI-style first chunk, so we must emit it here instead).
-  if (!state.streamStartEmitted) {
-    state.streamStartEmitted = true;
-    events.push({
-      type: 'stream_start',
-      messageId: '',
-      model: state.model || '',
-      provider: 'google-vertex',
-    });
-  }
-
-  const blockTypes = state.blockTypes;
-
-  switch (rawChunk.type) {
-    case 'content_block_start': {
-      const block = rawChunk.content_block;
-      const index: number = rawChunk.index;
-      if (block?.type === 'thinking') {
-        const id = `tk-${index}`;
-        state.thinkingId = id;
-        state.thinkingStartTime = Date.now();
-        state.thinkingAccumulated = '';
-        blockTypes.set(index, { type: 'thinking', id });
-        events.push({ type: 'thinking_start', id });
-      } else if (block?.type === 'text') {
-        const id = `txt-${index}`;
-        state.textBlockId = id;
-        blockTypes.set(index, { type: 'text', id });
-        events.push({ type: 'text_start', id });
-      } else if (block?.type === 'tool_use') {
-        const id = block.id || `tool-${index}`;
-        blockTypes.set(index, { type: 'tool_use', id });
-        events.push({ type: 'tool_start', id, toolName: block.name || '', serverName: '' });
-      }
-      break;
-    }
-
-    case 'content_block_delta': {
-      const delta = rawChunk.delta;
-      const index: number = rawChunk.index;
-      const blockInfo = blockTypes.get(index);
-
-      if (delta?.type === 'thinking_delta') {
-        state.thinkingAccumulated += delta.thinking || '';
-        events.push({
-          type: 'thinking_delta',
-          id: blockInfo?.id || state.thinkingId || `tk-${index}`,
-          content: delta.thinking || '',
-          accumulated: state.thinkingAccumulated,
-        });
-      } else if (delta?.type === 'text_delta') {
-        events.push({
-          type: 'text_delta',
-          id: blockInfo?.id || state.textBlockId || `txt-${index}`,
-          content: delta.text || '',
-        });
-      } else if (delta?.type === 'input_json_delta') {
-        const toolId = blockInfo?.id || `tool-${index}`;
-        events.push({ type: 'tool_delta', id: toolId, argsFragment: delta.partial_json || '' });
-      }
-      break;
-    }
-
-    case 'content_block_stop': {
-      const index: number = rawChunk.index;
-      const blockInfo = blockTypes.get(index);
-      if (blockInfo?.type === 'thinking') {
-        const elapsed = state.thinkingStartTime ? Date.now() - state.thinkingStartTime : 0;
-        events.push({ type: 'thinking_stop', id: blockInfo.id, elapsedMs: elapsed });
-        state.thinkingId = null;
-        state.thinkingStartTime = null;
-        state.thinkingAccumulated = '';
-      } else if (blockInfo?.type === 'text') {
-        events.push({ type: 'text_stop', id: blockInfo.id });
-        state.textBlockId = null;
-      } else if (blockInfo?.type === 'tool_use') {
-        events.push({ type: 'tool_stop', id: blockInfo.id, result: null, durationMs: 0 });
-      }
-      blockTypes.delete(index);
-      break;
-    }
-  }
-
-  return events;
-}
-
-/**
- * Handles OpenAI-style streaming chunks (choices[0].delta).
- * Emits a synthetic thinking block on the first chunk so every response
- * has a thinking node in the activity tree.
- */
-function normalizeVertexOpenAIStyleChunk(
-  rawChunk: any,
-  state: NormalizerState,
-  events: NormalizedStreamEvent[]
-): NormalizedStreamEvent[] {
-  const pendingTools = state.pendingTools;
-
-  const choice = rawChunk.choices?.[0];
-
-  // Usage-only chunk (no choices)
-  if (!choice && rawChunk.usage) {
-    events.push({
-      type: 'usage',
-      tokensIn: rawChunk.usage.prompt_tokens || 0,
-      tokensOut: rawChunk.usage.completion_tokens || 0,
-      cost: 0,
-      contextUsed: 0,
-      contextMax: 0,
-    });
-    return events;
-  }
-
-  if (!choice) return events;
-
-  const delta = choice.delta;
-  if (!delta && !choice.finish_reason) return events;
-
-  // -----------------------------------------------------------------------
-  // First chunk — role === 'assistant': emit stream_start + synthetic thinking
-  // -----------------------------------------------------------------------
-  if (delta?.role === 'assistant' && !state.streamStartEmitted) {
-    state.streamStartEmitted = true;
-    state.model = rawChunk.model || '';
-    events.push({
-      type: 'stream_start',
-      messageId: rawChunk.id || '',
-      model: rawChunk.model || '',
-      provider: 'google-vertex',
-    });
-
-    // Emit synthetic thinking block (closed when real content arrives)
-    const thinkId = 'tk-synth-0';
-    state.thinkingId = thinkId;
-    state.thinkingStartTime = Date.now();
-    events.push({ type: 'thinking_start', id: thinkId });
-    events.push({ type: 'thinking_delta', id: thinkId, content: 'Processing', accumulated: 'Processing' });
-    return events;
-  }
-
-  // -----------------------------------------------------------------------
-  // Helper: close synthetic thinking if still active
-  // -----------------------------------------------------------------------
-  const closeSyntheticThinking = () => {
-    if (state.thinkingId) {
-      const elapsed = state.thinkingStartTime ? Date.now() - state.thinkingStartTime : 0;
-      events.push({ type: 'thinking_stop', id: state.thinkingId, elapsedMs: elapsed });
-      state.thinkingId = null;
-      state.thinkingStartTime = null;
-    }
-  };
-
-  // -----------------------------------------------------------------------
-  // Text content delta
-  // -----------------------------------------------------------------------
-  if (delta?.content) {
-    closeSyntheticThinking();
-    if (!state.textBlockId) {
-      state.textBlockId = 'txt-0';
-      events.push({ type: 'text_start', id: state.textBlockId });
-    }
-    events.push({ type: 'text_delta', id: state.textBlockId, content: delta.content });
-  }
-
-  // -----------------------------------------------------------------------
-  // Tool call deltas
-  // -----------------------------------------------------------------------
-  if (delta?.tool_calls) {
-    closeSyntheticThinking();
-    for (const tc of delta.tool_calls) {
-      if (tc.function?.name) {
-        const toolId = tc.id || `tool-${tc.index}`;
-        pendingTools.set(toolId, tc.function.name);
-        state.toolIndexToId.set(tc.index, toolId);
-        events.push({ type: 'tool_start', id: toolId, toolName: tc.function.name, serverName: '' });
-      }
-      if (tc.function?.arguments) {
-        const toolId = tc.id || state.toolIndexToId.get(tc.index) || `tool-${tc.index}`;
-        events.push({ type: 'tool_delta', id: toolId, argsFragment: tc.function.arguments });
-      }
-    }
-  }
-
-  // -----------------------------------------------------------------------
-  // Finish reason
-  // -----------------------------------------------------------------------
-  if (choice.finish_reason) {
-    if (choice.finish_reason === 'tool_calls') {
-      for (const [id] of pendingTools) {
-        events.push({ type: 'tool_stop', id, result: null, durationMs: 0 });
-      }
-      pendingTools.clear();
-    }
-
-    if (state.textBlockId) {
-      events.push({ type: 'text_stop', id: state.textBlockId });
-      state.textBlockId = null;
-    }
-
-    // Close any still-open synthetic thinking (e.g. response with no content)
-    closeSyntheticThinking();
-
-    events.push({
-      type: 'stream_end',
-      finishReason: choice.finish_reason === 'stop' ? 'stop' : choice.finish_reason,
-      totalDurationMs: 0,
-    });
-  }
-
-  // -----------------------------------------------------------------------
-  // Usage embedded in the same chunk
-  // -----------------------------------------------------------------------
-  if (rawChunk.usage) {
-    events.push({
-      type: 'usage',
-      tokensIn: rawChunk.usage.prompt_tokens || 0,
-      tokensOut: rawChunk.usage.completion_tokens || 0,
-      cost: 0,
-      contextUsed: 0,
-      contextMax: 0,
-    });
-  }
-
-  return events;
-}

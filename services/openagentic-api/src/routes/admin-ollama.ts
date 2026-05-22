@@ -26,7 +26,10 @@ async function getOllamaClient(prisma: PrismaClient, providerId?: string): Promi
   }
 
   const pc = provider.provider_config as any || {};
-  const baseUrl = pc.baseUrl || pc.host || pc.endpoint || process.env.OLLAMA_BASE_URL || 'http://ollama:11434';
+  const ac = provider.auth_config as any || {};
+  const baseUrl = pc.baseUrl || pc.host || pc.endpoint
+                || ac.baseUrl || ac.endpoint
+                || process.env.OLLAMA_BASE_URL || 'http://ollama:11434';
   const client = new Ollama({ host: baseUrl });
 
   return { client, provider, baseUrl };
@@ -47,7 +50,10 @@ export async function adminOllamaRoutes(fastify: FastifyInstance) {
       const hosts = await Promise.all(providers.map(async (p: any) => {
         const pc = p.provider_config as any || {};
         const mc = p.model_config as any || {};
-        const baseUrl = pc.baseUrl || pc.host || pc.endpoint || 'http://ollama:11434';
+        const ac = p.auth_config as any || {};
+        const baseUrl = pc.baseUrl || pc.host || pc.endpoint
+                      || ac.baseUrl || ac.endpoint
+                      || 'http://ollama:11434';
 
         let status = 'unknown';
         let modelCount = 0;

@@ -1,0 +1,142 @@
+{
+  "slug": "loki-error-log-research-report",
+  "name": "Loki Error Log Research Report",
+  "description": "Pull error-level logs from Loki for the last 24h via openagentic_loki.loki_search_errors, group similar entries into distinct error patterns, ask the platform LLM to summarize the top 3-5 issues, strip any chain-of-thought preamble, then research the dominant pattern via openagentic_web.web_search (SearXNG in-cluster) and render an HTML operator report via webhook_response with the summary, raw pattern counts, and remediation links.",
+  "category": "aiops",
+  "template": true,
+  "meta": {
+    "purpose": "Pull error-level Loki logs from the last 24h, cluster them into distinct patterns, summarize the top issues with an LLM, then research the dominant pattern via in-cluster web search.",
+    "how_it_works": [
+      "1. Queries openagentic_loki.loki_search_errors for {{namespace}} over the chosen time range.",
+      "2. A pattern-grouping transform deduplicates entries by message fingerprint and ranks groups by count.",
+      "3. The platform LLM writes a 3-5 bullet summary of the top error families with their counts.",
+      "4. A CoT-stripper transform removes any LLM preamble.",
+      "5. openagentic_web.web_search (SearXNG inside the cluster) researches the #1 pattern for known upstream fixes.",
+      "6. webhook_response renders an HTML operator report with the summary, raw pattern counts, and the web research excerpt."
+    ],
+    "expected_output": "HTML report with: LLM operator summary (top 3-5 error patterns), raw pattern-count table, and web research snippets for the dominant pattern.",
+    "useful_when": "Post-incident pattern hunting, weekly noise-floor review, or when oncall sees a spike in Loki and wants 'what's actually breaking + has anyone else seen this?' in one shot.",
+    "tools_used": ["openagentic_loki.loki_search_errors", "openagentic_web.web_search", "llm_completion", "transform", "webhook_response"],
+    "version": "1.0",
+    "tags": ["aiops", "observability", "loki", "logs", "research"]
+  },
+  "defaultInputs": {
+    "namespace": "agentic-dev",
+    "time_range": "24h"
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "data": {
+          "triggerType": "manual",
+          "label": "Loki Error Research",
+          "input_schema": {
+            "namespace": "string",
+            "time_range": "string"
+          }
+        }
+      },
+      {
+        "id": "loki_logs",
+        "type": "mcp_tool",
+        "data": {
+          "label": "Search Loki Errors",
+          "toolServer": "openagentic_loki",
+          "toolName": "loki_search_errors",
+          "arguments": {
+            "namespace": "{{input.namespace || \"agentic-dev\"}}",
+            "time_range": "{{input.time_range || \"24h\"}}",
+            "limit": 200
+          }
+        }
+      },
+      {
+        "id": "extract_patterns",
+        "type": "transform",
+        "data": {
+          "label": "Extract Distinct Patterns",
+          "operations": [
+            {
+              "op": "set",
+              "target": "patterns",
+              "value": "{{ (() => { const text = String(input.content || ''); const lines = text.split(/\\r?\\n/); const buckets = new Map(); for (const raw of lines) { const line = String(raw); if (!line.startsWith('[')) continue; const m = line.match(/^\\[[^\\]]+\\]\\s+(\\[[^\\]]+\\])?\\s*(.+)$/); if (!m) continue; const body = m[2] || ''; if (!body || body.length < 8) continue; let sig = body.toLowerCase(); sig = sig.replace(/\\d{4}-\\d{2}-\\d{2}[t\\s]\\d{2}:\\d{2}:\\d{2}[\\.\\d]*z?(?:\\s*\\+\\d{2}:?\\d{2})?/g, '<ts>'); sig = sig.replace(/\\b\\d{10,}\\b/g, '<num>'); sig = sig.replace(/0x[0-9a-f]+/g, '<hex>'); sig = sig.replace(/[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}/g, '<uuid>'); sig = sig.replace(/[0-9a-f]{32,}/g, '<hash>'); sig = sig.replace(/traceid=[^\\s\\]]+/g, 'traceid=<id>'); sig = sig.replace(/pid['\":]?[\\s]*\\d+/g, 'pid=<n>'); sig = sig.replace(/character\\s+\\d+/g, 'character <n>'); sig = sig.replace(/\\d+/g, '<n>'); sig = sig.replace(/\\s+/g, ' ').trim(); sig = sig.slice(0, 140); if (!sig) continue; const ex = buckets.get(sig); if (ex) { ex.count++; } else { buckets.set(sig, { signature: sig, count: 1, sample: body.slice(0, 240) }); } } const sorted = Array.from(buckets.values()).sort((a, b) => b.count - a.count); return sorted.slice(0, 5); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "total_errors",
+              "value": "{{ (() => { const text = String(input.content || ''); const m = text.match(/Total errors found:\\s*(\\d+)/i); return m ? parseInt(m[1], 10) : 0; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "namespace_label",
+              "value": "{{ (() => { const text = String(input.content || ''); const m = text.match(/namespace=([^,\\s]+)/i); return m && m[1] !== 'all' ? m[1] : (typeof input.namespace === 'string' ? input.namespace : 'agentic-dev'); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "top_query",
+              "value": "{{ (() => { const text = String(input.content || ''); const lines = text.split(/\\r?\\n/); const buckets = new Map(); for (const raw of lines) { const line = String(raw); if (!line.startsWith('[')) continue; const m = line.match(/^\\[[^\\]]+\\]\\s+(\\[[^\\]]+\\])?\\s*(.+)$/); if (!m) continue; const body = m[2] || ''; if (!body || body.length < 8) continue; let sig = body.toLowerCase(); sig = sig.replace(/\\d{4}-\\d{2}-\\d{2}[t\\s]\\d{2}:\\d{2}:\\d{2}[\\.\\d]*z?(?:\\s*\\+\\d{2}:?\\d{2})?/g, '<ts>'); sig = sig.replace(/\\b\\d{10,}\\b/g, '<num>'); sig = sig.replace(/0x[0-9a-f]+/g, '<hex>'); sig = sig.replace(/traceid=[^\\s\\]]+/g, 'traceid=<id>'); sig = sig.replace(/\\d+/g, '<n>'); sig = sig.replace(/\\s+/g, ' ').trim(); sig = sig.slice(0, 140); const ex = buckets.get(sig); if (ex) { ex.count++; ex.sample = ex.sample; } else { buckets.set(sig, { count: 1, sample: body.slice(0, 240) }); } } const top = Array.from(buckets.values()).sort((a, b) => b.count - a.count)[0]; if (!top) return 'kubernetes pod error troubleshooting'; const sample = String(top.sample); const keywords = sample.match(/[A-Za-z_][A-Za-z0-9_\\.]{3,}/g) || []; const stop = new Set(['ERROR','error','Error','WARN','Warning','INFO','traceID','collection','character','event','level','timestamp','service','msg','at','to','the','of','in','a','is','for','on','and']); const picked = []; for (const k of keywords) { if (stop.has(k)) continue; if (picked.includes(k)) continue; picked.push(k); if (picked.length >= 6) break; } return picked.join(' ').trim() || 'kubernetes error troubleshooting'; })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "summary",
+        "type": "llm_completion",
+        "data": {
+          "label": "Summarize Top Issues",
+          "prompt": "You are an SRE summarizing distinct Kubernetes error patterns in namespace {{input.namespace_label}} over the last 24h.\n\nDistinct error patterns (JSON array of { signature, count, sample }):\n{{input.patterns}}\n\nTotal raw error lines: {{input.total_errors}}.\n\nOutput rules (MUST follow):\n1. Start the response with a single `-` character — no preamble, no \"Here is\", no \"The user wants\", no thinking out loud.\n2. Exactly 3 to 5 short bullets, each on its own line, each beginning with `-`.\n3. Each bullet describes ONE distinct issue and proposes a short remediation hint.\n4. Reference concrete signal words from the patterns verbatim (e.g. the exact relation name, collection name, or service name) so the operator can grep.\n5. If the patterns array is empty, state that no errors were found and recommend a routine future check.",
+          "model": "auto",
+          "temperature": 0.2,
+          "maxTokens": 500
+        }
+      },
+      {
+        "id": "clean_summary",
+        "type": "transform",
+        "data": {
+          "label": "Strip CoT Preamble",
+          "operations": [
+            {
+              "op": "set",
+              "target": "clean_content",
+              "value": "{{ (() => { const raw = String(input.content || ''); const lines = raw.split(/\\r?\\n/); let firstBulletIdx = -1; for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (t.startsWith('-') || t.startsWith('•') || t.startsWith('*')) { firstBulletIdx = i; break; } } if (firstBulletIdx === -1) { return raw.trim(); } return lines.slice(firstBulletIdx).join('\\n').trim(); })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "web_research",
+        "type": "mcp_tool",
+        "data": {
+          "label": "Research Top Issue",
+          "toolServer": "openagentic_web",
+          "toolName": "web_search",
+          "arguments": {
+            "query": "{{steps.extract_patterns.top_query}}",
+            "num_results": 5
+          }
+        }
+      },
+      {
+        "id": "report",
+        "type": "webhook_response",
+        "data": {
+          "label": "HTML AIOps Report",
+          "statusCode": 200,
+          "headers": { "Content-Type": "text/html" },
+          "bodyTemplate": "<div class=\"loki-error-research-report\"><h2>Loki Error Research — namespace {{steps.extract_patterns.namespace_label}} (last 24h)</h2><h3>Operator Summary</h3><pre class=\"summary\">{{steps.clean_summary.clean_content}}</pre><h3>Distinct Error Patterns ({{steps.extract_patterns.total_errors}} raw errors)</h3><pre class=\"patterns\">{{steps.extract_patterns.patterns}}</pre><h3>Research — top pattern</h3><p><em>Search query:</em> {{steps.extract_patterns.top_query}}</p><pre class=\"research\">{{steps.web_research.content}}</pre></div>"
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "trigger", "target": "loki_logs" },
+      { "id": "e2", "source": "loki_logs", "target": "extract_patterns" },
+      { "id": "e3", "source": "extract_patterns", "target": "summary" },
+      { "id": "e4", "source": "summary", "target": "clean_summary" },
+      { "id": "e5", "source": "clean_summary", "target": "web_research" },
+      { "id": "e6", "source": "web_research", "target": "report" }
+    ]
+  }
+}

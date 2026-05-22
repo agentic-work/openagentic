@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useEscToClose } from './CommandModals';
 
 const MONO =
   'var(--cm-mono-font, ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace)';
@@ -26,6 +27,9 @@ export const SessionInfoModal: React.FC<SessionInfoModalProps> = ({
   actionLabel,
 }) => {
   const [filter, setFilter] = useState('');
+  // Document-level Esc — the dialog's onKeyDown is bypassed by the
+  // composer textarea below. See useEscToClose for full rationale.
+  useEscToClose(onClose);
 
   const filtered = useMemo(() => {
     if (!filter) return items;

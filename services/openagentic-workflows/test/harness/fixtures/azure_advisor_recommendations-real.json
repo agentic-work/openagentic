@@ -1,0 +1,88 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_azure.azure_advisor_recommendations with category='Cost'. Mirrors the oap-azure-mcp src/server.py azure_advisor_recommendations function (lines 7770-7867): returns a native python dict with success/subscription_id/count/filters/summary/recommendations/executed_as. The mcp-proxy passes this through 3 layers (proxy.result -> jsonrpc -> jsonrpc.result) so the engine unwrap yields the dict verbatim with no FastMCP content[] wrapping. recommendations[] each carry id (full Azure resource path), category, impact (High/Medium/Low), impacted_field, impacted_value (the resource name), last_updated, short_description (problem string), solution, metadata, and extended_properties — the latter holds annualSavingsAmount + savingsCurrency for Cost recs (per Azure Advisor REST API documentation).",
+  "result": {
+    "result": {
+      "success": true,
+      "subscription_id": "11111111-2222-3333-4444-555555555555",
+      "count": 4,
+      "filters": { "category": "Cost", "impact": null },
+      "summary": {
+        "by_category": { "Cost": 4 },
+        "by_impact": { "High": 2, "Medium": 2 }
+      },
+      "recommendations": [
+        {
+          "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-prod-eus/providers/Microsoft.Compute/virtualMachines/vm-app-prod-01/providers/Microsoft.Advisor/recommendations/rec-001-vm-rightsize",
+          "category": "Cost",
+          "impact": "High",
+          "impacted_field": "Microsoft.Compute/virtualMachines",
+          "impacted_value": "vm-app-prod-01",
+          "last_updated": "2026-05-12T10:14:00+00:00",
+          "short_description": "Right-size or shutdown underutilized virtual machines",
+          "solution": "We have analyzed the usage patterns of vm-app-prod-01 over the past 7 days and recommend either resizing to Standard_D2s_v4 or shutting it down to save costs.",
+          "metadata": null,
+          "extended_properties": {
+            "annualSavingsAmount": "3120.00",
+            "savingsCurrency": "USD",
+            "recommendationType": "VirtualMachineRightSize",
+            "fitScore": "100",
+            "currentSku": "Standard_D8s_v3",
+            "targetSku": "Standard_D2s_v4"
+          }
+        },
+        {
+          "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-prod-eus/providers/Microsoft.Sql/servers/sqlsrv-prod/databases/db-prod-core/providers/Microsoft.Advisor/recommendations/rec-002-sql-dtu",
+          "category": "Cost",
+          "impact": "High",
+          "impacted_field": "Microsoft.Sql/servers/databases",
+          "impacted_value": "db-prod-core",
+          "last_updated": "2026-05-11T15:32:00+00:00",
+          "short_description": "Optimize the DTU service tier for SQL Database db-prod-core",
+          "solution": "We have analyzed the past usage of db-prod-core. Based on consistent utilization below 30% of provisioned DTU, scale down from S6 to S3 to save approximately $1,440 annually.",
+          "metadata": null,
+          "extended_properties": {
+            "annualSavingsAmount": "1440.00",
+            "savingsCurrency": "USD",
+            "recommendationType": "SqlDatabaseRightSize",
+            "fitScore": "85"
+          }
+        },
+        {
+          "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-data-wus/providers/Microsoft.Storage/storageAccounts/stdataprodwus/providers/Microsoft.Advisor/recommendations/rec-003-storage-tier",
+          "category": "Cost",
+          "impact": "Medium",
+          "impacted_field": "Microsoft.Storage/storageAccounts",
+          "impacted_value": "stdataprodwus",
+          "last_updated": "2026-05-10T11:02:00+00:00",
+          "short_description": "Use cool access tier for blobs in stdataprodwus",
+          "solution": "Blobs in this storage account are accessed less than once per 30 days on average. Moving them to the Cool access tier will save roughly $720 per year.",
+          "metadata": null,
+          "extended_properties": {
+            "annualSavingsAmount": "720.00",
+            "savingsCurrency": "USD",
+            "recommendationType": "StorageTierOptimization",
+            "fitScore": "70"
+          }
+        },
+        {
+          "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-dev-cus/providers/Microsoft.Compute/disks/disk-orphan-dev-001/providers/Microsoft.Advisor/recommendations/rec-004-orphan-disk",
+          "category": "Cost",
+          "impact": "Medium",
+          "impacted_field": "Microsoft.Compute/disks",
+          "impacted_value": "disk-orphan-dev-001",
+          "last_updated": "2026-05-09T07:45:00+00:00",
+          "short_description": "Delete or attach unattached managed disks",
+          "solution": "Disk disk-orphan-dev-001 has been unattached for 47 days. Delete or reattach it to stop incurring storage charges (~$240/year).",
+          "metadata": null,
+          "extended_properties": {
+            "annualSavingsAmount": "240.00",
+            "savingsCurrency": "USD",
+            "recommendationType": "UnattachedDisk",
+            "fitScore": "100"
+          }
+        }
+      ],
+      "executed_as": { "upn": "mcp-tester@phatoldsungmail.onmicrosoft.com" }
+    }
+  }
+}

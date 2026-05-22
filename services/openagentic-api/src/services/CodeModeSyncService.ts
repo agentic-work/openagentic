@@ -122,7 +122,11 @@ export async function seedCodemodeDefaults(): Promise<void> {
     setCodemodeConfig('plugins', SEED_PLUGINS),
     setCodemodeConfig('mcp-servers', SEED_MCP_SERVERS),
     setCodemodeConfig('registries', SEED_REGISTRIES),
-    setCodemodeConfig('mcp-policy', { allowManagedOnly: true }),
+    // Default to FALSE: codemode = PTY openagentic in a React shell; users
+    // manage their own MCPs/plugins via slash commands exactly like
+    // running openagentic locally. Admin can flip this to true from the
+    // codemode management UI if they want to lock it down.
+    setCodemodeConfig('mcp-policy', { allowManagedOnly: false }),
   ]);
 }
 

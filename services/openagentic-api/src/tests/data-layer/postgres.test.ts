@@ -172,11 +172,6 @@ describe('PostgreSQL Data Layer', () => {
       expect(count).toBeGreaterThanOrEqual(0);
     });
 
-    it('should have prompt_templates table in admin schema', async () => {
-      const count = await prisma.promptTemplate.count();
-      expect(count).toBeGreaterThanOrEqual(0);
-    });
-
     it('should have llm_providers table', async () => {
       const count = await prisma.lLMProvider.count();
       expect(count).toBeGreaterThanOrEqual(0);
@@ -336,8 +331,7 @@ export async function runPostgresValidation(): Promise<TestSuiteResult> {
       const users = await prisma.user.count();
       const sessions = await prisma.chatSession.count();
       const tools = await prisma.mCPTool.count();
-      const prompts = await prisma.promptTemplate.count();
-      return { users, sessions, tools, prompts };
+      return { users, sessions, tools };
     }));
 
   } finally {

@@ -12,7 +12,14 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { loggers } from '../utils/logger.js';
 import { authMiddleware } from '../middleware/unifiedAuth.js';
-import { WorkflowExecutionEngine, ExecutionContext, WorkflowDefinition } from '../services/WorkflowExecutionEngine.js';
+// Phase B (#15/#16): HITL approval re-entry now goes through the
+// dedicated workflows-svc pod via resumeViaWorkflowsService instead of
+// constructing the in-process api engine. ExecutionContext was an
+// engine-internal type — Phase B's resume-proxy serializes the saved
+// state into wire format so the engine's hydrate path runs in the
+// dedicated pod, not here.
+import type { WorkflowDefinition } from '@openagentic/workflow-engine';
+import { resumeViaWorkflowsService } from '../services/resumeViaWorkflowsService.js';
 import { getNotificationService } from '../services/NotificationService.js';
 import { prisma } from '../utils/prisma.js';
 
@@ -619,23 +626,17 @@ async function resumeWorkflowAfterApproval(
 
     const definition = version.definition as WorkflowDefinition;
 
-    // Create execution context from saved state
-    const context: ExecutionContext = {
-      executionId: execution.id,
-      workflowId: execution.workflow_id,
-      userId: execution.started_by || '',
-      input: state.input || {},
-      variables: new Map(Object.entries(state.variables || {})),
-      nodeResults: new Map(Object.entries(state.nodeResults || {})),
-      startTime: execution.started_at?.getTime() || Date.now()
-    };
-
-    // Store approval result in node results
-    context.nodeResults.set(approval.node_id, {
+    // Mark the approval node's result on the saved state so the resumed
+    // engine sees it via context.nodeResults. The workflows-svc handler
+    // hydrates Maps from these plain objects.
+    const savedNodeResults = (state.nodeResults && typeof state.nodeResults === 'object')
+      ? { ...state.nodeResults }
+      : {};
+    savedNodeResults[approval.node_id] = {
       status: 'approved',
       approvedBy: approval.approved_by,
-      approvedAt: new Date().toISOString()
-    });
+      approvedAt: new Date().toISOString(),
+    };
 
     // Update execution status to running
     await prisma.workflowExecution.update({
@@ -646,11 +647,28 @@ async function resumeWorkflowAfterApproval(
       }
     });
 
-    // Create engine and resume
-    const engine = new WorkflowExecutionEngine(definition, context);
-    const result = await engine.resumeExecution(approval.node_id, {
-      approved: true,
-      approvedBy: approval.approved_by
+    // Phase B (#16): proxy the resume to workflows-svc instead of
+    // constructing the api-side engine in-process.
+    //
+    // Task 1.3 (V3 Enterprise Chatmode S5): tenantId is derived from the
+    // execution row (no JWT context here — this is invoked from an approval
+    // decision handler that operates on a previously-tenanted execution).
+    // The wrapper fail-CLOSES if it's null/empty.
+    const tenantId = (execution as any).tenant_id || (execution.workflow as any)?.tenant_id;
+    const result = await resumeViaWorkflowsService({
+      workflowId: execution.workflow_id,
+      executionId: execution.id,
+      definition,
+      fromNodeId: approval.node_id,
+      resumeInput: { approved: true, approvedBy: approval.approved_by },
+      state: {
+        input: state.input || {},
+        variables: state.variables || {},
+        nodeResults: savedNodeResults,
+        startTimeMs: execution.started_at?.getTime() || Date.now(),
+      },
+      userId: execution.started_by || '',
+      tenantId,
     });
 
     logger.info({

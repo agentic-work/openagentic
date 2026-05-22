@@ -18,6 +18,7 @@ import {
   Download,
 } from '@/shared/icons';
 import { format } from 'date-fns';
+import { PageHeader } from '../../primitives-v2';
 
 interface NodeOutput {
   status: string;
@@ -173,9 +174,14 @@ export const AdminExecutionsView: React.FC<AdminExecutionsViewProps> = ({ theme 
 
   return (
     <div className="p-6 space-y-6">
-      <h2 className="text-xl font-bold" style={{ color: 'var(--color-text, #333)' }}>
-        All Executions
-      </h2>
+      <PageHeader
+        crumbs={['Admin', 'Flows', 'Executions']}
+        title="Workflow Executions"
+        explainer="Inspect all workflow executions across users with filters, per-node drill-down, and cost metrics."
+        actions={[
+          { label: 'Export', onClick: handleExport },
+        ]}
+      />
 
       {/* Metrics cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -184,7 +190,7 @@ export const AdminExecutionsView: React.FC<AdminExecutionsViewProps> = ({ theme 
           { label: 'Completed', value: metrics.completed, color: 'var(--color-success)' },
           { label: 'Failed', value: metrics.failed, color: 'var(--color-error)' },
           { label: 'Avg Duration', value: formatDuration(Math.round(metrics.avgDuration)), color: 'var(--color-primary)' },
-          { label: 'Total Cost', value: `$${metrics.totalCost.toFixed(4)}`, color: 'var(--color-accent, #9c27b0)' },
+          { label: 'Total Cost', value: `$${metrics.totalCost.toFixed(4)}`, color: 'var(--color-accent)' },
         ].map(m => (
           <div
             key={m.label}
@@ -302,7 +308,7 @@ export const AdminExecutionsView: React.FC<AdminExecutionsViewProps> = ({ theme 
                   <td className="px-4 py-3 text-right font-mono" style={{ color: 'var(--color-text-secondary)' }}>
                     {formatDuration(exec.executionTimeMs)}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono" style={{ color: exec.cost ? 'var(--color-accent, #9c27b0)' : 'var(--color-text-tertiary)' }}>
+                  <td className="px-4 py-3 text-right font-mono" style={{ color: exec.cost ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }}>
                     {exec.cost !== null && exec.cost > 0 ? `$${exec.cost.toFixed(4)}` : '-'}
                   </td>
                   <td className="px-4 py-3 text-right text-xs" style={{ color: 'var(--color-text-tertiary)' }}>

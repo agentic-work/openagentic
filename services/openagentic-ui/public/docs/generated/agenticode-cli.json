@@ -1,0 +1,76 @@
+{
+  "domain": "openagentic-cli",
+  "title": "Openagentic CLI",
+  "description": "openagentic CLI",
+  "icon": "pkg",
+  "category": "ui",
+  "generatedAt": "2026-05-13T20:48:20.628Z",
+  "sourceFiles": [
+    "<companion>/openagentic/README.md"
+  ],
+  "sections": [
+    {
+      "id": "section-0",
+      "title": "Install from source",
+      "description": "\nopenagentic is installed by cloning the repo and building it locally. The core\nflow is the same on every platform:\n\n```\nclone  →  install deps  →  npm run build  →  link or bundle\n```\n\nPick the section for your OS below for the exact prerequisites and\nplatform-specific gotchas. W",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "section-1",
+      "title": "Quick Start",
+      "description": "\n### With Ollama (local models)\n```bash\nopenagentic --ollama-host http://localhost:11434 --model gpt-oss:latest\n```\n\n### With OpenAgentic Platform\n```bash\nopenagentic --api-endpoint https://your-platform.example.com/api/openagentic --api-key <your-key>\n```\n\n### Environment variables",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "section-2",
+      "title": "Features",
+      "description": "\n- **Multi-provider**: Ollama, OpenAgentic, AWS Bedrock, Google Vertex AI, Azure Foundry\n- **All models**: Works with any model your provider supports — gpt-oss, qwen3.5, deepseek, llama, mistral, devstral, Claude, GPT-4, Gemini\n- **Full tool suite**: Read, Write, Edit, Bash, Glo",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "section-3",
+      "title": "Architecture",
+      "description": "\n```\nopenagentic (CLI)\n    ├── @agentic-work/llm-sdk    ← Our LLM SDK (Messages API client, SSE streaming)\n    ├── Ollama direct             ← /v1/messages endpoint on Ollama\n    ├── OpenAgentic API proxy     ← /api/openagentic/v1/messages → routes to any provider\n    └── platform/",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "section-4",
+      "title": "Slash Commands",
+      "description": "\n| Command | Description |\n|---------|-------------|\n| `/help` | Show all commands |\n| `/model` | Select model |\n| `/doctor` | Health check |\n| `/config` | Settings |\n| `/compact` | Summarize and clear context |\n| `/diff` | Show uncommitted changes |\n| `/commit` | Stage and commi",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "section-5",
+      "title": "Development",
+      "description": "\n```bash\n# Build from source\nnpm install\nnpm run build    # tsc (emits JS despite type errors from internal-only modules)\n\n# Bundle (single file + binary)\n./scripts/bundle.sh\n\n# Run from source\nnode dist/entrypoints/cli.js --ollama-host http://localhost:11434 --model gpt-oss:late",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "section-6",
+      "title": "SDK",
+      "description": "\nOpenAgentic uses `@agentic-work/llm-sdk` — our own Messages API client SDK. Zero external telemetry. Configurable base URL. Drop-in compatible with any Messages API endpoint.\n\n```bash\n# The SDK is at ../openagentic-sdk/\ncd ../openagentic-sdk && npm run build\n```\n",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "section-7",
+      "title": "Testing",
+      "description": "\nopenagentic uses [vitest](https://vitest.dev/) for its parity test harness, located in `testing/`. The harness is the safety net for the ongoing rework — see `docs/superpowers/specs/2026-04-06-openagentic-rework-design.md` for the full story.\n\n### Running tests\n\n```bash\nnpm test  ",
+      "adminOnly": false,
+      "items": []
+    },
+    {
+      "id": "section-8",
+      "title": "License & ownership",
+      "description": "\nCopyright © 2025 **OpenAgentic LLC**. All rights reserved.\n\nThis software is proprietary. See [LICENSE](./LICENSE) for the full terms,\nincluding the perpetual use license grant to Peraton, Inc. for federal\ncustomer delivery (e.g., CDC engagements).\n\n\"OpenAgentic\" and \"OpenAgentic",
+      "adminOnly": false,
+      "items": []
+    }
+  ]
+}

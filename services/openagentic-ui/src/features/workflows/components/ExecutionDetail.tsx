@@ -12,7 +12,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Clock, CheckCircle, XCircle, Activity,
-  ChevronDown, ChevronRight, Zap, AlertCircle,
+  ChevronDown, ChevronRight, Zap, AlertCircle, RefreshCw,
 } from '@/shared/icons';
 import { useAuth } from '@/app/providers/AuthContext';
 import { WorkflowApiService } from '../services/workflowApi';
@@ -22,6 +22,8 @@ interface ExecutionDetailProps {
   workflowId: string;
   executionId: string;
   onClose: () => void;
+  /** Called when user clicks Retry on a failed node after execution has finished */
+  onRetryNode?: (nodeId: string) => void;
 }
 
 interface NodeSummary {
@@ -45,6 +47,7 @@ export const ExecutionDetail: React.FC<ExecutionDetailProps> = ({
   workflowId,
   executionId,
   onClose,
+  onRetryNode,
 }) => {
   const { getAuthHeaders } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -149,6 +152,8 @@ export const ExecutionDetail: React.FC<ExecutionDetailProps> = ({
             const node = nodeSummary[nodeId];
             const barWidth = node.duration ? Math.max(4, (node.duration / maxDuration) * 100) : 4;
             const isSelected = selectedNode === nodeId;
+            const executionDone = execution?.status !== 'running';
+            const canRetry = onRetryNode && executionDone && node.status === 'failed';
 
             return (
               <button
@@ -168,6 +173,49 @@ export const ExecutionDetail: React.FC<ExecutionDetailProps> = ({
                   <span className="text-xs font-medium truncate" style={{ color: 'var(--color-text)' }}>
                     {nodeId}
                   </span>
+                  {/* S6: animated streaming indicator for in-flight nodes */}
+                  {node.status === 'running' && (
+                    <span
+                      data-testid={`streaming-indicator-${nodeId}`}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 2,
+                        fontSize: 9, color: '#58a6ff', marginLeft: 2,
+                      }}
+                      title="Streaming…"
+                    >
+                      <span style={{
+                        display: 'inline-block', width: 4, height: 4, borderRadius: '50%',
+                        background: '#58a6ff',
+                        animation: 'wf-agent-pulse 1.4s ease-in-out infinite',
+                      }} />
+                      …
+                    </span>
+                  )}
+                  {/* P3: Retry button for failed nodes after execution completes */}
+                  {canRetry && (
+                    <button
+                      data-testid={`retry-node-${nodeId}`}
+                      onClick={(e) => { e.stopPropagation(); onRetryNode!(nodeId); }}
+                      title={`Retry ${nodeId} from this node`}
+                      style={{
+                        marginLeft: 'auto',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        fontSize: 9,
+                        color: '#ff9800',
+                        background: 'rgba(255,152,0,0.1)',
+                        border: '1px solid rgba(255,152,0,0.3)',
+                        borderRadius: 4,
+                        padding: '1px 5px',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <RefreshCw style={{ width: 8, height: 8 }} />
+                      Retry
+                    </button>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <div

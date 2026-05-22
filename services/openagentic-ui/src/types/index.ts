@@ -7,6 +7,8 @@ export interface ChatMessage {
   content: string;
   timestamp: string; // ALWAYS A STRING - ISO format
   model?: string; // Model used to generate the message
+  modelTag?: string; // First-hyphen prefix of `model` (e.g. "claude") — header pill family
+  modelId?: string; // Remainder after the first hyphen (e.g. "opus-4-7") — header pill id half
   toolCallId?: string;
   toolName?: string;
   toolCalls?: any[]; // Array of tool calls made
@@ -40,6 +42,15 @@ export interface ChatMessage {
   threadDepth?: number; // Depth level in the conversation tree
   branchTitle?: string; // Optional title for the branch
   children?: string[]; // IDs of child messages/branches
+  /**
+   * Sev-0 #924/#925/#926 — canonical ContentBlock[] in wire-emit order.
+   * Carries the full chronology (thinking, text, tool_use, viz_render,
+   * app_render, streaming_table, follow_up, sub_agent, hitl_approval,
+   * tool_round, tool_result) so the post-`done` DOM matches the live
+   * stream byte-for-byte, and survives session reload by way of the
+   * server-side `chat_messages.content_blocks` Json column.
+   */
+  content_blocks?: any[];
 }
 
 export interface ThinkingStep {

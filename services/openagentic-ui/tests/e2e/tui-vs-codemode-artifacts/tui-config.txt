@@ -1,0 +1,49 @@
+   [openagentic]
+   v0.7.0 • nemotron3:33b
+   /tmp
+
+   /? help  •  ctrl+c cancel  •  /exit quit
+
+   ────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Status   Config   Usage
+
+
+  ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+  │ ⌕ Search settings…                                                                                                                                       │
+  ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+    Auto-compact                              true
+    Show tips                                 true
+    Reduce motion                             false
+    Thinking mode                             true
+    Fast mode (Opus 4.6 only)                 false
+    Rewind code (checkpoints)                 true
+    Verbose output                            false
+    Terminal progress bar                     true
+    Show turn duration                        true
+    Default permission mode                   Default
+    Respect .gitignore in file picker         true
+    Always copy full response (skip /copy     false
+    Copy on select                            true
+    Auto-update channel                       (DISABLE_AUTOUPDATER set)
+
+    Theme                                     Dark mode
+    Notifications                             Auto
+    Output style                              default
+    Language                                  Default (English)
+    Editor mode                               vim
+    Show PR status footer                     true
+  ↓ 4 more below
+
+  Type to filter · Enter/↓ to select · ↑ to tabs · Esc to clear

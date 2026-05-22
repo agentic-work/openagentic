@@ -5,7 +5,7 @@
  * Performs: cycle detection, topological sort, type validation, edge consistency checks.
  */
 
-import type { WorkflowDefinition, WorkflowNode, WorkflowEdge } from './WorkflowExecutionEngine.js';
+import type { WorkflowDefinition, WorkflowNode, WorkflowEdge } from '@openagentic/workflow-engine';
 import { loggers } from '../utils/logger.js';
 
 const logger = loggers.services;
@@ -52,6 +52,40 @@ const VALID_NODE_TYPES = new Set([
   'error_handler', 'user_context', 'text',
   'text_splitter', 'embedding', 'vector_store', 'document_loader', 'structured_output', 'guardrails',
   'sub_workflow',
+  // Batch 3 additions — SIEM / infra-ops nodes (Task #29)
+  'splunk_search', 'k8s_sandbox_run',
+  // output_parser split (2026-05-14) — 5 typed processing primitives that
+  // replace the JS-expression-only path through `transform` for the
+  // common AIOps shapes. Workflows-svc compiler also recognizes these
+  // via its schema-driven nodeRegistry; the API-side compiler must be
+  // kept in sync so /api/workflows/:id/execute does not 400 on flows
+  // that the underlying engine fully supports. Without this, the
+  // typed-chain template (k8s-pod-health-typed) and any user-authored
+  // flow using these nodes never reaches the workflows-svc /execute
+  // endpoint — the API-side pre-compile rejects them with
+  // UNKNOWN_NODE_TYPE. Reference: services/shared/workflow-engine/src/
+  // nodes/registry.ts (canonical source of truth) + services/
+  // openagentic-workflows/src/services/WorkflowCompiler.ts (schema-aware
+  // counterpart that consults the registry directly).
+  'filter_data', 'select_data', 'extract_key', 'parse_json', 'regex',
+  // gap-analysis 2026-05-14 P0 #1/#2/#3 — reusable prompt builder + chat memory
+  // + flow-as-tool composition. Schema-driven in workflows-svc; the API-side
+  // pre-compile must mirror the canonical registry or /execute 400s before
+  // the flow ever reaches the engine.
+  'prompt_template', 'conversation_memory', 'flow_tool',
+  // P1 #3 (2026-05-14): wait_for — poll-until-condition with timeout.
+  // Sister primitive to the existing `wait` (fixed-duration). Same
+  // schema-driven path; the API-side allowlist must include it or the
+  // /test + /:id/execute compile rejects with UNKNOWN_NODE_TYPE before
+  // workflows-svc ever sees the flow.
+  'wait_for',
+  'rate_limiter',
+  'csv_processor',
+  'grounding_check',
+  'llm_router',
+  'save_file',
+  'aggregate',
+  'knowledge_search',
 ]);
 
 export class WorkflowCompiler {
@@ -174,22 +208,15 @@ export class WorkflowCompiler {
           errors.push({ code: 'MISSING_TOOL_NAME', message: 'MCP tool node requires a toolName', nodeId: node.id });
         }
         break;
-      case 'code':
-      case 'openagentic':
-        if (!node.data.code) {
-          errors.push({ code: 'MISSING_CODE', message: `${node.type} node requires code`, nodeId: node.id });
-        }
-        break;
+      // (code, openagentic — now schema-driven via shared nodes/<type>/;
+      //  validation handled by schema-driven path (Task #46))
       case 'http_request':
         if (!node.data.url) {
           errors.push({ code: 'MISSING_URL', message: 'HTTP request node requires a URL', nodeId: node.id });
         }
         break;
-      case 'condition':
-        if (!node.data.condition && !node.data.expression) {
-          warnings.push({ code: 'MISSING_CONDITION', message: 'Condition node has no condition expression', nodeId: node.id });
-        }
-        break;
+      // (condition — now schema-driven via shared nodes/condition/; validation
+      //  handled by schema-driven path (Task #45))
       case 'openagentic_llm':
       case 'openagentic_chat':
         if (!node.data.prompt) {
@@ -206,14 +233,42 @@ export class WorkflowCompiler {
           errors.push({ code: 'MISSING_TASK', message: `${node.type} node requires a task description`, nodeId: node.id });
         }
         break;
-      case 'synth':
-      case 'oat':
-      case 'synth_synthesize':
-      case 'oat_synthesize':
-        if (!node.data.intent) {
-          errors.push({ code: 'MISSING_INTENT', message: `${node.type} node requires an intent`, nodeId: node.id });
+      // (synth + synth_synthesize + oat + oat_synthesize — now schema-driven
+      //  via shared nodes/synth/ (aliases share the schema); validation
+      //  handled by schema-driven path (Task #46))
+      // output_parser split (2026-05-14) — typed processing primitives.
+      // The workflows-svc compiler validates these against the full schema
+      // tree via nodeRegistry; here we only catch the most obvious "node
+      // is unusable" gaps so the user sees the issue at the API layer
+      // before the request even reaches workflows-svc.
+      case 'filter_data':
+        if (!node.data.operator) {
+          errors.push({ code: 'MISSING_OPERATOR', message: 'filter_data node requires an operator', nodeId: node.id });
+        }
+        if (!node.data.field && node.data.operator !== 'exists') {
+          errors.push({ code: 'MISSING_FIELD', message: "filter_data node requires a 'field' for non-exists operators", nodeId: node.id });
         }
         break;
+      case 'select_data':
+        if (!Array.isArray(node.data.fields) || node.data.fields.length === 0) {
+          errors.push({ code: 'MISSING_FIELDS', message: 'select_data node requires a non-empty fields array', nodeId: node.id });
+        }
+        break;
+      case 'extract_key':
+        if (!node.data.path) {
+          errors.push({ code: 'MISSING_PATH', message: 'extract_key node requires a path', nodeId: node.id });
+        }
+        break;
+      case 'regex':
+        if (!node.data.pattern) {
+          errors.push({ code: 'MISSING_PATTERN', message: 'regex node requires a pattern', nodeId: node.id });
+        }
+        if (!node.data.mode) {
+          errors.push({ code: 'MISSING_MODE', message: 'regex node requires a mode (match | replace | test)', nodeId: node.id });
+        }
+        break;
+      // parse_json has no required fields (all settings are optional —
+      // the executor accepts upstream input directly).
     }
   }
 
@@ -221,9 +276,33 @@ export class WorkflowCompiler {
    * Detect cycles using DFS with coloring (white/gray/black)
    */
   private detectCycles(nodes: WorkflowNode[], edges: WorkflowEdge[]): boolean {
+    // Control-flow node types are LEGITIMATE iteration anchors. A back-edge
+    // through one of these is intentional (e.g. loop iterates, human_approval
+    // can re-route on rejection, condition can branch back). The engine knows
+    // how to break the cycle at run time.
+    // (Mirror of the fix in openagentic-workflows WorkflowCompiler.detectCycles.)
+    const CONTROL_FLOW_TYPES = new Set([
+      'loop',
+      'human_approval',
+      'approval',
+      'condition',
+      'switch',
+      'merge',
+      'parallel',
+      'wait',
+      'error_handler',
+      'sub_workflow',
+    ]);
+    const nodeType = new Map<string, string>();
+    for (const n of nodes) nodeType.set(n.id, n.type);
+
     const adjacency = new Map<string, string[]>();
     for (const node of nodes) adjacency.set(node.id, []);
     for (const edge of edges) {
+      if (CONTROL_FLOW_TYPES.has(nodeType.get(edge.source)!) ||
+          CONTROL_FLOW_TYPES.has(nodeType.get(edge.target)!)) {
+        continue;
+      }
       adjacency.get(edge.source)?.push(edge.target);
     }
 

@@ -70,8 +70,8 @@ export const AdminTooltip: React.FC<AdminTooltipProps> = ({
           <div
             className="relative px-3 py-2 rounded-md text-xs leading-relaxed"
             style={{
-              backgroundColor: 'var(--color-surfaceSecondary, #1f2937)',
-              color: 'var(--text-primary, #f3f4f6)',
+              backgroundColor: 'var(--color-surfaceSecondary)',
+              color: 'var(--text-primary)',
               border: '1px solid var(--color-border)',
               boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
             }}
@@ -81,7 +81,7 @@ export const AdminTooltip: React.FC<AdminTooltipProps> = ({
               className="absolute w-2 h-2"
               style={{
                 ...arrowStyles[position],
-                backgroundColor: 'var(--color-surfaceSecondary, #1f2937)',
+                backgroundColor: 'var(--color-surfaceSecondary)',
                 borderRight: position === 'top' || position === 'left'
                   ? '1px solid var(--color-border)' : 'none',
                 borderBottom: position === 'top' || position === 'right'

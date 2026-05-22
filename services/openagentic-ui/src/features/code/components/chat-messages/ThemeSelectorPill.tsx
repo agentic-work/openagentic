@@ -21,7 +21,7 @@ function getStoredCMTheme(): CMThemeId {
   }
 }
 
-// Palette → CSS var definitions. Mirrors the set in CodeModeLayoutV2
+// Palette → CSS var definitions. Mirrors the set in CodeModeLayout
 // so both entry points apply the same vars to the `.code-mode` root.
 const THEME_VARS: Record<string, Record<string, string>> = {
   'catppuccin-latte': {
@@ -80,10 +80,49 @@ export function applyCMThemeVars(el: HTMLElement, id: string) {
   }
 }
 
+/**
+ * CRT mode — opt-in scanlines / phosphor glow / glitch overlay for
+ * the codemode chat column. Pure CSS effect (see codeMode-crt.css);
+ * this helper just toggles `body.cm-crt` and persists the choice to
+ * localStorage. The actual overlay element is rendered by the
+ * ThemeSelectorPill component when active so it unmounts cleanly when
+ * the user turns CRT off.
+ *
+ * Performance: ALL CRT animations run on transform+opacity only and
+ * fire from CSS animation-delay (no rAF / setInterval). Toggling has
+ * no perf cost beyond a single class-list mutation.
+ */
+const CRT_STORAGE_KEY = 'cm-crt-mode';
+
+export function getStoredCRTMode(): boolean {
+  try {
+    return localStorage.getItem(CRT_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function applyCRTMode(on: boolean) {
+  if (typeof document === 'undefined') return;
+  if (on) {
+    document.body.classList.add('cm-crt');
+  } else {
+    document.body.classList.remove('cm-crt');
+  }
+  try {
+    localStorage.setItem(CRT_STORAGE_KEY, on ? 'true' : 'false');
+  } catch {
+    /* quota — body class still toggled, just won't persist */
+  }
+}
+
 export const ThemeSelectorPill: React.FC = () => {
   const [theme, setTheme] = useState<CMThemeId>(getStoredCMTheme);
   const [open, setOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [crt, setCrt] = useState<boolean>(getStoredCRTMode);
+  const [menuPos, setMenuPos] = useState<
+    { top: number; left: number; placement: 'below' | 'above' } | null
+  >(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const current = CM_THEMES.find((t) => t.id === theme) || CM_THEMES[0];
 
@@ -99,6 +138,14 @@ export const ThemeSelectorPill: React.FC = () => {
     if (el) applyCMThemeVars(el, id);
   }, []);
 
+  const toggleCRT = useCallback(() => {
+    setCrt((prev) => {
+      const next = !prev;
+      applyCRTMode(next);
+      return next;
+    });
+  }, []);
+
   // Apply on mount + whenever `theme` changes. If the /theme slash
   // command writes to localStorage while this pill is open, we'll
   // still re-apply on next render thanks to the theme state read on
@@ -107,6 +154,20 @@ export const ThemeSelectorPill: React.FC = () => {
     const el = document.querySelector('.code-mode') as HTMLElement;
     if (el) applyCMThemeVars(el, theme);
   }, [theme]);
+
+  // Apply CRT mode on mount and any time the toggle flips. We read
+  // localStorage in the initial useState so a reload restores the
+  // choice without flicker; this effect ensures the body class stays
+  // in sync if `crt` state ever diverges (e.g. cross-tab listener
+  // could be added later — currently only the toggle mutates state).
+  useEffect(() => {
+    applyCRTMode(crt);
+    return () => {
+      // Don't remove the class on unmount — the user might be
+      // navigating between routes within the SPA and the CRT
+      // preference should outlive any single mount of this pill.
+    };
+  }, [crt]);
 
   // Position the portaled dropdown beneath the trigger button. We
   // portal to document.body to escape any parent overflow:hidden
@@ -117,7 +178,16 @@ export const ThemeSelectorPill: React.FC = () => {
     const update = () => {
       if (!buttonRef.current) return;
       const r = buttonRef.current.getBoundingClientRect();
-      setMenuPos({ top: r.bottom + 4, left: r.left });
+      // Live theme list is ~7 items × 28px + 8px padding ≈ 200px tall.
+      // Open ABOVE the trigger when the trigger sits in the bottom half
+      // of the viewport (composer toolbar is anchored to the bottom of
+      // the codemode panel, so opening downward clips the list).
+      const MENU_H = 220;
+      const spaceBelow = window.innerHeight - r.bottom;
+      const placement: 'below' | 'above' =
+        spaceBelow < MENU_H && r.top > MENU_H ? 'above' : 'below';
+      const top = placement === 'above' ? r.top - 4 - MENU_H : r.bottom + 4;
+      setMenuPos({ top, left: r.left, placement });
     };
     update();
     window.addEventListener('resize', update);
@@ -147,6 +217,7 @@ export const ThemeSelectorPill: React.FC = () => {
     <>
       <button
         ref={buttonRef}
+        data-testid="cm-theme-selector-pill"
         onClick={() => setOpen(!open)}
         title={`Theme: ${current.label} — also available via /theme`}
         style={{
@@ -178,6 +249,7 @@ export const ThemeSelectorPill: React.FC = () => {
       {open && menuPos && createPortal(
         <div
           data-cm-theme-menu
+          data-placement={menuPos.placement}
           style={{
             position: 'fixed',
             top: menuPos.top,
@@ -187,9 +259,10 @@ export const ThemeSelectorPill: React.FC = () => {
             border: '1px solid var(--cm-border, rgba(255,255,255,0.1))',
             backdropFilter: 'blur(12px)',
             borderRadius: 6,
-            overflow: 'hidden',
+            overflowY: 'auto',
             padding: '4px 0',
             minWidth: 160,
+            maxHeight: '220px',
             boxShadow: '0 6px 24px rgba(0,0,0,0.4)',
             fontFamily:
               'var(--cm-mono-font, ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace)',
@@ -235,7 +308,73 @@ export const ThemeSelectorPill: React.FC = () => {
               )}
             </button>
           ))}
+          {/* CRT mode toggle — sits at the bottom of the theme list as
+              a separator+toggle. Layers on top of whatever palette the
+              user has selected (it's an aesthetic OVERLAY, not a theme
+              swap). Persists separately under `cm-crt-mode`. */}
+          <div
+            style={{
+              borderTop: '1px solid var(--cm-border, rgba(255,255,255,0.1))',
+              margin: '4px 0 0',
+              padding: '4px 0',
+            }}
+          >
+            <button
+              data-testid="cm-crt-toggle"
+              onClick={toggleCRT}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6ch',
+                padding: '6px 12px',
+                fontSize: 12,
+                fontFamily: 'inherit',
+                background: crt ? 'rgba(0,255,65,0.08)' : 'transparent',
+                color: crt ? '#00ff41' : 'var(--cm-text-muted, #999)',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+              onMouseEnter={(e) => {
+                if (!crt) e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+              }}
+              onMouseLeave={(e) => {
+                if (!crt) e.currentTarget.style.background = 'transparent';
+              }}
+            >
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  background: crt ? '#00ff41' : 'transparent',
+                  border: '1px solid #00ff41',
+                  boxShadow: crt ? '0 0 6px #00ff41' : 'none',
+                  flexShrink: 0,
+                }}
+              />
+              <span>CRT</span>
+              <span style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.6 }}>
+                {crt ? 'on' : 'off'}
+              </span>
+            </button>
+          </div>
         </div>,
+        document.body,
+      )}
+      {/* Overlay element — rendered ONLY when CRT is on. The visual
+          effect (scanlines, vignette, roll, RGB-flicker) is fully
+          driven by CSS in codeMode-crt.css; this div is the marker
+          the stylesheet attaches to. `pointer-events:none` on the
+          rule keeps it click-through; we also set it inline as a
+          belt-and-suspenders against any rule getting overridden. */}
+      {crt && createPortal(
+        <div
+          data-cm-crt-overlay
+          aria-hidden
+          style={{ pointerEvents: 'none', position: 'fixed', inset: 0 }}
+        />,
         document.body,
       )}
     </>

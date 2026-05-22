@@ -1,7 +1,7 @@
 /**
  * CodemodeSessionList — claude.ai/code-style sessions sidebar.
  *
- * Left rail for CodeModeLayoutV2 that lists the current user's persisted
+ * Left rail for CodeModeLayout that lists the current user's persisted
  * openagentic sessions, grouped by relative date, with a "+ New Session"
  * header action.
  *

@@ -430,8 +430,10 @@ export class AutoMigrationService {
    * Only seeds runtime config - LLM providers come from env vars via LLMProviderSeeder
    */
   private async seedSystemConfiguration(): Promise<void> {
+    // 2026-04-19 — intelligence_slider seed removed (task #144, slider rip).
+    // Existing rows in the DB are left in place for back-compat; the API
+    // no longer reads from them.
     const defaults = [
-      { key: 'intelligence_slider', value: { value: 50 }, description: 'Global intelligence slider (0-100)' },
       { key: 'max_tokens', value: { value: 8192 }, description: 'Default max tokens for responses' },
       { key: 'mcp_enabled', value: { value: true }, description: 'Enable MCP tool integration' },
     ];

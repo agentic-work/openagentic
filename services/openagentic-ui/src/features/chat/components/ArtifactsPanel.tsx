@@ -7,8 +7,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X, Upload, Download, Trash2, File, FileText, FileImage,
-  FileSpreadsheet, Folder, Loader, CheckCircle, AlertCircle
+  FileSpreadsheet, Folder, Loader, CheckCircle, AlertCircle, Eye
 } from '@/shared/icons';
+import SafeHtmlIframe from '@/shared/components/SafeHtmlIframe';
 
 interface Artifact {
   id: string;
@@ -58,6 +59,8 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [preview, setPreview] = useState<{ artifact: Artifact; body: string; kind: 'html' | 'image' | 'text' | 'none' } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -127,6 +130,42 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
       showFeedback('error', err.message ?? 'Download failed');
     }
   }, [showFeedback]);
+
+  // ---- Preview ----
+  const openPreview = useCallback(async (a: Artifact) => {
+    setPreviewLoading(true);
+    setPreview({ artifact: a, body: '', kind: 'none' });
+    try {
+      const res = await fetch(`/api/artifacts/${a.id}/download`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Preview failed (${res.status})`);
+      const mt = (a.mimeType ?? res.headers.get('content-type') ?? '').toLowerCase();
+      if (mt.startsWith('image/')) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        setPreview({ artifact: a, body: url, kind: 'image' });
+      } else if (mt.includes('html')) {
+        const body = await res.text();
+        setPreview({ artifact: a, body, kind: 'html' });
+      } else if (mt.startsWith('text/') || mt.includes('json') || mt.includes('xml') || mt.includes('csv')) {
+        const body = await res.text();
+        setPreview({ artifact: a, body, kind: 'text' });
+      } else {
+        setPreview({ artifact: a, body: '', kind: 'none' });
+      }
+    } catch (err: any) {
+      showFeedback('error', err.message ?? 'Preview failed');
+      setPreview(null);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [showFeedback]);
+
+  const closePreview = useCallback(() => {
+    if (preview?.kind === 'image' && preview.body.startsWith('blob:')) {
+      URL.revokeObjectURL(preview.body);
+    }
+    setPreview(null);
+  }, [preview]);
 
   // ---- Delete ----
   const deleteArtifact = useCallback(async (a: Artifact) => {
@@ -369,6 +408,23 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
                   {/* Actions */}
                   <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                     <button
+                      onClick={() => openPreview(a)}
+                      title="Preview"
+                      data-testid="artifact-preview-btn"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 5,
+                        borderRadius: 6,
+                        color: 'var(--text-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Eye size={16} />
+                    </button>
+                    <button
                       onClick={() => downloadArtifact(a)}
                       title="Download"
                       style={{
@@ -407,6 +463,147 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
           )}
         </div>
       </div>
+
+      {/* Preview modal */}
+      {preview && (
+        <div
+          data-testid="artifact-preview-modal"
+          onClick={closePreview}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1100,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 'min(960px, 100%)',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 12,
+              overflow: 'hidden',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
+                borderBottom: '1px solid var(--color-border)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <FileIcon mimeType={preview.artifact.mimeType} size={18} />
+                <span
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: 'var(--text-primary)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                  title={preview.artifact.filename}
+                >
+                  {preview.artifact.filename}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button
+                  onClick={() => downloadArtifact(preview.artifact)}
+                  title="Download"
+                  data-testid="artifact-preview-download"
+                  style={{
+                    background: 'none',
+                    border: '1px solid var(--color-border)',
+                    cursor: 'pointer',
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    color: 'var(--text-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 12,
+                  }}
+                >
+                  <Download size={14} /> Download
+                </button>
+                <button
+                  onClick={closePreview}
+                  title="Close"
+                  aria-label="Close preview"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 5,
+                    borderRadius: 6,
+                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                overflow: 'auto',
+                padding: preview.kind === 'html' ? 0 : 16,
+                background: 'var(--color-background, var(--bg-0))',
+              }}
+            >
+              {previewLoading && (
+                <div style={{ textAlign: 'center', padding: 32 }}>
+                  <Loader size={24} style={{ color: 'var(--text-tertiary)', animation: 'spin 1s linear infinite' }} />
+                </div>
+              )}
+              {!previewLoading && preview.kind === 'html' && (
+                <SafeHtmlIframe content={preview.body} title={preview.artifact.filename} minHeight={400} />
+              )}
+              {!previewLoading && preview.kind === 'image' && (
+                <img
+                  src={preview.body}
+                  alt={preview.artifact.filename}
+                  style={{ maxWidth: '100%', maxHeight: '70vh', display: 'block', margin: '0 auto' }}
+                />
+              )}
+              {!previewLoading && preview.kind === 'text' && (
+                <pre
+                  style={{
+                    margin: 0,
+                    fontFamily: 'var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)',
+                    fontSize: 12,
+                    color: 'var(--text-primary)',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {preview.body}
+                </pre>
+              )}
+              {!previewLoading && preview.kind === 'none' && (
+                <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-tertiary)', fontSize: 13 }}>
+                  No inline preview available for this MIME type — use Download to save the file.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Spinner keyframe (injected once) */}
       <style>{`

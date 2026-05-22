@@ -286,7 +286,7 @@ export const PromptTechniquesRadialMenu: React.FC<PromptTechniquesRadialMenuProp
                     y1={radius * 1.25}
                     x2={radius * 1.25 + pos.x}
                     y2={radius * 1.25 + pos.y}
-                    stroke={hoveredTechnique === technique.id ? technique.gradientFrom : 'rgb(var(--border-primary))'}
+                    stroke={hoveredTechnique === technique.id ? technique.gradientFrom : 'var(--color-border)'}
                     strokeWidth="2"
                     strokeDasharray="4 4"
                     initial={{ pathLength: 0, opacity: 0 }}

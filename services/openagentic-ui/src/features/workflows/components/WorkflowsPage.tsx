@@ -10,12 +10,14 @@ import { WorkflowApiService } from '../services/workflowApi';
 import { WorkflowList } from './WorkflowList';
 import { WorkflowsContainer } from './WorkflowsContainer';
 import { FlowsSidebar } from './FlowsSidebar';
+import { WhatsNewToast } from './WhatsNewToast';
 import { ExecutionInputDialog } from './ExecutionInputDialog';
 import { Workflow, WorkflowDefinition } from '../types/workflow.types';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { ConfigPanel, SidebarSectionType } from './sidebar/SidebarSectionModal';
 import { NodePaletteDrawer } from './NodePaletteDrawer';
+import { TemplateLegend, type TemplateMeta } from './TemplateLegend';
 
 type ViewMode = 'list' | 'builder';
 
@@ -68,16 +70,18 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = ({ embedded = false, 
   }, [currentWorkflow, onWorkflowStateChange]);
   const [pendingExecutionId, setPendingExecutionId] = useState<string | null>(null);
 
-  // Fetch agents for the palette drawer
+  // Fetch agents for the palette drawer.
+  // SOT: /api/admin/agents (prisma.agent table). Legacy /api/workflows/agents
+  // (openagentic-proxy only, skipped DB) was removed 2026-04-26.
   useEffect(() => {
-    const fetchAgents = async () => {
+    const loadAgents = async () => {
       try {
         const headers = getAuthHeaders();
-        let res = await fetch('/api/workflows/agents', { headers });
-        if (!res.ok) res = await fetch('/api/admin/agents', { headers });
+        const res = await fetch('/api/admin/agents', { headers });
         if (res.ok) {
           const data = await res.json();
-          setAgents((data.agents || []).map((a: any) => ({
+          const raw = Array.isArray(data) ? data : (data.agents || []);
+          setAgents(raw.map((a: any) => ({
             ...a,
             display_name: a.display_name || a.name || a.id,
             agent_type: a.agent_type || a.role || 'custom',
@@ -88,7 +92,7 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = ({ embedded = false, 
         }
       } catch { /* ignore */ }
     };
-    fetchAgents();
+    loadAgents();
   }, [getAuthHeaders]);
 
   // Memoize API service to avoid re-creating each render
@@ -473,14 +477,28 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = ({ embedded = false, 
       </div>
     );
   } else if (viewMode === 'builder' && currentWorkflow) {
+    // Canvas-side "About this workflow" legend — surfaces meta.purpose /
+    // how_it_works etc. Per user 2026-05-14 round 2: ALWAYS visible,
+    // locked top-LEFT corner of canvas, on EVERY flow (including
+    // user-created flows without meta — they get an empty-state
+    // prompt). Collapsible (header click) but never dismissable, so
+    // operators always see what the flow is for.
+    const workflowMeta: TemplateMeta | null = ((currentWorkflow as any)?.meta as TemplateMeta | null) ?? null;
+    const collapseKey = `wf-legend-collapsed-${currentWorkflow.id}`;
     content = (
       <div className="w-full h-full relative">
         {error && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-red-500/90 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 max-w-lg">
             <span className="text-sm">{error}</span>
-            <button onClick={() => setError(null)} className="text-white/80 hover:text-white font-bold">✕</button>
+            <button onClick={() => setError(null)} className="text-white/80 hover:text-white font-bold">x</button>
           </div>
         )}
+        <WorkflowAboutPanel
+          meta={workflowMeta}
+          title={currentWorkflow.name}
+          description={currentWorkflow.description}
+          collapseKey={collapseKey}
+        />
         <WorkflowsContainer
           key={`${currentWorkflow.id}-${pendingExecutionId || ''}`}
           workflowId={currentWorkflow.id}
@@ -526,6 +544,11 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = ({ embedded = false, 
     return trigger ? { id: trigger.id, type: trigger.type || 'trigger', data: trigger.data || {} } : null;
   }, [currentWorkflow]);
 
+  // Workspace nav rail (#61) is now mounted by ChatContainer at the
+  // app shell level — see ChatContainer.tsx — so it sits LEFT of the
+  // chat sidebar (NavRail | ChatSidebar | Canvas). It's no longer
+  // rendered here.
+
   return (
     <div className="flex w-full h-full overflow-hidden">
       {sidebarElement}
@@ -539,6 +562,12 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = ({ embedded = false, 
         />
         {content}
       </div>
+
+      {/* 0.7.0 What's-new toast — bottom-right, dismissable, version-keyed.
+       * Renders to document.body via portal so parent transforms don't
+       * affect position:fixed. Version 0.7.0-r2 forces re-show for users
+       * who dismissed the earlier preview build. */}
+      <WhatsNewToast version="0.7.0-r2" />
 
       {/* Execution Input Dialog */}
       <ExecutionInputDialog
@@ -557,3 +586,167 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = ({ embedded = false, 
     </div>
   );
 };
+
+// ---------------------------------------------------------------------------
+// WorkflowAboutPanel — canvas-side legend, LOCKED top-LEFT, ALWAYS visible.
+//
+// Per user 2026-05-14 round 2: legends were a first-visit-only popover
+// in the top-right that auto-disappeared after localStorage dismissal.
+// New contract:
+//   - position: absolute; top: 16; left: 16; z-index: 30 (over canvas,
+//     under modals)
+//   - rendered on EVERY flow — template-originating OR user-created
+//   - collapsible by clicking the header (collapsed = 1-line summary
+//     pinned in the same spot); state remembered per-workflow via
+//     localStorage so collapse choice survives reload
+//   - NEVER dismissable — there is no close button anywhere
+//   - flows without meta get an empty-state prompting the user to add
+//     a description, so the legend slot is always present
+// ---------------------------------------------------------------------------
+
+const LEGEND_ACCENT = 'var(--user-accent-primary, #7c3aed)';
+
+const WorkflowAboutPanel: React.FC<{
+  meta: TemplateMeta | null;
+  title: string;
+  description?: string;
+  collapseKey: string;
+}> = ({ meta, title, description, collapseKey }) => {
+  // Default expanded; persisted collapse choice survives reload.
+  const initialCollapsed = typeof window !== 'undefined'
+    && window.localStorage.getItem(collapseKey) === '1';
+  const [collapsed, setCollapsed] = useState<boolean>(initialCollapsed);
+
+  const toggle = useCallback(() => {
+    setCollapsed((c) => {
+      const next = !c;
+      try { window.localStorage.setItem(collapseKey, next ? '1' : '0'); } catch { /* noop */ }
+      return next;
+    });
+  }, [collapseKey]);
+
+  const hasMeta = !!meta && !!(
+    meta.purpose || (meta.how_it_works && meta.how_it_works.length > 0)
+    || meta.expected_output || meta.useful_when
+  );
+
+  // Container — locked top-left of the CANVAS area, never moves with the
+  // canvas pan/zoom because it sits in the absolute-positioned overlay
+  // layer above ReactFlow's transformed viewport (its parent is
+  // `relative`). top: 72 clears the 56px workflow toolbar (h-14) + 16px
+  // gap so the legend doesn't overlap the toolbar header row.
+  const wrapperStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: 72,
+    left: 16,
+    zIndex: 30,
+    width: 320,
+    maxWidth: 'calc(100% - 32px)',
+    maxHeight: collapsed ? undefined : 'calc(100% - 88px)',
+    display: 'flex',
+    flexDirection: 'column',
+    background: 'var(--color-bg-secondary, #161b22)',
+    border: '1px solid var(--color-border, #30363d)',
+    borderRadius: 12,
+    boxShadow: '0 8px 24px rgba(0,0,0,0.22)',
+    overflow: 'hidden',
+    color: 'var(--color-text, #e6edf3)',
+  };
+
+  return (
+    <div
+      data-testid="workflow-about-panel"
+      data-collapsed={collapsed ? 'true' : 'false'}
+      style={wrapperStyle}
+    >
+      <button
+        type="button"
+        data-testid="workflow-about-header"
+        onClick={toggle}
+        title={collapsed ? 'Expand legend' : 'Collapse legend'}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+          padding: '10px 14px',
+          background: 'transparent',
+          border: 'none',
+          borderBottom: collapsed ? 'none' : '1px solid var(--color-border, #30363d)',
+          textAlign: 'left',
+          cursor: 'pointer',
+          color: 'inherit',
+          width: '100%',
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
+          <span style={{
+            fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
+            color: LEGEND_ACCENT,
+          }}>
+            About this workflow
+          </span>
+          <span style={{
+            fontSize: 14, fontWeight: 700, letterSpacing: '-0.01em',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {title || 'Untitled workflow'}
+          </span>
+        </div>
+        <span aria-hidden="true" style={{
+          fontSize: 10, color: 'var(--color-text-tertiary, #8b949e)',
+          transform: collapsed ? 'rotate(-90deg)' : 'none',
+          transition: 'transform 0.15s ease',
+          marginLeft: 8,
+        }}>
+          v
+        </span>
+      </button>
+
+      {!collapsed && (
+        <div
+          data-testid="workflow-about-body"
+          style={{ padding: '12px 14px 14px', overflowY: 'auto', flex: 1 }}
+        >
+          {hasMeta ? (
+            <TemplateLegend meta={meta as TemplateMeta} variant="card" />
+          ) : (
+            <WorkflowLegendEmptyState description={description} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Empty-state for flows that don't have an authored meta block — user-
+// created flows or older flows that pre-date the legend feature. Prompts
+// the user to add a description via the workflow settings (instead of
+// hiding the legend slot entirely, which is what made the prior version
+// invisible on most flows).
+const WorkflowLegendEmptyState: React.FC<{ description?: string }> = ({ description }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    {description ? (
+      <div style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--color-text-secondary, #c9d1d9)' }}>
+        {description}
+      </div>
+    ) : (
+      <div style={{
+        fontSize: 12, lineHeight: 1.55,
+        color: 'var(--color-text-tertiary, #8b949e)',
+        fontStyle: 'italic',
+      }}>
+        No description yet — add Purpose, How it works, and Expected output
+        in the workflow Settings so anyone opening this flow knows what
+        it's for.
+      </div>
+    )}
+    <div style={{
+      fontSize: 10, color: 'var(--color-text-tertiary, #8b949e)',
+      letterSpacing: '0.04em',
+    }}>
+      Tip: legends help operators triage flows at a glance.
+    </div>
+  </div>
+);
+

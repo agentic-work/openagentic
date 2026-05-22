@@ -14,6 +14,7 @@ import {
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiRequest } from '@/utils/api';
 import { SEED_MCP_SERVERS, type SeedMcpServer } from './codemodeSeeds';
+import { PageHeader } from '../../primitives-v2';
 
 interface ManagedMcpServer {
   id: string;
@@ -125,25 +126,14 @@ export const CodeModeMcpView: React.FC<CodeModeMcpViewProps> = ({ theme }) => {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-bold mb-1 text-text-primary flex items-center gap-2">
-            <Server size={20} />
-            MCP Servers
-          </h2>
-          <p className="text-sm text-text-secondary">
-            Managed MCP servers injected into all code mode sessions via managed-mcp.json
-          </p>
-        </div>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-500 text-white hover:bg-primary-600 text-sm transition-colors"
-        >
-          <Plus size={14} />
-          Add Server
-        </button>
-      </div>
+      <PageHeader
+        crumbs={['Admin', 'Code Mode', 'MCP Servers']}
+        title="Code Mode · MCP Servers"
+        explainer="Managed MCP servers injected into all code mode sessions via managed-mcp.json."
+        actions={[
+          { label: 'Add Server', primary: true, onClick: () => setShowAddForm(true) },
+        ]}
+      />
 
       {/* Messages */}
       {success && <div className="p-3 rounded-lg bg-success-500/10 border border-success/30 ap-text-success text-sm">{success}</div>}

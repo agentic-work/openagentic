@@ -76,7 +76,19 @@ const NODE_REQUIRED_FIELDS: Record<string, Array<{
     { field: 'code', label: 'Code', check: d => !!d.code?.trim(), category: 'config' },
   ],
   transform: [
-    { field: 'transformType', label: 'Transform Type', check: d => !!(d.transformType), category: 'config' },
+    // Two shapes are valid per workflow-engine src/nodes/transform/executor.ts:
+    //   - modern: `operations[]` array of {op,target,value,...} (priority shape,
+    //     used by every shipped template)
+    //   - legacy: `transformType` ('map'|'filter'|'reduce'|'extract') + expression
+    // The validator MUST accept either. Pre-2026-05-14 it only checked
+    // `transformType`, which surfaced as a false "1 field required" on every
+    // template transform node and a "N Errors" toolbar pill on every flow.
+    {
+      field: 'transformType',
+      label: 'Transform Type or Operations',
+      check: d => !!(d.transformType) || (Array.isArray(d.operations) && d.operations.length > 0),
+      category: 'config',
+    },
   ],
   data_query: [
     { field: 'collection', label: 'Collection', check: d => !!(d.collection || d.collectionName), category: 'config' },
@@ -205,6 +217,59 @@ const NODE_REQUIRED_FIELDS: Record<string, Array<{
   ],
   sub_workflow: [
     { field: 'workflowId', label: 'Workflow', check: d => !!(d.workflowId?.trim()), category: 'config' },
+  ],
+
+  // Typed output-parser primitives (gap-analysis 2026-05-14 P0 #4).
+  // Mirror the API-side VALID_NODE_TYPES required-field validators in
+  // services/openagentic-api/src/services/WorkflowCompiler.ts so the UI
+  // and the engine agree on what counts as configured. Without these, the
+  // toolbar pre-flight reports nothing on misconfigured typed nodes —
+  // users discover the failure only at runtime.
+  filter_data: [
+    { field: 'operator', label: 'Operator', check: d => !!d.operator, category: 'config' },
+    { field: 'field', label: 'Field (dot-path)', check: d => d.operator === 'exists' || !!d.field, category: 'config' },
+  ],
+  select_data: [
+    { field: 'fields', label: 'Fields to keep', check: d => Array.isArray(d.fields) && d.fields.length > 0, category: 'config' },
+  ],
+  extract_key: [
+    { field: 'path', label: 'Path (dot-path)', check: d => typeof d.path === 'string' && d.path.length > 0, category: 'config' },
+  ],
+  // parse_json has no strictly required fields — input + onError both have
+  // engine defaults. Validator stays permissive to mirror the executor.
+  parse_json: [],
+  regex: [
+    { field: 'pattern', label: 'Pattern', check: d => !!d.pattern, category: 'config' },
+    { field: 'mode', label: 'Mode (match | replace | test)', check: d => !!d.mode, category: 'config' },
+  ],
+
+  // P0 primitives shipped 2026-05-14: prompt_template, conversation_memory, flow_tool.
+  prompt_template: [
+    { field: 'template', label: 'Template body', check: d => typeof d.template === 'string' && d.template.trim().length > 0, category: 'config' },
+  ],
+  conversation_memory: [
+    { field: 'memoryId', label: 'Memory ID', check: d => typeof d.memoryId === 'string' && d.memoryId.trim().length > 0, category: 'config' },
+    { field: 'operation', label: 'Operation', check: d => ['read', 'write', 'clear', 'summarize', 'search'].includes(d.operation), category: 'config' },
+    { field: 'query', label: 'Query (search only)', check: d => d.operation !== 'search' || (typeof d.query === 'string' && d.query.trim().length > 0), category: 'config' },
+  ],
+  flow_tool: [
+    { field: 'flowId', label: 'Flow ID', check: d => typeof d.flowId === 'string' && d.flowId.trim().length > 0, category: 'config' },
+  ],
+
+  // P1 #3 (2026-05-14): wait_for primitive — poll-until-condition. Sister
+  // to the existing `wait` (fixed-duration) primitive.
+  wait_for: [
+    { field: 'condition', label: 'Condition', check: d => typeof d.condition === 'string' && d.condition.trim().length > 0, category: 'config' },
+  ],
+
+  // P1 #9 (2026-05-14): rate_limiter primitive — fixed-window throttle.
+  rate_limiter: [
+    { field: 'key', label: 'Bucket key', check: d => typeof d.key === 'string' && d.key.trim().length > 0, category: 'config' },
+  ],
+
+  // P1 #6 (2026-05-14): csv_processor primitive — text-mode CSV parsing.
+  csv_processor: [
+    { field: 'csv', label: 'CSV text', check: d => typeof d.csv === 'string' && d.csv.trim().length > 0, category: 'config' },
   ],
 };
 

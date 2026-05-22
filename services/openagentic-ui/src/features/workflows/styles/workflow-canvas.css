@@ -236,6 +236,11 @@
   80% { transform: translateX(2px); }
 }
 
+@keyframes wf-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 /* ==================== Node Header ==================== */
 .wf-node-header {
   display: flex;

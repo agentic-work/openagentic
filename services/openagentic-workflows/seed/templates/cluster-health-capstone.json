@@ -1,0 +1,272 @@
+{
+  "slug": "cluster-health-capstone",
+  "name": "Cluster Health — Actionable Report + Self-Generating Remediation Sub-Flow",
+  "description": "Pulls Kubernetes cluster status (live MCP), Prometheus service health, and Loki errors for the configured time window; runs three specialist agents (cloud_operations, engineering_metrics, flows_expert) to synthesize an actionable JSON report with P0/P1/P2 recommendations and a proposed remediation sub-flow JSON. Posts the summary to your chosen channel: Slack / Email / Teams.",
+  "category": "aiops",
+  "icon": "stethoscope",
+  "color": "#dc2626",
+  "tags": ["aiops", "kubernetes", "prometheus", "loki", "capstone", "remediation", "multi-agent"],
+  "meta": {
+    "purpose": "Produce a complete, actionable cluster-health digest for an on-call SRE — combining live Kubernetes state, Prometheus service health, and Loki error logs — and emit a remediation sub-flow that can be saved and run.",
+    "how_it_works": [
+      "1. Fan out from the manual trigger to three live MCP queries: k8s_cluster_health, prometheus_health_summary, loki_search_errors (uses your user OBO chain).",
+      "2. Two specialist agents analyze in parallel: cloud_operations on the k8s snapshot, engineering_metrics on prom+loki output.",
+      "3. A REST data_source_query against your configured 'httpbin-proof' (or any rest_api) acts as an external healthcheck probe.",
+      "4. prompt_template builds a structured synthesis message; flows_expert agent writes the final {summary, findings, recommendations, proposed_flow} JSON.",
+      "5. structured_output validates the JSON shape; webhook_response renders an HTML artifact (saved to the Artifacts library) including the proposed remediation sub-flow definition.",
+      "6. A switch node routes to your chosen notification target — slack_message (#devops via webhook), send_email (your test inbox), or teams_message (webhook URL)."
+    ],
+    "expected_output": "An HTML artifact persisted to the Artifacts library containing: 1-3 sentence executive summary, prioritized findings, ranked recommendations with rationale, and a copy-pastable sub-flow JSON for remediation. Plus a real notification delivered to Slack / Email / Teams.",
+    "useful_when": "Run on a schedule as a morning digest, on-demand during an incident, or as a sanity check after any production rollout. Drop the notification_target on the trigger to switch channels per run.",
+    "tools_used": [
+      "openagentic_kubernetes.k8s_cluster_health",
+      "openagentic_prometheus.prometheus_health_summary",
+      "openagentic_loki.loki_search_errors",
+      "data_source_query (rest_api)",
+      "agent_single (cloud_operations, engineering_metrics, flows_expert)",
+      "prompt_template",
+      "structured_output",
+      "webhook_response (persistAsArtifact)",
+      "switch (notification routing)",
+      "slack_message / send_email / teams_message"
+    ],
+    "version": "1.0",
+    "configuration_required": [
+      "Workspace credential: SLACK_DEVOPS_WEBHOOK (or override webhook URL via trigger input)",
+      "Optional Teams webhook URL via trigger input",
+      "Email destination via trigger input (default: trent@openagentic.io)",
+      "A REST data source named 'httpbin-proof' or your own rest_api data source — paste its id into the trigger input"
+    ]
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "position": { "x": 100, "y": 500 },
+        "data": {
+          "triggerType": "manual",
+          "defaultInputs": {
+            "time_window": "15m",
+            "namespace": "agentic-dev",
+            "min_severity": "warning",
+            "notification_target": "slack",
+            "notification_email_to": "trent@openagentic.io",
+            "notification_teams_webhook": "",
+            "data_source_id": "a7e40df7-a465-4856-b3ab-74f8ba88fff5",
+            "data_source_query_path": "/status/200"
+          }
+        }
+      },
+
+      {
+        "id": "mcp_k8s",
+        "type": "mcp_tool",
+        "position": { "x": 400, "y": 150 },
+        "data": { "toolServer": "openagentic_kubernetes", "toolName": "k8s_cluster_health", "arguments": {} }
+      },
+      {
+        "id": "mcp_prom",
+        "type": "mcp_tool",
+        "position": { "x": 400, "y": 350 },
+        "data": { "toolServer": "openagentic_prometheus", "toolName": "prometheus_health_summary", "arguments": {} }
+      },
+      {
+        "id": "mcp_loki",
+        "type": "mcp_tool",
+        "position": { "x": 400, "y": 550 },
+        "data": {
+          "toolServer": "openagentic_loki",
+          "toolName": "loki_search_errors",
+          "arguments": { "since": "{{trigger.time_window}}", "limit": 50 }
+        }
+      },
+      {
+        "id": "healthcheck",
+        "type": "data_source_query",
+        "position": { "x": 400, "y": 750 },
+        "data": {
+          "dataSourceId": "{{trigger.data_source_id}}",
+          "mode": "raw",
+          "query": "{{trigger.data_source_query_path}}"
+        }
+      },
+
+      {
+        "id": "agent_cloud",
+        "type": "agent_single",
+        "position": { "x": 700, "y": 250 },
+        "data": {
+          "role": "cloud_operations",
+          "model": "auto",
+          "prompt": "Analyze the following Kubernetes cluster health snapshot for namespace {{trigger.namespace}}. Identify any unhealthy nodes, components, or resource pressure. Output a 4-bullet summary plus a 'concerns' list of specific issues.\n\nCLUSTER HEALTH JSON:\n{{steps.mcp_k8s.content}}",
+          "maxTurns": 2
+        }
+      },
+      {
+        "id": "agent_metrics",
+        "type": "agent_single",
+        "position": { "x": 700, "y": 550 },
+        "data": {
+          "role": "engineering_metrics",
+          "model": "auto",
+          "prompt": "Analyze service metrics and error logs from the last {{trigger.time_window}}. Identify hot services, latency anomalies, and recurring error patterns at severity >= {{trigger.min_severity}}. Output a 4-bullet summary plus a 'patterns' list.\n\nPROMETHEUS HEALTH SUMMARY:\n{{steps.mcp_prom.content}}\n\nLOKI ERROR LOGS:\n{{steps.mcp_loki.content}}",
+          "maxTurns": 2
+        }
+      },
+
+      {
+        "id": "synth_prompt",
+        "type": "prompt_template",
+        "position": { "x": 1000, "y": 400 },
+        "data": {
+          "template": "{{system}}\nYou are the senior SRE on call. You receive two analyst briefings (cluster + metrics) plus an external healthcheck. Produce an actionable JSON report with this exact shape:\n{\n  \"summary\": \"1-3 sentence executive summary\",\n  \"findings\": [\"bullet\", \"bullet\", ...],\n  \"recommendations\": [{ \"title\": \"string\", \"priority\": \"P0|P1|P2\", \"rationale\": \"string\" }],\n  \"proposed_flow\": {\n    \"name\": \"Remediation: <issue>\",\n    \"description\": \"Auto-generated sub-flow that implements the recommendations.\",\n    \"definition\": {\n      \"nodes\": [ /* trigger + tool/agent nodes that take action */ ],\n      \"edges\": [ /* connecting them */ ]\n    }\n  }\n}\nThe proposed_flow MUST be a valid OpenAgentic Flows definition (trigger + at least one mcp_tool/agent_single/webhook_response node). Keep it minimal — 3-5 nodes max.\n{{user}}\nCLOUD ANALYST BRIEFING:\n{{cloud_brief}}\n\nMETRICS ANALYST BRIEFING:\n{{metrics_brief}}\n\nEXTERNAL HEALTHCHECK:\n{{health}}\n\nNAMESPACE: {{namespace}}\nTIME WINDOW: {{time_window}}",
+          "variables": {
+            "cloud_brief": "{{steps.agent_cloud.content}}",
+            "metrics_brief": "{{steps.agent_metrics.content}}",
+            "health": "rowCount={{steps.healthcheck.rowCount}} columns={{steps.healthcheck.columns}}",
+            "namespace": "{{trigger.namespace}}",
+            "time_window": "{{trigger.time_window}}"
+          },
+          "outputAs": "messages"
+        }
+      },
+
+      {
+        "id": "agent_synth",
+        "type": "agent_single",
+        "position": { "x": 1300, "y": 400 },
+        "data": {
+          "role": "flows_expert",
+          "model": "auto",
+          "prompt": "{{steps.synth_prompt.messages}}",
+          "maxTurns": 2
+        }
+      },
+
+      {
+        "id": "structured",
+        "type": "structured_output",
+        "position": { "x": 1600, "y": 400 },
+        "data": {
+          "model": "auto",
+          "prompt": "Extract the JSON report from this synthesizer output:\n\n{{steps.agent_synth.content}}",
+          "schema": {
+            "type": "object",
+            "required": ["summary", "findings", "recommendations", "proposed_flow"],
+            "properties": {
+              "summary": { "type": "string" },
+              "findings": { "type": "array", "items": { "type": "string" } },
+              "recommendations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["title", "priority", "rationale"],
+                  "properties": {
+                    "title": { "type": "string" },
+                    "priority": { "type": "string", "enum": ["P0", "P1", "P2"] },
+                    "rationale": { "type": "string" }
+                  }
+                }
+              },
+              "proposed_flow": {
+                "type": "object",
+                "required": ["name", "description", "definition"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "definition": { "type": "object" }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      {
+        "id": "render_html",
+        "type": "webhook_response",
+        "position": { "x": 1900, "y": 200 },
+        "data": {
+          "statusCode": 200,
+          "bodyTemplate": "<h2>Cluster Health Capstone — {{trigger.namespace}} / {{trigger.time_window}}</h2>\n<p><strong>Summary:</strong> {{steps.structured.output.summary}}</p>\n<h3>Findings</h3>\n<pre>{{steps.structured.output.findings}}</pre>\n<h3>Recommendations</h3>\n<pre>{{steps.structured.output.recommendations}}</pre>\n<h3>Proposed Remediation Sub-Flow</h3>\n<p><strong>{{steps.structured.output.proposed_flow.name}}</strong></p>\n<pre>{{steps.structured.output.proposed_flow.definition}}</pre>\n<p><em>Copy the JSON above into 'New Workflow → Import JSON' to save the remediation flow.</em></p>",
+          "persistAsArtifact": true
+        }
+      },
+
+      {
+        "id": "route_notify",
+        "type": "switch",
+        "position": { "x": 1900, "y": 500 },
+        "data": {
+          "expression": "{{trigger.notification_target}}",
+          "cases": [
+            { "value": "slack", "label": "slack" },
+            { "value": "email", "label": "email" },
+            { "value": "teams", "label": "teams" },
+            { "value": "default", "label": "slack" }
+          ]
+        }
+      },
+
+      {
+        "id": "notify_slack",
+        "type": "slack_message",
+        "position": { "x": 2200, "y": 350 },
+        "data": {
+          "webhookUrl": "{{secret:SLACK_DEVOPS_WEBHOOK}}",
+          "message": "Cluster Health Capstone — {{trigger.namespace}} ({{trigger.time_window}})\n\nSummary: {{steps.structured.output.summary}}\n\nProposed remediation: {{steps.structured.output.proposed_flow.name}}"
+        }
+      },
+      {
+        "id": "notify_email",
+        "type": "send_email",
+        "position": { "x": 2200, "y": 500 },
+        "data": {
+          "to": "{{trigger.notification_email_to}}",
+          "subject": "Cluster Health Capstone — {{trigger.namespace}} ({{trigger.time_window}})",
+          "body": "Summary: {{steps.structured.output.summary}}\n\nFindings:\n{{steps.structured.output.findings}}\n\nRecommendations:\n{{steps.structured.output.recommendations}}\n\nProposed remediation sub-flow: {{steps.structured.output.proposed_flow.name}}",
+          "smtpHost": "{{secret:SMTP_HOST}}",
+          "smtpPort": "{{secret:SMTP_PORT}}",
+          "smtpUser": "{{secret:SMTP_USER}}",
+          "smtpPasswordRef": "{{secret:SMTP_PASS}}"
+        }
+      },
+      {
+        "id": "notify_teams",
+        "type": "teams_message",
+        "position": { "x": 2200, "y": 650 },
+        "data": {
+          "webhookUrl": "{{trigger.notification_teams_webhook}}",
+          "message": "Cluster Health Capstone — {{trigger.namespace}} ({{trigger.time_window}})",
+          "cardTitle": "Cluster Health — {{trigger.namespace}}",
+          "cardBody": "Summary: {{steps.structured.output.summary}}\n\nProposed remediation: {{steps.structured.output.proposed_flow.name}}"
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e_t_k8s", "source": "trigger", "target": "mcp_k8s" },
+      { "id": "e_t_prom", "source": "trigger", "target": "mcp_prom" },
+      { "id": "e_t_loki", "source": "trigger", "target": "mcp_loki" },
+      { "id": "e_t_health", "source": "trigger", "target": "healthcheck" },
+
+      { "id": "e_k8s_ac", "source": "mcp_k8s", "target": "agent_cloud" },
+      { "id": "e_prom_am", "source": "mcp_prom", "target": "agent_metrics" },
+      { "id": "e_loki_am", "source": "mcp_loki", "target": "agent_metrics" },
+
+      { "id": "e_ac_sp", "source": "agent_cloud", "target": "synth_prompt" },
+      { "id": "e_am_sp", "source": "agent_metrics", "target": "synth_prompt" },
+      { "id": "e_h_sp", "source": "healthcheck", "target": "synth_prompt" },
+
+      { "id": "e_sp_as", "source": "synth_prompt", "target": "agent_synth" },
+      { "id": "e_as_str", "source": "agent_synth", "target": "structured" },
+
+      { "id": "e_str_rh", "source": "structured", "target": "render_html" },
+      { "id": "e_str_route", "source": "structured", "target": "route_notify" },
+
+      { "id": "e_route_slack", "source": "route_notify", "sourceHandle": "slack", "target": "notify_slack" },
+      { "id": "e_route_email", "source": "route_notify", "sourceHandle": "email", "target": "notify_email" },
+      { "id": "e_route_teams", "source": "route_notify", "sourceHandle": "teams", "target": "notify_teams" }
+    ]
+  }
+}

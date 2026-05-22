@@ -118,27 +118,32 @@ export class RAGInitService {
           this.logger.info('✅ RAG services initialized successfully');
 
           // -------------------------------------------------------------
-          // Docs auto-ingest: populate the platform_docs Milvus collection
-          // on first startup of a fresh release. Runs ONLY when:
-          //   1. DOCS_AUTO_INGEST=true env var is set (opt-in, chart-gated)
-          //   2. The platform_docs collection exists but has 0 rows
+          // Docs reconcile (task #157): keeps platform_docs aligned with
+          // the UI image's manifest fingerprint. Runs ONLY when
+          // DOCS_AUTO_INGEST=true (chart-gated).
           //
-          // Every v0.6.3+ release includes fresh JSON manifests baked into
-          // the UI image at public/docs/generated/. Without auto-ingest the
-          // collection starts empty on every rebuild and only an admin's
-          // manual POST /api/docs/ingest would populate it. With
-          // auto-ingest the docs agent has full platform knowledge
-          // (services + companion projects) as soon as the API is ready.
+          //   - fetches _version.json from the UI
+          //   - compares manifestHash against platform_docs_meta
+          //   - re-ingests only when hash changed OR rowCount==0
           //
-          // Fire-and-forget — if the ingest fails the API still starts,
-          // admin can retry via POST /api/docs/ingest.
+          // Override: DOCS_FORCE_REINGEST=true bypasses the hash check
+          // and always re-ingests (debug helper).
+          //
+          // Fire-and-forget — the potentially-multi-minute embedding pass
+          // must not block API readiness.
           // -------------------------------------------------------------
           if (process.env.DOCS_AUTO_INGEST === 'true') {
-            this.logger.info('📚 Docs auto-ingest enabled — checking collection');
-            // Don't await — let it run in the background so API startup
-            // isn't blocked by the (potentially multi-minute) embedding
-            // pass over the manifests.
-            void this.triggerDocsAutoIngest();
+            const force = process.env.DOCS_FORCE_REINGEST === 'true';
+            this.logger.info(
+              { force },
+              '📚 Docs auto-ingest enabled — reconciling',
+            );
+            void this.reconcileDocsIngest({ force }).catch((err) => {
+              this.logger.error(
+                { err: err?.message || String(err) },
+                '📚 Docs reconcile crashed — admin can retry via POST /api/docs/ingest',
+              );
+            });
           } else {
             this.logger.debug('📚 Docs auto-ingest disabled (DOCS_AUTO_INGEST != "true")');
           }
@@ -182,49 +187,160 @@ export class RAGInitService {
   }
 
   /**
-   * Background task: if the platform_docs Milvus collection is empty
-   * (fresh install or first pod of a new release), call DocsRAGService
-   * ingestDocs() to populate it from the UI's baked-in JSON manifests.
+   * Reconcile platform_docs with the UI image's manifest fingerprint (task #157).
    *
-   * Gated on DOCS_AUTO_INGEST=true (chart sets this in the API env).
-   * Runs as fire-and-forget from initialize(); errors are logged but
-   * don't affect API startup — an admin can always retry manually via
-   * POST /api/docs/ingest.
+   * Inputs (live lookups at call time):
+   *   - GET ${DOCS_MANIFEST_URL}/_version.json — current UI fingerprint
+   *   - platform_docs_meta Milvus collection    — last-ingested fingerprint
+   *   - platform_docs Milvus collection stats   — row count (fallback path)
+   *
+   * Decision matrix:
+   *   rowCount == 0                                  → first-ingest
+   *   options.force == true                          → reingest (bypass hash)
+   *   _version.json missing / unreachable            → skip (old UI image)
+   *   platform_docs_meta missing OR hash differs     → reingest
+   *   hashes match                                   → skip
+   *
+   * Returns a structured result so the HTTP handler can surface it.
    */
-  private async triggerDocsAutoIngest(): Promise<void> {
+  async reconcileDocsIngest(options: {
+    force?: boolean;
+  } = {}): Promise<{
+    action: 'reingested' | 'skipped' | 'first-ingest';
+    manifestHash: string | null;
+    rowsBefore: number;
+    rowsAfter: number;
+    durationMs: number;
+    reason: string;
+  }> {
+    const started = Date.now();
+    const force = options.force === true;
+    const { getDocsRAGService } = await import('./DocsRAGService.js');
+    const docsRAG = getDocsRAGService(this.logger);
+
     try {
-      const { getDocsRAGService } = await import('./DocsRAGService.js');
-      const docsRAG = getDocsRAGService(this.logger);
+      const statsBefore = await docsRAG.getCollectionStats();
+      const rowsBefore = typeof statsBefore?.rowCount === 'number' ? statsBefore.rowCount : 0;
 
-      // First check if the collection already has content — skip if so.
-      // ingestDocs() drops and recreates the collection, so we only want
-      // it to run on empty collections (fresh install) or when an admin
-      // explicitly re-triggers via the REST endpoint.
-      const stats = await docsRAG.getCollectionStats();
-      const rowCount = typeof stats?.rowCount === 'number' ? stats.rowCount : 0;
+      // Fetch the UI-side fingerprint. If it's missing (old UI image pre
+      // task #157), fall back to the legacy "0 rows = ingest" behavior.
+      const version = await docsRAG.fetchVersion();
+      const incomingHash = version?.manifestHash ?? null;
 
-      if (rowCount > 0) {
+      // First-ingest path — collection empty, just fill it.
+      if (rowsBefore === 0) {
         this.logger.info(
-          { rowCount },
-          '📚 Docs collection already populated — skipping auto-ingest (use POST /api/docs/ingest to force refresh)',
+          { incomingHash, rowsBefore },
+          '📚 Docs collection empty — first-ingest',
         );
-        return;
+        const result = await docsRAG.ingestDocs();
+        if (incomingHash && version) {
+          await docsRAG.writeMilvusMetaHash({
+            manifestHash: incomingHash,
+            manifestCount: version.manifestCount,
+          });
+        }
+        const statsAfter = await docsRAG.getCollectionStats();
+        return {
+          action: 'first-ingest',
+          manifestHash: incomingHash,
+          rowsBefore,
+          rowsAfter: statsAfter?.rowCount || result.chunksIngested,
+          durationMs: Date.now() - started,
+          reason: 'collection was empty',
+        };
       }
 
-      this.logger.info('📚 Docs collection empty — starting auto-ingest from baked-in manifests');
-      const started = Date.now();
-      const result = await docsRAG.ingestDocs();
-      const durationMs = Date.now() - started;
+      // Force override — always reingest regardless of hash state.
+      if (force) {
+        this.logger.info(
+          { incomingHash, rowsBefore },
+          '📚 Force reingest requested (DOCS_FORCE_REINGEST=true or ?force=true)',
+        );
+        const result = await docsRAG.ingestDocs();
+        if (incomingHash && version) {
+          await docsRAG.writeMilvusMetaHash({
+            manifestHash: incomingHash,
+            manifestCount: version.manifestCount,
+          });
+        }
+        const statsAfter = await docsRAG.getCollectionStats();
+        return {
+          action: 'reingested',
+          manifestHash: incomingHash,
+          rowsBefore,
+          rowsAfter: statsAfter?.rowCount || result.chunksIngested,
+          durationMs: Date.now() - started,
+          reason: 'force=true',
+        };
+      }
 
+      // No _version.json — the UI image is pre-task-#157. We can't decide
+      // what to do, so leave the existing rows in place (same behavior as
+      // before task #157: populated collection is never re-ingested on boot).
+      if (!incomingHash || !version) {
+        this.logger.info(
+          { rowsBefore },
+          '📚 No _version.json available — skipping reconcile (legacy UI image)',
+        );
+        return {
+          action: 'skipped',
+          manifestHash: null,
+          rowsBefore,
+          rowsAfter: rowsBefore,
+          durationMs: Date.now() - started,
+          reason: '_version.json unavailable',
+        };
+      }
+
+      // Compare against stored hash.
+      const stored = await docsRAG.readMilvusMetaHash();
+      const storedHash = stored?.manifestHash ?? null;
+
+      if (storedHash === incomingHash) {
+        this.logger.info(
+          { manifestHash: incomingHash, manifestCount: version.manifestCount },
+          `Docs in-sync (manifestHash=${incomingHash.substring(0, 16)}... / ${version.manifestCount} manifests)`,
+        );
+        return {
+          action: 'skipped',
+          manifestHash: incomingHash,
+          rowsBefore,
+          rowsAfter: rowsBefore,
+          durationMs: Date.now() - started,
+          reason: 'manifestHash unchanged',
+        };
+      }
+
+      // Hash drift detected → reingest.
       this.logger.info(
-        { chunksIngested: result.chunksIngested, durationMs },
-        '📚 Docs auto-ingest completed',
+        {
+          storedHash: storedHash ? storedHash.substring(0, 16) + '...' : null,
+          incomingHash: incomingHash.substring(0, 16) + '...',
+          manifestCount: version.manifestCount,
+        },
+        '📚 Docs manifestHash drift — re-ingesting',
       );
+      const result = await docsRAG.ingestDocs();
+      await docsRAG.writeMilvusMetaHash({
+        manifestHash: incomingHash,
+        manifestCount: version.manifestCount,
+      });
+      const statsAfter = await docsRAG.getCollectionStats();
+      return {
+        action: 'reingested',
+        manifestHash: incomingHash,
+        rowsBefore,
+        rowsAfter: statsAfter?.rowCount || result.chunksIngested,
+        durationMs: Date.now() - started,
+        reason: storedHash ? 'manifestHash changed' : 'platform_docs_meta missing',
+      };
     } catch (err: any) {
       this.logger.error(
         { err: err?.message || String(err) },
-        '📚 Docs auto-ingest failed — admin can retry via POST /api/docs/ingest',
+        '📚 Docs reconcile failed — admin can retry via POST /api/docs/ingest',
       );
+      throw err;
     }
   }
 

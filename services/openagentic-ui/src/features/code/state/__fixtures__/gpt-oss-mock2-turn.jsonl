@@ -1,0 +1,21 @@
+// fixture: gpt-oss-mock2-turn — mock-2 (fullstack URL shortener) parity capture.
+// Demonstrates: plugin_loaded + skill_invoked system events, then 3 parallel tool_use
+// blocks (Write × 3) inside the same assistant message. Used to assert the new
+// `kind:'boundary'` blocks land + the parallel grouping pass collapses the 3 writes
+// into a parallel_group with .tools.length === 3.
+{"type":"system","subtype":"init","cwd":"/workspace/scratch/url-shortener","session_id":"sess-mock2","tools":["Bash","Read","Write","Edit"],"mcp_servers":[],"model":"claude-sonnet-4-6","permissionMode":"bypassPermissions","slash_commands":["/help"],"apiKeySource":"env","openagentic_version":"0.6.28","uuid":"uuid-init-m2","fast_mode_state":"inactive"}
+{"type":"system","subtype":"plugin_loaded","data":{"pluginId":"fastapi-scaffold","version":"1.4.0","marketplace":"anthropics/claude-plugins-official","tools":6,"skills":2},"uuid":"uuid-plug-001"}
+{"type":"system","subtype":"skill_invoked","data":{"skillId":"fullstack-scaffolder/python-react","version":"2.1","rule":"fullstack URL shortener"},"uuid":"uuid-skill-001"}
+{"type":"stream_event","event":{"type":"message_start","message":{"id":"msg_m2_1","type":"message","role":"assistant","content":[],"model":"claude-sonnet-4-6","stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":0,"output_tokens":0}}},"session_id":"sess-mock2","parent_tool_use_id":null,"uuid":"uuid-m2-001"}
+{"type":"stream_event","event":{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_M2_W1","name":"Write","input":{}}},"session_id":"sess-mock2","parent_tool_use_id":null,"uuid":"uuid-m2-002"}
+{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"path\":\"backend/app/main.py\",\"content\":\"x\"}"}},"session_id":"sess-mock2","parent_tool_use_id":null,"uuid":"uuid-m2-003"}
+{"type":"stream_event","event":{"type":"content_block_stop","index":0},"session_id":"sess-mock2","parent_tool_use_id":null,"uuid":"uuid-m2-004"}
+{"type":"stream_event","event":{"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_M2_W2","name":"Write","input":{}}},"session_id":"sess-mock2","parent_tool_use_id":null,"uuid":"uuid-m2-005"}
+{"type":"stream_event","event":{"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"{\"path\":\"backend/app/auth.py\",\"content\":\"y\"}"}},"session_id":"sess-mock2","parent_tool_use_id":null,"uuid":"uuid-m2-006"}
+{"type":"stream_event","event":{"type":"content_block_stop","index":1},"session_id":"sess-mock2","parent_tool_use_id":null,"uuid":"uuid-m2-007"}
+{"type":"stream_event","event":{"type":"content_block_start","index":2,"content_block":{"type":"tool_use","id":"toolu_M2_W3","name":"Write","input":{}}},"session_id":"sess-mock2","parent_tool_use_id":null,"uuid":"uuid-m2-008"}
+{"type":"stream_event","event":{"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":"{\"path\":\"frontend/src/App.tsx\",\"content\":\"z\"}"}},"session_id":"sess-mock2","parent_tool_use_id":null,"uuid":"uuid-m2-009"}
+{"type":"stream_event","event":{"type":"content_block_stop","index":2},"session_id":"sess-mock2","parent_tool_use_id":null,"uuid":"uuid-m2-010"}
+{"type":"stream_event","event":{"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null},"usage":{"output_tokens":42}},"session_id":"sess-mock2","parent_tool_use_id":null,"uuid":"uuid-m2-011"}
+{"type":"stream_event","event":{"type":"message_stop"},"session_id":"sess-mock2","parent_tool_use_id":null,"uuid":"uuid-m2-012"}
+{"type":"result","subtype":"success","is_error":false,"duration_ms":3500,"duration_api_ms":2200,"num_turns":1,"session_id":"sess-mock2","total_cost_usd":0.012,"usage":{"input_tokens":2418,"output_tokens":42,"cache_creation_input_tokens":0,"cache_read_input_tokens":0},"uuid":"uuid-m2-res"}

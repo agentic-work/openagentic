@@ -1,0 +1,47 @@
+{
+  "type": "wait",
+  "category": "control",
+  "label": "Wait",
+  "description": "Pause workflow execution for a specified duration. Short waits (< 30 s) sleep in-process; long waits store state and schedule a resume.",
+  "icon": "clock",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "waited": "boolean",
+          "duration": "number"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "duration",
+      "label": "Duration",
+      "type": "number",
+      "required": false,
+      "default": 5,
+      "min": 0,
+      "description": "How long to wait. Paired with unit."
+    },
+    {
+      "name": "unit",
+      "label": "Unit",
+      "type": "enum",
+      "values": ["ms", "milliseconds", "seconds", "minutes", "hours", "days"],
+      "default": "seconds",
+      "required": false
+    }
+  ],
+  "ai": {
+    "shortDescription": "Pause execution for a fixed duration.",
+    "whenToUse": "When you need a delay between steps — e.g. rate-limiting, polling back-off, or waiting for an async operation to settle.",
+    "examplePrompt": "wait 30 seconds before the next step",
+    "promptHints": "Short waits (< 30 s) sleep in-process. Long waits pause the workflow and resume via scheduler. Pass-through: downstream nodes see the same input."
+  },
+  "outputAssertions": []
+}

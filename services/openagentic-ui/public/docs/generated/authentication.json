@@ -1,219 +1,78 @@
 {
   "domain": "authentication",
   "title": "Authentication",
-  "description": "Unified token validation supporting 4 token types across 6 auth provider configurations.",
+  "description": "Token validation + auth flows",
   "icon": "shield",
-  "category": "core",
-  "generatedAt": "2026-04-06T02:45:19.334Z",
+  "category": "security",
+  "generatedAt": "2026-05-13T20:48:20.632Z",
   "sourceFiles": [
     "services/openagentic-api/src/auth/tokenValidator.ts"
   ],
   "sections": [
     {
-      "id": "auth-providers",
-      "title": "Authentication Providers",
-      "description": "Supported AUTH_PROVIDER values that control which identity providers are active. Default: \"azure-ad\".",
+      "id": "UnifiedTokenResult",
+      "title": "UnifiedTokenResult",
+      "description": "Interface UnifiedTokenResult",
       "adminOnly": false,
       "items": [
         {
-          "id": "auth-provider-azure-azure-ad",
-          "name": "azure-ad",
-          "description": "Enables Azure AD authentication (AUTH_PROVIDER=azure-ad)",
-          "type": "auth-provider",
-          "properties": {
-            "enablesAzureAD": true,
-            "isDefault": true
-          }
-        },
-        {
-          "id": "auth-provider-azure-azure",
-          "name": "azure",
-          "description": "Enables Azure AD authentication (AUTH_PROVIDER=azure)",
-          "type": "auth-provider",
-          "properties": {
-            "enablesAzureAD": true,
-            "isDefault": false
-          }
-        },
-        {
-          "id": "auth-provider-azure-hybrid",
-          "name": "hybrid",
-          "description": "Enables both Azure AD and Google authentication (AUTH_PROVIDER=hybrid)",
-          "type": "auth-provider",
-          "properties": {
-            "enablesAzureAD": true,
-            "isDefault": false,
-            "enablesGoogle": true
-          }
-        },
-        {
-          "id": "auth-provider-azure-both",
-          "name": "both",
-          "description": "Enables both Azure AD and Google authentication (AUTH_PROVIDER=both)",
-          "type": "auth-provider",
-          "properties": {
-            "enablesAzureAD": true,
-            "isDefault": false,
-            "enablesGoogle": true
-          }
-        },
-        {
-          "id": "auth-provider-azure-all",
-          "name": "all",
-          "description": "Enables both Azure AD and Google authentication (AUTH_PROVIDER=all)",
-          "type": "auth-provider",
-          "properties": {
-            "enablesAzureAD": true,
-            "isDefault": false,
-            "enablesGoogle": true
-          }
-        },
-        {
-          "id": "auth-provider-google-google",
-          "name": "google",
-          "description": "Enables Google authentication (AUTH_PROVIDER=google)",
-          "type": "auth-provider",
-          "properties": {
-            "enablesGoogle": true,
-            "isDefault": false
-          }
-        }
-      ]
-    },
-    {
-      "id": "token-types",
-      "title": "Token Types",
-      "description": "The unified token validator detects and validates multiple token formats.",
-      "adminOnly": false,
-      "items": [
-        {
-          "id": "token-local",
-          "name": "local",
-          "description": "Platform-issued JWT with userId claim",
-          "type": "token-type"
-        },
-        {
-          "id": "token-azure-ad",
-          "name": "azure-ad",
-          "description": "Microsoft Azure AD token with tid and oid claims",
-          "type": "token-type"
-        },
-        {
-          "id": "token-google",
-          "name": "google",
-          "description": "Google token with accounts.google.com issuer",
-          "type": "token-type"
-        },
-        {
-          "id": "token-api-key",
-          "name": "api-key",
-          "description": "API key with awc_ prefix (awc_ followed by 64 hex chars)",
-          "type": "token-type"
-        }
-      ]
-    },
-    {
-      "id": "token-result",
-      "title": "Token Validation Result",
-      "description": "The UnifiedTokenResult interface returned by validateAnyToken().",
-      "adminOnly": false,
-      "items": [
-        {
-          "id": "result-isValid",
+          "id": "UnifiedTokenResult.isValid",
           "name": "isValid",
-          "description": "boolean field",
-          "type": "interface-field",
+          "description": "boolean",
+          "type": "ts-field",
           "properties": {
-            "type": "boolean",
-            "optional": false
-          }
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/auth/tokenValidator.ts"
         },
         {
-          "id": "result-user",
+          "id": "UnifiedTokenResult.user",
           "name": "user",
-          "description": "UserContext field",
-          "type": "interface-field",
+          "description": "UserContext",
+          "type": "ts-field",
           "properties": {
-            "type": "UserContext",
-            "optional": true
-          }
+            "tsType": "UserContext"
+          },
+          "sourceFile": "services/openagentic-api/src/auth/tokenValidator.ts"
         },
         {
-          "id": "result-error",
+          "id": "UnifiedTokenResult.error",
           "name": "error",
-          "description": "string field",
-          "type": "interface-field",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "type": "string",
-            "optional": true
-          }
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/auth/tokenValidator.ts"
         },
         {
-          "id": "result-tokenType",
+          "id": "UnifiedTokenResult.tokenType",
           "name": "tokenType",
-          "description": "'local' | 'azure-ad' | 'google' | 'api-key' field",
-          "type": "interface-field",
+          "description": "'local' | 'azure-ad' | 'google' | 'api-key'",
+          "type": "ts-field",
           "properties": {
-            "type": "'local' | 'azure-ad' | 'google' | 'api-key'",
-            "optional": true
-          }
+            "tsType": "'local' | 'azure-ad' | 'google' | 'api-key'"
+          },
+          "sourceFile": "services/openagentic-api/src/auth/tokenValidator.ts"
         },
         {
-          "id": "result-apiKeyId",
+          "id": "UnifiedTokenResult.apiKeyId",
           "name": "apiKeyId",
-          "description": "For API key requests, used for usage tracking",
-          "type": "interface-field",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "type": "string",
-            "optional": true
-          }
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/auth/tokenValidator.ts"
         },
         {
-          "id": "result-apiKeyName",
+          "id": "UnifiedTokenResult.apiKeyName",
           "name": "apiKeyName",
-          "description": "Human-readable name of the API key",
-          "type": "interface-field",
+          "description": "string",
+          "type": "ts-field",
           "properties": {
-            "type": "string",
-            "optional": true
-          }
-        }
-      ]
-    },
-    {
-      "id": "auth-functions",
-      "title": "Auth Functions",
-      "description": "Exported functions from the unified token validator.",
-      "adminOnly": false,
-      "items": [
-        {
-          "id": "fn-validateAnyToken",
-          "name": "validateAnyToken",
-          "description": "Exported auth function",
-          "type": "function",
-          "properties": {
-            "signature": "validateAnyToken(\n  token: string,\n  options?: {\n    requireAdmin?: boolean;\n    logger?: any;\n  )"
+            "tsType": "string"
           },
-          "sourceLine": 63,
-          "sourceFile": "services/openagentic-api/src/auth/tokenValidator.ts"
-        },
-        {
-          "id": "fn-extractBearerToken",
-          "name": "extractBearerToken",
-          "description": "Exported auth function",
-          "type": "function",
-          "properties": {
-            "signature": "extractBearerToken(authHeader?: string)"
-          },
-          "sourceLine": 414,
-          "sourceFile": "services/openagentic-api/src/auth/tokenValidator.ts"
-        },
-        {
-          "id": "fn-getAuthProvider",
-          "name": "getAuthProvider",
-          "description": "Exported auth helper",
-          "type": "function",
-          "sourceLine": 52,
           "sourceFile": "services/openagentic-api/src/auth/tokenValidator.ts"
         }
       ]

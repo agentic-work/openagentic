@@ -262,3 +262,17 @@ export function logSecrets(secrets: SecretsConfig, logger: Logger): void {
     }
   }, 'Secrets configuration loaded (masked)');
 }
+
+// ---------------------------------------------------------------------------
+// Singleton accessor (Phase 4 — replaces (global as any).appSecrets)
+// ---------------------------------------------------------------------------
+
+let _appSecrets: SecretsConfig | null = null;
+
+export function setAppSecrets(secrets: SecretsConfig): void {
+  _appSecrets = secrets;
+}
+
+export function getAppSecrets(): SecretsConfig | null {
+  return _appSecrets;
+}

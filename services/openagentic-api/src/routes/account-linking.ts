@@ -218,10 +218,13 @@ export const accountLinkingRoutes: FastifyPluginAsync = async (fastify) => {
     preHandler: async (request, reply) => {
       const authHeader = request.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        reply.status(401).send({ error: 'Authentication required' });
+        // Fastify v5: calling reply.send() in a preHandler is not enough to abort
+        // the lifecycle — Fastify v5 requires the reply to be returned (sent AND
+        // returned). We await-and-return so Fastify sees a settled reply and skips
+        // the main handler, preventing ERR_HTTP_HEADERS_SENT (double-send).
+        await reply.status(401).send({ error: 'Authentication required' });
         return;
       }
-      // Continue to handler
     },
     schema: {
     }
@@ -285,10 +288,13 @@ export const accountLinkingRoutes: FastifyPluginAsync = async (fastify) => {
     preHandler: async (request, reply) => {
       const authHeader = request.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        reply.status(401).send({ error: 'Authentication required' });
+        // Fastify v5: calling reply.send() in a preHandler is not enough to abort
+        // the lifecycle — Fastify v5 requires the reply to be returned (sent AND
+        // returned). We await-and-return so Fastify sees a settled reply and skips
+        // the main handler, preventing ERR_HTTP_HEADERS_SENT (double-send).
+        await reply.status(401).send({ error: 'Authentication required' });
         return;
       }
-      // Continue to handler
     },
     schema: {
     }

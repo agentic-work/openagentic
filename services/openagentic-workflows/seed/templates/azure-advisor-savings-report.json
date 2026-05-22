@@ -1,0 +1,147 @@
+{
+  "slug": "azure-advisor-savings-report",
+  "name": "Azure Advisor Savings Report",
+  "description": "Pull Azure Advisor cost recommendations for a subscription via the live openagentic_azure MCP, sort by estimated annual savings descending, take the top 10, compute the rec count + total estimated annual savings (USD), and pre-compute the rows_html in one analyze transform. The platform LLM writes a 3-4 bullet operator-facing narrative on the top cost-saving actions (largest annual saving + how to apply), CoT preamble is stripped via clean_narrative, and a webhook_response renders the final HTML report. Empty-subscription case (zero recommendations — common for small/young subs or after recent remediation) renders a 'No actionable cost recommendations' banner instead of an empty table. Note: a permission-denied (401/403) response from Azure surfaces as a hard node_error from the oap-azure-mcp error_response wrapper — the template itself cannot beautify that path; the failure shows in the run timeline with the upstream Azure hint message.",
+  "category": "aiops",
+  "template": true,
+  "meta": {
+    "purpose": "Pull Azure Advisor cost recommendations for a subscription, rank by estimated annual savings, and produce an operator report with the top 10 actions and an LLM narrative on how to apply them.",
+    "how_it_works": [
+      "1. openagentic_azure.azure_advisor_list_recommendations pulls the Cost-category recs for {{subscription_id}}.",
+      "2. A single analyze transform sorts by estimated annual savings descending, slices the top 10, computes total annual savings (USD), and pre-renders the rows_html block.",
+      "3. The platform LLM writes a 3-4 bullet operator narrative on the highest-impact actions and how to apply each.",
+      "4. A CoT-stripper transform removes any LLM preamble.",
+      "5. webhook_response renders the HTML savings report. Empty-subscription short-circuit: when zero recs exist, the report shows a 'No actionable cost recommendations' banner.",
+      "Note: a 401/403 from Azure surfaces as a hard node_error from the oap-azure-mcp wrapper — the failure shows in the run timeline rather than the rendered report."
+    ],
+    "expected_output": "HTML savings report with: total annual savings (USD), top 10 recommendation rows, and a 3-4 bullet LLM 'how to apply' narrative.",
+    "useful_when": "Quarterly cloud-spend review, FinOps standup, post-quarter-end actionable cost reporting, or after a known waste event (orphaned resources, oversized SKUs).",
+    "tools_used": ["openagentic_azure.azure_advisor_list_recommendations", "llm_completion", "transform", "webhook_response"],
+    "version": "1.0",
+    "tags": ["aiops", "azure", "cost", "finops", "advisor"]
+  },
+  "defaultInputs": {
+    "subscription_id": "",
+    "category": "Cost"
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "data": {
+          "triggerType": "manual",
+          "label": "Azure Advisor Savings",
+          "input_schema": {
+            "subscription_id": "string",
+            "category": "string"
+          }
+        }
+      },
+      {
+        "id": "recommendations",
+        "type": "mcp_tool",
+        "data": {
+          "label": "recommendations",
+          "toolServer": "openagentic_azure",
+          "toolName": "azure_advisor_recommendations",
+          "arguments": {
+            "subscription_id": "{{input.subscription_id}}",
+            "category": "{{input.category || \"Cost\"}}"
+          }
+        }
+      },
+      {
+        "id": "analyze",
+        "type": "transform",
+        "data": {
+          "label": "analyze",
+          "operations": [
+            {
+              "op": "set",
+              "target": "recs_array",
+              "value": "{{ (() => { const branch = input; if (!branch || typeof branch !== 'object') return []; let arr = null; if (Array.isArray(branch.recommendations)) arr = branch.recommendations; else if (typeof branch.content === 'string') { try { const parsed = JSON.parse(branch.content); if (parsed && Array.isArray(parsed.recommendations)) arr = parsed.recommendations; } catch (e) { arr = null; } } if (!Array.isArray(arr)) return []; const parseSavings = (r) => { const ep = r && r.extended_properties; if (!ep || typeof ep !== 'object') return 0; const raw = ep.annualSavingsAmount; if (raw == null) return 0; const n = typeof raw === 'number' ? raw : parseFloat(String(raw).replace(/[^0-9.\\-]/g, '')); return Number.isFinite(n) ? n : 0; }; const copy = arr.map(r => Object.assign({}, r, { __savings: parseSavings(r) })); copy.sort((a, b) => (b.__savings || 0) - (a.__savings || 0)); return copy; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "top_recs",
+              "value": "{{ (() => { const a = Array.isArray(input.recs_array) ? input.recs_array : []; return a.slice(0, 10); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "rec_count",
+              "value": "{{ (() => { const a = Array.isArray(input.recs_array) ? input.recs_array : []; return a.length; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "total_estimated_savings_usd",
+              "value": "{{ (() => { const a = Array.isArray(input.recs_array) ? input.recs_array : []; let total = 0; for (const r of a) { const s = (r && typeof r.__savings === 'number') ? r.__savings : 0; total += s; } return Math.round(total * 100) / 100; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "subscription_label",
+              "value": "{{ (() => { const b = input; if (b && typeof b.subscription_id === 'string' && b.subscription_id) return b.subscription_id; if (b && typeof b.content === 'string') { try { const p = JSON.parse(b.content); if (p && typeof p.subscription_id === 'string') return p.subscription_id; } catch (e) { } } return 'unknown'; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "rows_html",
+              "value": "{{ (() => { const a = Array.isArray(input.top_recs) ? input.top_recs : []; if (a.length === 0) return '<tr><td colspan=\"5\"><em>No actionable cost recommendations.</em></td></tr>'; const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); const fmtCurrency = (n) => { const v = Number(n) || 0; return v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }; return a.map(r => { const target = esc((r && r.impacted_value) || ''); const kind = esc((r && r.impacted_field) || ''); const impact = esc((r && r.impact) || ''); const savings = (r && typeof r.__savings === 'number') ? r.__savings : 0; const desc = esc(((r && r.short_description) || '')).slice(0, 160); return `<tr><td>${target}</td><td>${kind}</td><td>${impact}</td><td>$${fmtCurrency(savings)}</td><td>${desc}</td></tr>`; }).join(''); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "empty_banner",
+              "value": "{{ (() => { const c = (typeof input.rec_count === 'number') ? input.rec_count : 0; if (c === 0) return '<p class=\"empty-recs\"><strong>No actionable cost recommendations.</strong> Azure Advisor returned zero Cost-category findings for this subscription. This usually means the subscription is small or recently right-sized, or insufficient utilization data — re-check in 14 days.</p>'; return ''; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "summary_payload",
+              "value": "{{ (() => { const a = Array.isArray(input.top_recs) ? input.top_recs : []; const top = a.slice(0, 5).map(r => ({ target: (r && r.impacted_value) || '', kind: (r && r.impacted_field) || '', impact: (r && r.impact) || '', annual_savings_usd: (r && typeof r.__savings === 'number') ? r.__savings : 0, short_description: (r && r.short_description) || '', solution: (r && r.solution) || '' })); return { rec_count: (typeof input.rec_count === 'number') ? input.rec_count : 0, total_estimated_savings_usd: (typeof input.total_estimated_savings_usd === 'number') ? input.total_estimated_savings_usd : 0, top_recs: top }; })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "narrative",
+        "type": "llm_completion",
+        "data": {
+          "label": "Cost Savings Narrative",
+          "prompt": "You are a FinOps operator writing a 3-4 bullet operator-facing narrative on the top Azure Advisor cost-savings actions for subscription {{steps.analyze.subscription_label}}.\n\nTotals: {{steps.analyze.rec_count}} actionable cost recommendations, total estimated annual savings ${{steps.analyze.total_estimated_savings_usd}} USD.\n\nTop recommendations (JSON):\n{{steps.analyze.summary_payload}}\n\nOutput rules (MUST follow):\n1. Start the response with a single `-` character — no preamble, no \"Here is\", no \"The user wants\", no thinking out loud.\n2. 3-4 short bullets, each on its own line, each beginning with `-`.\n3. Bullet 1: the single highest-impact recommendation — call out the impacted_value, the annual_savings_usd, and a concrete one-sentence remediation step.\n4. Bullet 2: the second-largest savings opportunity with the same structure.\n5. Bullet 3: a roll-up of any remaining quick-win recommendations (low effort, small savings each — combined dollar amount).\n6. Bullet 4 (optional): a verification step the operator should run before applying any change (e.g. CPU/memory headroom check, peak-hour DTU check).\n7. If rec_count is 0, emit one bullet stating no actionable cost recommendations were found and one bullet recommending a follow-up check in 14 days.",
+          "model": "auto",
+          "temperature": 0.2,
+          "maxTokens": 500
+        }
+      },
+      {
+        "id": "clean_narrative",
+        "type": "transform",
+        "data": {
+          "label": "Strip CoT Preamble",
+          "operations": [
+            {
+              "op": "set",
+              "target": "clean_content",
+              "value": "{{ (() => { const raw = String(input.content || ''); const inlineMatch = raw.match(/([\\.\\!\\?\\:]|\\n)\\s*(-\\s+\\S)/); const lines = raw.split(/\\r?\\n/); let firstBulletIdx = -1; for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (t.startsWith('-') || t.startsWith('•') || t.startsWith('*')) { firstBulletIdx = i; break; } } if (firstBulletIdx !== -1) { const fromLineIdx = lines.slice(firstBulletIdx).join('\\n').trim(); if (inlineMatch && inlineMatch.index !== undefined) { const fromInline = raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); if (fromInline.length < fromLineIdx.length || lines[firstBulletIdx].trim().length > 8 === false) { return fromInline; } } return fromLineIdx; } if (inlineMatch && inlineMatch.index !== undefined) { return raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); } return raw.trim(); })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "report",
+        "type": "webhook_response",
+        "data": {
+          "label": "HTML Savings Report",
+          "statusCode": 200,
+          "headers": { "Content-Type": "text/html" },
+          "bodyTemplate": "<div class=\"azure-advisor-savings-report\"><h2>Azure Advisor Savings Report — subscription {{steps.analyze.subscription_label}}</h2><p><strong>Actionable cost recommendations:</strong> {{steps.analyze.rec_count}} &middot; <strong>Total estimated annual savings:</strong> ${{steps.analyze.total_estimated_savings_usd}} USD</p>{{steps.analyze.empty_banner}}<h3>Operator Narrative</h3><pre class=\"narrative\">{{steps.clean_narrative.clean_content}}</pre><h3>Top Recommendations</h3><table class=\"recs-table\"><thead><tr><th>Resource</th><th>Resource Type</th><th>Impact</th><th>Annual Savings (USD)</th><th>Description</th></tr></thead><tbody>{{steps.analyze.rows_html}}</tbody></table></div>"
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "trigger", "target": "recommendations" },
+      { "id": "e2", "source": "recommendations", "target": "analyze" },
+      { "id": "e3", "source": "analyze", "target": "narrative" },
+      { "id": "e4", "source": "narrative", "target": "clean_narrative" },
+      { "id": "e5", "source": "clean_narrative", "target": "report" }
+    ]
+  }
+}

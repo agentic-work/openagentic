@@ -82,6 +82,20 @@ export interface HookContext {
 // Hook registration
 // ---------------------------------------------------------------------------
 
+/**
+ * Per-hook failure handling.
+ *
+ * - `fail_closed` (default): a thrown error from this hook propagates out of
+ *   HookRunner.run* and aborts the surrounding pipeline. Use for security
+ *   gates (DLP, HITL) where silently swallowing the error would let unsafe
+ *   data through.
+ * - `fail_open`: errors thrown by this hook are caught and logged; the
+ *   pipeline continues with un-modified data. Use for observers (audit,
+ *   metrics, telemetry) where a downstream sink failure shouldn't block
+ *   the user's request.
+ */
+export type HookFailureMode = 'fail_closed' | 'fail_open';
+
 export interface HookRegistration {
   /** Unique ID for this hook (for removal) */
   id: string;
@@ -95,6 +109,12 @@ export interface HookRegistration {
   agentFilter?: string[];
   /** Optional: description for admin UI */
   description?: string;
+  /**
+   * Optional: how this hook handles thrown errors. Defaults to `fail_closed`
+   * (Phase 3): errors propagate. Hooks that want the legacy "log and
+   * continue" behaviour must opt in via `failureMode: 'fail_open'`.
+   */
+  failureMode?: HookFailureMode;
 }
 
 // ---------------------------------------------------------------------------
@@ -161,12 +181,22 @@ export class HookRunner {
         const result = await fn(current, context);
         current = strategy(current, result, hook.id);
       } catch (error) {
+        // Phase 3: fail_closed by default. fail_open hooks are caught
+        // and logged so the pipeline continues with unmodified data.
+        if (hook.failureMode === 'fail_open') {
+          this.logger.error({
+            hookId: hook.id,
+            point,
+            error: (error as Error).message,
+          }, 'Modifying hook threw (fail_open) — skipping');
+          continue;
+        }
         this.logger.error({
           hookId: hook.id,
           point,
           error: (error as Error).message,
-        }, 'Modifying hook threw — skipping');
-        // Continue with unmodified data
+        }, 'Modifying hook threw (fail_closed) — propagating');
+        throw error;
       }
     }
 
@@ -174,26 +204,65 @@ export class HookRunner {
   }
 
   /**
-   * Run void hooks — all run in parallel, errors are logged.
+   * Run void hooks — fail-closed by default (errors propagate). Per-hook
+   * `failureMode: 'fail_open'` retains the legacy "log and continue"
+   * behaviour for observer-style hooks (audit, metrics, telemetry).
+   *
+   * Phase 3: changed from previous parallel-allSettled-with-swallow to
+   * sequential fail-closed by default. Sequential ordering matches the
+   * priority contract (hooks run in priority order); parallel made
+   * priority meaningless.
    */
   async runVoid<T>(point: HookPoint, data: T, context: HookContext): Promise<void> {
     const hooks = this.getHooks(point);
     if (hooks.length === 0) return;
 
-    await Promise.allSettled(
-      hooks.map(async (hook) => {
-        try {
-          const fn = hook.fn as VoidHookFn<T>;
-          await fn(data, context);
-        } catch (error) {
+    for (const hook of hooks) {
+      try {
+        const fn = hook.fn as VoidHookFn<T>;
+        await fn(data, context);
+      } catch (error) {
+        if (hook.failureMode === 'fail_open') {
           this.logger.error({
             hookId: hook.id,
             point,
             error: (error as Error).message,
-          }, 'Void hook threw');
+          }, 'Void hook threw (fail_open) — continuing');
+          continue;
         }
-      }),
-    );
+        this.logger.error({
+          hookId: hook.id,
+          point,
+          error: (error as Error).message,
+        }, 'Void hook threw (fail_closed) — propagating');
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Convenience entry: dispatch to runVoid / runModifying / runSync based on
+   * the hook point's declared kind. The Phase 3 chatLoop wires hook calls as
+   * `await hooks.run(point, data, ctx)` and lets HookRunner pick the kind.
+   *
+   * Modifying hooks: prefer calling `runModifying(point, data, ctx)` directly
+   * so the (possibly transformed) result is captured. `run()` discards the
+   * return value — fine for observer points (`on_turn_start`,
+   * `before_streaming`, `after_tool_call`, `on_turn_end`, `on_pipeline_end`)
+   * but loses the transform when used for `before_tool_call` etc.
+   */
+  async run<T>(point: HookPoint, data: T, context: HookContext): Promise<void> {
+    const kind = HOOK_KINDS[point];
+    if (kind === 'void') {
+      await this.runVoid(point, data, context);
+      return;
+    }
+    if (kind === 'modifying') {
+      await this.runModifying(point, data, context);
+      return;
+    }
+    // sync — call synchronously, ignore returned value
+    this.runSync(point, data, context);
   }
 
   /**
@@ -209,11 +278,20 @@ export class HookRunner {
         const fn = hook.fn as SyncHookFn<T>;
         current = fn(current, context);
       } catch (error) {
+        if (hook.failureMode === 'fail_open') {
+          this.logger.error({
+            hookId: hook.id,
+            point,
+            error: (error as Error).message,
+          }, 'Sync hook threw (fail_open) — skipping');
+          continue;
+        }
         this.logger.error({
           hookId: hook.id,
           point,
           error: (error as Error).message,
-        }, 'Sync hook threw — skipping');
+        }, 'Sync hook threw (fail_closed) — propagating');
+        throw error;
       }
     }
 

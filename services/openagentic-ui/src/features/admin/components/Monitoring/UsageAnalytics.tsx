@@ -26,6 +26,7 @@ import { AdminStatusBadge } from '../Shared/AdminStatusBadge';
 import { InfoTooltip } from '../Shared/AdminTooltip';
 import { CHART_COLORS } from '../Shared/chartColors';
 import { apiRequest } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 
 // ── Interfaces ────────────────────────────────────────────────────────
 
@@ -189,14 +190,18 @@ const UsageAnalytics: React.FC<UsageAnalyticsProps> = () => {
 
   return (
     <div className="space-y-5">
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Usage Analytics</h2>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-            Platform-wide usage, cost, and performance tracking
-          </p>
-        </div>
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Monitoring', 'Analytics']}
+        title="Usage Analytics"
+        explainer="Platform-wide usage, cost, and performance tracking across users and providers."
+        actions={[
+          { label: 'Refresh', onClick: fetchData },
+        ]}
+      />
+
+      {/* ── Filter bar ─────────────────────────────────────────── */}
+      <div className="flex items-start justify-end gap-4 flex-wrap">
         <AdminFilterBar
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -252,8 +257,8 @@ const UsageAnalytics: React.FC<UsageAnalyticsProps> = () => {
                   <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} />
                   <YAxis tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} />
                   <RechartsTooltip content={<ChartTip vFmt={fmt} />} />
-                  <Bar dataKey="requests" name="Requests" fill="#6366f1" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="errors" name="Errors" fill="#ef4444" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="requests" name="Requests" fill="var(--ap-accent)" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="errors" name="Errors" fill="var(--ap-err)" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -267,8 +272,8 @@ const UsageAnalytics: React.FC<UsageAnalyticsProps> = () => {
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="usageTokenGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                      <stop offset="5%" stopColor="var(--ap-warn)" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="var(--ap-warn)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
@@ -276,8 +281,8 @@ const UsageAnalytics: React.FC<UsageAnalyticsProps> = () => {
                   <YAxis yAxisId="tokens" tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} tickFormatter={fmtK} />
                   <YAxis yAxisId="cost" orientation="right" tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} tickFormatter={(v) => `$${v}`} />
                   <RechartsTooltip content={<ChartTip vFmt={(v) => String(v)} />} />
-                  <Area yAxisId="tokens" type="monotone" dataKey="tokens" name="Tokens" stroke="#f59e0b" fill="url(#usageTokenGrad)" strokeWidth={2} />
-                  <Area yAxisId="cost" type="monotone" dataKey="cost" name="Cost ($)" stroke="#00D26A" fill="none" strokeWidth={2} strokeDasharray="5 3" />
+                  <Area yAxisId="tokens" type="monotone" dataKey="tokens" name="Tokens" stroke="var(--ap-warn)" fill="url(#usageTokenGrad)" strokeWidth={2} />
+                  <Area yAxisId="cost" type="monotone" dataKey="cost" name="Cost ($)" stroke="var(--ap-ok)" fill="none" strokeWidth={2} strokeDasharray="5 3" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -291,15 +296,15 @@ const UsageAnalytics: React.FC<UsageAnalyticsProps> = () => {
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="latGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                      <stop offset="5%" stopColor="var(--ap-info)" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="var(--ap-info)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                   <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} />
                   <YAxis tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} tickFormatter={(v) => `${v}ms`} />
                   <RechartsTooltip content={<ChartTip vFmt={(v) => `${v.toFixed(0)}ms`} />} />
-                  <Area type="monotone" dataKey="avgLatency" name="Avg Latency" stroke="#06b6d4" fill="url(#latGrad)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="avgLatency" name="Avg Latency" stroke="var(--ap-info)" fill="url(#latGrad)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -319,7 +324,7 @@ const UsageAnalytics: React.FC<UsageAnalyticsProps> = () => {
                 className="px-2.5 py-1 text-xs font-medium capitalize transition-colors"
                 style={{
                   backgroundColor: sortBy === opt ? 'var(--color-primary)' : 'var(--color-surface)',
-                  color: sortBy === opt ? '#fff' : 'var(--text-secondary)',
+                  color: sortBy === opt ? 'var(--ap-fg-0)' : 'var(--text-secondary)',
                   borderRight: '1px solid var(--color-border)',
                 }}
               >

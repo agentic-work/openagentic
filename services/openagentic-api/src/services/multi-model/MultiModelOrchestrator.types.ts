@@ -74,14 +74,6 @@ export interface MultiModelConfig {
     /** Maximum handoffs before forcing synthesis */
     maxHandoffs: number;
   };
-
-  /** Integration with existing slider */
-  sliderOverrides: {
-    /** Slider position above which multi-model is enabled */
-    enableAbovePosition: number;
-    /** Scale role model selection by slider position */
-    scaleBySlider: boolean;
-  };
 }
 
 /**
@@ -299,11 +291,7 @@ export interface OrchestrationRequest {
   messages: unknown[];
   systemPrompt?: string;
   tools?: unknown[];
-  sliderConfig?: {
-    position: number;
-    enableThinking?: boolean;
-    thinkingBudget?: number;
-  };
+  // Orchestrator decides from message complexity + tool shape.
   config: MultiModelConfig;
   emit: (event: string, data: unknown) => void;
 }
@@ -327,21 +315,13 @@ export interface OrchestrationResult {
 }
 
 /**
- * Get required environment variable or throw
- */
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
-
-/**
- * Default multi-model configuration - ALL models from environment variables
+ * Default multi-model configuration. Models come from env vars when present;
+ * the `getDefaultMultiModelConfig()` function returns a CONFIG SNAPSHOT and
+ * must never throw — admin GET /multi-model/config relies on that to render
+ * a "not configured" state. Runtime callers that actually use these models
+ * must validate primaryModel before invoking the provider. (#368)
  */
 export function getDefaultMultiModelConfig(): MultiModelConfig {
-  // All models MUST be configured via environment variables - no hardcoded defaults
   return {
     enabled: false,
     source: 'default',
@@ -349,7 +329,7 @@ export function getDefaultMultiModelConfig(): MultiModelConfig {
       [ModelRole.REASONING]: {
         role: ModelRole.REASONING,
         enabled: true,
-        primaryModel: requireEnv('MULTI_MODEL_REASONING_PRIMARY'),
+        primaryModel: process.env.MULTI_MODEL_REASONING_PRIMARY || '',
         fallbackModel: process.env.MULTI_MODEL_REASONING_FALLBACK,
         temperature: parseFloat(process.env.MULTI_MODEL_REASONING_TEMP || '0.7'),
         thinkingBudget: parseInt(process.env.MULTI_MODEL_REASONING_THINKING_BUDGET || '8000', 10),
@@ -360,7 +340,7 @@ export function getDefaultMultiModelConfig(): MultiModelConfig {
       [ModelRole.TOOL_EXECUTION]: {
         role: ModelRole.TOOL_EXECUTION,
         enabled: true,
-        primaryModel: requireEnv('MULTI_MODEL_TOOL_PRIMARY'),
+        primaryModel: process.env.MULTI_MODEL_TOOL_PRIMARY || '',
         fallbackModel: process.env.MULTI_MODEL_TOOL_FALLBACK,
         temperature: parseFloat(process.env.MULTI_MODEL_TOOL_TEMP || '0.3'),
         options: {
@@ -371,14 +351,14 @@ export function getDefaultMultiModelConfig(): MultiModelConfig {
       [ModelRole.SYNTHESIS]: {
         role: ModelRole.SYNTHESIS,
         enabled: true,
-        primaryModel: requireEnv('MULTI_MODEL_SYNTHESIS_PRIMARY'),
+        primaryModel: process.env.MULTI_MODEL_SYNTHESIS_PRIMARY || '',
         fallbackModel: process.env.MULTI_MODEL_SYNTHESIS_FALLBACK,
         temperature: parseFloat(process.env.MULTI_MODEL_SYNTHESIS_TEMP || '0.5')
       },
       [ModelRole.FALLBACK]: {
         role: ModelRole.FALLBACK,
         enabled: true,
-        primaryModel: requireEnv('MULTI_MODEL_FALLBACK_PRIMARY'),
+        primaryModel: process.env.MULTI_MODEL_FALLBACK_PRIMARY || '',
         temperature: parseFloat(process.env.MULTI_MODEL_FALLBACK_TEMP || '0.5')
       }
     },
@@ -387,10 +367,6 @@ export function getDefaultMultiModelConfig(): MultiModelConfig {
       alwaysMultiModelPatterns: (process.env.MULTI_MODEL_TRIGGER_PATTERNS || 'analyze,compare,audit,comprehensive,investigate').split(','),
       preferCheaperToolModel: process.env.MULTI_MODEL_PREFER_CHEAP_TOOLS !== 'false',
       maxHandoffs: parseInt(process.env.MULTI_MODEL_MAX_HANDOFFS || '5', 10)
-    },
-    sliderOverrides: {
-      enableAbovePosition: parseInt(process.env.MULTI_MODEL_SLIDER_THRESHOLD || '70', 10),
-      scaleBySlider: process.env.MULTI_MODEL_SCALE_BY_SLIDER !== 'false'
     }
   };
 }

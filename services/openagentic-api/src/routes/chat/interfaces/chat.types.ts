@@ -243,9 +243,3 @@ export enum ChatErrorCode {
   // Budget errors
   BUDGET_EXCEEDED = 'BUDGET_EXCEEDED'
 }
-
-// Import for compatibility with pipeline stages
-import { PipelineContext } from '../pipeline/pipeline.types.js';
-
-// ChatContext is an alias for PipelineContext for backward compatibility
-export type ChatContext = PipelineContext;

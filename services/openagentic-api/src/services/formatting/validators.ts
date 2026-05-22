@@ -62,8 +62,12 @@ function detectUsedCapabilities(
   if (/\$\$/.test(content)) used.push('math-display');
   if (/```reactflow/i.test(content) || /```diagram\b/i.test(content)) used.push('diagram-reactflow');
   if (/```svg/i.test(content)) used.push('diagram-svg');
-  // ```mermaid is deprecated; flag for telemetry so we can steer the model toward reactflow/svg.
-  if (/```mermaid/i.test(content)) used.push('diagram-mermaid-deprecated');
+  // ```mermaid is detected purely for ANTI-PATTERN telemetry — Mermaid is
+  // removed from this platform. The renderer drops these blocks silently.
+  // First-class diagrams flow through compose_visual template:"arch_diagram"
+  // (d3 + dagre auto-layout). The capability is reported so dashboards can
+  // count model regressions and add additional prompt guidance.
+  if (/```mermaid/i.test(content)) used.push('diagram-mermaid');
   if (/```d2/i.test(content)) used.push('diagram-d2');
   if (/<details>/i.test(content)) used.push('html-details');
 

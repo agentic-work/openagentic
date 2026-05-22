@@ -514,7 +514,7 @@ const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ theme }) => {
               <XAxis dataKey="time" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
               <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
               <RechartsTooltip content={<ChartTip valueFormatter={(v) => `${v.toFixed(0)} cmd/s`} />} />
-              <Bar dataKey="cmdsPerSec" name="Commands/sec" fill="#6366f1" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="cmdsPerSec" name="Commands/sec" fill="var(--ap-accent)" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </AdminCard>

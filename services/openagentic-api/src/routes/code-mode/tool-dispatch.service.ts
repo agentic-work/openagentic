@@ -1,6 +1,8 @@
 import axios, { AxiosError } from 'axios';
 import crypto from 'crypto';
 import type { Logger } from 'pino';
+import { getInternalKey } from '../../utils/internalKeyReader.js';
+import { featureFlags } from '../../config/featureFlags.js';
 
 export interface ToolDispatchResult {
   /** tool_use_id the caller passed in, echoed back for correlation. */
@@ -34,7 +36,7 @@ function computeUserHash(userId: string): string {
  */
 function buildExecPodUrl(userId: string): string {
   const userHash = computeUserHash(userId);
-  const namespace = process.env.K8S_NAMESPACE || 'agentic-dev';
+  const namespace = featureFlags.k8sNamespace;
   const service = `openagentic-${userHash}-svc`;
   return `http://${service}.${namespace}.svc.cluster.local:3060/tool-exec`;
 }
@@ -55,10 +57,10 @@ export async function executeToolViaPod(
 ): Promise<ToolDispatchResult> {
   const start = Date.now();
   const url = buildExecPodUrl(userId);
-  const internalKey =
-    process.env.CODE_MANAGER_INTERNAL_KEY ||
-    process.env.INTERNAL_API_KEY ||
-    '';
+  // getInternalKey() reads the projected secret first and falls back
+  // through CODE_MANAGER_INTERNAL_KEY / OPENAGENTIC_INTERNAL_KEY /
+  // INTERNAL_API_KEY env vars when the file is missing.
+  const internalKey = getInternalKey();
 
   const body = {
     tool_name: toolName,

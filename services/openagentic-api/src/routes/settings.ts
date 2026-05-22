@@ -172,7 +172,7 @@ export const settingsRoutes: FastifyPluginAsync = async (fastify) => {
   
   // Get user settings endpoint for UI (with authentication)
   fastify.get('/user/settings', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: AuthenticatedRequest, reply: any) => {
     // Get user from authenticated request
     const user = request.user;
@@ -234,7 +234,7 @@ export const settingsRoutes: FastifyPluginAsync = async (fastify) => {
   
   // Update user settings endpoint for UI (with authentication)
   fastify.put('/user/settings', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: AuthenticatedRequest, reply: any) => {
     // Get user from authenticated request
     const user = request.user;
@@ -294,7 +294,7 @@ export const settingsRoutes: FastifyPluginAsync = async (fastify) => {
     // Prisma client imported above
 
 fastify.get('/', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: AuthenticatedRequest) => {
     // Get user ID from authenticated request
     const userId = request.user?.id || request.user?.userId;
@@ -359,7 +359,7 @@ fastify.get('/', {
   
   // Get MCP functions - now fetches from MCP Proxy directly
   fastify.get('/mcp-functions', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: AuthenticatedRequest) => {
     logger.info('Getting MCP functions from MCP Proxy');
 
@@ -525,15 +525,15 @@ fastify.get('/', {
 
   // Register both POST and PUT handlers with authentication
   fastify.post<{ Body: Partial<Settings> }>('/', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, updateSettingsHandler);
   fastify.put<{ Body: Partial<Settings> }>('/', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, updateSettingsHandler);
   
   // Get available models
   fastify.get('/available-models', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: AuthenticatedRequest) => {
     logger.info('Getting available models');
     
@@ -620,7 +620,7 @@ fastify.get('/', {
   
   // Test Azure OpenAI connection
   fastify.post('/test-azure', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: AuthenticatedRequest, reply) => {
     // Get user ID from authenticated request
     const userId = request.user?.id || request.user?.userId;

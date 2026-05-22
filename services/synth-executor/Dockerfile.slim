@@ -7,6 +7,30 @@
 # scripts and the CLIs themselves exec bash subprocesses at runtime).
 
 # =============================================================================
+# Stage 0: libs — fetch + sha256-verify JS/WASM bundles for /lib/* (#481)
+# =============================================================================
+# synth-executor now serves the vetted lib bundles directly via FastAPI's
+# StaticFiles mount on /lib/*. The separate synth-cdn nginx pod was never
+# wired into helm; folding the static surface into synth-executor avoids
+# that scope and keeps everything in one pod.
+#
+# alpine for this stage only — needs bash/curl/jq/tar which the python
+# base image doesn't ship by default.
+FROM alpine:3.20 AS libs
+
+RUN apk add --no-cache bash curl jq tar bzip2
+
+WORKDIR /build
+COPY services/synth-executor/cdn/lib-manifest.json ./lib-manifest.json
+COPY services/synth-executor/cdn/build-libs.sh ./build-libs.sh
+RUN chmod +x ./build-libs.sh
+
+# build-libs.sh reads lib-manifest.json, fetches each tarball with --fail,
+# verifies sha256, extracts into ./dist/lib/. Mismatch fails the build,
+# preventing supply-chain swaps mid-conversation.
+RUN ./build-libs.sh build
+
+# =============================================================================
 # Stage 1: Build Python deps into a venv
 # =============================================================================
 FROM python:3.11-slim-bookworm as builder
@@ -128,6 +152,10 @@ ENV OTEL_PYTHON_LOG_CORRELATION=true
 # Copy application code
 WORKDIR /app
 COPY --chown=synth:synth services/synth-executor/src/ /app/
+
+# #481: bake JS/WASM lib bundles for /lib/* static serving (was synth-cdn).
+# server.py mounts /app/lib via FastAPI StaticFiles when the directory exists.
+COPY --from=libs --chown=synth:synth /build/dist/lib /app/lib
 
 # Create temp directory
 RUN mkdir -p /tmp && chown synth:synth /tmp

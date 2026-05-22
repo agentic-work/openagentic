@@ -17,6 +17,7 @@ import { AdminMetricCard } from '../Shared/AdminMetricCard';
 import { AdminCard } from '../Shared/AdminCard';
 import { InfoTooltip } from '../Shared/AdminTooltip';
 import { apiRequest } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 
 // ── Interfaces ────────────────────────────────────────────────────────
 
@@ -166,21 +167,15 @@ export const FeedbackAnalyticsView: React.FC<{ theme?: string }> = () => {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Feedback Analytics</h2>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>User satisfaction and response quality tracking</p>
-        </div>
-        <button
-          onClick={fetchData}
-          className="p-1.5 rounded-md transition-colors"
-          style={{ border: '1px solid var(--color-border)', color: 'var(--text-secondary)', backgroundColor: 'var(--color-surface)' }}
-          title="Refresh"
-        >
-          <RefreshCw size={16} />
-        </button>
-      </div>
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Monitoring', 'Feedback']}
+        title="Feedback Analytics"
+        explainer="User satisfaction and response quality tracking across LLM responses."
+        actions={[
+          { label: 'Refresh', onClick: fetchData },
+        ]}
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -244,8 +239,8 @@ export const FeedbackAnalyticsView: React.FC<{ theme?: string }> = () => {
                 <YAxis tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} />
                 <RechartsTooltip content={<ChartTip />} />
                 <Bar dataKey="Thumbs Up" fill="var(--color-success)" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="Thumbs Down" fill="#ef4444" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="Copies" fill="#6366f1" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Thumbs Down" fill="var(--ap-err)" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Copies" fill="var(--ap-accent)" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

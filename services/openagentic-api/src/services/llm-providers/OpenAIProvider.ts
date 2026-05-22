@@ -10,149 +10,10 @@ import {
   BaseLLMProvider,
   CompletionRequest,
   CompletionResponse,
-  NormalizerState,
   ProviderConfig,
   ProviderHealth,
 } from './ILLMProvider.js';
-import { NormalizedStreamEvent } from '../NormalizedStreamTypes.js';
-
-/**
- * Normalize a raw OpenAI SSE chunk into NormalizedStreamEvents.
- *
- * OpenAI streams pure OpenAI-format chunks — no content_block events, no
- * reasoning_content. We synthesise a thinking block on the first assistant
- * chunk so every response has a consistent thinking node in the activity tree.
- */
-export function normalizeOpenAIChunk(rawChunk: any, state: NormalizerState): NormalizedStreamEvent[] {
-  const events: NormalizedStreamEvent[] = [];
-  const pendingTools = state.pendingTools;
-
-  // Usage-only chunk (no choices)
-  if (!rawChunk.choices?.length && rawChunk.usage) {
-    events.push({
-      type: 'usage',
-      tokensIn: rawChunk.usage.prompt_tokens || 0,
-      tokensOut: rawChunk.usage.completion_tokens || 0,
-      cost: 0,
-      contextUsed: 0,
-      contextMax: 0,
-    });
-    return events;
-  }
-
-  const choice = rawChunk.choices?.[0];
-  if (!choice) return events;
-
-  const delta = choice.delta;
-  if (!delta && !choice.finish_reason) return events;
-
-  // -----------------------------------------------------------------------
-  // First chunk — role === 'assistant': emit stream_start + synthetic thinking
-  // -----------------------------------------------------------------------
-  if (delta?.role === 'assistant' && !state.streamStartEmitted) {
-    state.streamStartEmitted = true;
-    state.model = rawChunk.model || '';
-    events.push({
-      type: 'stream_start',
-      messageId: rawChunk.id || '',
-      model: rawChunk.model || '',
-      provider: 'openai',
-    });
-
-    // Emit synthetic thinking block (closed when real content arrives)
-    const thinkId = 'tk-synth-0';
-    state.thinkingId = thinkId;
-    state.thinkingStartTime = Date.now();
-    events.push({ type: 'thinking_start', id: thinkId });
-    events.push({ type: 'thinking_delta', id: thinkId, content: 'Processing', accumulated: 'Processing' });
-    return events;
-  }
-
-  // -----------------------------------------------------------------------
-  // Helper: close synthetic thinking if still active
-  // -----------------------------------------------------------------------
-  const closeSyntheticThinking = () => {
-    if (state.thinkingId) {
-      const elapsed = state.thinkingStartTime ? Date.now() - state.thinkingStartTime : 0;
-      events.push({ type: 'thinking_stop', id: state.thinkingId, elapsedMs: elapsed });
-      state.thinkingId = null;
-      state.thinkingStartTime = null;
-    }
-  };
-
-  // -----------------------------------------------------------------------
-  // Text content delta
-  // -----------------------------------------------------------------------
-  if (delta?.content) {
-    closeSyntheticThinking();
-    if (!state.textBlockId) {
-      state.textBlockId = 'txt-0';
-      events.push({ type: 'text_start', id: state.textBlockId });
-    }
-    events.push({ type: 'text_delta', id: state.textBlockId, content: delta.content });
-  }
-
-  // -----------------------------------------------------------------------
-  // Tool call deltas
-  // -----------------------------------------------------------------------
-  if (delta?.tool_calls) {
-    closeSyntheticThinking();
-    for (const tc of delta.tool_calls) {
-      if (tc.function?.name) {
-        const toolId = tc.id || `tool-${tc.index}`;
-        pendingTools.set(toolId, tc.function.name);
-        state.toolIndexToId.set(tc.index, toolId);
-        events.push({ type: 'tool_start', id: toolId, toolName: tc.function.name, serverName: '' });
-      }
-      if (tc.function?.arguments) {
-        const toolId = tc.id || state.toolIndexToId.get(tc.index) || `tool-${tc.index}`;
-        events.push({ type: 'tool_delta', id: toolId, argsFragment: tc.function.arguments });
-      }
-    }
-  }
-
-  // -----------------------------------------------------------------------
-  // Finish reason
-  // -----------------------------------------------------------------------
-  if (choice.finish_reason) {
-    if (choice.finish_reason === 'tool_calls') {
-      for (const [id] of pendingTools) {
-        events.push({ type: 'tool_stop', id, result: null, durationMs: 0 });
-      }
-      pendingTools.clear();
-    }
-
-    if (state.textBlockId) {
-      events.push({ type: 'text_stop', id: state.textBlockId });
-      state.textBlockId = null;
-    }
-
-    // Close any still-open synthetic thinking (e.g. response with no content)
-    closeSyntheticThinking();
-
-    events.push({
-      type: 'stream_end',
-      finishReason: choice.finish_reason,
-      totalDurationMs: 0,
-    });
-  }
-
-  // -----------------------------------------------------------------------
-  // Usage embedded in the same chunk
-  // -----------------------------------------------------------------------
-  if (rawChunk.usage) {
-    events.push({
-      type: 'usage',
-      tokensIn: rawChunk.usage.prompt_tokens || 0,
-      tokensOut: rawChunk.usage.completion_tokens || 0,
-      cost: 0,
-      contextUsed: 0,
-      contextMax: 0,
-    });
-  }
-
-  return events;
-}
+import { shouldEnableParallelToolCalls } from './parallelToolCallsPolicy.js';
 
 export class OpenAIProvider extends BaseLLMProvider {
   readonly name = 'openai';
@@ -184,10 +45,6 @@ export class OpenAIProvider extends BaseLLMProvider {
     }, 'OpenAI provider initialized');
   }
 
-  normalizeChunk(rawChunk: any, state: NormalizerState): NormalizedStreamEvent[] {
-    return normalizeOpenAIChunk(rawChunk, state);
-  }
-
   async createCompletion(request: CompletionRequest): Promise<CompletionResponse | AsyncGenerator<any>> {
     const startTime = Date.now();
     const model = request.model || this.defaultModel;
@@ -204,7 +61,16 @@ export class OpenAIProvider extends BaseLLMProvider {
       if (request.top_p !== undefined) body.top_p = request.top_p;
       if (request.frequency_penalty !== undefined) body.frequency_penalty = request.frequency_penalty;
       if (request.presence_penalty !== undefined) body.presence_penalty = request.presence_penalty;
-      if (request.tools?.length) body.tools = request.tools;
+      if (request.tools?.length) {
+        body.tools = request.tools;
+        // OpenAI / Azure-OpenAI / compatible endpoints: explicit parallel
+        // tool calls flag. Without it the model still *can* emit multiple
+        // tool calls per turn, but some providers disable by default — so
+        // being explicit makes behavior deterministic across endpoints.
+        if (shouldEnableParallelToolCalls({ tools: request.tools, metadata: (request as any).metadata })) {
+          body.parallel_tool_calls = true;
+        }
+      }
       if (request.tool_choice) body.tool_choice = request.tool_choice;
       if (request.response_format) body.response_format = request.response_format;
 

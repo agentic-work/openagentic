@@ -121,27 +121,23 @@ export const BaseModal: React.FC<BaseModalProps> = ({
             style={{ zIndex: MODAL_CONFIG.zIndex.modal }}
             onClick={handleBackdropClick}
           >
-            {/* Modal */}
+            {/* Modal — M3 Expressive: 24px panel radius, surface-2 bg,
+                soft-lg shadow, fade+scale enter (0.96→1, 200ms). */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
               transition={{
-                type: 'spring',
-                damping: 25,
-                stiffness: 300,
+                duration: 0.2,
+                ease: [0.2, 0, 0, 1], // --ease-emphasized
               }}
               className={`
-                w-full ${MODAL_CONFIG.sizes[size]} rounded-2xl overflow-hidden
+                w-full ${MODAL_CONFIG.sizes[size]} rounded-panel overflow-hidden
                 ${className}
               `}
               style={{
-                backgroundColor: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                boxShadow: `
-                  0 25px 50px -12px rgba(0, 0, 0, 0.5),
-                  inset 0 1px 1px rgba(255, 255, 255, 0.05)
-                `,
+                backgroundColor: 'var(--surface-2)',
+                boxShadow: 'var(--shadow-soft-lg)',
               }}
               role="dialog"
               aria-modal="true"
@@ -175,7 +171,7 @@ export const BaseModal: React.FC<BaseModalProps> = ({
                   {shouldShowCloseButton && (
                     <button
                       onClick={onClose}
-                      className="p-2 rounded-lg transition-colors hover:bg-[var(--color-surfaceSecondary)]"
+                      className="h-10 w-10 rounded-btn flex items-center justify-center transition-[background,color,transform] duration-200 ease-emphasized active:scale-[0.98] hover:bg-[var(--surface-3)]"
                       style={{ color: 'var(--color-textMuted)' }}
                       aria-label="Close modal"
                     >
@@ -266,7 +262,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-[var(--color-surface)]"
+            className="px-6 py-2 rounded-pill text-sm font-medium transition-[background,color,transform] duration-200 ease-emphasized active:scale-[0.98] hover:bg-[var(--surface-3)]"
             style={{ color: 'var(--color-textMuted)' }}
           >
             {cancelText}
@@ -274,7 +270,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           <button
             onClick={onConfirm}
             disabled={isLoading}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+            className="px-6 py-2 rounded-pill text-sm font-medium transition-[background,opacity,transform] duration-200 ease-emphasized active:scale-[0.98]"
             style={{
               ...confirmButtonStyle,
               opacity: isLoading ? 0.7 : 1,

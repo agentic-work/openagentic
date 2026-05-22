@@ -9,64 +9,71 @@
 
 import { describe, test, expect } from 'vitest';
 import { buildTree } from './buildTree';
-import type { NormalizedStreamEvent } from '../../../../types/NormalizedStreamTypes';
+import type { NormalizedStreamEvent } from '../../../../types/AnthropicStreamEvent';
+
+/**
+ * Slice G.4c (2026-05-01) — buildTree consumes ONLY canonical
+ * Anthropic Messages SSE events (content_block_*) for thinking/tool/text
+ * blocks plus the platform envelope events (agent_*, hitl_*, artifact_*,
+ * error). The synthetic Normalized* family was ripped from the consumer.
+ *
+ * Tests that previously asserted thinking_* / tool_* / text_* switch cases
+ * were rewritten to canonical events. The now-deleted "thinking + text
+ * produces flat sequence" test was already broken (text_* nodes are never
+ * produced — text rendering is handled by EnhancedMessageContent).
+ */
 
 describe('buildTree', () => {
   test('empty events returns empty tree', () => {
     expect(buildTree([])).toEqual([]);
   });
 
-  test('thinking + text produces flat sequence', () => {
-    const events: NormalizedStreamEvent[] = [
-      { type: 'stream_start', messageId: 'm1', model: 'gpt-41', provider: 'aif' },
-      { type: 'thinking_start', id: 'tk1' },
-      { type: 'thinking_delta', id: 'tk1', content: 'analyzing', accumulated: 'analyzing' },
-      { type: 'thinking_stop', id: 'tk1', elapsedMs: 2000 },
-      { type: 'text_start', id: 'tx1' },
-      { type: 'text_delta', id: 'tx1', content: 'Hello' },
-      { type: 'text_stop', id: 'tx1' },
-      { type: 'stream_end', finishReason: 'stop', totalDurationMs: 3000 },
+  test('canonical thinking block produces thinking node with content + elapsed', () => {
+    const events: any[] = [
+      { type: 'message_start', message: { id: 'm1', type: 'message', role: 'assistant', model: 'gpt-5.4', content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 0, output_tokens: 0 } } },
+      { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '' } },
+      { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'analyzing' } },
+      { type: 'content_block_stop', index: 0 },
+      { type: 'message_stop' },
     ];
-    const tree = buildTree(events);
-    expect(tree).toHaveLength(2);
+    const tree = buildTree(events as NormalizedStreamEvent[]);
+    expect(tree).toHaveLength(1);
     expect(tree[0].type).toBe('thinking');
     expect(tree[0].status).toBe('success');
     expect(tree[0].data.content).toBe('analyzing');
-    expect(tree[0].data.elapsedMs).toBe(2000);
-    expect(tree[1].type).toBe('text');
-    expect(tree[1].status).toBe('success');
-    expect(tree[1].data.content).toBe('Hello');
+    expect(typeof tree[0].data.elapsedMs).toBe('number');
   });
 
-  test('tool start/delta/stop produces tool node with args and result', () => {
-    const events: NormalizedStreamEvent[] = [
-      { type: 'tool_start', id: 't1', toolName: 'list_pods', serverName: 'k8s' },
-      { type: 'tool_delta', id: 't1', argsFragment: '{"ns":' },
-      { type: 'tool_delta', id: 't1', argsFragment: '"default"}' },
-      { type: 'tool_stop', id: 't1', result: { pods: 3 }, durationMs: 1200 },
+  test('canonical tool_use start/delta/stop produces tool node with args and success', () => {
+    const events: any[] = [
+      { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 't1', name: 'list_pods', input: {} } },
+      { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: '{"ns":' } },
+      { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: '"default"}' } },
+      { type: 'content_block_stop', index: 0 },
     ];
-    const tree = buildTree(events);
+    const tree = buildTree(events as NormalizedStreamEvent[]);
     expect(tree).toHaveLength(1);
     expect(tree[0].type).toBe('tool');
+    expect(tree[0].id).toBe('t1');
     expect(tree[0].data.toolName).toBe('list_pods');
     expect(tree[0].data.args).toBe('{"ns":"default"}');
-    expect(tree[0].data.result).toEqual({ pods: 3 });
-    expect(tree[0].data.durationMs).toBe(1200);
+    expect(tree[0].status).toBe('success');
   });
 
-  test('agent_start creates nested branch with tool children', () => {
-    const events: NormalizedStreamEvent[] = [
+  test('agent_start creates nested branch with canonical tool child', () => {
+    const events: any[] = [
       { type: 'agent_start', id: 'a1', name: 'infra-agent', role: 'infrastructure' },
-      { type: 'tool_start', id: 't1', toolName: 'list_pods', serverName: 'k8s', agentId: 'a1' },
-      { type: 'tool_stop', id: 't1', result: {}, durationMs: 1200 },
+      { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 't1', name: 'list_pods', input: {} } },
+      { type: 'content_block_stop', index: 0 },
       { type: 'agent_stop', id: 'a1', durationMs: 5000, tokensIn: 1000, tokensOut: 500, cost: 0.01 },
     ];
-    const tree = buildTree(events);
+    const tree = buildTree(events as NormalizedStreamEvent[]);
     expect(tree).toHaveLength(1);
     expect(tree[0].type).toBe('agent');
     expect(tree[0].data.name).toBe('infra-agent');
     expect(tree[0].children).toHaveLength(1);
     expect(tree[0].children[0].type).toBe('tool');
+    expect(tree[0].children[0].data.toolName).toBe('list_pods');
   });
 
   test('hitl_request without response marks node as pending', () => {
@@ -120,23 +127,23 @@ describe('buildTree', () => {
     expect(tree[0].data.code).toBe('RATE_LIMIT');
   });
 
-  test('streaming thinking node has running status', () => {
-    const events: NormalizedStreamEvent[] = [
-      { type: 'thinking_start', id: 'tk1' },
-      { type: 'thinking_delta', id: 'tk1', content: 'analyzing...', accumulated: 'analyzing...' },
+  test('streaming canonical thinking node has running status until stop', () => {
+    const events: any[] = [
+      { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '' } },
+      { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'analyzing...' } },
     ];
-    const tree = buildTree(events);
+    const tree = buildTree(events as NormalizedStreamEvent[]);
     expect(tree[0].status).toBe('running');
   });
 
-  test('tool without agentId goes to active agent on stack', () => {
-    const events: NormalizedStreamEvent[] = [
+  test('canonical tool inside agent_start nests under that agent on stack', () => {
+    const events: any[] = [
       { type: 'agent_start', id: 'a1', name: 'test-agent', role: 'test' },
-      { type: 'tool_start', id: 't1', toolName: 'read_file', serverName: 'fs' },
-      { type: 'tool_stop', id: 't1', result: 'ok', durationMs: 100 },
+      { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 't1', name: 'read_file', input: {} } },
+      { type: 'content_block_stop', index: 0 },
       { type: 'agent_stop', id: 'a1', durationMs: 500, tokensIn: 50, tokensOut: 20, cost: 0.001 },
     ];
-    const tree = buildTree(events);
+    const tree = buildTree(events as NormalizedStreamEvent[]);
     expect(tree).toHaveLength(1);
     expect(tree[0].type).toBe('agent');
     expect(tree[0].children).toHaveLength(1);
@@ -182,11 +189,10 @@ describe('buildTree', () => {
     expect(tree[0].status).toBe('success');
   });
 
-  test('stream_start, stream_end, usage, redacted_thinking are ignored', () => {
+  test('stream_start, stream_end, usage are ignored', () => {
     const events: NormalizedStreamEvent[] = [
       { type: 'stream_start', messageId: 'm1', model: 'gpt-4', provider: 'openai' },
       { type: 'usage', tokensIn: 100, tokensOut: 50, cost: 0.01, contextUsed: 1000, contextMax: 128000 },
-      { type: 'redacted_thinking', id: 'rt1', signature: 'sig123' },
       { type: 'stream_end', finishReason: 'stop', totalDurationMs: 5000 },
     ];
     const tree = buildTree(events);

@@ -1,0 +1,50 @@
+{
+  "type": "switch",
+  "category": "control",
+  "label": "Switch",
+  "description": "Evaluate an expression and route to the matching case branch. Supports a default fallback case.",
+  "icon": "split-square-horizontal",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      { "name": "default", "type": "any", "required": false }
+    ]
+  },
+  "settings": [
+    {
+      "name": "expression",
+      "label": "Expression",
+      "type": "code",
+      "required": true,
+      "supportsTemplating": true,
+      "description": "JS expression whose result is matched against case values. Supports {{template}} vars.",
+      "placeholder": "input.status"
+    },
+    {
+      "name": "cases",
+      "label": "Cases",
+      "type": "json",
+      "required": false,
+      "description": "Array of { value, label } objects. Add a case with value='default' as a fallback.",
+      "default": []
+    }
+  ],
+  "ai": {
+    "shortDescription": "Multi-way branch based on an expression value.",
+    "whenToUse": "When you need more than two branches — e.g. route based on a status field with 3+ possible values.",
+    "examplePrompt": "switch on input.priority and route to high/medium/low branches",
+    "promptHints": "Each case value is matched as a string against String(expressionResult). A case with value='default' matches when nothing else does."
+  },
+  "outputAssertions": [
+    {
+      "name": "switch_case_selected",
+      "expression": "result && typeof result.matched === 'string'",
+      "errorMessage": "Switch node did not produce a matched-case label — the routing decision is missing."
+    },
+    {
+      "name": "switch_expression_evaluated",
+      "expression": "result && result.evaluatedExpression !== undefined",
+      "errorMessage": "Switch node's safe expression evaluator returned undefined — the expression failed to evaluate."
+    }
+  ]
+}

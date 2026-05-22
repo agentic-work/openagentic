@@ -358,7 +358,8 @@ async def gcp_api_execute(
             "logging": "https://logging.googleapis.com/v2",
             "billing": "https://cloudbilling.googleapis.com/v1",
             "vertex": "https://aiplatform.googleapis.com/v1",
-            "bigquery": "https://bigquery.googleapis.com/bigquery/v2"
+            "bigquery": "https://bigquery.googleapis.com/bigquery/v2",
+            "run": "https://run.googleapis.com/v2",
         }
 
         base_url = service_bases.get(service.lower())
@@ -542,6 +543,50 @@ async def gcp_list_bucket_objects(
         url += "?" + "&".join(params)
 
     return await make_gcp_request("GET", url)
+
+@mcp.tool()
+async def gcp_list_projects(
+    filter: Optional[str] = None,
+    page_size: int = 100,
+) -> Dict[str, Any]:
+    """
+    List GCP projects accessible to the authenticated principal.
+
+    Use this as the FIRST step when answering "show me my cloud
+    resources" or "what GCP projects do I have access to?" — it's the
+    discovery entry point for everything else (each project then has
+    its own zones, networks, services, billing, etc.).
+
+    Args:
+        filter: optional Resource Manager filter expression
+            (e.g. `labels.env:prod` or `parent.type:folder`).
+        page_size: max projects per response page (default 100, max 500).
+
+    Returns:
+        Dict with `projects` list (each entry has projectId, name,
+        projectNumber, lifecycleState, parent, labels) and an optional
+        `nextPageToken` for paged enumeration.
+
+    #672 (2026-05-07) — added because the chat assistant honestly reported
+    "I don't yet have a project list tool in the current tool set" when a
+    user asked "show me my cloud resources". GCP MCP had `gcp_get_project`
+    (single-project lookup) but no enumeration entry. Resource Manager
+    `projects.list` is the canonical surface — it respects IAM via the
+    OBO-bound credentials so each user only sees projects they can
+    actually access. Citation: cloudresourcemanager.googleapis.com/v1/projects.list.
+    """
+    bounded_page_size = max(1, min(int(page_size or 100), 500))
+    query: list[str] = [f"pageSize={bounded_page_size}"]
+    if filter:
+        from urllib.parse import quote
+        query.append(f"filter={quote(filter)}")
+
+    path = "/projects?" + "&".join(query)
+    return await gcp_api_execute(
+        service="crm",
+        method="GET",
+        path=path,
+    )
 
 @mcp.tool()
 async def gcp_get_project(
@@ -1075,6 +1120,307 @@ async def vertex_ai_generative_models(
         }
     }
 
+# ============================================================================
+# Vertex AI — endpoint + deployed-model lifecycle, model details (#675)
+# ============================================================================
+# Added 2026-05-07 to round out the read-only `vertex_ai_*` block above with
+# create/delete/deploy/undeploy and per-model-version detail. All calls hit
+# `aiplatform.googleapis.com/v1` via `make_gcp_request`, matching existing
+# Vertex tools. POST/DELETE return the LRO (Long-Running Operation) JSON;
+# callers can poll the operation name to confirm completion.
+
+@mcp.tool()
+async def gcp_vertex_create_endpoint(
+    display_name: str,
+    location: Optional[str] = None,
+    project_id: Optional[str] = None,
+    description: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Create a new Vertex AI endpoint.
+
+    Use when the user asks "create a Vertex endpoint named X", "make a new
+    prediction endpoint for model Y", "spin up an endpoint in <region>".
+    Returns the LRO operation envelope from
+    aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/endpoints
+    (POST). Poll the `name` field on the response to confirm completion.
+
+    Args:
+        display_name: Display name for the new endpoint
+        location: Region (defaults to GCP_REGION env var)
+        project_id: GCP project ID (defaults to configured project)
+        description: Optional endpoint description
+
+    Returns:
+        Dict with the LRO operation (name, metadata, done flag)
+    """
+    project = project_id or GCP_PROJECT_ID
+    region = location or GCP_REGION
+    url = f"https://{region}-aiplatform.googleapis.com/v1/projects/{project}/locations/{region}/endpoints"
+    body: Dict[str, Any] = {"displayName": display_name}
+    if description:
+        body["description"] = description
+    return await make_gcp_request("POST", url, body=body)
+
+@mcp.tool()
+async def gcp_vertex_delete_endpoint(
+    endpoint_id: str,
+    location: Optional[str] = None,
+    project_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Delete a Vertex AI endpoint.
+
+    Use when the user asks "delete Vertex endpoint X", "tear down endpoint Y",
+    "remove the unused prediction endpoint". The endpoint must have no
+    deployed models — undeploy first via `gcp_vertex_undeploy_model`. Returns
+    the LRO operation from
+    aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/endpoints/{endpoint_id}
+    (DELETE).
+
+    Args:
+        endpoint_id: The endpoint ID to delete
+        location: Region (defaults to GCP_REGION env var)
+        project_id: GCP project ID (defaults to configured project)
+
+    Returns:
+        Dict with the LRO operation (name, metadata, done flag)
+    """
+    project = project_id or GCP_PROJECT_ID
+    region = location or GCP_REGION
+    url = f"https://{region}-aiplatform.googleapis.com/v1/projects/{project}/locations/{region}/endpoints/{endpoint_id}"
+    return await make_gcp_request("DELETE", url)
+
+@mcp.tool()
+async def gcp_vertex_deploy_model(
+    endpoint_id: str,
+    model_id: str,
+    location: Optional[str] = None,
+    project_id: Optional[str] = None,
+    machine_type: str = "n1-standard-2",
+    min_replica_count: int = 1,
+    max_replica_count: int = 1,
+    traffic_percentage: int = 100,
+    deployed_model_display_name: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Deploy a model to a Vertex AI endpoint.
+
+    Use when the user asks "deploy model X to endpoint Y", "put model Z behind
+    endpoint W with 2 replicas", "wire up <model> for online prediction".
+    Sends to
+    aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/endpoints/{endpoint_id}:deployModel
+    (POST). Returns the LRO operation; the deployed_model.id is in the
+    response when the LRO completes.
+
+    Args:
+        endpoint_id: Target endpoint ID
+        model_id: Model resource (short id or full path projects/.../models/.../{version})
+        location: Region (defaults to GCP_REGION env var)
+        project_id: GCP project ID (defaults to configured project)
+        machine_type: Compute machine type (default n1-standard-2)
+        min_replica_count: Min replicas
+        max_replica_count: Max replicas (autoscale ceiling)
+        traffic_percentage: Traffic split percentage (default 100)
+        deployed_model_display_name: Optional friendly name on the endpoint
+
+    Returns:
+        Dict with the LRO operation
+    """
+    project = project_id or GCP_PROJECT_ID
+    region = location or GCP_REGION
+    # Allow short model_id (auto-prefix the canonical path)
+    if "/" not in model_id:
+        model_resource = f"projects/{project}/locations/{region}/models/{model_id}"
+    else:
+        model_resource = model_id
+    url = (
+        f"https://{region}-aiplatform.googleapis.com/v1"
+        f"/projects/{project}/locations/{region}/endpoints/{endpoint_id}:deployModel"
+    )
+    body: Dict[str, Any] = {
+        "deployedModel": {
+            "model": model_resource,
+            "displayName": deployed_model_display_name or model_id.split("/")[-1],
+            "dedicatedResources": {
+                "machineSpec": {"machineType": machine_type},
+                "minReplicaCount": min_replica_count,
+                "maxReplicaCount": max_replica_count,
+            },
+        },
+        "trafficSplit": {"0": traffic_percentage},
+    }
+    return await make_gcp_request("POST", url, body=body)
+
+@mcp.tool()
+async def gcp_vertex_undeploy_model(
+    endpoint_id: str,
+    deployed_model_id: str,
+    location: Optional[str] = None,
+    project_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Undeploy a model from a Vertex AI endpoint.
+
+    Use when the user asks "undeploy model X from endpoint Y", "remove
+    deployed-model Z", "stop traffic to <deployed_model>". Sends to
+    aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/endpoints/{endpoint_id}:undeployModel
+    (POST). Returns the LRO operation.
+
+    Args:
+        endpoint_id: Endpoint hosting the deployed model
+        deployed_model_id: The deployed_model.id (NOT the model resource id;
+            see `gcp_vertex_list_deployed_models` for the correct value)
+        location: Region (defaults to GCP_REGION env var)
+        project_id: GCP project ID (defaults to configured project)
+
+    Returns:
+        Dict with the LRO operation
+    """
+    project = project_id or GCP_PROJECT_ID
+    region = location or GCP_REGION
+    url = (
+        f"https://{region}-aiplatform.googleapis.com/v1"
+        f"/projects/{project}/locations/{region}/endpoints/{endpoint_id}:undeployModel"
+    )
+    return await make_gcp_request("POST", url, body={"deployedModelId": deployed_model_id})
+
+@mcp.tool()
+async def gcp_vertex_list_deployed_models(
+    endpoint_id: str,
+    location: Optional[str] = None,
+    project_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    List models deployed on a Vertex AI endpoint.
+
+    Use when the user asks "what models are deployed on endpoint X", "list
+    deployed-models for <endpoint>", "show me the active deployment on Y".
+    Reads
+    aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/endpoints/{endpoint_id}
+    (GET) and returns the `deployedModels` array (id, model resource, display
+    name, dedicatedResources, createTime).
+
+    Args:
+        endpoint_id: The endpoint ID
+        location: Region (defaults to GCP_REGION env var)
+        project_id: GCP project ID (defaults to configured project)
+
+    Returns:
+        Dict with success, deployed_models[], traffic_split{}
+    """
+    project = project_id or GCP_PROJECT_ID
+    region = location or GCP_REGION
+    url = (
+        f"https://{region}-aiplatform.googleapis.com/v1"
+        f"/projects/{project}/locations/{region}/endpoints/{endpoint_id}"
+    )
+    response = await make_gcp_request("GET", url)
+    if not response.get("success"):
+        return response
+    data = response.get("data", {}) or {}
+    return {
+        "success": True,
+        "endpoint_id": endpoint_id,
+        "deployed_models": data.get("deployedModels", []),
+        "traffic_split": data.get("trafficSplit", {}),
+    }
+
+@mcp.tool()
+async def gcp_vertex_get_model(
+    model_id: str,
+    location: Optional[str] = None,
+    project_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Get one Vertex AI model's details (default version).
+
+    Use when the user asks "describe Vertex model X", "show me details of
+    <model>", "what's the deployed container image for model Y". Reads
+    aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/models/{model_id}
+    (GET) which returns the default version's metadata (artifactUri,
+    containerSpec, supportedDeploymentResourcesTypes, versionId, versionAliases).
+
+    Args:
+        model_id: Model resource id (short form ok)
+        location: Region (defaults to GCP_REGION env var)
+        project_id: GCP project ID (defaults to configured project)
+
+    Returns:
+        Dict with the model resource
+    """
+    project = project_id or GCP_PROJECT_ID
+    region = location or GCP_REGION
+    url = (
+        f"https://{region}-aiplatform.googleapis.com/v1"
+        f"/projects/{project}/locations/{region}/models/{model_id}"
+    )
+    return await make_gcp_request("GET", url)
+
+@mcp.tool()
+async def gcp_vertex_list_model_versions(
+    model_id: str,
+    location: Optional[str] = None,
+    project_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    List all versions of a Vertex AI model.
+
+    Use when the user asks "what versions of model X exist", "list versions
+    for Vertex model Y", "show me <model> version history". Sends to
+    aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/models/{model_id}:listVersions
+    (GET). Returns the `models` array — each entry is a version of the same
+    parent model with versionId / versionAliases / createTime.
+
+    Args:
+        model_id: Model resource id (short form ok)
+        location: Region (defaults to GCP_REGION env var)
+        project_id: GCP project ID (defaults to configured project)
+
+    Returns:
+        Dict with versions[] (each a model resource with versionId/aliases)
+    """
+    project = project_id or GCP_PROJECT_ID
+    region = location or GCP_REGION
+    url = (
+        f"https://{region}-aiplatform.googleapis.com/v1"
+        f"/projects/{project}/locations/{region}/models/{model_id}:listVersions"
+    )
+    return await make_gcp_request("GET", url)
+
+@mcp.tool()
+async def gcp_vertex_get_model_version(
+    model_id: str,
+    version_id: str,
+    location: Optional[str] = None,
+    project_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Get one specific (model, version) pair's details.
+
+    Use when the user asks "describe model X version Y", "show me version 3
+    of <model>", "is version Z of my model still deployable". Sends to
+    aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/models/{model_id}@{version_id}
+    (GET) — Vertex addresses a specific version with the `@versionId`
+    suffix syntax.
+
+    Args:
+        model_id: Model resource id (short form ok)
+        version_id: Version id (numeric) or version alias
+        location: Region (defaults to GCP_REGION env var)
+        project_id: GCP project ID (defaults to configured project)
+
+    Returns:
+        Dict with the versioned model resource
+    """
+    project = project_id or GCP_PROJECT_ID
+    region = location or GCP_REGION
+    url = (
+        f"https://{region}-aiplatform.googleapis.com/v1"
+        f"/projects/{project}/locations/{region}/models/{model_id}@{version_id}"
+    )
+    return await make_gcp_request("GET", url)
+
 @mcp.tool()
 async def gcp_monitoring_query(
     metric_type: str,
@@ -1148,15 +1494,11 @@ async def gcp_describe_gke_cluster(
     """Describe one GKE cluster (version, nodes, endpoint, networking, logging)."""
     return await _get(f"https://container.googleapis.com/v1/projects/{_proj(project_id)}/locations/{location}/clusters/{cluster_name}")
 
-# ---------- Cloud Run ----------
-
-@mcp.tool()
-async def gcp_list_cloud_run_services(
-    location: str = "us-central1",
-    project_id: Optional[str] = None,
-) -> Dict[str, Any]:
-    """List Cloud Run services in a region."""
-    return await _get(f"https://run.googleapis.com/v2/projects/{_proj(project_id)}/locations/{location}/services")
+# ---------- Cloud Run (legacy thin wrappers — superseded by the typed
+#           TDD-covered tools below at line 1356+ which use gcp_api_execute
+#           uniformly with the rest of the SDK surface). The duplicate
+#           `gcp_list_cloud_run_services` here was crashing FastMCP at boot
+#           with "Tool already exists". The typed version below wins.
 
 @mcp.tool()
 async def gcp_describe_cloud_run_service(
@@ -1291,6 +1633,290 @@ async def gcp_list_log_entries(
     url = "https://logging.googleapis.com/v2/entries:list"
     return await make_gcp_request("POST", url, body=body)
 
+# ----------------------------------------------------------------------------
+# Cloud Run v2 — services, revisions, jobs, executions, operations
+# Base URL: https://run.googleapis.com/v2 (registered under service="run")
+# Resource paths follow /projects/{p}/locations/{loc}/{services|jobs|operations}.
+# ----------------------------------------------------------------------------
+
+@mcp.tool()
+async def gcp_list_cloud_run_services(
+    location: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """List Cloud Run services in a region (e.g. us-central1)."""
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="GET",
+        path=f"/projects/{project}/locations/{location}/services",
+        project_id=project,
+    )
+
+@mcp.tool()
+async def gcp_get_cloud_run_service(
+    service_name: str,
+    location: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Get one Cloud Run service (image, traffic split, env vars, scaling, IAM)."""
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="GET",
+        path=f"/projects/{project}/locations/{location}/services/{service_name}",
+        project_id=project,
+    )
+
+@mcp.tool()
+async def gcp_delete_cloud_run_service(
+    service_name: str,
+    location: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Delete a Cloud Run service. DESTRUCTIVE — use with care."""
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="DELETE",
+        path=f"/projects/{project}/locations/{location}/services/{service_name}",
+        project_id=project,
+    )
+
+@mcp.tool()
+async def gcp_get_cloud_run_service_iam_policy(
+    service_name: str,
+    location: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Get the IAM policy bound to a Cloud Run service (who can invoke / manage)."""
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="GET",
+        path=f"/projects/{project}/locations/{location}/services/{service_name}:getIamPolicy",
+        project_id=project,
+    )
+
+@mcp.tool()
+async def gcp_list_cloud_run_revisions(
+    service_name: str,
+    location: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """List revisions for a Cloud Run service (history of deployments)."""
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="GET",
+        path=f"/projects/{project}/locations/{location}/services/{service_name}/revisions",
+        project_id=project,
+    )
+
+@mcp.tool()
+async def gcp_get_cloud_run_revision(
+    service_name: str,
+    revision_name: str,
+    location: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Get one Cloud Run revision (container image, env, scaling, traffic %)."""
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="GET",
+        path=(
+            f"/projects/{project}/locations/{location}"
+            f"/services/{service_name}/revisions/{revision_name}"
+        ),
+        project_id=project,
+    )
+
+@mcp.tool()
+async def gcp_delete_cloud_run_revision(
+    service_name: str,
+    revision_name: str,
+    location: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Delete a Cloud Run revision. DESTRUCTIVE — only inactive revisions."""
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="DELETE",
+        path=(
+            f"/projects/{project}/locations/{location}"
+            f"/services/{service_name}/revisions/{revision_name}"
+        ),
+        project_id=project,
+    )
+
+@mcp.tool()
+async def gcp_list_cloud_run_jobs(
+    location: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """List Cloud Run Jobs (scheduled / one-shot batch executions) in a region."""
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="GET",
+        path=f"/projects/{project}/locations/{location}/jobs",
+        project_id=project,
+    )
+
+@mcp.tool()
+async def gcp_get_cloud_run_job(
+    job_name: str,
+    location: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Get one Cloud Run Job (template, schedule, env, parallelism, timeout)."""
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="GET",
+        path=f"/projects/{project}/locations/{location}/jobs/{job_name}",
+        project_id=project,
+    )
+
+@mcp.tool()
+async def gcp_run_cloud_run_job(
+    job_name: str,
+    location: str,
+    project_id: Optional[str] = None,
+    body: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Execute a Cloud Run Job ad-hoc. `body` may carry overrides
+    (containerOverrides, taskCount, taskTimeout). Returns a long-running
+    operation; track via gcp_get_cloud_run_operation.
+    """
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="POST",
+        path=f"/projects/{project}/locations/{location}/jobs/{job_name}:run",
+        project_id=project,
+        body=body or {},
+    )
+
+@mcp.tool()
+async def gcp_delete_cloud_run_job(
+    job_name: str,
+    location: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Delete a Cloud Run Job. DESTRUCTIVE — does not stop in-flight executions."""
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="DELETE",
+        path=f"/projects/{project}/locations/{location}/jobs/{job_name}",
+        project_id=project,
+    )
+
+@mcp.tool()
+async def gcp_list_cloud_run_executions(
+    job_name: str,
+    location: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """List executions of a Cloud Run Job (run history with status, duration)."""
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="GET",
+        path=(
+            f"/projects/{project}/locations/{location}"
+            f"/jobs/{job_name}/executions"
+        ),
+        project_id=project,
+    )
+
+@mcp.tool()
+async def gcp_get_cloud_run_execution(
+    job_name: str,
+    execution_name: str,
+    location: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Get one Cloud Run Job execution (start/end time, succeeded/failed task count)."""
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="GET",
+        path=(
+            f"/projects/{project}/locations/{location}"
+            f"/jobs/{job_name}/executions/{execution_name}"
+        ),
+        project_id=project,
+    )
+
+@mcp.tool()
+async def gcp_cancel_cloud_run_execution(
+    job_name: str,
+    execution_name: str,
+    location: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Cancel a running Cloud Run Job execution. Tasks already complete keep their state."""
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="POST",
+        path=(
+            f"/projects/{project}/locations/{location}"
+            f"/jobs/{job_name}/executions/{execution_name}:cancel"
+        ),
+        project_id=project,
+    )
+
+@mcp.tool()
+async def gcp_list_cloud_run_locations(
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """List regions where Cloud Run is available for this project."""
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="GET",
+        path=f"/projects/{project}/locations",
+        project_id=project,
+    )
+
+@mcp.tool()
+async def gcp_list_cloud_run_operations(
+    location: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """List in-flight + recent Cloud Run long-running operations in a region."""
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="GET",
+        path=f"/projects/{project}/locations/{location}/operations",
+        project_id=project,
+    )
+
+@mcp.tool()
+async def gcp_get_cloud_run_operation(
+    operation_name: str,
+    location: str,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Get one Cloud Run long-running operation (deploy/run progress, error)."""
+    project = project_id or GCP_PROJECT_ID
+    return await gcp_api_execute(
+        service="run",
+        method="GET",
+        path=(
+            f"/projects/{project}/locations/{location}"
+            f"/operations/{operation_name}"
+        ),
+        project_id=project,
+    )
+
 @mcp.tool()
 async def gcp_api_help() -> Dict[str, Any]:
     """
@@ -1380,12 +2006,40 @@ async def gcp_api_help() -> Dict[str, Any]:
 # MAIN ENTRY POINT
 # ============================================================================
 
-if __name__ == "__main__":
+# Add shared module to path for http_transport. In container: /app/shared/.
+import sys as _sys
+import os as _os
+_sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), '..', 'shared'))
+_sys.path.insert(0, '/home/nonroot/app/shared')
+_sys.path.insert(0, '/app/shared')
+
+try:
+    from http_transport import run_with_http_support
+    HTTP_TRANSPORT_AVAILABLE = True
+except ImportError:
+    HTTP_TRANSPORT_AVAILABLE = False
+
+def main():
+    """Main entry point for the OpenAgentic GCP MCP server."""
     logger.info(f"Starting OpenAgentic GCP MCP Server")
     logger.info(f"Default Project: {GCP_PROJECT_ID}")
     logger.info(f"Default Region: {GCP_REGION}")
     logger.info(f"Credentials JSON: {'Set' if GCP_CREDENTIALS_JSON else 'Not set'}")
     logger.info(f"Credentials File: {GCP_CREDENTIALS_FILE or 'Not set'}")
 
-    # Run the MCP server
-    mcp.run()
+    # Use HTTP transport if available + in HTTP mode, otherwise stdio.
+    # Mirror of oap-aws-mcp:2257 — the HTTP path wraps `mcp` in MCPHTTPServer
+    # which exposes /health, /metrics, /mcp (JSON-RPC), and serializes tools
+    # via _get_tools() — preserves _meta + annotations on the wire (Phase 1.7b).
+    if HTTP_TRANSPORT_AVAILABLE:
+        run_with_http_support(
+            mcp_server=mcp,
+            name="oap-gcp-mcp",
+            version="1.0.0",
+            default_port=8084,
+        )
+    else:
+        mcp.run()
+
+if __name__ == "__main__":
+    main()

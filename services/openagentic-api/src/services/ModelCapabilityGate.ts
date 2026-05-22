@@ -5,7 +5,7 @@
  * the actual requirements of a request. Called from all 4 model selection paths:
  *   1. Chat pipeline (completion-simple.stage.ts)
  *   2. OpenAI-compatible endpoint (openai-compatible.ts)
- *   3. Agent spawning (AgentSpawnManager.ts)
+ *   3. Agent spawning (legacy in-api orchestrator)
  *   4. Workflow engine (via OpenAI-compatible endpoint)
  *
  * Ollama models CAN handle simple tool calls (single tool, simple args, ~80% accuracy).
@@ -108,7 +108,7 @@ export async function gateModelSelection(
 ): Promise<GateResult> {
   const caps = await getModelCaps(ctx.selectedModel);
   const config = await ModelConfigurationService.getConfig();
-  const tiers = config?.sliderConfig?.tiers;
+  const tiers = config?.tiers;
 
   const balanced = tiers?.balanced?.modelId;
   const premium = tiers?.premium?.modelId;

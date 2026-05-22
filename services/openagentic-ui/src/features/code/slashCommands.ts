@@ -12,6 +12,15 @@ export interface SlashCommand {
   args?: string;
   /** Internal / hidden — don't show in the public palette. */
   hidden?: boolean;
+  /**
+   * If set, the command opens a native React picker in the browser
+   * (via the `daemon_request` RPC) rather than running on the daemon.
+   * Picker commands are submitted *immediately* on Enter even when an
+   * `args` signature is also declared — the picker IS the args UI, so
+   * the palette must not insert `/<name> ` and wait. Mirrors how
+   * openagentic's TUI immediately enters its picker on Enter.
+   */
+  picker?: 'skills' | 'plugins' | 'mcp' | 'model' | 'agents';
 }
 
 /**
@@ -28,20 +37,24 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   { name: 'cost', description: 'Show session cost and duration', ui: 'none', priority: 'p0' },
   { name: 'exit', description: 'Exit the session', ui: 'none', priority: 'p0', aliases: ['quit'] },
   { name: 'help', description: 'Show available commands', ui: 'none', priority: 'p0' },
-  { name: 'model', description: 'Change the active model', ui: 'picker', priority: 'p0' },
+  { name: 'model', description: 'Change the active model', ui: 'picker', priority: 'p0', picker: 'model' },
   { name: 'permissions', description: 'Manage allow/deny tool permission rules', ui: 'form', priority: 'p0', aliases: ['allowed-tools'] },
   { name: 'theme', description: 'Change the UI theme', ui: 'picker', priority: 'p0', args: '[dark|light]' },
 
   // ── p1 common ──────────────────────────────────────────────────
-  { name: 'agents', description: 'Manage agent configurations', ui: 'custom', priority: 'p1' },
-  { name: 'btw', description: 'Ask a quick side question without interrupting', ui: 'none', priority: 'p1', args: '<question>' },
+  { name: 'agents', description: 'Manage agent configurations', ui: 'picker', priority: 'p1', picker: 'agents' },
+  // /btw — TUI parity: bare `/btw` submits immediately (daemon replies
+  // "Usage: /btw"). Args are optional, so we drop the `args` hint to
+  // avoid the palette inserting `/btw ` and stalling on Enter.
+  // Captured 2026-05-02 in tui-vs-codemode-diff.report.md.
+  { name: 'btw', description: 'Ask a quick side question without interrupting', ui: 'none', priority: 'p1' },
   { name: 'login', description: 'Sign in / switch OpenAgentic accounts', ui: 'form', priority: 'p1' },
   { name: 'logout', description: 'Sign out from OpenAgentic', ui: 'none', priority: 'p1' },
-  { name: 'mcp', description: 'Manage MCP servers', ui: 'picker', priority: 'p1', args: '[enable|disable [name]]' },
+  { name: 'mcp', description: 'Manage MCP servers', ui: 'picker', priority: 'p1', args: '[enable|disable [name]]', picker: 'mcp' },
   { name: 'plan', description: 'Enter plan mode or view current plan', ui: 'modal', priority: 'p1', args: '[open|<description>]' },
   { name: 'remote-control', description: 'Connect for remote-control sessions', ui: 'custom', priority: 'p1', aliases: ['rc'] },
   { name: 'resume', description: 'Resume a previous conversation', ui: 'picker', priority: 'p1', aliases: ['continue'] },
-  { name: 'skills', description: 'List available skills', ui: 'none', priority: 'p1' },
+  { name: 'skills', description: 'List available skills', ui: 'none', priority: 'p1', picker: 'skills' },
   { name: 'status', description: 'Show session status', ui: 'none', priority: 'p1' },
 
   // ── p2 secondary ───────────────────────────────────────────────
@@ -63,14 +76,18 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   { name: 'share', description: 'Share this conversation', ui: 'none', priority: 'p2' },
   { name: 'tag', description: 'Toggle a searchable tag on this session', ui: 'none', priority: 'p2', args: '<tag-name>' },
   { name: 'tasks', description: 'List and manage background tasks', ui: 'custom', priority: 'p2', aliases: ['bashes'] },
-  { name: 'tools', description: 'List tools and per-tool config', ui: 'none', priority: 'p2', args: '[<tool> <key> <value>]' },
+  // /tools — TUI parity: bare `/tools` submits and lists every tool grouped
+  // by category. Args are optional drilldown (`/tools <tool>` shows one),
+  // so dropping the `args` hint avoids the palette stalling on Enter.
+  // Captured 2026-05-02 in tui-vs-codemode-diff.report.md.
+  { name: 'tools', description: 'List tools and per-tool config', ui: 'none', priority: 'p2' },
   { name: 'budget', description: 'View or set token budget for the session', ui: 'none', priority: 'p2', args: '[<limit>]' },
   { name: 'batch', description: 'Queue multiple prompts for sequential execution', ui: 'custom', priority: 'p2' },
   { name: 'enter-worktree', description: 'Create and switch to an isolated git worktree', ui: 'none', priority: 'p2', args: '[branch] [path]' },
   { name: 'exit-worktree', description: 'Leave the current worktree and return to the main workspace', ui: 'none', priority: 'p2' },
   { name: 'env', description: 'View or set environment variables for the session', ui: 'none', priority: 'p2', args: '[KEY=VALUE]' },
   { name: 'install', description: 'Install a CLI tool or package', ui: 'none', priority: 'p2', args: '<package>' },
-  { name: 'plugin', description: 'Manage plugins', ui: 'custom', priority: 'p2', args: '[list|install|remove]', aliases: ['plugins'] },
+  { name: 'plugin', description: 'Manage plugins', ui: 'custom', priority: 'p2', args: '[list|install|remove]', aliases: ['plugins'], picker: 'plugins' },
   { name: 'sounds', description: 'Toggle turn-complete notification sounds', ui: 'none', priority: 'p2' },
   { name: 'sandbox-toggle', description: 'Toggle sandbox mode for the session', ui: 'none', priority: 'p2' },
 
@@ -124,9 +141,109 @@ export const SLASH_COMMANDS: SlashCommand[] = [
  * > alphabetical. Hidden commands appear only when an exact name match
  * is typed.
  */
-export function filterSlashCommands(query: string, limit = 80): SlashCommand[] {
+/**
+ * Resolve a slash-command by name (case-insensitive) OR by alias.
+ * Returns undefined when nothing matches. Used by the palette commit
+ * path to decide whether to submit immediately (no args) or to insert
+ * a stub like `/files ` so the user can type the path.
+ */
+export function findSlashCommand(name: string): SlashCommand | undefined {
+  const q = name.toLowerCase().replace(/^\//, '');
+  return SLASH_COMMANDS.find(
+    (c) => c.name === q || (c.aliases?.includes(q) ?? false),
+  );
+}
+
+/**
+ * Daemon-emitted plugin command names (e.g. `superpowers:test-driven-development`)
+ * arrive as bare strings in `system_init.slash_commands`. Synthesize a
+ * SlashCommand stub for each name not already in the static registry so
+ * the palette can show them. Priority is `p1` (visible by default but
+ * below built-ins). Description marks them as plugin-supplied.
+ *
+ * 2026-05-02 user feedback: "loaded plugins don't show in slash after
+ * install". The palette was reading SLASH_COMMANDS only; daemon-supplied
+ * plugin commands had nowhere to land. After /reload-plugins fires
+ * post-install, sessionMeta.slashCommands updates with the new names.
+ */
+export function commandsFromDaemonNames(
+  names: ReadonlyArray<string>,
+): SlashCommand[] {
+  if (!names || names.length === 0) return [];
+  const knownNames = new Set(SLASH_COMMANDS.map((c) => c.name));
+  for (const c of SLASH_COMMANDS) {
+    if (c.aliases) for (const a of c.aliases) knownNames.add(a);
+  }
+  const out: SlashCommand[] = [];
+  for (const raw of names) {
+    if (typeof raw !== 'string') continue;
+    const name = raw.trim().replace(/^\//, '');
+    if (!name || knownNames.has(name)) continue;
+    knownNames.add(name);
+    out.push({
+      name,
+      // Plugin commands typically use `pluginName:commandName` format.
+      // Surface the prefix in the description so users can see what
+      // plugin shipped this command without expanding details.
+      description: name.includes(':')
+        ? `(plugin · ${name.split(':')[0]})`
+        : '(plugin command)',
+      ui: 'none',
+      priority: 'p1',
+    });
+  }
+  return out;
+}
+
+/**
+ * Surface plugin skills (e.g. `brainstorming`, `test-driven-development`,
+ * `systematic-debugging` from superpowers) as virtual slash commands so
+ * the user can type `/brain` or `/test` and get the matching skill in
+ * the picker — same UX they expect from openagentic/Claude Code TUI.
+ *
+ * Skills aren't real slash commands — they're invoked by the model
+ * mid-turn — but exposing them in the palette gives users a single
+ * keystroke to find and trigger them. Selecting a skill from the
+ * picker dispatches `/<skill-name>` which the daemon routes through
+ * its skill-invocation handler.
+ *
+ * Skills sort below daemon-named plugin commands (priority p2 vs p1)
+ * so explicit slash commands win when both match the query.
+ */
+export function commandsFromSkillNames(
+  skills: ReadonlyArray<string>,
+): SlashCommand[] {
+  if (!skills || skills.length === 0) return [];
+  const knownNames = new Set(SLASH_COMMANDS.map((c) => c.name));
+  for (const c of SLASH_COMMANDS) {
+    if (c.aliases) for (const a of c.aliases) knownNames.add(a);
+  }
+  const out: SlashCommand[] = [];
+  for (const raw of skills) {
+    if (typeof raw !== 'string') continue;
+    const name = raw.trim().replace(/^\//, '');
+    if (!name || knownNames.has(name)) continue;
+    knownNames.add(name);
+    out.push({
+      name,
+      description: '(skill)',
+      ui: 'none',
+      priority: 'p2',
+    });
+  }
+  return out;
+}
+
+export function filterSlashCommands(
+  query: string,
+  limit = 80,
+  extraCommands: ReadonlyArray<SlashCommand> = [],
+): SlashCommand[] {
   const q = query.toLowerCase().replace(/^\//, '');
-  const candidates = SLASH_COMMANDS.filter((c) => {
+  const pool = extraCommands.length > 0
+    ? [...SLASH_COMMANDS, ...extraCommands]
+    : SLASH_COMMANDS;
+  const candidates = pool.filter((c) => {
     // Show ALL commands when query is empty or matches — openagentic
     // TUI lists every command in its / palette. Hidden commands only
     // hide when there's a non-matching query.
@@ -152,6 +269,14 @@ export function filterSlashCommands(query: string, limit = 80): SlashCommand[] {
     const apr = priorityWeight[a.priority];
     const bpr = priorityWeight[b.priority];
     if (apr !== bpr) return apr - bpr;
+    // 2026-05-02 user feedback: plugin commands (e.g.
+    // `superpowers:brainstorming`) should sort AFTER built-ins, not
+    // interleave alphabetically. Mirrors openagentic TUI / Claude Code
+    // palette ordering where built-ins come first, then plugin
+    // commands grouped by plugin source.
+    const aIsPlugin = a.name.includes(':');
+    const bIsPlugin = b.name.includes(':');
+    if (aIsPlugin !== bIsPlugin) return aIsPlugin ? 1 : -1;
     return a.name.localeCompare(b.name);
   });
 

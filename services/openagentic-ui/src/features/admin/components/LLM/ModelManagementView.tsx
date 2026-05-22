@@ -12,12 +12,14 @@ import { RefreshCw, Layers, Sparkles, Play } from '@/shared/icons';
 import { XCircle } from '../Shared/AdminIcons';
 import { apiRequest } from '@/utils/api';
 import { getProviderIcon } from '../Shared/ProviderIcons';
+import { SoTBanner, PageHeader } from '../../primitives-v2';
 import {
   ModelInfo, ModelConfig, DbProvider, ModelManagementViewProps, TabId, guessTier,
 } from './ModelManagementView/constants';
 import { RegistryTab } from './ModelManagementView/RegistryTab';
 import { ModelGardenTab } from './ModelManagementView/ModelGardenTab';
 import { PlaygroundTab } from './ModelManagementView/PlaygroundTab';
+import { dedupeRegistryModels } from './ModelManagementView/dedupeRegistryModels';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -39,21 +41,76 @@ export const ModelManagementView: React.FC<ModelManagementViewProps> = ({ theme 
       const providerList: DbProvider[] = data?.providers || [];
       setProviders(providerList);
 
-      // (#73) STALENESS FIX: Registry tab is now built from LIVE SDK discovery
-      // for each enabled provider, NOT from the persisted provider_config.models[]
-      // curation. This means models removed in the provider's own console
-      // (Azure portal, AWS console) disappear from the admin immediately on
-      // refresh, and models added there appear without any "add to registry"
-      // dance.
+      // Task #5 (Registry SoT): primary source for the Models page is the
+      // curated Registry (admin.model_role_assignments). Provider-create
+      // auto-populates this table (task #2), the admin toggles rows via
+      // PATCH /registry/:id (task #5 backend), and every reader — toolbar,
+      // admin page, Smart Router — sees the same set. No more drift.
       //
-      // The persisted provider_config.models[] is now treated as edit-overrides
-      // only — admin-tweaked capability flags, rate limits, cost tier, etc.
-      // are merged on top of the live discovery result, keyed by model ID.
-      // disabledModels array is still applied as an overlay.
-      //
-      // For providers where discovery fails (e.g., transient 5xx) we fall
-      // back to the persisted models[] so admin can still see/edit them.
+      // If the Registry is empty (fresh bootstrap or migration gap), we
+      // fall back to the legacy live-discovery path so the admin can still
+      // see what's in the provider catalog and hit Add-Model.
+      const registryRes = await apiRequest('/admin/llm-providers/registry?enabledOnly=false').catch(() => null);
+      const registryRows: any[] = registryRes?.ok ? await registryRes.json() : [];
+
       const allModels: ModelInfo[] = [];
+
+      if (registryRows.length > 0) {
+        // Map each Registry row into the ModelInfo shape RegistryTab consumes.
+        // We preserve the Registry row id as `id` so the Save/Toggle handlers
+        // can PATCH /registry/:id by that key.
+        const providerByName = new Map(providerList.map(p => [p.name, p]));
+        for (const r of registryRows) {
+          const p = providerByName.get(r.provider);
+          const caps = (r.capabilities || {}) as Record<string, boolean>;
+          allModels.push({
+            id: r.id, // Registry row PK — used by toggle/save handlers
+            name: r.model,
+            provider: r.provider_display_name || p?.display_name || r.provider,
+            providerId: p?.id || r.provider,
+            providerType: p?.provider_type || '',
+            providerName: r.provider,
+            capabilities: {
+              chat: !!caps.chat,
+              embeddings: !!caps.embeddings,
+              tools: !!caps.tools,
+              vision: !!caps.vision,
+              thinking: !!caps.thinking,
+              imageGeneration: !!caps.imageGeneration,
+              streaming: !!caps.streaming,
+            },
+            maxTokens: r.max_tokens || undefined,
+            tier: guessTier(r.model),
+            enabled: !!r.enabled,
+            config: {
+              maxOutputTokens: r.max_tokens,
+              temperature: r.temperature ?? undefined,
+              enabled: !!r.enabled,
+              roles: [r.role || 'chat'],
+              capabilities: {
+                chat: !!caps.chat,
+                vision: !!caps.vision,
+                tools: !!caps.tools,
+                thinking: !!caps.thinking,
+                embeddings: !!caps.embeddings,
+                imageGeneration: !!caps.imageGeneration,
+                streaming: !!caps.streaming,
+              },
+            },
+          } as any);
+        }
+        // Collapse per-(role,model,provider) registry rows into one row per
+        // (provider,model) for the listing UI. The DB still stores per-role
+        // configuration; the UI just shows merged role badges so a single
+        // model registered for both 'chat' and 'code' isn't perceived as a
+        // duplicate. Source: dedupeRegistryModels (TDD-tested).
+        setModels(dedupeRegistryModels(allModels));
+        return;
+      }
+
+      // Fallback: Registry empty — fall back to legacy per-provider discovery
+      // so admin can still see what's in the catalog and hit Add-Model to
+      // get a row into the Registry.
       const enabledProviders = providerList.filter(p => p.enabled);
 
       // Discover live from every enabled provider in parallel
@@ -143,7 +200,8 @@ export const ModelManagementView: React.FC<ModelManagementViewProps> = ({ theme 
           } as any);
         }
       }
-      setModels(allModels);
+      // Same dedup as the registry-SoT path above — keeps UI consistent.
+      setModels(dedupeRegistryModels(allModels));
     } catch (err: any) {
       setError(err.message || 'Failed to load');
     } finally {
@@ -166,7 +224,7 @@ export const ModelManagementView: React.FC<ModelManagementViewProps> = ({ theme 
   if (error) {
     return (
       <div className="p-6 rounded-xl border" style={{ background: 'var(--ap-bg-secondary)', borderColor: 'var(--ap-border)' }}>
-        <div className="flex items-center gap-3" style={{ color: 'var(--ap-text-error, #ef4444)' }}>
+        <div className="flex items-center gap-3" style={{ color: 'var(--ap-text-error)' }}>
           <XCircle size={20} />
           <div>
             <h3 className="font-semibold text-sm">Failed to Load</h3>
@@ -188,7 +246,20 @@ export const ModelManagementView: React.FC<ModelManagementViewProps> = ({ theme 
 
   return (
     <div className="space-y-5">
-      {/* Header + Tabs */}
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'LLM', 'Models']}
+        title="Models"
+        explainer="Browse the registered model catalog, discover new models from enabled providers, and run quick playground tests."
+        actions={[
+          { label: 'Refresh', onClick: fetchProviders },
+        ]}
+      />
+
+      {/* Mission Control · SoT enforcement banner — top of page, every render */}
+      <SoTBanner />
+
+      {/* Tab switcher — unchanged below the page header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: 'var(--color-surfaceSecondary)' }}>
           {TABS.map(tab => (
@@ -213,14 +284,6 @@ export const ModelManagementView: React.FC<ModelManagementViewProps> = ({ theme 
             </button>
           ))}
         </div>
-        <button
-          onClick={fetchProviders}
-          className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
-          style={{ borderColor: 'var(--color-border)', color: 'var(--text-primary)', background: 'var(--color-surfaceSecondary)' }}
-        >
-          <RefreshCw size={12} />
-          Refresh
-        </button>
       </div>
 
       {/* Tab Content */}

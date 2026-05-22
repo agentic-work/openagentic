@@ -29,7 +29,7 @@ const WelcomePage = React.lazy(() => import('./WelcomePage'));
 const QuickStartPage = React.lazy(() => import('./QuickStartPage'));
 const KeyConceptsPage = React.lazy(() => import('./KeyConceptsPage'));
 const ChatModePage = React.lazy(() => import('./ChatModePage'));
-const IntelligenceSliderPage = React.lazy(() => import('./IntelligenceSliderPage'));
+// 2026-04-19 — IntelligenceSliderPage deleted (task #144, slider rip).
 const AgentDelegationPage = React.lazy(() => import('./AgentDelegationPage'));
 const ArtifactsPage = React.lazy(() => import('./ArtifactsPage'));
 const CodeModePage = React.lazy(() => import('./CodeModePage'));
@@ -104,14 +104,7 @@ export const docsNavigation: DocsCategory[] = [
         icon: 'chat',
         component: ChatModePage,
       },
-      {
-        id: 'intelligence-slider',
-        title: 'Intelligence Slider',
-        description: 'Model routing and cost/quality tradeoff',
-        category: 'chat-mode',
-        icon: 'brain',
-        component: IntelligenceSliderPage,
-      },
+      // 2026-04-19 — intelligence-slider docs page removed (task #144).
       {
         id: 'agent-delegation',
         title: 'Agents & Delegation',

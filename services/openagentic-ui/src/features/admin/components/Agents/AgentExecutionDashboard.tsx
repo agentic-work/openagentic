@@ -7,6 +7,7 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
+import { PageHeader, LogRow, type LogSeverity } from '../../primitives-v2';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -101,6 +102,17 @@ const statusColor = (status: string) => {
 };
 
 const statusBg = (status: string) => `color-mix(in srgb, ${statusColor(status)} 15%, transparent)`;
+
+const statusToSeverity = (status: string): LogSeverity => {
+  switch (status) {
+    case 'completed': return 'ok';
+    case 'failed': return 'err';
+    case 'running': return 'warn';
+    case 'killed':
+    case 'cancelled': return 'warn';
+    default: return 'info';
+  }
+};
 
 // ---------------------------------------------------------------------------
 // Shared styles
@@ -505,24 +517,36 @@ export const AgentExecutionDashboard: React.FC<AgentExecutionDashboardProps> = (
             <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: CHART_GREEN }} />
             <span className="text-xs font-semibold" style={{ color: 'var(--color-text-primary)' }}>Live ({liveExecutions.length})</span>
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <tbody>
-              {liveExecutions.map(exec => (
-                <tr key={exec.id}>
-                  <td style={{ ...tableCellStyle, width: 60 }}>
-                    <span className="px-1.5 py-0.5 rounded text-xs font-medium inline-flex items-center gap-1" style={{ backgroundColor: statusBg(exec.status), color: statusColor(exec.status) }}>
-                      <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: statusColor(exec.status) }} />
-                      {exec.status}
-                    </span>
-                  </td>
-                  <td style={tableCellStyle}><span className="font-mono text-xs">{exec.agentName || exec.agentId?.slice(0, 12) || '-'}</span></td>
-                  <td style={tableCellStyle}>{exec.pattern || '-'}</td>
-                  <td style={{ ...tableCellStyle, fontFamily: 'monospace', fontSize: 11 }}><LiveTimer startedAt={exec.startedAt} /></td>
-                  <td style={tableCellStyle}>{formatCost(exec.costCents)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {liveExecutions.map(exec => {
+            const message = (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <code style={{ color: 'var(--ap-fg-1, var(--fg-1))' }}>
+                  {exec.agentName || exec.agentId?.slice(0, 12) || '-'}
+                </code>
+                <span style={{ color: 'var(--ap-fg-3, var(--fg-3))' }}>· {exec.status}</span>
+                {exec.pattern && (
+                  <span style={{ color: 'var(--ap-fg-3, var(--fg-3))' }}>· {exec.pattern}</span>
+                )}
+              </span>
+            );
+            const meta = (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-mono)' }}>
+                <LiveTimer startedAt={exec.startedAt} />
+                <span>{formatCost(exec.costCents)}</span>
+              </span>
+            );
+            return (
+              <LogRow
+                key={exec.id}
+                severity={statusToSeverity(exec.status)}
+                timestamp="live"
+                source={exec.userId || 'system'}
+                sourceAccent={!!exec.userId}
+                message={message}
+                meta={meta}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -534,74 +558,72 @@ export const AgentExecutionDashboard: React.FC<AgentExecutionDashboardProps> = (
           </div>
         ) : (
           <>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={tableHeaderStyle}>Status</th>
-                  <th style={tableHeaderStyle}>Agent Name</th>
-                  <th style={tableHeaderStyle}>Pattern</th>
-                  <th style={tableHeaderStyle}>Duration</th>
-                  <th style={tableHeaderStyle}>Tokens</th>
-                  <th style={tableHeaderStyle}>Cost</th>
-                  <th style={tableHeaderStyle}>Timestamp</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historyExecutions.map(exec => (
-                  <React.Fragment key={exec.id}>
-                    <tr
-                      onClick={() => setExpandedRow(expandedRow === exec.id ? null : exec.id)}
-                      style={{ cursor: 'pointer' }}
-                      className="hover:opacity-80"
-                    >
-                      <td style={tableCellStyle}>
-                        <span className="px-1.5 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: statusBg(exec.status), color: statusColor(exec.status) }}>
-                          {exec.status}
-                        </span>
-                      </td>
-                      <td style={{ ...tableCellStyle, fontSize: 11 }}>
-                        <span className="font-mono">{exec.agent_name || exec.agent_id?.slice(0, 12) || '-'}</span>
-                      </td>
-                      <td style={{ ...tableCellStyle, fontSize: 11 }}>{exec.pattern || '-'}</td>
-                      <td style={{ ...tableCellStyle, fontFamily: 'monospace', fontSize: 11 }}>{formatDurationMs(exec.duration_ms)}</td>
-                      <td style={{ ...tableCellStyle, fontFamily: 'monospace', fontSize: 11 }}>{exec.tokens_used?.toLocaleString() ?? '-'}</td>
-                      <td style={tableCellStyle}>{formatCost(exec.cost_cents)}</td>
-                      <td style={{ ...tableCellStyle, fontSize: 10, color: 'var(--color-text-tertiary)' }}>
-                        {exec.created_at ? new Date(exec.created_at).toLocaleString() : '-'}
-                      </td>
-                    </tr>
-                    {expandedRow === exec.id && (
-                      <tr>
-                        <td colSpan={7} style={{ ...tableCellStyle, padding: '12px 16px', backgroundColor: 'color-mix(in srgb, var(--color-bg-surface) 95%, var(--color-primary) 5%)' }}>
-                          <div className="space-y-2 text-xs">
-                            <div className="grid grid-cols-3 gap-3">
-                              <div><span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>ID:</span> <span className="font-mono">{exec.id}</span></div>
-                              <div><span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Model:</span> {exec.model || '-'}</div>
-                              <div><span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Tool Calls:</span> {exec.tool_calls_count ?? '-'}</div>
-                              <div><span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Agent ID:</span> <span className="font-mono">{exec.agent_id || '-'}</span></div>
-                              <div><span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>User ID:</span> <span className="font-mono">{exec.user_id || '-'}</span></div>
-                              <div><span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Completed:</span> {exec.completed_at ? new Date(exec.completed_at).toLocaleString() : '-'}</div>
-                            </div>
-                            {exec.error_message && (
-                              <div className="mt-2 p-2 rounded" style={{ backgroundColor: 'color-mix(in srgb, var(--color-error) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-error) 25%, transparent)' }}>
-                                <div className="font-semibold mb-1" style={{ color: 'var(--color-error)' }}>Error</div>
-                                <pre className="whitespace-pre-wrap font-mono text-xs" style={{ color: 'var(--color-text-primary)' }}>{exec.error_message}</pre>
-                              </div>
-                            )}
-                            {exec.output && (
-                              <div className="mt-2 p-2 rounded" style={{ backgroundColor: 'var(--color-bg-primary, var(--color-bg))', border: '1px solid var(--color-border)' }}>
-                                <div className="font-semibold mb-1" style={{ color: 'var(--color-text-secondary)' }}>Output</div>
-                                <pre className="whitespace-pre-wrap font-mono text-xs max-h-[200px] overflow-auto" style={{ color: 'var(--color-text-primary)' }}>{exec.output}</pre>
-                              </div>
-                            )}
+            {historyExecutions.map(exec => {
+              const isOpen = expandedRow === exec.id;
+              const message = (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <code style={{ color: 'var(--ap-fg-1, var(--fg-1))' }}>
+                    {exec.agent_name || exec.agent_id?.slice(0, 12) || '-'}
+                  </code>
+                  <span style={{ color: 'var(--ap-fg-3, var(--fg-3))' }}>· {exec.status}</span>
+                  {exec.pattern && (
+                    <span style={{ color: 'var(--ap-fg-3, var(--fg-3))' }}>· {exec.pattern}</span>
+                  )}
+                </span>
+              );
+              const meta = (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-mono)' }}>
+                  <span>{formatDurationMs(exec.duration_ms)}</span>
+                  {exec.tokens_used != null && <span>{exec.tokens_used.toLocaleString()} tok</span>}
+                  <span>{formatCost(exec.cost_cents)}</span>
+                </span>
+              );
+              return (
+                <React.Fragment key={exec.id}>
+                  <div
+                    onClick={() => setExpandedRow(isOpen ? null : exec.id)}
+                    style={{ cursor: 'pointer' }}
+                    role="button"
+                    aria-expanded={isOpen}
+                  >
+                    <LogRow
+                      severity={statusToSeverity(exec.status)}
+                      timestamp={exec.created_at ? new Date(exec.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'}
+                      source={exec.user_id || 'system'}
+                      sourceAccent={!!exec.user_id}
+                      message={message}
+                      meta={meta}
+                    />
+                  </div>
+                  {isOpen && (
+                    <div style={{ padding: '12px 16px', backgroundColor: 'color-mix(in srgb, var(--color-bg-surface) 95%, var(--color-primary) 5%)', borderBottom: '1px solid var(--color-border)' }}>
+                      <div className="space-y-2 text-xs">
+                        <div className="grid grid-cols-3 gap-3">
+                          <div><span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>ID:</span> <span className="font-mono">{exec.id}</span></div>
+                          <div><span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Model:</span> {exec.model || '-'}</div>
+                          <div><span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Tool Calls:</span> {exec.tool_calls_count ?? '-'}</div>
+                          <div><span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Agent ID:</span> <span className="font-mono">{exec.agent_id || '-'}</span></div>
+                          <div><span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>User ID:</span> <span className="font-mono">{exec.user_id || '-'}</span></div>
+                          <div><span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Completed:</span> {exec.completed_at ? new Date(exec.completed_at).toLocaleString() : '-'}</div>
+                        </div>
+                        {exec.error_message && (
+                          <div className="mt-2 p-2 rounded" style={{ backgroundColor: 'color-mix(in srgb, var(--color-error) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-error) 25%, transparent)' }}>
+                            <div className="font-semibold mb-1" style={{ color: 'var(--color-error)' }}>Error</div>
+                            <pre className="whitespace-pre-wrap font-mono text-xs" style={{ color: 'var(--color-text-primary)' }}>{exec.error_message}</pre>
                           </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
+                        )}
+                        {exec.output && (
+                          <div className="mt-2 p-2 rounded" style={{ backgroundColor: 'var(--color-bg-primary, var(--color-bg))', border: '1px solid var(--color-border)' }}>
+                            <div className="font-semibold mb-1" style={{ color: 'var(--color-text-secondary)' }}>Output</div>
+                            <pre className="whitespace-pre-wrap font-mono text-xs max-h-[200px] overflow-auto" style={{ color: 'var(--color-text-primary)' }}>{exec.output}</pre>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
             {/* Pagination */}
             <div className="px-4 py-2 flex items-center justify-between" style={{ borderTop: '1px solid var(--color-border, var(--color-border-default))' }}>
               <button
@@ -636,6 +658,14 @@ export const AgentExecutionDashboard: React.FC<AgentExecutionDashboardProps> = (
 
   return (
     <div className="space-y-3 mt-2">
+      {/* Universal admin chrome — every page wears the same header. */}
+      <PageHeader
+        crumbs={['Admin', 'Agents', 'Executions']}
+        title="Agent Executions"
+        explainer="Live and historical agent-execution telemetry: graphs for success rate, latency, token usage, and cost — plus a searchable execution-log audit stream."
+        sticky
+      />
+
       {/* Sub-tab bar */}
       <div className="flex items-center gap-2">
         {renderTabButton('graphs', 'Graphs Dashboard')}

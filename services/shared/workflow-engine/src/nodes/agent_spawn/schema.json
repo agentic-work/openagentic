@@ -1,0 +1,135 @@
+{
+  "type": "agent_spawn",
+  "category": "ai",
+  "label": "Agent Spawn",
+  "description": "Spawn a single agent through openagentic-proxy. The proxy resolves the agent role to a DB-backed agent record and runs the task.",
+  "icon": "robot",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "content": "string",
+          "status": "string",
+          "executionId": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "task",
+      "label": "Task",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "Research the latest trends in {{topic}}"
+    },
+    {
+      "name": "taskDescription",
+      "label": "Task description (legacy alias)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Legacy alias for task — used when 'task' is unset."
+    },
+    {
+      "name": "agentType",
+      "label": "Agent type",
+      "type": "string",
+      "required": false,
+      "default": "general",
+      "description": "High-level role hint (e.g. researcher, coder, analyst). Mapped to a DB agent_type by the executor."
+    },
+    {
+      "name": "agentRole",
+      "label": "Agent role override",
+      "type": "string",
+      "required": false,
+      "description": "Explicit role (overrides agentType). Useful when the calling template knows the exact DB agent_type."
+    },
+    {
+      "name": "agentId",
+      "label": "Agent ID",
+      "type": "string",
+      "required": false,
+      "description": "Pin the call to a specific DB agent by id. Bypasses role-based resolution."
+    },
+    {
+      "name": "model",
+      "label": "Model",
+      "type": "string",
+      "required": false,
+      "default": "auto",
+      "description": "Leave as 'auto' to let openagentic-proxy / Smart Router pick the model."
+    },
+    {
+      "name": "tools",
+      "label": "Tools",
+      "type": "json",
+      "required": false,
+      "default": [],
+      "description": "Optional list of MCP tool names the agent is allowed to invoke."
+    },
+    {
+      "name": "systemPrompt",
+      "label": "System prompt",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true
+    },
+    {
+      "name": "maxTurns",
+      "label": "Max turns",
+      "type": "number",
+      "required": false,
+      "default": 10,
+      "min": 1,
+      "max": 50
+    },
+    {
+      "name": "timeout",
+      "label": "Timeout (ms)",
+      "type": "number",
+      "required": false,
+      "default": 120000,
+      "min": 1000,
+      "max": 600000
+    },
+    {
+      "name": "costBudget",
+      "label": "Cost budget (cents)",
+      "type": "number",
+      "required": false,
+      "default": 200,
+      "min": 1,
+      "max": 10000
+    }
+  ],
+  "ai": {
+    "shortDescription": "Spawn one agent via openagentic-proxy.",
+    "whenToUse": "When you need a single specialized agent (researcher, coder, analyst) to take a task and return a result.",
+    "examplePrompt": "spawn a researcher agent to summarize the latest news on the input topic",
+    "promptHints": "Reference the result with {{steps.<id>.content}}. Leave model as 'auto' so openagentic-proxy + Smart Router pick the right model."
+  },
+  "outputAssertions": [
+    {
+      "name": "agent_returned_content",
+      "expression": "result && typeof result.content === 'string' && result.content.length > 0",
+      "errorMessage": "Agent did not return any content."
+    },
+    {
+      "name": "agent_completed_status",
+      "expression": "result && (result.status === 'completed' || result.status === 'success')",
+      "errorMessage": "Agent did not complete successfully."
+    },
+    {
+      "name": "agent_substantive_output",
+      "expression": "!result || !result.content || !result.content.match(/^\\s*(I (could not|couldn't|cannot|can't|do not have|don't have|am unable|wasn't able|was not able)|Sorry,? (I|but)|I'?m sorry,?|I apologize,?|Unfortunately,? (I|no)|No (information|data|results|content) (available|found))/i)",
+      "errorMessage": "Agent returned a refusal or 'no info' response — likely the underlying tool returned no results."
+    }
+  ]
+}

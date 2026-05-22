@@ -6,6 +6,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { nanoid } from 'nanoid';
 import { useChatStore, type Message } from '@/stores/useChatStore';
+import { uploadFilesToApi, type UploadedFileRef } from './uploadFilesToApi';
 
 // Use the store's Message type for compatibility
 type ChatMessage = Message;
@@ -13,7 +14,14 @@ type ChatMessage = Message;
 interface SendMessageOptions {
   model?: string;
   enabledTools?: string[];
-  files?: Array<{ name: string; type: string; content: string }>;
+  // Accepts either:
+  //   - {id} refs (persisted uploads — backend hydrates bytes from MinIO), or
+  //   - {name,type,content} inline base64 (legacy path, still honored by the
+  //     backend for small files / tests).
+  files?: Array<
+    | { id: string; name?: string; type?: string; size?: number }
+    | { name: string; type: string; content: string }
+  >;
   promptTechniques?: string[];
 }
 
@@ -43,10 +51,14 @@ export const useMessageHandling = (options: UseMessageHandlingOptions) => {
   // Streaming state
   const [streamingStatus, setStreamingStatus] = useState<'idle' | 'streaming' | 'error'>('idle');
 
-  // Convert files to base64
+  // 2026-04-24: switched from FileReader → base64-inline-in-chat-body to a
+  // pre-upload flow. The UI now POSTs each dropped File to
+  // /api/files/upload *before* /api/chat/stream; the chat request only
+  // carries {id} refs and the backend hydrates bytes from MinIO per turn.
+  // convertFilesToBase64 is kept as a small-file escape hatch (tests,
+  // or when the upload endpoint is unreachable and we want the old path).
   const convertFilesToBase64 = useCallback(async (files: File[]) => {
     if (files.length === 0) return [];
-
     return Promise.all(
       files.map(async (file) => {
         const base64 = await new Promise<string>((resolve) => {
@@ -57,7 +69,7 @@ export const useMessageHandling = (options: UseMessageHandlingOptions) => {
         return {
           name: file.name,
           type: file.type,
-          content: base64.split(',')[1] // Remove data:image/jpeg;base64, prefix
+          content: base64.split(',')[1] // strip data:image/jpeg;base64, prefix
         };
       })
     );
@@ -130,8 +142,22 @@ export const useMessageHandling = (options: UseMessageHandlingOptions) => {
       }
     });
 
-    // Convert files to base64
-    const base64Files = await convertFilesToBase64(files);
+    // Upload files to MinIO first, then reference them by id in the chat
+    // payload. If the upload endpoint is unreachable, fall back to the inline
+    // base64 path so the user still gets a response (at the cost of no
+    // persistence for that turn). Surface upload errors to the caller.
+    let fileRefs: SendMessageOptions['files'];
+    if (files.length > 0) {
+      try {
+        const uploaded = await uploadFilesToApi(files);
+        fileRefs = uploaded.map((u: UploadedFileRef) => ({
+          id: u.id, name: u.name, type: u.type, size: u.size,
+        }));
+      } catch (uploadErr) {
+        console.warn('[useMessageHandling] Upload failed, falling back to inline base64', uploadErr);
+        fileRefs = await convertFilesToBase64(files);
+      }
+    }
 
     // Clear old streaming state
     clearStreamingState(sessionId);
@@ -152,7 +178,7 @@ export const useMessageHandling = (options: UseMessageHandlingOptions) => {
       setStreamingStatus('streaming');
       const result = await sendSSEMessage(messageContent, {
         ...sendOptions,
-        files: base64Files.length > 0 ? base64Files : undefined
+        files: fileRefs && fileRefs.length > 0 ? fileRefs : undefined
       });
       return { success: true, result };
     } catch (error) {

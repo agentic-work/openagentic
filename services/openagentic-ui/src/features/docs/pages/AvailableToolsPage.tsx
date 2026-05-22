@@ -53,14 +53,6 @@ const mcpServers: MCPServer[] = [
     color: '#4285F4',
   },
   {
-    name: 'Azure Cost',
-    id: 'oap-azure-cost-mcp',
-    description: 'Specialized Azure cost analysis with budget tracking, anomaly detection, and cost optimization recommendations.',
-    category: 'Cloud',
-    capabilities: ['Cost breakdown', 'Budget tracking', 'Anomaly detection', 'Optimization tips', 'Forecast'],
-    color: '#0078D4',
-  },
-  {
     name: 'Kubernetes',
     id: 'oap-kubernetes-mcp',
     description: 'Kubernetes cluster management covering pods, deployments, services, configmaps, secrets, and namespace operations.',

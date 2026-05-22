@@ -8,6 +8,13 @@
 import fetch from 'node-fetch';
 import { Logger } from 'pino';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions.js';
+import { ModelConfigurationService } from './ModelConfigurationService.js';
+import { DEFAULT_SERVICE_PROMPTS } from './prompt/ServicePromptService.js';
+
+// Minimal interface for injected ServicePromptService (Sprint W).
+interface ServicePromptLike {
+  getPrompt(key: string): Promise<string>;
+}
 
 interface TitleClientConfig {
   defaultModel?: string;
@@ -52,20 +59,21 @@ export class TitleGenerationClient {
   // Cached resolved model (from providerManager.listModels) so we don't
   // re-query on every title call. Cleared on updateConfig().
   private resolvedModel?: string;
+  /** Sprint W (2026-05-19) — optional injected ServicePromptService for DB-backed prompt. */
+  private _servicePromptSvc?: ServicePromptLike;
 
-  constructor(logger: Logger, config: Partial<TitleClientConfig> = {}) {
+  constructor(logger: Logger, config: Partial<TitleClientConfig> = {}, servicePromptSvc?: ServicePromptLike) {
     this.logger = logger.child({ service: 'TitleGenerationClient' });
     this.config = {
-      // Use cheapest model available - title generation is a simple task
-      defaultModel: process.env.TITLE_GENERATION_MODEL ||
-                   process.env.ECONOMICAL_MODEL ||  // Cheapest model (Haiku/Nova Micro)
-                   process.env.SECONDARY_MODEL ||   // Second cheapest
-                   process.env.DEFAULT_MODEL,
+      // defaultModel is intentionally left undefined here — resolved per-request
+      // from ModelConfigurationService (DB SoT). Callers may still pass an
+      // explicit defaultModel in config to override (e.g. in tests).
       timeout: 5000, // 5 second timeout for title generation
       ...config
     };
 
     this.providerManager = config.providerManager;
+    this._servicePromptSvc = servicePromptSvc;
 
     if (!this.providerManager) {
       this.logger.warn('No ProviderManager provided - title generation will be disabled');
@@ -83,6 +91,16 @@ export class TitleGenerationClient {
     if (requested && requested !== 'auto') return requested;
     if (this.config.defaultModel && this.config.defaultModel !== 'auto') {
       return this.config.defaultModel;
+    }
+    // Resolve from DB (SoT) — ModelConfigurationService has its own 60s TTL
+    // cache so this is cheap on the hot path. No per-instance caching here
+    // (Pattern A: request-time re-read, correctness over microseconds).
+    try {
+      const titleAssignment = await ModelConfigurationService.getServiceModel('titleGeneration');
+      const dbModel = titleAssignment?.modelId ?? await ModelConfigurationService.getDefaultChatModel();
+      if (dbModel) return dbModel;
+    } catch (dbErr: any) {
+      this.logger.warn({ err: dbErr.message }, 'TitleGen failed to resolve model from DB — falling through to providerManager heuristic');
     }
     if (this.resolvedModel) return this.resolvedModel;
     if (!this.providerManager?.listModels) return undefined;
@@ -187,6 +205,33 @@ export class TitleGenerationClient {
   }
 
   /**
+   * Sprint W (2026-05-19) — DB-backed multiple-titles system prompt.
+   *
+   * When `servicePromptSvc` is provided, reads from DB key `title_gen.client`.
+   * Falls back to DEFAULT_SERVICE_PROMPTS default when unavailable.
+   */
+  async getMultipleTitlesPrompt(servicePromptSvc?: ServicePromptLike): Promise<string> {
+    let fallbackReason = 'NO-SVC-INJECTED';
+    if (servicePromptSvc) {
+      try {
+        return await servicePromptSvc.getPrompt('title_gen.client');
+      } catch (err) {
+        fallbackReason = 'DB-READ-THREW';
+        this.logger.warn(
+          { err, key: 'title_gen.client', reason: fallbackReason },
+          '[TitleGenClient] DB prompt read failed, using inline default',
+        );
+      }
+    }
+    // Gap #3 — loud fallback signal.
+    this.logger.warn(
+      { key: 'title_gen.client', reason: fallbackReason },
+      '[ServicePrompt fallback] using DEFAULT_SERVICE_PROMPTS constant — DB row missing or read failed (title_gen.client)',
+    );
+    return DEFAULT_SERVICE_PROMPTS['title_gen.client'].body;
+  }
+
+  /**
    * Generate multiple title suggestions
    */
   async generateMultipleTitles(
@@ -200,10 +245,11 @@ export class TitleGenerationClient {
       creative: 'Generate creative, engaging titles that capture attention'
     };
 
+    const basePrompt = await this.getMultipleTitlesPrompt(this._servicePromptSvc);
     const systemPrompt = `Generate ${count} different title suggestions for a chat conversation.
 ${stylePrompts[style || 'concise']}.
+${basePrompt}
 Each title should be on a new line.
-Focus on different aspects of the user's message.
 No numbers, bullets, or prefixes - just the titles.`;
 
     try {

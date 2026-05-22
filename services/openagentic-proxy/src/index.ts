@@ -14,6 +14,7 @@ import { backgroundRoutes } from './routes/background';
 import { skillsRoutes } from './routes/skills';
 import { executionRoutes } from './routes/executions';
 import resolveRoutes from './routes/resolve';
+import { searchRoutes } from './routes/search';
 import { register, onRequestHook, onResponseHook } from './metrics';
 
 const PORT = parseInt(process.env.PORT || '3300', 10);
@@ -70,6 +71,14 @@ async function main() {
   await skillsRoutes(app, skillsRegistry);
   await executionRoutes(app, orchestrator);
   await resolveRoutes(app);
+  // Agent semantic-search proxy. Forwards to api → Milvus mcp_agents_cache.
+  // Failures degrade to {agents:[], count:0, error} (200) so the LLM
+  // tool_result stays well-formed even if Milvus or the api is offline.
+  try {
+    await app.register(searchRoutes);
+  } catch (err: any) {
+    logger.warn({ err: err?.message }, 'Failed to register agent search routes');
+  }
 
   // Start server
   try {

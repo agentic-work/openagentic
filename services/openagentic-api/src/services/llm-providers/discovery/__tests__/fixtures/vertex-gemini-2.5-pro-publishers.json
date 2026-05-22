@@ -1,0 +1,9 @@
+{
+  "name": "publishers/google/models/gemini-2.5-pro",
+  "displayName": "Gemini 2.5 Pro",
+  "version": "002",
+  "description": "Google's Gemini 2.5 Pro multimodal model",
+  "inputTokenLimit": 1048576,
+  "outputTokenLimit": 65536,
+  "supportedGenerationMethods": ["generateContent", "streamGenerateContent", "countTokens"]
+}

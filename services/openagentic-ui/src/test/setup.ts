@@ -28,3 +28,22 @@ Object.defineProperty(window, 'matchMedia', {
   }),
   writable: true,
 });
+
+// jsdom doesn't ship ResizeObserver / DOMMatrix; ReactFlow (@xyflow/react)
+// uses both during fitView/Background measurement. Polyfill with a no-op
+// stub so widgets can mount in unit tests without crashing.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+if (typeof globalThis.DOMMatrixReadOnly === 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).DOMMatrixReadOnly = class {
+    m22 = 1;
+    constructor(_init?: unknown) {}
+  };
+}

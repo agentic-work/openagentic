@@ -90,8 +90,31 @@ export async function rerankWithLLM(
       return tools.slice(0, topK);
     }
 
+    // 2026-05-07 #669 — resolve an explicit model BEFORE calling the
+    // provider. Several deployed Ollama configurations have an empty
+    // healthCheckModel, and createCompletion({...}) without a `model`
+    // field then falls through to "" → the provider blows up with
+    // "Model '' is not available on the Ollama host", and the whole
+    // tool-search reranking step silently fails. Captured live at
+    // 16:43:05.141Z (chat-dev, "show me my cloud resources").
+    //
+    // Strategy: ask ProviderManager for its default chat model. If
+    // none is configured (test envs, partial bootstraps), bail with
+    // the original tool order rather than emitting a malformed
+    // request — reranking is a best-effort enhancement, not a hard
+    // requirement.
+    const rerankModel: string =
+      (typeof (providerManager as any).getDefaultChatModel === 'function'
+        ? (providerManager as any).getDefaultChatModel()
+        : null) ?? '';
+    if (!rerankModel || rerankModel.trim() === '') {
+      logger.warn({ provider: providerName }, '#669 — no default chat model resolvable for reranking; returning original tool order');
+      return tools.slice(0, topK);
+    }
+
     // Generate completion
     const response = await provider.createCompletion({
+      model: rerankModel,
       messages: [
         {
           role: 'user',

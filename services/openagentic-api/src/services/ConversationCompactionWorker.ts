@@ -8,16 +8,20 @@
  * 4. Manages Redis cache eviction based on TTL
  *
  * ENV vars:
- * - COMPACTION_MODEL: Specific model to use for summarization (e.g., "gpt-4o-mini")
  * - COMPACTION_ENABLED: Enable/disable background compaction (default: true)
  * - COMPACTION_DELAY_HOURS: Hours of inactivity before compacting (default: 1)
  * - AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT: For Azure OpenAI access
+ *
+ * Model selection: compaction model is resolved at request time from
+ * ModelConfigurationService.getServiceModel('compaction') → getDefaultChatModel()
+ * fallback. No COMPACTION_MODEL env var is read on the live path.
  */
 
 import { PrismaClient } from '@prisma/client';
 import { AzureOpenAI } from 'openai';
 import type { Logger } from 'pino';
 import { CompactionEngine } from './context/CompactionEngine.js';
+import { ModelConfigurationService } from './ModelConfigurationService.js';
 
 export interface CompactionConfig {
   prisma: PrismaClient;
@@ -43,7 +47,6 @@ export interface ConversationSummary {
 
 export class ConversationCompactionWorker {
   private config: CompactionConfig;
-  private compactionModel: string;
   private azureOpenAI: AzureOpenAI | null = null;
   private compactionEngine = new CompactionEngine();
   private isRunning = false;
@@ -55,9 +58,6 @@ export class ConversationCompactionWorker {
       delayHours: parseInt(process.env.COMPACTION_DELAY_HOURS || '1'),
       ...config
     };
-
-    // Use COMPACTION_MODEL or fall back to default model
-    this.compactionModel = process.env.COMPACTION_MODEL || process.env.DEFAULT_MODEL;
 
     // Heuristic compaction is always available — worker is always configured
     this.isConfigured = true;
@@ -74,7 +74,6 @@ export class ConversationCompactionWorker {
           apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2024-08-01-preview'
         });
         this.config.logger.info({
-          model: this.compactionModel,
           endpoint
         }, '[COMPACTION] ConversationCompactionWorker initialized with Azure OpenAI');
       } catch (error) {
@@ -84,6 +83,24 @@ export class ConversationCompactionWorker {
       }
     } else {
       this.config.logger.info('[COMPACTION] Azure OpenAI not configured - using heuristic summarization (always available)');
+    }
+  }
+
+  /**
+   * Resolve the compaction model from DB (Pattern A: re-reads on each call, no cache).
+   * Uses ModelConfigurationService.getServiceModel('compaction') with
+   * getDefaultChatModel() fall-through. Returns empty string on total DB failure
+   * so callers can still log/proceed gracefully.
+   */
+  private async resolveCompactionModel(): Promise<string> {
+    try {
+      const assignment = await ModelConfigurationService.getServiceModel('compaction');
+      if (assignment?.modelId) {
+        return assignment.modelId;
+      }
+      return await ModelConfigurationService.getDefaultChatModel();
+    } catch {
+      return '';
     }
   }
 
@@ -102,9 +119,11 @@ export class ConversationCompactionWorker {
     }
 
     this.isRunning = true;
+    // Resolve compaction model from DB (Pattern A: per-start re-read, no cache)
+    const compactionModel = await this.resolveCompactionModel();
     this.config.logger.info({
       delayHours: this.config.delayHours,
-      model: this.compactionModel
+      model: compactionModel
     }, '[COMPACTION] 🗜️ Conversation Compaction Worker starting...');
 
     // Subscribe to Redis conversation events
@@ -134,7 +153,7 @@ export class ConversationCompactionWorker {
     }, 30 * 60 * 1000);
 
     this.config.logger.info({
-      model: this.compactionModel,
+      model: compactionModel,
       subscribedTo: 'conversation:completed'
     }, '[COMPACTION] ✅ Worker started successfully');
   }

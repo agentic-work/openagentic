@@ -10,11 +10,11 @@ interface Props {
 }
 
 const statusColor: Record<string, string> = {
-  pass: 'var(--color-success, #00D26A)',
-  fail: 'var(--color-error, #ef4444)',
-  skip: 'var(--color-warning, #f59e0b)',
-  running: 'var(--accent-info, #06b6d4)',
-  info: 'var(--text-secondary, #888)',
+  pass: 'var(--color-success)',
+  fail: 'var(--color-error)',
+  skip: 'var(--color-warning)',
+  running: 'var(--accent-info)',
+  info: 'var(--text-secondary)',
 };
 
 export default function TestLogStream({ entries, onClear }: Props) {
@@ -26,8 +26,8 @@ export default function TestLogStream({ entries, onClear }: Props) {
 
   return (
     <div style={{
-      background: 'var(--color-surface, #0a0a0a)',
-      border: '1px solid var(--color-border, #222)',
+      background: 'var(--color-surface)',
+      border: '1px solid var(--color-border)',
       borderRadius: 8,
       overflow: 'hidden',
       display: 'flex',
@@ -40,8 +40,8 @@ export default function TestLogStream({ entries, onClear }: Props) {
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: '8px 12px',
-        borderBottom: '1px solid var(--color-border, #222)',
-        background: 'var(--color-surfaceSecondary, #111)',
+        borderBottom: '1px solid var(--color-border)',
+        background: 'var(--color-surfaceSecondary)',
       }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: 1, textTransform: 'uppercase' }}>
           Live Execution Log
@@ -50,7 +50,7 @@ export default function TestLogStream({ entries, onClear }: Props) {
           onClick={onClear}
           style={{
             fontSize: 11,
-            color: 'var(--text-tertiary, #666)',
+            color: 'var(--text-tertiary)',
             background: 'none',
             border: 'none',
             cursor: 'pointer',
@@ -70,13 +70,13 @@ export default function TestLogStream({ entries, onClear }: Props) {
         lineHeight: '20px',
       }}>
         {entries.length === 0 && (
-          <div style={{ color: 'var(--text-tertiary, #555)', fontStyle: 'italic', padding: '20px 0', textAlign: 'center' }}>
+          <div style={{ color: 'var(--text-tertiary)', fontStyle: 'italic', padding: '20px 0', textAlign: 'center' }}>
             Click "Light It Up" to start testing...
           </div>
         )}
         {entries.map((entry, i) => (
-          <div key={i} style={{ color: statusColor[entry.status] || '#888', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-            <span style={{ color: 'var(--text-tertiary, #555)' }}>{entry.time}</span>{'  '}{entry.message}
+          <div key={i} style={{ color: statusColor[entry.status] || 'var(--ap-fg-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            <span style={{ color: 'var(--text-tertiary)' }}>{entry.time}</span>{'  '}{entry.message}
           </div>
         ))}
         <div ref={bottomRef} />

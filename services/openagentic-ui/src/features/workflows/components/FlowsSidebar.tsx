@@ -16,30 +16,25 @@ import {
   Shield,
   Mail,
   Rocket,
-  Bot,
 } from '@/shared/icons';
 import { useAuth } from '@/app/providers/AuthContext';
 import { useMCP } from '@/app/providers/MCPContext';
 import { WorkflowApiService } from '../services/workflowApi';
 // Templates now come exclusively from the API (seed-templates endpoint)
 // Old frontend-only workflowTemplates.ts and marketplaceTemplates.ts are removed
-import { useBackendNodes } from '../hooks/useBackendNodes';
+// QA 2026-05-05 fix: useBackendNodes() called a /nodes endpoint that
+// does not exist on workflows-svc; the fetch silently failed and the
+// badge showed only the legacy nodeTypeConfigs count (~45) instead of
+// the schema-driven registry merged total (~53). Swap to
+// useMergedNodeConfigs which reads from /api/workflows/internal/node-schemas.
+import { useMergedNodeConfigs } from '../hooks/useMergedNodeConfigs';
 import { nodeTypeConfigs } from '../utils/nodeConfigs';
-import { getAgentTypeIcon, getAgentTypeColor } from './nodes/nodeIcons';
 import type { Workflow as WorkflowType } from '../types/workflow.types';
 import { LottieIcon } from '@/shared/components/LottieIcon';
 import { workflowNodeAnimations } from '@/shared/animations/workflowAnimations';
-import { CredentialsSection } from './sidebar/CredentialsSection';
-import { VariablesSection } from './sidebar/VariablesSection';
-import { DataSection } from './sidebar/DataSection';
-import { WebhooksSection } from './sidebar/WebhooksSection';
 import { TeamSection } from './sidebar/TeamSection';
 import { ArtifactsSection } from './sidebar/ArtifactsSection';
 import type { SidebarSectionType } from './sidebar/SidebarSectionModal';
-
-// Agent type → icon/color helpers (wraps nodeIcons exports for inline use)
-const agentTypeIcon = (type: string) => getAgentTypeIcon(type || 'custom');
-const agentTypeColor = (type: string) => getAgentTypeColor(type || 'custom');
 
 interface FlowsSidebarProps {
   isExpanded: boolean;
@@ -124,7 +119,7 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({
     const fetchProviders = async () => {
       try {
         const headers = getAuthHeaders();
-        const res = await fetch('/api/admin/providers', { headers });
+        const res = await fetch('/api/admin/llm-providers', { headers });
         if (res.ok) {
           const data = await res.json();
           setProviderCount(Array.isArray(data) ? data.length : data.providers?.length || 0);
@@ -134,9 +129,8 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({
     fetchProviders();
   }, [getAuthHeaders]);
 
-  // Node palette configs for drag-and-drop
-  const { nodeConfigs: backendNodeConfigs } = useBackendNodes();
-  const activeNodeConfigs = Object.keys(backendNodeConfigs).length > 0 ? backendNodeConfigs : nodeTypeConfigs;
+  // Node palette configs for drag-and-drop (schema-driven + legacy merged).
+  const { merged: activeNodeConfigs } = useMergedNodeConfigs(nodeTypeConfigs as any);
 
   // API service (must be declared before useEffects that reference it)
   const api = useMemo(() => new WorkflowApiService(getAuthHeaders), [getAuthHeaders]);
@@ -457,139 +451,24 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({
           count={starterFlows.length}
         />
 
-        {/* Section 4: Agents — expandable list, draggable onto canvas */}
+        {/* Section 4: Agents — opens floating drawer over canvas (parity with Nodes
+         * so agents are dragged onto the flow the same way every node is). The
+         * old inline-accordion list was removed in favour of the drawer; keeping
+         * sectionsOpen.agents as a state flag has no effect now. */}
         <SectionHeader
           title="Agents"
-          isOpen={sectionsOpen.agents}
-          onToggle={() => setSectionsOpen(s => ({ ...s, agents: !s.agents }))}
+          isOpen={activeConfigView === 'agents'}
+          onToggle={() => openConfig('agents')}
           count={filteredAgents.length}
         />
-        <AnimatePresence>
-          {sectionsOpen.agents && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="overflow-hidden px-2 pb-1"
-            >
-              {filteredAgents.length === 0 && (
-                <div className="text-xs px-2 py-2" style={{ color: 'var(--color-text-tertiary)' }}>
-                  {search ? 'No agents match your search.' : 'No agents configured. Add agents in Admin Console.'}
-                </div>
-              )}
-              {filteredAgents.map((agent: any) => (
-                <div
-                  key={agent.id}
-                  draggable
-                  onDragStart={(e) => {
-                    const nodeConfig = {
-                      type: 'agent_single',
-                      label: agent.display_name || agent.name,
-                      description: agent.description || `Agent: ${agent.display_name || agent.name}`,
-                      icon: agent.agent_type || 'Bot',
-                      color: agentTypeColor(agent.agent_type),
-                      category: 'ai',
-                      data: {
-                        label: agent.display_name || agent.name,
-                        agentId: agent.id,        // DB UUID
-                        role: agent.agent_type,
-                        model: agent.model || 'auto',
-                        tools: agent.tools || [],
-                        maxTurns: agent.maxTurns || 5,
-                      },
-                    };
-                    e.dataTransfer.setData('application/reactflow', JSON.stringify(nodeConfig));
-                    e.dataTransfer.effectAllowed = 'move';
-                  }}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-grab active:cursor-grabbing mb-0.5 transition-colors"
-                  style={{ backgroundColor: 'transparent' }}
-                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--color-surface-hover, rgba(255,255,255,0.05))')}
-                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  title={`Drag to add "${agent.display_name || agent.name}" to canvas`}
-                >
-                  <div
-                    className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
-                    style={{ background: `linear-gradient(135deg, ${agentTypeColor(agent.agent_type)}22, ${agentTypeColor(agent.agent_type)}44)` }}
-                  >
-                    <span className="flex items-center justify-center" style={{ transform: 'scale(0.78)' }}>
-                      {agentTypeIcon(agent.agent_type)}
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-medium truncate" style={{ color: 'var(--color-text)' }}>
-                        {agent.display_name || agent.name}
-                      </span>
-                      <span
-                        className="flex-shrink-0 px-1.5 py-px rounded text-[9px] font-semibold uppercase leading-tight"
-                        style={{
-                          backgroundColor: `color-mix(in srgb, ${
-                            agent.agent_type === 'orchestrator' ? '#7c4dff' :
-                            agent.agent_type === 'researcher' ? '#00bcd4' :
-                            agent.agent_type === 'coder' ? '#4caf50' :
-                            agent.agent_type === 'reviewer' ? '#ff9800' :
-                            agent.agent_type === 'planner' ? '#e91e63' :
-                            '#78909c'
-                          } 20%, transparent)`,
-                          color: agent.agent_type === 'orchestrator' ? '#7c4dff' :
-                            agent.agent_type === 'researcher' ? '#00bcd4' :
-                            agent.agent_type === 'coder' ? '#4caf50' :
-                            agent.agent_type === 'reviewer' ? '#ff9800' :
-                            agent.agent_type === 'planner' ? '#e91e63' :
-                            '#78909c',
-                        }}
-                      >
-                        {agent.agent_type || 'custom'}
-                      </span>
-                    </div>
-                    <div className="text-[10px] truncate" style={{ color: 'var(--color-text-tertiary)' }}>
-                      {agent.model || 'auto'}{agent.tools?.length ? ` · ${agent.tools.length} tool${agent.tools.length !== 1 ? 's' : ''}` : ''}
-                    </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openConfig('agents');
-                    }}
-                    className="p-0.5 rounded opacity-40 hover:opacity-100"
-                    style={{ color: 'var(--color-text-tertiary)' }}
-                    title="Configure agents"
-                  >
-                    <ChevronRight className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={() => openConfig('agents')}
-                className="flex items-center gap-1.5 px-2 py-1 text-[11px] rounded-md mt-1 w-full"
-                style={{ color: 'var(--color-text-tertiary)' }}
-              >
-                <Plus className="w-3 h-3" /> Manage Agents
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
-        {/* Section 6: Credentials (replaces Connections) */}
+        {/* Section 6: Credentials — opens full ConfigPanel (lists are long once
+         * a tenant has a few connectors; the inline accordion was dead code). */}
         <SectionHeader
           title="Credentials"
-          isOpen={sectionsOpen.credentials || activeConfigView === 'credentials'}
+          isOpen={activeConfigView === 'credentials'}
           onToggle={() => openConfig('credentials')}
         />
-        <AnimatePresence>
-          {sectionsOpen.credentials && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="overflow-hidden"
-            >
-              <CredentialsSection workflowId={workflowId} />
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Section 7: Variables — always visible, opens config panel */}
         <SectionHeader
@@ -599,25 +478,12 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({
           count={variables ? Object.keys(variables).length : undefined}
         />
 
-        {/* Section 8: Data Stores */}
+        {/* Section 8: Data Stores — opens full ConfigPanel */}
         <SectionHeader
           title="Data Stores"
-          isOpen={sectionsOpen.data || activeConfigView === 'data'}
+          isOpen={activeConfigView === 'data'}
           onToggle={() => openConfig('data')}
         />
-        <AnimatePresence>
-          {sectionsOpen.data && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="overflow-hidden"
-            >
-              <DataSection mcpServers={mcps} />
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Section 9: Artifacts — workflow-generated outputs stored in Milvus */}
         <SectionHeader
@@ -639,28 +505,13 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({
           )}
         </AnimatePresence>
 
-        {/* Section 10: Webhooks (only when a workflow is open) */}
+        {/* Section 10: Webhooks (only when a workflow is open) — ConfigPanel */}
         {workflowId && (
-          <>
-            <SectionHeader
-              title="Webhooks"
-              isOpen={sectionsOpen.webhooks || activeConfigView === 'webhooks'}
-              onToggle={() => openConfig('webhooks')}
-            />
-            <AnimatePresence>
-              {sectionsOpen.webhooks && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="overflow-hidden"
-                >
-                  <WebhooksSection workflowId={workflowId} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </>
+          <SectionHeader
+            title="Webhooks"
+            isOpen={activeConfigView === 'webhooks'}
+            onToggle={() => openConfig('webhooks')}
+          />
         )}
 
         {/* Section 10: API Endpoints (only when a workflow is open) */}

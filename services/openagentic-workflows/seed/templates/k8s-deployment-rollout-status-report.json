@@ -1,0 +1,154 @@
+{
+  "slug": "k8s-deployment-rollout-status-report",
+  "name": "K8s Deployment Rollout Status Report",
+  "description": "Enumerate every deployment in a Kubernetes namespace via the live openagentic_kubernetes.k8s_list_deployments MCP, classify each one as healthy / rolling-out / stuck / scaled-zero based on the replicas-vs-ready-vs-available triple, filter the non-healthy subset sorted by severity, ask the platform LLM for a 2-3 bullet operator narrative on the most concerning rollout situations, strip any chain-of-thought preamble, then render an HTML rollout status report via webhook_response with per-deployment ready/desired counts plus the narrative. All-healthy case (the operational default in stable clusters) is handled — the report explicitly says \"All N deployments healthy\" instead of rendering a blank table.",
+  "category": "aiops",
+  "template": true,
+  "meta": {
+    "purpose": "Enumerate every deployment in a namespace, classify by rollout state (healthy / rolling-out / stuck / scaled-zero), and produce an HTML status report with LLM narrative on the concerning ones.",
+    "how_it_works": [
+      "1. openagentic_kubernetes.k8s_list_deployments fetches every deployment in {{namespace}}.",
+      "2. A classify transform inspects each deployment's replicas / readyReplicas / availableReplicas triple and assigns a state: healthy / rolling_out / stuck / scaled_zero.",
+      "3. A filter transform keeps only the non-healthy subset, sorted by severity.",
+      "4. The platform LLM writes 2-3 bullets focused on the most concerning rollout situations.",
+      "5. A CoT-stripper transform removes any LLM preamble.",
+      "6. webhook_response renders the HTML report with per-deployment ready/desired counts. All-healthy short-circuit: when no deployments are concerning, the report says 'All N deployments healthy' instead of an empty table."
+    ],
+    "expected_output": "HTML rollout status report with per-deployment ready/desired counts, state badges, and a 2-3 bullet LLM narrative on the concerning rollouts.",
+    "useful_when": "Right after a Helm upgrade, before/after Argo syncs, or in the daily 'is the cluster stable?' digest.",
+    "tools_used": ["openagentic_kubernetes.k8s_list_deployments", "llm_completion", "transform", "webhook_response"],
+    "version": "1.0",
+    "tags": ["aiops", "observability", "kubernetes", "k8s", "deployments", "rollout"]
+  },
+  "defaultInputs": {
+    "namespace": "agentic-dev"
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "data": {
+          "triggerType": "manual",
+          "label": "Deployment Rollout Status",
+          "input_schema": {
+            "namespace": "string"
+          }
+        }
+      },
+      {
+        "id": "deployments",
+        "type": "mcp_tool",
+        "data": {
+          "label": "List Deployments",
+          "toolServer": "openagentic_kubernetes",
+          "toolName": "k8s_list_deployments",
+          "arguments": {
+            "namespace": "{{input.namespace || \"agentic-dev\"}}"
+          }
+        }
+      },
+      {
+        "id": "analyze",
+        "type": "transform",
+        "data": {
+          "label": "Classify Rollout Status",
+          "operations": [
+            {
+              "op": "set",
+              "target": "classified",
+              "value": "{{ (() => { let deps = []; if (Array.isArray(input.deployments)) { deps = input.deployments; } else if (typeof input.content === 'string') { try { const parsed = JSON.parse(input.content); if (Array.isArray(parsed.deployments)) deps = parsed.deployments; } catch (e) {} } return deps.map(d => { if (!d) return null; const desired = (typeof d.replicas === 'number') ? d.replicas : 0; const ready = (typeof d.ready_replicas === 'number') ? d.ready_replicas : 0; const available = (typeof d.available_replicas === 'number') ? d.available_replicas : 0; const updated = (typeof d.updated_replicas === 'number') ? d.updated_replicas : 0; const unavailable = Math.max(0, desired - available); let status; if (desired === 0) { status = 'scaled-zero'; } else if (ready === desired && available >= desired && unavailable === 0) { status = 'healthy'; } else if (available > 0 && ready < desired) { status = 'rolling-out'; } else if (available === 0) { status = 'stuck'; } else { status = 'rolling-out'; } return { name: String(d.name || ''), namespace: String(d.namespace || ''), desired: desired, ready: ready, available: available, updated: updated, unavailable: unavailable, status: status, created: String(d.created || '') }; }).filter(x => x !== null); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "namespace_label",
+              "value": "{{ (() => { if (typeof input.namespace === 'string' && input.namespace) return input.namespace; if (typeof input.content === 'string') { try { return JSON.parse(input.content).namespace || 'unknown'; } catch (e) {} } return 'unknown'; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "total_count",
+              "value": "{{ (() => { if (Array.isArray(input.deployments)) return input.deployments.length; if (typeof input.content === 'string') { try { const d = JSON.parse(input.content).deployments; return Array.isArray(d) ? d.length : 0; } catch (e) { return 0; } } return 0; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "healthy_count",
+              "value": "{{ (() => { const c = Array.isArray(input.classified) ? input.classified : []; return c.filter(d => d && d.status === 'healthy').length; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "unhealthy_count",
+              "value": "{{ (() => { const c = Array.isArray(input.classified) ? input.classified : []; return c.filter(d => d && d.status !== 'healthy').length; })() }}"
+            },
+            {
+              "op": "set",
+              "target": "rows_html",
+              "value": "{{ (() => { const c = Array.isArray(input.classified) ? input.classified : []; if (c.length === 0) return '<tr><td colspan=\"5\">No deployments found in namespace.</td></tr>'; const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); return c.map(d => `<tr><td>${esc(d.name)}</td><td>${esc(d.status)}</td><td>${d.ready}/${d.desired}</td><td>${d.available}</td><td>${esc(d.created).replace('T', ' ').replace('Z', '')}</td></tr>`).join(''); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "all_healthy_banner",
+              "value": "{{ (() => { const total = input.total_count || 0; const unhealthy = input.unhealthy_count || 0; if (total === 0) return '<p class=\"empty\">No deployments found in this namespace.</p>'; if (unhealthy === 0) return `<p class=\"all-healthy\"><strong>All ${total} deployments healthy</strong> — replicas matching ready and available counts across the namespace.</p>`; return ''; })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "unhealthy",
+        "type": "transform",
+        "data": {
+          "label": "Filter + Sort Non-Healthy",
+          "operations": [
+            {
+              "op": "set",
+              "target": "unhealthy",
+              "value": "{{ (() => { const c = Array.isArray(input.classified) ? input.classified : []; const rank = { 'stuck': 3, 'rolling-out': 2, 'scaled-zero': 1, 'healthy': 0 }; const filtered = c.filter(d => d && d.status !== 'healthy'); filtered.sort((a, b) => (rank[b.status] || 0) - (rank[a.status] || 0)); return filtered; })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "narrative",
+        "type": "llm_completion",
+        "data": {
+          "label": "Operator Narrative",
+          "prompt": "You are an SRE summarizing the rollout state of Kubernetes deployments in namespace {{steps.analyze.namespace_label}}.\n\nNon-healthy deployments (JSON array, sorted by severity desc — stuck before rolling-out before scaled-zero; may be empty):\n{{steps.unhealthy.unhealthy}}\n\nTotal deployments scanned: {{steps.analyze.total_count}} ({{steps.analyze.healthy_count}} healthy, {{steps.analyze.unhealthy_count}} non-healthy).\n\nOutput rules (MUST follow):\n1. Start the response with a single `-` character — no preamble, no \"Here is\", no \"The user wants\", no thinking out loud.\n2. Exactly 2 to 3 short bullets, each on its own line, each beginning with `-`.\n3. Each bullet references ONE deployment by name verbatim with its status and ready/desired counts, plus a concrete operator next-action hint (e.g. check pod events, verify image tag, inspect rollout history).\n4. If the unhealthy array is empty, emit a single bullet stating all deployments are healthy and recommend a routine future check.",
+          "model": "auto",
+          "temperature": 0.2,
+          "maxTokens": 450
+        }
+      },
+      {
+        "id": "clean_narrative",
+        "type": "transform",
+        "data": {
+          "label": "Strip CoT Preamble",
+          "operations": [
+            {
+              "op": "set",
+              "target": "clean_content",
+              "value": "{{ (() => { const raw = String(input.content || ''); const inlineMatch = raw.match(/([\\.\\!\\?\\:]|\\n)\\s*(-\\s+\\S)/); const lines = raw.split(/\\r?\\n/); let firstBulletIdx = -1; for (let i = 0; i < lines.length; i++) { const t = lines[i].trim(); if (t.startsWith('-') || t.startsWith('•') || t.startsWith('*')) { firstBulletIdx = i; break; } } if (firstBulletIdx !== -1) { const fromLineIdx = lines.slice(firstBulletIdx).join('\\n').trim(); if (inlineMatch && inlineMatch.index !== undefined) { const fromInline = raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); if (fromInline.length < fromLineIdx.length || lines[firstBulletIdx].trim().length > 8 === false) { return fromInline; } } return fromLineIdx; } if (inlineMatch && inlineMatch.index !== undefined) { return raw.slice(raw.indexOf(inlineMatch[2], inlineMatch.index)).trim(); } return raw.trim(); })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "report",
+        "type": "webhook_response",
+        "data": {
+          "label": "HTML Rollout Status Report",
+          "statusCode": 200,
+          "headers": { "Content-Type": "text/html" },
+          "bodyTemplate": "<div class=\"k8s-deployment-rollout-status-report\"><h2>K8s Deployment Rollout Status — namespace {{steps.analyze.namespace_label}}</h2><p><strong>Total deployments:</strong> {{steps.analyze.total_count}} &middot; <strong>Healthy:</strong> {{steps.analyze.healthy_count}} &middot; <strong>Non-healthy:</strong> {{steps.analyze.unhealthy_count}}</p>{{steps.analyze.all_healthy_banner}}<h3>Operator Narrative</h3><pre class=\"narrative\">{{steps.clean_narrative.clean_content}}</pre><h3>Per-Deployment Status</h3><table class=\"deployments-table\"><thead><tr><th>Deployment</th><th>Status</th><th>Ready / Desired</th><th>Available</th><th>Created</th></tr></thead><tbody>{{steps.analyze.rows_html}}</tbody></table><h3>Non-Healthy Deployments (sorted by severity)</h3><pre class=\"unhealthy-list\">{{steps.unhealthy.unhealthy}}</pre></div>"
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "trigger", "target": "deployments" },
+      { "id": "e2", "source": "deployments", "target": "analyze" },
+      { "id": "e3", "source": "analyze", "target": "unhealthy" },
+      { "id": "e4", "source": "unhealthy", "target": "narrative" },
+      { "id": "e5", "source": "narrative", "target": "clean_narrative" },
+      { "id": "e6", "source": "clean_narrative", "target": "report" }
+    ]
+  }
+}

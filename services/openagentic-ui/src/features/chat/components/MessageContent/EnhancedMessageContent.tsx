@@ -4,6 +4,9 @@ import { nanoid } from 'nanoid';
 
 // Use SharedMarkdownRenderer for ALL markdown - SINGLE SOURCE OF TRUTH
 import { SharedMarkdownRenderer } from './SharedMarkdownRenderer';
+// #503 — paced char-by-char prose reveal during streaming. Wraps
+// SharedMarkdownRenderer so completed messages still take the SoT path.
+import { SmoothStreamingText } from '../SmoothStreamingText';
 
 // Specialized components for non-markdown content
 import ShikiCodeBlock from './ShikiCodeBlock';
@@ -131,14 +134,15 @@ const EnhancedMessageContent: React.FC<EnhancedMessageContentProps> = ({
     content = content.replace(/<tool_code>[\s\S]*?<\/tool_code>/g, '');
     content = content.trim();
 
-    // Check if message contains backend visualization data (structured data, not markdown)
-    if (message?.visualizations && Array.isArray(message.visualizations)) {
-      message.visualizations.forEach(viz => {
-        if (viz && typeof viz === 'object') {
-          parsed.push({ type: 'visualization', content: viz });
-        }
-      });
-    }
+    // #971 (2026-05-20) — DO NOT mount artifacts from message.visualizations[]
+    // here. EnhancedMessageContent renders MARKDOWN PROSE ONLY.
+    // visualizations[] is consumed by:
+    //   (a) AgenticActivityStream — inline iframe at tool_use position
+    //       via InlineVizBadge / InlineAppBadge
+    //   (b) ArtifactSlideOutLauncher (MessageBubble #781 Phase D) —
+    //       click-to-open SlideOut buttons above the message body
+    // Pushing them here too produced a literal DUPLICATE iframe mount at
+    // the bottom of finished replies. See task #971.
 
     // Check if message contains backend Prometheus metrics (structured data, not markdown)
     if (message?.prometheusData && Array.isArray(message.prometheusData)) {
@@ -313,8 +317,12 @@ const EnhancedMessageContent: React.FC<EnhancedMessageContentProps> = ({
           case 'text':
           default:
             // Streaming artifact detection removed — AgenticActivityStream handles artifacts during streaming.
-            // EnhancedMessageContent only renders for completed (non-streaming) messages.
-            // Use SharedMarkdownRenderer for ALL text content - SINGLE SOURCE OF TRUTH
+            // SharedMarkdownRenderer remains the SoT for finished messages and history replay.
+            // #503 — while isStreaming is true the prose reveal is delegated to
+            //   SmoothStreamingText so users see a paced char-by-char printout
+            //   with a blinking cursor (matches mocks/UX/mock.html). When
+            //   isStreaming flips false the pacer unmounts and we go back to
+            //   the direct SharedMarkdownRenderer path — no replay on history.
             return (
               <motion.div
                 key={sectionId}
@@ -322,14 +330,22 @@ const EnhancedMessageContent: React.FC<EnhancedMessageContentProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <SharedMarkdownRenderer
-                  content={section.content}
-                  theme={theme}
-                  isStreaming={isStreaming}
-                  onExecute={onExecuteCode}
-                  executable={Boolean(onExecuteCode)}
-                  onExpandToCanvas={onExpandToCanvas}
-                />
+                {isStreaming ? (
+                  <SmoothStreamingText
+                    content={section.content}
+                    theme={theme}
+                    enableAnimation={true}
+                  />
+                ) : (
+                  <SharedMarkdownRenderer
+                    content={section.content}
+                    theme={theme}
+                    isStreaming={isStreaming}
+                    onExecute={onExecuteCode}
+                    executable={Boolean(onExecuteCode)}
+                    onExpandToCanvas={onExpandToCanvas}
+                  />
+                )}
               </motion.div>
             );
         }

@@ -22,6 +22,7 @@ import { TaskAnalysisService, TaskRequirements } from '../../../services/TaskAna
 import { IntelligentModelRouter, RouteDecision } from '../../../services/IntelligentModelRouter.js';
 import { ExtendedCapabilitiesService } from '../../../services/ModelCapabilitiesService.js';
 import { DynamicModelSelector } from '../../../services/DynamicModelSelector.js';
+import { llmMetricsService } from '../../../services/LLMMetricsService.js';
 import type { Logger } from 'pino';
 
 export class ChatCompletionService {
@@ -482,10 +483,15 @@ export class ChatCompletionService {
   /**
    * Track token usage from a completed response
    */
-  private async trackTokenUsageFromResponse(response: any, metadata: { 
-    userId: string; 
-    sessionId: string; 
-    messageId: string; 
+  private async trackTokenUsageFromResponse(response: any, metadata: {
+    userId: string;
+    sessionId: string;
+    messageId: string;
+    /** Optional — caller's wall-clock at request send so logRequest can
+     *  derive total_duration_ms. Defaults to "now" if absent. */
+    requestStartedAt?: Date;
+    /** Optional — TTFT measured client-side by the streaming pipeline. */
+    timeToFirstTokenMs?: number;
   }): Promise<void> {
     try {
       if (response.usage) {
@@ -502,7 +508,41 @@ export class ChatCompletionService {
         };
 
         await this.tokenUsageService.recordUsage(tokenRecord);
-        
+
+        // Tier-2 fact-table emit (LLMRequestLog) + Tier-1 Prom emit happen
+        // inside llmMetricsService.logRequest. Single seam — chat path now
+        // populates the same DB table + gen_ai.* counters that synth +
+        // embedding paths already do.
+        const startedAt = metadata.requestStartedAt ?? new Date();
+        const completedAt = new Date();
+        const fingerprint = response.system_fingerprint;
+        const tier = response.service_tier;
+        await llmMetricsService.logRequest({
+          userId: metadata.userId,
+          sessionId: metadata.sessionId,
+          messageId: metadata.messageId,
+          providerType: 'azure-openai',
+          model: response.model,
+          requestType: 'chat',
+          source: 'chat',
+          streaming: false,
+          promptTokens: response.usage.prompt_tokens || 0,
+          completionTokens: response.usage.completion_tokens || 0,
+          totalTokens: response.usage.total_tokens || 0,
+          cachedTokens: response.usage.prompt_tokens_details?.cached_tokens,
+          reasoningTokens: response.usage.completion_tokens_details?.reasoning_tokens,
+          totalDurationMs: completedAt.getTime() - startedAt.getTime(),
+          timeToFirstTokenMs: metadata.timeToFirstTokenMs,
+          finishReason: response.choices?.[0]?.finish_reason,
+          status: 'success',
+          requestStartedAt: startedAt,
+          requestCompletedAt: completedAt,
+          providerMetadata:
+            fingerprint || tier
+              ? { system_fingerprint: fingerprint, service_tier: tier }
+              : undefined,
+        });
+
         this.logger.debug({
           userId: metadata.userId,
           sessionId: metadata.sessionId,
@@ -694,18 +734,13 @@ export class ChatCompletionService {
 
       return analysis;
     } catch (error) {
-      this.logger.error({ error }, 'Failed to analyze task requirements - using fallback model');
-
-      // Fallback to default model
-      return {
-        taskType: 'standard',
-        confidence: 0.5,
-        suggestedModel: process.env.DEFAULT_MODEL,
-        reasoning: 'Task analysis failed - using default model',
-        requiresVision: false,
-        requiresImageGen: false,
-        complexity: 'simple'
-      };
+      // Registry SoT: no env-var fallback. If TaskAnalysisService can't reach
+      // the Registry, surface the error so operators see the real root cause
+      // (empty role='chat' rows, DB unreachable, etc.) rather than silently
+      // papering over with process.env.DEFAULT_MODEL. Matches 2026-04-23
+      // directive — Registry (admin.model_role_assignments) is the sole SoT.
+      this.logger.error({ error }, '[ChatCompletion] Task analysis failed — propagating (no env-var fallback)');
+      throw error;
     }
   }
 

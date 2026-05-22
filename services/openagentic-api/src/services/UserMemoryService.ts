@@ -14,6 +14,7 @@ import { PrismaClient } from '@prisma/client';
 import { Logger } from 'pino';
 import { RedisClientType } from 'redis';
 import * as crypto from 'crypto';
+import { getProviderManager } from './llm-providers/ProviderManager.js';
 
 // Singleton
 let _instance: UserMemoryService | null = null;
@@ -304,6 +305,13 @@ export class UserMemoryService {
     content: string,
     importance: number = 0.5,
     injectionMode: 'semantic' | 'always' = 'semantic',
+    onPersist?: (payload: {
+      key: string;
+      summary: string;
+      scope: 'user' | 'session' | 'shared';
+      entryId?: string;
+      tokenCount?: number;
+    }) => void,
   ): Promise<void> {
     // Skip rules — don't auto-ingest trivial utterances as semantic memory.
     // Always-inject memories bypass these rules since they're explicit.
@@ -375,6 +383,32 @@ export class UserMemoryService {
       }
 
       this.logger.debug({ userId, source, entryId: entry.id }, 'Memory ingested');
+
+      // Phase H (task #153) — fire onPersist callback so the chat
+      // pipeline can emit `memory_write` on the NDJSON wire. The
+      // `summary` is the first topic + truncated preview; `key` mirrors
+      // the entry id so the UI can dedupe + link back. `scope` maps
+      // from source: session-scoped if a sourceId is present, else user.
+      try {
+        if (onPersist) {
+          const summaryPreview = truncated.length > 120
+            ? truncated.substring(0, 117) + '...'
+            : truncated;
+          const scope: 'user' | 'session' | 'shared' =
+            sourceId ? 'session' : (source === 'shared' ? 'shared' : 'user');
+          onPersist({
+            key: entry.id,
+            summary: topics.length > 0
+              ? `${topics.slice(0, 3).join(', ')}: ${summaryPreview}`
+              : summaryPreview,
+            scope,
+            entryId: entry.id,
+            tokenCount,
+          });
+        }
+      } catch {
+        // Never break ingest because the emit callback failed.
+      }
 
     } catch (err: any) {
       this.logger.warn({ error: err.message, userId, source }, 'Memory ingest failed');
@@ -456,7 +490,7 @@ export class UserMemoryService {
         // LLM-powered summarization (falls back to basic concat if LLM unavailable)
         let summaryEntry: string;
         try {
-          const providerManager = (global as any).providerManager;
+          const providerManager = getProviderManager();
           if (!providerManager) throw new Error('No providerManager');
           // Use cheapest available model for summarization (~500 tokens per call)
           const rawContent = toSummarize.map((e: any) => `- ${e.content}`).join('\n').substring(0, 3000);

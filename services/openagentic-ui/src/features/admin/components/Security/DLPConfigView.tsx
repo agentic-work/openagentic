@@ -11,6 +11,7 @@ import { AdminBadge } from '../Shared/AdminBadge';
 import { AdminToast, useAdminToast } from '../Shared/AdminToast';
 import { AdminMetricCard } from '../Shared/AdminMetricCard';
 import { apiRequest } from '@/utils/api';
+import { PageHeader } from '../../primitives-v2';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -55,24 +56,24 @@ interface AuditEvent {
 type TabId = 'rules' | 'exemptions' | 'audit';
 
 const SEVERITY_COLORS: Record<string, string> = {
-  low: 'var(--tier-economy, #10b981)',
-  medium: 'var(--cap-tools, #f59e0b)',
-  high: 'var(--toast-error, #FF453A)',
-  critical: 'var(--cap-thinking, #ec4899)',
+  low: 'var(--tier-economy)',
+  medium: 'var(--cap-tools)',
+  high: 'var(--toast-error)',
+  critical: 'var(--cap-thinking)',
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  credential: 'var(--cap-tools, #f59e0b)',
-  pii: 'var(--cap-chat, #3b82f6)',
-  infrastructure: 'var(--cap-streaming, #6366f1)',
-  compliance: 'var(--cap-embeddings, #8b5cf6)',
-  injection: 'var(--toast-error, #FF453A)',
+  credential: 'var(--cap-tools)',
+  pii: 'var(--cap-chat)',
+  infrastructure: 'var(--ap-cap-streaming, var(--cap-streaming))',
+  compliance: 'var(--cap-embeddings)',
+  injection: 'var(--toast-error)',
 };
 
 const ACTION_COLORS: Record<string, string> = {
-  allow: 'var(--color-success, #10b981)',
-  redact: 'var(--cap-tools, #f59e0b)',
-  block: 'var(--toast-error, #FF453A)',
+  allow: 'var(--color-success)',
+  redact: 'var(--cap-tools)',
+  block: 'var(--toast-error)',
 };
 
 const CATEGORIES = ['credential', 'pii', 'infrastructure', 'compliance', 'injection'];
@@ -460,7 +461,7 @@ const ExemptionsTab: React.FC = () => {
               style={{ borderColor: 'var(--color-border)' }}
             >
               <code className="font-mono" style={{ color: 'var(--text-primary)' }}>{ex.toolPattern}</code>
-              <AdminBadge color="var(--cap-streaming, #6366f1)" label={ex.scanPoint} size="sm" />
+              <AdminBadge color="var(--cap-streaming)" label={ex.scanPoint} size="sm" />
               <div className="flex gap-1 flex-wrap">
                 {ex.exemptCategories.map(cat => (
                   <AdminBadge key={cat} color={CATEGORY_COLORS[cat] || 'var(--text-muted)'} label={cat} size="sm" />
@@ -728,6 +729,14 @@ export const DLPConfigView: React.FC<DLPConfigViewProps> = ({ theme }) => {
 
   return (
     <div className="space-y-5">
+      <PageHeader
+        crumbs={['Admin', 'Security', 'DLP']}
+        title="DLP Configuration"
+        explainer="Manage data-loss-prevention rules, exemptions, and audit log. Rules block credentials, PII, and infrastructure secrets in chat and tool I/O."
+        actions={[
+          { label: aiSummary ? 'Refresh Summary' : 'AI Summary', primary: !aiSummary, onClick: () => { void fetchSummary(); }, disabled: loadingSummary },
+        ]}
+      />
       {/* Tabs + Summary button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: 'var(--color-surfaceSecondary)' }}>
@@ -758,9 +767,9 @@ export const DLPConfigView: React.FC<DLPConfigViewProps> = ({ theme }) => {
 
       {/* AI Summary card */}
       {aiSummary && (
-        <div className="p-4 rounded-xl border" style={{ borderColor: 'var(--cap-streaming, #6366f1)', background: 'color-mix(in srgb, var(--cap-streaming, #6366f1) 5%, transparent)' }}>
+        <div className="p-4 rounded-xl border" style={{ borderColor: 'var(--ap-cap-streaming, var(--cap-streaming))', background: 'color-mix(in srgb, var(--cap-streaming) 5%, transparent)' }}>
           <div className="flex items-center gap-2 mb-2">
-            <Sparkles size={14} style={{ color: 'var(--cap-streaming, #6366f1)' }} />
+            <Sparkles size={14} style={{ color: 'var(--ap-cap-streaming, var(--cap-streaming))' }} />
             <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>DLP Status Summary</span>
           </div>
           <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{aiSummary}</p>

@@ -37,6 +37,19 @@ const CAPABILITY_FILTERS = [
   { key: 'tools', label: 'Tools' },
 ] as const;
 
+/**
+ * Provider types whose Registry rows are managed automatically by
+ * RegistrySyncJob (AIF deployment list mirror, Ollama host pulls). Those
+ * are listed in the dropdown but disabled so admins understand why adding
+ * a single model there isn't the right action — the provider's host
+ * already curates membership. Matches the server-side allowlist in
+ * services/model-routing/registryAutoSyncPolicy.ts.
+ */
+const AUTO_SYNC_PROVIDER_TYPES = new Set(['azure-ai-foundry', 'ollama']);
+
+const isAutoSyncProvider = (providerType: string): boolean =>
+  AUTO_SYNC_PROVIDER_TYPES.has(providerType);
+
 export const AddModelDialog: React.FC<AddModelDialogProps> = ({
   isOpen, onClose, providers, existingModels, onModelAdded,
 }) => {
@@ -77,11 +90,15 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
     [existingModels, addedIds]
   );
 
-  // Auto-select first provider when dialog opens
+  // Auto-select first EXPLICIT-ADD provider when dialog opens. AIF/Ollama
+  // providers are skipped here because picking one would be a dead-end
+  // (their rows are owned by RegistrySyncJob, not manual add). If no
+  // explicit-add provider is configured, fall back to the first provider
+  // so the dropdown still has a valid value.
   useEffect(() => {
-    if (isOpen && enabledProviders.length > 0 && !selectedProviderName) {
-      setSelectedProviderName(enabledProviders[0].name);
-    }
+    if (!isOpen || enabledProviders.length === 0 || selectedProviderName) return;
+    const firstExplicit = enabledProviders.find(p => !isAutoSyncProvider(p.provider_type));
+    setSelectedProviderName((firstExplicit ?? enabledProviders[0]).name);
   }, [isOpen, enabledProviders, selectedProviderName]);
 
   const fetchModels = useCallback(async (providerName: string, useCache = true) => {
@@ -282,12 +299,23 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
               <select
                 value={selectedProviderName}
                 onChange={e => setSelectedProviderName(e.target.value)}
-                className="flex-1 px-3 py-2 text-xs rounded-lg border outline-none"
-                style={{ background: 'var(--color-surfaceSecondary)', borderColor: 'var(--color-border)', color: 'var(--text-primary)' }}
+                className="flex-1 px-3 py-2 text-xs rounded-input-sm border outline-none transition-[border-color,box-shadow] duration-200 ease-emphasized focus:shadow-focus-ring"
+                style={{ background: 'var(--surface-1)', borderColor: 'var(--color-border)', color: 'var(--text-primary)' }}
               >
-                {enabledProviders.map(p => (
-                  <option key={p.id} value={p.name}>{p.display_name} ({p.provider_type})</option>
-                ))}
+                {enabledProviders.map(p => {
+                  const autoSync = isAutoSyncProvider(p.provider_type);
+                  const suffix = autoSync ? ' — auto-synced from provider' : '';
+                  return (
+                    <option
+                      key={p.id}
+                      value={p.name}
+                      disabled={autoSync}
+                      title={autoSync ? 'Auto-synced from provider — no manual Add Model needed. Ollama models come from `ollama pull` on the host; AIF models come from deployments in the Azure portal.' : undefined}
+                    >
+                      {p.display_name} ({p.provider_type}){suffix}
+                    </option>
+                  );
+                })}
               </select>
               <AdminButton
                 size="sm"
@@ -307,14 +335,14 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
               <input
                 type="text" value={search} onChange={e => setSearch(e.target.value)}
                 placeholder={`Search ${discoveredModels.length} models...`}
-                className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border outline-none"
-                style={{ background: 'var(--color-surfaceSecondary)', borderColor: 'var(--color-border)', color: 'var(--text-primary)' }}
+                className="w-full pl-9 pr-3 py-2 text-xs rounded-input-sm border outline-none transition-[border-color,box-shadow] duration-200 ease-emphasized focus:shadow-focus-ring"
+                style={{ background: 'var(--surface-1)', borderColor: 'var(--color-border)', color: 'var(--text-primary)' }}
               />
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => setCapFilter(null)}
-                className="px-2 py-1 text-xs font-medium rounded-md transition-all"
+                className="px-3 py-1 text-xs font-medium rounded-pill transition-[background,transform] duration-200 ease-emphasized active:scale-[0.98]"
                 style={{
                   background: !capFilter ? 'var(--ap-accent)' : 'transparent',
                   color: !capFilter ? 'white' : 'var(--text-muted)',
@@ -325,7 +353,7 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
                 <button
                   key={f.key}
                   onClick={() => setCapFilter(capFilter === f.key ? null : f.key)}
-                  className="px-2 py-1 text-xs font-medium rounded-md transition-all"
+                  className="px-3 py-1 text-xs font-medium rounded-pill transition-[background,transform] duration-200 ease-emphasized active:scale-[0.98]"
                   style={{
                     background: capFilter === f.key ? 'var(--ap-accent)' : 'transparent',
                     color: capFilter === f.key ? 'white' : 'var(--text-muted)',
@@ -366,7 +394,7 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
           {/* Error */}
           {error && !loading && (
             <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/5">
-              <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-error, #ef4444)' }}>
+              <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-error)' }}>
                 <XCircle size={14} />
                 <span>{error}</span>
               </div>
@@ -408,7 +436,7 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
                               </span>
                             )}
                             {isAdded && (
-                              <AdminBadge color="var(--color-success, #10b981)" label="Added" icon={<Check size={10} />} size="sm" />
+                              <AdminBadge color="var(--color-success)" label="Added" icon={<Check size={10} />} size="sm" />
                             )}
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
@@ -581,12 +609,14 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
           onClick={() => setAifBlocked(false)}
         >
           <div
-            className="max-w-lg w-full rounded-xl border shadow-2xl"
-            style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+            className="max-w-lg w-full rounded-panel shadow-soft-lg"
+            style={{ background: 'var(--surface-2)' }}
             onClick={e => e.stopPropagation()}
           >
             <div className="px-5 py-4 border-b flex items-start gap-3" style={{ borderColor: 'var(--color-border)' }}>
               <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(212, 165, 116, 0.15)' }}>
+                {/* Anthropic brand orange #D4A574 — non-themeable brand identity color. */}
+                {/* eslint-disable-next-line admin-tokens/no-hardcoded-admin-color */}
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4A574" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10"/>
                   <line x1="12" y1="8" x2="12" y2="12"/>
@@ -619,7 +649,7 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
             <div className="px-5 py-3 border-t flex justify-end" style={{ borderColor: 'var(--color-border)' }}>
               <button
                 onClick={() => setAifBlocked(false)}
-                className="px-4 py-1.5 text-xs font-medium rounded-lg transition-colors"
+                className="px-5 py-2 text-xs font-medium rounded-pill transition-[background,transform] duration-200 ease-emphasized active:scale-[0.98] focus-visible:outline-none focus-visible:shadow-focus-ring"
                 style={{ background: 'var(--ap-accent)', color: 'white' }}
               >
                 Got it

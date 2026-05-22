@@ -14,13 +14,48 @@
 import { useState, useCallback, useRef, useEffect, startTransition } from 'react';
 // flushSync removed - React 18 batching is sufficient for streaming updates
 import { apiEndpoint } from '@/utils/api';
-import type { NormalizedStreamEvent } from '../../../types/NormalizedStreamTypes';
+import type { NormalizedStreamEvent } from '../../../types/AnthropicStreamEvent';
 
 import { formatAgentMessage, addVisualEnhancements } from '@/utils/messageFormatter';
 import { useAuth } from '@/app/providers/AuthContext';
 import { ChatMessage } from '@/types/index';
 import { useChatStore } from '@/stores/useChatStore';
 import { useAgentTreeStore } from '@/stores/useAgentTreeStore';
+// Task #158 — in-browser Python/JS sandbox.
+// The manager module is imported lazily inside the event handler so the
+// ~6 MiB Pyodide wasm loader stays out of the initial chunk for users
+// who never trigger a sandbox run.
+import type {
+  BrowserExecRequest,
+  BrowserExecResult,
+} from '../../../sandbox/types';
+
+import {
+  applyCanonicalFrame,
+  initialFrameState,
+  type FrameState,
+  type WireFrame,
+} from './streamReducer/applyCanonicalFrame';
+// F1 (2026-05-18) — SDK SoT for ContentBlock. The UI-local `ContentBlock`
+// type below is now a strict alias of `UIContentBlock` from
+// `@agentic-work/llm-sdk` so the wire+persistence shape is owned in ONE
+// place. The legacy interface is kept as a wrapper for back-compat with
+// the ~30 callsites that import `ContentBlock` from this module — they
+// transitively see the SDK shape with zero source changes.
+import type { UIContentBlock } from '@agentic-work/llm-sdk';
+// Step 3 (2026-05-18) — publish wire frames to the StreamEngine frame bus.
+// This is a no-op when no subscribers are registered (i.e. when the
+// VITE_FEATURE_STREAM_ENGINE flag is OFF and MessageBubble does NOT
+// mount the engine wrapper). When ON, the engine taps frames here and
+// applies them to its owned DOM container for glitchless rendering.
+import { publishStreamFrame } from '../components/MessageBubble/StreamEnginedActivityStream';
+// Sev-0 #924/#925/#926 — pure helper that builds the final onMessage
+// payload at done time, preserving the FULL content_blocks chronology
+// (every type — thinking, text, tool_use, viz_render, app_render,
+// streaming_table, follow_up, sub_agent, hitl_approval, tool_round,
+// tool_result). Replaces the inline filter that dropped non-thinking/
+// non-tool_use blocks and lost artifact + text chronology on finalize.
+import { buildDoneMessagePayload } from './buildDoneMessagePayload';
 
 // Pipeline stages from ChatPipeline backend
 export type PipelineStage = 'auth' | 'validation' | 'prompt' | 'mcp' | 'completion' | 'response';
@@ -40,26 +75,241 @@ export interface PipelineState {
 // Animation modes for streaming - simplified
 export type AnimationMode = 'smooth' | 'none';
 
-// Content block for interleaved thinking
-// Each block can be either thinking or text, rendered in order
-export interface ContentBlock {
-  id: string;            // Unique ID for React key (block-{index}-{timestamp})
-  index: number;         // Server block index + offset
-  type: 'thinking' | 'text' | 'tool_use';
-  content: string;
+/**
+ * Content block for interleaved thinking. F1 (2026-05-18) — this is now a
+ * strict re-export of `UIContentBlock` from `@agentic-work/llm-sdk`. The
+ * SDK owns the SoT shape; the alias here keeps the ~30 existing call sites
+ * importing `ContentBlock` from `useChatStream` working with zero source
+ * changes. New code should import `UIContentBlock` directly from
+ * `@agentic-work/llm-sdk`.
+ *
+ * The SDK shape is a structural superset of the legacy local interface —
+ * every previously-typed field exists on `UIContentBlock` with identical
+ * semantics. See:
+ *   - SDK SoT:   openagentic-sdk/src/lib/ui-stream/types.ts (UIContentBlock)
+ *   - Follow-up: docs/superpowers/specs/2026-05-18-streaming-engine-design.md
+ *                §"Follow-up tickets" (F1+F2 deeper rip)
+ */
+export type ContentBlock = UIContentBlock;
+
+/**
+ * Wire-in D (#82) — tool_round container block. The chat pipeline wraps
+ * a batch of parallel tool_executing / tool_complete frames with a
+ * tool_round_start / tool_round_end envelope so the UI can render them
+ * as children of a single .tool-parallel card (mock 01-cloud-ops).
+ */
+export interface ToolRoundBlock extends ContentBlock {
+  type: 'tool_round';
+  roundId: string;
+  toolIds: string[];
+  children: ContentBlock[];
   isComplete: boolean;
-  toolName?: string;
-  toolId?: string;
-  timestamp?: number;    // For activity.types.ts compatibility
-  agentId?: string;      // Sub-agent ID (for spawn_parallel_agents children)
-  parentToolId?: string; // Parent tool_use block ID (nesting)
-  agentRole?: string;    // Agent role description (e.g., "data_query")
-  startTime?: number;    // ms epoch when this block began streaming
-  duration?: number;     // ms elapsed from startTime to isComplete
-  result?: unknown;      // For tool_use — the resolved tool result JSON
-  error?: string;        // For tool_use — error message if the tool failed
-  progressMessage?: string; // F.2 — most recent tool_progress heartbeat message
-  progressElapsed?: number; // F.2 — seconds since tool call started
+  startTime?: number;
+  durationMs?: number;
+  succeeded?: number;
+  failed?: number;
+}
+
+/**
+ * Minimal structural type for the frames applyRoundFrame consumes. The
+ * real NDJSON payloads carry more fields (timestamp, toolNames, _seq,
+ * etc.) but only these are load-bearing for the correlation reducer.
+ */
+export type RoundFrame =
+  | {
+      type: 'tool_round_start';
+      roundId: string;
+      toolCount?: number;
+      toolIds?: string[];
+      toolNames?: string[];
+      timestamp?: string;
+    }
+  | {
+      type: 'tool_round_end';
+      roundId: string;
+      succeeded?: number;
+      failed?: number;
+      durationMs?: number;
+      timestamp?: string;
+    }
+  | {
+      type: 'tool_executing';
+      roundId?: string;
+      toolCallId?: string;
+      name?: string;
+      arguments?: unknown;
+    }
+  | {
+      type: 'tool_complete' | 'tool_result' | 'tool_error';
+      roundId?: string;
+      toolCallId?: string;
+      name?: string;
+      result?: unknown;
+      error?: string;
+      durationMs?: number;
+      /**
+       * Phase 4 — two-channel envelope UI side. Carries outputTemplate
+       * + size / elapsed / cost / artifactHandle so the reducer can
+       * stamp the slug onto the matching ContentBlock for downstream
+       * FrameRendererRegistry lookup.
+       */
+      _meta?: {
+        outputTemplate?: string;
+        size?: number;
+        elapsed?: number;
+        cost?: number;
+        artifactHandle?: string;
+      };
+    };
+
+/**
+ * Pure reducer that folds a round-aware stream frame onto the current
+ * contentBlocks list.
+ *
+ *   tool_round_start      → push a new tool_round block with empty children
+ *   tool_executing (w/ roundId matching open round) → append to children
+ *   tool_executing (no match / unknown roundId)     → append as sibling
+ *   tool_complete / tool_result / tool_error (w/ roundId match)
+ *                         → update the matching child in place
+ *   tool_round_end        → mark round isComplete + stamp durationMs /
+ *                           succeeded / failed
+ *
+ * Non-matching frames fall through untouched. All outputs are new arrays
+ * so downstream React state setters see a fresh reference.
+ */
+export function applyRoundFrame(
+  blocks: ContentBlock[],
+  frame: RoundFrame,
+): ContentBlock[] {
+  // ── tool_round_start ────────────────────────────────────────────
+  if (frame.type === 'tool_round_start') {
+    // Dedupe: if a tool_round block already exists for this roundId, the
+    // second tool_round_start is a no-op (defensive against duplicate
+    // envelopes from the sequencer).
+    if (
+      blocks.some(
+        (b) => b.type === 'tool_round' && b.roundId === frame.roundId,
+      )
+    ) {
+      return blocks;
+    }
+    const round: ToolRoundBlock = {
+      id: `tool-round-${frame.roundId}`,
+      index: blocks.length,
+      type: 'tool_round',
+      content: '',
+      roundId: frame.roundId,
+      toolIds: Array.isArray(frame.toolIds) ? [...frame.toolIds] : [],
+      children: [],
+      isComplete: false,
+      startTime: Date.now(),
+    };
+    return [...blocks, round];
+  }
+
+  // ── tool_round_end ──────────────────────────────────────────────
+  if (frame.type === 'tool_round_end') {
+    return blocks.map((b) => {
+      if (b.type !== 'tool_round' || b.roundId !== frame.roundId) return b;
+      return {
+        ...b,
+        isComplete: true,
+        durationMs: typeof frame.durationMs === 'number' ? frame.durationMs : b.durationMs,
+        succeeded: typeof frame.succeeded === 'number' ? frame.succeeded : b.succeeded,
+        failed: typeof frame.failed === 'number' ? frame.failed : b.failed,
+      };
+    });
+  }
+
+  // ── tool_executing ──────────────────────────────────────────────
+  if (frame.type === 'tool_executing') {
+    const targetRoundIdx =
+      frame.roundId
+        ? blocks.findIndex(
+            (b) => b.type === 'tool_round' && b.roundId === frame.roundId,
+          )
+        : -1;
+
+    const child: ContentBlock = {
+      id: `tool-exec-${frame.toolCallId || frame.name || Math.random().toString(36).slice(2)}`,
+      index: targetRoundIdx >= 0
+        ? (blocks[targetRoundIdx].children?.length ?? 0)
+        : blocks.length,
+      type: 'tool_use',
+      content: JSON.stringify(frame.arguments ?? {}),
+      isComplete: false,
+      toolName: frame.name,
+      toolId: frame.toolCallId,
+      startTime: Date.now(),
+    };
+
+    if (targetRoundIdx < 0) {
+      // No matching round — graceful fallback, render as top-level sibling.
+      return [...blocks, child];
+    }
+
+    return blocks.map((b, i) => {
+      if (i !== targetRoundIdx) return b;
+      return {
+        ...b,
+        children: [...(b.children ?? []), child],
+      };
+    });
+  }
+
+  // ── tool_complete / tool_result / tool_error ─────────────────────
+  if (
+    frame.type === 'tool_complete' ||
+    frame.type === 'tool_result' ||
+    frame.type === 'tool_error'
+  ) {
+    if (!frame.roundId) return blocks;
+    const roundIdx = blocks.findIndex(
+      (b) => b.type === 'tool_round' && b.roundId === frame.roundId,
+    );
+    if (roundIdx < 0) return blocks;
+
+    const round = blocks[roundIdx];
+    const children = round.children ?? [];
+    const childIdx = children.findIndex(
+      (c) =>
+        (frame.toolCallId && c.toolId === frame.toolCallId) ||
+        (frame.name && c.toolName === frame.name && !c.isComplete),
+    );
+    if (childIdx < 0) return blocks;
+
+    const prevChild = children[childIdx];
+    // Phase 4 — forward `_meta.outputTemplate` from the tool_result frame
+    // onto the matching ContentBlock so render-time can resolve the
+    // FrameRendererRegistry component. Only stamps on success-path frames
+    // (tool_result / tool_complete); tool_error keeps the existing error
+    // shape unchanged.
+    const frameMeta =
+      frame.type === 'tool_result' || frame.type === 'tool_complete'
+        ? (frame as any)?._meta
+        : undefined;
+    const outputTemplate: string | undefined = frameMeta?.outputTemplate;
+    const nextChild: ContentBlock = {
+      ...prevChild,
+      isComplete: true,
+      ...(frame.type === 'tool_error'
+        ? { error: frame.error }
+        : { result: frame.result }),
+      ...(outputTemplate ? { outputTemplate } : {}),
+      duration:
+        typeof frame.durationMs === 'number'
+          ? frame.durationMs
+          : Date.now() - (prevChild.startTime || Date.now()),
+    };
+
+    const nextChildren = children.slice();
+    nextChildren[childIdx] = nextChild;
+    return blocks.map((b, i) =>
+      i === roundIdx ? { ...b, children: nextChildren } : b,
+    );
+  }
+
+  return blocks;
 }
 
 // Pipeline-aware event types that match backend ChatPipeline
@@ -190,6 +440,1170 @@ function cleanThinkingBlocks(content: string): string {
   return extractAndCleanThinkingBlocks(content).cleaned;
 }
 
+/**
+ * Model identifier split for the assistant message header pill.
+ *
+ * Mock 01 (mocks/UX/01-cloud-ops.html:206-212) shows the model in two
+ * halves — the family `tag` in accent color, the rest in muted color:
+ *
+ *   <span class="model"><span class="tag">claude</span>3.5 sonnet</span>
+ *
+ * The wire frame `message_received` carries a single string like
+ * `claude-opus-4-7`; we split on the FIRST hyphen so the family stays
+ * a single word. Returns null for empty / whitespace / leading-hyphen
+ * inputs so the consumer can suppress the badge entirely.
+ */
+export interface ModelIdentifier {
+  tag: string;
+  id: string;
+}
+
+export function splitModelIdentifier(
+  raw: string | null | undefined,
+): ModelIdentifier | null {
+  if (raw == null) return null;
+  const s = raw.trim();
+  if (s.length === 0) return null;
+  // A leading hyphen is malformed wire data — suppress.
+  if (s.startsWith('-')) return null;
+  const i = s.indexOf('-');
+  if (i < 0) {
+    // Single-word identifier ("qwen", "phi"). Show as the family tag.
+    return { tag: s, id: '' };
+  }
+  let tag = s.slice(0, i);
+  // Bedrock ARN-style ids carry dotted vendor prefixes — `global.anthropic.claude-...`,
+  // `us.amazon.nova-...`, `anthropic.claude-3-...`. Mock 01:206-212 expects
+  // a short family tag. Strip everything up to the LAST dot in the pre-hyphen
+  // segment, leaving only the family name. Single-segment tags pass through.
+  const lastDot = tag.lastIndexOf('.');
+  if (lastDot >= 0) {
+    tag = tag.slice(lastDot + 1);
+  }
+  return { tag, id: s.slice(i + 1) };
+}
+
+/**
+ * P1-5 of chatmode UX parity — suppress orphan / trivial artifact slide-outs.
+ *
+ * The server fires `artifact_open` for any structured response, but plain
+ * prose with no fences / SVG / Mermaid / chart syntax should NEVER pop the
+ * slide-out. Called at `artifact_close` time with the accumulated final
+ * content; returns true only when the content has real substance.
+ *
+ * - Always false for empty / whitespace-only (any kind).
+ * - For `markdown`: true if the content is ≥200 chars OR contains a fence
+ *   / `<svg>` / Mermaid keyword (graph|sequenceDiagram|flowchart) / a
+ *   markdown table (≥2 pipes per line for ≥2 lines).
+ * - For all other kinds (`code`, `mermaid`, `chart`, `csv`): true once
+ *   non-whitespace content exists. Those kinds never confuse with prose.
+ */
+export function isArtifactWorthShowing(content: string, kind: string): boolean {
+  const c = (content || '').trim();
+  if (c.length === 0) return false;
+  if (kind !== 'markdown') return true;
+  if (c.length >= 200) return true;
+  if (/```/.test(c)) return true;
+  if (/<svg[\s>]/i.test(c)) return true;
+  if (/\b(?:graph|sequenceDiagram|flowchart|gantt|classDiagram|stateDiagram|erDiagram|journey|pie|gitGraph)\b/i.test(c)) {
+    return true;
+  }
+  // Markdown table: at least two consecutive lines each containing 2+ pipes.
+  const lines = c.split('\n');
+  let pipedRun = 0;
+  for (const line of lines) {
+    const pipeCount = (line.match(/\|/g) || []).length;
+    if (pipeCount >= 2) {
+      pipedRun += 1;
+      if (pipedRun >= 2) return true;
+    } else {
+      pipedRun = 0;
+    }
+  }
+  return false;
+}
+
+/**
+ * Sev-0 2026-05-08 — empty-completion fallback contract.
+ *
+ * When `done` / `stream_complete` arrives with no assistant text AND no
+ * tool calls AND no tool_use blocks (model emitted zero tokens after a
+ * tool-use chain or after thinking), the historical condition skipped
+ * the message-creation branch entirely → the UI hung on
+ * "waiting for first token" forever.
+ *
+ * Pure decision function. The render branch consults this to know:
+ *  - whether to create a message at all (always, now)
+ *  - what content to seed the message with (original, empty for tool-only,
+ *    or italic placeholder for the truly-empty case)
+ */
+export interface EmptyCompletionInputs {
+  assistantMessage: string;
+  mcpCallsLength: number;
+  hasToolUseBlocks: boolean;
+}
+
+export interface EmptyCompletionResolution {
+  shouldRender: boolean;
+  content: string;
+  usedFallback: boolean;
+}
+
+export function resolveEmptyCompletionFallback(
+  inputs: EmptyCompletionInputs,
+): EmptyCompletionResolution {
+  const trimmed = (inputs.assistantMessage || '').trim();
+  if (trimmed.length > 0) {
+    return { shouldRender: true, content: inputs.assistantMessage, usedFallback: false };
+  }
+  if (inputs.mcpCallsLength > 0 || inputs.hasToolUseBlocks) {
+    return { shouldRender: true, content: '', usedFallback: false };
+  }
+  return {
+    shouldRender: true,
+    content: '_Model finished without producing an answer. Try rephrasing or check the activity stream above._',
+    usedFallback: true,
+  };
+}
+
+/**
+ * E1.5 (2026-05-12) — wire-shape normalizers for tool_executing / tool_result.
+ *
+ * The V2 chat pipeline canonical payload (see api/.../pipeline/chat/builders.ts
+ * `buildToolExecuting`, `buildToolResult`) is:
+ *
+ *   tool_executing: { name, tool_use_id, input }
+ *   tool_result:    { name, tool_use_id, content, is_error, _meta }
+ *
+ * Legacy OpenAI-shape callers (Gemini, V1 paths) used `arguments` /
+ * `toolCallId` / `result` instead. The UI reducer was reading the legacy
+ * names, so every panel showed `INPUT {}` and `RESULT undefined` because
+ * the canonical wire frame's `input` / `content` were never read.
+ *
+ * The normalizer prefers the canonical names but falls through to legacy
+ * so older sub-agent / Gemini / mock paths keep working. RED test:
+ * useChatStream.e15WireShapeNormalizer.test.ts.
+ */
+export function extractToolExecutingArgs(safeData: any): unknown {
+  if (safeData == null || typeof safeData !== 'object') return undefined;
+  if ('input' in safeData && safeData.input !== undefined) return safeData.input;
+  if ('arguments' in safeData && safeData.arguments !== undefined) return safeData.arguments;
+  return undefined;
+}
+
+export function extractToolExecutingToolUseId(safeData: any): string | undefined {
+  if (safeData == null || typeof safeData !== 'object') return undefined;
+  if (typeof safeData.tool_use_id === 'string') return safeData.tool_use_id;
+  if (typeof safeData.toolCallId === 'string') return safeData.toolCallId;
+  return undefined;
+}
+
+export function extractToolResultContent(safeData: any): unknown {
+  if (safeData == null || typeof safeData !== 'object') return undefined;
+  if ('content' in safeData && safeData.content !== undefined) return safeData.content;
+  if ('result' in safeData && safeData.result !== undefined) return safeData.result;
+  return undefined;
+}
+
+/**
+ * P1-6 — streaming-table primitive (mock 01:385-462).
+ *
+ * Server emits one `streaming_table` frame per table; the UI keys by
+ * `artifact_id` (hot-swap on re-emit) and renders inline. Mirrors the
+ * compose_visual / compose_app append-or-hot-swap pattern.
+ */
+export type SevSeverity = 'ok' | 'warn' | 'err';
+
+export interface SevCell {
+  kind: 'sev';
+  value: string;
+  severity: SevSeverity;
+}
+
+export type StreamingTableCell = string | SevCell;
+
+export interface StreamingTableColumn {
+  key: string;
+  label: string;
+  align?: 'left' | 'right';
+  cellClass?: 'mono' | 'tnum';
+  /**
+   * Mock-07 (tri-cloud cost spikes) — when a numeric column carries
+   * `colorize: 'delta-currency'`, the renderer applies cm-red / cm-amber /
+   * cm-green class to each cell based on the absolute-value threshold:
+   *   |v| >= 5000 → red
+   *   |v| >= 2000 → amber
+   *   otherwise   → green
+   * Backwards-compat: absent flag → no coloring (existing behavior).
+   */
+  colorize?: 'delta-currency';
+  /**
+   * Mock-07 line 110 — when a column has `dim:true`, its cells render in
+   * the dim-fg colour (cm-fg-3). Used for "root cause" / inline annotation
+   * columns. Optional.
+   */
+  dim?: boolean;
+}
+
+export interface StreamingTableFilter {
+  /** Column key the filter pill selects on. */
+  column: string;
+  /** Default option label (e.g. "all clouds"). Defaults to "all". */
+  default?: string;
+}
+
+export interface StreamingTable {
+  artifactId: string;
+  title: string;
+  countText?: string;
+  columns: StreamingTableColumn[];
+  rows: Array<Record<string, StreamingTableCell>>;
+  /** Optional filter pill (mock-07 line 219). */
+  filter?: StreamingTableFilter;
+}
+
+export interface StreamingTableFrame {
+  type: 'streaming_table';
+  artifact_id: string;
+  title: string;
+  count_text?: string;
+  columns: Array<{
+    key: string;
+    label: string;
+    align?: 'left' | 'right';
+    cell_class?: 'mono' | 'tnum';
+    /** Mock-07 — numeric column coloring (currently 'delta-currency'). */
+    colorize?: 'delta-currency';
+    /** Mock-07 — dim-styled column. */
+    dim?: boolean;
+  }>;
+  rows: Array<Record<string, StreamingTableCell>>;
+  /** Mock-07 — optional filter pill spec. */
+  filter?: {
+    column: string;
+    default?: string;
+  };
+}
+
+/**
+ * Pure reducer: fold a `streaming_table` wire frame into the per-message
+ * map. Drops malformed payloads silently (empty messageId, empty
+ * artifact_id, or empty columns — there is nothing useful to render).
+ * Hot-swaps in place when the artifact_id matches an existing entry under
+ * the same messageId; appends otherwise.
+ */
+export function applyStreamingTableFrame(
+  map: Record<string, StreamingTable[]>,
+  messageId: string,
+  frame: StreamingTableFrame,
+): Record<string, StreamingTable[]> {
+  if (!messageId) return map;
+  const artifactId = typeof frame.artifact_id === 'string' ? frame.artifact_id.trim() : '';
+  if (!artifactId) return map;
+  const cols = Array.isArray(frame.columns) ? frame.columns : [];
+  if (cols.length === 0) return map;
+  const next: StreamingTable = {
+    artifactId,
+    title: typeof frame.title === 'string' ? frame.title : '',
+    countText: typeof frame.count_text === 'string' && frame.count_text.length > 0
+      ? frame.count_text
+      : undefined,
+    columns: cols.map((c) => ({
+      key: typeof c.key === 'string' ? c.key : '',
+      label: typeof c.label === 'string' ? c.label : '',
+      align: c.align === 'right' ? 'right' : c.align === 'left' ? 'left' : undefined,
+      cellClass:
+        c.cell_class === 'mono' || c.cell_class === 'tnum' ? c.cell_class : undefined,
+      colorize: c.colorize === 'delta-currency' ? 'delta-currency' : undefined,
+      dim: c.dim === true ? true : undefined,
+    })),
+    rows: Array.isArray(frame.rows) ? frame.rows : [],
+    filter:
+      frame.filter && typeof frame.filter.column === 'string' && frame.filter.column.length > 0
+        ? {
+            column: frame.filter.column,
+            default:
+              typeof frame.filter.default === 'string' && frame.filter.default.length > 0
+                ? frame.filter.default
+                : undefined,
+          }
+        : undefined,
+  };
+  const existing = map[messageId] ?? [];
+  const idx = existing.findIndex((t) => t.artifactId === artifactId);
+  if (idx >= 0) {
+    const replaced = [...existing];
+    replaced[idx] = next;
+    return { ...map, [messageId]: replaced };
+  }
+  return { ...map, [messageId]: [...existing, next] };
+}
+
+/**
+ * Phase 27 — findings_emit NDJSON frame. Severity-tagged audit/review
+ * lists rendered inline by v2/Findings (mocks 03, 07, 08, 09).
+ */
+export type FindingSeverityWire =
+  | 'critical' | 'high' | 'med' | 'low' | 'info' | 'ok';
+
+export interface FindingsItem {
+  id: string;
+  title: string;
+  severity: FindingSeverityWire;
+  body?: string;
+}
+
+export interface FindingsArtifact {
+  artifactId: string;
+  title?: string;
+  items: FindingsItem[];
+}
+
+export interface FindingsFrame {
+  type: 'findings_emit';
+  artifact_id: string;
+  title?: string;
+  items: Array<{
+    id: string;
+    title: string;
+    severity: FindingSeverityWire;
+    body?: string;
+  }>;
+}
+
+const VALID_SEVERITIES = new Set<FindingSeverityWire>([
+  'critical', 'high', 'med', 'low', 'info', 'ok',
+]);
+
+/**
+ * Pure reducer: fold a `findings_emit` wire frame into the per-message
+ * map. Drops malformed payloads silently. Hot-swaps in place when the
+ * artifact_id matches an existing entry under the same messageId;
+ * appends otherwise.
+ */
+export function applyFindingsFrame(
+  map: Record<string, FindingsArtifact[]>,
+  messageId: string,
+  frame: FindingsFrame,
+): Record<string, FindingsArtifact[]> {
+  if (!messageId) return map;
+  const artifactId = typeof frame.artifact_id === 'string' ? frame.artifact_id.trim() : '';
+  if (!artifactId) return map;
+  const items = Array.isArray(frame.items) ? frame.items : [];
+  if (items.length === 0) return map;
+  const sanitized: FindingsItem[] = items
+    .filter((it) => it && typeof it.id === 'string' && typeof it.title === 'string')
+    .map((it) => ({
+      id: it.id,
+      title: it.title,
+      severity: VALID_SEVERITIES.has(it.severity) ? it.severity : 'info',
+      ...(typeof it.body === 'string' ? { body: it.body } : {}),
+    }));
+  if (sanitized.length === 0) return map;
+  const next: FindingsArtifact = {
+    artifactId,
+    ...(typeof frame.title === 'string' ? { title: frame.title } : {}),
+    items: sanitized,
+  };
+  const existing = map[messageId] ?? [];
+  const idx = existing.findIndex((a) => a.artifactId === artifactId);
+  if (idx >= 0) {
+    const replaced = [...existing];
+    replaced[idx] = next;
+    return { ...map, [messageId]: replaced };
+  }
+  return { ...map, [messageId]: [...existing, next] };
+}
+
+/**
+ * #502 unified inline-widget primitive — one NDJSON frame carries the
+ * v2 primitives that don't already have a dedicated wire (KpiGrid,
+ * SavingsCard, StagesStrip, WaveTimeline, Runbook, StackGrid,
+ * AnnotatedCode). The model emits these via the `compose_widget`
+ * meta-tool; the API forwards `inline_widget` frames keyed by
+ * `artifact_id`.
+ *
+ * Each `data` payload mirrors the corresponding v2 primitive's prop
+ * shape one-to-one, so renderers can pass `data` straight through.
+ */
+export type InlineWidgetKind =
+  | 'kpi_grid'
+  | 'savings_card'
+  | 'stages_strip'
+  | 'wave_timeline'
+  | 'runbook'
+  | 'stack_grid'
+  | 'annotated_code';
+
+const INLINE_WIDGET_KINDS = new Set<InlineWidgetKind>([
+  'kpi_grid',
+  'savings_card',
+  'stages_strip',
+  'wave_timeline',
+  'runbook',
+  'stack_grid',
+  'annotated_code',
+]);
+
+export interface InlineWidgetFrame {
+  type: 'inline_widget';
+  artifact_id: string;
+  kind: InlineWidgetKind;
+  title?: string;
+  data: unknown;
+}
+
+export interface InlineWidget {
+  artifactId: string;
+  kind: InlineWidgetKind;
+  title?: string;
+  data: unknown;
+}
+
+/**
+ * Validate a payload against the kind's required-shape contract.
+ * Returns false for malformed shapes so the reducer can drop silently.
+ */
+function isValidInlineWidgetData(kind: InlineWidgetKind, data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const d = data as Record<string, unknown>;
+  switch (kind) {
+    case 'kpi_grid':
+      return Array.isArray(d.tiles) && d.tiles.length > 0;
+    case 'savings_card':
+      return Array.isArray(d.cells) && d.cells.length > 0;
+    case 'stages_strip':
+      return Array.isArray(d.stages) && d.stages.length > 0;
+    case 'wave_timeline':
+      return Array.isArray(d.rows) && d.rows.length > 0;
+    case 'runbook':
+      return Array.isArray(d.steps) && d.steps.length > 0;
+    case 'stack_grid':
+      return Array.isArray(d.layers) && d.layers.length > 0;
+    case 'annotated_code':
+      return Array.isArray(d.lines) && d.lines.length > 0;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Pure reducer: fold one `inline_widget` wire frame into the
+ * per-message map. Drops malformed payloads silently. Hot-swaps in
+ * place when `artifact_id` matches an existing entry under the same
+ * messageId; appends otherwise.
+ */
+export function applyInlineWidgetFrame(
+  map: Record<string, InlineWidget[]>,
+  messageId: string,
+  frame: InlineWidgetFrame,
+): Record<string, InlineWidget[]> {
+  if (!messageId) return map;
+  const artifactId = typeof frame.artifact_id === 'string' ? frame.artifact_id.trim() : '';
+  if (!artifactId) return map;
+  if (!INLINE_WIDGET_KINDS.has(frame.kind)) return map;
+  if (!isValidInlineWidgetData(frame.kind, frame.data)) return map;
+  const next: InlineWidget = {
+    artifactId,
+    kind: frame.kind,
+    ...(typeof frame.title === 'string' ? { title: frame.title } : {}),
+    data: frame.data,
+  };
+  const existing = map[messageId] ?? [];
+  const idx = existing.findIndex((w) => w.artifactId === artifactId);
+  if (idx >= 0) {
+    const replaced = [...existing];
+    replaced[idx] = next;
+    return { ...map, [messageId]: replaced };
+  }
+  return { ...map, [messageId]: [...existing, next] };
+}
+
+/**
+ * AC-B — synth lifecycle. One unified entry per artifactId accumulates
+ * across the lifecycle frames the API streams as the model authors +
+ * executes Python in the synth-executor sandbox.
+ */
+export type SynthRiskLevel = 'low' | 'medium' | 'high' | 'critical';
+export type SynthStage =
+  | 'planned'
+  | 'awaiting_approval'
+  | 'approved'
+  | 'denied'
+  | 'executing'
+  | 'completed'
+  | 'failed';
+
+export interface Synth {
+  artifactId: string;
+  stage: SynthStage;
+  intent: string;
+  capabilities: string[];
+  riskLevel: SynthRiskLevel;
+  riskReason?: string;
+  code: string;
+  codeLang: string;
+  stdout: string;
+  stderr: string;
+  startedAt?: number;
+  completedAt?: number;
+  durationMs?: number;
+  exitCode?: number;
+  error?: string;
+  denialReason?: string;
+}
+
+export type SynthLifecycleFrame =
+  | {
+      type: 'synth_planned';
+      artifact_id: string;
+      intent: string;
+      capabilities: string[];
+      risk_level: SynthRiskLevel;
+      risk_reason?: string;
+      code_lang: string;
+    }
+  | {
+      type: 'synth_code_chunk';
+      artifact_id: string;
+      chunk_index: number;
+      code_fragment: string;
+    }
+  | { type: 'synth_approval_requested'; artifact_id: string }
+  | { type: 'synth_approved'; artifact_id: string }
+  | { type: 'synth_denied'; artifact_id: string; reason?: string }
+  | { type: 'synth_executing'; artifact_id: string; started_at: number }
+  | {
+      type: 'synth_stdout';
+      artifact_id: string;
+      chunk: string;
+      stream: 'stdout' | 'stderr';
+    }
+  | {
+      type: 'synth_completed';
+      artifact_id: string;
+      duration_ms: number;
+      exit_code: number;
+      error?: string;
+    };
+
+const SYNTH_RISK_LEVELS = new Set<SynthRiskLevel>(['low', 'medium', 'high', 'critical']);
+
+/**
+ * Pure reducer: fold one synth lifecycle frame into the per-message
+ * map. `synth_planned` is the only frame that creates new state;
+ * subsequent lifecycle frames update an existing entry by
+ * `artifact_id` or are dropped silently.
+ */
+export function applySynthLifecycleFrame(
+  map: Record<string, Synth[]>,
+  messageId: string,
+  frame: SynthLifecycleFrame,
+): Record<string, Synth[]> {
+  if (!messageId) return map;
+  const artifactId = typeof frame.artifact_id === 'string' ? frame.artifact_id.trim() : '';
+  if (!artifactId) return map;
+  const existing = map[messageId] ?? [];
+  const idx = existing.findIndex((s) => s.artifactId === artifactId);
+
+  if (frame.type === 'synth_planned') {
+    const next: Synth = {
+      artifactId,
+      stage: 'planned',
+      intent: typeof frame.intent === 'string' ? frame.intent : '',
+      capabilities: Array.isArray(frame.capabilities) ? frame.capabilities : [],
+      riskLevel: SYNTH_RISK_LEVELS.has(frame.risk_level) ? frame.risk_level : 'medium',
+      ...(typeof frame.risk_reason === 'string' ? { riskReason: frame.risk_reason } : {}),
+      code: '',
+      codeLang: typeof frame.code_lang === 'string' ? frame.code_lang : 'python',
+      stdout: '',
+      stderr: '',
+    };
+    if (idx >= 0) {
+      const replaced = [...existing];
+      replaced[idx] = next;
+      return { ...map, [messageId]: replaced };
+    }
+    return { ...map, [messageId]: [...existing, next] };
+  }
+
+  // Non-planned frames update an existing entry; orphans drop.
+  if (idx < 0) return map;
+  const cur = existing[idx];
+  let updated: Synth | null = null;
+
+  switch (frame.type) {
+    case 'synth_code_chunk':
+      updated = {
+        ...cur,
+        code: cur.code + (typeof frame.code_fragment === 'string' ? frame.code_fragment : ''),
+      };
+      break;
+    case 'synth_approval_requested':
+      updated = { ...cur, stage: 'awaiting_approval' };
+      break;
+    case 'synth_approved':
+      updated = { ...cur, stage: 'approved' };
+      break;
+    case 'synth_denied':
+      updated = {
+        ...cur,
+        stage: 'denied',
+        ...(typeof frame.reason === 'string' ? { denialReason: frame.reason } : {}),
+      };
+      break;
+    case 'synth_executing':
+      updated = {
+        ...cur,
+        stage: 'executing',
+        startedAt: typeof frame.started_at === 'number' ? frame.started_at : cur.startedAt,
+      };
+      break;
+    case 'synth_stdout': {
+      const chunk = typeof frame.chunk === 'string' ? frame.chunk : '';
+      if (frame.stream === 'stderr') {
+        updated = { ...cur, stderr: cur.stderr + chunk };
+      } else {
+        updated = { ...cur, stdout: cur.stdout + chunk };
+      }
+      break;
+    }
+    case 'synth_completed': {
+      const exitCode = typeof frame.exit_code === 'number' ? frame.exit_code : 0;
+      const failed = exitCode !== 0 || typeof frame.error === 'string';
+      updated = {
+        ...cur,
+        stage: failed ? 'failed' : 'completed',
+        durationMs: typeof frame.duration_ms === 'number' ? frame.duration_ms : undefined,
+        exitCode,
+        ...(typeof frame.error === 'string' ? { error: frame.error } : {}),
+      };
+      break;
+    }
+    default:
+      return map;
+  }
+
+  if (!updated) return map;
+  const replaced = [...existing];
+  replaced[idx] = updated;
+  return { ...map, [messageId]: replaced };
+}
+
+/**
+ * AC-D1 — artifact_emit. Server emits this when synth-executor (or
+ * any tool) finishes writing bytes to UserStorageService. The UI
+ * renders one <DownloadTile> per entry, click → presigned MinIO URL.
+ */
+export interface ArtifactEmit {
+  artifactId: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  downloadUrl: string;
+  producedBy?: string;
+  synthArtifactId?: string;
+}
+
+export interface ArtifactEmitFrame {
+  type: 'artifact_emit';
+  artifact_id: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  download_url: string;
+  produced_by?: string;
+  synth_artifact_id?: string;
+}
+
+/**
+ * Pure reducer: fold one `artifact_emit` frame into the per-message
+ * map. Drops malformed payloads silently. Hot-swaps in place when the
+ * artifact_id matches an existing entry under the same messageId;
+ * appends otherwise.
+ */
+export function applyArtifactEmitFrame(
+  map: Record<string, ArtifactEmit[]>,
+  messageId: string,
+  frame: ArtifactEmitFrame,
+): Record<string, ArtifactEmit[]> {
+  if (!messageId) return map;
+  const artifactId = typeof frame.artifact_id === 'string' ? frame.artifact_id.trim() : '';
+  if (!artifactId) return map;
+  const filename = typeof frame.filename === 'string' ? frame.filename : '';
+  if (!filename) return map;
+  const downloadUrl = typeof frame.download_url === 'string' ? frame.download_url : '';
+  if (!downloadUrl) return map;
+
+  const next: ArtifactEmit = {
+    artifactId,
+    filename,
+    contentType: typeof frame.content_type === 'string' ? frame.content_type : 'application/octet-stream',
+    sizeBytes: typeof frame.size_bytes === 'number' ? frame.size_bytes : 0,
+    downloadUrl,
+    ...(typeof frame.produced_by === 'string' ? { producedBy: frame.produced_by } : {}),
+    ...(typeof frame.synth_artifact_id === 'string' ? { synthArtifactId: frame.synth_artifact_id } : {}),
+  };
+  const existing = map[messageId] ?? [];
+  const idx = existing.findIndex((a) => a.artifactId === artifactId);
+  if (idx >= 0) {
+    const replaced = [...existing];
+    replaced[idx] = next;
+    return { ...map, [messageId]: replaced };
+  }
+  return { ...map, [messageId]: [...existing, next] };
+}
+
+/**
+ * P0-2 — stamp wire `model` onto a (partial) ChatMessage as `model` +
+ * `modelTag` + `modelId` so MessageHeader can render the assistant pill
+ * without re-parsing on every render. Mirrors mock 01:206-212 pill anatomy.
+ *
+ * Returns the input unchanged when `model` is missing or malformed
+ * (splitModelIdentifier returned null) — half-stamped pills confuse users.
+ */
+export function attachModelIdentifier<M extends object>(
+  message: M,
+  model: string | null | undefined,
+): M & { model?: string; modelTag?: string; modelId?: string } {
+  const split = splitModelIdentifier(model);
+  if (!split) return message as M & { model?: string; modelTag?: string; modelId?: string };
+  return {
+    ...message,
+    model: typeof model === 'string' ? model.trim() : model ?? undefined,
+    modelTag: split.tag,
+    modelId: split.id.length > 0 ? split.id : undefined,
+  };
+}
+
+// Legacy AppRender / ArtifactRender shapes + applyAppRenderFrame /
+// applyArtifactRenderFrame reducers were ripped. The `app_render` and
+// `artifact_render` wire frames now fold into the canonical
+// contentBlocks[] array via streamReducer/applyCanonicalFrame and render
+// inline through AgenticActivityStream's typed-block path.
+
+// ════════════════════════════════════════════════════════════════════
+// Wave 3 (#525) — intent_classified + tool_shortlist NDJSON consumers.
+//
+// Server emits these ONCE per assistant turn from prompt.stage (Wave 2):
+//   intent_classified: { intent, confidence, ms, classifierCacheHit }
+//   tool_shortlist:    { total_available, count, intent, kept[] }
+//
+// Both frames emit BEFORE the assistant's message_saved arrives
+// (#473 ordering — frame fires from prompt.stage, message_saved from
+// response.stage). The buffer-then-flush pattern below keys the maps
+// by the React placeholder id (NOT the DB CUID — same gotcha #473
+// fixed earlier).
+// ════════════════════════════════════════════════════════════════════
+
+/** IntentClassified state — one entry per assistant message. */
+export interface IntentClassification {
+  intent: string;
+  confidence: number;
+  ms: number;
+  classifierCacheHit: boolean;
+}
+
+/** ToolShortlist state — one entry per assistant message. */
+export interface ToolShortlist {
+  totalAvailable: number;
+  count: number;
+  intent: string;
+  kept: string[];
+}
+
+/** Wire shape for `intent_classified` (camelCase per Wave 2 spec). */
+export type IntentClassifiedFrame = {
+  type: 'intent_classified';
+  intent: string;
+  confidence: number;
+  ms: number;
+  classifierCacheHit: boolean;
+};
+
+/** Wire shape for `tool_shortlist` (snake_case per Wave 2 spec). */
+export type ToolShortlistFrame = {
+  type: 'tool_shortlist';
+  total_available: number;
+  count: number;
+  intent: string;
+  kept: string[];
+};
+
+/**
+ * Pure reducer: coerce + buffer-or-apply an `intent_classified` frame.
+ * When `assistantMessageId` is empty (frame fired before assistant's
+ * message_saved), the entry stashes in the pending slot for later flush.
+ */
+export function bufferOrApplyIntentClassified(
+  safeData: any,
+  assistantMessageId: string,
+  prevMap: Record<string, IntentClassification>,
+  prevPending: IntentClassification | null,
+): {
+  intentClassifications: Record<string, IntentClassification>;
+  pending: IntentClassification | null;
+} {
+  const intent = typeof safeData?.intent === 'string' ? safeData.intent : '';
+  const confidence =
+    typeof safeData?.confidence === 'number' && Number.isFinite(safeData.confidence)
+      ? safeData.confidence
+      : 0;
+  const ms =
+    typeof safeData?.ms === 'number' && Number.isFinite(safeData.ms)
+      ? safeData.ms
+      : 0;
+  const classifierCacheHit = safeData?.classifierCacheHit === true;
+  if (!intent) {
+    // Defensive — drop malformed frames silently.
+    return { intentClassifications: prevMap, pending: prevPending };
+  }
+  const entry: IntentClassification = { intent, confidence, ms, classifierCacheHit };
+  if (!assistantMessageId) {
+    return { intentClassifications: prevMap, pending: entry };
+  }
+  return {
+    intentClassifications: { ...prevMap, [assistantMessageId]: entry },
+    pending: prevPending,
+  };
+}
+
+/** Flush buffered intent classification into the keyed map on assistant message_saved. */
+export function flushPendingIntentClassified(
+  assistantMessageId: string,
+  prevMap: Record<string, IntentClassification>,
+  prevPending: IntentClassification | null,
+): {
+  intentClassifications: Record<string, IntentClassification>;
+  pending: IntentClassification | null;
+} {
+  if (!prevPending) return { intentClassifications: prevMap, pending: null };
+  if (!assistantMessageId) {
+    return { intentClassifications: prevMap, pending: prevPending };
+  }
+  return {
+    intentClassifications: { ...prevMap, [assistantMessageId]: prevPending },
+    pending: null,
+  };
+}
+
+/**
+ * Pure reducer: coerce + buffer-or-apply a `tool_shortlist` frame.
+ *
+ * Buffer-or-apply: when no assistant messageId is known yet (the frame
+ * fires from prompt.stage before the assistant's message_saved arrives),
+ * stash in a session-level pending slot; the case 'message_saved' arm
+ * flushes it on assistant role.
+ */
+export function bufferOrApplyToolShortlist(
+  safeData: any,
+  assistantMessageId: string,
+  prevMap: Record<string, ToolShortlist>,
+  prevPending: ToolShortlist | null,
+): {
+  toolShortlists: Record<string, ToolShortlist>;
+  pending: ToolShortlist | null;
+} {
+  const totalAvailable =
+    typeof safeData?.total_available === 'number' &&
+    Number.isFinite(safeData.total_available)
+      ? safeData.total_available
+      : 0;
+  const count =
+    typeof safeData?.count === 'number' && Number.isFinite(safeData.count)
+      ? safeData.count
+      : 0;
+  const intent = typeof safeData?.intent === 'string' ? safeData.intent : '';
+  const kept = Array.isArray(safeData?.kept)
+    ? safeData.kept.filter((s: any) => typeof s === 'string')
+    : [];
+  if (totalAvailable <= 0) {
+    // Defensive — backend skips emit when pool is empty; same here.
+    return { toolShortlists: prevMap, pending: prevPending };
+  }
+  const entry: ToolShortlist = { totalAvailable, count, intent, kept };
+  if (!assistantMessageId) {
+    return { toolShortlists: prevMap, pending: entry };
+  }
+  return {
+    toolShortlists: { ...prevMap, [assistantMessageId]: entry },
+    pending: prevPending,
+  };
+}
+
+/** Flush buffered tool-shortlist into the keyed map on assistant message_saved. */
+export function flushPendingToolShortlist(
+  assistantMessageId: string,
+  prevMap: Record<string, ToolShortlist>,
+  prevPending: ToolShortlist | null,
+): {
+  toolShortlists: Record<string, ToolShortlist>;
+  pending: ToolShortlist | null;
+} {
+  if (!prevPending) return { toolShortlists: prevMap, pending: null };
+  if (!assistantMessageId) {
+    return { toolShortlists: prevMap, pending: prevPending };
+  }
+  return {
+    toolShortlists: { ...prevMap, [assistantMessageId]: prevPending },
+    pending: null,
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════
+// #502 — sub_agent_started / sub_agent_completed NDJSON consumers.
+//
+// Server emits these from services/openagentic-api/src/services/TaskTool.ts
+// (Phase E2). Each Task tool dispatch produces:
+//   sub_agent_started:   { role, description, model, session_id }
+//   sub_agent_completed: { role, ok, error, turns, tokens, durationMs, toolsUsed }
+//
+// The pure reducers below convert to camelCase for in-state storage and
+// expose a flat `subAgents` array consumed by ChatMessages -> SubAgentCard.
+// Reference UX: mocks/UX/01-cloud-ops.html lines 1083-1133.
+// ════════════════════════════════════════════════════════════════════
+
+export interface SubAgentStats {
+  turns: number;
+  tokens: number;
+  wallMs: number;
+  toolsUsed?: string[];
+}
+
+export interface SubAgentEntry {
+  role: string;
+  description?: string;
+  model: string | null;
+  status: 'running' | 'ok' | 'error';
+  stats?: SubAgentStats;
+  error?: string | null;
+  sessionId?: string;
+  /**
+   * Phase 16 — the sub-agent's actual return content from
+   * `SubagentRunResult.output`. Written by sub_agent_completed when ok.
+   * Drives the SubAgentCard's cm-sa-return strip text. When absent, the
+   * card falls back to the legacy stats-string so older api versions
+   * keep working.
+   */
+  output?: string;
+}
+
+/** Wire shape (snake_case) for `sub_agent_started`. */
+export type SubAgentStartedFrame = {
+  type: 'sub_agent_started';
+  role: string;
+  description?: string;
+  model?: string | null;
+  session_id?: string | null;
+};
+
+/** Wire shape (snake_case) for `sub_agent_completed`. */
+export type SubAgentCompletedFrame = {
+  type: 'sub_agent_completed';
+  role: string;
+  ok: boolean;
+  error?: string | null;
+  turns: number;
+  tokens: number;
+  durationMs: number;
+  toolsUsed?: string[];
+  /**
+   * Phase 16 — the sub-agent's full return content (from
+   * SubagentRunResult.output on the api side). Optional; older api
+   * versions don't emit this and the UI degrades to stats-only render.
+   */
+  output?: string;
+};
+
+/**
+ * Variant mapping for SubAgentCard. Drives the left-border colour +
+ * avatar gradient. Both hyphen and underscore separators are accepted
+ * — the api emits hyphens, but synth/cli paths sometimes underscore.
+ */
+export function subAgentVariantFor(role: string): 'c' | 'g' | 's' | 'k' {
+  const r = (role || '').toLowerCase();
+  if (r === 'cost-analysis' || r === 'cost_analysis') return 'c';
+  if (r === 'growth-analysis' || r === 'growth_analysis') return 'g';
+  if (r === 'security-analysis' || r === 'security_analysis') return 's';
+  if (r === 'kubernetes' || r === 'k8s') return 'k';
+  return 'c';
+}
+
+/**
+ * Pure reducer: append a new running sub-agent entry. Drops malformed
+ * frames (missing role) silently and returns the input list by reference
+ * so setState short-circuits on no-op.
+ */
+export function applySubAgentStarted(
+  prev: SubAgentEntry[],
+  frame: SubAgentStartedFrame,
+): SubAgentEntry[] {
+  const role = typeof frame.role === 'string' ? frame.role : '';
+  if (!role) return prev;
+  const description =
+    typeof frame.description === 'string' ? frame.description : undefined;
+  const model = typeof frame.model === 'string' ? frame.model : null;
+  const sessionId =
+    typeof frame.session_id === 'string' ? frame.session_id : undefined;
+  return [
+    ...prev,
+    {
+      role,
+      description,
+      model,
+      status: 'running',
+      sessionId,
+    },
+  ];
+}
+
+/**
+ * Pure reducer: complete the FIRST running sub-agent entry whose role
+ * matches. Merges stats + error/ok status. If no matching running entry
+ * exists, returns the input list by reference (defensive — server should
+ * never emit completed without started).
+ */
+export function applySubAgentCompleted(
+  prev: SubAgentEntry[],
+  frame: SubAgentCompletedFrame,
+): SubAgentEntry[] {
+  const role = typeof frame.role === 'string' ? frame.role : '';
+  if (!role) return prev;
+  const idx = prev.findIndex(
+    (e) => e.role === role && e.status === 'running',
+  );
+  if (idx < 0) return prev;
+  const out = [...prev];
+  out[idx] = {
+    ...out[idx],
+    status: frame.ok ? 'ok' : 'error',
+    stats: {
+      turns: typeof frame.turns === 'number' ? frame.turns : 0,
+      tokens: typeof frame.tokens === 'number' ? frame.tokens : 0,
+      wallMs: typeof frame.durationMs === 'number' ? frame.durationMs : 0,
+      toolsUsed: Array.isArray(frame.toolsUsed) ? frame.toolsUsed : undefined,
+    },
+    error: typeof frame.error === 'string' ? frame.error : null,
+    output: typeof frame.output === 'string' ? frame.output : undefined,
+  };
+  return out;
+}
+
+/**
+ * P0-1 part 2 — per-message-scoped sub_agent_started reducer.
+ *
+ * Per-message map keyed by active assistant messageId so older message
+ * bubbles re-render with their OWN sub-agent cards instead of the latest
+ * session-global snapshot.
+ *
+ * Drops malformed payloads (empty messageId or empty role) silently.
+ */
+export function applySubAgentStartedScoped(
+  map: Record<string, SubAgentEntry[]>,
+  messageId: string,
+  frame: SubAgentStartedFrame,
+): Record<string, SubAgentEntry[]> {
+  if (!messageId) return map;
+  const role = typeof frame.role === 'string' ? frame.role : '';
+  if (!role) return map;
+  const entry: SubAgentEntry = {
+    role,
+    description: typeof frame.description === 'string' ? frame.description : null,
+    model: typeof frame.model === 'string' ? frame.model : null,
+    status: 'running',
+  };
+  const existing = map[messageId] ?? [];
+  return {
+    ...map,
+    [messageId]: [...existing, entry],
+  };
+}
+
+/**
+ * P0-1 part 2 — per-message-scoped sub_agent_completed reducer. Flips the
+ * matching running entry to ok|err with stats. Returns input unchanged on
+ * empty messageId, no map entry, or no matching running entry by role.
+ */
+export function applySubAgentCompletedScoped(
+  map: Record<string, SubAgentEntry[]>,
+  messageId: string,
+  frame: SubAgentCompletedFrame,
+): Record<string, SubAgentEntry[]> {
+  if (!messageId) return map;
+  const role = typeof frame.role === 'string' ? frame.role : '';
+  if (!role) return map;
+  const list = map[messageId];
+  if (!list || list.length === 0) return map;
+  const idx = list.findIndex((e) => e.role === role && e.status === 'running');
+  if (idx < 0) return map;
+  const next = [...list];
+  next[idx] = {
+    ...next[idx],
+    status: frame.ok ? 'ok' : 'error',
+    stats: {
+      turns: typeof frame.turns === 'number' ? frame.turns : 0,
+      tokens: typeof frame.tokens === 'number' ? frame.tokens : 0,
+      wallMs: typeof frame.durationMs === 'number' ? frame.durationMs : 0,
+      toolsUsed: Array.isArray(frame.toolsUsed) ? frame.toolsUsed : undefined,
+    },
+    error: typeof frame.error === 'string' ? frame.error : null,
+    output: typeof frame.output === 'string' ? frame.output : undefined,
+  };
+  return { ...map, [messageId]: next };
+}
+
+/**
+ * #502 case-statement glue extracted as a pure dispatcher so the
+ * "type-label + safeData coercion" wire-up gets unit-test coverage
+ * without renderHook'ing the full SSE / fetch / auth stack.
+ */
+export function dispatchSubAgentFrame(
+  frameType: string,
+  safeData: any,
+  prev: SubAgentEntry[],
+): { subAgents: SubAgentEntry[] } {
+  if (frameType === 'sub_agent_started') {
+    return {
+      subAgents: applySubAgentStarted(prev, {
+        type: 'sub_agent_started',
+        role: typeof safeData?.role === 'string' ? safeData.role : '',
+        description:
+          typeof safeData?.description === 'string'
+            ? safeData.description
+            : undefined,
+        model: typeof safeData?.model === 'string' ? safeData.model : null,
+        session_id:
+          typeof safeData?.session_id === 'string'
+            ? safeData.session_id
+            : undefined,
+      }),
+    };
+  }
+  if (frameType === 'sub_agent_completed') {
+    return {
+      subAgents: applySubAgentCompleted(prev, {
+        type: 'sub_agent_completed',
+        role: typeof safeData?.role === 'string' ? safeData.role : '',
+        ok: safeData?.ok === true,
+        error: typeof safeData?.error === 'string' ? safeData.error : null,
+        turns: typeof safeData?.turns === 'number' ? safeData.turns : 0,
+        tokens: typeof safeData?.tokens === 'number' ? safeData.tokens : 0,
+        durationMs:
+          typeof safeData?.durationMs === 'number' ? safeData.durationMs : 0,
+        toolsUsed: Array.isArray(safeData?.toolsUsed)
+          ? safeData.toolsUsed
+          : undefined,
+        // Phase 16 wire-unwrap fix — forward the sub-agent's actual return
+        // content. Without this, the reducer would receive `output:
+        // undefined` and SubAgentCard falls back to "X turns Y tok".
+        output: typeof safeData?.output === 'string' ? safeData.output : undefined,
+      }),
+    };
+  }
+  // Unknown frame type — return inputs by reference.
+  return { subAgents: prev };
+}
+
 export interface McpApprovalRequest {
   requestId: string;
   toolName: string;
@@ -239,6 +1653,13 @@ export interface UseSSEChatOptions {
   onToolRound?: (round: number, maxRounds: number) => void;
   onSessionTitleUpdated?: (sessionId: string, title: string) => void;  // AI-generated session title
   autoApproveTools?: boolean;
+  // #473 — caller (ChatContainer) supplies the client-side placeholder id
+  // for the in-flight assistant message. Wave 3 (#525) intent_classified
+  // / tool_shortlist frames flush into per-message maps under this id so
+  // ChatMessages can find them via message.id (which is the placeholder,
+  // NOT the DB CUID from message_saved). Optional for back-compat — when
+  // absent, flush falls back to the wire messageId (legacy behavior).
+  getAssistantPlaceholderId?: () => string | null;
 }
 
 export const useChatStream = ({
@@ -256,7 +1677,8 @@ export const useChatStream = ({
   onPipelineStage,
   onToolRound,
   onSessionTitleUpdated,
-  autoApproveTools = false // HITM enforced: tools always require user approval
+  autoApproveTools = false, // HITM enforced: tools always require user approval
+  getAssistantPlaceholderId,
 }: UseSSEChatOptions) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentMessage, setCurrentMessage] = useState('');
@@ -267,9 +1689,25 @@ export const useChatStream = ({
   // Interleaved content blocks - renders thinking/text in order
   const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
   const contentBlocksRef = useRef<ContentBlock[]>([]); // Ref for closure access
+
+  const canonicalReducerStateRef = useRef<FrameState>(initialFrameState());
+  const [canonicalReducerState, setCanonicalReducerState] = useState<FrameState>(
+    () => initialFrameState(),
+  );
   const blockIndexOffsetRef = useRef<number>(0); // Offset for multi-round tool loops (prevents index collision)
   const currentThinkingBlockIndexRef = useRef<number | null>(null); // Track active thinking block for interleaved display
   const currentTextBlockIndexRef = useRef<number | null>(null); // Track active text block for interleaved display
+  // Task #131 (Phase F₂) — parallel tool-call round grouping. Each
+  // `tool_executing` arriving during an open round is stamped with the
+  // current round number so N concurrent tool calls share one group.
+  // A round opens on the FIRST tool_executing of a new batch and closes
+  // when the first `tool_result` (or `tool_error`) lands; the next
+  // tool_executing after a close starts a new round. This mirrors the
+  // backend pattern where executeToolCalls fires all tool_executing
+  // events upfront in a tight loop before awaiting Promise.allSettled.
+  const toolCallRoundRef = useRef<number>(0);
+  const inToolCallRoundRef = useRef<boolean>(false);
+  const parallelSlotIndexRef = useRef<number>(0);
   const [thinkingMetrics, setThinkingMetrics] = useState<{
     tokens: number;
     elapsedMs: number;
@@ -281,15 +1719,381 @@ export const useChatStream = ({
   const previousSessionIdRef = useRef<string | null>(null); // Track session changes
   // TTFT (Time to First Token) tracking for debugging slow responses
   const [ttftMs, setTtftMs] = useState<number | null>(null);
+  // LiveTurnStatus — ms timestamp when the user submitted the current turn.
+  // Captured when isStreaming flips true. Stays set while streaming so the
+  // ticking elapsed counter stays steady; cleared when stream completes (or
+  // immediately on next sendMessage).
+  const [turnStartedAt, setTurnStartedAt] = useState<number | null>(null);
+  // LiveTurnStatus — running token counters that update on every NDJSON
+  // delta. tokensOut grows as text/thinking_delta frames arrive; tokensIn
+  // is set once when message_received reports prompt size + bumped if a
+  // mid-turn usage frame fires. activity is a SHORT human-readable
+  // summary (e.g. "thinking", "calling azure_list_subscriptions",
+  // "rendering kpi_grid"). All three are zeroed on each new turn.
+  const [liveTokensIn, setLiveTokensIn] = useState<number>(0);
+  const [liveTokensOut, setLiveTokensOut] = useState<number>(0);
+  const [liveActivity, setLiveActivity] = useState<string>('thinking');
   // Context compaction notification
   const [contextCompaction, setContextCompaction] = useState<{
     freedPercent: number;
     tokensFreed: number;
     compactionLevel: string;
   } | null>(null);
+  // v0.6.7 fix 2 — running cost in USD accumulated from server cost_delta
+  // events. Resets to null on each new turn; CostPill consumes as a prop.
+  const [runningCost, setRunningCost] = useState<number | null>(null);
+  const runningCostRef = useRef<number | null>(null);
   // Normalized stream events (UNIFIED_STREAM=true path)
   const [normalizedEvents, setNormalizedEvents] = useState<NormalizedStreamEvent[]>([]);
   const normalizedEventsRef = useRef<NormalizedStreamEvent[]>([]);
+  // Slice G.4b — counter for synthetic canonical `content_block_*` events
+  // bridged from envelope events (agent_thinking, agent_tool_call,
+  // agent_tool_result). Started high to avoid colliding with wire-emitted
+  // `index` values from the api side. Used as `index` on the synthesized
+  // `content_block_start` / `content_block_stop` so buildTree's blockIndex
+  // map can pair them. Each synthesized block consumes one value.
+  const syntheticBlockIndexRef = useRef<number>(100000);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // Phase G (task #152) — trust/observability event buffers.
+  // Each slot accumulates the latest payload (or the running list) from
+  // the corresponding NDJSON event. Consumers read these and render the
+  // small components under `components/events/*`.
+  // ═══════════════════════════════════════════════════════════════════
+  const [handoffEvent, setHandoffEvent] = useState<{
+    fromModel?: string;
+    toModel?: string;
+    fromRole?: string;
+    toRole?: string;
+    reason?: string;
+    complexityScore?: number;
+    routeEscalatedDestructive?: boolean;
+  } | null>(null);
+  const [retryEvents, setRetryEvents] = useState<Array<{
+    toolCallId?: string;
+    name?: string;
+    attempt: number;
+    maxAttempts: number;
+    reason?: string;
+    elapsedMs?: number;
+  }>>([]);
+  const [currentStage, setCurrentStage] = useState<
+    'discover' | 'query' | 'analyze' | 'generate' | 'verify' | null
+  >(null);
+  const stageTimingsRef = useRef<Partial<Record<
+    'discover' | 'query' | 'analyze' | 'generate' | 'verify',
+    number
+  >>>({});
+  const [stageTimings, setStageTimings] = useState<Partial<Record<
+    'discover' | 'query' | 'analyze' | 'generate' | 'verify',
+    number
+  >>>({});
+  const [ragCitations, setRagCitations] = useState<Array<{
+    source: string;
+    chunkId?: string;
+    excerpt?: string;
+    score?: number;
+    collection?: string;
+    url?: string;
+  }>>([]);
+  const [correctionEvent, setCorrectionEvent] = useState<{
+    wrongText: string;
+    correctedText: string;
+    reason?: string;
+  } | null>(null);
+  const [warnings, setWarnings] = useState<Array<{
+    id: string;
+    level: 'info' | 'warn' | 'error';
+    source?: string;
+    code?: string;
+    message: string;
+    actionable?: string;
+  }>>([]);
+  const [ragStatus, setRagStatus] = useState<{
+    status?: string;
+    docsRetrieved?: number;
+    collections?: string[];
+    retrievalTimeMs?: number;
+  } | null>(null);
+  const [memoryStatus, setMemoryStatus] = useState<{
+    status?: string;
+    contextInjected?: boolean;
+    tokenEstimate?: number;
+    processingTime?: number;
+    memoriesFound?: number;
+  } | null>(null);
+  const [dlpScan, setDlpScan] = useState<{
+    state: 'scanning' | 'passed' | 'redacted' | 'blocked';
+    severity?: string;
+    categories?: string[];
+    findings?: number;
+    scanPoint?: string;
+    reason?: string;
+  } | null>(null);
+  // Per-tool cache hit marks (keyed by tool name). UI reads to stamp
+  // the badge on the corresponding tool card.
+  const [toolCacheHits, setToolCacheHits] = useState<Record<string, {
+    similarity?: number;
+  }>>({});
+  const [selfCritique, setSelfCritique] = useState<{
+    critique?: string;
+    contradictions?: number;
+    lowestConfidence?: number;
+    status?: string;
+  } | null>(null);
+  const [hallucinationWarning, setHallucinationWarning] = useState<{
+    confidence?: number;
+    message?: string;
+    warningCount?: number;
+    revised?: boolean;
+    toolCount?: number;
+  } | null>(null);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // Phase H (task #153) — artifact / image-gen / session / memory state.
+  // Distinct from Phase G because these slots feed five separate UI
+  // surfaces (ArtifactPanel, inline image thumb, memory pill,
+  // session-rename morph, context-compacted notice).
+  // ═══════════════════════════════════════════════════════════════════
+  type ArtifactPanelSlot = {
+    artifactId: string | null;
+    kind: 'markdown' | 'code' | 'chart' | 'csv';
+    title: string;
+    language?: string;
+    fileName?: string;
+    files: Record<string, { fileName: string; language?: string; content: string; lastSeq: number }>;
+    isOpen: boolean;
+    isComplete: boolean;
+    stats?: { bytes: number; lines: number } | null;
+  };
+  const [artifactPanel, setArtifactPanel] = useState<ArtifactPanelSlot | null>(null);
+
+  // E2E/Playwright proof hook — expose a window function that drives the
+  // same reducer path used by real NDJSON `artifact_open` / `artifact_delta` /
+  // `artifact_close` events. Zero-op in normal use; only our evidence
+  // verifier invokes it. Defined unconditionally so prod proofs can
+  // re-verify after deploy. SAFETY: only mutates local UI state; no
+  // network effect, no auth bypass.
+  useEffect(() => {
+    (window as unknown as { __awArtifactStreamInject?: (events: Array<Record<string, unknown>>) => void }).__awArtifactStreamInject = (events) => {
+      for (const evt of events) {
+        const data = evt as Record<string, unknown>;
+        const type = String(data.type || '');
+        if (type === 'artifact_open') {
+          const artId = String(data.artifactId || `art-${Date.now()}`);
+          const defaultFile = String(data.fileName || '__default__');
+          const kindRaw = String(data.kind || 'code');
+          const kind: ArtifactPanelSlot['kind'] =
+            kindRaw === 'markdown' || kindRaw === 'code' ||
+            kindRaw === 'chart' || kindRaw === 'csv' ? kindRaw : 'code';
+          setArtifactPanel({
+            artifactId: artId,
+            kind,
+            title: String(data.title || 'Artifact'),
+            language: (data.language as string) || undefined,
+            fileName: (data.fileName as string) || undefined,
+            files: {
+              [defaultFile]: {
+                fileName: defaultFile,
+                language: (data.language as string) || undefined,
+                content: '',
+                lastSeq: -1,
+              },
+            },
+            isOpen: true,
+            isComplete: false,
+            stats: null,
+          });
+        } else if (type === 'artifact_delta') {
+          setArtifactPanel(prev => {
+            if (!prev || prev.artifactId !== data.artifactId) return prev;
+            const fileName = String(data.fileName || '__default__');
+            const files = { ...prev.files };
+            const existing = files[fileName] ?? {
+              fileName,
+              language: undefined as string | undefined,
+              content: '',
+              lastSeq: -1,
+            };
+            const incomingSeq = typeof data.seq === 'number'
+              ? (data.seq as number) : existing.lastSeq + 1;
+            if (incomingSeq <= existing.lastSeq && existing.lastSeq >= 0) return prev;
+            files[fileName] = {
+              ...existing,
+              language: existing.language || (data.language as string) || undefined,
+              content: existing.content + String(data.contentDelta || ''),
+              lastSeq: incomingSeq,
+            };
+            return { ...prev, files };
+          });
+        } else if (type === 'artifact_close') {
+          setArtifactPanel(prev => {
+            if (!prev || prev.artifactId !== data.artifactId) return prev;
+            return {
+              ...prev,
+              isComplete: true,
+              stats: (data.stats as { bytes: number; lines: number }) || null,
+            };
+          });
+        } else if (type === 'reset') {
+          setArtifactPanel(null);
+        }
+      }
+    };
+    return () => {
+      delete (window as unknown as { __awArtifactStreamInject?: unknown }).__awArtifactStreamInject;
+    };
+  }, []);
+  const [imageProgress, setImageProgress] = useState<{
+    imageGenId: string;
+    progress: number;
+    partialUrl?: string;
+    eta?: number;
+    prompt?: string;
+  } | null>(null);
+
+  // visual_render / app_render / artifact_render frames now route through
+  // the typed-block path (ContentBlock of type 'viz_render' / 'app_render')
+  // via applyCanonicalFrame so artifacts render INLINE at the wire-emit
+  // chronological position inside AgenticActivityStream. The legacy
+  // parent-level state arrays + out-of-band sidecars are ripped.
+  const [memoryWrites, setMemoryWrites] = useState<Array<{
+    key: string;
+    summary: string;
+    scope: 'user' | 'session' | 'shared';
+    entryId?: string;
+    tokenCount?: number;
+  }>>([]);
+  const [sessionRename, setSessionRename] = useState<{
+    sessionId: string;
+    from: string;
+    to: string;
+    reason: 'auto-title' | 'manual' | 'summary';
+  } | null>(null);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // Wave 3 (#525) — per-message intent_classified + tool_shortlist state.
+  // Both frames fire from prompt.stage BEFORE the assistant's
+  // message_saved (#473 ordering). Buffer-then-flush on assistant role
+  // using the React placeholder id (NOT the DB CUID).
+  // ═══════════════════════════════════════════════════════════════════
+  const [intentClassifications, setIntentClassifications] = useState<
+    Record<string, IntentClassification>
+  >({});
+  const [toolShortlists, setToolShortlists] = useState<
+    Record<string, ToolShortlist>
+  >({});
+  const pendingIntentClassifiedRef = useRef<IntentClassification | null>(null);
+  const pendingToolShortlistRef = useRef<ToolShortlist | null>(null);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // #502 — sub-agent state. Driven by sub_agent_started / sub_agent_completed
+  // NDJSON envelopes emitted by services/openagentic-api/src/services/TaskTool.ts
+  // (Phase E2). One entry per dispatched sub-agent, status flips
+  // running -> ok|error on completion. Consumed by ChatMessages ->
+  // SubAgentCard. Mock 01 lines 1083-1133 reference layout.
+  // ═══════════════════════════════════════════════════════════════════
+  const [subAgents, setSubAgents] = useState<SubAgentEntry[]>([]);
+  // P0-1 part 2 — per-message scoping. The flat `subAgents` array stays
+  // for backwards compat (any consumer still reading the union); the new
+  // map is what ChatMessages threads into each MessageBubble so older
+  // message bubbles render their OWN sub-agent cards, not the latest
+  // session-global snapshot. Keyed by the active assistant messageId
+  // (uses `getAssistantPlaceholderId?.()`).
+  const [subAgentsByMessageId, setSubAgentsByMessageId] = useState<
+    Record<string, SubAgentEntry[]>
+  >({});
+  // P1-6 — per-message streaming-table state. Keyed by the active
+  // assistant messageId (same flush-key strategy as subAgentsByMessageId).
+  // Each table is keyed by artifact_id within the message; hot-swap on
+  // re-emit, append otherwise. Pure reducer at
+  // useChatStream.streamingTable.test.ts.
+  const [streamingTablesByMessageId, setStreamingTablesByMessageId] = useState<
+    Record<string, StreamingTable[]>
+  >({});
+
+  // Phase 27 — per-message findings artifacts (mocks 03, 07, 08, 09).
+  // Server emits `findings_emit` from security/audit sub-agent results.
+  const [findingsByMessageId, setFindingsByMessageId] = useState<
+    Record<string, FindingsArtifact[]>
+  >({});
+
+  // #502 — per-message inline widgets (kpi_grid / savings_card / runbook
+  // / wave_timeline / stack_grid / stages_strip / annotated_code). One
+  // unified `inline_widget` frame; reducer pure-tested at
+  // useChatStream.inlineWidget.test.ts.
+  const [inlineWidgetsByMessageId, setInlineWidgetsByMessageId] = useState<
+    Record<string, InlineWidget[]>
+  >({});
+
+  // AC-B — per-message synth lifecycle entries. One Synth per
+  // artifactId accumulates through the 8 lifecycle frames the API
+  // streams as the model authors + executes Python in synth-executor.
+  // Reducer pure-tested at useChatStream.synthLifecycle.test.ts.
+  const [synthsByMessageId, setSynthsByMessageId] = useState<
+    Record<string, Synth[]>
+  >({});
+
+  // AC-D — per-message clickable download tiles. Server emits
+  // artifact_emit when synth-executor finishes writing bytes to
+  // UserStorageService. Reducer pure-tested at
+  // useChatStream.artifactEmit.test.ts.
+  const [artifactEmitsByMessageId, setArtifactEmitsByMessageId] = useState<
+    Record<string, ArtifactEmit[]>
+  >({});
+
+  // follow-up chip row ripped 2026-05-12 (user directive — chips were
+  // generic placeholders, never reflected actual conversation data).
+
+  // Audit §10 step 16 — HITL approval card. Server emits `hitl_approval`
+  // (or legacy `mcp_approval_required`) when a write-tier tool needs
+  // operator approval. UI renders an inline card with Approve/Deny
+  // (mocks #9 HIPAA remediation, #15 secret rotation).
+  const [hitlApprovalsByMessageId, setHitlApprovalsByMessageId] = useState<
+    Record<
+      string,
+      Array<{
+        requestId: string;
+        toolName: string;
+        serverName?: string;
+        reason: string;
+        timeoutMs: number;
+        arguments?: unknown;
+        status: 'pending' | 'approved' | 'denied' | 'expired';
+        /** HITL.3 — set for sub-agent HITL frames from openagentic-proxy bridge (HITL.2). */
+        parentToolUseId?: string;
+      }>
+    >
+  >({});
+
+  // B8 (2026-05-12) — content_filter compliance banner per-message slot.
+  // Server's chatLoop emits a `content_filter` frame (kind, model,
+  // message) when canonical stop_reason='content_filter' / 'safety' /
+  // 'recitation' fires. UI renders <ContentFilterBanner> inline so the
+  // operator sees a distinct compliance signal instead of an empty
+  // bubble. FedRAMP-Hi audit requires this surfaces to the user.
+  // Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md §1.4
+  const [contentFilterBannerByMessageId, setContentFilterBannerByMessageId] = useState<
+    Record<string, { kind: string; model: string; message: string }>
+  >({});
+
+  // ═══════════════════════════════════════════════════════════════════
+  // Phase I (task #154) — durable-stream resume state.
+  //   - `resumeTurnIdRef` captures the server-supplied turnId from the
+  //     stream_start frame. Used by the retry-after-drop path as the
+  //     tail endpoint's query param.
+  //   - `lastSeqRef` tracks the highest `_seq` we've seen this turn so
+  //     dedupe on resume skips frames we already handled.
+  //   - `seenSeqsRef` tracks EVERY _seq seen for the current turn so we
+  //     can drop duplicates from the tail endpoint even if they arrive
+  //     out of order with respect to lastSeqRef (network reorder).
+  //   - `reconnectedPill` shows a brief "↻ Reconnected" chip for 2s on
+  //     successful resume so the user has a visible confirmation.
+  // ═══════════════════════════════════════════════════════════════════
+  const resumeTurnIdRef = useRef<string | null>(null);
+  const lastSeqRef = useRef<number>(0);
+  const seenSeqsRef = useRef<Set<number>>(new Set());
+  const [reconnectedPill, setReconnectedPill] = useState<{ at: number } | null>(null);
 
   // Chain of Thought steps for COT UI display
   const [cotSteps, setCotSteps] = useState<Array<{
@@ -307,6 +2111,13 @@ export const useChatStream = ({
   const cotStepsRef = useRef<typeof cotSteps>([]);
   const [pipelineState, setPipelineState] = useState<PipelineState>(createInitialPipelineState);
   const abortControllerRef = useRef<AbortController | null>(null);
+  // #940 — Wall-clock ms timestamp of the last NDJSON frame the chat
+  // stream received. Updated by the chunk-decode site in the fetch loop
+  // (see `resetStreamTimeout()` adjacent — frames bump that timer for
+  // the 5-minute idle-timeout, AND now this ref for the 60s stale-frame
+  // watchdog that clears the ThinkingSphere if the connection silently
+  // dies). `null` means "no active stream" / "watchdog idle".
+  const lastFrameAtRef = useRef<number | null>(null);
   const { getAccessToken, user } = useAuth();
   const [animationMode, setAnimationMode] = useState<AnimationMode>(getAnimationMode());
 
@@ -345,6 +2156,8 @@ export const useChatStream = ({
       setThinkingMetrics(null);
       setCotSteps([]);
       setContentBlocks([]);
+      canonicalReducerStateRef.current = initialFrameState();
+      setCanonicalReducerState(initialFrameState());
       setPipelineState(createInitialPipelineState());
       currentThinkingRef.current = '';
       cotStepsRef.current = [];
@@ -360,9 +2173,131 @@ export const useChatStream = ({
       // by executionId and is NOT session-scoped, so without an explicit clear
       // the previous session's trees persist until the next stream finishes.
       useAgentTreeStore.getState().clearAllTrees();
+      // Phase G — drop observability state on session change so the pills
+      // from session A don't ghost into session B.
+      setHandoffEvent(null);
+      setRetryEvents([]);
+      setCurrentStage(null);
+      stageTimingsRef.current = {};
+      setStageTimings({});
+      setRagCitations([]);
+      setCorrectionEvent(null);
+      setWarnings([]);
+      setRagStatus(null);
+      setMemoryStatus(null);
+      setDlpScan(null);
+      setToolCacheHits({});
+      setSelfCritique(null);
+      setHallucinationWarning(null);
+      // Phase H (task #153) — drop artifact/image/memory/session state
+      // so panels from session A don't ghost into session B.
+      setArtifactPanel(null);
+      setImageProgress(null);
+      setMemoryWrites([]);
+      setSessionRename(null);
+      // Wave 3 (#525) — drop intent classifications + tool shortlists on
+      // session switch, including buffered pendings.
+      setIntentClassifications({});
+      setToolShortlists({});
+      pendingIntentClassifiedRef.current = null;
+      pendingToolShortlistRef.current = null;
+      // P0-1 of chatmode UX parity (2026-04-30) — sub-agent cards from
+      // session A used to bleed into session B because the SubAgentEntry[]
+      // reducer keys by role, not sessionId. New sessions start empty;
+      // any prior session's cards must be dropped here. See
+      // docs/superpowers/specs/2026-04-30-chatmode-ux-parity-punchlist.md (P0-1).
+      setSubAgents([]);
+      // P0-1 part 2 — drop the per-message scoped map too on session switch.
+      setSubAgentsByMessageId({});
+      // P1-6 — drop streaming-table per-message map on session switch
+      // alongside the rest of the session-scoped state.
+      setStreamingTablesByMessageId({});
+      setFindingsByMessageId({});
+      setInlineWidgetsByMessageId({});
+      setSynthsByMessageId({});
+      setArtifactEmitsByMessageId({});
+      // Audit §10 step 16 — drop HITL map on session switch.
+      // (follow-up chip row ripped 2026-05-12 — user directive.)
+      setHitlApprovalsByMessageId({});
+      // B8 — drop content_filter banners on session switch.
+      setContentFilterBannerByMessageId({});
+      // Phase I (task #154) — drop resume cursors when switching sessions.
+      resumeTurnIdRef.current = null;
+      lastSeqRef.current = 0;
+      seenSeqsRef.current = new Set();
+      setReconnectedPill(null);
+      // #940 — orphan ThinkingSphere on session change.
+      // MessageBubble.tsx renders the animated <ThinkingSphere> keyed on
+      // `isStreaming` — when that flag stays true after the user switches
+      // chats, the previous session's sphere keeps spinning on top of the
+      // (now wrong) active session. Customer-visible: "AI looks like it's
+      // still working but the session changed." Fix is to ALSO clear the
+      // live-turn slice here, AFTER the abort above so a stray frame can't
+      // flip it back on. Keeps `setIsStreaming(false)` PHYSICALLY AFTER the
+      // `abortControllerRef.current.abort()` call (test enforces order).
+      setIsStreaming(false);
+      setTurnStartedAt(null);
+      setLiveTokensIn(0);
+      setLiveTokensOut(0);
+      setLiveActivity('thinking');
+      setThinkingPhase('thinking');
+      setTtftMs(null);
+      lastFrameAtRef.current = null;
     }
     previousSessionIdRef.current = sessionId;
   }, [sessionId]);
+
+  // #940 — unmount cleanup: closing the window or navigating away from
+  // the chat page must abort the in-flight stream and flip `isStreaming`
+  // off so the next mount does not hydrate with an orphan ThinkingSphere.
+  // Without this, a half-streaming hook leaves the AbortController + the
+  // streaming flag dangling on the React tree until garbage collection.
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      setIsStreaming(false);
+      lastFrameAtRef.current = null;
+    };
+  }, []);
+
+  // #940 — stale-frame watchdog. If `isStreaming === true` but no frame
+  // has arrived in the last STREAM_STALE_MS, the upstream stream is
+  // silently dead (network drop, provider hang, abort-race). Clear the
+  // streaming flag so the ThinkingSphere stops animating. This is a
+  // belt-and-suspenders guard on top of the 5-minute idle-timeout in
+  // the fetch loop: the watchdog runs continuously (every 5s) regardless
+  // of whether the fetch promise is alive, so it rescues users from
+  // truly stuck UIs (e.g. tab thrown to background, browser killed the
+  // fetch, controller never aborted).
+  const STREAM_STALE_MS = 60_000; // 60s of frame silence = stale
+  useEffect(() => {
+    if (!isStreaming) {
+      lastFrameAtRef.current = null;
+      return;
+    }
+    // Mark start-of-stream so the watchdog has a baseline.
+    if (lastFrameAtRef.current === null) {
+      lastFrameAtRef.current = Date.now();
+    }
+    const intervalId = setInterval(() => {
+      const last = lastFrameAtRef.current;
+      if (last === null) return;
+      if (Date.now() - last > STREAM_STALE_MS) {
+        console.warn('[SSE] stale-frame watchdog tripped — clearing isStreaming after', Date.now() - last, 'ms of silence');
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+          abortControllerRef.current = null;
+        }
+        setIsStreaming(false);
+        setLiveActivity('thinking');
+        lastFrameAtRef.current = null;
+      }
+    }, 5_000);
+    return () => clearInterval(intervalId);
+  }, [isStreaming]);
 
   const sendMessage = useCallback(async (
     message: string,
@@ -388,7 +2323,16 @@ export const useChatStream = ({
       }
       return;
     }
-    
+
+    // Phase 13 (2026-04-30) — sub-agent cards stick to the bottom of the
+    // session unless we drop the flat `subAgents` array between turns.
+    // The per-message-scoped map (`subAgentsByMessageId`) is the SoT for
+    // showing prior turns' cards in their original location; the flat
+    // array is only the in-flight scratchpad. Reset it on every new
+    // sendMessage so completed sub-agents from turn N don't bleed into
+    // turn N+1's bubble.
+    setSubAgents([]);
+
     // CRITICAL FIX: Save current streaming message BEFORE clearing it
     // If there's a streaming message in progress, finalize it first to prevent message loss
     if (currentMessage && onMessage) {
@@ -423,21 +2367,58 @@ export const useChatStream = ({
     }
 
     setIsStreaming(true);
+    // LiveTurnStatus — capture turn-start ts so the strip can render an
+    // elapsed ticking counter under the streaming assistant avatar.
+    setTurnStartedAt(Date.now());
+    setLiveTokensIn(0);
+    setLiveTokensOut(0);
+    setLiveActivity('thinking');
     setCurrentMessage('');
     setCurrentThinking('');
     setContentBlocks([]); // Reset interleaved content blocks for new message
     contentBlocksRef.current = [];
+    canonicalReducerStateRef.current = initialFrameState();
+    setCanonicalReducerState(initialFrameState());
     blockIndexOffsetRef.current = 0; // Reset block index offset for new message
     setIsThinkingCompleted(false); // Reset thinking completion flag
     setThinkingMetrics(null);
     setThinkingBudget(0); // Reset thinking budget
     setThinkingPhase('thinking'); // Reset phase
     setTtftMs(null); // Reset TTFT for new message
+    setRunningCost(null); // v0.6.7 fix 2 — reset running cost each turn
+    runningCostRef.current = null;
     setCotSteps([]); // Clear COT steps for new message
     setPipelineState(createInitialPipelineState());
     normalizedEventsRef.current = [];
     setNormalizedEvents([]);
-    
+    // Phase G (task #152) — reset observability slots for the new turn.
+    setHandoffEvent(null);
+    setRetryEvents([]);
+    setCurrentStage(null);
+    stageTimingsRef.current = {};
+    setStageTimings({});
+    setRagCitations([]);
+    setCorrectionEvent(null);
+    setWarnings([]);
+    setRagStatus(null);
+    setMemoryStatus(null);
+    setDlpScan(null);
+    setToolCacheHits({});
+    setSelfCritique(null);
+    setHallucinationWarning(null);
+    // Phase H (task #153) — reset artifact / image / memory / rename
+    // slots for the new turn. memoryWrites is turn-scoped so each turn's
+    // "Remembered" pill belongs to that turn only.
+    setArtifactPanel(null);
+    setImageProgress(null);
+    setMemoryWrites([]);
+    setSessionRename(null);
+    // Phase I (task #154) — reset durable-resume tracking for the new turn.
+    resumeTurnIdRef.current = null;
+    lastSeqRef.current = 0;
+    seenSeqsRef.current = new Set();
+    setReconnectedPill(null);
+
     let hasReportedError = false;
     let hasCompletedStream = false;
 
@@ -508,7 +2489,41 @@ export const useChatStream = ({
           promptTechniques: options?.promptTechniques || [],
           enableExtendedThinking: options?.enableExtendedThinking,
           flowContext: options?.flowContext,
-          artifactContext: options?.artifactContext
+          artifactContext: options?.artifactContext,
+          // P1 #940 (2026-05-18) — grounding T1. When ON, the api injects
+          // a system-prompt addendum instructing the model to verify
+          // factual claims via the existing web_search MCP tool and emit
+          // a final markdown verdict line. Pulled from the persisted
+          // useGroundingStore (localStorage-backed) — no UI prop drilling.
+          groundingEnabled: (() => {
+            try {
+              // Lazy global read so this hook stays free of cross-store
+              // import order ambiguity at module-init time.
+              const raw = localStorage.getItem('awp.grounding.v1');
+              if (!raw) return false;
+              const parsed = JSON.parse(raw);
+              return Boolean(parsed?.state?.enabled);
+            } catch {
+              return false;
+            }
+          })(),
+          // Z.ET (2026-05-19) — per-turn extended thinking toggle. When
+          // the UI Brain toggle is OFF (extendedThinkingEnabled=false), the
+          // api skips attaching a thinking budget even for capable models.
+          // undefined (when store is empty) = ON (backwards-compatible).
+          extendedThinkingEnabled: (() => {
+            try {
+              const raw = localStorage.getItem('openagentic:extended-thinking');
+              if (!raw) return undefined; // Store not yet written → use server default (ON)
+              const parsed = JSON.parse(raw);
+              const enabled = parsed?.state?.enabled;
+              // Only send false when explicitly turned off; omit otherwise
+              // so the api's existing logic runs unmodified for undefined.
+              return enabled === false ? false : undefined;
+            } catch {
+              return undefined; // Fallback: let server decide
+            }
+          })()
         }),
         signal: abortControllerRef.current?.signal,
         // CRITICAL: Disable browser caching for SSE
@@ -537,6 +2552,16 @@ export const useChatStream = ({
           status: response.status,
           statusText: response.statusText
         });
+        // Surface a specific message for size/auth errors instead of the
+        // opaque "HTTP error! status: NNN" — most 413s on this endpoint are
+        // a fallback inline-base64 attachment exceeding the API body cap
+        // because pre-upload to MinIO failed earlier in the pipeline.
+        if (response.status === 413) {
+          throw new Error('Attachment too large to send (server returned 413). Please attach a smaller file (under 25 MB) or remove the attachment and try again.');
+        }
+        if (response.status === 401) {
+          throw new Error('Your session has expired. Please refresh the page and sign in again.');
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
@@ -555,7 +2580,112 @@ export const useChatStream = ({
       let hasCompletedStream = false; // Guard against duplicate done events
       let hasReportedError = false; // Guard against duplicate error messages (fixes 3x error display)
       let responseModel = options?.model || ''; // Track which model was used for this response (fallback to requested model)
-      
+
+      // Phase I (task #154) — durable-stream resume helper.
+      // Minimal tail-replay consumer that handles the subset of events
+      // needed to catch the user up to where the main stream got cut
+      // off: content deltas (`stream` / `content_delta`), terminal
+      // markers (`done`, `stream_complete`, `resume_exhausted`), and a
+      // safety `error` ticker. Frames the ring buffer replays retain
+      // their full original payload — we just dedupe on `_seq` and
+      // re-apply the critical subset. Other events (tool_progress,
+      // thinking_delta) are observed + acknowledged but not re-rendered
+      // on the post-reconnect path; the spec explicitly allows this
+      // because the backend is correct whether the UI retries or not.
+      const attemptTailResume = async (
+        sid: string,
+        tid: string,
+        afterSeq: number,
+        bearer: string,
+        uid: string,
+      ): Promise<void> => {
+        const url = `${apiEndpoint('/chat/stream')}/${encodeURIComponent(sid)}/tail?turnId=${encodeURIComponent(tid)}&after=${encodeURIComponent(String(afterSeq))}`;
+        const tailResp = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/x-ndjson',
+            'Authorization': `Bearer ${bearer}`,
+            'x-user-id': uid,
+          },
+          cache: 'no-store',
+        });
+        if (!tailResp.ok || !tailResp.body) {
+          throw new Error(`tail HTTP ${tailResp.status}`);
+        }
+        const tailReader = tailResp.body.getReader();
+        const tailDec = new TextDecoder();
+        let tailBuf = '';
+        let sawAnyFrame = false;
+
+        while (true) {
+          const { done: tDone, value: tVal } = await tailReader.read();
+          if (tDone) break;
+          tailBuf += tailDec.decode(tVal, { stream: true });
+          const lines = tailBuf.split('\n');
+          tailBuf = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            let frame: any;
+            try {
+              frame = JSON.parse(line);
+            } catch {
+              continue;
+            }
+
+            // Dedupe on _seq.
+            if (typeof frame._seq === 'number') {
+              if (seenSeqsRef.current.has(frame._seq)) continue;
+              seenSeqsRef.current.add(frame._seq);
+              if (frame._seq > lastSeqRef.current) {
+                lastSeqRef.current = frame._seq;
+              }
+            }
+
+            // First real frame → show the pill for 2s.
+            if (!sawAnyFrame) {
+              sawAnyFrame = true;
+              const at = Date.now();
+              setReconnectedPill({ at });
+              setTimeout(() => {
+                setReconnectedPill(p => (p?.at === at ? null : p));
+              }, 2000);
+            }
+
+            const t = frame.type;
+            if (t === 'stream' || t === 'content_delta' || t === 'delta') {
+              const delta = frame.content || frame.delta || frame.text || '';
+              if (typeof delta === 'string' && delta.length > 0) {
+                assistantMessage += delta;
+                setCurrentMessage(assistantMessage);
+                onStream?.(delta);
+              }
+            } else if (t === 'done' || t === 'completion_complete' || t === 'stream_complete' || t === 'resume_exhausted') {
+              hasCompletedStream = true;
+              if (onMessage && assistantMessage.length > 0) {
+                onMessage({
+                  id: messageId || `tail_${Date.now()}`,
+                  role: 'assistant',
+                  content: assistantMessage,
+                  timestamp: new Date().toISOString(),
+                  mcpCalls,
+                  metadata: { resumedFromTail: true, lastSeq: lastSeqRef.current },
+                });
+              }
+              return;
+            } else if (t === 'error') {
+              if (!hasReportedError) {
+                hasReportedError = true;
+                const err = new Error(frame.message || 'stream resumed with error');
+                err.name = frame.code || 'TailError';
+                onError?.(err);
+              }
+              return;
+            }
+          }
+        }
+      };
+
       // Rolling idle timeout - resets on every received chunk/ping
       // This allows long-running agentic loops (tool calls, thinking) to run indefinitely
       // as long as the server keeps sending data (pings every 3s, tool events, content deltas)
@@ -589,6 +2719,10 @@ export const useChatStream = ({
         
         chunkCount++;
         resetStreamTimeout(); // Reset idle timeout on every received chunk
+        // #940 — also bump the stale-frame watchdog. A healthy stream
+        // bumps this on every chunk; the 60s watchdog interval reads
+        // this ref to decide if the stream has gone silent.
+        lastFrameAtRef.current = Date.now();
         const chunk = decoder.decode(value, { stream: true });
         buffer += chunk;
 
@@ -633,26 +2767,88 @@ export const useChatStream = ({
                   const stageTime = Date.now() - currentPipelineState.stageStartTime;
                   currentPipelineState.stageTiming[currentPipelineState.currentStage] = stageTime;
                 }
-                
+
                 currentPipelineState.currentStage = mappedStage;
                 currentPipelineState.stageStartTime = Date.now();
-                
+
                 // Update tool execution phase detection
                 currentPipelineState.isToolExecutionPhase = mappedStage === 'mcp';
-                
+
                 // Update content suppression
                 currentPipelineState.shouldSuppressContent = shouldSuppressContentForStage(
-                  mappedStage, 
+                  mappedStage,
                   currentPipelineState.activeToolRound
                 );
-                
+
                 setPipelineState({...currentPipelineState});
                 onPipelineStage?.(mappedStage, safeData);
               }
-              
+
+              // Phase I (task #154) — durable-stream dedupe + cursor.
+              // Every frame with `_seq` metadata is checked against
+              // `seenSeqsRef`. If we've already processed it (replay
+              // from /tail after a reconnect), skip the switch below.
+              // Otherwise mark it seen + advance lastSeqRef.
+              if (typeof safeData._seq === 'number') {
+                if (seenSeqsRef.current.has(safeData._seq)) {
+                  // Duplicate from a replay path — drop silently.
+                  continue;
+                }
+                seenSeqsRef.current.add(safeData._seq);
+                if (safeData._seq > lastSeqRef.current) {
+                  lastSeqRef.current = safeData._seq;
+                }
+              }
+
+              // Pure canonical reducer runs alongside the inline switch.
+              // Skip the React commit when the reducer returns the same
+              // state object — applyCanonicalFrame preserves identity
+              // for frames it doesn't consume (ping, done, unknown).
+              {
+                const nextCanonical = applyCanonicalFrame(
+                  canonicalReducerStateRef.current,
+                  safeData as WireFrame,
+                );
+                if (nextCanonical !== canonicalReducerStateRef.current) {
+                  canonicalReducerStateRef.current = nextCanonical;
+                  setCanonicalReducerState(nextCanonical);
+                }
+                // Step 3 (2026-05-18) — publish the frame onto the
+                // streamFrameBus so the optional StreamEngine wrapper
+                // (gated by VITE_FEATURE_STREAM_ENGINE in MessageBubble)
+                // can apply it to the engine's owned DOM container.
+                // No-op when no subscribers are registered (flag OFF).
+                publishStreamFrame(safeData as WireFrame);
+              }
+
               switch (eventType) {
+                case 'stream_start':
+                  // Phase I — capture the turnId so an abrupt mid-turn
+                  // disconnect can hit GET /api/chat/stream/:sessionId/tail
+                  // with the right cursor.
+                  if (typeof safeData.turnId === 'string' && safeData.turnId.length > 0) {
+                    resumeTurnIdRef.current = safeData.turnId;
+                  }
+                  break;
+
+                case 'resume_exhausted':
+                  // Phase I — the tail endpoint just told us there are
+                  // no more frames to replay (turn finalized or TTL
+                  // expired). Treat identically to `stream_complete`
+                  // so downstream callbacks finalize the message.
+                  hasCompletedStream = true;
+                  break;
+
                 case 'message_received':
                   messageId = safeData.messageId;
+                  // LiveTurnStatus — seed input tokens once if the server
+                  // includes a prompt-size hint. Output tokens grow as
+                  // text/thinking deltas arrive.
+                  if (typeof safeData.promptTokens === 'number') {
+                    setLiveTokensIn(safeData.promptTokens);
+                  } else if (typeof safeData.inputTokens === 'number') {
+                    setLiveTokensIn(safeData.inputTokens);
+                  }
                   break;
 
                 case 'ttft':
@@ -665,6 +2861,34 @@ export const useChatStream = ({
                   }
                   break;
 
+                // v0.6.7 fix 2 — running cost delta from the streaming pipeline.
+                // Server emits this per chunk with the incremental USD cost
+                // (or the running total). We accumulate into runningCost which
+                // CostPill consumes as a prop + pulses on each update.
+                case 'cost_delta': {
+                  const delta =
+                    typeof safeData.delta === 'number'
+                      ? safeData.delta
+                      : typeof safeData.costDelta === 'number'
+                      ? safeData.costDelta
+                      : undefined;
+                  const total =
+                    typeof safeData.totalCost === 'number'
+                      ? safeData.totalCost
+                      : typeof safeData.runningCost === 'number'
+                      ? safeData.runningCost
+                      : undefined;
+                  if (total != null) {
+                    runningCostRef.current = total;
+                    setRunningCost(total);
+                  } else if (delta != null) {
+                    const next = (runningCostRef.current ?? 0) + Math.max(0, delta);
+                    runningCostRef.current = next;
+                    setRunningCost(next);
+                  }
+                  break;
+                }
+
                 case 'message_saved':
                   // Database-First: Message confirmed in PostgreSQL before streaming
                   // console.log('[SSE] message_saved event received:', safeData);
@@ -674,6 +2898,45 @@ export const useChatStream = ({
                   // If this is an assistant message starting to stream, prepare for content
                   if (safeData.role === 'assistant' && safeData.streaming) {
                     // console.log('[SSE] Assistant message starting with DB ID:', messageId);
+                  }
+
+                  // Wave 3 (#525) — flush any buffered intent_classified +
+                  // tool_shortlist frames now that we know the assistant
+                  // message exists.
+                  //
+                  // #473 — flush key MUST match the React message.id used
+                  // by ChatMessages's per-message lookups. ChatContainer
+                  // creates the assistant with a client-side placeholder
+                  // id like `assistant_<ts>_<rand>` and that id stays in
+                  // messages[] forever. The DB CUID arriving via
+                  // safeData.messageId is a different namespace and
+                  // misses the lookup. Prefer the caller-supplied
+                  // placeholder id when available; fall back to the wire
+                  // CUID for back-compat in test/dev paths that don't
+                  // wire `getAssistantPlaceholderId`.
+                  if (safeData.role === 'assistant') {
+                    const placeholderId = getAssistantPlaceholderId?.() || null;
+                    const flushKey = placeholderId || (safeData.messageId ? String(safeData.messageId) : '');
+                    if (flushKey) {
+                      setIntentClassifications((prev) => {
+                        const out = flushPendingIntentClassified(
+                          flushKey,
+                          prev,
+                          pendingIntentClassifiedRef.current,
+                        );
+                        pendingIntentClassifiedRef.current = out.pending;
+                        return out.intentClassifications;
+                      });
+                      setToolShortlists((prev) => {
+                        const out = flushPendingToolShortlist(
+                          flushKey,
+                          prev,
+                          pendingToolShortlistRef.current,
+                        );
+                        pendingToolShortlistRef.current = out.pending;
+                        return out.toolShortlists;
+                      });
+                    }
                   }
                   break;
 
@@ -698,6 +2961,17 @@ export const useChatStream = ({
                     setCurrentThinking(accumulatedThinking);
                     // Also update ref for persistence
                     currentThinkingRef.current = accumulatedThinking;
+                    // LiveTurnStatus — bump output tokens + surface the
+                    // last non-empty thinking line as the activity summary
+                    // so the strip RIGHT of the sphere shows a real one-
+                    // line live thought from the model (not stuck at
+                    // "thinking"). Mirrors the Anthropic + OpenAgentic delta hooks.
+                    if (typeof thinkingContent === 'string' && thinkingContent.length > 0) {
+                      setLiveTokensOut(prev => prev + Math.max(1, Math.round(thinkingContent.length / 4)));
+                    }
+                    const lastLine = (accumulatedThinking || '').split('\n').filter(Boolean).pop() ?? '';
+                    const trimmed = lastLine.trim().slice(0, 110);
+                    if (trimmed) setLiveActivity(trimmed);
 
                     // CRITICAL FIX: Also track as ContentBlock so thinking persists after finalization.
                     // The Anthropic path (thinking_start/thinking_delta) creates ContentBlocks but this
@@ -714,6 +2988,11 @@ export const useChatStream = ({
                         content: accumulatedThinking,
                         isComplete: false,
                         timestamp: thinkingBlockTs,
+                        // #813 — InlineThinkingBlock derives endedAt = startTime
+                        // + duration. Stamp startTime here so the close handler
+                        // can compute wall-clock elapsed; otherwise the UI
+                        // header reads "Thought · 0.0s · ~N tok".
+                        startTime: thinkingBlockTs,
                       };
                       setContentBlocks(prev => [...prev, thinkingCB]);
                       contentBlocksRef.current = [...contentBlocksRef.current, thinkingCB];
@@ -755,16 +3034,27 @@ export const useChatStream = ({
                   // The content should remain visible for users to review
                   setIsThinkingCompleted(true); // Mark thinking as completed for UI
 
-                  // Mark ContentBlock as complete for interleaved display
+                  // Mark ContentBlock as complete + stamp duration for interleaved display.
+                  // #813 — InlineThinkingBlock reads endedAt = startTime + duration. Without
+                  // a duration on close the UI shows "Thought · 0.0s". Use Date.now() since
+                  // wire _ts isn't threaded through the legacy inline handler.
                   if (currentThinkingBlockIndexRef.current !== null) {
+                    const closeTs = Date.now();
+                    const closeBlock = (block: ContentBlock): ContentBlock => {
+                      const next: ContentBlock = { ...block, isComplete: true };
+                      if (typeof block.startTime === 'number' && block.duration == null) {
+                        next.duration = Math.max(0, closeTs - block.startTime);
+                      }
+                      return next;
+                    };
                     setContentBlocks(prev => prev.map(block =>
                       block.index === currentThinkingBlockIndexRef.current
-                        ? { ...block, isComplete: true }
+                        ? closeBlock(block)
                         : block
                     ));
                     contentBlocksRef.current = contentBlocksRef.current.map(block =>
                       block.index === currentThinkingBlockIndexRef.current
-                        ? { ...block, isComplete: true }
+                        ? closeBlock(block)
                         : block
                     );
                     currentThinkingBlockIndexRef.current = null; // Clear tracking ref
@@ -843,16 +3133,27 @@ export const useChatStream = ({
                     //   console.log(`[SSE] Content suppressed during ${currentPipelineState.currentStage} stage (tool round ${currentPipelineState.activeToolRound})`);
                     // }
                   } else {
-                    // Show content immediately during appropriate phases
-                    assistantMessage += contentDelta;
+                    // Phase 2 (plan §2.2): the legacy `case 'stream'` envelope no
+                    // longer mutates `assistantMessage` — that's the dual-emit
+                    // race source for "LetLet me" character duplication.
+                    // The canonical `content_block_delta` reducer arm owns the
+                    // flat-string concat now. We still create/update the
+                    // ContentBlock here as a fallback for any provider that
+                    // emits ONLY the legacy envelope (server-side dual-emit at
+                    // stream.handler.ts:1101-1130 also emits canonical for
+                    // every content_delta — so this is dead code on the
+                    // current cluster, kept only for back-compat).
 
-                    // Also include any buffered content if transitioning from suppressed state
+                    // Flush any buffered content (legacy suppression path —
+                    // `false &&` above keeps this dead but the prepend stays
+                    // for when the buffer ever re-enables).
                     if (currentPipelineState.bufferedContent) {
                       assistantMessage = currentPipelineState.bufferedContent + assistantMessage;
                       currentPipelineState.bufferedContent = '';
                     }
 
-                    // Extract thinking blocks and clean content
+                    // Extract thinking blocks from the current (canonical-owned)
+                    // assistantMessage and update the live preview.
                     const { cleaned, thinking } = extractAndCleanThinkingBlocks(assistantMessage);
                     setCurrentMessage(cleaned);
 
@@ -862,16 +3163,40 @@ export const useChatStream = ({
                       // console.log('[SSE] Extracted thinking from stream:', thinking.substring(0, 100) + '...');
                     }
 
-                    // Update text ContentBlock for interleaved display
-                    // If no text block exists yet, create one (fallback for providers that don't send content_start)
-                    if (currentTextBlockIndexRef.current === null && contentDelta) {
+                    // Update text ContentBlock for interleaved display.
+                    //
+                    // Phase 2 (plan §2.2): if the canonical reducer already
+                    // created text blocks for this turn (server-side dual-emit
+                    // sends `content_block_delta` alongside the legacy
+                    // `stream` envelope), the legacy path MUST NOT create a
+                    // second text block — that's the dup-block source the
+                    // canonical reducer can't undo. We only create a text
+                    // block here when:
+                    //   (a) no text block exists yet in contentBlocksRef
+                    //       (legacy-only provider, no canonical seen), AND
+                    //   (b) currentTextBlockIndexRef.current is null
+                    //       (no prior legacy create for this turn).
+                    const hasAnyTextBlock = contentBlocksRef.current.some(
+                      (b) => b.type === 'text',
+                    );
+                    if (
+                      currentTextBlockIndexRef.current === null &&
+                      contentDelta &&
+                      !hasAnyTextBlock
+                    ) {
                       const newTextBlockIndex = contentBlocksRef.current.length;
                       const textBlockTimestamp = Date.now();
                       const newTextBlock: ContentBlock = {
                         id: `block-${newTextBlockIndex}-${textBlockTimestamp}`,  // Unique ID for React key
                         index: newTextBlockIndex,
                         type: 'text',
-                        content: cleaned,
+                        // Sev-0 2026-05-19: `assistantMessage` accumulator was
+                        // ripped in Phase 2 of the canonical-streaming-rip plan,
+                        // so `cleaned` is always ''. Scope-warning/lockout
+                        // responses send their text via `contentDelta` (from
+                        // `safeData.content`). Use contentDelta as fallback so
+                        // warning bubbles render their text instead of being empty.
+                        content: contentDelta || cleaned,
                         isComplete: false,
                         timestamp: textBlockTimestamp,
                       };
@@ -879,15 +3204,17 @@ export const useChatStream = ({
                       contentBlocksRef.current = [...contentBlocksRef.current, newTextBlock];
                       currentTextBlockIndexRef.current = newTextBlockIndex;
                     } else if (currentTextBlockIndexRef.current !== null) {
-                      // Update existing text block with cleaned content
+                      // Update existing text block with cleaned content.
+                      // Sev-0 2026-05-19: same fallback — prefer contentDelta
+                      // when cleaned is empty (accumulator ripped).
                       setContentBlocks(prev => prev.map(block =>
                         block.index === currentTextBlockIndexRef.current
-                          ? { ...block, content: cleaned }
+                          ? { ...block, content: contentDelta || cleaned }
                           : block
                       ));
                       contentBlocksRef.current = contentBlocksRef.current.map(block =>
                         block.index === currentTextBlockIndexRef.current
-                          ? { ...block, content: cleaned }
+                          ? { ...block, content: contentDelta || cleaned }
                           : block
                       );
                     }
@@ -914,20 +3241,13 @@ export const useChatStream = ({
                   }
                   break;
 
-                case 'mcp_approval_required':
-                  // HITL: Server-side ToolApprovalGate requires human approval for CRUD/destructive tool
-                  if (onMcpApprovalRequest && safeData.requestId) {
-                    onMcpApprovalRequest({
-                      requestId: safeData.requestId,
-                      toolName: safeData.toolName,
-                      serverName: safeData.serverName,
-                      arguments: safeData.arguments || {},
-                      riskLevel: safeData.riskLevel || 'medium',
-                      reason: safeData.reason || '',
-                      timeoutMs: safeData.timeoutMs || 60000,
-                    });
-                  }
-                  break;
+                // Legacy `mcp_approval_required` popup-modal handler RIPPED
+                // 2026-05-12 per user: "the legacy hitl with the popup modal
+                // sucks- leave the inline new one- its aewesome". The newer
+                // inline HITL handler below (case 'hitl_approval': case
+                // 'mcp_approval_required') writes the same event into
+                // `hitlApprovalsByMessageId` which ChatMessages renders as
+                // an inline approval card — the kept path.
 
                 case 'force_reauth':
                   // Server says token is expired and can't be refreshed — force logout
@@ -1004,18 +3324,118 @@ export const useChatStream = ({
                   console.debug(`[SSE] ${eventType}`, safeData);
                   break;
 
+                // ── Wire-in D (#82) — tool_round envelopes ─────────────
+                // tool_round_start / tool_round_end wrap parallel fan-out
+                // batches. Handled through the pure applyRoundFrame
+                // reducer so the correlation rule (roundId → nested
+                // children) stays unit-tested in one place.
+                case 'tool_round_start': {
+                  if (typeof safeData.roundId !== 'string') break;
+                  contentBlocksRef.current = applyRoundFrame(
+                    contentBlocksRef.current,
+                    {
+                      type: 'tool_round_start',
+                      roundId: safeData.roundId,
+                      toolCount: safeData.toolCount,
+                      toolIds: safeData.toolIds,
+                      toolNames: safeData.toolNames,
+                    },
+                  );
+                  setContentBlocks([...contentBlocksRef.current]);
+                  break;
+                }
+
+                case 'tool_round_end': {
+                  if (typeof safeData.roundId !== 'string') break;
+                  contentBlocksRef.current = applyRoundFrame(
+                    contentBlocksRef.current,
+                    {
+                      type: 'tool_round_end',
+                      roundId: safeData.roundId,
+                      succeeded: safeData.succeeded,
+                      failed: safeData.failed,
+                      durationMs: safeData.durationMs,
+                    },
+                  );
+                  setContentBlocks([...contentBlocksRef.current]);
+                  // Wire-in D — a tool_round envelope explicitly closes
+                  // the Task #131 round counter so subsequent work opens
+                  // a fresh legacy round if the backend falls back to
+                  // the un-wrapped path.
+                  inToolCallRoundRef.current = false;
+                  break;
+                }
+
                 case 'tool_executing': {
+                  // E1.5 (2026-05-12) — wire-shape normalization. The V2
+                  // pipeline emits canonical `{name, tool_use_id, input}`
+                  // (api/.../pipeline/chat/builders.ts buildToolExecuting).
+                  // Legacy OpenAI-shape callers used `arguments` /
+                  // `toolCallId`. Read canonical first, legacy fallback.
+                  // Without this every INPUT panel renders `{}` because
+                  // safeData.arguments is undefined on V2 turns. Pinned by
+                  // useChatStream.e15WireShapeNormalizer.test.ts.
+                  const teArgs = extractToolExecutingArgs(safeData);
+                  const teToolCallId = extractToolExecutingToolUseId(safeData);
                   // Fire callback for external consumers
                   onToolExecution?.({
                     type: 'executing',
                     name: safeData.name,
-                    arguments: safeData.arguments
+                    arguments: teArgs,
                   });
+                  // LiveTurnStatus — surface tool-name as the live activity
+                  // ("calling azure_list_subscriptions") so the user can see
+                  // what the model is doing right now.
+                  if (typeof safeData.name === 'string' && safeData.name) {
+                    setLiveActivity(`calling ${safeData.name}`);
+                  }
+
+                  // Wire-in D (#82) — if this tool_executing carries a
+                  // roundId AND an open tool_round block exists for it,
+                  // route the frame into that round's children[] via the
+                  // pure reducer and skip the sibling-creation path
+                  // below. An unknown roundId falls through to the
+                  // existing Task #131 sibling behaviour.
+                  if (typeof safeData.roundId === 'string') {
+                    const hasMatchingRound = contentBlocksRef.current.some(
+                      (b) => b.type === 'tool_round' && b.roundId === safeData.roundId,
+                    );
+                    if (hasMatchingRound) {
+                      contentBlocksRef.current = applyRoundFrame(
+                        contentBlocksRef.current,
+                        {
+                          type: 'tool_executing',
+                          roundId: safeData.roundId,
+                          toolCallId: teToolCallId,
+                          name: safeData.name,
+                          arguments: teArgs,
+                        },
+                      );
+                      setContentBlocks([...contentBlocksRef.current]);
+                      break;
+                    }
+                  }
+
+                  // Task #131 (Phase F₂) — parallel tool-call round stamping.
+                  // Backend `executeToolCalls` fires tool_executing for every
+                  // parallel MCP tool upfront before awaiting Promise.allSettled,
+                  // so a burst of consecutive tool_executing events with no
+                  // intervening tool_result represents ONE parallel round.
+                  // Bump the round counter once on the boundary; all members
+                  // of the round get the same toolCallRound value.
+                  if (!inToolCallRoundRef.current) {
+                    toolCallRoundRef.current += 1;
+                    inToolCallRoundRef.current = true;
+                    parallelSlotIndexRef.current = 0;
+                  }
+                  const currentRound = toolCallRoundRef.current;
+                  const currentSlot = parallelSlotIndexRef.current;
+                  parallelSlotIndexRef.current += 1;
 
                   // CREATE a ContentBlock so the tool appears in the activity stream.
                   // This ensures ALL models (including Ollama) show tool execution inline,
                   // not just models that emit tool_use content blocks (like Claude).
-                  const execBlockId = `tool-exec-${safeData.toolCallId || safeData.name}-${Date.now()}`;
+                  const execBlockId = `tool-exec-${teToolCallId || safeData.name}-${Date.now()}`;
                   const existingExecBlock = contentBlocksRef.current.find(
                     b => b.type === 'tool_use' && b.toolName === safeData.name && !b.isComplete
                   );
@@ -1028,35 +3448,131 @@ export const useChatStream = ({
                         index: execBlockIndex,
                         type: 'tool_use' as const,
                         toolName: safeData.name,
-                        toolId: safeData.toolCallId || execBlockId,
-                        content: JSON.stringify(safeData.arguments || {}),
+                        toolId: teToolCallId || execBlockId,
+                        // E1.5 — content carries the model's input args
+                        // (rendered in ToolCard's JSON view). Stringify
+                        // here so the legacy `block.content` consumers see
+                        // a stable JSON form; the parallel `block.input`
+                        // slot keeps the raw object so ToolCard can render
+                        // structured JsonView without a parse round-trip.
+                        content: JSON.stringify(teArgs ?? {}),
+                        input: teArgs,
                         isComplete: false,
                         startTime: Date.now(),
+                        toolCallRound: currentRound,
+                        parallelSlotIndex: currentSlot,
                       }
                     ];
+                    setContentBlocks([...contentBlocksRef.current]);
+                  } else if (existingExecBlock.toolCallRound == null) {
+                    // Anthropic content_block_start may have already created
+                    // the block; stamp the round on it so parallel grouping
+                    // still works regardless of which emit-path opens the block.
+                    existingExecBlock.toolCallRound = currentRound;
+                    existingExecBlock.parallelSlotIndex = currentSlot;
                     setContentBlocks([...contentBlocksRef.current]);
                   }
                   break;
                 }
 
                 case 'tool_result': {
-                  // Fire callback
-                  onToolExecution?.({
-                    type: 'result',
-                    name: safeData.name,
-                    result: safeData.result
-                  });
+                  // E1.5 (2026-05-12) — wire-shape normalization. V2
+                  // emits canonical `{name, tool_use_id, content, is_error,
+                  // _meta}` (api/.../pipeline/chat/builders.ts buildToolResult).
+                  // Legacy callers used `result` + `success`/`toolCallId`.
+                  // Read canonical first, legacy fallback.
+                  const trContent = extractToolResultContent(safeData);
+                  const trToolCallId = extractToolExecutingToolUseId(safeData);
+                  // Sev-1 (2026-04-19) + E1.5: failure detection. V2 stamps
+                  // `is_error: true`; legacy callers stamped
+                  // `success: false`. Either signals the failure path —
+                  // red card, explicit error text.
+                  const isFailure =
+                    safeData.is_error === true || safeData.success === false;
+                  const failureMsg =
+                    safeData.error ||
+                    (isFailure
+                      ? `${safeData.errorCode || 'UNKNOWN_ERROR'}: tool returned no data`
+                      : undefined);
 
-                  // Mark the matching ContentBlock as complete
+                  onToolExecution?.({
+                    type: isFailure ? 'error' : 'result',
+                    name: safeData.name,
+                    result: isFailure ? undefined : trContent,
+                    error: isFailure ? failureMsg : undefined,
+                  } as any);
+
+                  // Task #131 — close the open parallel round. The NEXT
+                  // tool_executing will open round N+1. Subsequent tool_result
+                  // events in the same wave still complete their matching
+                  // blocks (they keep their toolCallRound stamp), but any
+                  // tool_executing after this point is a NEW round.
+                  inToolCallRoundRef.current = false;
+
+                  // Wire-in D (#82) — if this result belongs to an open
+                  // tool_round container, update the child in place.
+                  if (typeof safeData.roundId === 'string') {
+                    const hasMatchingRound = contentBlocksRef.current.some(
+                      (b) => b.type === 'tool_round' && b.roundId === safeData.roundId,
+                    );
+                    if (hasMatchingRound) {
+                      contentBlocksRef.current = applyRoundFrame(
+                        contentBlocksRef.current,
+                        isFailure
+                          ? {
+                              type: 'tool_error',
+                              roundId: safeData.roundId,
+                              toolCallId: trToolCallId,
+                              name: safeData.name,
+                              error: failureMsg,
+                            }
+                          : {
+                              type: 'tool_result',
+                              roundId: safeData.roundId,
+                              toolCallId: trToolCallId,
+                              name: safeData.name,
+                              result: trContent,
+                            },
+                      );
+                      setContentBlocks([...contentBlocksRef.current]);
+                      break;
+                    }
+                  }
+
                   const resultBlockIdx = contentBlocksRef.current.findIndex(
                     b => b.type === 'tool_use' && b.toolName === safeData.name && !b.isComplete
                   );
                   if (resultBlockIdx >= 0) {
+                    const prev = contentBlocksRef.current[resultBlockIdx];
+                    // Phase 4 — when the V3 chatLoop emits the two-channel
+                    // envelope (Spec §6.2), `_meta.outputTemplate` on the
+                    // tool_result frame names the FrameRendererRegistry
+                    // slug (e.g. 'k8s_pod_list', 'cost_savings'). Stamp it
+                    // onto the ContentBlock so the render layer can resolve
+                    // the React component without re-parsing the wire frame.
+                    const outputTemplate: string | undefined =
+                      !isFailure && safeData?._meta?.outputTemplate
+                        ? safeData._meta.outputTemplate
+                        : undefined;
                     contentBlocksRef.current[resultBlockIdx] = {
-                      ...contentBlocksRef.current[resultBlockIdx],
+                      ...prev,
                       isComplete: true,
-                      result: typeof safeData.result === 'string' ? safeData.result : JSON.stringify(safeData.result),
-                      duration: Date.now() - (contentBlocksRef.current[resultBlockIdx].startTime || Date.now()),
+                      ...(isFailure
+                        ? { error: failureMsg, result: undefined }
+                        : {
+                            // E1.5 — keep the structured object on
+                            // `resultRaw` so ToolCard renders the actual
+                            // object via JsonView (no escape-soup). The
+                            // legacy `result: string` slot still gets a
+                            // JSON form for code paths that expect a string.
+                            result:
+                              typeof trContent === 'string'
+                                ? trContent
+                                : JSON.stringify(trContent),
+                            resultRaw: trContent,
+                          }),
+                      ...(outputTemplate ? { outputTemplate } : {}),
+                      duration: Date.now() - (prev.startTime || Date.now()),
                     };
                     setContentBlocks([...contentBlocksRef.current]);
                   }
@@ -1069,6 +3585,9 @@ export const useChatStream = ({
                     name: safeData.name,
                     error: safeData.error
                   });
+
+                  // Task #131 — close the open parallel round on error too.
+                  inToolCallRoundRef.current = false;
 
                   // Mark matching ContentBlock as error
                   const errBlockIdx = contentBlocksRef.current.findIndex(
@@ -1290,6 +3809,18 @@ export const useChatStream = ({
                     toModel: safeData.toModel,
                     handoffCount: safeData.handoffCount
                   });
+                  // Phase G (task #152) — stash for HandoffPill render.
+                  setHandoffEvent({
+                    fromModel: safeData.fromModel,
+                    toModel: safeData.toModel,
+                    fromRole: safeData.fromRole,
+                    toRole: safeData.toRole,
+                    reason: safeData.reason,
+                    complexityScore: typeof safeData.complexityScore === 'number'
+                      ? safeData.complexityScore
+                      : undefined,
+                    routeEscalatedDestructive: !!safeData.route_escalated_destructive,
+                  });
                   break;
 
                 case 'multi_model_complete':
@@ -1315,6 +3846,633 @@ export const useChatStream = ({
                     error: safeData.error
                   });
                   break;
+
+                // ═══════════════════════════════════════════════════════
+                // Phase G (task #152) — trust / observability events.
+                // Each branch is 5-15 lines: parse payload, update the
+                // matching state slot. Rendering is delegated to the
+                // small components in `components/events/*`.
+                // ═══════════════════════════════════════════════════════
+                case 'stage_change': {
+                  const stage = safeData.stage as
+                    | 'discover' | 'query' | 'analyze' | 'generate' | 'verify' | undefined;
+                  if (stage === 'discover' || stage === 'query' || stage === 'analyze' ||
+                      stage === 'generate' || stage === 'verify') {
+                    setCurrentStage(stage);
+                    // LiveTurnStatus — surface the stage as the activity
+                    // summary so non-streaming providers (AIF gpt-5.4 in
+                    // Responses-API mode) still show a meaningful live
+                    // line right of the spinner instead of stuck at
+                    // "thinking".
+                    const stageLabels: Record<string, string> = {
+                      discover: 'discovering tools',
+                      query: 'querying model',
+                      analyze: 'analyzing context',
+                      generate: 'generating response',
+                      verify: 'verifying output',
+                    };
+                    setLiveActivity(stageLabels[stage] ?? stage);
+                    if (typeof safeData.elapsedMs === 'number') {
+                      stageTimingsRef.current = {
+                        ...stageTimingsRef.current,
+                        [stage]: safeData.elapsedMs,
+                      };
+                      setStageTimings({ ...stageTimingsRef.current });
+                    }
+                  }
+                  break;
+                }
+
+                case 'retry': {
+                  setRetryEvents(prev => [
+                    ...prev,
+                    {
+                      toolCallId: safeData.toolCallId,
+                      name: safeData.name,
+                      attempt: Number(safeData.attempt) || 1,
+                      maxAttempts: Number(safeData.maxAttempts) || 1,
+                      reason: safeData.reason,
+                      elapsedMs: safeData.elapsedMs,
+                    },
+                  ]);
+                  break;
+                }
+
+                case 'rag_citation': {
+                  setRagCitations(prev => [
+                    ...prev,
+                    {
+                      source: String(safeData.source || 'platform-rag'),
+                      chunkId: safeData.chunkId,
+                      excerpt: safeData.excerpt,
+                      score: typeof safeData.score === 'number' ? safeData.score : undefined,
+                      collection: safeData.collection,
+                      url: safeData.url,
+                    },
+                  ]);
+                  break;
+                }
+
+                case 'correction': {
+                  if (safeData.wrongText && safeData.correctedText) {
+                    setCorrectionEvent({
+                      wrongText: String(safeData.wrongText),
+                      correctedText: String(safeData.correctedText),
+                      reason: safeData.reason || undefined,
+                    });
+                  }
+                  break;
+                }
+
+                case 'warning': {
+                  const warnLevel: 'info' | 'warn' | 'error' =
+                    safeData.level === 'info' || safeData.level === 'error'
+                      ? safeData.level
+                      : 'warn';
+                  setWarnings(prev => [
+                    ...prev,
+                    {
+                      id: `warn-${Date.now()}-${prev.length}`,
+                      level: warnLevel,
+                      source: safeData.source,
+                      code: safeData.code,
+                      message: String(safeData.message || safeData.code || 'Warning'),
+                      actionable: safeData.actionable,
+                    },
+                  ]);
+                  break;
+                }
+
+                case 'rag_status': {
+                  setRagStatus({
+                    status: safeData.status,
+                    docsRetrieved: typeof safeData.docsRetrieved === 'number'
+                      ? safeData.docsRetrieved
+                      : undefined,
+                    collections: Array.isArray(safeData.collections)
+                      ? safeData.collections
+                      : undefined,
+                    retrievalTimeMs: typeof safeData.retrievalTime === 'number'
+                      ? safeData.retrievalTime
+                      : undefined,
+                  });
+                  break;
+                }
+
+                case 'memory_status': {
+                  setMemoryStatus({
+                    status: safeData.status,
+                    contextInjected: typeof safeData.contextInjected === 'boolean'
+                      ? safeData.contextInjected
+                      : undefined,
+                    tokenEstimate: typeof safeData.tokenEstimate === 'number'
+                      ? safeData.tokenEstimate
+                      : undefined,
+                    processingTime: typeof safeData.processingTime === 'number'
+                      ? safeData.processingTime
+                      : undefined,
+                    memoriesFound: typeof safeData.memoriesFound === 'number'
+                      ? safeData.memoriesFound
+                      : undefined,
+                  });
+                  break;
+                }
+
+                case 'dlp_blocked': {
+                  setDlpScan({
+                    state: 'blocked',
+                    severity: safeData.severity,
+                    categories: Array.isArray(safeData.categories) ? safeData.categories : undefined,
+                    reason: safeData.reason,
+                    scanPoint: safeData.scanPoint,
+                  });
+                  break;
+                }
+
+                case 'dlp_scan_performed': {
+                  const state: 'passed' | 'redacted' =
+                    safeData.action === 'redact' ? 'redacted' : 'passed';
+                  setDlpScan({
+                    state,
+                    severity: safeData.severity,
+                    categories: Array.isArray(safeData.categories) ? safeData.categories : undefined,
+                    findings: typeof safeData.findings === 'number' ? safeData.findings : undefined,
+                    scanPoint: safeData.scanPoint,
+                  });
+                  break;
+                }
+
+                case 'tool_cache_hit':
+                case 'tool_semantic_cache_hit': {
+                  const name = String(safeData.name || 'unknown');
+                  setToolCacheHits(prev => ({
+                    ...prev,
+                    [name]: {
+                      similarity: typeof safeData.similarity === 'number'
+                        ? safeData.similarity
+                        : undefined,
+                    },
+                  }));
+                  break;
+                }
+
+                case 'self_critique': {
+                  setSelfCritique(prev => ({
+                    ...(prev || {}),
+                    critique: safeData.critique ?? prev?.critique,
+                    contradictions: typeof safeData.contradictions === 'number'
+                      ? safeData.contradictions
+                      : prev?.contradictions,
+                    lowestConfidence: typeof safeData.lowestConfidence === 'number'
+                      ? safeData.lowestConfidence
+                      : prev?.lowestConfidence,
+                    status: safeData.status ?? prev?.status,
+                  }));
+                  break;
+                }
+
+                case 'hallucination_warning': {
+                  setHallucinationWarning({
+                    confidence: typeof safeData.confidence === 'number'
+                      ? safeData.confidence
+                      : undefined,
+                    message: safeData.message,
+                    warningCount: Array.isArray(safeData.warnings)
+                      ? safeData.warnings.length
+                      : typeof safeData.warningCount === 'number'
+                        ? safeData.warningCount
+                        : undefined,
+                    revised: !!safeData.revised,
+                    toolCount: typeof safeData.toolCount === 'number'
+                      ? safeData.toolCount
+                      : undefined,
+                  });
+                  break;
+                }
+
+                case 'tool_end':
+                case 'tool_execution': {
+                  // Phase G — alternate completion paths share the
+                  // tool_complete render. Mark the matching tool_use
+                  // block as done if not already closed.
+                  const endToolName = safeData.toolName || safeData.name;
+                  if (endToolName) {
+                    const endBlockIdx = contentBlocksRef.current.findIndex(
+                      b => b.type === 'tool_use' && b.toolName === endToolName && !b.isComplete
+                    );
+                    if (endBlockIdx >= 0) {
+                      const prev = contentBlocksRef.current[endBlockIdx];
+                      contentBlocksRef.current[endBlockIdx] = {
+                        ...prev,
+                        isComplete: true,
+                        duration: Date.now() - (prev.startTime || Date.now()),
+                      };
+                      setContentBlocks([...contentBlocksRef.current]);
+                    }
+                  }
+                  break;
+                }
+
+                // ═══════════════════════════════════════════════════════
+                // Phase H (task #153) — artifact / image / session /
+                // memory envelopes. Slotted AFTER the Phase G branches
+                // per task spec. The existing `artifact_start/delta/end`
+                // cases lower down are preserved untouched; Phase H
+                // shape is DISCRIMINATED by an `artifactId` field so
+                // both coexist.
+                // ═══════════════════════════════════════════════════════
+                case 'artifact_open': {
+                  const kindRaw = String(safeData.kind || 'code');
+                  const kind: 'markdown' | 'code' | 'chart' | 'csv' =
+                    kindRaw === 'markdown' || kindRaw === 'code' ||
+                    kindRaw === 'chart' || kindRaw === 'csv' ? kindRaw : 'code';
+                  const artId = String(safeData.artifactId || `artifact-${Date.now()}`);
+                  const defaultFile = String(safeData.fileName || '__default__');
+                  setArtifactPanel({
+                    artifactId: artId,
+                    kind,
+                    title: String(safeData.title || 'Artifact'),
+                    language: safeData.language || undefined,
+                    fileName: safeData.fileName || undefined,
+                    files: {
+                      [defaultFile]: {
+                        fileName: defaultFile,
+                        language: safeData.language || undefined,
+                        content: '',
+                        lastSeq: -1,
+                      },
+                    },
+                    isOpen: true,
+                    isComplete: false,
+                    stats: null,
+                  });
+                  break;
+                }
+
+                case 'artifact_close': {
+                  setArtifactPanel(prev => {
+                    if (!prev || prev.artifactId !== safeData.artifactId) return prev;
+                    const files = { ...prev.files };
+                    if (safeData.finalContent && Object.keys(files).length === 1) {
+                      const fn = Object.keys(files)[0];
+                      if (files[fn].content.length < String(safeData.finalContent).length) {
+                        files[fn] = {
+                          ...files[fn],
+                          content: String(safeData.finalContent),
+                        };
+                      }
+                    }
+                    // P1-5 chatmode UX parity — drop the panel entirely when
+                    // the accumulated content is empty / trivial markdown.
+                    // The server fires artifact_open eagerly for any
+                    // structured response, but plain prose with no fences
+                    // / SVG / Mermaid / chart should never have triggered
+                    // a slide-out. Deciding at close time means we have
+                    // the full content to evaluate. See punch list P1-5.
+                    const totalContent = Object.values(files)
+                      .map(f => f.content)
+                      .join('\n');
+                    if (!isArtifactWorthShowing(totalContent, prev.kind)) {
+                      return null;
+                    }
+                    return {
+                      ...prev,
+                      files,
+                      isComplete: true,
+                      stats: safeData.stats && typeof safeData.stats === 'object'
+                        ? {
+                            bytes: Number(safeData.stats.bytes) || 0,
+                            lines: Number(safeData.stats.lines) || 0,
+                          }
+                        : null,
+                    };
+                  });
+                  break;
+                }
+
+                case 'image_progress': {
+                  const progress = Number(safeData.progress);
+                  if (!Number.isFinite(progress)) break;
+                  setImageProgress({
+                    imageGenId: String(safeData.imageGenId || 'img'),
+                    progress: Math.max(0, Math.min(1, progress)),
+                    partialUrl: safeData.partialUrl,
+                    eta: typeof safeData.eta === 'number' ? safeData.eta : undefined,
+                    prompt: safeData.prompt,
+                  });
+                  break;
+                }
+
+                // visual_render / app_render / artifact_render frames are
+                // consumed by applyCanonicalFrame (runs above this switch) and
+                // become ContentBlocks of type 'viz_render' / 'app_render'.
+                // No parent-level state subscriber here — they render INLINE
+                // at the wire-emit chronological position inside
+                // AgenticActivityStream via the typed-block path.
+
+                // P1-6 — server emits `streaming_table` for rectangular
+                // tool results (right-sizing candidates, IAM drift rows,
+                // cost summaries). Reducer is pure-tested at
+                // useChatStream.streamingTable.test.ts.
+                case 'streaming_table': {
+                  const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                  if (flushKey) {
+                    setStreamingTablesByMessageId((prev) =>
+                      applyStreamingTableFrame(prev, flushKey, safeData as StreamingTableFrame),
+                    );
+                  }
+                  break;
+                }
+
+                // Phase 27 — server emits `findings_emit` from security/
+                // audit sub-agent results (mocks 03, 07, 08, 09). Reducer
+                // is pure-tested at useChatStream.findings.test.ts.
+                case 'findings_emit': {
+                  const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                  if (flushKey) {
+                    setFindingsByMessageId((prev) =>
+                      applyFindingsFrame(prev, flushKey, safeData as FindingsFrame),
+                    );
+                  }
+                  break;
+                }
+
+                // #502 — server emits `inline_widget` for KpiGrid /
+                // SavingsCard / Runbook / WaveTimeline / StackGrid /
+                // StagesStrip / AnnotatedCode. Reducer pure-tested at
+                // useChatStream.inlineWidget.test.ts.
+                case 'inline_widget': {
+                  const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                  if (flushKey) {
+                    setInlineWidgetsByMessageId((prev) =>
+                      applyInlineWidgetFrame(prev, flushKey, safeData as InlineWidgetFrame),
+                    );
+                  }
+                  break;
+                }
+
+                // B8 (2026-05-12) — Azure Responsible AI / Vertex SAFETY /
+                // Vertex RECITATION trip. Server emits a `content_filter`
+                // frame with {kind, model, message}. UI stores the latest
+                // banner per assistant message id so <ContentFilterBanner>
+                // renders inline with the (possibly partial) assistant
+                // bubble. FedRAMP-Hi audit requires this surfaces to user
+                // instead of silently truncating as end_turn.
+                case 'content_filter': {
+                  const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                  const d = safeData as Record<string, unknown>;
+                  const kind = typeof d.kind === 'string' ? d.kind : 'content_filter';
+                  const model = typeof d.model === 'string' ? d.model : '';
+                  const message =
+                    typeof d.message === 'string' && d.message.length > 0
+                      ? d.message
+                      : 'This response was filtered by Azure Responsible AI. The platform owner has been notified per FedRAMP-Hi audit policy. Try rephrasing your request.';
+                  if (flushKey) {
+                    setContentFilterBannerByMessageId((prev) => ({
+                      ...prev,
+                      [flushKey]: { kind, model, message },
+                    }));
+                  }
+                  break;
+                }
+
+                // F1-6 (2026-05-17) — follow_up chip-row re-introduced.
+                // Server emits a `follow_up` frame at end_turn with N
+                // contextual chips per the mock contract. Push the block
+                // into the legacy contentBlocks slot so MessageBubble's
+                // existing render path picks it up (canonicalReducerState
+                // is shadow-only for MessageBubble). The block is also
+                // folded into canonicalReducerState by applyCanonicalFrame
+                // for ChatMessages' canonical-preferred render path.
+                case 'follow_up': {
+                  const d = safeData as Record<string, unknown>;
+                  const rawItems = Array.isArray(d.items) ? d.items : [];
+                  const items: string[] = rawItems
+                    .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+                    .map((s) => s.trim())
+                    .slice(0, 5);
+                  if (items.length === 0) break;
+                  const followUpBlock: ContentBlock = {
+                    id: `followup-${messageId || Date.now()}`,
+                    type: 'follow_up',
+                    timestamp: Date.now(),
+                    isComplete: true,
+                    items,
+                  };
+                  setContentBlocks((prev) => {
+                    const filtered = prev.filter((b) => b.type !== 'follow_up');
+                    return [...filtered, followUpBlock];
+                  });
+                  break;
+                }
+
+                // Audit §10 step 16 — HITL approval card. Server emits
+                // `hitl_approval` for write-tier tools (and legacy
+                // `mcp_approval_required` during the dual-emit window).
+                case 'hitl_approval':
+                case 'mcp_approval_required': {
+                  const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                  const d = safeData as Record<string, unknown>;
+                  const reqId = typeof d.requestId === 'string' ? d.requestId : '';
+                  if (!flushKey || !reqId) break;
+                  const entry = {
+                    requestId: reqId,
+                    toolName: typeof d.toolName === 'string' ? d.toolName : 'unknown',
+                    serverName: typeof d.serverName === 'string' ? d.serverName : undefined,
+                    reason: typeof d.reason === 'string' ? d.reason : '',
+                    timeoutMs: typeof d.timeoutMs === 'number' ? d.timeoutMs : 60_000,
+                    arguments: d.arguments,
+                    status: 'pending' as const,
+                    // HITL.3 — carry parentToolUseId from sub-agent bridge frames
+                    // so AAS can position the chip at the correct sub-agent tool card.
+                    // Absent on main-agent HITL frames; present when the frame arrived
+                    // via the HITL.2 stream.handler bridge from openagentic-proxy.
+                    parentToolUseId: typeof d.parentToolUseId === 'string' ? d.parentToolUseId : undefined,
+                  };
+                  setHitlApprovalsByMessageId((prev) => {
+                    const arr = prev[flushKey] ?? [];
+                    if (arr.some((a) => a.requestId === reqId)) return prev;
+                    return { ...prev, [flushKey]: [...arr, entry] };
+                  });
+                  break;
+                }
+
+                // AC-B — synth lifecycle frames. The 8 frame types
+                // (synth_planned / _code_chunk / _approval_requested /
+                // _approved / _denied / _executing / _stdout /
+                // _completed) all fold into a single per-message Synth
+                // entry by artifact_id. Reducer pure-tested at
+                // useChatStream.synthLifecycle.test.ts.
+                case 'synth_planned':
+                case 'synth_code_chunk':
+                case 'synth_approval_requested':
+                case 'synth_approved':
+                case 'synth_denied':
+                case 'synth_executing':
+                case 'synth_stdout':
+                case 'synth_completed': {
+                  const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                  if (flushKey) {
+                    setSynthsByMessageId((prev) =>
+                      applySynthLifecycleFrame(
+                        prev,
+                        flushKey,
+                        safeData as SynthLifecycleFrame,
+                      ),
+                    );
+                  }
+                  break;
+                }
+
+                // AC-D — clickable download tile. Emitted when
+                // synth-executor (or any tool) finishes writing bytes
+                // to UserStorageService and returns a presigned URL.
+                // Reducer pure-tested at useChatStream.artifactEmit.test.ts.
+                case 'artifact_emit': {
+                  const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                  if (flushKey) {
+                    setArtifactEmitsByMessageId((prev) =>
+                      applyArtifactEmitFrame(prev, flushKey, safeData as ArtifactEmitFrame),
+                    );
+                  }
+                  break;
+                }
+
+                // Wave 3 (#525) — per-message intent classification.
+                // Emitted from prompt.stage BEFORE the assistant's
+                // message_saved. Buffer until we know the React placeholder
+                // id, then flush in case 'message_saved' arm (role ===
+                // 'assistant').
+                case 'intent_classified': {
+                  setIntentClassifications((prev) => {
+                    const out = bufferOrApplyIntentClassified(
+                      safeData,
+                      '',
+                      prev,
+                      pendingIntentClassifiedRef.current,
+                    );
+                    pendingIntentClassifiedRef.current = out.pending;
+                    return out.intentClassifications;
+                  });
+                  break;
+                }
+
+                // Wave 3 (#525) — per-message tool shortlist (count + intent
+                // + first ≤5 ranked tool names). Drives ToolShortlistChip.
+                case 'tool_shortlist': {
+                  setToolShortlists((prev) => {
+                    const out = bufferOrApplyToolShortlist(
+                      safeData,
+                      '',
+                      prev,
+                      pendingToolShortlistRef.current,
+                    );
+                    pendingToolShortlistRef.current = out.pending;
+                    return out.toolShortlists;
+                  });
+                  break;
+                }
+
+                // #502 — sub-agent lifecycle. Emitted by TaskTool.ts in api
+                // for every Task tool dispatch (Phase E2). Consumed by
+                // ChatMessages -> SubAgentCard. Wire-up unit-tested via
+                // dispatchSubAgentFrame in useChatStream.subAgentEnvelope.test.ts.
+                case 'sub_agent_started': {
+                  setSubAgents((prev) => {
+                    const out = dispatchSubAgentFrame('sub_agent_started', safeData, prev);
+                    return out.subAgents;
+                  });
+                  // P0-1 part 2 — also store under the active assistant
+                  // messageId so older bubbles render their own cards on
+                  // re-render.
+                  {
+                    const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                    if (flushKey) {
+                      setSubAgentsByMessageId((prev) =>
+                        applySubAgentStartedScoped(prev, flushKey, {
+                          type: 'sub_agent_started',
+                          role: typeof safeData?.role === 'string' ? safeData.role : '',
+                          description:
+                            typeof safeData?.description === 'string'
+                              ? safeData.description
+                              : undefined,
+                          model:
+                            typeof safeData?.model === 'string' ? safeData.model : null,
+                          session_id:
+                            typeof safeData?.session_id === 'string'
+                              ? safeData.session_id
+                              : undefined,
+                        }),
+                      );
+                    }
+                  }
+                  break;
+                }
+
+                case 'sub_agent_completed': {
+                  setSubAgents((prev) => {
+                    const out = dispatchSubAgentFrame('sub_agent_completed', safeData, prev);
+                    return out.subAgents;
+                  });
+                  {
+                    const flushKey = getAssistantPlaceholderId?.() || messageId || '';
+                    if (flushKey) {
+                      setSubAgentsByMessageId((prev) =>
+                        applySubAgentCompletedScoped(prev, flushKey, {
+                          type: 'sub_agent_completed',
+                          role: typeof safeData?.role === 'string' ? safeData.role : '',
+                          ok: safeData?.ok === true,
+                          error: typeof safeData?.error === 'string' ? safeData.error : null,
+                          turns: typeof safeData?.turns === 'number' ? safeData.turns : 0,
+                          tokens: typeof safeData?.tokens === 'number' ? safeData.tokens : 0,
+                          durationMs:
+                            typeof safeData?.durationMs === 'number' ? safeData.durationMs : 0,
+                          toolsUsed: Array.isArray(safeData?.toolsUsed)
+                            ? safeData.toolsUsed
+                            : undefined,
+                          output: typeof safeData?.output === 'string' ? safeData.output : undefined,
+                        }),
+                      );
+                    }
+                  }
+                  break;
+                }
+
+                case 'session_rename': {
+                  if (safeData.sessionId && safeData.from && safeData.to) {
+                    setSessionRename({
+                      sessionId: String(safeData.sessionId),
+                      from: String(safeData.from),
+                      to: String(safeData.to),
+                      reason:
+                        safeData.reason === 'manual' || safeData.reason === 'summary'
+                          ? safeData.reason
+                          : 'auto-title',
+                    });
+                  }
+                  break;
+                }
+
+                case 'memory_write': {
+                  if (!safeData.key || !safeData.summary) break;
+                  const scope: 'user' | 'session' | 'shared' =
+                    safeData.scope === 'session' || safeData.scope === 'shared'
+                      ? safeData.scope
+                      : 'user';
+                  setMemoryWrites(prev => [
+                    ...prev,
+                    {
+                      key: String(safeData.key),
+                      summary: String(safeData.summary),
+                      scope,
+                      entryId: safeData.entryId,
+                      tokenCount: typeof safeData.tokenCount === 'number'
+                        ? safeData.tokenCount
+                        : undefined,
+                    },
+                  ]);
+                  break;
+                }
 
                 // ── Agent Spawn Events (parallel sub-agents) ──
                 // These create nested content blocks under the parent spawn_parallel_agents tool
@@ -1375,6 +4533,28 @@ export const useChatStream = ({
                     model: safeData.model,
                     orchestrationId: safeData.agentId
                   });
+                  // v0.6.7 Mockup 03 — bridge raw agent_start events into
+                  // the NormalizedStreamEvent stream so UnifiedActivityTree
+                  // renders a sub-agent card. Without this push the agent
+                  // tree store gets the event but the `normalizedEvents`
+                  // array does not, so the `.subagent` card never
+                  // decomposes inside the assistant message body.
+                  if (safeData.agentId) {
+                    const norm: NormalizedStreamEvent = {
+                      type: 'agent_start',
+                      id: String(safeData.agentId),
+                      name: String(safeData.role || safeData.agentId),
+                      role: String(safeData.role || 'agent'),
+                      parentId: safeData.parentAgentId
+                        ? String(safeData.parentAgentId)
+                        : undefined,
+                    } as NormalizedStreamEvent;
+                    normalizedEventsRef.current = [
+                      ...normalizedEventsRef.current,
+                      norm,
+                    ];
+                    setNormalizedEvents([...normalizedEventsRef.current]);
+                  }
                   break;
                 }
 
@@ -1435,6 +4615,30 @@ export const useChatStream = ({
                     role: safeData.agentId,
                     content: `Calling tool: ${safeData.toolName}`
                   });
+                  // Slice G.4b — push canonical `content_block_start` with
+                  // `type: 'tool_use'`. buildTree nests it under the active
+                  // agentStack top (the parent agent, pushed by the prior
+                  // `agent_start` Normalized event). Open block — the
+                  // matching `content_block_stop` is pushed by
+                  // `agent_tool_result` below, paired by `index`.
+                  if (safeData.agentId && safeData.toolName) {
+                    const blockIdx = syntheticBlockIndexRef.current++;
+                    const cbStart: NormalizedStreamEvent = {
+                      type: 'content_block_start',
+                      index: blockIdx,
+                      content_block: {
+                        type: 'tool_use',
+                        id: agentToolId,
+                        name: String(safeData.toolName),
+                        input: {},
+                      },
+                    } as unknown as NormalizedStreamEvent;
+                    normalizedEventsRef.current = [
+                      ...normalizedEventsRef.current,
+                      cbStart,
+                    ];
+                    setNormalizedEvents([...normalizedEventsRef.current]);
+                  }
                   break;
                 }
 
@@ -1471,6 +4675,51 @@ export const useChatStream = ({
                     setContentBlocks(updated);
                     contentBlocksRef.current = updated;
                   }
+                  // Slice G.4b — bridge tool result into a canonical
+                  // `content_block_stop` paired by `index` with the
+                  // `content_block_start` pushed at `agent_tool_call` time.
+                  // We locate the index by scanning recent canonical
+                  // tool_use blocks for the matching agentId+toolName.
+                  if (safeData.agentId && safeData.toolName) {
+                    // Find the most recent open synthetic tool_use whose
+                    // content_block_start carried this toolName. We can't
+                    // rely on agentId on the canonical event itself (it
+                    // doesn't carry one), so we scan back for the most
+                    // recent unclosed `content_block_start` of type tool_use
+                    // by toolName.
+                    const events = normalizedEventsRef.current;
+                    let matchIndex: number | undefined;
+                    for (let i = events.length - 1; i >= 0; i--) {
+                      const ev: any = events[i];
+                      if (
+                        ev?.type === 'content_block_start' &&
+                        ev?.content_block?.type === 'tool_use' &&
+                        ev?.content_block?.name === String(safeData.toolName)
+                      ) {
+                        // Skip if a content_block_stop for this index already
+                        // exists later in the buffer.
+                        const idx = ev.index as number;
+                        const closed = events.slice(i + 1).some(
+                          (e: any) => e?.type === 'content_block_stop' && e?.index === idx,
+                        );
+                        if (!closed) {
+                          matchIndex = idx;
+                          break;
+                        }
+                      }
+                    }
+                    if (matchIndex !== undefined) {
+                      const cbStop: NormalizedStreamEvent = {
+                        type: 'content_block_stop',
+                        index: matchIndex,
+                      } as unknown as NormalizedStreamEvent;
+                      normalizedEventsRef.current = [
+                        ...normalizedEventsRef.current,
+                        cbStop,
+                      ];
+                      setNormalizedEvents([...normalizedEventsRef.current]);
+                    }
+                  }
                   break;
                 }
 
@@ -1506,6 +4755,43 @@ export const useChatStream = ({
                     orchestrationId: safeData.agentId,
                     metrics: safeData.metrics
                   });
+                  // v0.6.7 Mockup 03 — mirror agent_complete → normalized
+                  // `agent_stop` so UnifiedActivityTree can close its
+                  // sub-agent card, show final stats (turns/tokens/time),
+                  // and render the return_value pill.
+                  if (safeData.agentId) {
+                    const normStop: NormalizedStreamEvent = {
+                      type: 'agent_stop',
+                      id: String(safeData.agentId),
+                      durationMs:
+                        Number(
+                          safeData.durationMs ??
+                            safeData.metrics?.durationMs ??
+                            0,
+                        ) || 0,
+                      tokensIn:
+                        Number(
+                          safeData.inputTokens ??
+                            safeData.metrics?.inputTokens ??
+                            0,
+                        ) || 0,
+                      tokensOut:
+                        Number(
+                          safeData.outputTokens ??
+                            safeData.metrics?.outputTokens ??
+                            0,
+                        ) || 0,
+                      cost:
+                        Number(
+                          safeData.cost ?? safeData.metrics?.costUsd ?? 0,
+                        ) || 0,
+                    } as NormalizedStreamEvent;
+                    normalizedEventsRef.current = [
+                      ...normalizedEventsRef.current,
+                      normStop,
+                    ];
+                    setNormalizedEvents([...normalizedEventsRef.current]);
+                  }
                   break;
                 }
 
@@ -1532,6 +4818,32 @@ export const useChatStream = ({
                       timestamp: safeData.timestamp ? new Date(safeData.timestamp).toISOString() : undefined,
                     });
                   }
+                  // Slice G.4b — push canonical `content_block_start` +
+                  // `content_block_stop` with `type: 'thinking'`. buildTree
+                  // nests it under the active agentStack top so the
+                  // sub-agent card body shows the "thinking · N.Ns" row
+                  // matching mockup 03's `.sa-subthink` aesthetic. The
+                  // canonical thinking content_block does not have an
+                  // explicit `agentId` field — agent nesting comes from
+                  // the prior `agent_start` push having opened agentStack.
+                  if (safeData.agentId) {
+                    const blockIdx = syntheticBlockIndexRef.current++;
+                    const cbStart: NormalizedStreamEvent = {
+                      type: 'content_block_start',
+                      index: blockIdx,
+                      content_block: { type: 'thinking', thinking: '' },
+                    } as unknown as NormalizedStreamEvent;
+                    const cbStop: NormalizedStreamEvent = {
+                      type: 'content_block_stop',
+                      index: blockIdx,
+                    } as unknown as NormalizedStreamEvent;
+                    normalizedEventsRef.current = [
+                      ...normalizedEventsRef.current,
+                      cbStart,
+                      cbStop,
+                    ];
+                    setNormalizedEvents([...normalizedEventsRef.current]);
+                  }
                   break;
                 }
 
@@ -1546,6 +4858,38 @@ export const useChatStream = ({
                   break;
                 }
                 case 'artifact_delta': {
+                  // Phase H (task #153) — the Phase H artifact_delta
+                  // shape carries an `artifactId` + `contentDelta` +
+                  // optional `fileName`/`seq`. Route it to the
+                  // ArtifactPanel state when present; fall through to
+                  // the legacy `{content}` path otherwise.
+                  if (safeData.artifactId && typeof safeData.contentDelta === 'string') {
+                    setArtifactPanel(prev => {
+                      if (!prev || prev.artifactId !== safeData.artifactId) return prev;
+                      const fileName = String(safeData.fileName || '__default__');
+                      const files = { ...prev.files };
+                      const existing = files[fileName] ?? {
+                        fileName,
+                        language: undefined as string | undefined,
+                        content: '',
+                        lastSeq: -1,
+                      };
+                      const incomingSeq =
+                        typeof safeData.seq === 'number' ? safeData.seq : existing.lastSeq + 1;
+                      if (incomingSeq <= existing.lastSeq && existing.lastSeq >= 0) {
+                        // Stale/out-of-order — ignore.
+                        return prev;
+                      }
+                      files[fileName] = {
+                        ...existing,
+                        content: existing.content + String(safeData.contentDelta),
+                        lastSeq: incomingSeq,
+                      };
+                      return { ...prev, files };
+                    });
+                    break;
+                  }
+                  // Legacy chat-artifact path (agent HTML artifacts).
                   const pending = (window as any).__pendingArtifact;
                   if (pending) {
                     pending.content += safeData.content || '';
@@ -1744,6 +5088,8 @@ export const useChatStream = ({
                       content: '',
                       isComplete: false,
                       timestamp: blockTimestamp,
+                      // #813 — InlineThinkingBlock derives endedAt = startTime + duration.
+                      startTime: blockTimestamp,
                       // Handle both Anthropic format (content_block.name) and OpenAgentic format (toolName)
                       toolName: blockType === 'tool_use' ? (safeData.content_block?.name || safeData.toolName) : undefined,
                       toolId: blockType === 'tool_use' ? (safeData.content_block?.id || safeData.toolId) : undefined,
@@ -1817,11 +5163,27 @@ export const useChatStream = ({
                       currentThinkingRef.current = newAccumulatedThinking;
                       setCurrentThinking(newAccumulatedThinking);
                       onThinkingContent?.(newAccumulatedThinking);
+                      // LiveTurnStatus — bump ↓ output tokens on thinking
+                      // deltas from the OpenAgentic/OpenAI-normalized path (chars/4
+                      // estimate). Activity = last non-empty thinking line
+                      // truncated to one inline-tight summary.
+                      if (awpContent.length > 0) {
+                        setLiveTokensOut(prev => prev + Math.max(1, Math.round(awpContent.length / 4)));
+                        const lastLine = newAccumulatedThinking.split('\n').filter(Boolean).pop() ?? '';
+                        const trimmed = lastLine.trim().slice(0, 110);
+                        if (trimmed) setLiveActivity(trimmed);
+                      }
                     } else if (awpBlockType === 'text') {
                       assistantMessage += awpContent;
                       const { cleaned } = extractAndCleanThinkingBlocks(assistantMessage);
                       setCurrentMessage(cleaned);
                       onStream?.(awpContent);
+                      // LiveTurnStatus — bump ↓ output tokens on text deltas
+                      // from the OpenAgentic/OpenAI-normalized path.
+                      if (awpContent.length > 0) {
+                        setLiveTokensOut(prev => prev + Math.max(1, Math.round(awpContent.length / 4)));
+                        setLiveActivity('writing response');
+                      }
                     }
                     break;
                   }
@@ -1844,6 +5206,17 @@ export const useChatStream = ({
 
                     const newAccumulatedThinking = currentThinkingRef.current + thinkingDelta;
                     currentThinkingRef.current = newAccumulatedThinking;
+
+                    // LiveTurnStatus — bump live ↓ output tokens (~chars/4)
+                    // and surface the latest line of the thinking trace as
+                    // the "what the model is doing" summary, truncated to a
+                    // single short line so the strip stays inline-tight.
+                    if (thinkingDelta.length > 0) {
+                      setLiveTokensOut(prev => prev + Math.max(1, Math.round(thinkingDelta.length / 4)));
+                      const lastLine = newAccumulatedThinking.split('\n').filter(Boolean).pop() ?? '';
+                      const trimmed = lastLine.trim().slice(0, 110);
+                      if (trimmed) setLiveActivity(trimmed);
+                    }
 
                     startTransition(() => {
                       if (deltaIndex !== undefined) {
@@ -1872,6 +5245,14 @@ export const useChatStream = ({
                     const textDelta = safeData.delta.text || '';
                     assistantMessage += textDelta;
                     const { cleaned } = extractAndCleanThinkingBlocks(assistantMessage);
+
+                    // LiveTurnStatus — bump ↓ output tokens for visible
+                    // assistant text. Activity rolls to "writing response"
+                    // once we leave the thinking phase.
+                    if (textDelta.length > 0) {
+                      setLiveTokensOut(prev => prev + Math.max(1, Math.round(textDelta.length / 4)));
+                      setLiveActivity('writing response');
+                    }
 
                     startTransition(() => {
                       if (deltaIndex !== undefined) {
@@ -1911,15 +5292,25 @@ export const useChatStream = ({
                     ? serverStopIndex + blockIndexOffsetRef.current
                     : undefined;
                   if (stopIndex !== undefined) {
+                    // #813 — stamp duration so InlineThinkingBlock renders real
+                    // wall-clock elapsed (endedAt = startTime + duration).
+                    const stopTs = Date.now();
+                    const closeStopBlock = (block: ContentBlock): ContentBlock => {
+                      const next: ContentBlock = { ...block, isComplete: true };
+                      if (typeof block.startTime === 'number' && block.duration == null) {
+                        next.duration = Math.max(0, stopTs - block.startTime);
+                      }
+                      return next;
+                    };
                     setContentBlocks(prev => prev.map(block =>
                       block.index === stopIndex
-                        ? { ...block, isComplete: true }
+                        ? closeStopBlock(block)
                         : block
                     ));
                     // Also update ref for closure access
                     contentBlocksRef.current = contentBlocksRef.current.map(block =>
                       block.index === stopIndex
-                        ? { ...block, isComplete: true }
+                        ? closeStopBlock(block)
                         : block
                     );
 
@@ -1985,6 +5376,8 @@ export const useChatStream = ({
                     content: '',
                     isComplete: false,
                     timestamp: thinkingBlockTimestamp,
+                    // #813 — InlineThinkingBlock derives endedAt = startTime + duration.
+                    startTime: thinkingBlockTimestamp,
                   };
                   setContentBlocks(prev => [...prev, thinkingBlock]);
                   contentBlocksRef.current = [...contentBlocksRef.current, thinkingBlock];
@@ -2393,147 +5786,100 @@ export const useChatStream = ({
                   currentPipelineState.shouldSuppressContent = false;
                   currentPipelineState.isToolExecutionPhase = false;
 
-                  // CRITICAL FIX: Always add message if there's content OR mcpCalls
-                  // Tool-only responses (no text) should still create a message to display the tool execution
-                  if (assistantMessage || mcpCalls.length > 0) {
-                    // Clean thinking blocks from the content AND extract thinking for persistence
-                    const { cleaned: cleanedContent, thinking: extractedThinking } = extractAndCleanThinkingBlocks(assistantMessage || '');
+                  // Sev-0 2026-05-08: empty-completion fallback. When the
+                  // model exits with `end_turn` after a tool-use chain but
+                  // emits zero `assistant_message_delta` frames, both
+                  // assistantMessage and mcpCalls.length can be 0 even
+                  // though tool_use content blocks exist. Without a
+                  // fallback the UI hangs on "waiting for first token"
+                  // because no message ever gets appended. resolveEmptyCompletionFallback
+                  // chooses original content / empty / italic placeholder.
+                  const __completionResolution = resolveEmptyCompletionFallback({
+                    assistantMessage: assistantMessage || '',
+                    mcpCallsLength: mcpCalls.length,
+                    hasToolUseBlocks: contentBlocksRef.current.some(
+                      b => b.type === 'tool_use' && (b.toolName || b.content),
+                    ),
+                  });
+                  if (__completionResolution.shouldRender) {
+                    const __renderableAssistantMessage = __completionResolution.content;
+                    // Sev-0 #924/#925/#926 — extract thinking ONCE for use inside
+                    // buildDoneMessagePayload (avoids duplicate regex passes).
+                    const { thinking: extractedThinking } = extractAndCleanThinkingBlocks(__renderableAssistantMessage || '');
 
-                    // Format the message for better readability
-                    const formattedContent = cleanedContent
-                      ? addVisualEnhancements(formatAgentMessage(cleanedContent))
-                      : ''; // Empty content but we still want to show MCP calls
+                    // Sev-0 #924/#925/#926 fix — delegate to the pure helper so
+                    // the full content_blocks chronology survives finalize.
+                    // The pre-fix inline code dropped every block that wasn't
+                    // thinking | tool_use (text, viz_render, app_render,
+                    // streaming_table, follow_up, sub_agent, hitl_approval,
+                    // tool_round, tool_result), causing the post-`done` DOM
+                    // to lose all interleaved prose, charts, and apps the
+                    // live stream had shown.
+                    // 3-Sev-0 #3 (2026-05-18) — persistence completeness.
+                    //
+                    // The api emits canonical `content_block_delta` with
+                    // `thinking_delta` / `text_delta` payloads WITHOUT a
+                    // top-level wire `index`. The legacy switch arm
+                    // (case 'content_block_delta' at ~line 5019) only
+                    // updates `contentBlocksRef` when `safeData.index` is
+                    // defined — so the legacy ref MISSES every thinking
+                    // delta on the current wire shape. Result: the persisted
+                    // `chat_messages.content_blocks` row never contains the
+                    // thinking block. On session reload the completed
+                    // assistant message renders incompletely ("completed
+                    // responses are not rendered").
+                    //
+                    // The canonical reducer (`applyCanonicalFrame`) DOES
+                    // accumulate every block type into
+                    // `canonicalReducerStateRef.current.contentBlocks`
+                    // regardless of wire index. Prefer it when it has
+                    // equal-or-more blocks than the legacy ref. The legacy
+                    // ref still wins when it has strictly more blocks (a
+                    // corner case: tool_round + tool_result envelopes
+                    // mutate the legacy ref via `applyRoundFrame` only).
+                    //
+                    // Live evidence on chat-dev.openagentic.io image
+                    // 0.7.1-f65b94e4 (2026-05-18):
+                    //   - Wire: 200+ thinking_delta + 1 text_delta + 1 follow_up
+                    //   - Pre-fix DB content_blocks: [text, follow_up]  (thinking MISSING)
+                    //   - Canonical reducer state: [thinking, text, follow_up]
+                    const canonicalBlocks =
+                      canonicalReducerStateRef.current.contentBlocks;
+                    const legacyBlocks = contentBlocksRef.current;
+                    const sourceBlocks =
+                      canonicalBlocks.length >= legacyBlocks.length
+                        ? canonicalBlocks
+                        : legacyBlocks;
 
-                    // CRITICAL FIX: Capture ALL content blocks (thinking + tool_use) in their
-                    // original interleaved order so the rendered result matches the streaming experience.
-                    // Previously only thinking blocks were captured → they got bunched at the top.
-                    const allContentBlocks = contentBlocksRef.current
-                      .filter(b => (b.type === 'thinking' || b.type === 'tool_use') && (b.content || b.toolName))
-                      .map(b => ({
-                        id: b.id,
-                        type: b.type,
-                        content: b.content,
-                        toolName: b.toolName,
-                        toolId: b.toolId,
-                        isComplete: b.isComplete,
-                        // Carry tool input + output through to the persisted form so
-                        // the activity-stream adapter can populate ToolCall.input /
-                        // ToolCall.output and renderers (favicons on web_search,
-                        // resource-name summaries on cloud creates, etc.) light up.
-                        // Without these, all tool chips collapse to a bare title.
-                        // See openagentic-omhs#330.
-                        result: (b as any).result,
-                        error: (b as any).error,
-                        duration: (b as any).duration,
-                      }));
-
-                    const thinkingBlocksArray = allContentBlocks.filter(b => b.type === 'thinking' && b.content);
-
-                    console.log('[SSEChat] Finalizing content blocks:', {
-                      totalContentBlocks: contentBlocksRef.current.length,
-                      thinkingBlocks: thinkingBlocksArray.length,
-                      allBlocks: allContentBlocks.map(b => ({ type: b.type, id: b.id, len: b.content?.length || 0 })),
+                    const donePayload = buildDoneMessagePayload({
+                      contentBlocks: sourceBlocks,
+                      assistantMessage: __renderableAssistantMessage || '',
+                      mcpCalls,
+                      cotSteps: cotStepsRef.current,
+                      extractedThinking,
+                      currentThinking: currentThinkingRef.current,
+                      messageId: messageId || new Date().toISOString(),
+                      safeData,
+                      responseModel: responseModel || undefined,
+                      pipelineState: {
+                        stageTiming: currentPipelineState.stageTiming,
+                        activeToolRound: currentPipelineState.activeToolRound,
+                      },
                     });
 
-                    const thinkingFromBlocks = thinkingBlocksArray
-                      .map(b => b.content)
-                      .join('\n\n---\n\n');
-
-                    // Capture current thinking content for persistence (use extracted, state ref, or blocks)
-                    const thinkingToSave = extractedThinking || currentThinkingRef.current || thinkingFromBlocks || '';
-
-                    // Build interleaved steps preserving original streaming order.
-                    // Each content block becomes a step — thinking blocks as type:'thinking',
-                    // tool_use blocks as their tool type (mcp, tool, etc.)
-                    let finalThinkingSteps: any[] | undefined;
-
-                    if (allContentBlocks.length > 0) {
-                      const interleavedSteps = allContentBlocks.map((block, idx) => {
-                        if (block.type === 'thinking') {
-                          return {
-                            id: block.id || `thinking-block-${idx}`,
-                            type: 'thinking' as const,
-                            title: 'Reasoning',
-                            content: block.content,
-                            status: 'completed',
-                          };
-                        } else {
-                          // tool_use block — preserve as MCP/tool step.
-                          //
-                          // `block.content` was JSON-stringified args at
-                          // tool_call_delta time (see this file ~line 1038);
-                          // `block.result` was JSON-stringified output at
-                          // tool_result time (~line 1064). Parse both back so
-                          // the InlineStep carries usable structured data
-                          // through `details.{args,result}` — that's what
-                          // useInlineStepsAdapter reads to populate
-                          // ToolCall.input / ToolCall.output, which in turn
-                          // powers the rich tool-card renderers (favicons on
-                          // web_search, resource-name summaries on cloud
-                          // creates, etc.). openagentic-omhs#330.
-                          let argsParsed: any;
-                          try { argsParsed = block.content ? JSON.parse(block.content) : undefined; } catch { argsParsed = block.content; }
-                          let resultParsed: any;
-                          try { resultParsed = (block as any).result ? JSON.parse((block as any).result) : undefined; } catch { resultParsed = (block as any).result; }
-                          return {
-                            id: block.id || `tool-block-${idx}`,
-                            type: 'mcp' as const,
-                            title: block.toolName || 'Tool',
-                            content: block.toolName || '',
-                            status: (block as any).error ? 'error' : 'completed',
-                            toolId: block.toolId,
-                            duration: (block as any).duration,
-                            details: {
-                              args: argsParsed,
-                              result: resultParsed,
-                            },
-                          };
-                        }
+                    if (donePayload) {
+                      console.log('[SSEChat] Finalizing content blocks:', {
+                        canonicalBlocks: canonicalBlocks.length,
+                        legacyBlocks: legacyBlocks.length,
+                        sourceUsed: sourceBlocks === canonicalBlocks ? 'canonical' : 'legacy',
+                        contentBlocksOut: donePayload.content_blocks?.length ?? 0,
+                        blockTypes: donePayload.content_blocks?.map((b) => b.type) ?? [],
                       });
 
-                      // Append any COT steps (from cotStepsRef) after the interleaved blocks
-                      const cotStepsCopy = cotStepsRef.current.length > 0
-                        ? JSON.parse(JSON.stringify(cotStepsRef.current))
-                        : [];
-                      finalThinkingSteps = [...interleavedSteps, ...cotStepsCopy];
-                    } else if (cotStepsRef.current.length > 0) {
-                      finalThinkingSteps = JSON.parse(JSON.stringify(cotStepsRef.current));
+                      // P0-2: stamp modelTag/modelId via attachModelIdentifier so MessageHeader
+                      //       can render the assistant pill (mocks/UX/01:206-212).
+                      onMessage?.(attachModelIdentifier(donePayload, responseModel || undefined));
                     }
-
-                    // CRITICAL FIX: Capture any tool calls for inline display
-                    // safeData may contain toolCalls from completion_complete event
-                    const finalToolCalls = safeData.toolCalls || undefined;
-                    const finalToolResults = safeData.toolResults || undefined;
-
-                    // Call onMessage with formatted content and MCP calls (HIGH PRIORITY)
-                    // CRITICAL: Include thinkingSteps, reasoningTrace, toolCalls for inline step display
-                    onMessage?.({
-                      id: messageId || new Date().toISOString(),
-                      role: 'assistant',
-                      content: formattedContent,
-                      timestamp: new Date().toISOString(),
-                      model: responseModel || undefined, // Include the model used for this response
-                      mcpCalls: mcpCalls.length > 0 ? mcpCalls : undefined,
-                      // CRITICAL: Include step data for inline display
-                      thinkingSteps: finalThinkingSteps, // Structured thinking steps from COT
-                      reasoningTrace: thinkingToSave || undefined, // Full reasoning text (single string for legacy)
-                      toolCalls: finalToolCalls, // Tool calls made during response
-                      toolResults: finalToolResults, // Results from tool executions
-                      metadata: {
-                        // Create fresh extensible object to avoid "Object is not extensible" errors
-                        ...JSON.parse(JSON.stringify(safeData)),
-                        // IMPORTANT: Save thinking content for persistence after reload
-                        thinkingContent: thinkingToSave || undefined,
-                        // IMPORTANT: Save individual thinking blocks for multi-block display
-                        thinkingBlocks: thinkingBlocksArray.length > 0 ? thinkingBlocksArray : undefined,
-                        // IMPORTANT: Also save mcpCalls in metadata for database persistence
-                        mcpCalls: mcpCalls.length > 0 ? mcpCalls : undefined,
-                        pipelineMetrics: {
-                          stageTiming: currentPipelineState.stageTiming,
-                          toolRounds: currentPipelineState.activeToolRound
-                        }
-                      }
-                    });
                   }
 
                   // MODERN FIX: Clear active tool execution indicators AFTER final message is queued
@@ -2566,6 +5912,124 @@ export const useChatStream = ({
                 case 'keep_alive':
                   // Server keepalive events - no action needed, timeout already reset above
                   break;
+
+                // ==========================================================
+                // Task #158 — in-browser Python/JS sandbox (Claude.ai parity)
+                //
+                // The chat pipeline emits `browser_exec_request` when the
+                // model wants a short snippet evaluated (math, data parse,
+                // quick plot). We dispatch through sandboxManager, then
+                // POST the result envelope back to /api/chat/sandbox-result
+                // so the backend can feed it into the model's next turn as
+                // a tool_result.
+                // ==========================================================
+                case 'browser_exec_request': {
+                  const req = safeData as unknown as BrowserExecRequest;
+                  if (!req?.requestId || !req?.code || !req?.language) {
+                    console.warn('[sandbox] malformed browser_exec_request', safeData);
+                    break;
+                  }
+                  // Record the request as a tool_use-shaped content block so
+                  // MessageBubble renders a slot for SandboxExecCard.
+                  const sandboxBlockIndex = contentBlocksRef.current.length;
+                  const sandboxBlock: ContentBlock = {
+                    id: `sandbox-${req.requestId}`,
+                    index: sandboxBlockIndex,
+                    type: 'tool_use',
+                    content: JSON.stringify(req),
+                    isComplete: false,
+                    timestamp: Date.now(),
+                    toolName: req.language === 'python' ? 'Python Sandbox' : 'JS Sandbox',
+                    toolId: req.requestId,
+                  };
+                  setContentBlocks(prev => [...prev, sandboxBlock]);
+                  contentBlocksRef.current = [...contentBlocksRef.current, sandboxBlock];
+
+                  // Lazy-import the sandbox manager and run. The POST back
+                  // to /api/chat/sandbox-result re-joins the pending turn
+                  // on the server side, so the model sees the result as a
+                  // tool_result on its next iteration.
+                  (async () => {
+                    try {
+                      const mod = await import('../../../sandbox');
+                      const manager = mod.getSandboxManager();
+                      const result: BrowserExecResult = await manager.execute(req);
+                      // Fire-and-forget POST — backend only needs ok/fail.
+                      try {
+                        const token = localStorage.getItem('auth_token') || '';
+                        await fetch(apiEndpoint('/chat/sandbox-result'), {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                          },
+                          body: JSON.stringify(result),
+                        });
+                      } catch (postErr) {
+                        // Non-fatal — the turn will time out server-side if
+                        // the envelope never arrives.
+                        console.warn('[sandbox] POST /sandbox-result failed', postErr);
+                      }
+                      setContentBlocks(prev => prev.map(b =>
+                        b.id === sandboxBlock.id
+                          ? { ...b, isComplete: true, result: result as unknown }
+                          : b
+                      ));
+                      contentBlocksRef.current = contentBlocksRef.current.map(b =>
+                        b.id === sandboxBlock.id
+                          ? { ...b, isComplete: true, result: result as unknown }
+                          : b
+                      );
+                    } catch (err) {
+                      console.error('[sandbox] execute failed', err);
+                      const errResult: BrowserExecResult = {
+                        requestId: req.requestId,
+                        ok: false,
+                        stdout: '',
+                        stderr: err instanceof Error ? err.message : String(err),
+                        durationMs: 0,
+                        errorCode: 'UNKNOWN',
+                      };
+                      setContentBlocks(prev => prev.map(b =>
+                        b.id === sandboxBlock.id
+                          ? { ...b, isComplete: true, result: errResult as unknown, error: errResult.stderr }
+                          : b
+                      ));
+                    }
+                  })();
+                  break;
+                }
+
+                case 'browser_exec_result': {
+                  // Server-side echo after /api/chat/sandbox-result. Used
+                  // purely to surface the final envelope on re-hydrated
+                  // history views (the live run path already filled the
+                  // block via the async handler above).
+                  const result = safeData as unknown as BrowserExecResult;
+                  if (!result?.requestId) break;
+                  const existingId = `sandbox-${result.requestId}`;
+                  setContentBlocks(prev => prev.map(b =>
+                    b.id === existingId
+                      ? {
+                          ...b,
+                          isComplete: true,
+                          result: result as unknown,
+                          error: result.ok ? undefined : result.stderr,
+                        }
+                      : b
+                  ));
+                  contentBlocksRef.current = contentBlocksRef.current.map(b =>
+                    b.id === existingId
+                      ? {
+                          ...b,
+                          isComplete: true,
+                          result: result as unknown,
+                          error: result.ok ? undefined : result.stderr,
+                        }
+                      : b
+                  );
+                  break;
+                }
 
                 default:
                   // FALLBACK HANDLER: Log unknown event types and attempt to render as content
@@ -2713,6 +6177,34 @@ export const useChatStream = ({
         );
 
         if (isStreamTimeout) {
+          // Phase I (task #154) — durable-stream resume. If the server
+          // handed us a turnId in stream_start and we weren't already
+          // finalized, try the /tail endpoint to catch up missed frames.
+          // This is a best-effort retry: the backend is correct even
+          // if we skip it.
+          if (resumeTurnIdRef.current && !hasCompletedStream) {
+            console.warn(
+              '[SSE] Stream connection lost — attempting durable resume via /tail',
+              { turnId: resumeTurnIdRef.current, lastSeq: lastSeqRef.current }
+            );
+            // 500ms back-off per spec so the socket has a chance to
+            // settle before we hit the tail endpoint.
+            await new Promise(r => setTimeout(r, 500));
+            try {
+              await attemptTailResume(
+                sessionId,
+                resumeTurnIdRef.current,
+                lastSeqRef.current,
+                token!,
+                user?.id || user?.userId || ''
+              );
+            } catch (resumeErr) {
+              // Degrade to the pre-#154 behavior — user keeps the
+              // partial content they already have.
+              console.warn('[SSE] /tail resume failed, falling back to existing content', resumeErr);
+            }
+            return;
+          }
           // Stream connection lost - gracefully finalize with whatever content we have
           console.warn('[SSE] Stream connection lost (browser timeout). Finalizing with existing content.');
           // Don't propagate to onError - the user already has partial content displayed
@@ -2831,16 +6323,95 @@ export const useChatStream = ({
     thinkingMetrics,
     thinkingProgress, // Thinking progress for real progress indicator
     ttftMs, // Time to First Token - for debugging slow responses
+    turnStartedAt, // ms ts of the current turn-start (LiveTurnStatus)
+    liveTokensIn, // running ↑ input tokens (LiveTurnStatus)
+    liveTokensOut, // running ↓ output tokens (LiveTurnStatus)
+    liveActivity, // short summary of what the model is doing right now
     pipelineState,
     animationMode,
     updateAnimationMode,
     cotSteps, // Chain of Thought steps for COT UI display
     contentBlocks, // Interleaved content blocks for thinking/text display
+    canonicalContentBlocks: canonicalReducerState.contentBlocks,
     contextCompaction, // Context compaction notification data (auto-dismisses after 5s)
     normalizedEvents, // Normalized stream events (UNIFIED_STREAM=true path)
+    runningCost, // v0.6.7 fix 2 — streaming running cost (USD) from cost_delta events
+    // Phase G (task #152) — trust / observability state slots
+    handoffEvent, // smart-router / multi-model handoff envelope
+    retryEvents, // tool-execution retry envelopes (list)
+    currentStage, // active pipeline stage (discover/query/analyze/generate/verify)
+    stageTimings, // elapsed-ms per stage (hover tooltips)
+    ragCitations, // per-chunk platform RAG hits
+    correctionEvent, // self-correction before/after envelope
+    warnings, // soft warnings (level/source/code/message)
+    ragStatus, // rag retrieval status line payload
+    memoryStatus, // memory check status line payload
+    dlpScan, // DLP scan status (scanning/passed/redacted/blocked)
+    toolCacheHits, // map of tool name → cache-hit info
+    selfCritique, // self-critique summary
+    hallucinationWarning, // hallucination warning envelope
+    // Phase H (task #153) — artifact / image / session / memory state slots.
+    artifactPanel, // streaming artifact state (open/delta/close lifecycle)
+    imageProgress, // live image-gen progress envelope
+    // visualRenders / appRenders / artifactRenders are ripped — those wire
+    // frames now route through applyCanonicalFrame into the typed-block
+    // contentBlocks[] array and render inline inside AgenticActivityStream.
+    // Wave 3 (#525) — per-message intent classification + tool shortlist
+    // keyed by assistant messageId. Consumed by ToolShortlistChip
+    // in ChatMessages.
+    intentClassifications,
+    toolShortlists,
+    // #502 — sub-agent lifecycle entries from sub_agent_* envelopes.
+    // Consumed by ChatMessages to render SubAgentCard per active dispatch.
+    subAgents,
+    // P0-1 part 2 — same data scoped per messageId so older message bubbles
+    // render only the sub-agents dispatched DURING their own turn. Consumers
+    // can prefer this map when available; the flat `subAgents` stays for
+    // legacy callers and chrome that doesn't need per-message scoping.
+    subAgentsByMessageId,
+    // P1-6 — per-message streaming-table state. ChatMessages threads
+    // `streamingTablesByMessageId[message.id]` into each MessageBubble so
+    // tables render inline alongside prose, scoped to the message that
+    // produced them.
+    streamingTablesByMessageId,
+    // Phase 27 — per-message findings artifacts (mocks 03, 07, 08, 09).
+    findingsByMessageId,
+    // #502 — per-message inline widgets (kpi_grid / savings_card /
+    // stages_strip / wave_timeline / runbook / stack_grid / annotated_code).
+    inlineWidgetsByMessageId,
+    // AC-B — per-message synth lifecycle entries. ChatMessages renders
+    // a <SynthCard> per entry showing the model's authored Python
+    // streaming in, the approval CTA, the executing/stdout state, and
+    // the completion/failed state.
+    synthsByMessageId,
+    // AC-D — per-message clickable download tiles. ChatMessages
+    // renders one <DownloadTile> per entry with filename + size +
+    // click → presigned MinIO URL.
+    artifactEmitsByMessageId,
+    memoryWrites, // list of memory_write pills fired this turn
+    sessionRename, // latest session-rename animation payload
+    // Phase I (task #154) — durable-stream resume visible signal.
+    // Brief "↻ Reconnected" pill that renders for 2s after a successful
+    // tail-replay recovers from a mid-turn disconnect. `null` otherwise.
+    reconnectedPill,
+    // Audit §10 step 16 — HITL approval cards (mocks 09, 15).
+    // (follow_up chip row ripped 2026-05-12 — user directive.)
+    hitlApprovalsByMessageId,
+    // Q1-fix-8 (2026-05-12) — expose the setter so the Approve/Deny
+    // click handler in ChatContainer can transition card status from
+    // `pending` to `approved`/`denied` after the POST resolves. Without
+    // this the buttons stay clickable forever even after a successful
+    // approval since the live state never updates.
+    setHitlApprovalsByMessageId,
+    // B8 — per-message content_filter compliance banner. ChatMessages
+    // renders <ContentFilterBanner> when set. Replaces silent-truncate
+    // end_turn UX for Azure RAI / Vertex SAFETY / Vertex RECITATION.
+    contentFilterBannerByMessageId,
   };
 };
 
 // Back-compat alias for importers mid-migration.
 // Remove after all call sites migrate to `useChatStream`.
 export const useSSEChat = useChatStream;
+
+// build-bust: 1fd3915c-rebuild-1

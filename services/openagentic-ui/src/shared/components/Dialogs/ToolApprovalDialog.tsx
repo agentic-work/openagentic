@@ -63,13 +63,13 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
         }}
       >
         <motion.div
-          initial={{ scale: 0.95, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.95, opacity: 0, y: 20 }}
-          className="rounded-xl p-6 max-w-3xl w-full shadow-2xl max-h-[80vh] overflow-hidden flex flex-col"
+          initial={{ scale: 0.96, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.96, opacity: 0 }}
+          transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+          className="rounded-panel p-6 max-w-3xl w-full shadow-soft-lg max-h-[80vh] overflow-hidden flex flex-col"
           style={{
-            backgroundColor: 'var(--color-surface)',
-            border: '1px solid var(--color-border)'
+            backgroundColor: 'var(--surface-2)',
           }}
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
         >
@@ -178,7 +178,7 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
           <div className="flex gap-3">
             <button
               onClick={onReject}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-pill font-medium transition-[background,color,opacity,transform] duration-200 ease-emphasized active:scale-[0.98]"
               style={{
                 backgroundColor: 'var(--color-surfaceSecondary)',
                 color: 'var(--color-text)',
@@ -196,7 +196,7 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
             </button>
             <button
               onClick={onApprove}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-pill font-medium transition-[background,color,opacity,transform] duration-200 ease-emphasized active:scale-[0.98]"
               style={{
                 backgroundColor: 'var(--color-primary)',
                 color: 'white'

@@ -10,6 +10,7 @@
  */
 
 import { pino } from 'pino';
+import { ModelConfigurationService } from './ModelConfigurationService.js';
 
 const logger = pino({
   name: 'dynamic-model-manager',
@@ -48,15 +49,12 @@ class DynamicModelManager {
    * If not set in env, caller should use EmbeddingService.getDimension() for auto-detection
    */
   async getEmbeddingModel(): Promise<{ model: string; dimensions: number } | null> {
-    // Get model from env - NO HARDCODED FALLBACKS
-    const embeddingModel = process.env.EMBEDDING_MODEL ||
-                          process.env.EMBEDDING_OLLAMA_MODEL ||
-                          process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT ||
-                          process.env.VERTEX_AI_EMBEDDING_MODEL ||
-                          process.env.AWS_BEDROCK_EMBEDDING_MODEL;
+    // DB is SoT — replaced env fallback chain with ModelConfigurationService lookup.
+    const embeddingAssignment = await ModelConfigurationService.getServiceModel('embedding').catch(() => null);
+    const embeddingModel = embeddingAssignment?.modelId ?? '';
 
     if (!embeddingModel) {
-      logger.error('No embedding model configured! Set EMBEDDING_MODEL in environment.');
+      logger.error('No embedding model configured! Ensure the embedding model is registered in the DB.');
       return null;
     }
 

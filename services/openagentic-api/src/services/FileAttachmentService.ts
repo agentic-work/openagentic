@@ -357,11 +357,12 @@ export class FileAttachmentService {
         // Simple text files
         extractedText = await fs.readFile(file.upload_path, 'utf-8');
       } else if (file.mime_type === 'application/pdf') {
-        // Use pdf-parse for PDF text extraction
+        // Use pdf-parse v2 class API for PDF text extraction
         try {
-          const pdfParse = await import('pdf-parse');
+          const { PDFParse } = await import('pdf-parse');
           const dataBuffer = await fs.readFile(file.upload_path);
-          const pdfData = await pdfParse.default(dataBuffer);
+          const parser = new PDFParse({ data: new Uint8Array(dataBuffer) });
+          const pdfData: any = await parser.getText();
           extractedText = pdfData.text || '';
         } catch (pdfError) {
           this.logger.warn({ error: pdfError, fileId }, 'PDF parsing failed, no text extracted');
