@@ -378,3 +378,4 @@ playwright-report/
 .uc-harness-token
 .a2a-queue/
 .auth/
+.e2e-logs/
