@@ -63,7 +63,7 @@ RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('/shared/
 COPY services/openagentic-workflows/package.json ./
 # Workflows declares @agentic-work/llm-sdk as workspace:* — rewrite to a
 # file: spec resolvable inside the standalone image.
-RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));if(p.dependencies&&p.dependencies['@agentic-work/llm-sdk']==='workspace:*'){p.dependencies['@agentic-work/llm-sdk']='file:/shared/llm-sdk';fs.writeFileSync('package.json',JSON.stringify(p,null,2));}"
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));let touched=false;if(p.dependencies&&p.dependencies['@agentic-work/llm-sdk']==='workspace:*'){p.dependencies['@agentic-work/llm-sdk']='file:/shared/llm-sdk';touched=true;}if(p.dependencies&&p.dependencies['@openagentic/workflow-engine']==='workspace:*'){p.dependencies['@openagentic/workflow-engine']='file:/shared/workflow-engine';touched=true;}if(touched){fs.writeFileSync('package.json',JSON.stringify(p,null,2));}"
 RUN npm install --legacy-peer-deps
 # Force rebuild of native deps (isolated-vm) from source — prebuild-install
 # silently exits 0 when no prebuild matches; explicit rebuild guarantees the

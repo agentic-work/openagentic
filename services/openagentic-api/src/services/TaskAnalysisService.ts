@@ -41,6 +41,10 @@ export interface TaskRequirements {
   hasImages?: boolean;
   tools?: any[];
   requestedModel?: string;  // Model explicitly requested by user/system
+  // Per-request slider state (position + per-tier overrides). Optional.
+  // Used by completion-simple.stage to pick the routed tier on Ollama
+  // boot when the user hasn't pinned a model.
+  sliderConfig?: { position?: number; overrides?: Record<string, unknown> };
   // Caller-supplied metadata. AI Builder requests carry a huge system prompt
   // (full canvas state + flow JSON + MCP tool list = 10k+ chars) but a short
   // user message; set `source: 'ai-builder'` to force premium-tier routing.

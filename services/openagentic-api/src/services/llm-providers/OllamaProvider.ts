@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: refactor NormalizerState shape for OSS llm-sdk drift
 /**
  * Ollama Provider
  *
@@ -15,10 +14,8 @@ import {
   type ProviderHealth,
   type ProviderConfig,
   type DiscoveredModel,
+  type NormalizerState,
 } from './ILLMProvider.js';
-// NormalizerState moved into @agentic-work/llm-sdk in OSS; keep a local
-// alias so existing normalizeChunk signatures don't need a rewrite.
-type NormalizerState = Record<string, unknown>;
 import { getRedisClient } from '../../utils/redis-client.js';
 import { ollamaAgent } from '../../utils/ollama-agent.js';
 import { NormalizedStreamEvent } from '../NormalizedStreamTypes.js';

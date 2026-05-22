@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: refactor for OSS (upstream type drift)
 /**
  * LLM Metrics Service
  *
@@ -725,15 +724,16 @@ export class LLMMetricsService {
     const FIVE_MIN = 5 * 60_000;
     if (Date.now() - this.cloudEquivalentRefreshedAt > FIVE_MIN && !this.cloudEquivalentRefreshing) {
       this.cloudEquivalentRefreshing = true;
+      // OSS schema doesn't track `state` or per-token cost columns
+      // directly; rank by cost_per_request + priority instead.
       void prisma.modelRoleAssignment.findFirst({
         where: {
           role: 'chat',
-          state: 'active' as any,
           enabled: true,
           provider: { not: 'ollama' },
         },
         orderBy: [
-          { cost_per_input_token_usd: 'asc' },
+          { cost_per_request: 'asc' },
           { priority: 'asc' },
         ],
         select: { model: true, provider: true },

@@ -1571,7 +1571,7 @@ model EnrichedTool {
   category         String?
   enabled          Boolean  @default(true)
   output_template  String?  @db.Text
-  truncate_summary Boolean? @default(false)
+  truncate_summary String?  @db.Text  // Template body (LiquidJS) — null = no summarization
   enriched         Json?
   enriched_at      DateTime @default(now())
   source_version   String?

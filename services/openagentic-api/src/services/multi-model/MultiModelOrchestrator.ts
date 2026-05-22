@@ -65,7 +65,8 @@ export class MultiModelOrchestrator {
    * the multi-model path always uses the best models admin has configured;
    * UserModelBudgetService enforces per-user spend caps at dispatch time.
    */
-  async getAdminRoleAssignments(): Promise<{ roles: MultiModelConfig['roles'] }> {
+  async getAdminRoleAssignments(_sliderPosition?: number): Promise<{ roles: MultiModelConfig['roles'] }> {
+    void _sliderPosition;
     const baseConfig = getDefaultMultiModelConfig();
     const tier = 'PREMIUM' as const;
 
@@ -103,7 +104,13 @@ export class MultiModelOrchestrator {
   async analyzeRequest(
     messages: unknown[],
     availableTools: unknown[],
+    // sliderConfig is accepted for caller compatibility. OSS routes on
+    // complexity + tool shape only; the slider position is ignored here
+    // but kept to avoid a breaking signature change for callers that still
+    // pass it.
+    _sliderConfig?: { position?: number; overrides?: Record<string, unknown> },
   ): Promise<MultiModelRoutingDecision> {
+    void _sliderConfig;
     const lastMessage = messages[messages.length - 1] as { content?: string } | undefined;
     const query = typeof lastMessage?.content === 'string' ? lastMessage.content : '';
 

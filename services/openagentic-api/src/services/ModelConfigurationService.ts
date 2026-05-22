@@ -57,6 +57,13 @@ export interface ModelConfiguration {
   services: CriticalServiceModels;
   // Tier mapping (economical / balanced / premium) derived from available models
   tiers: ModelTierMap;
+  // Auto-derived slider defaults (used by SliderService when a user hasn't
+  // pinned a position). `autoConfigured` is true when only one model is
+  // available so the slider snaps to that model's optimal position.
+  sliderConfig: {
+    autoConfigured: boolean;
+    defaultPosition: number;
+  };
   // Source of configuration
   source: 'database' | 'environment' | 'fallback';
   // Last refresh timestamp
@@ -418,11 +425,19 @@ class ModelConfigurationServiceClass {
     // Derive tier mapping from available models
     const tiers = this.computeTiers(models);
 
+    // Auto-configure the slider when only one model is available — snap
+    // to position 50 (balanced) since there's nothing else to pick from.
+    const sliderConfig = {
+      autoConfigured: models.length <= 1,
+      defaultPosition: 50,
+    };
+
     const config: ModelConfiguration = {
       availableModels: models,
       defaultModel,
       services,
       tiers,
+      sliderConfig,
       source,
       lastRefresh: new Date(),
     };

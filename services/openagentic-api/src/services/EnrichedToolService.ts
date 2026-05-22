@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: refactor for OSS (upstream type drift)
 /**
  * EnrichedToolService — Postgres-backed SoT for per-T1-tool metadata.
  *

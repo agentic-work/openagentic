@@ -156,6 +156,33 @@ export type StreamFormat = CanonicalStreamFormat;
 export type { CanonicalStreamFormat } from '@agentic-work/llm-sdk/lib/normalizers/index.js';
 
 /**
+ * Per-stream bookkeeping used by provider-specific normalizers
+ * (OllamaProvider.normalizeOllamaChunk, AWSBedrockProvider's Gemma path).
+ * The fields are intentionally optional + permissive — each normalizer
+ * only writes the keys it needs and leaves the rest unset.
+ */
+export interface NormalizerState {
+  streamStartEmitted?: boolean;
+  model?: string;
+  blockTypes: Map<number, { type: string; id: string }>;
+  thinkingId?: string | null;
+  thinkingStartTime?: number | null;
+  thinkingAccumulated?: string;
+  textBlockId?: string | null;
+  toolIndexToId: Map<number, string>;
+  pendingTools: Map<string, string>;
+}
+
+export function createNormalizerState(): NormalizerState {
+  return {
+    blockTypes: new Map(),
+    toolIndexToId: new Map(),
+    pendingTools: new Map(),
+    thinkingAccumulated: '',
+  };
+}
+
+/**
  * Discovered model from provider catalog — used by Model Garden for discovery
  */
 export interface DiscoveredModel {

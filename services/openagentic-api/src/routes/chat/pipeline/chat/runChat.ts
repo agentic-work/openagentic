@@ -1,4 +1,3 @@
-// @ts-nocheck — OpenAgenticProxyClient is enterprise-only in OSS edition
 /**
  * Chat pipeline — entry point.
  *

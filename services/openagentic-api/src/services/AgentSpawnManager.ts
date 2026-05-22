@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: refactor for OSS (upstream type drift)
 /**
  * AgentSpawnManager
  *
@@ -160,7 +159,7 @@ export class AgentSpawnManager {
     let fallbackTier = 'auto'; // 'auto' = let Smart Router pick
     try {
       const { ModelConfigurationService: mcs } = await import('./ModelConfigurationService.js');
-      const tiers = await mcs.getSliderTiers();
+      const tiers = await mcs.getTierModels();
       fallbackTier = tiers.economical || 'auto';
       const roleToTier: Record<string, string> = {
         artifact_creation: tiers.premium || tiers.balanced,

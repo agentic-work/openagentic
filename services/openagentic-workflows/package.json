@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@agentic-work/llm-sdk": "workspace:*",
-    "@openagentic/workflow-engine": "file:../shared/workflow-engine",
+    "@openagentic/workflow-engine": "workspace:*",
     "@fastify/cors": "^11.2.0",
     "@prisma/client": "^6.4.1",
     "axios": "^1.15.1",

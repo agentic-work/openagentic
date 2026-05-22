@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: refactor for OSS (upstream type drift)
 /**
  * Validation Pipeline Stage
  * 
@@ -508,7 +507,7 @@ export class ValidationStage implements PipelineStage {
               maxTokens: (context.request as any).maxTokens || (context.config as any)?.maxTokens || 4096,
               temperature: (context.request as any).temperature ?? (context.config as any)?.temperature ?? 0.7,
             };
-            const decision = await router.routeRequest(routerRequest, undefined, context.user?.id);
+            const decision = await router.routeRequest(routerRequest, context.user?.id);
             const picked = decision?.selectedModel?.modelId;
             if (picked) {
               this.logger.info(

@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: refactor for OSS (upstream type drift)
 /**
  * SliderService - Manages intelligence slider for cost/quality tradeoff
  *

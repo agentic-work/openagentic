@@ -199,6 +199,31 @@ class UnifiedRedisClient {
     }
   }
 
+  // ─── List ops (used by StreamRingBuffer for per-turn frame replay) ─────
+  async rPush(key: string, value: string | string[]): Promise<number> {
+    if (!this.isConnected()) return 0;
+    const fullKey = `${this.config.keyPrefix}${key}`;
+    return await this.client!.rPush(fullKey, value);
+  }
+
+  async lTrim(key: string, start: number, stop: number): Promise<string> {
+    if (!this.isConnected()) return 'OK';
+    const fullKey = `${this.config.keyPrefix}${key}`;
+    return await this.client!.lTrim(fullKey, start, stop);
+  }
+
+  async lRange(key: string, start: number, stop: number): Promise<string[]> {
+    if (!this.isConnected()) return [];
+    const fullKey = `${this.config.keyPrefix}${key}`;
+    return await this.client!.lRange(fullKey, start, stop);
+  }
+
+  async lLen(key: string): Promise<number> {
+    if (!this.isConnected()) return 0;
+    const fullKey = `${this.config.keyPrefix}${key}`;
+    return await this.client!.lLen(fullKey);
+  }
+
   async ping(): Promise<boolean> {
     if (!this.isConnected()) return false;
 
