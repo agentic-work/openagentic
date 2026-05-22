@@ -21,8 +21,7 @@
     "generate:docs": "npx tsx scripts/docs/generate.ts"
   },
   "dependencies": {
-    "@agentic-work/openagentic-sdk": "file:../../../openagentic-openagentic-sdk",
-    "@agentic-work/llm-sdk": "file:../../../openagentic-sdk",
+    "@agentic-work/llm-sdk": "workspace:*",
     "@heroicons/react": "^2.2.0",
     "@monaco-editor/react": "^4.7.0",
     "@radix-ui/themes": "^3.3.0",

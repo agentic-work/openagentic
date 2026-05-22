@@ -23,8 +23,6 @@ import { FlowsSidebar } from '@/features/workflows/components/FlowsSidebar';
 import type { WorkflowTemplateItem } from '@/features/workflows/utils/workflowTemplates';
 import { CodeSessionsPanel } from './CodeSessionsPanel';
 import type { AgentTreeNode } from './v2/AgentTree';
-import { FileTreeSection } from '@/codemode/components/FileTreeSection';
-import { CollectionsSection } from '@/codemode/components/CollectionsSection';
 
 /**
  * Format timestamp for display with relative time for recent updates
@@ -413,17 +411,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         })()}
 
         {/* Content Area - Different based on mode */}
-        {appMode === 'code' && canUseCodeMode ? (
-          /* CODE MODE: file tree in sidebar (A.13). FileTreeSection owns
-             the workspace explorer; FilePanel (sibling in ChatContainer)
-             owns the editor pane. CollectionsSection sits below the file
-             tree and surfaces the user's per-user Milvus collection +
-             indexed files. */
-          <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
-            <FileTreeSection rootPath="/workspaces" />
-            <CollectionsSection />
-          </div>
-        ) : appMode === 'flows' && canUseFlows ? (
+        {appMode === 'flows' && canUseFlows ? (
           /* FLOWS MODE: Show workflow sidebar with agents, workflows, templates
              Wrapped in flex-1 min-h-0 to constrain height so Settings stays at bottom */
           <div className="flex-1 min-h-0 overflow-hidden">

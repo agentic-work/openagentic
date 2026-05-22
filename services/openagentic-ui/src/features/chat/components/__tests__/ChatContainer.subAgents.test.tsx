@@ -151,10 +151,6 @@ vi.mock('@/stores/useModelStore', () => ({
   }),
 }));
 
-vi.mock('@/stores/useCodeModeStore', () => ({
-  useActiveSessionId: () => null,
-  useCodeModeStore: () => ({}),
-}));
 
 // ---------------------------------------------------------------------------
 // Chat session + MCP + permissions hooks
@@ -211,9 +207,6 @@ vi.mock('../UnifiedAgentActivity', () => ({
 // ---------------------------------------------------------------------------
 // Code-mode WebSocket hook (used at top of Chat)
 // ---------------------------------------------------------------------------
-vi.mock('@/features/code/hooks/useCodeModeWebSocket', () => ({
-  useCodeModeWebSocket: () => ({}),
-}));
 
 // ---------------------------------------------------------------------------
 // Heavy / lazy-loaded children — replace with stubs so render is cheap
@@ -247,7 +240,6 @@ vi.mock('@/components/ui/GlassmorphismContainer', () => ({ default: ({ children 
 vi.mock('@/shared/components/StreamErrorBoundary', () => ({ default: ({ children }: any) => children ?? null }));
 vi.mock('@/shared/components/ErrorBoundary', () => ({ default: ({ children }: any) => children ?? null }));
 vi.mock('@/shared/components/Dialogs/ToolApprovalDialog', () => ({ default: () => null }));
-vi.mock('@/features/code/components', () => ({ CodeModeLayout: () => null }));
 vi.mock('@/features/workflows', () => ({ WorkflowsPage: () => null }));
 vi.mock('@/features/workflows/components/WorkspaceNavRail', () => ({
   WorkspaceNavRail: () => null,

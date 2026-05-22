@@ -64,8 +64,17 @@ RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.
 RUN rm -f pnpm-lock.yaml
 RUN echo "shamefully-hoist=true" > .npmrc
 
-# Install dependencies (this also runs the llm-sdk's `prepare` hook → builds dist/).
+# Install dependencies.
 RUN pnpm install --no-frozen-lockfile
+# Build the staged llm-sdk so Vite can resolve its dist/index.js entry.
+# Then replace pnpm's file:-snapshot copy with a direct symlink to the
+# freshly-built /shared/llm-sdk so Vite sees the populated dist/.
+RUN cd /shared/llm-sdk && \
+    /app/node_modules/.bin/tsc -p tsconfig.json && \
+    node scripts/fix-esm-imports.js && \
+    rm -rf /app/node_modules/@agentic-work/llm-sdk && \
+    mkdir -p /app/node_modules/@agentic-work && \
+    ln -sfn /shared/llm-sdk /app/node_modules/@agentic-work/llm-sdk
 
 # Add cache-busting ARG
 ARG CACHEBUST=1

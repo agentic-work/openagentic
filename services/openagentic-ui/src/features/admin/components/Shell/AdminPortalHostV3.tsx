@@ -14,7 +14,6 @@ import { DefaultModelsPage } from '../../pages-v3/DefaultModelsPage'
 import { ModelRegistryPage } from '../../pages-v3/ModelRegistryPage'
 import { WorkflowsPage } from '../../pages-v3/WorkflowsPage'
 import { AuditLogsPage } from '../../pages-v3/AuditLogsPage'
-import { CodeModeHubPage, type CodeModeTab } from '../../pages-v3/CodeModeHubPage'
 import { SynthesisHubPage, type SynthesisTab } from '../../pages-v3/SynthesisHubPage'
 import { PromptsHubPage } from '../../pages-v3/PromptsHubPage'
 import { MonitoringHubPage, type MonitoringTab } from '../../pages-v3/MonitoringHubPage'
@@ -533,20 +532,7 @@ function renderPage(leaf: AdminLeaf) {
       </LeafErrorBoundary>
     )
   }
-
-  // Code Mode — native v3, consolidates SIX v2 leaves (cm-settings,
-  // cm-global, cm-mcp, cm-skills, cm-users, cm-metrics) into a single
-  // tabbed hub. Leaf id picks the initial sub-tab. Read-only; mutations
-  // route back through v2 (?v3=0) for now.
-  if (leaf.id.startsWith('cm-')) {
-    const initialTab = leaf.id.slice(3) as CodeModeTab
-    return (
-      <LeafErrorBoundary leafName={leaf.name}>
-        <CodeModeHubPage initialTab={initialTab} />
-      </LeafErrorBoundary>
-    )
-  }
-
+  
   // Tool Synthesis — native v3, consolidates THREE v2 leaves
   // (synth-management, synth-approvals, synth-stats) into a single
   // hub with sub-tabs. Leaf id picks the initial sub-tab; the legacy
