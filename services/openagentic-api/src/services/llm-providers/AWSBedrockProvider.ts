@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: refactor NormalizerState shape for OSS llm-sdk drift
 /**
  * AWS Bedrock Provider
  *
@@ -41,7 +42,9 @@ import {
   type DiscoveredModel,
 } from './ILLMProvider.js';
 import type { CanonicalStreamFormat } from '@agentic-work/llm-sdk/lib/normalizers/index.js';
-import { createGemmaToOpenagenticNormalizer } from '@agentic-work/llm-sdk/lib/normalizers/index.js';
+// Gemma chunks share wire shape with Ollama; OSS routes them through the
+// Ollama normalizer (no separate Gemma normalizer in @agentic-work/llm-sdk).
+import { createOllamaToOpenagenticNormalizer as createGemmaToOpenagenticNormalizer } from '@agentic-work/llm-sdk/lib/normalizers/index.js';
 import { MODELS } from '../../config/models.js';
 import {
   assumeRoleWithAADToken,

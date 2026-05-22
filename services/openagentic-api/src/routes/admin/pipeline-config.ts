@@ -247,7 +247,7 @@ const pipelineConfigRoutes: FastifyPluginAsync = async (fastify, opts) => {
       }
 
       // Also get slider tier recommendations for guidance
-      const sliderTiers = registry.getSliderTierRecommendations();
+      const sliderTiers = registry.getTierRecommendations();
 
       return reply.send({
         success: true,

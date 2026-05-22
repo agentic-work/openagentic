@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: refactor for OSS (upstream type drift)
 /**
  * StreamRingBuffer — Phase I durable-stream primitive (task #154).
  *

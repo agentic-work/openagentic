@@ -1510,6 +1510,79 @@ model SystemPrompt {
   @@schema("admin")
 }
 
+// Optional RBAC-aware system prompt overrides (per-role / per-group).
+model RbacSystemPrompt {
+  id         String   @id @default(uuid())
+  role_key   String
+  body       String   @db.Text
+  version    Int      @default(1)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([role_key, version])
+  @@map("rbac_system_prompts")
+  @@schema("admin")
+}
+
+// Named service prompts keyed by purpose (e.g. "slack-summary", "title-gen").
+model ServicePrompt {
+  id          String   @id @default(uuid())
+  prompt_key  String
+  body        String   @db.Text
+  description String?
+  audience    String?  @default("all")
+  is_active   Boolean  @default(true)
+  version     Int      @default(1)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([prompt_key, version])
+  @@map("service_prompts")
+  @@schema("admin")
+}
+
+// Append-only audit log for flow/workflow governance events.
+model FlowAuditLog {
+  id               String   @id @default(uuid())
+  action           String
+  target_type      String
+  target_id        String?
+  outcome          String   @default("success")
+  actor_user_id    String?
+  actor_user_email String?
+  actor_ip         String?
+  metadata         Json?    @default("{}")
+  created_at       DateTime @default(now())
+
+  @@index([action])
+  @@index([target_type, target_id])
+  @@index([actor_user_id])
+  @@index([created_at])
+  @@map("flow_audit_log")
+  @@schema("admin")
+}
+
+// Cache of enriched (LLM-summarized) MCP tool descriptions, keyed by slug.
+model EnrichedTool {
+  id               String   @id @default(uuid())
+  slug             String   @unique
+  display_name     String?
+  category         String?
+  enabled          Boolean  @default(true)
+  output_template  String?  @db.Text
+  truncate_summary Boolean? @default(false)
+  enriched         Json?
+  enriched_at      DateTime @default(now())
+  source_version   String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@index([category])
+  @@map("enriched_tools")
+  @@schema("admin")
+}
+
 model TokenUsage {
   id                String   @id @default(uuid())
   user_id           String

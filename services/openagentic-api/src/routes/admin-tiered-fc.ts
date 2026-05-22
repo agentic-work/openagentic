@@ -251,7 +251,8 @@ export const adminTieredFunctionCallingRoutes: FastifyPluginAsync = async (fasti
         source: 'default' as const  // Use 'default' for test mock config
       };
 
-      const decision = await service.makeDecision(message, mockTools, mockSliderConfig);
+      void mockSliderConfig; // unused in OSS edition (makeDecision is 2-arg)
+      const decision = await service.makeDecision(message, mockTools);
 
       return reply.send({
         input: {

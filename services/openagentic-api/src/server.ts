@@ -9,7 +9,8 @@
 
 // Centralized model config — validates DEFAULT_MODEL is set, crashes if not.
 // This import MUST be early so we fail fast before any other initialization.
-import { MODELS, getDefaultModel } from './config/models.js';
+import { MODELS } from './config/models.js';
+const getDefaultModel = () => MODELS.default;
 
 import { prisma } from './utils/prisma.js';
 import { getSecrets, logSecrets } from './config/secrets.config.js';
@@ -2346,10 +2347,7 @@ const start = async () => {
     logger.info({
       defaultModel: getDefaultModel(),
       tiersSource: 'database (ModelConfigurationService.getSliderTiers())',
-      compactionModel: MODELS.compaction,
       anthropic: MODELS.anthropic,
-      ollama: MODELS.ollama,
-      vertexChat: MODELS.vertexChat,
     }, 'Model configuration loaded from environment');
 
     // Start the workflow cron scheduler (fire-and-forget, non-fatal)

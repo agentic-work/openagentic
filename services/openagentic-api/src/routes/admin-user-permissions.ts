@@ -1855,15 +1855,8 @@ export const adminUserPermissionsRoutes = async (fastify: FastifyInstance) => {
       });
       deletedData.chatSessions = sessionsResult.count;
 
-      // 3. Delete code sessions (AWCode)
-      try {
-        const codeSessionsResult = await prisma.codeSession.deleteMany({
-          where: { user_id: userId },
-        });
-        deletedData.codeSessions = codeSessionsResult.count;
-      } catch {
-        // Table may not exist in all deployments
-      }
+      // Code Mode is removed in the OSS edition — no code_sessions to delete.
+      deletedData.codeSessions = 0;
 
       // 4. Delete user permissions
       try {

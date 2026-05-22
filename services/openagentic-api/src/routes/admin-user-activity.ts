@@ -149,25 +149,8 @@ export const adminUserActivityRoutes: FastifyPluginAsync = async (fastify: Fasti
         chatSessionsByUser.set(cs.user_id, list);
       }
 
-      // Fetch code mode provisioning status for these users
-      const codeProvisioning = userIds.length > 0
-        ? await prisma.codeModeProvisioning.findMany({
-            where: {
-              user_id: { in: userIds },
-            },
-            select: {
-              user_id: true,
-              status: true,
-              pod_name: true,
-              last_accessed_at: true,
-            },
-          })
-        : [];
-
-      const codeProvisioningByUser = new Map<string, typeof codeProvisioning[0]>();
-      for (const cp of codeProvisioning) {
-        codeProvisioningByUser.set(cp.user_id, cp);
-      }
+      // Code Mode is removed in the OSS edition — no provisioning rows to load.
+      const codeProvisioningByUser = new Map<string, { user_id: string; status: string; pod_name: string | null; last_accessed_at: Date | null }>();
 
       // Build result array
       const activeUsers = Array.from(userMap.values()).map(user => {
@@ -521,29 +504,8 @@ export const adminUserActivityRoutes: FastifyPluginAsync = async (fastify: Fasti
           },
         });
 
-        // 5. Code mode session history
-        const codeProvisioning = await prisma.codeModeProvisioning.findUnique({
-          where: { user_id: userId },
-          select: {
-            id: true,
-            status: true,
-            status_message: true,
-            environment_type: true,
-            node_name: true,
-            pod_name: true,
-            storage_quota_mb: true,
-            storage_used_mb: true,
-            openagentic_model: true,
-            provisioned_at: true,
-            last_accessed_at: true,
-            suspended_at: true,
-            suspended_reason: true,
-            last_error: true,
-            error_count: true,
-            created_at: true,
-            updated_at: true,
-          },
-        });
+        // 5. Code mode is removed in the OSS edition — no provisioning row.
+        const codeProvisioning: any = null;
 
         return reply.send({
           user: {
@@ -889,12 +851,8 @@ export const adminUserActivityRoutes: FastifyPluginAsync = async (fastify: Fasti
           },
         });
 
-        // 7. Active code mode sessions
-        const activeCodeSessions = await prisma.codeModeProvisioning.count({
-          where: {
-            status: 'ready',
-          },
-        });
+        // 7. Code Mode is removed in the OSS edition — always 0 active sessions.
+        const activeCodeSessions = 0;
 
         const responseData = {
           onlineCount,

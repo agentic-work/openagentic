@@ -768,11 +768,8 @@ export class ContextManagementService {
         select: { id: true, metadata: true },
       });
 
-      // Also check code mode sessions
-      const codeModeSessions = await prisma.aWCodeSession.findMany({
-        where: { status: 'active' },
-        select: { id: true, model: true },
-      });
+      // Code Mode is removed in the OSS edition.
+      const codeModeSessions: Array<{ id: string; model: string }> = [];
 
       // Calculate context usage distribution
       const usageDistribution = {
