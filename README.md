@@ -69,6 +69,32 @@ docker-compose.yml       ← single-node stack
 
 See [`CLAUDE.md`](./CLAUDE.md) for a service-level map and conventions.
 
+## Want managed?
+
+[agenticwork.io](https://agenticwork.io) runs openagentic for you with
+multi-tenant, SSO, audit logs, FedRAMP/HIPAA controls, and a managed
+model fleet. The hosted edition uses the same chat + flows surface; the
+OSS edition is what you'd self-host. Some `/api/admin/*` routes return
+402 with an upgrade link — that's intentional and keeps the OSS install
+free.
+
+## Contributing
+
+Outside contributions are welcome. The fastest path:
+
+1. Read [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the dev loop, what's
+   in scope, and the conventions we follow on review.
+2. Open an issue first for anything bigger than a bug fix — saves a
+   round-trip on scope.
+3. Run the local checklist from CONTRIBUTING.md before opening a PR.
+   Our CI runs on a self-hosted runner pool (we don't use GitHub-hosted
+   runners for cost reasons), so a green local run + a clean PR
+   description is what gets a maintainer to start review.
+
+By contributing you agree your changes are licensed under Apache-2.0.
+
+See also [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md).
+
 ## License
 
 [Apache-2.0](./LICENSE) © Gnomus.ai
