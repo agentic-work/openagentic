@@ -165,7 +165,7 @@ export function buildAnthropicWireBody(
   // be modified. Otherwise Anthropic / Bedrock-Claude rejects with
   //   "temperature may only be set to 1 when thinking is enabled."
   // Spec: https://docs.claude.com/en/docs/build-with-claude/extended-thinking
-  // Bug surface: chat-dev 2026-05-12 Sonnet 4.6 turn — every chat call
+  // Bug surface: dev 2026-05-12 Sonnet 4.6 turn — every chat call
   // failed because streamProvider passes temperature=0.7 and the provider
   // attaches thinking for Sonnet 4.x.
   if (thinkingWillBeAttached) {

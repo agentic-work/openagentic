@@ -237,7 +237,7 @@ kubectl get svc -n envoy-gateway-system -l gateway.envoyproxy.io/owning-gateway-
 kubectl exec -n openagentic deployment/openagentic-api -- curl -s localhost:8000/api/health | jq
 
 # Check models endpoint (via Gateway)
-curl -s https://chat-dev.openagentic.io/api/models | jq '.models[].id'
+curl -s http://localhost:8080/api/models | jq '.models[].id'
 
 # View API logs
 kubectl logs -n openagentic -l app.kubernetes.io/component=api -f
@@ -366,7 +366,7 @@ kubectl get secret openagentic-wildcard-tls -n openagentic -o jsonpath='{.data}'
 # Should show: ["tls.crt", "tls.key"]
 
 # Test TLS termination
-curl -v https://chat-dev.openagentic.io/api/health 2>&1 | grep -E "SSL|TLS|certificate"
+curl -v http://localhost:8080/api/health 2>&1 | grep -E "SSL|TLS|certificate"
 ```
 
 ### Milvus GPU issues

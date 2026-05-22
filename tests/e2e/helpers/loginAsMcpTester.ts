@@ -2,11 +2,11 @@
  * Microsoft SSO login helper for Playwright e2e specs.
  *
  * Drives the AAD interactive sign-in for `mcp-tester@openagentic.local`
- * against the live chat-dev surface, then reads `localStorage.auth_token`
+ * against the live dev surface, then reads `localStorage.auth_token`
  * for subsequent direct `fetch()` calls against the workflows API.
  *
  * Env overrides:
- *   BASE_URL          (default: https://chat-dev.openagentic.io)
+ *   BASE_URL          (default: http://localhost:8080)
  *   ADMIN_EMAIL       (default: mcp-tester@openagentic.local)
  *   ADMIN_PASSWORD    (default: TestMcp@2026)
  *
@@ -15,7 +15,7 @@
 
 import type { Page } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:8080';
 const ADMIN_EMAIL =
   process.env.ADMIN_EMAIL || 'mcp-tester@openagentic.local';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'TestMcp@2026';

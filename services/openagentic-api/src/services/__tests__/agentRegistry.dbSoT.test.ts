@@ -4,7 +4,7 @@
  *
  * Audit (2026-05-13) proved divergence: chatmode read 8 markdown files in
  * `src/agents/built-in/*.md`; Flows + Admin Console read from
- * `prisma.agent` (33 rows on chat-dev). A custom agent created via the
+ * `prisma.agent` (33 rows on the dev environment). A custom agent created via the
  * Admin UI was invisible to the chatmode Task tool.
  *
  * This TDD slice unifies the path:

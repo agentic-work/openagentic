@@ -23,7 +23,7 @@ const AUTH_FILE = path.join(__dirname, '../../.auth/user.json');
 
 setup('authenticate via Azure AD MFA', async ({ page }) => {
   // Navigate to login page
-  const baseUrl = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
+  const baseUrl = process.env.BASE_URL || 'http://localhost:8080';
   await page.goto(baseUrl);
 
   console.log('');

@@ -290,7 +290,7 @@ describe('platform-infra-health-digest template', () => {
   });
 
   it('real-remote shape: openagentic_admin remote-transport mixed python-repr + JSON content parses correctly', async () => {
-    // Captured live 2026-05-13 from chat-dev: the openagentic_admin remote MCP
+    // Captured live 2026-05-13 from the dev environment: the openagentic_admin remote MCP
     // returns content as a python list-of-tuples repr STRING concatenated
     // with an embedded { "result": {...} } JSON block at the same level.
     // The analyze transform's extract() helper must find the embedded

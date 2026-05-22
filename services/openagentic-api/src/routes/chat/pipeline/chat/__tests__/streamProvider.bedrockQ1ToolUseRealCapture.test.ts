@@ -1,7 +1,7 @@
 /**
  * Q1-fix-5 (2026-05-12) RED → GREEN: real-capture replay of a Bedrock
  * Sonnet 4.5 turn that emitted 3 parallel `tool_search` tool_use blocks
- * with `stop_reason: 'tool_use'` — but chat-dev showed 0 tool_executing
+ * with `stop_reason: 'tool_use'` — but dev showed 0 tool_executing
  * frames and the conversation ended at the first model turn.
  *
  * Fixture is the verbatim 153-chunk NDJSON capture from pod

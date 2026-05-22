@@ -8,7 +8,7 @@
  * into the user message so any chat model — vision or not — can answer
  * questions about the file.
  *
- * Live evidence prompting this helper: chat-dev 2026-05-08 — image
+ * Live evidence prompting this helper: dev 2026-05-08 — image
  * attachments worked end-to-end, but dropping a PDF/DOCX left the
  * model with only the user prompt + a useless `data:` url for a binary
  * the model has no decoder for.

@@ -3,7 +3,7 @@
  *
  * Fixtures: hand-built DOM matching the AAS taxonomy from the mocks.
  * The Playwright spec at tests/e2e/dom-interleave.spec.ts drives the same
- * walker against chat-dev — these tests pin the pure classification logic.
+ * walker against dev — these tests pin the pure classification logic.
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';

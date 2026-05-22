@@ -21,7 +21,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const BASE = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
+const BASE = process.env.BASE_URL || 'http://localhost:8080';
 const DISMISS_KEY = 'openagentic.workflow.whatsNew.dismissed';
 const DISMISS_VALUE = '0.7.0-r2';
 

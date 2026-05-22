@@ -5,7 +5,7 @@
  * RECITATION compliance event from the FedRAMP-Hi audit trail.
  *
  * Synthetic fixtures here (no real Vertex SAFETY capture available in
- * the chat-dev environment; Vertex enforces safety server-side and the
+ * the dev environment; Vertex enforces safety server-side and the
  * threshold tuning we run rarely trips it). The chunk shape is taken
  * verbatim from the Vertex Gemini streamGenerateContent reference docs
  * (https://cloud.google.com/vertex-ai/generative-ai/docs/reference/rest/v1/projects.locations.endpoints/streamGenerateContent).

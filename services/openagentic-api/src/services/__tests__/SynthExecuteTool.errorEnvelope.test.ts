@@ -2,7 +2,7 @@
  * Sev-0 #793 — `synth_execute` meta-tool client must NOT throw on malformed
  * or partial responses from synth-executor.
  *
- * Live evidence: chat-dev crashed during a synth code-gen attempt because the
+ * Live evidence: dev crashed during a synth code-gen attempt because the
  * client called `.substring()` on a field that was undefined. The exact crash
  * site was `SynthExecutorClient.execute()` line 93 — the structured-log
  * `intent: request.intent.substring(0, 100)` block runs BEFORE the inner

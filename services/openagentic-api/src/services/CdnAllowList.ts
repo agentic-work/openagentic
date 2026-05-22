@@ -132,7 +132,7 @@ function isUrlAllowed(url: string, allowExternalCdn: boolean): boolean {
   if (ALWAYS_REJECT_HOSTS.has(parsed.host)) return false;
 
   // Same-origin CDN proxy — absolute form on ANY host (model may inline
-  // chat-dev.openagentic.io or chat.openagentic.io). Path must still
+  // chat.openagentic.local or chat.openagentic.io). Path must still
   // start with /api/cdn/lib/ and pass the traversal check.
   if (isSameOriginCdnPath(parsed.pathname)) return true;
 

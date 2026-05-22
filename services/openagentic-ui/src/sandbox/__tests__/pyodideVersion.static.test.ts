@@ -6,7 +6,7 @@ import { PYODIDE_VERSION } from '../pyodideWorker';
 // https://data.jsdelivr.com/v1/package/npm/pyodide/). Every dynamic
 // `import(...pyodide.mjs)` therefore 404'd and the browser sandbox could
 // never boot — exactly the failure mode the user hit end-to-end on
-// chat-dev.
+// the dev environment.
 //
 // This spec pins two invariants:
 //   1. The version string is a valid semver triple we'd expect to see on

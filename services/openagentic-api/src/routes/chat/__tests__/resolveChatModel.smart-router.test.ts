@@ -3,7 +3,7 @@
  *
  * Plan ref: project_session_0505_pm_smart_router_agency_handoff.md (C5).
  *
- * Live-verify on chat-dev (2026-05-06) exposed: C1+C2+C3+C4 are all
+ * Live-verify on the dev environment (2026-05-06) exposed: C1+C2+C3+C4 are all
  * deployed but the cheapest-for-chat branch in SmartModelRouter is
  * dormant because resolveChatModel returns the DB-backed default
  * (`us.anthropic.claude-sonnet-4-6`) WITHOUT consulting SmartModelRouter.

@@ -1,7 +1,7 @@
 /**
  * 3-Sev-0 Bug #2 companion — engine-side live-thinking render contract.
  *
- * Bug #2 ("streaming is not rendered") was confirmed on chat-dev to be a
+ * Bug #2 ("streaming is not rendered") was confirmed on the dev environment to be a
  * symptom of Bug #1's dual-render — the user saw two overlapping renders
  * during streaming and perceived the live stream as broken. The fix in
  * MessageBubble.streamEngineDualRenderGuard.test.tsx forces the engine

@@ -128,7 +128,7 @@ const FEEDBACK_COLLECTION = 'docs_feedback';
 const CHUNK_SIZE = 1500;
 const CHUNK_OVERLAP = 200;
 // Use public ingress URL — internal service blocked by NetworkPolicy
-const UI_DOCS_BASE_URL = process.env.DOCS_MANIFEST_URL || 'https://chat-dev.openagentic.io/docs/generated';
+const UI_DOCS_BASE_URL = process.env.DOCS_MANIFEST_URL || 'http://localhost:8080/docs/generated';
 
 // ---------------------------------------------------------------------------
 // Singleton

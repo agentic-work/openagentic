@@ -3,7 +3,7 @@
  *
  * Source: reports/verify-cadence/Q-loop-post-811-604acc6d/Q1-admin-obo.ndjson
  * Prompt: "show me my Azure subscriptions and what's in each resource group"
- * Real wire from chat-dev 2026-05-14 · claude-sonnet-4-6 via Bedrock
+ * Real wire from the dev environment 2026-05-14 · claude-sonnet-4-6 via Bedrock
  * with admin OBO. 821 frames, success=true.
  *
  * This pins the contract our /api/chat/stream emits today. The reducer

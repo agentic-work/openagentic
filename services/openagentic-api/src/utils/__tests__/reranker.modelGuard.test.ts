@@ -6,7 +6,7 @@
  * configurations), and crashes with:
  *   "Model '' is not available on the Ollama host"
  *
- * Captured live (chat-dev, 2026-05-07T16:43:05.141Z):
+ * Captured live (dev, 2026-05-07T16:43:05.141Z):
  *   "[OllamaProvider] Model not found on Ollama host — will NOT auto-pull"
  *   modelName: ""
  *   stack: at OllamaProvider.ensureModelExists

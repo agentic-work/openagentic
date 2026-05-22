@@ -16,7 +16,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const BASE = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
+const BASE = process.env.BASE_URL || 'http://localhost:8080';
 const TEMPLATE_NAME = /Multi[-\s]?Agent Research Team/i;
 
 test.describe('Flows — Multi-Agent swarm popover + per-slot model + viewport', () => {

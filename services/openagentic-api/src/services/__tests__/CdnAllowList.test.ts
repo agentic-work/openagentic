@@ -43,7 +43,7 @@ describe('CdnAllowList — validateScriptUrls (#474 Phase 4)', () => {
     // #482 — same-origin architecture (no separate cdn.openagentic.io host).
     // The UI's nginx reverse-proxies /api/cdn/* to synth-cdn:8080 inside the
     // cluster. Iframe srcdoc <base href> resolves these paths against the
-    // parent origin (chat-dev.openagentic.io). We accept BOTH:
+    // parent origin (chat.openagentic.local). We accept BOTH:
     //   1) `/api/cdn/lib/...`   — relative path the model SHOULD emit
     //   2) `https://${host}/api/cdn/lib/...` — absolute, any host (model may inline origin)
     it('passes relative <script src="/api/cdn/lib/d3.min.js">', () => {
@@ -56,8 +56,8 @@ describe('CdnAllowList — validateScriptUrls (#474 Phase 4)', () => {
       expect(validateScriptUrls(html).ok).toBe(true);
     });
 
-    it('passes absolute /api/cdn/lib/* on chat-dev origin', () => {
-      const html = `<script src="https://chat-dev.openagentic.io/api/cdn/lib/echarts.min.js"></script>`;
+    it('passes absolute /api/cdn/lib/* on the dev environment origin', () => {
+      const html = `<script src="http://localhost:8080/api/cdn/lib/echarts.min.js"></script>`;
       expect(validateScriptUrls(html).ok).toBe(true);
     });
 

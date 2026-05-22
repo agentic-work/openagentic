@@ -6,7 +6,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:8080';
 // Azure AD test user - must be admin in the platform
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'mcp-tester@openagentic.local';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'TestMcp@2026';

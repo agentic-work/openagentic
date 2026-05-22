@@ -72,7 +72,7 @@ export class RegistryRowNotFoundError extends Error {
 /**
  * Common WHERE clause for "currently usable" rows.
  * The provider join filters out soft-deleted and disabled providers — these
- * are the conditions that produced the zombie rows on chat-dev (live evidence
+ * are the conditions that produced the zombie rows on the dev environment (live evidence
  * 2026-04-29).
  */
 function activeUsableWhere(role: string): Prisma.ModelRoleAssignmentWhereInput {

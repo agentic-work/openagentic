@@ -1,8 +1,8 @@
 /**
  * 3-Sev-0 Bug #3 — "some completed responses are not rendered" on
- * chat-dev.openagentic.io image 0.7.1-f65b94e4 (2026-05-18).
+ * chat.openagentic.local image 0.7.1-f65b94e4 (2026-05-18).
  *
- * Live evidence — fresh assistant turn just persisted on chat-dev:
+ * Live evidence — fresh assistant turn just persisted on the dev environment:
  *
  *   session_id = session_1779146618786_csb4w5mcd
  *   user msg   = "Write one short sentence about RFC 6749. Just one sentence."

@@ -11,7 +11,7 @@
  *   - Inline CSP <meta http-equiv="Content-Security-Policy"> caps script
  *     execution to a per-render nonce so injected <script> tags without
  *     the nonce are blocked at the parser layer.
- *   - connect-src is locked to the chat-dev origin so a malicious
+ *   - connect-src is locked to the dev origin so a malicious
  *     payload can't exfiltrate via fetch/XHR/WebSocket.
  *
  * Used by S6 to replace the previous `dangerouslySetInnerHTML={{ __html:
@@ -105,7 +105,7 @@ export function SafeHtmlIframe({
       `style-src 'nonce-${effectiveNonce}' 'unsafe-inline'`,
       "img-src data: https:",
       "font-src data:",
-      "connect-src https://chat-dev.openagentic.io",
+      "connect-src http://localhost:8080",
     ].join('; ');
 
     // Inject the nonce into every <script> tag so legitimate inline JS

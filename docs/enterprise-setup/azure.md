@@ -104,17 +104,17 @@ EOF
 chmod 600 ~/.openagentic/cloud-secrets/azure.env
 ```
 
-## Reference instance values (what we created)
+## Reference instance values (template)
 
 | Key | Value |
 |---|---|
-| Tenant | `ee3d15bb-e175-4ee7-995d-d992aa3199f6` |
-| Subscription | `<YOUR_AZURE_SUBSCRIPTION_ID>` (<YOUR_AZURE_SUBSCRIPTION_NAME>) |
-| App Registration | `openagentic-test` — `8f8c2779-9753-44fb-886c-af569f60b6f6` |
-| App object id | `00748df2-33f2-428b-91da-61b045533d07` |
-| Service Principal object id | `bafbd84a-51df-4ff3-a3a0-1e2601e056d0` |
-| Admin group | `openagentic-admins` — `d144e128-1277-4867-9622-301118da7115` |
-| Reader role assignment | `/subscriptions/00000000.../providers/Microsoft.Authorization/roleAssignments/00000000-0000-0000-0000-000000000001` |
+| Tenant | `<YOUR_AZURE_TENANT_ID>` |
+| Subscription | `<YOUR_AZURE_SUBSCRIPTION_ID>` (`<YOUR_AZURE_SUBSCRIPTION_NAME>`) |
+| App Registration | `openagentic-readonly` — `<YOUR_APP_CLIENT_ID>` |
+| App object id | `<YOUR_APP_OBJECT_ID>` |
+| Service Principal object id | `<YOUR_SP_OBJECT_ID>` |
+| Admin group | `openagentic-admins` — `<YOUR_GROUP_OBJECT_ID>` |
+| Reader role assignment | `/subscriptions/<SUB_ID>/providers/Microsoft.Authorization/roleAssignments/<ASSIGNMENT_GUID>` |
 | Secret | rotating 2yr, see `~/.openagentic/cloud-secrets/azure.env` |
 
 ## SSO wiring (Microsoft sign-in into openagentic)

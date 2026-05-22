@@ -20,8 +20,8 @@ The OSS upstream of the OpenAgentic platform — services for building, orchestr
 | `services/openagentic-proxy` | Egress proxy for agent tool calls |
 | `services/openagentic-synth` | OAT tool-synthesis framework runner |
 | `services/mcps/*` | Built-in MCP servers (aws, azure, admin, github, k8s, prometheus, loki, alertmanager, web, knowledge, gcp) |
+| `services/openagentic-ollama` | Optional custom Ollama image with model pre-pull |
 | `services/shared` | Cross-service types / utilities |
-| `services/ollama` | Local Ollama bring-your-own-models config |
 
 Top-level `helm/openagentic` is the platform Helm chart (templates only — env-specific values live in downstream deployment repos, not here). The helm path is not wired into the install wizard yet; use the docker path for v1.
 

@@ -21,7 +21,7 @@ import { START_JOB_WATCHER } from './10-job-watcher.js';
 import { INIT_AGENT_REGISTRY } from './12-agent-registry.js';
 import { INIT_MILVUS_COLLECTION_PROBE } from './13-milvus-collection-probe.js';
 import { SEED_BUILT_IN_AGENTS_MD } from './14-agent-md-to-db-seeder.js';
-// SEED_OMHS_TEMPLATES removed — moved into SEED_WORKFLOW_TEMPLATES inline
+// SEED_ONCALL_TEMPLATES removed — moved into SEED_WORKFLOW_TEMPLATES inline
 // (services/openagentic-api/src/routes/workflows.ts) for the same reason
 // SEED_PLATFORM_TEMPLATES was removed: the dedicated seeders wrote to the
 // `WorkflowTemplate` marketplace model with an invalid where:{name}

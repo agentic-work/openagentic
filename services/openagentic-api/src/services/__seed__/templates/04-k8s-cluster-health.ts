@@ -16,7 +16,7 @@
  *
  * Trigger inputs let the operator point the probe at a different
  * namespace without editing the template — defaults to agentic-dev
- * so first-run on chat-dev produces useful output immediately.
+ * so first-run on the dev environment produces useful output immediately.
  */
 
 import type { WorkflowNode, WorkflowEdge } from '@openagentic/workflow-engine';

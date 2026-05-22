@@ -93,7 +93,7 @@ class TestDecideAzureOboStrategy:
         exchange and NOT pre-seed `azure_tokens`."""
         from azure_obo_strategy import decide_azure_obo_strategy
 
-        app_token = _mint_unsigned_jwt("api://71f4ffd5-0db3-4045-83bd-7656ba43bc87")
+        app_token = _mint_unsigned_jwt("api://00000000-1111-2222-3333-444444444444")
         decision = decide_azure_obo_strategy(app_token, AZURE_AUDIENCES)
 
         assert decision.azure_tokens == {}, (

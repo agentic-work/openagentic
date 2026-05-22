@@ -9,7 +9,7 @@
 
 set +e  # Don't exit on error - we want all tests to run
 
-API_URL="${API_URL:-https://chat-dev.openagentic.io}"
+API_URL="${API_URL:-http://localhost:8080}"
 API_KEY="${API_KEY:-awc_6c0d94934b7f76fceebc37ed8ec6b3440084c8cd397e437ecb261aa5e6fbff96}"
 TIMEOUT="${TIMEOUT:-180}"
 RESULTS_DIR="$(dirname "$0")/results/$(date +%Y%m%d-%H%M%S)"

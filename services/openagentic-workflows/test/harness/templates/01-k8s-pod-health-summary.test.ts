@@ -95,7 +95,7 @@ describe('k8s-pod-health-summary template', () => {
     expect(kubectlCallReceived).toBe(true);
 
     // 5. kubectl_pods node — real-shape envelope reached the output map.
-    //    Live-captured shape (2026-05-13 on chat-dev): the openagentic_kubernetes
+    //    Live-captured shape (2026-05-13 on the dev environment): the openagentic_kubernetes
     //    MCP returns a native python dict (NOT FastMCP content[] blocks);
     //    mcp_tool's 3-layer unwrap surfaces the dict verbatim — no
     //    content-string join because there were no content[] blocks. So

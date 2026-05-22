@@ -133,7 +133,7 @@ describe('unifiedAuth + tenantContext integration (SEV-0 Flows-fix-A1)', () => {
   });
 
   it('PRE-FIX BUG: if unifiedAuth had not propagated tenantId, extractor returns null', () => {
-    // Simulate the pre-fix shape — same as the live observed state on chat-dev
+    // Simulate the pre-fix shape — same as the live observed state on the dev environment
     // where every authenticated request had request.tenantId === null.
     const requestUserMissingTenant: any = {
       id: 'u', userId: 'u', email: 'e@e.io', name: 'N',

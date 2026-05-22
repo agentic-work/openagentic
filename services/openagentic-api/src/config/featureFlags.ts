@@ -57,7 +57,7 @@ export const featureFlags = {
    * via getSystemPromptForRole and bypasses the legacy 35-module
    * legacy static + sidecar composer machinery. Default false during
    * Phase B rollout — flip to true via helm values once Phase B.7
-   * Playwright probes confirm parity on chat-dev.
+   * Playwright probes confirm parity on the dev environment.
    */
   useRbacPrompt: bool('USE_RBAC_PROMPT', false),
 
@@ -113,9 +113,9 @@ export const featureFlags = {
     return v;
   })(),
 
-  // (seedOmhsTemplates + seedPlatformTemplates both removed — all the
+  // (seedOncallTemplates + seedPlatformTemplates both removed — all the
   // your-deployment pack and the two platform showcase templates now seed via the
   // canonical SEED_WORKFLOW_TEMPLATES inline path in routes/workflows.ts,
-  // which writes to the `workflow` table that chat-dev's Templates panel
+  // which writes to the `workflow` table that dev's Templates panel
   // actually reads.)
 } as const;

@@ -47,7 +47,7 @@ const exampleParams: Params = {
       cloud: 'azure',
       scoreOutOf100: 72,
       findings: [
-        { id: 'f1', severity: 'critical', title: 'Storage account allows public blob access', resource: 'omhsprodlogs', remediation: 'Disable AllowBlobPublicAccess.' },
+        { id: 'f1', severity: 'critical', title: 'Storage account allows public blob access', resource: 'oncallprodlogs', remediation: 'Disable AllowBlobPublicAccess.' },
         { id: 'f2', severity: 'critical', title: 'NSG rule allows 0.0.0.0/0 → 22', resource: 'nsg-prod-default', remediation: 'Restrict source CIDR or remove rule.' },
         { id: 'f3', severity: 'high', title: 'Key Vault soft-delete disabled', resource: 'kv-your-deployment-prod', remediation: 'Enable purge protection.' },
         { id: 'f4', severity: 'medium', title: 'Diagnostic logs not centralized', resource: 'subscription:default' },

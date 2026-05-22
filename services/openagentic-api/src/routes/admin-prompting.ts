@@ -101,7 +101,7 @@ const adminPromptingRoutes: FastifyPluginAsync = async (fastify, opts) => {
     
     // Allow access in development environment or for local testing
     if (process.env.FRONTEND_URL?.includes('localhost') || 
-        process.env.FRONTEND_URL?.includes('chat-dev.openagentic.io')) {
+        process.env.FRONTEND_URL?.includes('chat.openagentic.local')) {
       // Allow any authenticated user or user with x-user-id header
       if (user || userId) {
         return;

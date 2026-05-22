@@ -108,7 +108,7 @@
         "Fixed SSE event streaming \u2014 nodes show RUNNING state in real-time (socket.setNoDelay + flush)",
         "Fixed MCP error detection \u2014 properly unwrap proxy response layers (proxy \u2192 JSONRPC \u2192 MCP result)",
         "Fixed openagentic-proxy CrashLoopBackOff \u2014 duplicate /metrics route registration",
-        "Fixed chat-dev.openagentics.io 404 \u2014 TLS proxy routing to wrong backend",
+        "Fixed chat.openagentic.local 404 \u2014 TLS proxy routing to wrong backend",
         "Fixed Prisma schema \u2014 missing Integration, IntegrationLog models and LLMProvider extended fields",
         "Added UserMemoryService \u2014 unified memory read (Redis\u2192Milvus\u2192PG\u2192merge), write (PG+Milvus+Redis)",
         "Added UserProfileService \u2014 user personality learning with style_dna via LLM",

@@ -1,5 +1,5 @@
 /**
- * SEV-0 (2026-05-12 live capture from chat-dev kubectl logs):
+ * SEV-0 (2026-05-12 live capture from the dev environment kubectl logs):
  *
  *   {"service":"ChatMCPService","userId":"<real-user-id>","msg":"listTools called - fetching tools from MCP Proxy"}
  *   {"service":"ChatMCPService","status":401,"msg":"Failed to fetch tools from MCP Proxy"}

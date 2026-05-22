@@ -13,9 +13,9 @@
 import { test, expect, Page } from '@playwright/test';
 
 // Environment configuration
-const BASE_URL = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:8080';
 const TEST_EMAIL = process.env.TEST_EMAIL || 'admin@openagentic.io';
-const TEST_PASSWORD = process.env.TEST_PASSWORD || '6py8Q~XNcKAJ~.SIrZAIBy__l7oDoPteWp2Habm3';
+const TEST_PASSWORD = process.env.TEST_PASSWORD || '';
 
 // Difficulty levels
 type DifficultyLevel = 'medium' | 'hard' | 'expert';

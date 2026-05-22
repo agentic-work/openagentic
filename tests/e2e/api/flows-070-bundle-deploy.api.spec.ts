@@ -1,7 +1,7 @@
 /**
  * Playwright API spec — verifies the 0.7.0 deploy WITHOUT auth.
  *
- * No MFA required. Hits chat-dev's nginx, parses the index HTML to
+ * No MFA required. Hits dev's nginx, parses the index HTML to
  * find the entry-bundle hash, fetches the bundle, asserts the
  * marquee strings that prove our toast + NavRail + per-slot picker
  * are in the served code.
@@ -19,7 +19,7 @@
 
 import { test, expect, request } from '@playwright/test';
 
-const BASE = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
+const BASE = process.env.BASE_URL || 'http://localhost:8080';
 
 test.describe('0.7.0 deploy — bundle string proof (no auth)', () => {
   test.setTimeout(30_000);

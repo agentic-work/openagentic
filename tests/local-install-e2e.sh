@@ -5,12 +5,12 @@
 # native node/python process pointed at the local data plane and an
 # Ollama endpoint of your choice.
 #
-# Defaults are tuned for the common "Ollama on hal:11434 with
+# Defaults are tuned for the common "Ollama on localhost:11434 with
 # nomic-embed-text + gpt-oss:20b" setup; override via env.
 #
 # Usage:
 #   tests/local-install-e2e.sh                      # run with defaults
-#   OLLAMA_HOST=http://hal:11434 \
+#   OLLAMA_HOST=http://localhost:11434 \
 #   OLLAMA_EMBED_MODEL=nomic-embed-text \
 #   OLLAMA_CHAT_MODEL=gpt-oss:20b \
 #     tests/local-install-e2e.sh                    # explicit
@@ -34,7 +34,7 @@
 set -eo pipefail
 
 # ─── Config ─────────────────────────────────────────────────────────────────
-OLLAMA_HOST="${OLLAMA_HOST:-http://hal:11434}"
+OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
 OLLAMA_EMBED_MODEL="${OLLAMA_EMBED_MODEL:-nomic-embed-text}"
 OLLAMA_CHAT_MODEL="${OLLAMA_CHAT_MODEL:-gpt-oss:20b}"
 

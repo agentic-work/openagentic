@@ -1212,7 +1212,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
     // Gemma 3 has no native tool_use blocks — it leaks `\`\`\`tool_calls`
     // fenced blocks in the text stream. Route Bedrock-Gemma deltas through
     // the SDK normalizer to recover canonical tool_use content_blocks.
-    // Verified against `google.gemma-3-27b-it` on chat-dev 2026-05-20.
+    // Verified against `google.gemma-3-27b-it` on the dev environment 2026-05-20.
     const isGemmaModel =
       modelId.includes('google.gemma') || /gemma-?3/i.test(modelId);
     const gemmaNormalizer = isGemmaModel
@@ -2522,7 +2522,7 @@ export class AWSBedrockProvider extends BaseLLMProvider {
       ));
     // Mirror GoogleVertexProvider — degrade gracefully when pricing creds
     // aren't available so capabilities + limits still populate. Live-verify
-    // on chat-dev surfaced this: Sonnet refresh returned 502 because the
+    // on the dev environment surfaced this: Sonnet refresh returned 502 because the
     // Pricing API client couldn't resolve AWS creds, even though the model
     // exists and its limits ARE known from the family table.
     let pricing: any = {

@@ -3,7 +3,7 @@
  * `message_delta(stop_reason='tool_use')` followed by a bare `message_stop`,
  * streamProvider must NOT downgrade the stop_reason to 'end_turn'.
  *
- * Smoking gun: 2026-05-10 wire capture against chat-dev gpt-5.4 (AIF
+ * Smoking gun: 2026-05-10 wire capture against dev gpt-5.4 (AIF
  * Responses path). After AzureAIFoundryProvider was fixed to map
  * function_call turns to stop_reason='tool_use' on message_delta, the
  * trailing bare message_stop event was still mapped to 'end_turn' by

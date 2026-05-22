@@ -354,7 +354,7 @@ const adminTestHarnessRoutes: FastifyPluginAsync = async (fastify) => {
           // Use fastify.inject — the harness runs INSIDE the api process,
           // so cross-pod HTTP via API_INTERNAL_URL was always a bad idea.
           // Old behaviour ECONNREFUSED'd against a stale Service ClusterIP
-          // (10.43.96.187:8000 in chat-dev observed 2026-05-08). Inject
+          // (10.43.96.187:8000 in dev observed 2026-05-08). Inject
           // also lets us skip JWT minting + auth header fiddling.
           const userId = request.user?.userId || request.user?.id || 'test-harness-user';
           // Mint a short-lived JWT the chat handler's unifiedAuth will

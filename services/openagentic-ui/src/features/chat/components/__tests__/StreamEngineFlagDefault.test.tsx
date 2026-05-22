@@ -1,7 +1,7 @@
 /**
  * 3-Sev-0 #4 follow-up — disable StreamEngine for chat live rendering.
  *
- * User feedback (chat-dev.openagentic.io, image 0.7.1-6094d801, 2026-05-18 PM):
+ * User feedback (chat.openagentic.local, image 0.7.1-6094d801, 2026-05-18 PM):
  *
  *   - "the new reactless steaming system completely broke most compose tools-
  *      visuals, etc."  (closed by the type-filter in commit 6094d801)
@@ -13,7 +13,7 @@
  *      changes...thinking blocks interleaves in the response that are one
  *      line closed by default but users can open them to see the cot"
  *
- * Diagnosis on chat-dev:
+ * Diagnosis on the dev environment:
  *   The StreamEngine's hand-rolled DOM thinking block has multiple gaps vs
  *   the React-side `InlineThinkingBlock`:
  *     1. `.cm-thinking-body` has `max-height: 280px; overflow: hidden` from

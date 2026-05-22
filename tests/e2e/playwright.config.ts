@@ -5,7 +5,7 @@ export default defineConfig({
   timeout: 120000,
   retries: 0,
   use: {
-    baseURL: 'https://chat-dev.openagentic.io',
+    baseURL: 'http://localhost:8080',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     trace: 'retain-on-failure',

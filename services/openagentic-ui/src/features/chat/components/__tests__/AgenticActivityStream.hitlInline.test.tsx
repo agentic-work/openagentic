@@ -2,7 +2,7 @@
  * Sev-1 #922 — HITL approval cards MUST render INLINE with the matching
  * tool_use, not in a per-message footer strip.
  *
- * Background (chat-dev live drive 2026-05-17, image 0.7.1-87b85a9b): when
+ * Background (dev live drive 2026-05-17, image 0.7.1-87b85a9b): when
  * the model fired two parallel `azure_create_resource_group` tool_use
  * blocks, the HITL approval cards rendered at the bottom of the message
  * (rectTop 796/894/992) while the corresponding tool cards rendered near

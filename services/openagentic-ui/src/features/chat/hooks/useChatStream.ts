@@ -5733,7 +5733,7 @@ export const useChatStream = ({
                     // corner case: tool_round + tool_result envelopes
                     // mutate the legacy ref via `applyRoundFrame` only).
                     //
-                    // Live evidence on chat-dev.openagentic.io image
+                    // Live evidence on chat.openagentic.local image
                     // 0.7.1-f65b94e4 (2026-05-18):
                     //   - Wire: 200+ thinking_delta + 1 text_delta + 1 follow_up
                     //   - Pre-fix DB content_blocks: [text, follow_up]  (thinking MISSING)

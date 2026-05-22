@@ -58,7 +58,7 @@
         {
           "id": "parseInlineComposePatterns",
           "name": "parseInlineComposePatterns.ts",
-          "description": "#807 part 2 — server-side rescue for inline compose_app/compose_visual XML. Models like o4-mini (chat-dev 2026-05-13T20:16 k8s audit session) emit",
+          "description": "#807 part 2 — server-side rescue for inline compose_app/compose_visual XML. Models like o4-mini (dev 2026-05-13T20:16 k8s audit session) emit",
           "type": "pipeline-module",
           "sourceFile": "services/openagentic-api/src/routes/chat/pipeline/chat/parseInlineComposePatterns.ts"
         }

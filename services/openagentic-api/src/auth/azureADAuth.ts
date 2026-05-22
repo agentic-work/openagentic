@@ -70,7 +70,7 @@ export class AzureADAuthService {
       clientSecret: config.clientSecret || process.env.AZURE_AD_CLIENT_SECRET,
       authority: config.authority || process.env.AZURE_AD_AUTHORITY || 
         `https://login.microsoftonline.com/${config.tenantId || process.env.AZURE_AD_TENANT_ID}`,
-      redirectUri: config.redirectUri || process.env.AZURE_AD_REDIRECT_URI || `${process.env.FRONTEND_URL || 'https://chat-dev.openagentic.io'}/api/auth/microsoft/callback`,
+      redirectUri: config.redirectUri || process.env.AZURE_AD_REDIRECT_URI || `${process.env.FRONTEND_URL || 'http://localhost:8080'}/api/auth/microsoft/callback`,
       // Request Azure ARM access directly - this gives a token usable against Azure Management APIs
       // For Graph/KeyVault/Storage, the MCP proxy will use the ID token for OBO exchange
       scopes: config.scopes || [

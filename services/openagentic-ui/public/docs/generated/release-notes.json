@@ -253,7 +253,7 @@
         {
           "id": "v0.6.7--2",
           "name": "What's BROKEN / MISSING — reasons NOT to ship",
-          "description": "### 🔴 Critical — block release  1. **Chat UX visual parity** (task #166, in progress). Live chat-dev.openagentic.io does NOT visually match `docs/release-plans/v0.6.7-ux-mockups/01-cloud-ops.html`. The shipped components have the correct behavior but pre-mockup className strings",
+          "description": "### 🔴 Critical — block release  1. **Chat UX visual parity** (task #166, in progress). Live chat.openagentic.local does NOT visually match `docs/release-plans/v0.6.7-ux-mockups/01-cloud-ops.html`. The shipped components have the correct behavior but pre-mockup className strings",
           "type": "markdown-section",
           "sourceFile": "docs/releases/v0.6.7.md"
         },

@@ -1,7 +1,7 @@
 /**
  * AgenticActivityStream — follow_up chip row honors the user-facing toggle.
  *
- * Bug repro (live 2026-05-19 chat-dev): the user disabled the "Follow-up
+ * Bug repro (live 2026-05-19 dev): the user disabled the "Follow-up
  * suggestions" toggle in the composer toolbar (ChatInputToolbar.tsx), but
  * follow-up chip buttons continued to appear at the end of assistant turns.
  *

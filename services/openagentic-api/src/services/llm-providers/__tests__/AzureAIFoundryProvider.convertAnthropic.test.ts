@@ -169,7 +169,7 @@ describe('convertAnthropicMessagesToOpenAI', () => {
   // arrays `[{type:'text'}, {type:'image_url', image_url:{url:…}}]` when
   // attachments are present. AIF's normalizer used to drop the image_url
   // block silently — the model received text-only and replied "please
-  // upload the image first". Live evidence: chat-dev 2026-05-08 11:31,
+  // upload the image first". Live evidence: dev 2026-05-08 11:31,
   // gpt-5.4 deployment, VISION DEBUG logged 111080-byte base64 reaching
   // the handler but model still asked for upload.
   describe('multimodal user content (image_url passthrough)', () => {

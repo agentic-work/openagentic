@@ -16,7 +16,7 @@
  * legacy-XML reasoning model emits `thinking_delta` events instead of
  * leaking the reasoning into the assistant body via `text_delta`.
  *
- * Smoking gun (live 2026-05-12 chat-dev, gpt-oss:20b sankey prompt): the
+ * Smoking gun (live 2026-05-12 dev, gpt-oss:20b sankey prompt): the
  * model's reasoning prose ("User wants: ... We need to fetch AWS Cost
  * Explorer... we can output mermaid code in a code block") showed up
  * inline in the assistant message body. Either (a) the model emitted

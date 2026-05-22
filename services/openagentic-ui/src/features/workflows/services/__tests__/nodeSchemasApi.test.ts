@@ -63,7 +63,7 @@ describe('nodeSchemasApi.fetchSchemas', () => {
     expect(url).toContain('node-schemas');
   });
 
-  // Regression caught by Playwright walk on chat-dev (2026-04-26): when
+  // Regression caught by Playwright walk on the dev environment (2026-04-26): when
   // getApiUrl() returns '/api' (the production runtime config), the URL
   // builder concatenated a second '/api' producing /api/api/workflows/
   // internal/node-schemas — a 404 — so the registry was empty in the UI

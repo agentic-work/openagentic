@@ -386,7 +386,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
     // event in the signed trace. Finalize on either completion path.
     // Falls back through SIGNING_SECRET → JWT_SECRET → INTERNAL_SERVICE_SECRET
     // so any environment with at least one of these (which is every real
-    // chat-dev / prod deployment) gets signed traces by default.
+    // dev / prod deployment) gets signed traces by default.
     let traceHandle: TraceCollectorHandle | undefined;
     try {
       const signingSecret =

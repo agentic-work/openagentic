@@ -65,7 +65,7 @@ test.describe('Phase E₂.2 flow LLM-node interleave proof', () => {
       }
     });
 
-    await page.goto('https://chat-dev.openagentic.io/flows');
+    await page.goto('http://localhost:8080/flows');
 
     const runButton = page.locator(
       'button:has-text("Execute"), button:has-text("Run"), [data-testid="execute-workflow"]',

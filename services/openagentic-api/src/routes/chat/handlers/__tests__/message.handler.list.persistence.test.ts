@@ -2,7 +2,7 @@
  * Sev-0 #777 — GET /api/chat/sessions/:id/messages returns 0 messages
  * even when chat_messages rows exist in the DB.
  *
- * Live-capture proof 2026-05-12 (chat-dev):
+ * Live-capture proof 2026-05-12 (dev):
  *   - direct prisma.chatMessage.findMany({session_id, deleted_at:null}) → 2 rows
  *   - GET /api/chat/sessions/session_X/messages → { messages: [], total: 0 }
  *   - session.message_count = 2 (correct)

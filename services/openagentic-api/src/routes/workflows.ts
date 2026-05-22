@@ -77,7 +77,7 @@ if (!WORKFLOW_SERVICE_URL) {
 
 // Imported template definitions — kept in standalone files to keep this
 // router file readable while still seeding via SEED_WORKFLOW_TEMPLATES on
-// the canonical `workflow` table (where chat-dev's templates panel reads).
+// the canonical `workflow` table (where dev's templates panel reads).
 import {
   nodes as pdAutoTriageNodes,
   edges as pdAutoTriageEdges,
@@ -86,28 +86,28 @@ import {
   nodes as deepResearchNodes,
   edges as deepResearchEdges,
 } from '../services/__seed__/templates/07-deep-research-team.js';
-// your-deployment On-Call team template pack — moved from omhsTemplateSeeder (which
+// your-deployment On-Call team template pack — moved from oncallTemplateSeeder (which
 // silently failed on every boot — wrong table + invalid upsert key, see
 // fix commit) to the canonical seed path.
 import {
-  nodes as omhsPdTriageNodes,
-  edges as omhsPdTriageEdges,
+  nodes as oncallPdTriageNodes,
+  edges as oncallPdTriageEdges,
 } from '../services/__seed__/templates/01-pagerduty-triage.js';
 import {
-  nodes as omhsAlertmanagerNodes,
-  edges as omhsAlertmanagerEdges,
+  nodes as oncallAlertmanagerNodes,
+  edges as oncallAlertmanagerEdges,
 } from '../services/__seed__/templates/02-alertmanager-pd.js';
 import {
-  nodes as omhsSplunkNodes,
-  edges as omhsSplunkEdges,
+  nodes as oncallSplunkNodes,
+  edges as oncallSplunkEdges,
 } from '../services/__seed__/templates/03-splunk-detection-triage.js';
 import {
-  nodes as omhsK8sNodes,
-  edges as omhsK8sEdges,
+  nodes as oncallK8sNodes,
+  edges as oncallK8sEdges,
 } from '../services/__seed__/templates/04-k8s-cluster-health.js';
 import {
-  nodes as omhsLokiPromNodes,
-  edges as omhsLokiPromEdges,
+  nodes as oncallLokiPromNodes,
+  edges as oncallLokiPromEdges,
 } from '../services/__seed__/templates/05-loki-prom-incident.js';
 
 // Helper to transform workflow from DB schema to API response format.
@@ -3104,7 +3104,7 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
           return reply.code(404).send({ error: 'Workflow not found' });
         }
 
-        const apiUrl = process.env.PUBLIC_URL || 'https://chat-dev.openagentic.io';
+        const apiUrl = process.env.PUBLIC_URL || 'http://localhost:8080';
         const workflowName = workflow.name;
         const definition = workflow.definition as any || {};
         const triggerNode = (definition.nodes || []).find((n: any) => (n.type || n.data?.type) === 'trigger');
@@ -4719,7 +4719,7 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
 
   // ══════════════════════════════════════════════════════════════════════════
   // your-deployment On-Call team template pack — 5 incident-response / monitoring flows
-  // tailored to the your-deployment use case. Moved here from omhsTemplateSeeder which
+  // tailored to the your-deployment use case. Moved here from oncallTemplateSeeder which
   // silently failed on every boot (wrong table + invalid upsert key).
   // ══════════════════════════════════════════════════════════════════════════
   {
@@ -4729,7 +4729,7 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
     category: 'incident-response',
     tags: ['pagerduty', 'triage', 'on-call', 'slack', 'email', 'your-deployment'],
     color: '#dc2626',
-    definition: { nodes: omhsPdTriageNodes, edges: omhsPdTriageEdges },
+    definition: { nodes: oncallPdTriageNodes, edges: oncallPdTriageEdges },
   },
   {
     name: 'your-deployment Alertmanager → PagerDuty',
@@ -4738,7 +4738,7 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
     category: 'monitoring',
     tags: ['alertmanager', 'prometheus', 'pagerduty', 'slack', 'on-call', 'your-deployment'],
     color: '#ea580c',
-    definition: { nodes: omhsAlertmanagerNodes, edges: omhsAlertmanagerEdges },
+    definition: { nodes: oncallAlertmanagerNodes, edges: oncallAlertmanagerEdges },
   },
   {
     name: 'your-deployment Splunk Detection Triage',
@@ -4747,7 +4747,7 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
     category: 'incident-response',
     tags: ['splunk', 'siem', 'detection', 'pagerduty', 'knowledge-base', 'your-deployment'],
     color: '#0891b2',
-    definition: { nodes: omhsSplunkNodes, edges: omhsSplunkEdges },
+    definition: { nodes: oncallSplunkNodes, edges: oncallSplunkEdges },
   },
   {
     name: 'your-deployment K8s Cluster Health',
@@ -4756,7 +4756,7 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
     category: 'infra-ops',
     tags: ['kubernetes', 'k8s', 'mcp', 'health-check', 'slack', 'your-deployment'],
     color: '#0ea5e9',
-    definition: { nodes: omhsK8sNodes, edges: omhsK8sEdges },
+    definition: { nodes: oncallK8sNodes, edges: oncallK8sEdges },
   },
   {
     name: 'your-deployment Loki + Prom Incident',
@@ -4765,7 +4765,7 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
     category: 'monitoring',
     tags: ['loki', 'prometheus', 'observability', 'pagerduty', 'correlation', 'your-deployment'],
     color: '#16a34a',
-    definition: { nodes: omhsLokiPromNodes, edges: omhsLokiPromEdges },
+    definition: { nodes: oncallLokiPromNodes, edges: oncallLokiPromEdges },
   },
 ];
 

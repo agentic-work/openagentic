@@ -15,7 +15,7 @@
  *   Result: the user sees each thinking block twice (once from the engine,
  *   once from AAS) and each prose chunk twice during a live stream.
  *
- *   Live reproduction on `chat-dev.openagentic.io` (image `0.7.1-f65b94e4`):
+ *   Live reproduction on `chat.openagentic.local` (image `0.7.1-f65b94e4`):
  *     DOM contains both `.cm-thinking.inline-thinking-natural` AND
  *     `.cm-thinking-block.inline-thinking-block` for the SAME assistant
  *     turn while streaming. Screenshot:

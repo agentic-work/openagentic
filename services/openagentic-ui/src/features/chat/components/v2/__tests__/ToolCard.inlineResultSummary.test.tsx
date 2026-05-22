@@ -124,7 +124,7 @@ describe('ToolCard inline result summary in header (mock 01 §863)', () => {
   });
 
   it('non-empty array overrides stale-or-wrong count field (2026-05-12 live capture)', () => {
-    // Live capture from chat-dev — azure_list_subscriptions returned a
+    // Live capture from the dev environment — azure_list_subscriptions returned a
     // payload with `count: 0` (envelope/wire quirk) while `subscriptions`
     // had 2 entries. The summary then said "0 subscriptions" while the
     // model's body text correctly described 2 subs. Trust the array (the

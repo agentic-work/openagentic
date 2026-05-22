@@ -50,7 +50,7 @@ export const test = base.extend<{
     const page = await authenticatedContext.newPage();
 
     // Navigate to base URL and wait for auth to be recognized
-    const baseUrl = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
+    const baseUrl = process.env.BASE_URL || 'http://localhost:8080';
     await page.goto(baseUrl);
 
     // Wait for authenticated state (chat container visible means logged in)

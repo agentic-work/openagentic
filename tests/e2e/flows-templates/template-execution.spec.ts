@@ -77,7 +77,7 @@ const TEMPLATES: readonly TplCase[] = [
 test.use({ ignoreHTTPSErrors: true });
 
 for (const tc of TEMPLATES) {
-  test(`Template "${tc.name}" runs end-to-end on live chat-dev`, async ({ page }) => {
+  test(`Template "${tc.name}" runs end-to-end on live dev`, async ({ page }) => {
     test.setTimeout(240000);
     const token = await loginAndGetToken(page);
 

@@ -211,7 +211,7 @@ describe('cluster-triage-watchdog template (slug 13)', () => {
         namespace: 'agentic-dev',
         min_severity: 'warning',
         api_base: 'http://openagentic-api:3000',
-        ui_base: 'https://chat-dev.openagentic.io',
+        ui_base: 'http://localhost:8080',
       },
       user: { id: 'harness-watchdog', accessToken: 'eyJ.fake.harness.jwt' },
     });

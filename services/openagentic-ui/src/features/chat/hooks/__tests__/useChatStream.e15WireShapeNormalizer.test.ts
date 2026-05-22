@@ -1,7 +1,7 @@
 /**
  * E1.5 (2026-05-12) — wire-shape normalizer for tool_executing + tool_result.
  *
- * BUG 1 (RED): the live verify against chat-dev showed every tool_executing
+ * BUG 1 (RED): the live verify against dev showed every tool_executing
  * frame on the wire emits `{name, tool_use_id, input}` (per
  * services/openagentic-api/src/routes/chat/pipeline/chat/builders.ts
  * `buildToolExecuting`), but the UI's `useChatStream` reducer read

@@ -2,16 +2,16 @@
  * E2E Test: Flowise SSO Authentication Flow
  *
  * Tests that Flowise loads properly after logging in via local admin
- * through https://chat-dev.openagentic.io/
+ * through http://localhost:8080/
  *
  * Run with: npx playwright test flowise-sso.spec.ts --headed
  */
 
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = 'https://chat-dev.openagentic.io';
+const BASE_URL = 'http://localhost:8080';
 const LOCAL_ADMIN_EMAIL = 'admin@openagentic.io';
-const LOCAL_ADMIN_PASSWORD = '6py8Q~XNcKAJ~.SIrZAIBy__l7oDoPteWp2Habm3';
+const LOCAL_ADMIN_PASSWORD = '';
 
 test.describe('Flowise SSO Integration', () => {
 
