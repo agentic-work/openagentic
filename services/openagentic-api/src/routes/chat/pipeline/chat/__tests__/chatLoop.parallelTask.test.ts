@@ -22,7 +22,7 @@
  * NO MOCK of partitionToolCalls / runConcurrent / runSerial — those are
  * the actual production functions imported by chatLoop. Only the model
  * stream + the per-tool dispatch fn are stubbed (real LLM calls would
- * require the hal:11434 real-provider regime and aren't deterministic
+ * require the host.docker.internal:11434 real-provider regime and aren't deterministic
  * enough to assert wall-clock concurrency on).
  */
 import { describe, it, expect, vi } from 'vitest';

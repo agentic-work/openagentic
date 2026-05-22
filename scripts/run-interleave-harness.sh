@@ -52,7 +52,7 @@ fi
 # --- scenario → (qNum, prompt, contract, mock) ---------------------------------
 declare -A PROMPTS=(
   [Q1]="show me my Azure subscriptions and what's in each resource group"
-  [Q2]="do a full security audit across all tenants of openagentic-omhs"
+  [Q2]="do a full security audit across all tenants of openagentic-your-deployment"
   [Q5]="the staging deploy is failing — diagnose, fix, rebuild, and verify"
   [Q7]="Our cloud bill is up 40% MoM. Find the top 10 cost spikes across Azure/AWS/GCP and tell me what to cut."
   [Q10]="Plan and execute a migration of our MSSQL legacy database to Azure SQL with zero downtime"

@@ -90,7 +90,7 @@ interface ArtifactRendererProps {
  * color. Also exposes CSS custom properties (`--app-bg`, `--app-text`...)
  * so well-behaved models can produce theme-consistent output.
  *
- * openagentic-omhs#327: full-HTML artifacts previously passed through this
+ * openagentic-your-deployment#327: full-HTML artifacts previously passed through this
  * renderer without any theme enforcement, which meant a model emitting
  * `body { font: Arial }` ended up invisible on the dark app chrome.
  */
@@ -130,7 +130,7 @@ function artifactThemeDefenseBlock(theme: string): string {
 :where(table) { border-collapse: collapse; }
 :where(a) { color: var(--app-accent); }
 
-/* ─── ALWAYS-VISIBLE OVERRIDES (openagentic-omhs#330) ──────────────────
+/* ─── ALWAYS-VISIBLE OVERRIDES (openagentic-your-deployment#330) ──────────────────
    See StreamingArtifactRenderer for rationale. !important on the
    visibility-critical rules so model-emitted Plotly/D3/Chart.js text
    defaults can't make the artifact unreadable against dark chrome.
@@ -355,7 +355,7 @@ const HTML_TEMPLATE = (code: string, theme: string) => {
   // Detect which libraries the code needs
   const needsPlotly = code.includes('Plotly.') || code.includes('plotly');
   // d3.sankey() is a separate npm module (d3-sankey@0.12). Detect it
-  // independently so we inject the extra lib. agentic-work/openagentic-omhs#329.
+  // independently so we inject the extra lib. agentic-work/openagentic-your-deployment#329.
   const needsD3Sankey = /\bd3\.sankey\s*\(/.test(code) || /d3-sankey/i.test(code);
   const needsD3 = needsD3Sankey || (code.includes('d3.') && (code.includes('d3.select') || code.includes('d3.create')));
   const needsChartJS = code.includes('new Chart(') || code.includes('Chart.register');
@@ -382,7 +382,7 @@ const HTML_TEMPLATE = (code: string, theme: string) => {
     // defense uses :where() selectors with zero specificity). Previously
     // this path skipped theme wrapping entirely — full-HTML artifacts
     // inherited transparent bg / black text and became invisible on the
-    // dark app chrome. See openagentic-omhs#327.
+    // dark app chrome. See openagentic-your-deployment#327.
     const headInjection = [themeDefense, ...libScripts].join('\n');
     const headMatch = html.match(/<head[^>]*>/i);
     if (headMatch) {

@@ -21,7 +21,7 @@
 @tailwind utilities;
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Self-hosted editorial fonts (CDC airgap-safe — no Google Fonts, no CDN).
+   Self-hosted editorial fonts (your environment airgap-safe — no Google Fonts, no CDN).
    The woff2 files already live in /public/artifact-runtime/fonts/ where
    artifact iframes also consume them; registering them at the app level
    gives us real Inter + JetBrains Mono for the main UI too. Without this

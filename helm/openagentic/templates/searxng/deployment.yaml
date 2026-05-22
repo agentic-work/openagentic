@@ -33,7 +33,7 @@ spec:
       {{- end }}
       # SECURITY: No service account needed
       automountServiceAccountToken: false
-      # Fix DNS: ndots:1 ensures external domains are tried as FQDN first (gnomuslabs.com wildcard)
+      # Fix DNS: ndots:1 ensures external domains are tried as FQDN first (example.local.com wildcard)
       dnsConfig:
         options:
           - name: ndots

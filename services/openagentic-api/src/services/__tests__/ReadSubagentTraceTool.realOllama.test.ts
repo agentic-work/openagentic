@@ -2,7 +2,7 @@
  * ReadSubagentTraceTool — end-to-end A2 round-trip with REAL gpt-oss:20b
  * output as the transcript content.
  *
- * Pattern: drive hal:11434 in beforeAll to produce a real sub-agent output
+ * Pattern: drive host.docker.internal:11434 in beforeAll to produce a real sub-agent output
  * → stash into an in-memory TraceStore as if TaskTool just wrote it →
  * dispatch read_subagent_trace via executeReadSubagentTrace → verify the
  * full transcript round-trips intact + truncation works.
@@ -23,7 +23,7 @@ import {
   type TraceRecord,
 } from '../ReadSubagentTraceTool.js';
 
-const HAL_URL = process.env.OLLAMA_HOST || 'http://hal:11434';
+const HAL_URL = process.env.OLLAMA_HOST || 'http://host.docker.internal:11434';
 const TEST_MODEL = process.env.OLLAMA_TEST_MODEL || 'gpt-oss:20b';
 
 let HAL_OK = false;
@@ -142,7 +142,7 @@ describe('ReadSubagentTraceTool — REAL gpt-oss:20b round-trip', () => {
     if (!HAL_OK) {
       // eslint-disable-next-line no-console
       console.warn(
-        `[ReadSubagentTraceTool.realOllama] hal:11434 unreachable — skipping.`,
+        `[ReadSubagentTraceTool.realOllama] host.docker.internal:11434 unreachable — skipping.`,
       );
       return;
     }

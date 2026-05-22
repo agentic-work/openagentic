@@ -257,7 +257,7 @@ export default async function dlpRoutes(fastify: FastifyInstance) {
 
       // Use Ollama directly for the summary (lightweight, always available)
       const http = await import('http');
-      const ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://10.2.10.142:11434';
+      const ollamaUrl = process.env.OLLAMA_BASE_URL || 'http://10.0.0.142:11434';
       const model = process.env.DEFAULT_MODEL || 'gpt-oss';
       const summaryText = await new Promise<string>((resolve) => {
         const postData = JSON.stringify({

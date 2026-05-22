@@ -22,7 +22,7 @@ import type { Logger } from 'pino';
  * Per-stage RAG configuration. Note: there used to be an `enabled: boolean`
  * field here that was hardcoded to `true` everywhere it was set —
  * effectively dead since the kill switch had moved to the pipeline-level
- * `ChatPipelineConfig.enableRAG` flag. Removed (openagentic-omhs#330
+ * `ChatPipelineConfig.enableRAG` flag. Removed (openagentic-your-deployment#330
  * follow-up). Per-request gating now lives in RagIntentGate which
  * decides whether retrieval should run for a given user message.
  */
@@ -116,7 +116,7 @@ export class RAGStage implements PipelineStage {
       // Without this, every chat — including "what are my Azure costs" or
       // "create a chart" — fired Milvus searches across multiple
       // collections and bloated the system prompt with irrelevant doc
-      // excerpts. See openagentic-omhs#330 follow-up.
+      // excerpts. See openagentic-your-deployment#330 follow-up.
       //
       // Artifact search (user reports / exports) is intentionally KEPT
       // running on every message — it's user-scoped, fast, and surfaces
@@ -184,7 +184,7 @@ export class RAGStage implements PipelineStage {
         // Emit RAG status for UI. Includes a `sources` array (top docs +
         // their collection / source metadata) so the chat-mode tool card
         // can show per-doc icons inline rather than just "5 docs". See
-        // openagentic-omhs#330 — user wants 'icons + names + collection'
+        // openagentic-your-deployment#330 — user wants 'icons + names + collection'
         // visible in the RAG tag instead of an opaque count.
         const sources = knowledge.docs.slice(0, 5).map((d: any) => ({
           title: d.metadata?.title || d.metadata?.source || d.metadata?.url || 'document',
@@ -540,7 +540,7 @@ export class RAGStage implements PipelineStage {
       }
 
       // Fallback: Use Ollama embedding directly
-      const ollamaUrl = process.env.OLLAMA_BASE_URL || process.env.EMBEDDING_OLLAMA_BASE_URL || 'http://10.2.10.142:11434';
+      const ollamaUrl = process.env.OLLAMA_BASE_URL || process.env.EMBEDDING_OLLAMA_BASE_URL || 'http://10.0.0.142:11434';
       const embeddingModel = process.env.OLLAMA_EMBEDDING_MODEL || process.env.EMBEDDING_MODEL || 'nomic-embed-text';
 
       const resp = await fetch(`${ollamaUrl}/api/embeddings`, {

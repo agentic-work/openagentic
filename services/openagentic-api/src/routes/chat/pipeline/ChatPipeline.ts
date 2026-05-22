@@ -616,7 +616,7 @@ export class ChatPipeline extends EventEmitter {
         // PromptComposer's module-selection decision — one definition of "user
         // wants a visual" across both code paths. Previously this used a
         // narrow verb+noun regex that missed shapes like "show me a sankey"
-        // or "sankey chart of costs". See openagentic-omhs#327.
+        // or "sankey chart of costs". See openagentic-your-deployment#327.
         const { evaluateUserIntent } = await import('../../../services/prompt/ArtifactIntentGate.js');
         const isVisualIntent = evaluateUserIntent(context.request.message).intent === 'visualization';
         const isArtifactAutoDelegate = (stage.name === 'completion' || stage.name === 'multi-model-orchestration') &&
@@ -672,7 +672,7 @@ export class ChatPipeline extends EventEmitter {
           // passing that through would collapse the artifact agent back to
           // ollama quality — defeating the tier-aware routing. When no
           // premium is configured, SmartRouter falls back gracefully to
-          // whatever IS available. See openagentic-omhs#327.
+          // whatever IS available. See openagentic-your-deployment#327.
           context.request.toolCalls = [{
             id: `auto-delegate-${Date.now()}`,
             type: 'function',

@@ -16,7 +16,7 @@
  *
  * Like the other companion generators, this one resolves paths via
  * `companionPath(basePath, 'synth', ...)` which honors the
- * `DOCS_COMPANION_ROOT` env var (set by the CDC openagentic-ui Docker
+ * `DOCS_COMPANION_ROOT` env var (set by the your environment openagentic-ui Docker
  * build to `/companions`) and falls back to the sibling layout for
  * developer boxes.
  *

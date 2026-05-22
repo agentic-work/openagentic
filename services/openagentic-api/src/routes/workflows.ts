@@ -86,7 +86,7 @@ import {
   nodes as deepResearchNodes,
   edges as deepResearchEdges,
 } from '../services/__seed__/templates/07-deep-research-team.js';
-// OMHS On-Call team template pack — moved from omhsTemplateSeeder (which
+// your-deployment On-Call team template pack — moved from omhsTemplateSeeder (which
 // silently failed on every boot — wrong table + invalid upsert key, see
 // fix commit) to the canonical seed path.
 import {
@@ -4718,52 +4718,52 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // OMHS On-Call team template pack — 5 incident-response / monitoring flows
-  // tailored to the OMHS use case. Moved here from omhsTemplateSeeder which
+  // your-deployment On-Call team template pack — 5 incident-response / monitoring flows
+  // tailored to the your-deployment use case. Moved here from omhsTemplateSeeder which
   // silently failed on every boot (wrong table + invalid upsert key).
   // ══════════════════════════════════════════════════════════════════════════
   {
-    name: 'OMHS PagerDuty Triage',
+    name: 'your-deployment PagerDuty Triage',
     description: 'Webhook trigger receives PagerDuty incident payloads, auto-acknowledges the incident, uses an LLM to classify severity, then routes critical alerts to Slack and warning alerts to email.',
     icon: 'AlertTriangle',
     category: 'incident-response',
-    tags: ['pagerduty', 'triage', 'on-call', 'slack', 'email', 'omhs'],
+    tags: ['pagerduty', 'triage', 'on-call', 'slack', 'email', 'your-deployment'],
     color: '#dc2626',
     definition: { nodes: omhsPdTriageNodes, edges: omhsPdTriageEdges },
   },
   {
-    name: 'OMHS Alertmanager → PagerDuty',
+    name: 'your-deployment Alertmanager → PagerDuty',
     description: 'Receives Prometheus Alertmanager firing payloads via webhook, groups alerts by severity, triggers a PagerDuty incident for critical alerts, and posts a summary to Slack for all firing alerts.',
     icon: 'BarChart',
     category: 'monitoring',
-    tags: ['alertmanager', 'prometheus', 'pagerduty', 'slack', 'on-call', 'omhs'],
+    tags: ['alertmanager', 'prometheus', 'pagerduty', 'slack', 'on-call', 'your-deployment'],
     color: '#ea580c',
     definition: { nodes: omhsAlertmanagerNodes, edges: omhsAlertmanagerEdges },
   },
   {
-    name: 'OMHS Splunk Detection Triage',
+    name: 'your-deployment Splunk Detection Triage',
     description: 'Polls Splunk every 15 minutes for new notable events, uses an LLM to summarize detections, triggers a PagerDuty incident for high/critical severity findings, and stores all results in the knowledge base.',
     icon: 'Search',
     category: 'incident-response',
-    tags: ['splunk', 'siem', 'detection', 'pagerduty', 'knowledge-base', 'omhs'],
+    tags: ['splunk', 'siem', 'detection', 'pagerduty', 'knowledge-base', 'your-deployment'],
     color: '#0891b2',
     definition: { nodes: omhsSplunkNodes, edges: omhsSplunkEdges },
   },
   {
-    name: 'OMHS K8s Cluster Health',
+    name: 'your-deployment K8s Cluster Health',
     description: 'Hourly cluster health probe using read-only oap-kubernetes-mcp tools (cluster health, node list, pod list in target namespace). LLM synthesizes the three signals into a concise report and posts it to Slack. No pod spawn, no privileged sandbox.',
     icon: 'Activity',
     category: 'infra-ops',
-    tags: ['kubernetes', 'k8s', 'mcp', 'health-check', 'slack', 'omhs'],
+    tags: ['kubernetes', 'k8s', 'mcp', 'health-check', 'slack', 'your-deployment'],
     color: '#0ea5e9',
     definition: { nodes: omhsK8sNodes, edges: omhsK8sEdges },
   },
   {
-    name: 'OMHS Loki + Prom Incident',
+    name: 'your-deployment Loki + Prom Incident',
     description: 'Queries Prometheus for high error rates and Loki for error logs every 5 minutes, merges both signal streams, uses an LLM to correlate and confirm real incidents, then triggers a PagerDuty incident for confirmed findings.',
     icon: 'GitMerge',
     category: 'monitoring',
-    tags: ['loki', 'prometheus', 'observability', 'pagerduty', 'correlation', 'omhs'],
+    tags: ['loki', 'prometheus', 'observability', 'pagerduty', 'correlation', 'your-deployment'],
     color: '#16a34a',
     definition: { nodes: omhsLokiPromNodes, edges: omhsLokiPromEdges },
   },

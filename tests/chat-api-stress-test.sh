@@ -11,7 +11,7 @@ ADMIN_EMAIL="admin@openagentic.io"
 ADMIN_PASSWORD="6py8Q~XNcKAJ~.SIrZAIBy__l7oDoPteWp2Habm3"
 NUM_SESSIONS=10
 MESSAGES_PER_SESSION=5
-OUTPUT_DIR="/mnt/synology/Code/company/cdc/agentic/tests/results"
+OUTPUT_DIR="/mnt/synology/Code/company/your-env/agentic/tests/results"
 RESULTS_FILE="${OUTPUT_DIR}/stress_test_results_$(date +%Y%m%d_%H%M%S).json"
 
 # Color output

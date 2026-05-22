@@ -12,8 +12,8 @@
 - **Total Workflows:** 100 (50 chatflows + 50 agentflows)
 - **Workflow Types:** 10 types (5 chatflow types, 5 agentflow types)
 - **Expected Duration:** 5-10 minutes
-- **API Key:** `awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79`
-- **Test User:** phatoldsun@gmail.com
+- **API Key:** `awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79`
+- **Test User:** admin@openagentic.local
 
 ## Test Architecture
 
@@ -111,8 +111,8 @@ Start
 ```json
 {
   "testSuite": "Test Suite #7B - 100 Flowise Workflows",
-  "testUser": "phatoldsun@gmail.com",
-  "apiKey": "awc_test_phatoldsun_16...",
+  "testUser": "admin@openagentic.local",
+  "apiKey": "awc_test_openagentic-test_16...",
   "timestamp": "ISO-8601 timestamp",
   "metrics": {
     "total": 100,
@@ -164,7 +164,7 @@ node flowise-workflow-tests.test.js
 ### Custom Configuration
 ```bash
 API_URL=http://localhost:8000 \
-API_KEY=awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79 \
+API_KEY=awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79 \
 node flowise-workflow-tests.test.js
 ```
 
@@ -275,10 +275,10 @@ The MCP tools interact with Flowise API endpoints:
 
 ## References
 
-- **Test File:** `/mnt/synology/Code/company/cdc/agentic/tests/load/flowise-workflow-tests.test.js`
-- **Documentation:** `/mnt/synology/Code/company/cdc/agentic/tests/load/README.md`
-- **Quick Start:** `/mnt/synology/Code/company/cdc/agentic/tests/load/QUICKSTART.md`
-- **MCP Server:** `/mnt/synology/Code/company/cdc/agentic/services/mcps/oap-flowise-mcp/`
+- **Test File:** `/mnt/synology/Code/company/your-env/agentic/tests/load/flowise-workflow-tests.test.js`
+- **Documentation:** `/mnt/synology/Code/company/your-env/agentic/tests/load/README.md`
+- **Quick Start:** `/mnt/synology/Code/company/your-env/agentic/tests/load/QUICKSTART.md`
+- **MCP Server:** `/mnt/synology/Code/company/your-env/agentic/services/mcps/oap-flowise-mcp/`
 - **Flowise Docs:** https://docs.flowiseai.com
 
 ---

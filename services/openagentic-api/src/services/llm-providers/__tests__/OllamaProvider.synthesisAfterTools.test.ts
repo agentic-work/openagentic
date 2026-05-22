@@ -4,7 +4,7 @@
  * Live capture 2026-05-11 (validation probe, kubernetes ground-truth):
  *   - chatLoop no-progress guard fired at turn 4 (3× identical k8s_list_pods)
  *   - guard forced nextTurnToolChoice='none' for the synthesis turn
- *   - synthesis turn dispatched to gpt-oss:20b on hal:11434
+ *   - synthesis turn dispatched to gpt-oss:20b on host.docker.internal:11434
  *   - Ollama returned: done=true, eval_count=12156, hasContent=false,
  *     tool_calls=['synth']
  *   - stream closed without ever emitting a text_delta
@@ -92,7 +92,7 @@ describe('OllamaProvider — synthesis-after-tools (Bug A)', () => {
     );
 
     const provider = new OllamaProvider(silentLogger, {
-      baseUrl: 'http://hal:11434',
+      baseUrl: 'http://host.docker.internal:11434',
       healthCheckModel: MODEL,
     });
 
@@ -149,7 +149,7 @@ describe('OllamaProvider — synthesis-after-tools (Bug A)', () => {
     );
 
     const provider = new OllamaProvider(silentLogger, {
-      baseUrl: 'http://hal:11434',
+      baseUrl: 'http://host.docker.internal:11434',
       healthCheckModel: MODEL,
     });
 

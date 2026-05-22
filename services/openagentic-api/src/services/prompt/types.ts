@@ -9,7 +9,7 @@ export type ContextMode = 'chat' | 'code' | 'flow';
  * only makes sense for a specific kind of ask (e.g. artifact / visualization
  * guidance) can be conditionally included. Without this gate, modules ride
  * along on every request and bias the model toward unwanted output shapes —
- * see openagentic-omhs#327 for the cost/artifact-injection regression that
+ * see openagentic-your-deployment#327 for the cost/artifact-injection regression that
  * prompted introducing this.
  */
 export type UserIntent = 'visualization';

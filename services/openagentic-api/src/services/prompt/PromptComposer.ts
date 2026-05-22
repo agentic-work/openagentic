@@ -33,7 +33,7 @@ export class PromptComposer {
 
     // 0. Evaluate user intent gate (if not pre-supplied). Used downstream to
     //    filter modules whose injection rule requires a specific user intent.
-    //    See openagentic-omhs#327 — replaces broad keyword heuristics that
+    //    See openagentic-your-deployment#327 — replaces broad keyword heuristics that
     //    biased every chat toward artifact / cost-visualization output.
     const intentDecision = context.userIntent !== undefined
       ? { intent: context.userIntent ?? null, reason: 'caller-supplied' as const, matched: undefined as string | undefined }
@@ -130,7 +130,7 @@ export class PromptComposer {
     //      Without this, intent-gated modules (e.g. `artifact-creation` on
     //      the artifact agent's resolve path) were scored 0 on an empty
     //      message and filtered out before even reaching the intent gate.
-    //      See openagentic-omhs#327.
+    //      See openagentic-your-deployment#327.
     //   b) Remaining domain modules filtered by score threshold as before.
     const selectedDomain: PromptModule[] = [];
     let domainTokensUsed = 0;
@@ -163,7 +163,7 @@ export class PromptComposer {
     //         "artifact-inhibitor" module fires on every non-visual
     //         request to suppress the local model's training bias toward
     //         emitting unsolicited artifact:html blocks).
-    //     See openagentic-omhs#327 + #330 follow-up.
+    //     See openagentic-your-deployment#327 + #330 follow-up.
     const preGate = [...coreModules, ...modeModules, ...capabilityModules, ...selectedDomain];
     const droppedByIntentGate: string[] = [];
     const allSelected = preGate.filter((m) => {
@@ -279,7 +279,7 @@ export class PromptComposer {
       // models both emit tool-call JSON that the server executes.
       // Treating `family === 'local'` as "no tools" excluded local
       // models from capability-gated modules like `chart-rendering`
-      // even though they can and do use tools. See openagentic-omhs#327.
+      // even though they can and do use tools. See openagentic-your-deployment#327.
       tools: true,
       vision:
         family === 'claude' ||

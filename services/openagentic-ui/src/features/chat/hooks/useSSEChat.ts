@@ -2391,7 +2391,7 @@ export const useSSEChat = ({
                         // ToolCall.output and renderers (favicons on web_search,
                         // resource-name summaries on cloud creates, etc.) light up.
                         // Without these, all tool chips collapse to a bare title.
-                        // See openagentic-omhs#330.
+                        // See openagentic-your-deployment#330.
                         result: (b as any).result,
                         error: (b as any).error,
                         duration: (b as any).duration,
@@ -2440,7 +2440,7 @@ export const useSSEChat = ({
                           // ToolCall.input / ToolCall.output, which in turn
                           // powers the rich tool-card renderers (favicons on
                           // web_search, resource-name summaries on cloud
-                          // creates, etc.). openagentic-omhs#330.
+                          // creates, etc.). openagentic-your-deployment#330.
                           let argsParsed: any;
                           try { argsParsed = block.content ? JSON.parse(block.content) : undefined; } catch { argsParsed = block.content; }
                           let resultParsed: any;

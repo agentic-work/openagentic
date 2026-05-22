@@ -18,7 +18,7 @@ ADMIN_EMAIL = "admin@openagentic.io"
 ADMIN_PASSWORD = "6py8Q~XNcKAJ~.SIrZAIBy__l7oDoPteWp2Habm3"
 NUM_SESSIONS = 10
 MESSAGES_PER_SESSION = 5
-RESULTS_DIR = "/mnt/synology/Code/company/cdc/agentic/tests/results"
+RESULTS_DIR = "/mnt/synology/Code/company/your-env/agentic/tests/results"
 
 # Test questions that exercise different MCP tools and request diagrams
 QUESTIONS = [

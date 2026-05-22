@@ -15,7 +15,7 @@ test -n "$KEY" || { echo "ERROR: OPENAGENTIC_TEST_KEY not set" >&2; exit 2; }
 # Q-loop prompts (verbatim from reports/verify-cadence/Q-loop-93f970bc-2026-05-14/PROMPTS.md)
 declare -A PROMPTS=(
   [Q1]="show me my Azure subscriptions and what's in each resource group"
-  [Q2]="do a full security audit across all tenants of openagentic-omhs"
+  [Q2]="do a full security audit across all tenants of openagentic-your-deployment"
   [Q3]="interrogate the Front Door + App Gateway config for the prod tenant — show traffic flow, listeners, and WAF rules"
   [Q4]="show me all my Cloud Run services across regions and their current health"
   [Q5]="the staging deploy is failing — diagnose, fix, rebuild, and verify it's healthy"

@@ -11,13 +11,13 @@
 ## Deliverables
 
 ### Primary Test File
-✅ **File:** `/mnt/synology/Code/company/cdc/agentic/tests/load/concurrent-chat-sessions.test.js`
+✅ **File:** `/mnt/synology/Code/company/your-env/agentic/tests/load/concurrent-chat-sessions.test.js`
 - **Size:** 28KB (697 lines)
 - **Status:** Executable, syntax verified
 - **Purpose:** Run 100 concurrent chat sessions with 20 messages each
 
 ### Helper Scripts
-✅ **File:** `/mnt/synology/Code/company/cdc/agentic/tests/load/run-load-test.sh`
+✅ **File:** `/mnt/synology/Code/company/your-env/agentic/tests/load/run-load-test.sh`
 - **Size:** 6.2KB
 - **Status:** Executable, syntax verified
 - **Purpose:** Convenient wrapper for running tests with presets
@@ -35,8 +35,8 @@
 ### Core Settings
 ```javascript
 apiUrl: 'http://localhost:8000'
-apiKey: 'awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79'
-testUser: 'phatoldsun@gmail.com'
+apiKey: 'awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79'
+testUser: 'admin@openagentic.local'
 numSessions: 100
 messagesPerSession: 20
 totalMessages: 2000
@@ -142,7 +142,7 @@ Sessions 81-100 (400 messages):
 
 ```bash
 # 1. Navigate to test directory
-cd /mnt/synology/Code/company/cdc/agentic/tests/load
+cd /mnt/synology/Code/company/your-env/agentic/tests/load
 
 # 2. Run smoke test (fast validation)
 ./run-load-test.sh --smoke
@@ -165,7 +165,7 @@ node concurrent-chat-sessions.test.js
 
 # Custom configuration via environment
 API_URL=http://localhost:8000 \
-API_KEY=awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79 \
+API_KEY=awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79 \
 NUM_SESSIONS=100 \
 MESSAGES_PER_SESSION=20 \
 node concurrent-chat-sessions.test.js
@@ -207,7 +207,7 @@ node concurrent-chat-sessions.test.js
 ## File Structure
 
 ```
-/mnt/synology/Code/company/cdc/agentic/tests/load/
+/mnt/synology/Code/company/your-env/agentic/tests/load/
 ├── concurrent-chat-sessions.test.js    # Main test (697 lines)
 ├── run-load-test.sh                     # Helper script
 ├── INDEX.md                             # Complete index
@@ -461,7 +461,7 @@ Results can be sent to monitoring systems:
 curl http://localhost:8000/health
 
 # Step 2: Run smoke test
-cd /mnt/synology/Code/company/cdc/agentic/tests/load
+cd /mnt/synology/Code/company/your-env/agentic/tests/load
 ./run-load-test.sh --smoke
 
 # Step 3: Review results
@@ -543,7 +543,7 @@ See README.md "Troubleshooting" section for:
 
 **To run your first test:**
 ```bash
-cd /mnt/synology/Code/company/cdc/agentic/tests/load
+cd /mnt/synology/Code/company/your-env/agentic/tests/load
 ./run-load-test.sh --smoke
 ```
 

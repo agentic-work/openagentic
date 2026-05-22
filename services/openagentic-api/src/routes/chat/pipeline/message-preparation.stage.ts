@@ -91,7 +91,7 @@ Use the above knowledge base documents to provide a specific, detailed answer. C
       // reads `title`/`filename`/`name` for display and
       // `collection`/`source` for the hint chip — keep those names
       // populated even when only a single field is available on the
-      // underlying doc. See openagentic-omhs#330.
+      // underlying doc. See openagentic-your-deployment#330.
       context.emit?.('rag_context', {
         docsRetrieved: context.ragContext.docs.length,
         collections: context.ragContext.metadata?.collections || [],

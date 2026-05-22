@@ -8,7 +8,7 @@ Test #7C collects comprehensive performance metrics during load tests, measuring
 
 ### Standalone Mode (Simulates Load)
 ```bash
-cd /mnt/synology/Code/company/cdc/agentic/tests/load
+cd /mnt/synology/Code/company/your-env/agentic/tests/load
 node performance-metrics.test.js
 ```
 

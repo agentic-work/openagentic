@@ -47,7 +47,7 @@ spec:
       automountServiceAccountToken: false
 
       # DNS config — override default ndots:5 to ndots:1.
-      # The cluster's resolv.conf search list contains "gnomuslabs.com" which has
+      # The cluster's resolv.conf search list contains "example.local.com" which has
       # a wildcard DNS record. With ndots:5, hostnames like "api.github.com" (2 dots)
       # get the search domains tried first → resolves to the wildcard IP → TLS handshake
       # fails because the server cert doesn't match. Setting ndots:1 forces hostnames

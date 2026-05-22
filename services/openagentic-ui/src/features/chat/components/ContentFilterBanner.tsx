@@ -3,7 +3,7 @@
  * inline with an assistant message whose canonical stop_reason was
  * `content_filter`, `safety`, or `recitation`. Before B8 these all
  * collapsed to `end_turn` and the UI showed a truncated bubble with no
- * indication that a safety filter fired. For CDC FedRAMP-Hi audit this
+ * indication that a safety filter fired. For your environment FedRAMP-Hi audit this
  * hid a SAFETY event from the operator + audit log.
  *
  * Visual: subtle red/orange border + icon + compliance copy. Sits

@@ -383,20 +383,20 @@ describe('chatLoopRecursor — Phase E.8.d', () => {
 });
 
 // ============================================================================
-// Real-provider smoke (Ollama on hal:11434 — gpt-oss:20b).
-// Skipped automatically when hal:11434 is unreachable. Per the standing
+// Real-provider smoke (Ollama on host.docker.internal:11434 — gpt-oss:20b).
+// Skipped automatically when host.docker.internal:11434 is unreachable. Per the standing
 // memory rule (feedback_no_synthetic_chunks_only_real_provider_captures.md)
 // this is the canonical wire-level test for the recursor primitive.
 // ============================================================================
 // `setup.ts` pins OLLAMA_BASE_URL to localhost:11434 unconditionally; let
 // TEST_OLLAMA_BASE_URL win when explicit, then fall through to the user-
-// memory canonical hal:11434 floor. Probe each candidate; first reachable
+// memory canonical host.docker.internal:11434 floor. Probe each candidate; first reachable
 // wins so this test works whether you run inside the cluster (hal), via
 // port-forward (localhost), or against an arbitrary endpoint.
 const OLLAMA_CANDIDATES: string[] = [
   process.env.TEST_OLLAMA_BASE_URL ?? '',
-  'http://hal:11434',
-  'http://10.2.10.142:11434',
+  'http://host.docker.internal:11434',
+  'http://10.0.0.142:11434',
   process.env.OLLAMA_BASE_URL ?? '',
 ].filter(Boolean);
 

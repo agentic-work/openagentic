@@ -113,15 +113,15 @@ describe('deriveOrigin', () => {
     it('derives hostname from auth.endpoint URL', () => {
       const o = deriveOrigin({
         providerType: 'ollama',
-        auth: { endpoint: 'http://10.2.10.142:11434' },
+        auth: { endpoint: 'http://10.0.0.142:11434' },
       })
-      expect(o.hostname).toBe('10.2.10.142')
+      expect(o.hostname).toBe('10.0.0.142')
     })
 
     it('derives hostname from bare host:port', () => {
       const o = deriveOrigin({
         providerType: 'ollama',
-        auth: { endpoint: 'hal:11434' },
+        auth: { endpoint: 'host.docker.internal:11434' },
       })
       expect(o.hostname).toBe('hal')
     })

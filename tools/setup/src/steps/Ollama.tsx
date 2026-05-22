@@ -28,7 +28,7 @@ export const OllamaStep: React.FC<Props> = ({ initial, step, total, onDone }) =>
         </Box>
         <Box marginTop={1}>
           <Hint>
-            Examples: http://localhost:11434, http://host.docker.internal:11434, http://hal:11434
+            Examples: http://localhost:11434, http://host.docker.internal:11434
           </Hint>
         </Box>
         <Box>

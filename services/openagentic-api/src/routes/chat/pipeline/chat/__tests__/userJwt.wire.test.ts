@@ -94,7 +94,7 @@ describe('userJwt wire (chatmode-rip Phase C.6 integration)', () => {
       userId: 'user-jwt-1',
       user: {
         id: 'user-jwt-1',
-        email: 'mcp-tester@phatoldsungmail.onmicrosoft.com',
+        email: 'mcp-tester@openagentic.local',
         accessToken: 'eyJaccess.token.payload',
         idToken: 'eyJid.token.payload',
         authMethod: 'azure-ad',

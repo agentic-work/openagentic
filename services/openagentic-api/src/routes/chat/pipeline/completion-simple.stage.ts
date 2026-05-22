@@ -668,7 +668,7 @@ export class CompletionStage implements PipelineStage {
       if (originalLength > maxPromptChars) {
         const corePrompt = context.systemPrompt.substring(0, maxPromptChars);
         const suffix = isLocalModel
-          // NOTE (openagentic-omhs#327): earlier revisions of this suffix
+          // NOTE (openagentic-your-deployment#327): earlier revisions of this suffix
           // included a "Charts/diagrams: Create artifact code blocks" bullet
           // that bypassed PromptComposer's intent gate and re-injected
           // artifact bias into every large-prompt chat with a local model.

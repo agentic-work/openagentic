@@ -323,7 +323,7 @@ export const STATIC_CAPABILITIES: ModelCapabilities[] = [
     intentExpectedEventKinds: { tool: KIND_TOOL_USE },
   },
 
-  // ── Ollama (hal:11434) ─────────────────────────────────────────────────
+  // ── Ollama (host.docker.internal:11434) ─────────────────────────────────────────────────
   {
     endpoint: 'ollama-chat',
     modelId: 'gpt-oss:20b',

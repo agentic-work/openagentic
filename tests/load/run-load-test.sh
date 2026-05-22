@@ -19,7 +19,7 @@ NC='\033[0m' # No Color
 
 # Default configuration
 API_URL="${API_URL:-http://localhost:8000}"
-API_KEY="${API_KEY:-awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79}"
+API_KEY="${API_KEY:-awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79}"
 NUM_SESSIONS="${NUM_SESSIONS:-100}"
 MESSAGES_PER_SESSION="${MESSAGES_PER_SESSION:-20}"
 DEFAULT_MODEL="${DEFAULT_MODEL:-gemini-2.0-flash-001}"

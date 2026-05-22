@@ -7,7 +7,7 @@ What the Azure MCP needs to introspect your tenant:
 3. **Role assignments** on whatever subscriptions you want the MCP to read
 4. Optionally: a **security group** that members of Entra ID can join for SSO-based access, plus the Enterprise App config to make the openagentic UI usable with Microsoft sign-in
 
-For the reference deployment we provisioned everything to the your tenant against the `<YOUR_AZURE_SUBSCRIPTION_NAME>` subscription only — CDC/prod subscriptions were explicitly not touched.
+For the reference deployment we provisioned everything to the your tenant against the `<YOUR_AZURE_SUBSCRIPTION_NAME>` subscription only — your environment/prod subscriptions were explicitly not touched.
 
 ## Preconditions
 
@@ -114,7 +114,7 @@ chmod 600 ~/.openagentic/cloud-secrets/azure.env
 | App object id | `00748df2-33f2-428b-91da-61b045533d07` |
 | Service Principal object id | `bafbd84a-51df-4ff3-a3a0-1e2601e056d0` |
 | Admin group | `openagentic-admins` — `d144e128-1277-4867-9622-301118da7115` |
-| Reader role assignment | `/subscriptions/815a115d.../providers/Microsoft.Authorization/roleAssignments/e014fa2c-dae8-4dbd-8b81-c38857b560a6` |
+| Reader role assignment | `/subscriptions/00000000.../providers/Microsoft.Authorization/roleAssignments/00000000-0000-0000-0000-000000000001` |
 | Secret | rotating 2yr, see `~/.openagentic/cloud-secrets/azure.env` |
 
 ## SSO wiring (Microsoft sign-in into openagentic)

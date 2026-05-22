@@ -5,15 +5,15 @@
 ### Files Created
 
 1. **Main Test File**
-   - Location: `/mnt/synology/Code/company/cdc/agentic/tests/load/flowise-workflow-tests.test.js`
+   - Location: `/mnt/synology/Code/company/your-env/agentic/tests/load/flowise-workflow-tests.test.js`
    - Size: 564 lines
    - Functions: 7 async functions
    - Status: ✅ Syntax validated
 
 2. **Documentation Files**
-   - `/mnt/synology/Code/company/cdc/agentic/tests/load/README.md` - Updated with Test #7B section
-   - `/mnt/synology/Code/company/cdc/agentic/tests/load/TEST_SUMMARY.md` - Comprehensive overview
-   - `/mnt/synology/Code/company/cdc/agentic/tests/load/QUICKSTART.md` - Quick start guide
+   - `/mnt/synology/Code/company/your-env/agentic/tests/load/README.md` - Updated with Test #7B section
+   - `/mnt/synology/Code/company/your-env/agentic/tests/load/TEST_SUMMARY.md` - Comprehensive overview
+   - `/mnt/synology/Code/company/your-env/agentic/tests/load/QUICKSTART.md` - Quick start guide
    - Status: ✅ All created
 
 ### Test Configuration Verified
@@ -34,8 +34,8 @@
   - Supervisor Agent: 10
 
 ✅ **API Configuration:**
-- API Key: `awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79`
-- Test User: phatoldsun@gmail.com
+- API Key: `awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79`
+- Test User: admin@openagentic.local
 - Target: Uses config.apiUrl (default: http://localhost:8000)
 - Model: Uses config.defaultModel (default: gemini-2.0-flash-001)
 
@@ -73,7 +73,7 @@
 
 ```bash
 # Navigate to test directory
-cd /mnt/synology/Code/company/cdc/agentic/tests/load
+cd /mnt/synology/Code/company/your-env/agentic/tests/load
 
 # Run the test
 node flowise-workflow-tests.test.js
@@ -89,8 +89,8 @@ node flowise-workflow-tests.test.js
 ║  Creating 50 Chatflows + 50 Agentflows via MCP          ║
 ╚═══════════════════════════════════════════════════════════╝
 
-INFO Test User: phatoldsun@gmail.com
-INFO API Key: awc_test_phatoldsun_16bdbaf28...
+INFO Test User: admin@openagentic.local
+INFO API Key: awc_test_openagentic-test_16bdbaf28...
 INFO Target: http://localhost:8000
 
 === Creating 50 Chatflows ===
@@ -181,10 +181,10 @@ The test can be run:
 
 ### Documentation
 
-- **Full Documentation:** `/mnt/synology/Code/company/cdc/agentic/tests/load/README.md`
-- **Quick Start:** `/mnt/synology/Code/company/cdc/agentic/tests/load/QUICKSTART.md`
-- **Summary:** `/mnt/synology/Code/company/cdc/agentic/tests/load/TEST_SUMMARY.md`
-- **MCP Server:** `/mnt/synology/Code/company/cdc/agentic/services/mcps/oap-flowise-mcp/README.md`
+- **Full Documentation:** `/mnt/synology/Code/company/your-env/agentic/tests/load/README.md`
+- **Quick Start:** `/mnt/synology/Code/company/your-env/agentic/tests/load/QUICKSTART.md`
+- **Summary:** `/mnt/synology/Code/company/your-env/agentic/tests/load/TEST_SUMMARY.md`
+- **MCP Server:** `/mnt/synology/Code/company/your-env/agentic/services/mcps/oap-flowise-mcp/README.md`
 
 ### References
 

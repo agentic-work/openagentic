@@ -8,7 +8,7 @@
  * not just at the end once the full output arrives.
  *
  * Approach: drive the UI through the workflows page with an
- * authenticated session (mcp-tester@phatoldsungmail.onmicrosoft.com
+ * authenticated session (mcp-tester@openagentic.local
  * storage state from .auth/user.json), then:
  *   1. Capture every network response body for the execution stream
  *      endpoint (`/api/workflows/executions/.../stream`).

@@ -2,7 +2,7 @@
  * TaskTool wire-in for S3 (output_schema_name) + A2 (trace_handle).
  *
  * Real-data integration test: the JSON validated by executeTask comes from
- * a live gpt-oss:20b call to hal:11434 captured in beforeAll. No mock
+ * a live gpt-oss:20b call to host.docker.internal:11434 captured in beforeAll. No mock
  * provider responses — the runSubagent dep is a thin pass-through that
  * returns the REAL model output we pre-fetched.
  *
@@ -14,7 +14,7 @@
  * `feedback_no_synthetic_chunks_only_real_provider_captures`, the
  * substantive "data" being validated is real.
  *
- * Skip-with-loud-warn when hal:11434 unreachable.
+ * Skip-with-loud-warn when host.docker.internal:11434 unreachable.
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -27,7 +27,7 @@ import {
 } from '../TaskTool.js';
 import { buildSchemaDirective } from '../taskOutputSchemas.js';
 
-const HAL_URL = process.env.OLLAMA_HOST || 'http://hal:11434';
+const HAL_URL = process.env.OLLAMA_HOST || 'http://host.docker.internal:11434';
 const TEST_MODEL = process.env.OLLAMA_TEST_MODEL || 'gpt-oss:20b';
 
 // #844 (2026-05-14) — every Task call now requires multi_step_justification.
@@ -134,7 +134,7 @@ describe('TaskTool — S3 + A2 wire-in (real gpt-oss:20b output substrate)', () 
     if (!HAL_OK) {
       // eslint-disable-next-line no-console
       console.warn(
-        `[TaskTool.schemaAndTrace] hal:11434 unreachable. ` +
+        `[TaskTool.schemaAndTrace] host.docker.internal:11434 unreachable. ` +
           `Skipping wire-in tests. Per memory rule no-synthetic-chunks: ` +
           `NOT falling back to hand-authored fake JSON.`,
       );

@@ -42,7 +42,7 @@ spec:
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      # Fix DNS: ndots:1 ensures external domains are tried as FQDN first (gnomuslabs.com wildcard)
+      # Fix DNS: ndots:1 ensures external domains are tried as FQDN first (example.local.com wildcard)
       dnsConfig:
         options:
           - name: ndots
@@ -575,7 +575,7 @@ spec:
           value: {{ .Values.ai.azure.openai.apiVersion | quote }}
         - name: AZURE_OPENAI_DEPLOYMENT
           value: {{ .Values.ai.azure.openai.deployment | quote }}
-        # v3 — multi-deployment list for CDC-style foundries with
+        # v3 — multi-deployment list for your environment-style foundries with
         # per-model deployments. LLMProviderSeeder parses into
         # provider_config.models[] so the chat selector shows all.
         - name: AZURE_OPENAI_DEPLOYMENTS
@@ -859,7 +859,7 @@ spec:
         # 0.8.2 — CPU lacks SIMD instructions the index build requires).
         # When true, semantic search uses seq scan instead of HNSW —
         # functionally correct, only slower on large collections.
-        # Should stay false/unset on CDC AKS nodes (D-series) which
+        # Should stay false/unset on your environment AKS nodes (D-series) which
         # handle halfvec HNSW fine.
         {{- if and .Values.database (hasKey .Values.database "disableVectorIndexes") (eq (.Values.database.disableVectorIndexes | toString) "true") }}
         - name: DISABLE_VECTOR_INDEXES
@@ -1012,8 +1012,8 @@ spec:
           readOnly: true
         {{- end }}
         {{- if .Values.api.cdcCaBundle }}
-        - name: cdc-ca-bundle
-          mountPath: /etc/ssl/certs/cdc-ca-bundle.crt
+        - name: your-env-ca-bundle
+          mountPath: /etc/ssl/certs/your-env-ca-bundle.crt
           subPath: ca-bundle.crt
           readOnly: true
         {{- end }}
@@ -1054,10 +1054,10 @@ spec:
             secretProviderClass: {{ include "openagentic.fullname" . }}-azure-keyvault
       {{- end }}
       {{- if .Values.api.cdcCaBundle }}
-      # CDC Root CA Certificate Bundle (for VPCE proxy TLS verification)
-      - name: cdc-ca-bundle
+      # your environment Root CA Certificate Bundle (for VPCE proxy TLS verification)
+      - name: your-env-ca-bundle
         configMap:
-          name: cdc-ca-bundle
+          name: your-env-ca-bundle
       {{- end }}
       {{- if .Values.ai.google.vertex.enabled }}
       - name: gcp-service-account

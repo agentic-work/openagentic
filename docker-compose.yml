@@ -127,7 +127,7 @@ services:
     depends_on:
       ollama: { condition: service_healthy }
     environment:
-      OLLAMA_HOST: ${OLLAMA_HOST:-http://hal:11434}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
       OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-}
     entrypoint: ["/bin/sh", "-c"]
@@ -154,8 +154,8 @@ services:
       args:
         SRC_PATH: services/openagentic-api
     extra_hosts:
-      - "hal.gnomuslabs.com:10.2.10.148"
-      - "hal:10.2.10.148"
+      - "ollama.local:127.0.0.1"
+      - "host.docker.internal"
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-openagentic}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-openagentic}
@@ -163,8 +163,8 @@ services:
       MILVUS_HOST: milvus
       MILVUS_PORT: "19530"
       OLLAMA_ENABLED: "true"
-      OLLAMA_HOST: ${OLLAMA_HOST:-http://hal:11434}
-      OLLAMA_BASE_URL: ${OLLAMA_HOST:-http://hal:11434}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      OLLAMA_BASE_URL: ${OLLAMA_HOST:-http://host.docker.internal:11434}
       OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       EMBEDDING_PROVIDER: ollama
@@ -172,7 +172,7 @@ services:
       # embedding timeouts when Ollama is shared with chat/tools. Re-enable
       # once a dedicated embedding endpoint or local embed model is set up.
       DISABLE_RAG: ${DISABLE_RAG:-true}
-      EMBEDDING_OLLAMA_BASE_URL: ${OLLAMA_HOST:-http://hal:11434}
+      EMBEDDING_OLLAMA_BASE_URL: ${OLLAMA_HOST:-http://host.docker.internal:11434}
       EMBEDDING_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       API_HOST: api
       API_PORT: "8000"

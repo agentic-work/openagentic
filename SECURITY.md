@@ -4,15 +4,17 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.5.x (omhs) | Yes |
+| 0.5.x   | Yes       |
 
 ## Reporting a Vulnerability
 
 **Do NOT open a public GitHub issue for security vulnerabilities.**
 
-If you discover a security vulnerability in the OpenAgentic platform, please report it responsibly:
+If you discover a security vulnerability in openagentic, please report it
+responsibly:
 
-1. **Email**: Send a detailed report to the repository owner via GitHub ([@agentic-work](https://github.com/agentic-work))
+1. **Email**: send a detailed report to **hello@agenticwork.io**, or message
+   the maintainers via GitHub ([@agentic-work](https://github.com/agentic-work)).
 2. **Include**:
    - Description of the vulnerability
    - Steps to reproduce
@@ -20,55 +22,48 @@ If you discover a security vulnerability in the OpenAgentic platform, please rep
    - Potential impact assessment
    - Suggested fix (if any)
 
-You should receive an acknowledgment within **48 hours** and a detailed response within **5 business days**.
+You should receive an acknowledgment within **48 hours** and a detailed
+response within **5 business days**.
 
 ## Security Architecture
 
-OpenAgentic follows a defense-in-depth approach:
+openagentic follows a defense-in-depth approach:
 
-### Source Code Isolation
-- Source code **never** touches target deployment machines
-- Only container images reach AKS clusters via private ACR
-- ARC self-hosted runners build images inside the cluster network
-
-### Inbound Webhook Security (6 Layers)
-See [Issue #1](https://github.com/agentic-work/openagentic-omhs/issues/1) for the full specification:
+### Inbound webhook security
 1. **Network** — WAF, IP allowlisting, rate limiting, TLS 1.2+
 2. **Authentication** — HMAC-SHA256 signature verification per source
-3. **Payload Validation** — JSON schema, size limits, prompt injection detection
-4. **Authorization & Isolation** — Namespace isolation, message queue decoupling, RBAC
-5. **Audit & Observability** — Structured logging, anomaly alerts, correlation IDs
-6. **Admin Console** — Dashboard, circuit breakers, manual replay
+3. **Payload validation** — JSON schema, size limits, prompt-injection detection
+4. **Authorization & isolation** — namespace isolation, message-queue
+   decoupling, RBAC
+5. **Audit & observability** — structured logging, anomaly alerts,
+   correlation IDs
 
-### Secret Management
-- No secrets in source code or environment variables
-- Azure Key Vault via External Secrets Operator (ESO)
-- WorkloadIdentity authentication (no static credentials)
-- Automatic rotation with pod restart on secret change
+### Secrets handling
+- Pre-commit hook (`.githooks/pre-commit`) blocks known secret patterns
+  from being committed (AWS access keys, private keys, OAuth tokens,
+  openagentic API keys).
+- Test fixtures may contain synthetic secrets — those are filtered by the
+  hook's allowlist (`__tests__/`, `*test*.spec.*`, `*.test.*`).
+- Cloud-provider credentials live in `~/.openagentic/cloud-secrets/*.env`,
+  outside the repo, mounted into containers at runtime.
 
-### Container Security
-- Multi-stage Docker builds (minimal final images)
-- Non-root container execution
-- Read-only root filesystem where possible
-- No privileged containers
-- Pod Security Standards: `restricted` profile
+### Container build chain
+- All `openagentic-*` images come from `harbor.agenticwork.io/openagentic/*`
+  via the project's self-hosted runner pool (see `.github/workflows/`).
+- No GitHub-hosted runners — there is no path for an outside contributor's
+  PR to execute privileged builds.
 
-### Network Security
-- Kubernetes NetworkPolicy isolation per service
-- Default-deny ingress and egress
-- Explicit allow-list for service-to-service communication
-- Separate ingress controller for webhook traffic
+## In scope
 
-### AI/LLM Safety
-- Prompt injection detection on all external inputs
-- `[EXTERNAL_INPUT]` wrapper tags for untrusted text
-- Token budget limits on external content
-- Sandboxed execution for agent tools (OpenAgentic Synth)
+- The published `openagentic-*` services and the bundled MCP servers
+  under `services/mcps/oap-*-mcp`.
+- The install path (`install.sh`, `tools/setup/` wizard, the Docker
+  Compose stack at the repo root).
+- The Helm chart under `helm/openagentic/`.
 
-## Security Contacts
+## Out of scope
 
-- Repository Owner: [@agentic-work](https://github.com/agentic-work)
-
-## Security Updates
-
-Security patches are applied as priority:critical issues and deployed immediately upon verification.
+- Hosted edition (agenticwork.io) — report those privately at
+  hello@agenticwork.io.
+- Third-party model providers (Anthropic, OpenAI, Vertex AI, etc.) and
+  third-party tools surfaced through MCP — report upstream first.

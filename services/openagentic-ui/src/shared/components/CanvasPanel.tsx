@@ -55,7 +55,7 @@ const OAT_BRIDGE_SCRIPT = '<script>' +
  * color. Also exposes CSS custom properties (`--app-bg`, `--app-text`...)
  * so well-behaved models can produce theme-consistent output.
  *
- * openagentic-omhs#327: the full-HTML passthrough below used to return the
+ * openagentic-your-deployment#327: the full-HTML passthrough below used to return the
  * model's raw output with zero wrapping, so a model that emitted
  * `body { font: Arial }` with no background rendered transparent / black
  * text — completely invisible on the dark app chrome.
@@ -95,7 +95,7 @@ function canvasThemeDefenseBlock(isDark: boolean): string {
 :where(table) { border-collapse: collapse; }
 :where(a) { color: var(--app-accent); }
 
-/* ─── ALWAYS-VISIBLE OVERRIDES (openagentic-omhs#330) ──────────────────
+/* ─── ALWAYS-VISIBLE OVERRIDES (openagentic-your-deployment#330) ──────────────────
    See StreamingArtifactRenderer for rationale. !important on the
    visibility-critical rules so model-emitted Plotly/D3/Chart.js text
    defaults can't make the artifact unreadable against dark chrome.
@@ -211,7 +211,7 @@ ${OAT_BRIDGE_SCRIPT}
     // theme defense + OAT bridge into the head and return. Previously the
     // passthrough returned the model's raw output verbatim, which meant
     // any artifact missing an explicit background rendered invisible on
-    // the dark app chrome. See openagentic-omhs#327.
+    // the dark app chrome. See openagentic-your-deployment#327.
     if (raw.includes('<html') || raw.includes('<!DOCTYPE') || raw.includes('<!doctype')) {
       const withDefense = injectIntoHead(raw, themeDefense);
       // OAT bridge at end of body so child scripts can use it.

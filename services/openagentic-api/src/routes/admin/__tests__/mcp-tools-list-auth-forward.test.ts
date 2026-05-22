@@ -79,7 +79,7 @@ async function buildApp(opts: {
     if (opts.user) {
       request.user = {
         id: opts.user.id ?? 'azure_abc123',
-        email: 'admin@cdc.gov',
+        email: 'admin@your-env.gov',
         isAdmin: opts.user.isAdmin ?? true,
         accessToken: opts.user.accessToken,
         authMethod: 'azure-ad',

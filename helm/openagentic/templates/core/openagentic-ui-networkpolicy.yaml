@@ -43,7 +43,7 @@ spec:
       ports:
         - protocol: TCP
           port: 80
-    # Allow from HAProxy ingress (CDC envs)
+    # Allow from HAProxy ingress (your environment envs)
     - from:
         - namespaceSelector: {}
           podSelector:

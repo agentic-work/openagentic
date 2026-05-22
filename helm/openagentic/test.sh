@@ -5,8 +5,8 @@
 
 set -e
 
-API_URL="https://agentic-api-dev.cdc.gov"
-USER_EMAIL="zbh6@cdc.gov"
+API_URL="https://agentic-api-dev.your-env.gov"
+USER_EMAIL="zbh6@your-env.gov"
 
 echo "=== Multi-Cloud Test Script ==="
 

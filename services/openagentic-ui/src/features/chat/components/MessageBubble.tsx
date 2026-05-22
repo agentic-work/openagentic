@@ -790,7 +790,7 @@ const MessageBubble = memo(function MessageBubble({
           // activity-stream adapter can populate ToolCall.input/.output and
           // surface rich summaries (favicons on web_search, resource names on
           // cloud creates, etc.). Without these, tool chips render as
-          // bare title-only stubs. openagentic-omhs#330.
+          // bare title-only stubs. openagentic-your-deployment#330.
           const stepId = `interleaved-tool-${message.id}-${idx}`;
           if (!existingToolIds.has(step.id) && !existingToolIds.has(stepId)) {
             interleavedSteps.push({

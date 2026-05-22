@@ -38,34 +38,34 @@ const ParamsSchema = z.object({
 type Params = z.infer<typeof ParamsSchema>;
 
 const exampleParams: Params = {
-  title: 'openagentic-omhs — full security audit',
+  title: 'openagentic-your-deployment — full security audit',
   scannedAt: '2026-05-03T12:00:00Z',
   tenants: [
     {
-      id: 'omhs-prod',
-      name: 'omhs-prod',
+      id: 'your-deployment-prod',
+      name: 'your-deployment-prod',
       cloud: 'azure',
       scoreOutOf100: 72,
       findings: [
         { id: 'f1', severity: 'critical', title: 'Storage account allows public blob access', resource: 'omhsprodlogs', remediation: 'Disable AllowBlobPublicAccess.' },
         { id: 'f2', severity: 'critical', title: 'NSG rule allows 0.0.0.0/0 → 22', resource: 'nsg-prod-default', remediation: 'Restrict source CIDR or remove rule.' },
-        { id: 'f3', severity: 'high', title: 'Key Vault soft-delete disabled', resource: 'kv-omhs-prod', remediation: 'Enable purge protection.' },
+        { id: 'f3', severity: 'high', title: 'Key Vault soft-delete disabled', resource: 'kv-your-deployment-prod', remediation: 'Enable purge protection.' },
         { id: 'f4', severity: 'medium', title: 'Diagnostic logs not centralized', resource: 'subscription:default' },
       ],
     },
     {
-      id: 'omhs-staging',
-      name: 'omhs-staging',
+      id: 'your-deployment-staging',
+      name: 'your-deployment-staging',
       cloud: 'azure',
       scoreOutOf100: 84,
       findings: [
-        { id: 's1', severity: 'high', title: 'TLS 1.0 still enabled on App Service', resource: 'app-omhs-staging' },
-        { id: 's2', severity: 'medium', title: 'No private endpoint for SQL', resource: 'sqldb-omhs-staging' },
+        { id: 's1', severity: 'high', title: 'TLS 1.0 still enabled on App Service', resource: 'app-your-deployment-staging' },
+        { id: 's2', severity: 'medium', title: 'No private endpoint for SQL', resource: 'sqldb-your-deployment-staging' },
       ],
     },
     {
-      id: 'omhs-dev',
-      name: 'omhs-dev',
+      id: 'your-deployment-dev',
+      name: 'your-deployment-dev',
       cloud: 'azure',
       scoreOutOf100: 91,
       findings: [

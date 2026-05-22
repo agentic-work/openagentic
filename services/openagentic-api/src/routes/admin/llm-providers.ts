@@ -147,7 +147,7 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
           else if (p.provider_type === 'vertex-ai') ctx = pc.projectId || pc.location || '';
           if (ctx) {
             // Bug-fix 2026-05-06: keep `:` in the slug so `host:port`
-            // doesn't collapse to `host port` (became `10.2.10.13611434`
+            // doesn't collapse to `host port` (became `10.0.0.13611434`
             // for the new ollama-dev-win11 provider — confusing). Strip
             // protocol prefix first, then strip everything except a-z,
             // 0-9, and the punctuation that has structural meaning in a

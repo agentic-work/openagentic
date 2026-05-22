@@ -16,7 +16,7 @@
  * the parse failure and emit a synthetic tool_result with is_error:true.
  *
  * Real-data fixture: ollama-malformed-args-real.ndjson — doctored real
- * capture from hal:11434/gpt-oss:20b (the last NDJSON chunk's arguments
+ * capture from host.docker.internal:11434/gpt-oss:20b (the last NDJSON chunk's arguments
  * field was corrupted from {"location":"Boston"} to "{\"location\":\"Boston"
  * to simulate the small-model malformed-emit case).
  *

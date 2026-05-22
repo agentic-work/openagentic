@@ -23,7 +23,7 @@
  *
  * Real-data fixture: src/lib/agentic-sdk/normalizers/__tests__/fixtures/
  *   ollama-malformed-args-real.ndjson — doctored real capture (verbatim
- *   chunks from hal:11434/gpt-oss:20b, except the final chunk's
+ *   chunks from host.docker.internal:11434/gpt-oss:20b, except the final chunk's
  *   `arguments` field corrupted from {"location":"Boston"} → the malformed
  *   string '{\"location\":\"Boston' to simulate the small-model defect).
  */
@@ -100,7 +100,7 @@ describe('OllamaProvider — B4 graceful malformed tool_calls.arguments', () => 
     fetchMock.mockResolvedValueOnce(ndjsonResponseFromFile('ollama-malformed-args-real.ndjson'));
 
     const provider = new OllamaProvider(silentLogger, {
-      baseUrl: 'http://hal:11434',
+      baseUrl: 'http://host.docker.internal:11434',
       healthCheckModel: MODEL,
     });
 
@@ -138,7 +138,7 @@ describe('OllamaProvider — B4 graceful malformed tool_calls.arguments', () => 
     fetchMock.mockResolvedValueOnce(ndjsonResponseFromFile('ollama-malformed-args-real.ndjson'));
 
     const provider = new OllamaProvider(silentLogger, {
-      baseUrl: 'http://hal:11434',
+      baseUrl: 'http://host.docker.internal:11434',
       healthCheckModel: MODEL,
     });
 
@@ -181,7 +181,7 @@ describe('OllamaProvider — B4 graceful malformed tool_calls.arguments', () => 
     fetchMock.mockResolvedValueOnce(ndjsonResponseFromFile('ollama-malformed-args-real.ndjson'));
 
     const provider = new OllamaProvider(silentLogger, {
-      baseUrl: 'http://hal:11434',
+      baseUrl: 'http://host.docker.internal:11434',
       healthCheckModel: MODEL,
     });
 
@@ -229,7 +229,7 @@ describe('OllamaProvider — B4 graceful malformed tool_calls.arguments', () => 
     fetchMock.mockResolvedValueOnce(ndjsonResponseFromFile('ollama-malformed-args-real.ndjson'));
 
     const provider = new OllamaProvider(loggerWithWarn, {
-      baseUrl: 'http://hal:11434',
+      baseUrl: 'http://host.docker.internal:11434',
       healthCheckModel: MODEL,
     });
 

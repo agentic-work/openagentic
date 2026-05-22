@@ -899,7 +899,7 @@ Example structure:
     //
     // Detection now delegates to ArtifactIntentGate so the legacy fallback
     // path agrees with the composable path on what counts as "the user wants
-    // a visual" (openagentic-omhs#327).
+    // a visual" (openagentic-your-deployment#327).
     const userQuery = (context.request?.message || '').toLowerCase();
     const { evaluateUserIntent } = await import('../../../services/prompt/ArtifactIntentGate.js');
     const isVisualRequest = evaluateUserIntent(userQuery).intent === 'visualization';

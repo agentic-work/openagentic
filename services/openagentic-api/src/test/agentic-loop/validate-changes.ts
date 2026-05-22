@@ -15,7 +15,7 @@
 import { readFileSync, statSync, readdirSync } from 'fs';
 import { join, relative } from 'path';
 
-const OLLAMA_URL = process.env.HAL_OLLAMA_URL || 'http://hal:11434';
+const OLLAMA_URL = process.env.HAL_OLLAMA_URL || 'http://host.docker.internal:11434';
 const MODEL = process.env.HAL_OLLAMA_MODEL || 'gpt-oss';
 const CODEBASE_ROOT = '/mnt/synology/Code/company/openagentic/agentic';
 
@@ -263,7 +263,7 @@ Usage:
   npx tsx validate-changes.ts --recent [minutes]    Validate recently modified files
 
 Environment:
-  HAL_OLLAMA_URL   Ollama URL (default: http://hal:11434)
+  HAL_OLLAMA_URL   Ollama URL (default: http://host.docker.internal:11434)
   HAL_OLLAMA_MODEL Model to use (default: gpt-oss)
 `);
     return;

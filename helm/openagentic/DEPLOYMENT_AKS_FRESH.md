@@ -16,7 +16,7 @@ Complete guide to deploy OpenAgentic to a fresh Azure AKS cluster with KeyVault 
 ```bash
 RESOURCE_GROUP="rg-openagentic"
 LOCATION="eastus"
-SUBSCRIPTION_ID="815a115d-bf32-495c-a89f-b5ce6b349b57"
+SUBSCRIPTION_ID="00000000-0000-0000-0000-000000000000"
 
 az group create --name $RESOURCE_GROUP --location $LOCATION
 ```

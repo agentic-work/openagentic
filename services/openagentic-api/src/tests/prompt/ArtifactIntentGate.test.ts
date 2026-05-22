@@ -5,7 +5,7 @@ import { evaluateUserIntent } from '../../services/prompt/ArtifactIntentGate.js'
  * ArtifactIntentGate test surface.
  *
  * The cases below codify the asymmetric cost we want from the gate (see
- * openagentic-omhs#327): false negatives are cheap (user can ask for a
+ * openagentic-your-deployment#327): false negatives are cheap (user can ask for a
  * chart explicitly), false positives are expensive (response gets a
  * thousand-token artifact injection nobody wanted).
  *

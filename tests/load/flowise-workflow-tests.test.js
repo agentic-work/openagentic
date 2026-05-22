@@ -18,8 +18,8 @@ const { config, chat, createTestResult, logInfo, logPass, logFail, logSection } 
 
 // Test configuration
 const TEST_CONFIG = {
-  apiKey: 'awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79',
-  testUser: 'phatoldsun@gmail.com',
+  apiKey: 'awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79',
+  testUser: 'admin@openagentic.local',
   totalChatflows: 50,
   totalAgentflows: 50,
   outputFile: path.join(__dirname, '../test-results/flowise-workflow-load-test.json')

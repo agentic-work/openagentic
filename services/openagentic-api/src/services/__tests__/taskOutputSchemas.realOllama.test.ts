@@ -1,17 +1,17 @@
 /**
- * taskOutputSchemas — REAL integration test against hal:11434 gpt-oss:20b.
+ * taskOutputSchemas — REAL integration test against host.docker.internal:11434 gpt-oss:20b.
  *
  * Drives the actual Ollama JSON-mode endpoint with a schema directive and
  * validates the real model output against our hand-rolled validator.
  * No mocks, no synthesized fixtures — the JSON being validated is what
  * gpt-oss:20b emits.
  *
- * Endpoint: http://hal:11434/api/chat (memory-canonical Ollama target)
+ * Endpoint: http://host.docker.internal:11434/api/chat (memory-canonical Ollama target)
  * Model:    gpt-oss:20b
  * Mode:     format='json' (Ollama JSON-mode coerces the model to emit
  *           parseable JSON without markdown fences or prose).
  *
- * Skip-with-loud-warn when hal:11434 unreachable per memory rule
+ * Skip-with-loud-warn when host.docker.internal:11434 unreachable per memory rule
  * feedback_real_provider_testing_regime_chatmode_pivot. Never falls
  * back to synthesized model output.
  */
@@ -22,7 +22,7 @@ import {
   buildSchemaDirective,
 } from '../taskOutputSchemas.js';
 
-const HAL_URL = process.env.OLLAMA_HOST || 'http://hal:11434';
+const HAL_URL = process.env.OLLAMA_HOST || 'http://host.docker.internal:11434';
 const TEST_MODEL = process.env.OLLAMA_TEST_MODEL || 'gpt-oss:20b';
 
 let HAL_OK = false;
@@ -110,7 +110,7 @@ describe('taskOutputSchemas — REAL gpt-oss:20b on hal validation', () => {
     if (!HAL_OK) {
       // eslint-disable-next-line no-console
       console.warn(
-        `[taskOutputSchemas.realOllama] hal:11434 unreachable. Skipping real-provider validation. ` +
+        `[taskOutputSchemas.realOllama] host.docker.internal:11434 unreachable. Skipping real-provider validation. ` +
           'Per memory rule no-synthetic-chunks-only-real-provider-captures, NOT falling back to fake model output.',
       );
     }

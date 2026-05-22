@@ -42,7 +42,7 @@ spec:
       automountServiceAccountToken: false
       {{- end }}
       # Fix DNS: ndots:1 ensures external domains (example.com = 1 dot) are tried as FQDN first.
-      # gnomuslabs.com has a wildcard DNS record that poisons resolution with ndots >= 2.
+      # example.local.com has a wildcard DNS record that poisons resolution with ndots >= 2.
       dnsConfig:
         options:
           - name: ndots

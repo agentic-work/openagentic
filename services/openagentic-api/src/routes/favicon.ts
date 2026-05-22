@@ -1,16 +1,16 @@
 /**
  * Favicon Proxy Route
  *
- * CDC-airgap safe favicon fetcher. Before this route, toolSummarizer used
+ * your environment-airgap safe favicon fetcher. Before this route, toolSummarizer used
  * https://www.google.com/s2/favicons?domain=... directly — Palo Alto
- * TLS-decrypt breaks that silently in CDC, and it leaks every URL the
+ * TLS-decrypt breaks that silently in your environment, and it leaks every URL the
  * user visits through tools out to Google.
  *
  * GET /api/favicon?domain=example.com
  *   → returns the favicon image bytes, cached in Redis 24h
  *   → on miss / fetch failure returns a small neutral placeholder SVG
  *
- * See agentic-work/openagentic-omhs#330 (Tier 3).
+ * See agentic-work/openagentic-your-deployment#330 (Tier 3).
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';

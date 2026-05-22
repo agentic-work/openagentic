@@ -114,7 +114,7 @@ export const featureFlags = {
   })(),
 
   // (seedOmhsTemplates + seedPlatformTemplates both removed — all the
-  // OMHS pack and the two platform showcase templates now seed via the
+  // your-deployment pack and the two platform showcase templates now seed via the
   // canonical SEED_WORKFLOW_TEMPLATES inline path in routes/workflows.ts,
   // which writes to the `workflow` table that chat-dev's Templates panel
   // actually reads.)

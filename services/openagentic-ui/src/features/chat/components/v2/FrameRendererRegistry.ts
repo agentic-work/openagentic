@@ -82,7 +82,7 @@ StreamingMarkdownFallback.displayName = 'StreamingMarkdown';
 /**
  * The registry table. Mutable via `register()` so feature flags or
  * downstream extensions (e.g. customer-specific outputTemplates in
- * openagentic-omhs) can override entries at boot.
+ * openagentic-your-deployment) can override entries at boot.
  */
 const registry: Record<string, ComponentType<any>> = {
   // ── Tabular ────────────────────────────────────────────────────────

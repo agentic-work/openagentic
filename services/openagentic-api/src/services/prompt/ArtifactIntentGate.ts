@@ -7,7 +7,7 @@ import type { UserIntent } from './types.js';
  * artifacts (charts, diagrams, dashboards, etc.). The result is used by
  * PromptComposer to gate inclusion of artifact-related modules.
  *
- * Background — openagentic-omhs#327:
+ * Background — openagentic-your-deployment#327:
  * Earlier behaviour relied on broad keyword heuristics (e.g. `'costs'`,
  * `'show me'`, `'breakdown'`, or "two cloud-related keywords") to decide
  * whether to inject a thousand+ tokens of artifact-creation guidance.

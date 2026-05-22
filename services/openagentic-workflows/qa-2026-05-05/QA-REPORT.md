@@ -130,7 +130,7 @@ Methodology: drive every function in flows like a QA engineer. Note pass/fail. F
 | 21 | Versioning | Save new version | ✅ PASS — v1 + v2 in History panel after save |
 | 22 | Versioning | Diff versions | ✅ PASS — `Version 1 → Version 2` label correct (Bug #16 fix); node + edge diffs render |
 | 23 | Versioning | Rollback | ✅ PASS — Restore endpoint succeeds + (after Bug #19 fix) canvas refetches the restored definition; `version` field of the workflow row now reflects the restored snapshot. |
-| 24 | Export | Export to JSON | ✅ PASS — `omhs-loki-prom-incident-copy-1777986426229.json` downloaded |
+| 24 | Export | Export to JSON | ✅ PASS — `your-deployment-loki-prom-incident-copy-1777986426229.json` downloaded |
 | 25 | Import | Import from JSON | ✅ PASS — file-picker round-trip via `<input type=file>` change event creates a new flow on the canvas with the imported nodes/edges, name field populated, count incremented |
 | 26 | Cost | Cost estimate badge | ⚠️ NOT FOUND — Bug #17 captured |
 | 27 | AI Builder | Generate flow from prompt | ✅ PASS — toggling AI Builder opens ExecutionResultsPanel "AI Flow Builder" tab w/ "Describe what you want to automate" prompt |

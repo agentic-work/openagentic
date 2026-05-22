@@ -5,7 +5,7 @@
 ### Primary Test File
 
 **`flowise-workflow-tests.test.js`** (564 lines)
-- Location: `/mnt/synology/Code/company/cdc/agentic/tests/load/flowise-workflow-tests.test.js`
+- Location: `/mnt/synology/Code/company/your-env/agentic/tests/load/flowise-workflow-tests.test.js`
 - Purpose: Creates 100 Flowise workflows (50 chatflows + 50 agentflows) via oap-flowise-mcp
 - Status: ✅ Complete and syntax validated
 
@@ -18,8 +18,8 @@
 - ✅ Detailed error reporting and logging
 - ✅ JSON results output with full test data
 - ✅ Uses chat API to invoke MCP tools naturally
-- ✅ Test user: phatoldsun@gmail.com
-- ✅ API Key: awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79
+- ✅ Test user: admin@openagentic.local
+- ✅ API Key: awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79
 
 #### Technical Implementation:
 - **7 async functions** for modular workflow creation and metrics
@@ -34,13 +34,13 @@
 ### Documentation Files
 
 #### 1. **README.md** (Updated)
-- Location: `/mnt/synology/Code/company/cdc/agentic/tests/load/README.md`
+- Location: `/mnt/synology/Code/company/your-env/agentic/tests/load/README.md`
 - Added comprehensive Test Suite #7B section
 - Includes workflow types, features, usage, troubleshooting
 - Status: ✅ Complete
 
 #### 2. **TEST_SUMMARY.md**
-- Location: `/mnt/synology/Code/company/cdc/agentic/tests/load/TEST_SUMMARY.md`
+- Location: `/mnt/synology/Code/company/your-env/agentic/tests/load/TEST_SUMMARY.md`
 - Comprehensive technical overview
 - Architecture diagrams (text-based)
 - Execution timeline
@@ -48,7 +48,7 @@
 - Status: ✅ Complete
 
 #### 3. **QUICKSTART.md**
-- Location: `/mnt/synology/Code/company/cdc/agentic/tests/load/QUICKSTART.md`
+- Location: `/mnt/synology/Code/company/your-env/agentic/tests/load/QUICKSTART.md`
 - Quick reference for running the test
 - Troubleshooting common issues
 - Verification commands
@@ -56,7 +56,7 @@
 - Status: ✅ Complete
 
 #### 4. **FLOWISE_TEST_VERIFICATION.md**
-- Location: `/mnt/synology/Code/company/cdc/agentic/tests/FLOWISE_TEST_VERIFICATION.md`
+- Location: `/mnt/synology/Code/company/your-env/agentic/tests/FLOWISE_TEST_VERIFICATION.md`
 - Complete verification report
 - Pre-run and post-run checklists
 - Success criteria definitions
@@ -72,8 +72,8 @@
 |-------------|--------|---------|
 | Create 50 chatflows | ✅ | 5 types × 10 each |
 | Create 50 agentflows | ✅ | 5 types × 10 each |
-| Use API key | ✅ | `awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79` |
-| Test user | ✅ | phatoldsun@gmail.com |
+| Use API key | ✅ | `awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79` |
+| Test user | ✅ | admin@openagentic.local |
 | Use oap-flowise-mcp | ✅ | Via chat API |
 | Read Flowise docs | ✅ | Referenced in implementation |
 | RAG flows | ✅ | 10 RAG chatflows |
@@ -192,15 +192,15 @@
 
 **Primary Output:**
 ```
-/mnt/synology/Code/company/cdc/agentic/tests/test-results/flowise-workflow-load-test.json
+/mnt/synology/Code/company/your-env/agentic/tests/test-results/flowise-workflow-load-test.json
 ```
 
 **Structure:**
 ```json
 {
   "testSuite": "Test Suite #7B - 100 Flowise Workflows",
-  "testUser": "phatoldsun@gmail.com",
-  "apiKey": "awc_test_phatoldsun_...",
+  "testUser": "admin@openagentic.local",
+  "apiKey": "awc_test_openagentic-test_...",
   "timestamp": "ISO-8601",
   "metrics": {
     "total": 100,
@@ -226,7 +226,7 @@
 
 ```bash
 # Navigate to test directory
-cd /mnt/synology/Code/company/cdc/agentic/tests/load
+cd /mnt/synology/Code/company/your-env/agentic/tests/load
 
 # Run the test
 node flowise-workflow-tests.test.js
@@ -314,9 +314,9 @@ DEFAULT_MODEL=gpt-4 node flowise-workflow-tests.test.js
 ## 📚 References and Resources
 
 ### Implementation References
-- oap-flowise-mcp server: `/mnt/synology/Code/company/cdc/agentic/services/mcps/oap-flowise-mcp/`
-- Test configuration: `/mnt/synology/Code/company/cdc/agentic/tests/config.js`
-- Example flow creation: `/mnt/synology/Code/company/cdc/agentic/scripts/create-agenticflows.js`
+- oap-flowise-mcp server: `/mnt/synology/Code/company/your-env/agentic/services/mcps/oap-flowise-mcp/`
+- Test configuration: `/mnt/synology/Code/company/your-env/agentic/tests/config.js`
+- Example flow creation: `/mnt/synology/Code/company/your-env/agentic/scripts/create-agenticflows.js`
 
 ### External Documentation
 - [Flowise AgentFlowV2 Documentation](https://docs.flowiseai.com/using-flowise/agentflowv2)

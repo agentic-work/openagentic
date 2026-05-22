@@ -62,11 +62,11 @@ async function resolveUserIdForLocalToken(
 describe('unifiedAuth local-token branch — email-fallback remap', () => {
   it('keeps user.id stable when JWT userId already matches DB id', async () => {
     const prisma = makePrisma([
-      { id: '65e27ed0-9069-4ec8-8fb4-e48b5185609e', email: 'mcp-tester@phatoldsungmail.onmicrosoft.com', azure_oid: null }
+      { id: '65e27ed0-9069-4ec8-8fb4-e48b5185609e', email: 'mcp-tester@openagentic.local', azure_oid: null }
     ]);
     const out = await resolveUserIdForLocalToken(prisma, {
       userId: '65e27ed0-9069-4ec8-8fb4-e48b5185609e',
-      email: 'mcp-tester@phatoldsungmail.onmicrosoft.com'
+      email: 'mcp-tester@openagentic.local'
     });
     expect(out.remapped).toBe(false);
     expect(out.id).toBe('65e27ed0-9069-4ec8-8fb4-e48b5185609e');
@@ -77,11 +77,11 @@ describe('unifiedAuth local-token branch — email-fallback remap', () => {
     // DB row id is a different UUID (from prior email merge). Email lookup
     // must take precedence so chat-stream ownership checks resolve cleanly.
     const prisma = makePrisma([
-      { id: '65e27ed0-9069-4ec8-8fb4-e48b5185609e', email: 'mcp-tester@phatoldsungmail.onmicrosoft.com', azure_oid: null }
+      { id: '65e27ed0-9069-4ec8-8fb4-e48b5185609e', email: 'mcp-tester@openagentic.local', azure_oid: null }
     ]);
     const out = await resolveUserIdForLocalToken(prisma, {
       userId: '66c199d9-4a52-4f04-a29c-7c02911307d4', // Azure OID, NOT in DB
-      email: 'mcp-tester@phatoldsungmail.onmicrosoft.com'
+      email: 'mcp-tester@openagentic.local'
     });
     expect(out.remapped).toBe(true);
     expect(out.id).toBe('65e27ed0-9069-4ec8-8fb4-e48b5185609e');
@@ -93,7 +93,7 @@ describe('unifiedAuth local-token branch — email-fallback remap', () => {
     ]);
     const out = await resolveUserIdForLocalToken(prisma, {
       userId: '66c199d9-4a52-4f04-a29c-7c02911307d4',
-      email: 'mcp-tester@phatoldsungmail.onmicrosoft.com'
+      email: 'mcp-tester@openagentic.local'
     });
     expect(out.remapped).toBe(false);
     expect(out.id).toBe('66c199d9-4a52-4f04-a29c-7c02911307d4');

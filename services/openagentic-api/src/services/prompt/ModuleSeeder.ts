@@ -62,7 +62,7 @@ const SEED_MODULES: SeedModule[] = [
     // ("what are my Azure costs?" → unwanted HTML cost dashboard).
     // The artifact-creation module still fires when the user DOES ask for
     // a visual; this module does NOT — they're a complementary pair gated
-    // on the same intent signal. openagentic-omhs#327 + #330 follow-up.
+    // on the same intent signal. openagentic-your-deployment#327 + #330 follow-up.
     name: 'artifact-inhibitor',
     category: 'core',
     description: 'Suppress unsolicited artifact:html generation when no visualization was requested',
@@ -82,7 +82,7 @@ const SEED_MODULES: SeedModule[] = [
     // it only fires when the user actually asked for a visual. Deliberately
     // keeping this module silent on artifacts so every tier (including
     // local models) retains native capability to emit artifacts when
-    // genuinely warranted. See openagentic-omhs#327.
+    // genuinely warranted. See openagentic-your-deployment#327.
     content:
       'Professional, concise, direct. No filler phrases, no emojis. Use markdown structure: headers, code blocks with language tags, tables for structured data.',
   },
@@ -253,7 +253,7 @@ const SEED_MODULES: SeedModule[] = [
     // requiresTools keeps this aligned with the pipeline auto-dispatch path
     // (which calls delegate_to_agents) — when no delegate tool is
     // available, the module still applies so the executing model has the
-    // quality guidance it needs to render inline. See openagentic-omhs#327.
+    // quality guidance it needs to render inline. See openagentic-your-deployment#327.
     injection: {
       requiresUserIntent: ['visualization'],
     },
@@ -640,7 +640,7 @@ async function backfillMissingModules(): Promise<void> {
       // Injection rules and priority were previously NOT refreshed by the
       // backfill — meaning a code-side change to a seed module's injection
       // (e.g. adding requiresUserIntent) silently no-op'd against existing
-      // rows. Compare and update them too. See openagentic-omhs#327.
+      // rows. Compare and update them too. See openagentic-your-deployment#327.
       const injectionChanged = seedInjectionJson !== dbInjectionJson;
       const priorityChanged = dbRow.priority !== m.priority;
       if (

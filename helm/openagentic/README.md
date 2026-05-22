@@ -71,8 +71,8 @@ However, the current deployment uses nginx-ingress due to a cluster secret mount
 
 | Node | Hardware | Role |
 |------|----------|------|
-| **HAL** (10.2.10.175) | RTX 3090 24GB | Native Ollama: gpt-oss (chat), qwen2.5-coder:7b (code), nomic-embed-text (embeddings) |
-| **DALEK** (10.2.10.36) | 2x RTX 2080 Ti 11GB | GPU 0: Available, GPU 1: Milvus GPU standalone |
+| **HAL** (10.0.0.175) | RTX 3090 24GB | Native Ollama: gpt-oss (chat), qwen2.5-coder:7b (code), nomic-embed-text (embeddings) |
+| **DALEK** (10.0.0.36) | 2x RTX 2080 Ti 11GB | GPU 0: Available, GPU 1: Milvus GPU standalone |
 
 ## Quick Start - K3s Local Deployment with pgvector HA + Milvus GPU
 
@@ -191,7 +191,7 @@ Before deploying OpenAgentic, ensure HAL's native Ollama has the required models
 
 ```bash
 # Check Ollama is accessible
-curl -s http://10.2.10.175:11434/api/tags | jq '.models[].name'
+curl -s http://10.0.0.175:11434/api/tags | jq '.models[].name'
 
 # Required models:
 # - gpt-oss (chat)
@@ -387,13 +387,13 @@ kubectl logs -n openagentic -l app.kubernetes.io/name=milvus,app.kubernetes.io/c
 ```bash
 # Test Ollama from within cluster
 kubectl run test-ollama --rm -it --image=curlimages/curl -n openagentic -- \
-  curl -s http://10.2.10.175:11434/api/tags | head -20
+  curl -s http://10.0.0.175:11434/api/tags | head -20
 
 # Check if models are loaded
-curl -s http://10.2.10.175:11434/api/tags | jq '.models[].name'
+curl -s http://10.0.0.175:11434/api/tags | jq '.models[].name'
 
 # Test chat completion
-curl -s http://10.2.10.175:11434/api/generate -d '{
+curl -s http://10.0.0.175:11434/api/generate -d '{
   "model": "gpt-oss",
   "prompt": "Hello",
   "stream": false

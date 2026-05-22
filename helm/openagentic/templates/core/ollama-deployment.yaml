@@ -57,7 +57,7 @@ spec:
       serviceAccountName: {{ include "openagentic.serviceAccountName" . }}
       initContainers:
         {{- if .Values.ollama.cdcCert.enabled }}
-        # CDC CA certificate init container for TLS intercept (PAN firewall)
+        # your environment CA certificate init container for TLS intercept (PAN firewall)
         - name: setup-certs
           image: busybox:latest
           command:
@@ -65,11 +65,11 @@ spec:
             - -c
             - |
               cp /etc/ssl/certs/ca-certificates.crt /certs/ca-certificates.crt
-              cat /cdc-cert/min-cdc-bundle-ca.crt >> /certs/ca-certificates.crt
-              echo "CDC cert appended to ca-certificates.crt"
+              cat /your-env-cert/min-your-env-bundle-ca.crt >> /certs/ca-certificates.crt
+              echo "your environment cert appended to ca-certificates.crt"
           volumeMounts:
-            - name: cdc-cert
-              mountPath: /cdc-cert
+            - name: your-env-cert
+              mountPath: /your-env-cert
             - name: certs
               mountPath: /certs
         {{- end }}
@@ -230,9 +230,9 @@ spec:
           emptyDir: {}
           {{- end }}
         {{- if .Values.ollama.cdcCert.enabled }}
-        - name: cdc-cert
+        - name: your-env-cert
           configMap:
-            name: {{ .Values.ollama.cdcCert.configMapName | default "cdc-ca-cert" }}
+            name: {{ .Values.ollama.cdcCert.configMapName | default "your-env-ca-cert" }}
         - name: certs
           emptyDir: {}
         {{- end }}

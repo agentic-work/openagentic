@@ -54,7 +54,7 @@ if [[ -z "$secret" ]]; then
 fi
 
 user_id="${UC_HARNESS_USER_ID:-}"
-email="${UC_HARNESS_EMAIL:-mcp-tester@phatoldsungmail.onmicrosoft.com}"
+email="${UC_HARNESS_EMAIL:-mcp-tester@openagentic.local}"
 if [[ -z "$user_id" ]]; then
   # Canonical mcp-tester id — confirmed live 2026-04-20.
   # The pre-2026-04-18 `azure_696cf...` id was a stale copy; after the

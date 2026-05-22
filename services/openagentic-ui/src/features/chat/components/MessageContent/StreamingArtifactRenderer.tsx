@@ -118,7 +118,7 @@ const OAT_BRIDGE_SCRIPT = '<script>' +
  * (`--app-bg`, `--app-text`, etc.) so models that know about them can
  * produce theme-consistent artifacts without guessing hex codes.
  *
- * Background (openagentic-omhs#327): when the model emitted a full HTML
+ * Background (openagentic-your-deployment#327): when the model emitted a full HTML
  * doc with `body { font-family: Arial }` and no background, the iframe
  * rendered black text on a transparent bg, which sat over the dark app
  * chrome — the user literally could not see the artifact.
@@ -162,7 +162,7 @@ function themeDefenseBlock(isDark: boolean): string {
 :where(table) { border-collapse: collapse; }
 :where(a) { color: var(--app-accent); }
 
-/* ─── ALWAYS-VISIBLE OVERRIDES (openagentic-omhs#330) ──────────────────
+/* ─── ALWAYS-VISIBLE OVERRIDES (openagentic-your-deployment#330) ──────────────────
    Force visibility regardless of what the model emits. Models write
    Plotly / D3 / Chart.js charts with default text fills that are
    invisible against our dark chrome — these !important rules guarantee
@@ -205,7 +205,7 @@ function wrapArtifactContent(content: string, type: ArtifactType, theme: 'light'
       const needsPlotly = content.includes('Plotly.') || content.includes('plotly');
       // d3.sankey() is a separate npm module (d3-sankey@0.12). Detect its
       // use independently of plain d3 so we inject the extra lib.
-      // agentic-work/openagentic-omhs#329.
+      // agentic-work/openagentic-your-deployment#329.
       const needsD3Sankey = /\bd3\.sankey\s*\(/.test(content) || /d3-sankey/i.test(content);
       const needsD3 = needsD3Sankey || content.includes('d3.select') || content.includes('d3.create');
       const needsChart = content.includes('new Chart(');
@@ -231,7 +231,7 @@ function wrapArtifactContent(content: string, type: ArtifactType, theme: 'light'
       // defense block into <head> and return. Previously the passthrough
       // skipped all theme wrapping, so any full-HTML artifact that didn't
       // set its own background rendered as transparent black-on-dark and
-      // was invisible against the dark app chrome. See openagentic-omhs#327.
+      // was invisible against the dark app chrome. See openagentic-your-deployment#327.
       const trimmed = cleanContent.trim().toLowerCase();
       if (trimmed.startsWith('<!doctype') || trimmed.startsWith('<html')) {
         const headInjection = [themeDefense, ...libScripts].join('\n');

@@ -21,7 +21,7 @@ describe('SmartModelRouter — destructive-verb detection (BLOCKER-001)', () => 
       ['truncate the table user_events', 'truncate', 'table'],
       ['remove the IAM role admin-legacy', 'remove', 'iam'],
       ['delete the key vault', 'delete', 'key vault'],
-      ['delete subscription 815a115d', 'delete', 'subscription'],
+      ['delete subscription 00000000', 'delete', 'subscription'],
       // Note: regex matches the FIRST cloud noun it sees, so "lambda" wins
       // over "function" here — either is a valid escalation signal.
       ['destroys the lambda function', 'destroys', 'lambda'],

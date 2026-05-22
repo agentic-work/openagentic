@@ -12,7 +12,7 @@
  * to the same endpoint chatmode uses and trusts the platform's
  * Smart-Router model selection.
  *
- * Real-model coverage: the second describe block hits hal:11434 via the
+ * Real-model coverage: the second describe block hits host.docker.internal:11434 via the
  * shim translator (same pattern as llm_completion.streaming.test.ts).
  * Skip-with-warn when hal is unreachable. NEVER fakes a reachable host.
  */
@@ -257,13 +257,13 @@ describe('llm_router — mocked /v1/chat/completions', () => {
   });
 });
 
-describe('llm_router — live hal:11434/gpt-oss:20b', () => {
+describe('llm_router — live host.docker.internal:11434/gpt-oss:20b', () => {
   it('picks the correct route from a real model when given a clear question', async () => {
     // Real-data discipline: probe hal first; skip-with-warn if unreachable.
-    harnessServer.use(http.get('http://hal:11434/api/tags', () => passthrough()));
+    harnessServer.use(http.get('http://host.docker.internal:11434/api/tags', () => passthrough()));
     let halReachable = false;
     try {
-      const r = await fetch('http://hal:11434/api/tags', { signal: AbortSignal.timeout(2_000) });
+      const r = await fetch('http://host.docker.internal:11434/api/tags', { signal: AbortSignal.timeout(2_000) });
       halReachable = r.ok;
     } catch {
       halReachable = false;
@@ -272,7 +272,7 @@ describe('llm_router — live hal:11434/gpt-oss:20b', () => {
     if (!halReachable) {
       // eslint-disable-next-line no-console
       console.warn(
-        '[llm_router.live] hal:11434 unreachable — skipping live routing assertion. ' +
+        '[llm_router.live] host.docker.internal:11434 unreachable — skipping live routing assertion. ' +
           'Re-run from a host with cluster DNS to exercise the actual model registered ' +
           'in the platform model registry (DB SoT for routable models).',
       );
@@ -294,7 +294,7 @@ describe('llm_router — live hal:11434/gpt-oss:20b', () => {
           stream: false,
           options: { num_predict: 256, temperature: 0.1 },
         };
-        const ollamaRes = await fetch('http://hal:11434/api/chat', {
+        const ollamaRes = await fetch('http://host.docker.internal:11434/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(ollamaReq),

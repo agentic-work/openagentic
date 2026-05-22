@@ -8,7 +8,7 @@ export interface WizardConfig {
     name: string;
   };
   ollama: {
-    host: string;                 // e.g. http://hal.gnomuslabs.com:11434
+    host: string;                 // e.g. http://localhost:11434
     embedModel: string;           // default: nomic-embed-text
     chatModel?: string;           // optional — pre-selects a chat model
   };

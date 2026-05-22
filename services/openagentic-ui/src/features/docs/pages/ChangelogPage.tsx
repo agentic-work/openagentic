@@ -84,7 +84,7 @@ const releases = [
     date: 'April 2026',
     current: false,
     highlights: [
-      'CDC Azure AI Foundry — Claude Opus 4.6 chat via Anthropic Messages API on Azure',
+      'your environment Azure AI Foundry — Claude Opus 4.6 chat via Anthropic Messages API on Azure',
       'Smart model router through azure-ai-foundry provider handling both OpenAI and Anthropic formats',
       'AWS Identity Center trusted-token-issuer OBO flow for cross-cloud agent operations',
       'Auto-discovered AIF deployments surfaced in Model Registry and chat selector',
