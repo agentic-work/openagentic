@@ -37,6 +37,8 @@ const FIELD_HELP: Record<string, FieldHelpEntry> = {
   latencyBonusMaxPoints:       { summary: 'Max points a fast (<50ms) model earns.',                                                                 anchor: 'latencyBonusMaxPoints' },
   toolCallingBonusMaxPoints:   { summary: 'Max points added when request has tools. Heavy hitter in tool-request scoring.',                         anchor: 'toolCallingBonusMaxPoints' },
   reasoningBonusMaxPoints:     { summary: 'Max points for multi-step or multi-cloud requests.',                                                     anchor: 'reasoningBonusMaxPoints' },
+  fcaT3Floor:                  { summary: 'T3 capability gate — minimum FCA for the most demanding tasks (default 0.93). Triggered by t3TriggerTaskTypes.', anchor: 'fcaT3Floor' },
+  contextT3Floor:              { summary: 'T3 capability gate — minimum context window in tokens (default 200000).',                                  anchor: 'contextT3Floor' },
 };
 
 // ---------------------------------------------------------------------------
@@ -174,6 +176,15 @@ export interface RouterTuning {
   fcaInfraOpsFloor: number;
   fcaCloudListFloor: number;
   fcaComplexityBiasFloor: number;
+  // T3 capability gate (added 2026-05-22 #1049) — admin-editable
+  // replacements for the hardcoded T3 floors + EXPLICIT_MOST_CAPABLE_RE
+  // + CAPABILITY_PROFILES literals previously in SmartModelRouter.ts
+  // and PromptClassifier.ts.
+  fcaT3Floor: number;
+  contextT3Floor: number;
+  t3TriggerTaskTypes: string[];
+  capabilityProfileFloors: Record<string, number>;
+  capabilityContextFloors: Record<string, number>;
   // T2 — legacy LLM intent classifier wiring. The classifier service
   // itself was ripped in Phase E.1 (2026-05-10) and the per-intent
   // ranker (formerly consumed intentToTopK / intentToFcaFloor) was
@@ -210,6 +221,37 @@ export const DEFAULT_TUNING: RouterTuning = {
   fcaInfraOpsFloor: 0.85,
   fcaCloudListFloor: 0.90,
   fcaComplexityBiasFloor: 0.93,
+  // T3 defaults — match the migration seed.
+  fcaT3Floor: 0.93,
+  contextT3Floor: 200_000,
+  t3TriggerTaskTypes: [
+    'cost-audit',
+    'architecture-design-agentic',
+    'multi-cloud-agentic',
+    'multi-system-agentic',
+  ],
+  capabilityProfileFloors: {
+    'multi-cloud-agentic': 0.90,
+    'multi-system-agentic': 0.90,
+    'cost-analysis-agentic': 0.90,
+    'cost-audit': 0.93,
+    'security-audit-agentic': 0.90,
+    'architecture-design-agentic': 0.90,
+    'single-system-read': 0.85,
+    'file-read': 0.85,
+    'pure-chat': 0.82,
+  },
+  capabilityContextFloors: {
+    'multi-cloud-agentic': 30_000,
+    'multi-system-agentic': 30_000,
+    'cost-analysis-agentic': 100_000,
+    'cost-audit': 100_000,
+    'security-audit-agentic': 30_000,
+    'architecture-design-agentic': 30_000,
+    'single-system-read': 8_000,
+    'file-read': 16_000,
+    'pure-chat': 4_000,
+  },
   intentClassifierEnabled: true,
   intentClassifierModelId: 'gpt-oss:20b',
 };
@@ -681,6 +723,150 @@ const FloorCard: React.FC<FloorCardProps> = ({ meta, value, dirty, onCommit }) =
 };
 
 // ---------------------------------------------------------------------------
+// JsonFieldEditor — textarea + Save/Reset for one JSON-shaped tuning field.
+// Added 2026-05-22 (#1049) for the T3 capability-gate JSON columns
+// (t3TriggerTaskTypes / capabilityProfileFloors / capabilityContextFloors).
+// Validation is shape-only; the API does range + per-key numeric checks.
+// ---------------------------------------------------------------------------
+
+interface JsonFieldEditorProps {
+  field: string;
+  label: string;
+  help: string;
+  value: unknown;
+  dirty: boolean;
+  onCommit: (value: unknown) => void;
+  validate: (parsed: unknown) => string | null;
+}
+
+const JsonFieldEditor: React.FC<JsonFieldEditorProps> = ({
+  field,
+  label,
+  help,
+  value,
+  dirty,
+  onCommit,
+  validate,
+}) => {
+  const [draft, setDraft] = useState<string>(JSON.stringify(value, null, 2));
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  // Re-sync draft when saved value changes (after a successful PUT)
+  React.useEffect(() => {
+    setDraft(JSON.stringify(value, null, 2));
+    setDraftError(null);
+  }, [JSON.stringify(value)]);
+
+  const handleSave = () => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(draft);
+    } catch (err: any) {
+      setDraftError(`invalid JSON: ${err?.message ?? String(err)}`);
+      return;
+    }
+    const shapeErr = validate(parsed);
+    if (shapeErr) {
+      setDraftError(shapeErr);
+      return;
+    }
+    setDraftError(null);
+    onCommit(parsed);
+  };
+
+  const handleReset = () => {
+    setDraft(JSON.stringify(value, null, 2));
+    setDraftError(null);
+  };
+
+  return (
+    <div
+      style={{
+        background: 'var(--color-surface-tertiary)',
+        border: `1px solid ${dirty ? 'var(--color-warning)' : 'var(--color-border)'}`,
+        borderRadius: '8px',
+        padding: '14px 16px',
+        marginTop: '14px',
+        boxShadow: dirty ? `0 0 0 2px ${tint('var(--color-warning)', 15)}` : 'none',
+      }}
+      data-testid={`router-tuning-json-editor-${field}`}
+    >
+      <div
+        style={{
+          color: 'var(--color-text-secondary)',
+          fontSize: '11px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+          marginBottom: '6px',
+        }}
+      >
+        {label}
+      </div>
+      <p style={{ color: 'var(--color-text-secondary)', fontSize: '12px', margin: '0 0 8px' }}>
+        {help}
+      </p>
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        spellCheck={false}
+        style={{
+          width: '100%',
+          minHeight: '120px',
+          background: 'var(--color-surface)',
+          border: `1px solid ${draftError ? 'var(--color-error)' : 'var(--color-border)'}`,
+          borderRadius: '6px',
+          padding: '8px 10px',
+          fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+          fontSize: '12px',
+          color: 'var(--color-text-primary)',
+          outline: 'none',
+          resize: 'vertical',
+        }}
+        aria-label={`Edit ${label}`}
+      />
+      {draftError && (
+        <div style={{ color: 'var(--color-error)', fontSize: '12px', marginTop: '6px' }}>
+          {draftError}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+        <button
+          type="button"
+          onClick={handleSave}
+          style={{
+            padding: '6px 14px',
+            borderRadius: '6px',
+            border: '1px solid var(--color-primary)',
+            background: 'var(--color-primary)',
+            color: 'var(--color-on-primary, white)',
+            fontSize: '12px',
+            cursor: 'pointer',
+          }}
+        >
+          Stage edit
+        </button>
+        <button
+          type="button"
+          onClick={handleReset}
+          style={{
+            padding: '6px 14px',
+            borderRadius: '6px',
+            border: '1px solid var(--color-border)',
+            background: 'transparent',
+            color: 'var(--color-text-primary)',
+            fontSize: '12px',
+            cursor: 'pointer',
+          }}
+        >
+          Revert
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // LabPromptCard — collapsible card for a single curated prompt (Lab v2)
 // ---------------------------------------------------------------------------
 
@@ -1124,12 +1310,19 @@ const RouterTuningView: React.FC = () => {
 
   const dirtyCount = Object.keys(dirty).length;
 
-  // Commit a single field change
-  const handleCommit = useCallback((field: keyof RouterTuning, value: number | boolean) => {
+  // Commit a single field change. Accepts number / boolean (scalar fields)
+  // OR a JSON-shaped value (t3TriggerTaskTypes / capabilityProfileFloors /
+  // capabilityContextFloors); compare-by-stringify so dirty-tracking works
+  // for arrays/objects too.
+  const handleCommit = useCallback((field: keyof RouterTuning, value: unknown) => {
     setDirty(prev => {
-      const next = { ...prev, [field]: value };
-      // If value matches saved, remove from dirty
-      if (value === (savedTuning as unknown as Record<string, unknown>)[field]) {
+      const next = { ...prev, [field]: value } as Partial<RouterTuning>;
+      const savedVal = (savedTuning as unknown as Record<string, unknown>)[field];
+      const sameAsSaved =
+        typeof value === 'object' && value !== null
+          ? JSON.stringify(value) === JSON.stringify(savedVal)
+          : value === savedVal;
+      if (sameAsSaved) {
         const { [field]: _removed, ...rest } = next as unknown as Record<string, unknown>;
         return rest as Partial<RouterTuning>;
       }
@@ -1446,6 +1639,84 @@ const RouterTuningView: React.FC = () => {
             />
           ))}
         </div>
+      </AdminCard>
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Section 2b: T3 Capability Gate (#1049, 2026-05-22)                  */}
+      {/* ------------------------------------------------------------------ */}
+      <div style={{ marginBottom: '20px' }}>
+      <AdminCard>
+        <h2 style={sectionTitleStyle}>T3 Capability Gate (structural classifier — no lexical safety-net)</h2>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '12px', margin: '0 0 14px' }}>
+          When the PromptClassifier emits a taskType in <code>t3TriggerTaskTypes</code>, candidates
+          must clear both <code>fcaT3Floor</code> AND <code>contextT3Floor</code>. Throws
+          NO_T3_MODEL_IN_REGISTRY rather than silently downgrading.
+        </p>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '14px',
+          marginBottom: '20px',
+        }}>
+          <FloorCard
+            meta={{ key: 'fcaT3Floor', label: 'fcaT3Floor', desc: 'T3 FCA floor (0..1)', colorVar: 'var(--color-warning)' }}
+            value={tuning.fcaT3Floor}
+            dirty={isDirty('fcaT3Floor')}
+            onCommit={handleCommit}
+          />
+          <FloorCard
+            meta={{ key: 'contextT3Floor', label: 'contextT3Floor', desc: 'T3 context-window floor (tokens)', colorVar: 'var(--color-warning)' }}
+            value={tuning.contextT3Floor}
+            dirty={isDirty('contextT3Floor')}
+            onCommit={handleCommit}
+          />
+        </div>
+        <JsonFieldEditor
+          field="t3TriggerTaskTypes"
+          label="t3TriggerTaskTypes"
+          help="JSON array of TaskType identifiers that fire the T3 gate. Default: cost-audit, architecture-design-agentic, multi-cloud-agentic, multi-system-agentic."
+          value={tuning.t3TriggerTaskTypes}
+          dirty={isDirty('t3TriggerTaskTypes')}
+          onCommit={(v) => handleCommit('t3TriggerTaskTypes', v as unknown as never)}
+          validate={(parsed) => {
+            if (!Array.isArray(parsed)) return 'must be a JSON array of strings';
+            if (!parsed.every((s) => typeof s === 'string')) return 'all entries must be strings';
+            return null;
+          }}
+        />
+        <JsonFieldEditor
+          field="capabilityProfileFloors"
+          label="capabilityProfileFloors"
+          help="JSON object map { TaskType: FCA-floor }. Replaces hardcoded CAPABILITY_PROFILES[taskType].requiresToolUseReliability literals."
+          value={tuning.capabilityProfileFloors}
+          dirty={isDirty('capabilityProfileFloors')}
+          onCommit={(v) => handleCommit('capabilityProfileFloors', v as unknown as never)}
+          validate={(parsed) => {
+            if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return 'must be a JSON object';
+            for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+              if (typeof v !== 'number' || isNaN(v as number)) return `value at "${k}" must be a number`;
+              if ((v as number) < 0 || (v as number) > 1) return `value at "${k}" must be in [0, 1]`;
+            }
+            return null;
+          }}
+        />
+        <JsonFieldEditor
+          field="capabilityContextFloors"
+          label="capabilityContextFloors"
+          help="JSON object map { TaskType: context-window-token-floor }. Replaces hardcoded CAPABILITY_PROFILES[taskType].requiresContextTokens literals."
+          value={tuning.capabilityContextFloors}
+          dirty={isDirty('capabilityContextFloors')}
+          onCommit={(v) => handleCommit('capabilityContextFloors', v as unknown as never)}
+          validate={(parsed) => {
+            if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return 'must be a JSON object';
+            for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+              if (typeof v !== 'number' || isNaN(v as number) || !Number.isInteger(v)) return `value at "${k}" must be an integer`;
+              if ((v as number) < 0) return `value at "${k}" must be ≥ 0`;
+            }
+            return null;
+          }}
+        />
       </AdminCard>
       </div>
 

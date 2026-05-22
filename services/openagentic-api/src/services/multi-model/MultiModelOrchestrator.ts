@@ -104,10 +104,6 @@ export class MultiModelOrchestrator {
   async analyzeRequest(
     messages: unknown[],
     availableTools: unknown[],
-    // sliderConfig is accepted for caller compatibility. OSS routes on
-    // complexity + tool shape only; the slider position is ignored here
-    // but kept to avoid a breaking signature change for callers that still
-    // pass it.
     _sliderConfig?: { position?: number; overrides?: Record<string, unknown> },
   ): Promise<MultiModelRoutingDecision> {
     void _sliderConfig;

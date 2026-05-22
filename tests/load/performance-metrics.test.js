@@ -25,7 +25,7 @@ const path = require('path');
 // Configuration
 const CONFIG = {
   apiUrl: process.env.API_URL || 'http://localhost:8000',
-  apiKey: process.env.API_KEY || 'awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79',
+  apiKey: process.env.API_KEY || 'awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79',
   samplingInterval: 1000, // 1 second
   outputFile: path.join(__dirname, '../test-results', 'performance-metrics-results.json'),
   summaryFile: path.join(__dirname, '../test-results', 'performance-metrics-summary.json')

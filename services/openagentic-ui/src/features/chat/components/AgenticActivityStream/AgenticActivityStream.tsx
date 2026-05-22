@@ -965,7 +965,7 @@ const InlineThinking: React.FC<InlineThinkingProps> = memo(({
   return (
     <LayoutGroup>
       <div
-        className="inline-thinking-block"
+        className="cm-thinking inline-thinking-natural"
         style={{
           marginBottom: 8,
           opacity: isComplete && !showFull ? 0.6 : 1,

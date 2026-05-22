@@ -17,7 +17,7 @@ import * as path from 'path';
 
 const BASE_URL = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
 // Microsoft AAD test user (from codemode-appgw-arm.spec.ts)
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'mcp-tester@openagentic.local';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'mcp-tester@phatoldsungmail.onmicrosoft.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'TestMcp@2026';
 
 // API test credentials — must be set via env

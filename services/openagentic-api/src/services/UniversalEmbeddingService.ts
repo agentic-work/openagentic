@@ -973,14 +973,9 @@ export class UniversalEmbeddingService {
             break;
 
           case 'ollama':
-            // Ollama doesn't support batch, process one by one. Truncate
-            // to the model's max context length so MCP tool descriptions
-            // (which can exceed 8K chars when the schema is large) don't
-            // 500 with "input length exceeds the context length".
+            // Ollama doesn't support batch, process one by one
             for (const text of batch) {
-              const maxLen = this.getMaxContextLength();
-              const trimmed = text.length > maxLen ? text.slice(0, maxLen) : text;
-              const embedding = await this.generateOllamaEmbedding(trimmed);
+              const embedding = await this.generateOllamaEmbedding(text);
               allEmbeddings.push(embedding);
             }
             break;

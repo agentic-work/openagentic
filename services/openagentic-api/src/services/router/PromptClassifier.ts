@@ -82,14 +82,15 @@ export type TaskType =
 
 export interface CapabilityProfile {
   taskType: TaskType;
-  /** FCA floor (0..1). 0.90+ excludes gpt-oss-class (0.87). */
-  requiresToolUseReliability: number;
   /** Soft preference for reasoning-grade models in scoring. */
   requiresReasoning: 'none' | 'medium' | 'high';
-  /** Hard floor for max context tokens. */
-  requiresContextTokens: number;
   /** Human-readable rationale, surfaced in router decision logs. */
   rationale: string;
+  // `requiresToolUseReliability` (FCA floor) and `requiresContextTokens`
+  // (context-window floor) were ripped 2026-05-22 (#1049). Both moved
+  // to the admin-editable RouterTuning DB row
+  // (`capabilityProfileFloors` + `capabilityContextFloors`). SmartModelRouter
+  // reads them from there at routing time, keyed by `taskType`.
 }
 
 /**
@@ -590,72 +591,57 @@ export function classifyTaskType(userPrompt: string, ctx?: ClassifyContext): Tas
 const CAPABILITY_PROFILES: Record<TaskType, CapabilityProfile> = {
   'multi-cloud-agentic': {
     taskType: 'multi-cloud-agentic',
-    requiresToolUseReliability: 0.90,
     requiresReasoning: 'high',
-    requiresContextTokens: 30_000,
     rationale:
-      'Multi-cloud agentic — needs frontier-grade tool-use + sub-agent fan-out plan. Gates cheap local models (FCA<0.90) out of contention.',
+      'Multi-cloud agentic — needs frontier-grade tool-use + sub-agent fan-out plan. FCA / context floors live on RouterTuning.capabilityProfileFloors[multi-cloud-agentic] (default 0.90) and capabilityContextFloors[multi-cloud-agentic] (default 30000); both are admin-editable.',
   },
   'multi-system-agentic': {
     taskType: 'multi-system-agentic',
-    requiresToolUseReliability: 0.90,
     requiresReasoning: 'high',
-    requiresContextTokens: 30_000,
-    rationale: 'Cross-system fan-out — needs frontier-grade tool-use + reasoning.',
+    rationale:
+      'Cross-system fan-out — needs frontier-grade tool-use + reasoning. Floors on RouterTuning.capabilityProfileFloors / capabilityContextFloors.',
   },
   'cost-analysis-agentic': {
     taskType: 'cost-analysis-agentic',
-    requiresToolUseReliability: 0.90,
     requiresReasoning: 'high',
-    requiresContextTokens: 100_000,
     rationale:
-      'Cost-analysis agentic — multi-step query + synthesis over large bill JSON. Frontier-grade tool-use required.',
+      'Cost-analysis agentic — multi-step query + synthesis over large bill JSON. Frontier-grade tool-use required. Floors on RouterTuning.capabilityProfileFloors / capabilityContextFloors (defaults 0.90 / 100000).',
   },
   'cost-audit': {
     taskType: 'cost-audit',
-    requiresToolUseReliability: 0.93,
     requiresReasoning: 'high',
-    requiresContextTokens: 100_000,
     rationale:
-      'Cost-audit (multi-cloud finops) — sub-agent dispatch + parallel cost tools + multi-turn composition (sankey + savings_grid). T3 floor (FCA ≥ 0.93) gates out T2 models that empirically fabricate dollar amounts and coalesce parallel tool batches on this workload.',
+      'Cost-audit (multi-cloud finops) — sub-agent dispatch + parallel cost tools + multi-turn composition. Default T3 floors (FCA ≥ 0.93, context ≥ 100000) live on RouterTuning.capabilityProfileFloors / capabilityContextFloors.',
   },
   'security-audit-agentic': {
     taskType: 'security-audit-agentic',
-    requiresToolUseReliability: 0.90,
     requiresReasoning: 'high',
-    requiresContextTokens: 30_000,
     rationale:
-      'Security-audit agentic — scan + finding synthesis. Frontier-grade tool-use required.',
+      'Security-audit agentic — scan + finding synthesis. Frontier-grade tool-use required. Floors on RouterTuning.capabilityProfileFloors / capabilityContextFloors.',
   },
   'architecture-design-agentic': {
     taskType: 'architecture-design-agentic',
-    requiresToolUseReliability: 0.90,
     requiresReasoning: 'high',
-    requiresContextTokens: 30_000,
     rationale:
-      'Architecture-design agentic — multi-phase plan + charts + synth + executive summary. Frontier-grade reasoning required; gates gpt-oss:20b out.',
+      'Architecture-design agentic — multi-phase plan + charts + synth + executive summary. Floors on RouterTuning.capabilityProfileFloors / capabilityContextFloors (defaults 0.90 / 30000).',
   },
   'single-system-read': {
     taskType: 'single-system-read',
-    requiresToolUseReliability: 0.85,
     requiresReasoning: 'none',
-    requiresContextTokens: 8_000,
     rationale:
-      'Single-cloud read — cheap local models acceptable at 0.85 FCA. gpt-oss / Haiku in contention.',
+      'Single-cloud read — cheap local models acceptable. Floors on RouterTuning.capabilityProfileFloors / capabilityContextFloors (defaults 0.85 / 8000).',
   },
   'file-read': {
     taskType: 'file-read',
-    requiresToolUseReliability: 0.85,
     requiresReasoning: 'none',
-    requiresContextTokens: 16_000,
-    rationale: 'File-read — cheap local models acceptable.',
+    rationale:
+      'File-read — cheap local models acceptable. Floors on RouterTuning.capabilityProfileFloors / capabilityContextFloors (defaults 0.85 / 16000).',
   },
   'pure-chat': {
     taskType: 'pure-chat',
-    requiresToolUseReliability: 0.82,
     requiresReasoning: 'none',
-    requiresContextTokens: 4_000,
-    rationale: 'Pure chat — chat-pool floor only. Cheapest model wins on cost.',
+    rationale:
+      'Pure chat — chat-pool floor only. Cheapest model wins on cost. Floors on RouterTuning.capabilityProfileFloors / capabilityContextFloors (defaults 0.82 / 4000).',
   },
 };
 

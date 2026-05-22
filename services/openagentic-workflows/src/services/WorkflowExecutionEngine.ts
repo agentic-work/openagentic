@@ -3975,7 +3975,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
   ): void {
     // Find the DB agent matching this type to get the loop_id FK
     prisma.agent.findFirst({ where: { agent_type: agentType }, select: { id: true } })
-      .then(agent => {
+      .then((agent: any) => {
         if (!agent) return; // No matching agent in DB — skip recording
         return prisma.agentRunLog.create({
           data: {
@@ -3994,7 +3994,7 @@ export class WorkflowExecutionEngine extends EventEmitter {
           },
         });
       })
-      .catch(err => {
+      .catch((err: any) => {
         logger.warn({ err, nodeId, agentType }, '[WorkflowEngine] Failed to record agent execution (non-fatal)');
       });
   }

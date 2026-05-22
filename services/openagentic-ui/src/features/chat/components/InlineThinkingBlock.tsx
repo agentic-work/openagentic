@@ -1,10 +1,10 @@
 /**
  * Inline Thinking Block Component
- * Displays LLM thinking blocks in a clean, natural-flowing UI
+ * Displays LLM thinking blocks in a clean, natural-flowing UI.
  *
- * Two variants:
- * - "boxed": Traditional boxed container with border/background
- * - "natural": Clean inline display that flows with message content
+ * Track B Phase 5 of the canonical streaming rip (2026-05-22): the boxed
+ * variant was deleted so live ≡ settled ≡ reload DOM. The only renderer
+ * shape is the natural `<div class="cm-thinking inline-thinking-natural">`.
  *
  * v0.6.7 chat-polish: collapsed-by-default accordion with live header
  *   Header reads "Thinking..." while streaming, then
@@ -70,26 +70,10 @@ const ThinkingStarburst: React.FC<{ size?: number; animate?: boolean; className?
     )}
   </span>
 );
-// Retained for boxed variant fallback only.
-const TinySpinner: React.FC<{ size?: number; animate?: boolean }> = ({ size = 12, animate = true }) => (
-  <div
-    style={{
-      width: size,
-      height: size,
-      flexShrink: 0,
-      borderRadius: '50%',
-      border: `2px solid var(--color-border)`,
-      borderTopColor: animate ? 'var(--color-primary)' : 'var(--color-textMuted)',
-      animation: animate ? 'spin 0.8s linear infinite' : 'none',
-    }}
-  />
-);
-
 interface InlineThinkingBlockProps {
   content: string;
   isExpanded?: boolean;
   onToggle?: () => void;
-  variant?: 'boxed' | 'natural';
   isStreaming?: boolean;
   /** ms epoch when this thinking block began streaming. Falsy = now on first delta. */
   startedAt?: number;
@@ -114,7 +98,6 @@ export const InlineThinkingBlock: React.FC<InlineThinkingBlockProps> = ({
   content,
   isExpanded: externalIsExpanded,
   onToggle: externalOnToggle,
-  variant = 'natural', // Default to natural (non-boxed)
   isStreaming = false,
   startedAt,
   endedAt,
@@ -174,14 +157,15 @@ export const InlineThinkingBlock: React.FC<InlineThinkingBlockProps> = ({
     return cleaned.length > 80 ? cleaned.slice(0, 78).trimEnd() + '…' : cleaned;
   })();
 
-  // Natural (non-boxed) variant - clean, inline display
-  if (variant === 'natural') {
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="cm-thinking inline-thinking-natural"
+  // Natural (non-boxed) variant - clean, inline display.
+  // Track B Phase 5: this is the ONLY rendering shape — boxed branch deleted
+  // so live ≡ settled ≡ reload DOM.
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="cm-thinking inline-thinking-natural"
         aria-expanded={isExpanded}
         data-testid="inline-thinking-block"
         data-streaming={isStreaming ? 'true' : 'false'}
@@ -307,129 +291,6 @@ export const InlineThinkingBlock: React.FC<InlineThinkingBlockProps> = ({
         </AnimatePresence>
       </motion.div>
     );
-  }
-
-  // Boxed variant - traditional container style
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -5 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -5 }}
-      className="inline-thinking-block"
-      data-testid="inline-thinking-block"
-      data-streaming={isStreaming ? 'true' : 'false'}
-      data-expanded={isExpanded ? 'true' : 'false'}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        borderRadius: '8px',
-        backgroundColor: 'var(--color-surfaceHover)',
-        border: '1px solid var(--color-border)',
-        marginBottom: '12px',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-        overflow: 'hidden'
-      }}
-    >
-      {/* Header - clickable to expand/collapse */}
-      <button
-        onClick={handleToggle}
-        aria-expanded={isExpanded}
-        data-testid="inline-thinking-toggle"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          padding: '10px 14px',
-          border: 'none',
-          background: 'transparent',
-          cursor: 'pointer',
-          width: '100%',
-          textAlign: 'left'
-        }}
-      >
-        {/* Thinking icon with pulse animation */}
-        <TinySpinner size={16} animate={isStreaming} />
-
-        {/* Status text */}
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '2px'
-        }}>
-          <div
-            data-testid="inline-thinking-header"
-            style={{
-              fontSize: '13px',
-              fontWeight: 500,
-              color: 'var(--color-text)',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            {headerText}
-          </div>
-          <div style={{
-            fontSize: '11px',
-            color: 'var(--color-textSecondary)'
-          }}>
-            {isExpanded ? 'Click to collapse' : 'Click to expand'}
-          </div>
-        </div>
-
-        {/* Expand/collapse icon */}
-        <motion.div
-          animate={{ rotate: isExpanded ? 180 : 0 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--color-textSecondary)'
-          }}
-        >
-          <ChevronDown size={18} />
-        </motion.div>
-      </button>
-
-      {/* Collapsible content */}
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            style={{
-              overflow: 'hidden'
-            }}
-            data-testid="inline-thinking-body"
-          >
-            <div style={{
-              padding: '12px 14px',
-              borderTop: '1px solid var(--color-border)',
-              fontSize: '12px',
-              color: 'var(--color-textSecondary)',
-              fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
-              whiteSpace: 'pre-wrap',
-              lineHeight: '1.6',
-              maxHeight: '400px',
-              overflowY: 'auto'
-            }}>
-              {content}
-              {isStreaming && (
-                <motion.span
-                  className="inline-block w-2 h-4 bg-[var(--color-primary)] rounded-sm ml-1"
-                  animate={{ opacity: [1, 0, 1] }}
-                  transition={{ duration: 0.5, repeat: Infinity }}
-                />
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
 };
 
 export default InlineThinkingBlock;

@@ -15,7 +15,7 @@
  * matcher works on DomTrace as on Timeline.
  *
  * Selector taxonomy (per the existing AgenticActivityStream + mocks):
- *   - `.inline-thinking-block`        → kind='thinking'
+ *   - `.inline-thinking-natural`      → kind='thinking'
  *   - `.interleaved-text-block`       → kind='text'
  *   - `[data-testid="tool-card"]` OR `.tool` → kind='tool'
  *   - `[data-testid="parallel-tool-group"]` → kind='tool-group' (wraps tool kinds)
@@ -101,7 +101,7 @@ function findAasRoot(scope: ParentNode): Element | null {
  * tools (the contract may match either level).
  */
 function classify(el: Element): DomTraceEntry | null {
-  if (el.matches('.inline-thinking-block, [data-testid="inline-thinking-block"]')) {
+  if (el.matches('.inline-thinking-natural, [data-testid="inline-thinking-block"]')) {
     return {
       kind: 'thinking',
       preview: preview(el),

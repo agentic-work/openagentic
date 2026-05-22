@@ -17,6 +17,7 @@
 import type { PrismaClient, ChatSession as PrismaChatSession, ChatMessage as PrismaChatMessage } from '@prisma/client';
 import { nanoid } from 'nanoid';
 import type { Logger } from 'pino';
+import type { UIContentBlock } from '@agentic-work/llm-sdk';
 import { prisma, prismaBase } from '../utils/prisma.js';
 import { AITitleGenerationService } from './AITitleGenerationService.js';
 import { TitleGenerationClient } from './TitleGenerationClient.js';
@@ -739,8 +740,10 @@ export class ChatStorageService {
       // Phase 3 persistence keystone (plan §3): canonical ContentBlock[] in
       // wire-emit order. Used on assistant messages so reload renders the
       // chronological interleave instead of falling back to flat
-      // content + tool_calls reconstruction.
-      contentBlocks?: any[];
+      // content + tool_calls reconstruction. Track B Phase 7: now typed
+      // `UIContentBlock[]` from `@agentic-work/llm-sdk` — same shape the
+      // UI's reducer produces, same shape persisted, no `as any` cast.
+      contentBlocks?: UIContentBlock[];
     } = {}
   ): Promise<ChatMessage> {
     const messageId = nanoid();
@@ -777,11 +780,13 @@ export class ChatStorageService {
           user_id: userId || null,
           parent_id: options.parentId || null,
           branch_id: options.branchId || null,
-          // Phase 3 (plan §3): persist canonical ContentBlock[] when caller
-          // supplied them (assistant turns from chatLoop finalize). Null
-          // safe — column was added forward-only, existing rows render via
-          // the buildFinalContentBlocks fallback.
-          content_blocks: (options.contentBlocks ?? undefined) as any,
+          // Phase 3 (plan §3) + Track B Phase 7 (chatmode rip): persist
+          // canonical `UIContentBlock[]` when caller supplied them
+          // (assistant turns from chatLoop finalize). The Prisma `Json`
+          // column for `content_blocks` isn't included in some generator
+          // builds; pass through `unknown` to satisfy strict input types
+          // while preserving the SDK-typed input shape as the SoT.
+          content_blocks: (options.contentBlocks ?? undefined) as unknown as never,
         } as any,
       });
 
@@ -1105,11 +1110,12 @@ export class ChatStorageService {
         toolCallId: msg.tool_call_id || null,
         tokenUsage: msg.token_usage as any,
         visualizations: (msg.visualizations as any) || [],
-        // Sev-0 #924/#925/#926 — canonical content_blocks chronology. Read
-        // back on session reload so MessageBubble renders byte-identical
-        // DOM to the live stream. Null/undefined falls through to the
-        // legacy reconstruction path for messages persisted before Phase 3.
-        content_blocks: (msg.content_blocks as any) || undefined,
+        // Sev-0 #924/#925/#926 + Track B Phase 7 — canonical
+        // `UIContentBlock[]` chronology. Read back on session reload so
+        // MessageBubble renders byte-identical DOM to the live stream.
+        // Null/undefined falls through to the legacy reconstruction path
+        // for messages persisted before Phase 3.
+        content_blocks: (msg.content_blocks as unknown as UIContentBlock[] | null) || undefined,
         mcpCalls: (msg.mcp_calls as any) || [],
         // PERFORMANCE: Only map attachments if they were loaded (lazy loading)
         // When not loaded, return empty array - client can fetch via separate API call

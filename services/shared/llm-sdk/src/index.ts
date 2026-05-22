@@ -39,3 +39,6 @@ export * from './lib/normalizers/index';
 // canonical→provider adapters depend on).
 // Spec: docs/superpowers/plans/2026-05-11-chatmode-five-layer-remediation.md
 export * from './lib/canonical/index';
+
+// OSS: re-export ui-stream consumers (consumeWireFrame, FrameState, UIContentBlock, etc.)
+export * from './lib/ui-stream/index';

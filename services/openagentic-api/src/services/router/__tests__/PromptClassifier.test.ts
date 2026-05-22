@@ -152,43 +152,60 @@ describe('PromptClassifier — classifyTaskType', () => {
   });
 });
 
+/**
+ * 2026-05-22 (#1049) — `requiresToolUseReliability` and
+ * `requiresContextTokens` were ripped from `CapabilityProfile` and
+ * moved to the admin-editable RouterTuning DB columns
+ * (`capabilityProfileFloors` + `capabilityContextFloors`). The
+ * structural classifier (`getCapabilityProfile` / `classifyAndProfile`)
+ * is responsible only for taskType selection + reasoning preference +
+ * rationale. The router reads the floors from tuning at routing time.
+ *
+ * The tests below now assert taskType + requiresReasoning shape only;
+ * coverage for the floors lives at the integration layer
+ * (`SmartModelRouter.t3-capability-gate.test.ts`,
+ * `SmartModelRouter.agenticRouting.test.ts`).
+ */
 describe('PromptClassifier — getCapabilityProfile', () => {
-  it('multi-cloud-agentic requires FCA >= 0.90 (gates gpt-oss out)', () => {
+  it('multi-cloud-agentic flags high reasoning preference', () => {
     const profile = getCapabilityProfile('multi-cloud-agentic');
-    expect(profile.requiresToolUseReliability).toBeGreaterThanOrEqual(0.90);
+    expect(profile.taskType).toBe<TaskType>('multi-cloud-agentic');
     expect(profile.requiresReasoning).toBe('high');
-    expect(profile.requiresContextTokens).toBeGreaterThanOrEqual(30_000);
   });
 
-  it('cost-analysis-agentic requires FCA >= 0.90', () => {
+  it('cost-analysis-agentic flags high reasoning preference', () => {
     const profile = getCapabilityProfile('cost-analysis-agentic');
-    expect(profile.requiresToolUseReliability).toBeGreaterThanOrEqual(0.90);
-    expect(profile.requiresContextTokens).toBeGreaterThanOrEqual(30_000);
+    expect(profile.taskType).toBe<TaskType>('cost-analysis-agentic');
+    expect(profile.requiresReasoning).toBe('high');
   });
 
-  it('security-audit-agentic requires FCA >= 0.90', () => {
+  it('security-audit-agentic flags high reasoning preference', () => {
     const profile = getCapabilityProfile('security-audit-agentic');
-    expect(profile.requiresToolUseReliability).toBeGreaterThanOrEqual(0.90);
+    expect(profile.taskType).toBe<TaskType>('security-audit-agentic');
+    expect(profile.requiresReasoning).toBe('high');
   });
 
-  it('multi-system-agentic requires FCA >= 0.90', () => {
+  it('multi-system-agentic flags high reasoning preference', () => {
     const profile = getCapabilityProfile('multi-system-agentic');
-    expect(profile.requiresToolUseReliability).toBeGreaterThanOrEqual(0.90);
+    expect(profile.taskType).toBe<TaskType>('multi-system-agentic');
+    expect(profile.requiresReasoning).toBe('high');
   });
 
-  it('single-system-read allows cheap models (FCA <= 0.85)', () => {
+  it('single-system-read flags no reasoning preference (cheap pool)', () => {
     const profile = getCapabilityProfile('single-system-read');
-    expect(profile.requiresToolUseReliability).toBeLessThanOrEqual(0.85);
+    expect(profile.taskType).toBe<TaskType>('single-system-read');
+    expect(profile.requiresReasoning).toBe('none');
   });
 
-  it('file-read allows cheap models', () => {
+  it('file-read flags no reasoning preference (cheap pool)', () => {
     const profile = getCapabilityProfile('file-read');
-    expect(profile.requiresToolUseReliability).toBeLessThanOrEqual(0.85);
+    expect(profile.taskType).toBe<TaskType>('file-read');
+    expect(profile.requiresReasoning).toBe('none');
   });
 
-  it('pure-chat allows the cheapest pool (FCA <= 0.82)', () => {
+  it('pure-chat flags no reasoning preference (cheapest pool)', () => {
     const profile = getCapabilityProfile('pure-chat');
-    expect(profile.requiresToolUseReliability).toBeLessThanOrEqual(0.82);
+    expect(profile.taskType).toBe<TaskType>('pure-chat');
     expect(profile.requiresReasoning).toBe('none');
   });
 });
@@ -196,13 +213,15 @@ describe('PromptClassifier — getCapabilityProfile', () => {
 describe('PromptClassifier — classifyAndProfile (convenience)', () => {
   it('returns both taskType and profile in one call', () => {
     // 2026-05-17 — tri-cloud cost-spike prompt is now cost-audit (T3),
-    // not generic multi-cloud-agentic (T2). Profile FCA floor 0.93+.
+    // not generic multi-cloud-agentic (T2). FCA + context floors are
+    // now on RouterTuning.capabilityProfileFloors / capabilityContextFloors
+    // (admin-editable); the classifier only surfaces taskType + reasoning.
     const { taskType, profile } = classifyAndProfile(
       'Find top 10 cost spikes across Azure/AWS/GCP',
     );
     expect(taskType).toBe<TaskType>('cost-audit');
     expect(profile.taskType).toBe<TaskType>('cost-audit');
-    expect(profile.requiresToolUseReliability).toBeGreaterThanOrEqual(0.93);
+    expect(profile.requiresReasoning).toBe('high');
   });
 
   it('returns pure-chat profile for arithmetic', () => {

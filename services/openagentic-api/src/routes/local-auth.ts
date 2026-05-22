@@ -221,13 +221,7 @@ export const localAuthRoutes: FastifyPluginAsync = async (fastify) => {
         logger.info({ email: username }, 'Password reset requirement bypassed due to ADMIN_REQUIRE_PASSWORD_RESET=false');
       }
 
-      // Generate JWT token (minimal payload to avoid database size constraints).
-      // Resolve secret on demand — module-load IIFE can race with the first
-      // login when Vault isn't configured. Falls back to env directly.
-      const signingSecret = JWT_SECRET || process.env.JWT_SECRET || process.env.SIGNING_SECRET;
-      if (!signingSecret) {
-        throw new Error('JWT_SECRET / SIGNING_SECRET not configured');
-      }
+      // Generate JWT token (minimal payload to avoid database size constraints)
       const token = jwt.sign(
         {
           userId: user.id,
@@ -236,7 +230,7 @@ export const localAuthRoutes: FastifyPluginAsync = async (fastify) => {
           isAdmin: user.is_admin
           // Groups stored in DB, not in JWT to keep token size small
         },
-        signingSecret,
+        JWT_SECRET,
         { expiresIn: '24h' }
       );
 
@@ -369,14 +363,14 @@ export const localAuthRoutes: FastifyPluginAsync = async (fastify) => {
           groups: user.groups
         }
       });
-    } catch (error: any) {
-      logger.error({ err: error, message: error?.message, stack: error?.stack }, 'Login error');
+    } catch (error) {
+      logger.error({ error }, 'Login error');
       return reply.code(500).send({ error: 'Internal server error' });
     }
   });
 
   /**
-   * POST /logout
+   * POST /logout  
    * Logout and invalidate session
    */
   fastify.post('/logout', async (request, reply) => {

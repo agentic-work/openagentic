@@ -34,7 +34,7 @@ describe('azure_list_subscriptions summarizer — 2026-05-12 live capture', () =
         { id: '6ed638e7-7deb-4773-b516-a2a2b9dbb948', name: 'Azure subscription 1', state: 'Enabled' },
         { id: '815a115d-bf32-495c-a89f-b5ce6b349b57', name: 'openagentic-dev', state: 'Enabled' },
       ],
-      executed_as: { upn: 'mcp-tester@openagentic.local' },
+      executed_as: { upn: 'mcp-tester@phatoldsungmail.onmicrosoft.com' },
     };
     const summary = summarizeToolCall('azure_list_subscriptions', {}, result);
     expect(summary?.text).toMatch(/2 subscriptions/);

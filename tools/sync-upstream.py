@@ -183,6 +183,13 @@ SKIP_PATH_HINTS = (
     'doc-generators/oat-synth.gen.ts',
     'doc-generators/oat-framework.gen.ts',
     'doc-generators/code-mode.gen.ts',
+    # Any path with a code-mode marker is OSS-out at sync time —
+    # OSS ships only a stub entry point in the UI that links to the
+    # hosted edition's purchase page. Catches codemode-*.spec.ts,
+    # codemode.plugin.ts, codemode-*-config.ts etc. that exact-name
+    # SKIP_NAMES can't enumerate.
+    '/codemode-', '/code-mode-', '/codemode.', '/code-mode.',
+    'codemode.plugin', 'codemode.test', 'codemode-test', 'code-mode-test',
 )
 
 # ─── Preserve: our local fixes (never overwrite) ─────────────────────────────
@@ -239,6 +246,41 @@ PRESERVE = {
     'docker-compose.yml', '.env.example', '.env', '.gitignore',
     '.licenserc.yaml', 'version.json', 'install.sh',
     'README.md', 'CLAUDE.md', 'SECURITY.md',
+    # Phase 1c surgical fixes — these files have local OSS edits
+    # (NormalizerState, sliderConfig, codeModeProvisioning stubs, etc.)
+    # that the upstream sync would otherwise stomp on.
+    'services/openagentic-api/src/services/llm-providers/ILLMProvider.ts',
+    'services/openagentic-api/src/services/llm-providers/AWSBedrockProvider.ts',
+    'services/openagentic-api/src/services/llm-providers/OllamaProvider.ts',
+    'services/openagentic-api/src/services/LLMMetricsService.ts',
+    'services/openagentic-api/src/services/ModelConfigurationService.ts',
+    'services/openagentic-api/src/services/TaskAnalysisService.ts',
+    'services/openagentic-api/src/services/multi-model/MultiModelOrchestrator.ts',
+    'services/openagentic-api/src/services/multi-model/MultiModelOrchestrator.types.ts',
+    'services/openagentic-api/src/services/TieredFunctionCallingService.ts',
+    'services/openagentic-api/src/services/ContextManagementService.ts',
+    'services/openagentic-api/src/routes/admin-user-activity.ts',
+    'services/openagentic-api/src/routes/admin-user-permissions.ts',
+    'services/openagentic-api/src/routes/admin-dashboard-metrics.ts',
+    'services/openagentic-api/src/routes/admin/llm-providers.ts',
+    'services/openagentic-api/src/routes/admin/v3-extras-mutations.ts',
+    'services/openagentic-api/src/routes/admin-tiered-fc.ts',
+    'services/openagentic-api/src/routes/chat/handlers/stream.handler.ts',
+    'services/openagentic-api/src/plugins/index.ts',
+    'services/openagentic-api/src/plugins/admin.plugin.ts',
+    'services/openagentic-api/src/plugins/admin-audit.plugin.ts',
+    'services/openagentic-api/src/middleware/requireFlowsAccess.ts',
+    'services/openagentic-api/src/server.ts',
+    'services/openagentic-api/src/features.ts',
+    'services/openagentic-api/prisma/schema.prisma',
+    'services/openagentic-ui/src/features/admin/Upsell.tsx',
+    'services/openagentic-ui/src/features/admin/components/Shell/AdminPortal.tsx',
+    'services/openagentic-ui/src/features/admin/components/Shell/AdminPortalHostV3.tsx',
+    'services/openagentic-ui/src/features/admin/shell-v2/pageRouter.tsx',
+    'services/openagentic-ui/src/features/chat/components/ChatContainer.tsx',
+    'services/openagentic-workflows/prisma/schema.prisma',
+    'services/openagentic-workflows/src/services/WorkflowExecutionEngine.ts',
+    'services/openagentic-workflows/src/services/WorkflowSecretService.ts',
 }
 
 # Content-level brand rewrite

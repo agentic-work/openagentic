@@ -17,7 +17,15 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthenticatedRequest } from '../../../middleware/unifiedAuth.js';
 import { ChatRequest } from '../interfaces/chat.types.js';
 import { isPersistableInlineFrame } from './persistableInlineFrames.js';
-import { createContentBlocksAccumulator } from './contentBlocksAccumulator.js';
+// Track B Phase 7 (chatmode canonical rip): server consumes the SAME pure
+// reducer the UI uses. Persistence shape ≡ live render shape by construction.
+// The legacy server-only `contentBlocksAccumulator.ts` has been deleted.
+import {
+  consumeWireFrame,
+  initialFrameState,
+  type FrameState,
+  type UIContentBlock,
+} from '@agentic-work/llm-sdk';
 import { stripArtifactJsonLeak } from '../pipeline/stripArtifactJsonLeak.js';
 import type {
   RunChatDeps,
@@ -1104,8 +1112,6 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
         postComposeBuffer = '';
         if (!scrubbed) return;
         try {
-          const seqContent = sequencer.wrap({ content: scrubbed });
-          writeNDJSONDurable(reply, 'stream', seqContent, durableSink);
           const seqCanonical = sequencer.wrap({
             delta: { type: 'text_delta', text: scrubbed },
           });
@@ -1251,29 +1257,29 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
                 bufferedLength: postComposeBuffer.length,
               }, '[STREAM] buffering post-compose delta for end-of-turn scrub');
             } else {
-              // Content deltas are emitted as `stream` events for the UI's
-              // legacy `assistantMessage` concat path (powers title-gen,
-              // copy-to-clipboard, the trailing-markdown fallback when AAS
-              // has no text blocks).
-              const seqContent = sequencer.wrap({ content: eventData.content });
-              writeNDJSONDurable(reply, 'stream', seqContent, durableSink);
-              // ALSO emit canonical Anthropic-shape content_block_delta with
-              // text_delta so the UI's applyCanonicalFrame reducer builds a
-              // chronologically-positioned ContentBlock of type 'text' — AAS
-              // renderContentBlock then renders it as `.interleaved-text-block`
-              // BETWEEN the tool_group / thinking_group blocks instead of
-              // collapsing all prose into one trailing markdown block.
+              // Canonical Anthropic-shape content_block_delta with text_delta —
+              // the SOLE wire shape for assistant text post-Track-B-Phase-2.
+              // The UI's applyCanonicalFrame reducer builds a chronologically-
+              // positioned ContentBlock of type 'text' — AAS renderContentBlock
+              // then renders it as `.interleaved-text-block` BETWEEN the
+              // tool_group / thinking_group blocks instead of collapsing all
+              // prose into one trailing markdown block.
               //
               // Closes CLAUDE.md rule 8(a) interleave Sev-0. Q7 wire-capture
               // diagnostic (commit a62e32e8) proved the wire IS chronologically
               // interleaved at the round boundary but text deltas bypassed
               // the canonical reducer.
+              //
+              // Track B Phase 2 (rip plan sprightly-percolating-brook.md):
+              // the legacy `stream` envelope dual-emit was deleted from this
+              // site. UI's `case 'stream':` arm goes no-op then gets ripped
+              // in Phase 3.
               const seqCanonical = sequencer.wrap({
                 delta: { type: 'text_delta', text: eventData.content },
               });
               writeNDJSONDurable(reply, 'content_block_delta', seqCanonical, durableSink);
               logger.debug({
-                eventType: 'stream+content_block_delta',
+                eventType: 'content_block_delta',
                 contentLength: eventData.content.length
               }, '[STREAM] content chunk');
             }
@@ -1541,14 +1547,14 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
         const toolCallsAccumulator: Array<Record<string, unknown>> = [];
         const toolResultsAccumulator: Array<Record<string, unknown>> = [];
 
-        // Sev-0 #924/#925/#926 — server-side canonical content_blocks
-        // accumulator. Mirrors the UI's `applyCanonicalFrame` reducer so
-        // the persisted `chat_messages.content_blocks` Json column carries
-        // the same chronology the live stream rendered. Without this, the
-        // post-`done` rehydrated DOM loses every interleaved text block,
-        // viz_render iframe, app_render iframe, follow_up chip row, and
-        // tool input/result correlation.
-        const contentBlocksAccumulator = createContentBlocksAccumulator();
+        // Sev-0 #924/#925/#926 + Track B Phase 7 — server-side canonical
+        // content_blocks accumulator uses the SAME SDK reducer the UI
+        // consumes (`@agentic-work/llm-sdk` exported `consumeWireFrame` /
+        // `applyCanonicalFrame`). Persisted `chat_messages.content_blocks`
+        // Json column carries the byte-identical chronology the live stream
+        // rendered. End_turn snapshots NEVER drop text_delta /
+        // input_json_delta / etc by construction — one reducer, one shape.
+        let cbState: FrameState = initialFrameState();
 
         // B.2 — extended thinking metrics accumulator. Tracks thinking_delta
         // events so we can record the metric row fire-and-forget at turn end.
@@ -1573,12 +1579,15 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
             } else if (frame === 'tool_result' && payload && typeof payload === 'object') {
               toolResultsAccumulator.push(payload as Record<string, unknown>);
             }
-            // Sev-0 #924 — feed the canonical accumulator with every frame
-            // it understands; non-chronology frames are silently ignored.
+            // Sev-0 #924 + Track B Phase 7 — feed the SDK reducer with
+            // every frame it understands; non-chronology frames are
+            // silently ignored. Reducer is pure (state in, state out) so
+            // we re-assign cbState each call. fail-open: never break the
+            // live stream on a reducer error.
             try {
-              contentBlocksAccumulator.consume(frame, payload);
+              cbState = consumeWireFrame(cbState, frame, payload);
             } catch {
-              // accumulator is fail-open — never break the live stream.
+              // reducer is fail-open — never break the live stream.
             }
             // B.2 — track thinking_delta events for the metric row.
             // content_block_delta with delta.type='thinking_delta' is the
@@ -1697,11 +1706,12 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
         // Plan: docs/chatmode-ux-mock-parity/02-plan-canonical.md §272-302.
         if (deps.persistAssistantMessage) {
           try {
-            // Sev-0 #924/#925/#926 — snapshot the canonical content_blocks
-            // chronology so the persisted row carries the full wire-emit
-            // ordering. ChatStorageService.addMessage writes it to the
-            // `chat_messages.content_blocks` Json column.
-            const persistedContentBlocks = contentBlocksAccumulator.snapshot();
+            // Sev-0 #924/#925/#926 + Track B Phase 7 — snapshot the SDK
+            // reducer's contentBlocks chronology so the persisted row
+            // carries the full wire-emit ordering. ChatStorageService.addMessage
+            // writes it to the `chat_messages.content_blocks` Json column.
+            // Same shape (UIContentBlock[]) the UI's live render produces.
+            const persistedContentBlocks: UIContentBlock[] = cbState.contentBlocks;
 
             // Sev-0 (2026-05-21) — strip compose_visual / compose_app
             // tool_use JSON args leaked into the assistant prose body.
@@ -1777,10 +1787,10 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
           const modelSupportsThinking = registry?.supportsThinking(v2Model) ?? false;
           const thinkingRequested = computeThinkingRequested(thinkingUserEnabled ? undefined : false, modelSupportsThinking);
           // `delivered` = at least one thinking_delta arrived on the wire.
-          const snapshotBlocks = contentBlocksAccumulator.snapshot();
+          const snapshotBlocks = cbState.contentBlocks;
           const thinkingDelivered =
             thinkingTokensAccumulated > 0 ||
-            snapshotBlocks.some((b: any) => b.type === 'thinking');
+            snapshotBlocks.some((b) => b.type === 'thinking');
           const thinkingDurationMs =
             thinkingDeltaFirstAt !== undefined && thinkingDeltaLastAt !== undefined
               ? thinkingDeltaLastAt - thinkingDeltaFirstAt

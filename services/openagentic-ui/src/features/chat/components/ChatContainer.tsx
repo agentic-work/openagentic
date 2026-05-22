@@ -378,6 +378,18 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   // App Mode state - Chat vs Code mode
   const [appMode, setAppMode] = useState<AppMode>('chat');
 
+  // Code Mode is part of the hosted edition in OSS — show a lock-screen
+  // modal instead of switching the mode. Same pattern as the admin
+  // enterprise leaves.
+  const [showCodeModeLock, setShowCodeModeLock] = useState(false);
+  const handleAppModeChange = useCallback((next: AppMode) => {
+    if (next === 'code') {
+      setShowCodeModeLock(true);
+      return;
+    }
+    setAppMode(next);
+  }, []);
+
   // Current workflow state for Flows Agent context (set by WorkflowsPage callback)
   const currentWorkflowRef = useRef<{ workflowId: string; workflowName: string; nodes: any[]; edges: any[] } | null>(null);
 
@@ -1905,13 +1917,13 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   //   setShowKeyboardHelp(true);
   // });
 
-  // App Mode keyboard shortcut - Ctrl+Shift+C (only if user has permission)
+  // App Mode keyboard shortcut - Ctrl+Shift+C. Routes through
+  // handleAppModeChange so the OSS lock-screen fires instead of an
+  // unhandled appMode='code' state.
   useHotkeys('ctrl+shift+c', (e) => {
-    if (userPermissions.canUseAwcode) {
-      e.preventDefault();
-      setAppMode(prev => prev === 'chat' ? 'code' : 'chat');
-    }
-  }, [userPermissions.canUseAwcode]);
+    e.preventDefault();
+    handleAppModeChange(appMode === 'chat' ? 'code' : 'chat');
+  }, [appMode, handleAppModeChange]);
 
   // Demo CoT message removed - replaced with sequential-thinking MCP
 
@@ -2018,9 +2030,10 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
           // Open documentation as overlay modal
           openUI('showDocsViewer');
         }}
-        // App Mode toggle (Chat/Flows)
+        // App Mode toggle (Chat / Code [locked in OSS] / Flows)
         appMode={appMode}
-        onAppModeChange={setAppMode}
+        onAppModeChange={handleAppModeChange}
+        canUseCodeMode={true}
         canUseFlows={true}
       />
       )}
@@ -2475,10 +2488,74 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
         onClose={() => closeUI('showBackgroundJobs')}
       />
 
-      {/* Code Mode is now rendered inline in the main content area above */}
+      {/* Code Mode upsell modal — OSS shows the entry point in the
+          sidebar but routes the click here. The actual sandboxed
+          coding workspace lives in the hosted edition. */}
+      {showCodeModeLock && (
+        <CodeModeUpsellModal onClose={() => setShowCodeModeLock(false)} />
+      )}
 
       {/* Activity Orb replaced by UnifiedAgentActivity component with integrated ThinkingSphere */}
 
+    </div>
+  );
+};
+
+/**
+ * Modal-wrapped lock screen shown when a user clicks the Code Mode
+ * sidebar entry in the OSS edition. Backed by the shared LockScreen
+ * component used for admin enterprise leaves so the visual is
+ * consistent across upsell surfaces.
+ */
+const CodeModeUpsellModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  // Avoid pulling the admin chunk into the chat bundle.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { LockScreen } = require('@/features/admin/Upsell') as typeof import('@/features/admin/Upsell');
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Code Mode — hosted feature"
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 60,
+        background: 'rgba(0,0,0,0.55)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 24,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: 640, width: '100%',
+          background: 'var(--color-bg-primary, #fff)',
+          borderRadius: 12,
+          boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      >
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          style={{
+            position: 'absolute', top: 12, right: 12,
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            fontSize: 22, lineHeight: 1, color: 'var(--color-text-secondary, #6b7280)',
+          }}
+        >×</button>
+        <LockScreen
+          feature="Code Mode"
+          description="Per-user sandboxed coding workspace with your choice of CLI (Claude Code, Gemini CLI, Aider, OpenCode, …). Each session runs in an isolated container with persistent file mounts and live terminal access."
+          capabilities={[
+            'Isolated per-user workspace',
+            'Choice of bundled coding CLI',
+            'Persistent file mounts',
+            'Live terminal + VS Code shell',
+            'MCP tool routing inside the sandbox',
+          ]}
+        />
+      </div>
     </div>
   );
 };

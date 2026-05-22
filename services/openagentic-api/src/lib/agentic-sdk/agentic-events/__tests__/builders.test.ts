@@ -120,7 +120,7 @@ describe('event builders — Layer 3 (tool execution)', () => {
     const e = buildToolExecuting({
       tool_use_id: 'toolu_abc',
       tool_name: 'azure_list_subscriptions',
-      args_preview: '{"tenantId":"openagentic-test"}',
+      args_preview: '{"tenantId":"phatoldsun"}',
       surface: 'mcp',
     });
     expect(e.type).toBe('tool_executing');

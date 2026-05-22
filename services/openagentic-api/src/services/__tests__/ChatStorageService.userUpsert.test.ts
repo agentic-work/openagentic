@@ -90,7 +90,7 @@ describe('Sev-0 A — ChatStorageService.createSession defensive user upsert', (
   it('upserts user by email when token-oid userId is not in DB but email is given', async () => {
     const TOKEN_OID = '66c199d9-4a52-4f04-a29c-7c02911307d4';
     const DB_USER_ID = '65e27ed0-9069-4ec8-8fb4-e48b5185609e';
-    const USER_EMAIL = 'mcp-tester@openagentic.local';
+    const USER_EMAIL = 'mcp-tester@phatoldsungmail.onmicrosoft.com';
 
     // findUnique by id MISSES (this is the live bug)
     mockUserFindUnique.mockResolvedValue(null);

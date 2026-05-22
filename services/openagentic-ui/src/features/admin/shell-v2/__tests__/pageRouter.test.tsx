@@ -47,6 +47,14 @@ vi.mock('../../components/Workflows/AdminWorkflowSettingsView', () => ({
   AdminWorkflowSettingsView: () => <div />,
 }))
 vi.mock('../../components/Workflows/FlowCostsView', () => ({ FlowCostsView: () => <div /> }))
+vi.mock('../../components/CodeMode/CodeModeSettingsView', () => ({ default: () => <div /> }))
+vi.mock('../../components/CodeMode/CodeModeGlobalSettingsView', () => ({ default: () => <div /> }))
+vi.mock('../../components/CodeMode/CodeModeMcpView', () => ({ default: () => <div /> }))
+vi.mock('../../components/CodeMode/CodeModeSkillsView', () => ({ default: () => <div /> }))
+vi.mock('../../components/CodeMode/CodeModeUsersView', () => ({ default: () => <div /> }))
+vi.mock('../../components/Monitoring/CodeModeMetricsDashboard', () => ({
+  CodeModeMetricsDashboard: () => <div />,
+}))
 vi.mock('../../components/Agents', () => ({
   AgentManagementView: () => <div />,
 }))

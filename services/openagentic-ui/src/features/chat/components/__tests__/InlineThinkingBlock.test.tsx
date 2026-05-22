@@ -118,19 +118,7 @@ describe('InlineThinkingBlock (v0.6.7 chat polish)', () => {
     expect(screen.getByTestId('inline-thinking-header').textContent).toMatch(/~999 tok/);
   });
 
-  it('boxed variant also renders the live-metrics header', () => {
-    const boxedContent = 'a'.repeat(40);
-    render(
-      <InlineThinkingBlock
-        content={boxedContent}
-        variant="boxed"
-        isStreaming={false}
-        startedAt={0}
-        endedAt={4_400}
-      />
-    );
-    const header = screen.getByTestId('inline-thinking-header');
-    expect(header.textContent).toMatch(/Thought · 4\.4s/);
-    expect(header.textContent).toMatch(/~10 tok/);
-  });
+  // Track B Phase 5 (2026-05-22): boxed variant deleted — natural is the
+  // only rendering shape. Header live-metrics behavior is covered by the
+  // tests above; this assertion now lives there too.
 });

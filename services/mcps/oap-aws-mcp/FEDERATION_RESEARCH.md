@@ -112,7 +112,7 @@ aws sso-admin put-inline-policy-to-permission-set \
 # Get the user's PrincipalId from the identity store.
 USER_PRINCIPAL_ID=$(aws identitystore get-user-id \
   --identity-store-id d-906625c867 \
-  --alternate-identifier '{"UniqueAttribute":{"AttributePath":"userName","AttributeValue":"mcp-tester@openagentic.local"}}' \
+  --alternate-identifier '{"UniqueAttribute":{"AttributePath":"userName","AttributeValue":"mcp-tester@phatoldsungmail.onmicrosoft.com"}}' \
   --region "$REGION" --query 'UserId' --output text)
 
 # Enumerate accounts in the Organization (run from management account).
@@ -297,7 +297,7 @@ then dispatches per-account `aws_*` tools with the right `account_id`.
 
 1. Run `aws sso-admin list-account-assignments --instance-arn $INSTANCE_ARN --account-id $ACCOUNT_ID --permission-set-arn $PS_ARN` for every linked account; assert mcp-tester is present
 2. Re-run the gpt-oss:20b sankey prompt; expect model to call `aws_my_accounts` first, then `aws_cost_by_service(account_id=<mgmt-account>)`, then `compose_visual(template='sankey')`. No more synth+boto3 detour.
-3. Re-run CloudTrail check: every API call attribution should be the AD user's IDC user (`assumed-role/OpenAgenticReadOnly_xxx/mcp-tester@openagentic.local`), not `assumed-role/OpenAgenticOBORole/...`.
+3. Re-run CloudTrail check: every API call attribution should be the AD user's IDC user (`assumed-role/OpenAgenticReadOnly_xxx/mcp-tester@phatoldsungmail.onmicrosoft.com`), not `assumed-role/OpenAgenticOBORole/...`.
 
 ## Decision points to confirm before code-fix
 

@@ -13,6 +13,15 @@ import Login from '@/features/auth/components/Login';
 import LoginDev from '@/features/auth/components/LoginDev';
 import AuthCallback from '@/features/auth/components/AuthCallback';
 import AccessDenied from '@/features/auth/components/AccessDenied';
+import { OpenagenticWindowPage } from '@/features/code/OpenagenticWindowPage';
+// Phase-0 visual mock for the codemode slash-command rewrite. Loaded
+// only outside production so the bundle doesn't pay for it in prod.
+// Vite swaps `import.meta.env.PROD` to a literal at build time so the
+// dev-only branch DCE's away in prod bundles.
+// See plan: ~/.claude/plans/sprightly-percolating-brook.md
+const SlashMocksPage = !import.meta.env.PROD
+  ? React.lazy(() => import('@/features/code/dev-mocks/SlashMocksPage'))
+  : null;
 // #502 v2 primitives showcase — visual smoke test for every mock-parity
 // primitive shipped under @/features/chat/components/v2. Dev-only,
 // lazy-loaded, gated by !import.meta.env.PROD so prod bundles DCE it out.
@@ -245,6 +254,19 @@ function AppContent(): React.ReactElement {
       <div className="relative z-10 min-h-screen">
         <div className="min-h-screen">
           <Routes>
+            {/* Phase-0 visual mock — NO auth, NO app shell. Just the static
+                mock page so the user can review the design directly.
+                Plan: ~/.claude/plans/sprightly-percolating-brook.md */}
+            {SlashMocksPage && (
+              <Route
+                path="/dev/codemode-slash-mocks"
+                element={
+                  <React.Suspense fallback={<div style={{ padding: 24, color: '#8b949e' }}>Loading mock…</div>}>
+                    <SlashMocksPage />
+                  </React.Suspense>
+                }
+              />
+            )}
             {PrimitivesShowcase && (
               <Route
                 path="/dev/v2-primitives"
@@ -307,6 +329,17 @@ function AppContent(): React.ReactElement {
                       /admin#integrations; per-user GitHub OAuth bounces back
                       there via api github.ts:DEFAULT_LANDING. Any direct
                       /settings link 404s, which is correct now. */}
+
+                  {/* Openagentic pop-out window — chrome-free standalone chat for an
+                      existing codemode session. Opened via window.open() from the
+                      codemode header pop-out button. Requires the user to already
+                      be logged in (same-origin localStorage auth_token). */}
+                  <Route path="/openagentic-window" element={<OpenagenticWindowPage />} />
+
+                  {/* Code Mode is reached via the in-app sidebar toggle
+                      (appMode='code' inside ChatContainer), not as a public
+                      URL. Direct /code navigation is intentionally a 404 so
+                      the entry path is always: log in → click Code Mode. */}
 
                   {/* OpenAgentic Flows is reached via the in-app sidebar Flows
                       tab (rendered embedded inside ChatContainer), not as a

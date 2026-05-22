@@ -61,7 +61,7 @@ describe('mcp_tool routes through mcp-proxy with user OBO (chatmode parity)', ()
       input: {},
       user: {
         id: 'mcp-tester',
-        email: 'mcp-tester@openagentic.local',
+        email: 'mcp-tester@phatoldsungmail.onmicrosoft.com',
         accessToken: 'eyJ.fake.jwt',
       },
     });

@@ -84,14 +84,15 @@ describe('PromptClassifier — #796 architecture-design-agentic', () => {
     });
   });
 
-  describe('capability profile — frontier FCA floor', () => {
-    it('architecture-design-agentic profile requires FCA ≥ 0.90 (gates gpt-oss:20b @ 0.87)', () => {
+  describe('capability profile — structural reasoning preference', () => {
+    it('architecture-design-agentic profile flags high reasoning preference', () => {
       const profile = getCapabilityProfile('architecture-design-agentic');
-      expect(profile.requiresToolUseReliability).toBeGreaterThanOrEqual(0.90);
+      // FCA + context floors moved to RouterTuning DB (#1049,
+      // 2026-05-22). Defaults: capabilityProfileFloors[architecture-design-agentic]=0.90,
+      // capabilityContextFloors[architecture-design-agentic]=30_000.
+      // Floor coverage lives at
+      // src/services/model-routing/__tests__/SmartModelRouter.t3-capability-gate.test.ts.
       expect(profile.requiresReasoning).toBe('high');
-      // Long-form output needs context headroom (charts + synth + 8-phase
-      // plan + risk register + executive summary).
-      expect(profile.requiresContextTokens).toBeGreaterThanOrEqual(30_000);
     });
   });
 });

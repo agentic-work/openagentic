@@ -36,6 +36,12 @@ import {
   type FrameState,
   type WireFrame,
 } from './streamReducer/applyCanonicalFrame';
+// Track B Phase 3 (2026-05-22) — canonical streaming rip. The legacy flat
+// `assistantMessage += delta` + `setCurrentMessage(...)` writers were
+// ripped along with the `useState<string>` for currentMessage. Title-gen,
+// copy-to-clipboard, fallback callers, and the `done`-arm onMessage
+// finalize all read the flat-string view through `deriveFlatMessage` now.
+import { deriveFlatMessage } from './streamReducer/deriveFlatMessage';
 // F1 (2026-05-18) — SDK SoT for ContentBlock. The UI-local `ContentBlock`
 // type below is now a strict alias of `UIContentBlock` from
 // `@agentic-work/llm-sdk` so the wire+persistence shape is owned in ONE
@@ -43,12 +49,6 @@ import {
 // the ~30 callsites that import `ContentBlock` from this module — they
 // transitively see the SDK shape with zero source changes.
 import type { UIContentBlock } from '@agentic-work/llm-sdk';
-// Step 3 (2026-05-18) — publish wire frames to the StreamEngine frame bus.
-// This is a no-op when no subscribers are registered (i.e. when the
-// VITE_FEATURE_STREAM_ENGINE flag is OFF and MessageBubble does NOT
-// mount the engine wrapper). When ON, the engine taps frames here and
-// applies them to its owned DOM container for glitchless rendering.
-import { publishStreamFrame } from '../components/MessageBubble/StreamEnginedActivityStream';
 // Sev-0 #924/#925/#926 — pure helper that builds the final onMessage
 // payload at done time, preserving the FULL content_blocks chronology
 // (every type — thinking, text, tool_use, viz_render, app_render,
@@ -1681,7 +1681,9 @@ export const useChatStream = ({
   getAssistantPlaceholderId,
 }: UseSSEChatOptions) => {
   const [isStreaming, setIsStreaming] = useState(false);
-  const [currentMessage, setCurrentMessage] = useState('');
+  // Track B Phase 3 — `currentMessage` flat-string state DELETED. The
+  // streaming bubble reads `contentBlocks` directly; callers that need a
+  // flat string call `deriveFlatMessage(contentBlocks)`.
   const [currentThinking, setCurrentThinking] = useState('');
   const [isThinkingCompleted, setIsThinkingCompleted] = useState(false); // Tracks if thinking phase has finished
   const currentThinkingRef = useRef(''); // Ref to capture thinking at message completion time
@@ -2151,7 +2153,7 @@ export const useChatStream = ({
       }
       // Reset all thinking/streaming state
       setCurrentThinking('');
-      setCurrentMessage('');
+      // Track B Phase 3 — `setCurrentMessage('')` ripped; contentBlocks reset below
       setIsThinkingCompleted(false);
       setThinkingMetrics(null);
       setCotSteps([]);
@@ -2334,13 +2336,16 @@ export const useChatStream = ({
     setSubAgents([]);
 
     // CRITICAL FIX: Save current streaming message BEFORE clearing it
-    // If there's a streaming message in progress, finalize it first to prevent message loss
-    if (currentMessage && onMessage) {
+    // If there's a streaming message in progress, finalize it first to prevent message loss.
+    // Track B Phase 3 — read flat-string view from contentBlocks via deriveFlatMessage
+    // (the legacy `currentMessage` flat-string state was ripped).
+    const __interruptedFlat = deriveFlatMessage(contentBlocksRef.current);
+    if (__interruptedFlat && onMessage) {
       // console.log('[SSE] Finalizing previous streaming message before starting new one');
       onMessage({
         id: `streaming_${Date.now()}`,
         role: 'assistant',
-        content: currentMessage,
+        content: __interruptedFlat,
         timestamp: new Date().toISOString(),
         mcpCalls: [],
         metadata: { streamingInterrupted: true }
@@ -2373,7 +2378,7 @@ export const useChatStream = ({
     setLiveTokensIn(0);
     setLiveTokensOut(0);
     setLiveActivity('thinking');
-    setCurrentMessage('');
+    // Track B Phase 3 — `setCurrentMessage('')` ripped; contentBlocks reset below
     setCurrentThinking('');
     setContentBlocks([]); // Reset interleaved content blocks for new message
     contentBlocksRef.current = [];
@@ -2572,7 +2577,11 @@ export const useChatStream = ({
         throw new Error('No response body');
       }
       
-      let assistantMessage = '';
+      // Track B Phase 3 — `let assistantMessage = ''` flat-string accumulator
+      // RIPPED. The canonical `applyCanonicalFrame` reducer owns ContentBlock
+      // SoT and `deriveFlatMessage(contentBlocksRef.current)` produces the
+      // legacy flat-string view for callers that still need it (title-gen,
+      // copy-to-clipboard, durable-tail-resume `done` payload, etc.).
       let messageId = '';
       let mcpCalls: any[] = [];
       let chunkCount = 0;
@@ -2656,17 +2665,22 @@ export const useChatStream = ({
             if (t === 'stream' || t === 'content_delta' || t === 'delta') {
               const delta = frame.content || frame.delta || frame.text || '';
               if (typeof delta === 'string' && delta.length > 0) {
-                assistantMessage += delta;
-                setCurrentMessage(assistantMessage);
+                // Track B Phase 3 — `assistantMessage += delta` +
+                // `setCurrentMessage(...)` RIPPED. The canonical reducer
+                // accumulates text into contentBlocks via the
+                // `content_block_delta` arm; the `onStream` callback still
+                // fires so downstream activity-stream consumers see the
+                // delta in real time.
                 onStream?.(delta);
               }
             } else if (t === 'done' || t === 'completion_complete' || t === 'stream_complete' || t === 'resume_exhausted') {
               hasCompletedStream = true;
-              if (onMessage && assistantMessage.length > 0) {
+              const __tailFlat = deriveFlatMessage(contentBlocksRef.current);
+              if (onMessage && __tailFlat.length > 0) {
                 onMessage({
                   id: messageId || `tail_${Date.now()}`,
                   role: 'assistant',
-                  content: assistantMessage,
+                  content: __tailFlat,
                   timestamp: new Date().toISOString(),
                   mcpCalls,
                   metadata: { resumedFromTail: true, lastSeq: lastSeqRef.current },
@@ -2813,12 +2827,6 @@ export const useChatStream = ({
                   canonicalReducerStateRef.current = nextCanonical;
                   setCanonicalReducerState(nextCanonical);
                 }
-                // Step 3 (2026-05-18) — publish the frame onto the
-                // streamFrameBus so the optional StreamEngine wrapper
-                // (gated by VITE_FEATURE_STREAM_ENGINE in MessageBubble)
-                // can apply it to the engine's owned DOM container.
-                // No-op when no subscribers are registered (flag OFF).
-                publishStreamFrame(safeData as WireFrame);
               }
 
               switch (eventType) {
@@ -3080,147 +3088,16 @@ export const useChatStream = ({
                 case 'stream':
                 case 'content_delta':
                 case 'delta': // Additional common SSE event name
-                  // DISABLED: This was blocking ALL stream events because done event arrives first
-                  // if (hasCompletedStream) {
-                  //   console.warn('[SSE] Ignoring stream event after completion');
-                  //   break;
-                  // }
-
-                  // Handle different response formats
-                  let contentDelta = '';
-
-                  // Direct content (custom format)
-                  if (safeData.content) {
-                    contentDelta = safeData.content;
-                  }
-                  // Delta format (some providers)
-                  else if (safeData.delta) {
-                    contentDelta = safeData.delta;
-                  }
-                  // Text format (some providers)
-                  else if (safeData.text) {
-                    contentDelta = safeData.text;
-                  }
-                  // OpenAI format (choices[0].delta.content)
-                  else if (safeData.choices && safeData.choices[0] && safeData.choices[0].delta && safeData.choices[0].delta.content) {
-                    contentDelta = safeData.choices[0].delta.content;
-                  }
-                  // Raw JSON string response from some providers
-                  else if (typeof safeData === 'string') {
-                    try {
-                      const parsed = JSON.parse(safeData);
-                      if (parsed.choices && parsed.choices[0] && parsed.choices[0].delta && parsed.choices[0].delta.content) {
-                        contentDelta = parsed.choices[0].delta.content;
-                      } else if (parsed.content) {
-                        contentDelta = parsed.content;
-                      }
-                    } catch (e) {
-                      // If not JSON, treat as raw content
-                      contentDelta = safeData;
-                    }
-                  }
-                  
-                  // Pipeline-aware content handling
-                  // CRITICAL FIX: Do NOT suppress content during MCP execution - show it in real-time!
-                  // The old behavior was buffering content during tool execution, causing the UI to appear frozen
-                  // Now we always show content immediately for better UX
-                  if (false && currentPipelineState.shouldSuppressContent) {
-                    // DISABLED: Buffer content during tool execution phases
-                    currentPipelineState.bufferedContent += contentDelta;
-
-                    // Content suppression logging - disabled
-                    // if (import.meta.env.DEV) {
-                    //   console.log(`[SSE] Content suppressed during ${currentPipelineState.currentStage} stage (tool round ${currentPipelineState.activeToolRound})`);
-                    // }
-                  } else {
-                    // Phase 2 (plan §2.2): the legacy `case 'stream'` envelope no
-                    // longer mutates `assistantMessage` — that's the dual-emit
-                    // race source for "LetLet me" character duplication.
-                    // The canonical `content_block_delta` reducer arm owns the
-                    // flat-string concat now. We still create/update the
-                    // ContentBlock here as a fallback for any provider that
-                    // emits ONLY the legacy envelope (server-side dual-emit at
-                    // stream.handler.ts:1101-1130 also emits canonical for
-                    // every content_delta — so this is dead code on the
-                    // current cluster, kept only for back-compat).
-
-                    // Flush any buffered content (legacy suppression path —
-                    // `false &&` above keeps this dead but the prepend stays
-                    // for when the buffer ever re-enables).
-                    if (currentPipelineState.bufferedContent) {
-                      assistantMessage = currentPipelineState.bufferedContent + assistantMessage;
-                      currentPipelineState.bufferedContent = '';
-                    }
-
-                    // Extract thinking blocks from the current (canonical-owned)
-                    // assistantMessage and update the live preview.
-                    const { cleaned, thinking } = extractAndCleanThinkingBlocks(assistantMessage);
-                    setCurrentMessage(cleaned);
-
-                    // Set extracted thinking content if found
-                    if (thinking) {
-                      setCurrentThinking(thinking);
-                      // console.log('[SSE] Extracted thinking from stream:', thinking.substring(0, 100) + '...');
-                    }
-
-                    // Update text ContentBlock for interleaved display.
-                    //
-                    // Phase 2 (plan §2.2): if the canonical reducer already
-                    // created text blocks for this turn (server-side dual-emit
-                    // sends `content_block_delta` alongside the legacy
-                    // `stream` envelope), the legacy path MUST NOT create a
-                    // second text block — that's the dup-block source the
-                    // canonical reducer can't undo. We only create a text
-                    // block here when:
-                    //   (a) no text block exists yet in contentBlocksRef
-                    //       (legacy-only provider, no canonical seen), AND
-                    //   (b) currentTextBlockIndexRef.current is null
-                    //       (no prior legacy create for this turn).
-                    const hasAnyTextBlock = contentBlocksRef.current.some(
-                      (b) => b.type === 'text',
-                    );
-                    if (
-                      currentTextBlockIndexRef.current === null &&
-                      contentDelta &&
-                      !hasAnyTextBlock
-                    ) {
-                      const newTextBlockIndex = contentBlocksRef.current.length;
-                      const textBlockTimestamp = Date.now();
-                      const newTextBlock: ContentBlock = {
-                        id: `block-${newTextBlockIndex}-${textBlockTimestamp}`,  // Unique ID for React key
-                        index: newTextBlockIndex,
-                        type: 'text',
-                        // Sev-0 2026-05-19: `assistantMessage` accumulator was
-                        // ripped in Phase 2 of the canonical-streaming-rip plan,
-                        // so `cleaned` is always ''. Scope-warning/lockout
-                        // responses send their text via `contentDelta` (from
-                        // `safeData.content`). Use contentDelta as fallback so
-                        // warning bubbles render their text instead of being empty.
-                        content: contentDelta || cleaned,
-                        isComplete: false,
-                        timestamp: textBlockTimestamp,
-                      };
-                      setContentBlocks(prev => [...prev, newTextBlock]);
-                      contentBlocksRef.current = [...contentBlocksRef.current, newTextBlock];
-                      currentTextBlockIndexRef.current = newTextBlockIndex;
-                    } else if (currentTextBlockIndexRef.current !== null) {
-                      // Update existing text block with cleaned content.
-                      // Sev-0 2026-05-19: same fallback — prefer contentDelta
-                      // when cleaned is empty (accumulator ripped).
-                      setContentBlocks(prev => prev.map(block =>
-                        block.index === currentTextBlockIndexRef.current
-                          ? { ...block, content: contentDelta || cleaned }
-                          : block
-                      ));
-                      contentBlocksRef.current = contentBlocksRef.current.map(block =>
-                        block.index === currentTextBlockIndexRef.current
-                          ? { ...block, content: contentDelta || cleaned }
-                          : block
-                      );
-                    }
-
-                    onStream?.(contentDelta);
-                  }
+                  // Track B Phase 3 (2026-05-22) — the legacy `stream` /
+                  // `content_delta` / `delta` envelopes are dead post-Phase-2
+                  // (server now emits ONLY canonical `content_block_delta`
+                  // with `text_delta` payload). The canonical reducer arm
+                  // (`case 'content_block_delta'`) is the single writer that
+                  // lands text into `contentBlocks` via `appendDelta`. This
+                  // arm is kept as an explicit no-op so legacy/dev/replay
+                  // wires that still emit the old envelope don't tripping
+                  // the `default` "Unknown event type" warn-and-fallback —
+                  // but it adds NO state.
                   break;
 
                 case 'tool_approval_request':
@@ -3772,14 +3649,12 @@ export const useChatStream = ({
                   break;
 
                 case 'role_stream':
-                  // Streaming content from a role (multi-model mode)
-                  // This is the actual LLM content being streamed during orchestration
+                  // Streaming content from a role (multi-model mode).
+                  // Track B Phase 3 — `assistantMessage += ` + `setCurrentMessage`
+                  // RIPPED. The canonical reducer accumulates text via
+                  // `content_block_delta`; `onStream` still fires for callback
+                  // consumers (multi-model orchestrators / activity stream).
                   if (safeData.content) {
-                    // Update current message with the delta
-                    assistantMessage += safeData.content;
-                    setCurrentMessage(assistantMessage);
-
-                    // Also notify the stream callback
                     onStream?.(safeData.content);
                   }
                   break;
@@ -4798,12 +4673,11 @@ export const useChatStream = ({
                 case 'agent_synthesis': {
                   // Agent synthesis content — the master LLM's final answer after agent execution.
                   // This arrives AFTER agent_complete and should be rendered below the execution timeline.
+                  // Track B Phase 3 — `assistantMessage += ` + `setCurrentMessage` RIPPED.
+                  // Canonical reducer owns the flat-string concat via content_block_delta.
+                  // `onStream` callback still fires for downstream activity-stream consumers.
                   const synthContent = safeData.content || safeData.text || safeData.delta || '';
                   if (synthContent) {
-                    assistantMessage += synthContent;
-                    const { cleaned, thinking } = extractAndCleanThinkingBlocks(assistantMessage);
-                    setCurrentMessage(cleaned);
-                    if (thinking) setCurrentThinking(thinking);
                     onStream?.(synthContent);
                   }
                   break;
@@ -5174,9 +5048,10 @@ export const useChatStream = ({
                         if (trimmed) setLiveActivity(trimmed);
                       }
                     } else if (awpBlockType === 'text') {
-                      assistantMessage += awpContent;
-                      const { cleaned } = extractAndCleanThinkingBlocks(assistantMessage);
-                      setCurrentMessage(cleaned);
+                      // Track B Phase 3 — `assistantMessage += ` + `setCurrentMessage`
+                      // RIPPED. Canonical reducer accumulates text via
+                      // content_block_delta. The onStream callback stays for
+                      // downstream activity-stream consumers.
                       onStream?.(awpContent);
                       // LiveTurnStatus — bump ↓ output tokens on text deltas
                       // from the OpenAgentic/OpenAI-normalized path.
@@ -5232,6 +5107,16 @@ export const useChatStream = ({
                   } else if (safeData.delta?.type === 'text_delta') {
                     // Streaming text content.
                     //
+                    // Track B Phase 3 (2026-05-22) — `assistantMessage += textDelta`
+                    // + `setCurrentMessage(cleaned)` RIPPED. The canonical reducer's
+                    // `content_block_delta` arm is the single writer that lands text
+                    // into contentBlocks via appendDelta. The per-block contentBlocks
+                    // mutation below (when `deltaIndex` is provided) is the legacy
+                    // path that pre-dated the canonical reducer; it's still safe to
+                    // keep because Phase 4 will rip the manual setContentBlocks
+                    // writers entirely. For now it co-exists with the reducer
+                    // (idempotent on the same delta).
+                    //
                     // These updates fire on every chunk (often 10-50/sec) and
                     // re-render SharedMarkdownRenderer each time. React 18's
                     // automatic batching only covers setState calls within one
@@ -5243,8 +5128,6 @@ export const useChatStream = ({
                     // (2026-04-18). The ref `contentBlocksRef` is still
                     // updated synchronously elsewhere for correctness.
                     const textDelta = safeData.delta.text || '';
-                    assistantMessage += textDelta;
-                    const { cleaned } = extractAndCleanThinkingBlocks(assistantMessage);
 
                     // LiveTurnStatus — bump ↓ output tokens for visible
                     // assistant text. Activity rolls to "writing response"
@@ -5262,7 +5145,6 @@ export const useChatStream = ({
                             : block
                         ));
                       }
-                      setCurrentMessage(cleaned);
                     });
                     onStream?.(textDelta);
                   } else if (safeData.delta?.type === 'input_json_delta') {
@@ -5789,13 +5671,26 @@ export const useChatStream = ({
                   // Sev-0 2026-05-08: empty-completion fallback. When the
                   // model exits with `end_turn` after a tool-use chain but
                   // emits zero `assistant_message_delta` frames, both
-                  // assistantMessage and mcpCalls.length can be 0 even
-                  // though tool_use content blocks exist. Without a
+                  // the derived flat message and mcpCalls.length can be 0
+                  // even though tool_use content blocks exist. Without a
                   // fallback the UI hangs on "waiting for first token"
                   // because no message ever gets appended. resolveEmptyCompletionFallback
                   // chooses original content / empty / italic placeholder.
+                  //
+                  // Track B Phase 3 — flat-string view derived from the
+                  // canonical contentBlocks via deriveFlatMessage (the legacy
+                  // `assistantMessage` accumulator was ripped). Prefer the
+                  // canonical reducer's blocks when present, fall back to the
+                  // legacy ref (same source-selection logic as buildDoneMessagePayload).
+                  const __doneCanonicalBlocks = canonicalReducerStateRef.current.contentBlocks;
+                  const __doneLegacyBlocks = contentBlocksRef.current;
+                  const __doneSourceBlocks =
+                    __doneCanonicalBlocks.length >= __doneLegacyBlocks.length
+                      ? __doneCanonicalBlocks
+                      : __doneLegacyBlocks;
+                  const __derivedAssistantMessage = deriveFlatMessage(__doneSourceBlocks);
                   const __completionResolution = resolveEmptyCompletionFallback({
-                    assistantMessage: assistantMessage || '',
+                    assistantMessage: __derivedAssistantMessage,
                     mcpCallsLength: mcpCalls.length,
                     hasToolUseBlocks: contentBlocksRef.current.some(
                       b => b.type === 'tool_use' && (b.toolName || b.content),
@@ -5843,13 +5738,15 @@ export const useChatStream = ({
                     //   - Wire: 200+ thinking_delta + 1 text_delta + 1 follow_up
                     //   - Pre-fix DB content_blocks: [text, follow_up]  (thinking MISSING)
                     //   - Canonical reducer state: [thinking, text, follow_up]
-                    const canonicalBlocks =
-                      canonicalReducerStateRef.current.contentBlocks;
-                    const legacyBlocks = contentBlocksRef.current;
-                    const sourceBlocks =
-                      canonicalBlocks.length >= legacyBlocks.length
-                        ? canonicalBlocks
-                        : legacyBlocks;
+                    //
+                    // Track B Phase 3 — source-selection already computed
+                    // above (`__doneCanonicalBlocks` / `__doneLegacyBlocks` /
+                    // `__doneSourceBlocks`) for the deriveFlatMessage call.
+                    // Reuse here so we don't duplicate the canonical-vs-legacy
+                    // selection logic.
+                    const canonicalBlocks = __doneCanonicalBlocks;
+                    const legacyBlocks = __doneLegacyBlocks;
+                    const sourceBlocks = __doneSourceBlocks;
 
                     const donePayload = buildDoneMessagePayload({
                       contentBlocks: sourceBlocks,
@@ -5891,7 +5788,7 @@ export const useChatStream = ({
                   // The previous use of startTransition caused the "Generating" indicator to persist
                   // because deferred updates have lower priority. For UI indicators, immediate updates are essential.
                   setIsStreaming(false);
-                  setCurrentMessage('');
+                  // Track B Phase 3 — `setCurrentMessage('')` ripped; contentBlocks reset below
                   // CRITICAL FIX: Clear contentBlocks to prevent duplicate rendering
                   // The final message is now in the messages list, so InterleavedContent should not render
                   setContentBlocks([]);
@@ -6037,41 +5934,16 @@ export const useChatStream = ({
                   if (eventType) {
                     console.warn(`[SSE] Unknown event type: "${eventType}"`, safeData);
 
-                    // If the unknown event contains content-like data, render it as a text block
+                    // If the unknown event contains content-like data, render it via onStream.
+                    // Track B Phase 3 — `assistantMessage += ` + `setCurrentMessage` +
+                    // manual text-block create RIPPED. The canonical reducer's
+                    // content_block_delta arm is the single text writer. Unknown
+                    // events that carry content still fire the onStream callback
+                    // so downstream consumers (activity-stream, sub-agent forwarders)
+                    // see them, but they no longer create a sibling text ContentBlock
+                    // that would race the reducer (the source of "LetLet me" dup).
                     const fallbackContent = safeData.content || safeData.text || safeData.delta || safeData.message;
                     if (fallbackContent && typeof fallbackContent === 'string' && fallbackContent.trim()) {
-                      assistantMessage += fallbackContent;
-                      const { cleaned } = extractAndCleanThinkingBlocks(assistantMessage);
-                      setCurrentMessage(cleaned);
-
-                      // Update or create text ContentBlock for interleaved display
-                      if (currentTextBlockIndexRef.current === null) {
-                        const newTextBlockIndex = contentBlocksRef.current.length;
-                        const textBlockTimestamp = Date.now();
-                        const newTextBlock: ContentBlock = {
-                          id: `block-${newTextBlockIndex}-${textBlockTimestamp}`,
-                          index: newTextBlockIndex,
-                          type: 'text',
-                          content: cleaned,
-                          isComplete: false,
-                          timestamp: textBlockTimestamp,
-                        };
-                        setContentBlocks(prev => [...prev, newTextBlock]);
-                        contentBlocksRef.current = [...contentBlocksRef.current, newTextBlock];
-                        currentTextBlockIndexRef.current = newTextBlockIndex;
-                      } else {
-                        setContentBlocks(prev => prev.map(block =>
-                          block.index === currentTextBlockIndexRef.current
-                            ? { ...block, content: cleaned }
-                            : block
-                        ));
-                        contentBlocksRef.current = contentBlocksRef.current.map(block =>
-                          block.index === currentTextBlockIndexRef.current
-                            ? { ...block, content: cleaned }
-                            : block
-                        );
-                      }
-
                       onStream?.(fallbackContent);
                     }
                   }
@@ -6270,7 +6142,7 @@ export const useChatStream = ({
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
       setIsStreaming(false);
-      setCurrentMessage(''); // Clear streaming content when stopped
+      // Track B Phase 3 — `setCurrentMessage('')` ripped; contentBlocks cleared below
       setCurrentThinking('');
       setContentBlocks([]); // Clear interleaved content blocks when stopped
       contentBlocksRef.current = [];
@@ -6317,7 +6189,10 @@ export const useChatStream = ({
     sendMessage,
     stopStreaming,
     isStreaming,
-    currentMessage,
+    // Track B Phase 3 — `currentMessage` flat-string state RIPPED from the
+    // hook's return shape. Callers that need the streaming text read from
+    // `contentBlocks` directly, or call `deriveFlatMessage(contentBlocks)`
+    // when they need a flat string (title-gen, copy-to-clipboard, etc.).
     currentThinking,
     isThinkingCompleted, // Whether thinking phase has finished (for UI collapse)
     thinkingMetrics,

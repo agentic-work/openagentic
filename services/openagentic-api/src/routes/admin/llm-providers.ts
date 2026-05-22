@@ -2605,12 +2605,8 @@ const llmProviderRoutes: FastifyPluginAsync<ProviderRoutesOptions> = async (fast
           max_tokens: discovered.maxOutputTokens ?? undefined,
           temperature: discovered.temperature ?? 0.5,
           thinking_budget: discovered.thinkingBudget ?? undefined,
-          cost_per_input_token_usd: discovered.pricing.inputTokenUsd ?? null,
-          cost_per_output_token_usd: discovered.pricing.outputTokenUsd ?? null,
-          cost_per_cache_read_usd: discovered.pricing.cacheReadUsd ?? null,
-          cost_per_cache_write_usd: discovered.pricing.cacheWriteUsd ?? null,
-          cost_per_thinking_token_usd: discovered.pricing.thinkingTokenUsd ?? null,
-          cost_per_embedding_token_usd: discovered.pricing.embeddingTokenUsd ?? null,
+          // OSS schema only tracks a single cost_per_request column for now;
+          // detailed per-token pricing is enterprise-tier.
           cost_per_request: discovered.pricing.perRequestUsd ?? null,
           pricing_source: discovered.pricing.source,
           pricing_fetched_at: new Date(discovered.pricing.fetchedAt),

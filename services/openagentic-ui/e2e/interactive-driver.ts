@@ -34,7 +34,7 @@ import * as http from 'http';
 import { execSync } from 'child_process';
 
 const BASE_URL = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'mcp-tester@openagentic.local';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'mcp-tester@phatoldsungmail.onmicrosoft.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'TestMcp@2026';
 const STATE_DIR = '/tmp/uat-driver';
 const SCREENSHOT_DIR = path.join(STATE_DIR, 'screenshots');

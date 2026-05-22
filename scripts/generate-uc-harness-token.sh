@@ -25,7 +25,7 @@ set -euo pipefail
 
 TTL_SECONDS=3600
 OUT_PATH=".uc-harness-token"
-NAMESPACE="${UC_HARNESS_NAMESPACE:-openagentic}"
+NAMESPACE="${UC_HARNESS_NAMESPACE:-agentic-dev}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -54,7 +54,7 @@ if [[ -z "$secret" ]]; then
 fi
 
 user_id="${UC_HARNESS_USER_ID:-}"
-email="${UC_HARNESS_EMAIL:-mcp-tester@openagentic.local}"
+email="${UC_HARNESS_EMAIL:-mcp-tester@phatoldsungmail.onmicrosoft.com}"
 if [[ -z "$user_id" ]]; then
   # Canonical mcp-tester id — confirmed live 2026-04-20.
   # The pre-2026-04-18 `azure_696cf...` id was a stale copy; after the

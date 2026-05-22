@@ -15,7 +15,7 @@ describe('LIVE Azure RG response shape', () => {
         { name: 'test', location: 'eastus', provisioning_state: 'Succeeded', tags: {} },
         { name: 'DefaultResourceGroup-EUS2', location: 'eastus2', provisioning_state: 'Succeeded', tags: {} },
       ],
-      executed_as: { upn: 'mcp-tester@openagentic.local' },
+      executed_as: { upn: 'mcp-tester@phatoldsungmail.onmicrosoft.com' },
     };
     const write = vi.fn();
     const okObj = autoEmitStreamingTable({

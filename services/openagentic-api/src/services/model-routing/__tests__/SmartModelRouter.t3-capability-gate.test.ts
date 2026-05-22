@@ -1,26 +1,29 @@
 /**
  * SmartModelRouter — T3 capability-gate (#828, 2026-05-20).
  *
- * RED-PHASE bug repro:
- *   Live 2026-05-20 14:08 UTC: enterprise AFD/AppGW prompt with explicit
- *   "pick the most capable model" routed to a Haiku-class model (FCA
- *   ~0.91 / 200K context) instead of a Sonnet/Opus-class model (FCA
- *   ≥0.93 / 200K context). Auto-Routing was silently downgrading on a
- *   prompt where the user explicitly asked for premium reasoning.
+ * 2026-05-22 (#1049) — STRUCTURAL ONLY. The EXPLICIT_MOST_CAPABLE_RE
+ * lexical safety-net was ripped because it re-introduced the regex-
+ * routing pattern #805 deleted. The T3 gate now fires only when the
+ * PromptClassifier emits a taskType present in
+ * RouterTuning.t3TriggerTaskTypes (default: cost-audit,
+ * architecture-design-agentic, multi-cloud-agentic, multi-system-agentic).
  *
- * GREEN contract pinned here (STRUCTURAL — no model-name literals):
- *   1. When the prompt complexity hits T3 (architecture-design /
- *      cost-audit, FCA-floor 0.93) AND a Sonnet/Opus-tier registry row
- *      (FCA ≥0.93 AND context ≥200K) is available, the router MUST
- *      pick the T3 candidate.
- *   2. When the prompt contains an explicit "most capable" / "premium
- *      model" / "enterprise" signal phrase (anchored regex), the T3
- *      gate fires even on lower-score prompts, and a Haiku-class
- *      candidate (200K context but FCA <0.93) is excluded.
- *   3. When no candidate clears the FCA-0.93 + 200K floor, the router
- *      throws NO_T3_MODEL_IN_REGISTRY — never silently downgrades to a
- *      Haiku-class model.
- *   4. The gate does NOT fire on plain "hi" / pure-chat prompts.
+ * Tests below feed prompts that the structural classifier scores as
+ * those taskTypes (long architecture-design / multi-cloud audit / cost-
+ * audit shapes). The previous "most capable model" / "premium model" /
+ * "enterprise tenant" anchor tests were ripped at the same time as the
+ * regex — replace them with structurally-scored prompts.
+ *
+ * GREEN contract pinned here (STRUCTURAL — no model-name literals, no
+ * lexical anchors):
+ *   1. When the prompt structurally classifies into a T3 taskType AND
+ *      a Sonnet/Opus-tier registry row (FCA ≥0.93 AND context ≥200K) is
+ *      available, the router MUST pick the T3 candidate.
+ *   2. When the prompt structurally classifies into a T3 taskType but
+ *      no candidate clears the FCA-0.93 + 200K floor, the router throws
+ *      NO_T3_MODEL_IN_REGISTRY — never silently downgrades to a Haiku-
+ *      class model.
+ *   3. The gate does NOT fire on plain "hi" / pure-chat prompts.
  *
  * Test asserts on FCA + context-window SHAPE — never on model-name
  * literals. Synthetic placeholder IDs only.
@@ -147,9 +150,17 @@ describe('SmartModelRouter — T3 capability gate (#828, 2026-05-20)', () => {
     buildPool(router);
   });
 
-  test('explicit "most capable model" anchor excludes T1/T2 (FCA<0.93) candidates', async () => {
+  test('cost-audit structural classification excludes T1/T2 (FCA<0.93) candidates', async () => {
+    // Structural cost-audit prompt — sub-agent dispatch + parallel cost
+    // tools + multi-cloud breakdown + sankey + savings_grid composition.
+    // PromptClassifier emits taskType=cost-audit which is in the default
+    // T3 trigger list, so the T3 gate fires.
     const req = userMessage(
-      "We're deploying AFD + AppGW in an enterprise tenant. Pick the most capable model for this; budget is not a concern.",
+      'Cost audit: dispatch sub-agents in parallel to query AWS Cost Explorer, ' +
+        'Azure Cost Management, and GCP Billing for the last 90 days. Break the ' +
+        'spend down by service across all three clouds, compute MoM deltas, build ' +
+        'a sankey diagram of where the dollars flow, and a savings_grid ranking ' +
+        'reservations vs spot vs savings-plans by ROI.',
     );
     const decision = await router.routeRequest(req);
     expect(decision.selectedModel.modelId).not.toBe('pool-t1-cheap-local');
@@ -158,18 +169,28 @@ describe('SmartModelRouter — T3 capability gate (#828, 2026-05-20)', () => {
     expect(decision.selectedModel.performance.maxContextTokens).toBeGreaterThanOrEqual(200_000);
   });
 
-  test('"premium model" anchor forces the T3 gate', async () => {
+  test('multi-cloud-agentic structural classification forces the T3 gate', async () => {
+    // Default tuning has multi-cloud-agentic in t3TriggerTaskTypes — a
+    // multi-cloud audit prompt structurally classifies into it.
     const req = userMessage(
-      'Use the premium model. Design a multi-region AFD layout with WAF policy and OAuth at the edge.',
+      'Audit our AWS + Azure + GCP estate end-to-end. Identify orphaned ' +
+        'resources, drift between environments, and security findings across ' +
+        'each cloud. Roll the findings up into a unified executive summary ' +
+        'and dispatch sub-agents per cloud to do the deep scan.',
     );
     const decision = await router.routeRequest(req);
     expect(decision.selectedModel.capabilities.functionCallingAccuracy).toBeGreaterThanOrEqual(0.93);
     expect(decision.selectedModel.modelId).not.toBe('pool-t2-haiku-class');
   });
 
-  test('"enterprise" anchor forces the T3 gate (#828 live repro phrasing)', async () => {
+  test('multi-system-agentic structural classification forces the T3 gate', async () => {
+    // Default tuning has multi-system-agentic in t3TriggerTaskTypes —
+    // cross-system fan-out + parallel intent triggers it structurally.
     const req = userMessage(
-      'Enterprise customer is rolling out an AFD plus AppGW pattern across 3 hubs — give me the architecture.',
+      'Spawn sub-agents in parallel to query our Kubernetes clusters, ' +
+        'Postgres replicas, and Redis fleet. Cross-correlate the findings, ' +
+        'rank incidents by blast radius, and produce a unified incident-response ' +
+        'runbook with a phased remediation plan for each system.',
     );
     const decision = await router.routeRequest(req);
     expect(decision.selectedModel.capabilities.functionCallingAccuracy).toBeGreaterThanOrEqual(0.93);
@@ -202,7 +223,7 @@ describe('SmartModelRouter — T3 capability gate (#828, 2026-05-20)', () => {
     expect(decision.reason.toLowerCase()).not.toMatch(/t3|most.capable|premium.*model|enterprise.*gate/);
   });
 
-  test('throws NO_T3_MODEL_IN_REGISTRY when explicit signal but no qualifier exists', async () => {
+  test('throws NO_T3_MODEL_IN_REGISTRY when T3 taskType fires but no T3-grade model exists', async () => {
     // Build a router with only T1/T2 candidates — no T3-grade model.
     const t1t2Only = new SmartModelRouter(SILENT_LOGGER);
     t1t2Only.addModelProfile(
@@ -224,11 +245,17 @@ describe('SmartModelRouter — T3 capability gate (#828, 2026-05-20)', () => {
       }),
     );
 
+    // Structural cost-audit prompt forces the T3 gate (taskType=cost-audit
+    // is in the default t3TriggerTaskTypes list).
     const req = userMessage(
-      "We're deploying AFD + AppGW in an enterprise tenant. Pick the most capable model for this; budget is not a concern.",
+      'Cost audit: dispatch sub-agents in parallel to query AWS Cost Explorer, ' +
+        'Azure Cost Management, and GCP Billing for the last 90 days. Break the ' +
+        'spend down by service across all three clouds, compute MoM deltas, build ' +
+        'a sankey diagram of where the dollars flow, and a savings_grid ranking ' +
+        'reservations vs spot vs savings-plans by ROI.',
     );
-    // The contract: explicit-most-capable signal MUST throw rather than
-    // silently downgrade to Haiku-class.
+    // The contract: structural T3 trigger MUST throw rather than silently
+    // downgrade to Haiku-class.
     await expect(t1t2Only.routeRequest(req)).rejects.toThrow(/NO_T3_MODEL_IN_REGISTRY/);
   });
 });

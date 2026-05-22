@@ -10,6 +10,7 @@
 
 import { MilvusClient } from '@zilliz/milvus2-sdk-node';
 import type { Logger } from 'pino';
+import { classifyMilvusHealth } from './milvusHealth.js';
 
 export class MilvusConnectionManager {
   private client: MilvusClient | null = null;
@@ -47,7 +48,10 @@ export class MilvusConnectionManager {
         });
 
         const health = await client.checkHealth();
-        if (health.isHealthy) {
+        // #1055: classify so "still loading collections" surfaces as a
+        // transient (retryable) error rather than a fatal connection failure.
+        const state = classifyMilvusHealth(health);
+        if (state === 'ready') {
           this.client = client;
           this.consecutiveFailures = 0;
           this.circuitOpen = false;
@@ -55,7 +59,8 @@ export class MilvusConnectionManager {
           this.logger.info(`Milvus connected on attempt ${attempt}`);
           return client;
         }
-        throw new Error(`Milvus health check failed: ${JSON.stringify(health)}`);
+        const tag = state === 'recovering' ? 'recovering' : 'fatal';
+        throw new Error(`Milvus health check ${tag}: ${JSON.stringify(health)}`);
       } catch (error: any) {
         if (attempt % 5 === 0 || attempt === 1) {
           this.logger.warn({ err: error, attempt }, `Milvus connect attempt ${attempt}/${retries} failed`);
@@ -83,12 +88,16 @@ export class MilvusConnectionManager {
       if (!this.client) return;
       try {
         const health = await this.client.checkHealth();
-        if (health.isHealthy) {
+        // #1055: 'recovering' is transient — don't trip the circuit-breaker
+        // for it, just leave the previous-good state in place.
+        const state = classifyMilvusHealth(health);
+        if (state === 'ready') {
           this.consecutiveFailures = 0;
           this.circuitOpen = false;
-        } else {
-          this.handleFailure('Health check returned unhealthy');
+        } else if (state === 'fatal') {
+          this.handleFailure('Health check returned fatal');
         }
+        // state === 'recovering' → no-op, do not increment failures
       } catch (error: any) {
         this.handleFailure(error.message);
       }

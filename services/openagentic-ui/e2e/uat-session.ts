@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const BASE_URL = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'mcp-tester@openagentic.local';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'mcp-tester@phatoldsungmail.onmicrosoft.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'TestMcp@2026';
 const SCREENSHOT_DIR = '/tmp/uat-driver/screenshots';
 const HEADLESS = process.env.HEADLESS !== 'false';

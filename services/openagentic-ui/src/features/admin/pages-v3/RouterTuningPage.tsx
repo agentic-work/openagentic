@@ -56,6 +56,37 @@ const DEFAULTS: RouterTuningValues = {
   fcaInfraOpsFloor: 0.85,
   fcaCloudListFloor: 0.9,
   fcaComplexityBiasFloor: 0.93,
+  // T3 capability gate (#1049, 2026-05-22) — mirror RouterTuning DB defaults.
+  fcaT3Floor: 0.93,
+  contextT3Floor: 200_000,
+  t3TriggerTaskTypes: [
+    'cost-audit',
+    'architecture-design-agentic',
+    'multi-cloud-agentic',
+    'multi-system-agentic',
+  ],
+  capabilityProfileFloors: {
+    'multi-cloud-agentic': 0.9,
+    'multi-system-agentic': 0.9,
+    'cost-analysis-agentic': 0.9,
+    'cost-audit': 0.93,
+    'security-audit-agentic': 0.9,
+    'architecture-design-agentic': 0.9,
+    'single-system-read': 0.85,
+    'file-read': 0.85,
+    'pure-chat': 0.82,
+  },
+  capabilityContextFloors: {
+    'multi-cloud-agentic': 30_000,
+    'multi-system-agentic': 30_000,
+    'cost-analysis-agentic': 100_000,
+    'cost-audit': 100_000,
+    'security-audit-agentic': 30_000,
+    'architecture-design-agentic': 30_000,
+    'single-system-read': 8_000,
+    'file-read': 16_000,
+    'pure-chat': 4_000,
+  },
   intentClassifierEnabled: true,
   intentClassifierModelId: 'gpt-oss:20b',
 }
@@ -265,6 +296,121 @@ const EditableKpi = ({
 }
 
 // ============================================================
+// JsonTuningEditor — textarea + Save/Reset for one JSON-shaped tuning
+// field. Added 2026-05-22 (#1049) for the T3 capability-gate JSON
+// columns (t3TriggerTaskTypes / capabilityProfileFloors /
+// capabilityContextFloors). Shape-validation only; the API does the
+// per-key numeric range check.
+// ============================================================
+const JsonTuningEditor = ({
+  field,
+  label,
+  help,
+  value,
+  isDirty,
+  onCommit,
+  validate,
+}: {
+  field: string
+  label: string
+  help: string
+  value: unknown
+  isDirty: boolean
+  onCommit: (parsed: unknown) => void
+  validate: (parsed: unknown) => string | null
+}) => {
+  const [draft, setDraft] = React.useState<string>(() => JSON.stringify(value, null, 2))
+  const [draftError, setDraftError] = React.useState<string | null>(null)
+  const lastSerialized = React.useRef<string>(JSON.stringify(value))
+
+  React.useEffect(() => {
+    const serialized = JSON.stringify(value)
+    if (serialized !== lastSerialized.current) {
+      lastSerialized.current = serialized
+      setDraft(JSON.stringify(value, null, 2))
+      setDraftError(null)
+    }
+  }, [value])
+
+  const handleStage = () => {
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(draft)
+    } catch (err: any) {
+      setDraftError(`invalid JSON: ${err?.message ?? String(err)}`)
+      return
+    }
+    const shapeErr = validate(parsed)
+    if (shapeErr) {
+      setDraftError(shapeErr)
+      return
+    }
+    setDraftError(null)
+    onCommit(parsed)
+  }
+
+  const handleRevert = () => {
+    setDraft(JSON.stringify(value, null, 2))
+    setDraftError(null)
+  }
+
+  return (
+    <div
+      data-testid={`router-tuning-json-editor-${field}`}
+      style={{
+        padding: '12px 18px',
+        borderBottom: '1px solid var(--line-1)',
+        background: isDirty ? 'color-mix(in srgb, var(--warn) 8%, var(--bg-1))' : 'var(--bg-1)',
+      }}
+    >
+      <div
+        style={{
+          fontFamily: 'var(--font-v3-mono)',
+          fontSize: 11,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          color: 'var(--fg-3)',
+          marginBottom: 4,
+        }}
+      >
+        {label}
+        {isDirty && <span style={{ marginLeft: 8, color: 'var(--warn)' }}>· unsaved</span>}
+      </div>
+      <p style={{ color: 'var(--fg-3)', fontSize: 12, margin: '0 0 8px' }}>{help}</p>
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        spellCheck={false}
+        style={{
+          width: '100%',
+          minHeight: 120,
+          background: 'var(--bg-0)',
+          border: `1px solid ${draftError ? 'var(--err)' : isDirty ? 'var(--warn)' : 'var(--line-1)'}`,
+          color: 'var(--fg-0)',
+          fontFamily: 'var(--font-v3-mono)',
+          fontSize: 12,
+          padding: '8px 10px',
+          outline: 'none',
+          resize: 'vertical',
+        }}
+        aria-label={`Edit ${label}`}
+      />
+      {draftError && (
+        <div style={{ color: 'var(--err)', fontSize: 12, marginTop: 6 }}>{draftError}</div>
+      )}
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <Btn variant="primary" onClick={handleStage}>
+          stage edit
+        </Btn>
+        <Btn variant="ghost" onClick={handleRevert}>
+          revert
+        </Btn>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================
 // Page
 // ============================================================
 export const RouterTuningPage: React.FC = () => {
@@ -286,8 +432,14 @@ export const RouterTuningPage: React.FC = () => {
 
   const setVal = <K extends keyof RouterTuningValues>(key: K, value: RouterTuningValues[K]) => {
     setDirty((prev) => {
-      // If matches saved, drop from dirty
-      if (value === (savedTuning as any)[key]) {
+      const savedVal = (savedTuning as any)[key]
+      // Use JSON-stringify equality for JSON-shaped fields (arrays /
+      // objects); reference equality is wrong for those.
+      const sameAsSaved =
+        typeof value === 'object' && value !== null
+          ? JSON.stringify(value) === JSON.stringify(savedVal)
+          : value === savedVal
+      if (sameAsSaved) {
         const { [key]: _drop, ...rest } = prev as any
         return rest as Partial<RouterTuningValues>
       }
@@ -694,6 +846,97 @@ export const RouterTuningPage: React.FC = () => {
           sub="≥ 2 complexity keywords"
         />
       </KpiGrid>
+
+      {/* ============== T3 capability gate (#1049, 2026-05-22) ============== */}
+      <SectionBar
+        title="t3 capability gate"
+        count={5}
+        right={
+          <span style={{ color: 'var(--fg-3)' }}>
+            structural classifier only · no lexical safety-net
+          </span>
+        }
+      />
+      <KpiGrid cols={2}>
+        <EditableKpi
+          label="fcaT3Floor"
+          value={tuning.fcaT3Floor}
+          saved={savedTuning.fcaT3Floor}
+          step={0.01}
+          min={0}
+          max={1}
+          onChange={(v) => setVal('fcaT3Floor', v)}
+          tone="warn"
+          sub="T3 FCA floor (default 0.93)"
+        />
+        <EditableKpi
+          label="contextT3Floor"
+          value={tuning.contextT3Floor}
+          saved={savedTuning.contextT3Floor}
+          step={1000}
+          min={0}
+          onChange={(v) => setVal('contextT3Floor', Math.round(v))}
+          tone="warn"
+          sub="T3 context floor in tokens (default 200000)"
+        />
+      </KpiGrid>
+      <Panel>
+        <JsonTuningEditor
+          field="t3TriggerTaskTypes"
+          label="t3TriggerTaskTypes"
+          help="JSON array of TaskType identifiers that fire the T3 gate."
+          value={tuning.t3TriggerTaskTypes}
+          isDirty={isDirtyKey('t3TriggerTaskTypes')}
+          onCommit={(parsed) => setVal('t3TriggerTaskTypes', parsed as string[])}
+          validate={(p) => {
+            if (!Array.isArray(p)) return 'must be a JSON array of strings'
+            if (!p.every((s) => typeof s === 'string')) return 'all entries must be strings'
+            return null
+          }}
+        />
+        <JsonTuningEditor
+          field="capabilityProfileFloors"
+          label="capabilityProfileFloors"
+          help="JSON object map { TaskType: FCA-floor }. Replaces hardcoded CAPABILITY_PROFILES literals."
+          value={tuning.capabilityProfileFloors}
+          isDirty={isDirtyKey('capabilityProfileFloors')}
+          onCommit={(parsed) =>
+            setVal(
+              'capabilityProfileFloors',
+              parsed as Record<string, number>,
+            )
+          }
+          validate={(p) => {
+            if (p === null || typeof p !== 'object' || Array.isArray(p)) return 'must be a JSON object'
+            for (const [k, v] of Object.entries(p as Record<string, unknown>)) {
+              if (typeof v !== 'number' || isNaN(v as number)) return `value at "${k}" must be a number`
+              if ((v as number) < 0 || (v as number) > 1) return `value at "${k}" must be in [0, 1]`
+            }
+            return null
+          }}
+        />
+        <JsonTuningEditor
+          field="capabilityContextFloors"
+          label="capabilityContextFloors"
+          help="JSON object map { TaskType: context-window-token-floor }."
+          value={tuning.capabilityContextFloors}
+          isDirty={isDirtyKey('capabilityContextFloors')}
+          onCommit={(parsed) =>
+            setVal(
+              'capabilityContextFloors',
+              parsed as Record<string, number>,
+            )
+          }
+          validate={(p) => {
+            if (p === null || typeof p !== 'object' || Array.isArray(p)) return 'must be a JSON object'
+            for (const [k, v] of Object.entries(p as Record<string, unknown>)) {
+              if (typeof v !== 'number' || isNaN(v as number) || !Number.isInteger(v)) return `value at "${k}" must be an integer`
+              if ((v as number) < 0) return `value at "${k}" must be ≥ 0`
+            }
+            return null
+          }}
+        />
+      </Panel>
 
       {/* ============== Live Scoring Lab ============== */}
       <SectionBar

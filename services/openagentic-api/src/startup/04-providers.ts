@@ -204,7 +204,19 @@ export const INIT_PROVIDERS: BootstrapStep = {
         loggers.services.warn({ error: err?.message }, 'RegistryBootstrapSeeder failed — Registry will show only admin-added rows; admin UI can seed manually');
       }
 
-      // Code Mode is removed in the OSS edition — no role=code backfill needed.
+      // Task #360 — ensure at least one role=code row exists. Runs even when
+      // BOOTSTRAP_PROVIDER is disabled (no helm-seeded provider) so an admin
+      // who manually added a chat model via the UI still gets a populated
+      // /model picker. Idempotent + FK-safe — see CodeRoleBackfillService.
+      try {
+        const { CodeRoleBackfillService } = await import('../services/model-routing/CodeRoleBackfillService.js');
+        const { prisma: p } = await import('../utils/prisma.js');
+        const backfiller = new CodeRoleBackfillService(p as any, loggers.services);
+        const result = await backfiller.backfill();
+        loggers.services.info(result, '[CodeRoleBackfill] boot-time backfill complete');
+      } catch (err: any) {
+        loggers.services.warn({ error: err?.message }, 'CodeRoleBackfillService failed — /model picker may be empty');
+      }
 
       // V3 Phase 5 — EnrichedTool registry seeder. Lands ~14 default T1
       // tool metadata rows (outputTemplate + truncate_summary template +

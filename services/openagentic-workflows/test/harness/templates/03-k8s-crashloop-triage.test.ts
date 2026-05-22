@@ -102,7 +102,7 @@ describe('k8s-crashloop-triage template', () => {
         "The user wants per-pod diagnosis bullets. Let me reason about each:\n" +
         "- openagentic-workflows-5c4e8a9b3f-q7n6w (CrashLoopBackOff, restarts=27): Prisma migration drift — schema references Workflow.last_compiled_at but the DB head migration was not applied; run `prisma migrate deploy` against the postgresql-0 endpoint.\n" +
         "- openagentic-mcp-proxy-7e9c4d5a8b-r3k9p (Running, restarts=12): high restart count despite Running — likely intermittent OOM or downstream MCP server failure causing supervisor restarts; check pod memory limits and recent OOMKills.\n" +
-        "- oap-openagentic-azure-mcp-697579dff7-s4s6c (ImagePullBackOff, restarts=9): image pull failing — verify harbor.agenticwork.io registry credentials or pinned tag exists in Harbor.",
+        "- oap-openagentic-azure-mcp-697579dff7-s4s6c (ImagePullBackOff, restarts=9): image pull failing — verify harbor.openagentic.io registry credentials or pinned tag exists in Harbor.",
       model: 'gpt-oss:20b',
       usage: { prompt_tokens: 320, completion_tokens: 180 },
     });

@@ -187,20 +187,13 @@ export interface RoutingDecision {
 // Plan: docs/chatmode-ux-mock-parity/02-plan-canonical.md §38-52, §80
 //       ("Regex-as-fallback IS regex routing").
 
-// Minimum function calling accuracy — two tiers.
-//
-// SIMPLE_FLOOR (0.83): for tool requests that are simple (1-3 tools, single
-// round, no multi-cloud, no delegation). This lets local gpt-oss:20b (A10)
-// and Haiku be eligible — the vast majority of MCP read calls.
-//
-// COMPLEX_FLOOR (0.90): for tool requests that are multi-step, multi-cloud,
-// or involve delegation. These need frontier-grade function calling (Sonnet,
-// Opus, o3, GPT-5). We will NOT trust a 0.85-tier model to correctly plan
-// a multi-round tool loop with artifact delegation.
-const MIN_FUNCTION_CALLING_ACCURACY_SIMPLE = 0.83;
-const MIN_FUNCTION_CALLING_ACCURACY_COMPLEX = 0.90;
-// Legacy alias — still exported for callers that use it as a getter floor.
-const MIN_FUNCTION_CALLING_ACCURACY = MIN_FUNCTION_CALLING_ACCURACY_COMPLEX;
+// Function-calling accuracy floors moved to RouterTuning DB row on
+// 2026-05-22 (#1049). The simple-tool floor is now `tuning.fcaSimpleToolFloor`
+// (default 0.83) and the complex-tool floor is `tuning.fcaComplexToolFloor`
+// (default 0.90). The legacy `MIN_FUNCTION_CALLING_ACCURACY*` constants
+// + their `getFunctionCallingModels` default-arg were ripped at the same
+// time — getFunctionCallingModels now requires an explicit floor arg
+// (callers should pass `tuning.fcaComplexToolFloor` or `tuning.fcaSimpleToolFloor`).
 
 // MULTI_CLOUD_KEYWORDS RIPPED 2026-04-29 (chatmode-ux-mock-parity Wave2-D).
 // The breadth/multi-cloud signal briefly flowed through the intent classifier service (RIPPED 2026-05-10 Phase E.1)
@@ -1065,52 +1058,46 @@ export class SmartModelRouter {
       taskType === 'security-audit-agentic' ||
       taskType === 'architecture-design-agentic';
 
-    // #828 T3 capability gate (2026-05-20). When the prompt complexity
-    // hits T3 OR the user explicitly asks for a premium/most-capable
-    // model, filter candidates to those with FCA ≥ 0.93 AND
-    // context_window_tokens ≥ 200_000 (Sonnet/Opus-class structural
-    // proxy). Anchored regex avoids substring fishing — the gate must
-    // fire on a real "most capable / premium / enterprise" intent
-    // phrase, not on incidental occurrences of those words. Throws
-    // NO_T3_MODEL_IN_REGISTRY when the gate is forced but no candidate
+    // #828 T3 capability gate (structural only after #805 / #1049 rip).
+    // STRUCTURAL TRIGGER ONLY — the EXPLICIT_MOST_CAPABLE_RE lexical
+    // safety-net was ripped 2026-05-22 (#1049) because it reintroduced
+    // the regex-routing pattern #805 deleted. The taskType allowlist,
+    // FCA floor, and context-window floor are now sourced from the
+    // RouterTuning DB row (admin-editable via /admin#router-tuning).
+    //
+    // Default allowlist (see ROUTER_TUNING_DEFAULTS.t3TriggerTaskTypes):
+    //   - cost-audit
+    //   - architecture-design-agentic
+    //   - multi-cloud-agentic
+    //   - multi-system-agentic
+    //
+    // Default floors: FCA ≥ tuning.fcaT3Floor (0.93) AND
+    //                 context ≥ tuning.contextT3Floor (200000).
+    //
+    // Throws NO_T3_MODEL_IN_REGISTRY when the gate fires but no candidate
     // qualifies — never silently downgrades to a Haiku-class model.
-    //
-    // T3 tasks (structural):
-    //   - cost-audit                    (FCA 0.93 floor by profile)
-    //   - architecture-design-agentic   (high-complexity multi-frame plan)
-    //
-    // Explicit anchor (any one fires the gate):
-    //   - "most capable" model/llm
-    //   - "premium" / "highest quality" / "top tier" / "best" model/llm
-    //   - "enterprise" (deployment, customer, tenant, scale)
-    //   - "frontier" model/grade
-    const EXPLICIT_MOST_CAPABLE_RE =
-      /\b(?:(?:pick|use|give\s+me|choose|select|require[s]?|need[s]?)\s+(?:the\s+)?(?:most\s+capable|premium|highest[\s-]?quality|top[\s-]?tier|frontier|best)\s+(?:model|llm|reasoning|agent)|(?:most\s+capable|premium|frontier)\s+(?:model|llm)|\benterprise\s+(?:tenant|customer|deployment|scale|grade|account)|\b(?:premium|top[\s-]?tier|frontier)[\s-]?grade\b)/i;
-    const explicitMostCapable = EXPLICIT_MOST_CAPABLE_RE.test(promptText);
-    const t3StructuralTask =
-      taskType === 'cost-audit' || taskType === 'architecture-design-agentic';
-    const forceT3Gate = t3StructuralTask || explicitMostCapable;
+    const t3StructuralTask = tuning.t3TriggerTaskTypes.includes(taskType);
+    const forceT3Gate = t3StructuralTask;
 
     if (forceT3Gate) {
-      const T3_FCA_FLOOR = 0.93;
-      const T3_CONTEXT_FLOOR = 200_000;
+      const t3FcaFloor = tuning.fcaT3Floor;
+      const t3ContextFloor = tuning.contextT3Floor;
       const beforeT3 = candidates.length;
       const t3Candidates = candidates.filter(
         (m) =>
           m.capabilities.chat === true &&
-          m.capabilities.functionCallingAccuracy >= T3_FCA_FLOOR &&
-          m.performance.maxContextTokens >= T3_CONTEXT_FLOOR,
+          m.capabilities.functionCallingAccuracy >= t3FcaFloor &&
+          m.performance.maxContextTokens >= t3ContextFloor,
       );
       if (t3Candidates.length === 0) {
-        // Hard fail when the user explicitly asks for T3 and no candidate
-        // qualifies. Per #828, silently downgrading to a Haiku-class
-        // model on enterprise prompts is a Sev-0 — the operator must
-        // register a Sonnet/Opus-class model before this prompt can
-        // route.
+        // Hard fail when the gate fires and no candidate qualifies. Per
+        // #828, silently downgrading to a Haiku-class model on
+        // structural-T3 prompts is a Sev-0 — the operator must register
+        // a Sonnet/Opus-class model before this prompt can route.
         try { routerRouteRequestDurationMs.observe(Date.now() - __t0); } catch { /* metrics — non-fatal */ }
         throw new Error(
-          `NO_T3_MODEL_IN_REGISTRY: prompt requires T3 (FCA≥${T3_FCA_FLOOR}, context≥${T3_CONTEXT_FLOOR}) ` +
-            `but no candidate registry row qualifies. taskType=${taskType}, explicitMostCapable=${explicitMostCapable}`,
+          `NO_T3_MODEL_IN_REGISTRY: prompt requires T3 (FCA≥${t3FcaFloor}, context≥${t3ContextFloor}) ` +
+            `but no candidate registry row qualifies. taskType=${taskType}`,
         );
       }
       try {
@@ -1118,8 +1105,8 @@ export class SmartModelRouter {
           (m) =>
             !(
               m.capabilities.chat === true &&
-              m.capabilities.functionCallingAccuracy >= T3_FCA_FLOOR &&
-              m.performance.maxContextTokens >= T3_CONTEXT_FLOOR
+              m.capabilities.functionCallingAccuracy >= t3FcaFloor &&
+              m.performance.maxContextTokens >= t3ContextFloor
             ),
         );
         for (const m of excluded) {
@@ -1130,9 +1117,7 @@ export class SmartModelRouter {
         /* metrics — non-fatal */
       }
       candidates = t3Candidates;
-      reason = `T3 gate (${
-        explicitMostCapable ? 'explicit most-capable signal' : taskType
-      }) — capability floor FCA≥${T3_FCA_FLOOR} + context≥${T3_CONTEXT_FLOOR} (filtered ${beforeT3}→${candidates.length})`;
+      reason = `T3 gate (${taskType}) — capability floor FCA≥${t3FcaFloor} + context≥${t3ContextFloor} (filtered ${beforeT3}→${candidates.length})`;
     }
 
     // INTENT CLASSIFIER — best-effort label, used downstream by the
@@ -1167,18 +1152,25 @@ export class SmartModelRouter {
     // (gpt-oss:20b) out of contention so they don't get picked for a
     // multi-cloud tool fan-out plan they empirically can't execute.
     if (classifiedAgentic) {
+      // Floors now sourced from tuning DB (#1049, 2026-05-22). Fallbacks
+      // mirror the cheapest classifier profile (single-system-read) so an
+      // operator who prunes the map doesn't accidentally remove the floor.
+      const profileFcaFloor =
+        tuning.capabilityProfileFloors[taskType] ?? 0.85;
+      const profileContextFloor =
+        tuning.capabilityContextFloors[taskType] ?? 8000;
       const beforeCount = candidates.length;
       const profileCandidates = candidates.filter(
         (m) =>
-          m.capabilities.functionCallingAccuracy >= capProfile.requiresToolUseReliability &&
-          m.performance.maxContextTokens >= capProfile.requiresContextTokens,
+          m.capabilities.functionCallingAccuracy >= profileFcaFloor &&
+          m.performance.maxContextTokens >= profileContextFloor,
       );
       if (profileCandidates.length > 0) {
         try {
           const excluded = candidates.filter(
             (m) =>
-              m.capabilities.functionCallingAccuracy < capProfile.requiresToolUseReliability ||
-              m.performance.maxContextTokens < capProfile.requiresContextTokens,
+              m.capabilities.functionCallingAccuracy < profileFcaFloor ||
+              m.performance.maxContextTokens < profileContextFloor,
           );
           for (const m of excluded) {
             routerFloorExcludedCounter.inc({ floor: 'capability_profile', model: m.modelId });
@@ -1186,11 +1178,11 @@ export class SmartModelRouter {
           routerEscalationCounter.inc({ type: 'capability_profile_filter' });
         } catch { /* metrics error — non-fatal */ }
         candidates = profileCandidates;
-        reason = `${taskType} — capability profile FCA≥${capProfile.requiresToolUseReliability} (filtered ${beforeCount}→${candidates.length})`;
+        reason = `${taskType} — capability profile FCA≥${profileFcaFloor} (filtered ${beforeCount}→${candidates.length})`;
       } else {
         // No model clears the strict floor — keep the original candidate
         // set so chat never crashes. Surface a soft warning in the reason.
-        reason = `${taskType} — capability profile FCA≥${capProfile.requiresToolUseReliability} unmet by any DB model; falling back to all candidates`;
+        reason = `${taskType} — capability profile FCA≥${profileFcaFloor} unmet by any DB model; falling back to all candidates`;
       }
     }
 
@@ -1317,8 +1309,13 @@ export class SmartModelRouter {
         promptHead: promptText.slice(0, 120),
         taskType,
         capabilityProfile: {
-          requiresToolUseReliability: capProfile.requiresToolUseReliability,
-          requiresContextTokens: capProfile.requiresContextTokens,
+          // Floors sourced from RouterTuning DB (#1049, 2026-05-22).
+          // Profile fallbacks mirror cheapest-tier defaults so a
+          // partially-configured map never produces NaN floors.
+          requiresToolUseReliability:
+            tuning.capabilityProfileFloors[taskType] ?? 0.85,
+          requiresContextTokens:
+            tuning.capabilityContextFloors[taskType] ?? 8000,
           requiresReasoning: capProfile.requiresReasoning,
         },
         selectedModelId: selected.modelId,
@@ -1637,19 +1634,29 @@ export class SmartModelRouter {
   }
 
   /**
-   * Get models suitable for function calling
+   * Get models suitable for function calling.
+   * Floor moved to RouterTuning DB row (#1049, 2026-05-22). Callers must
+   * pass the floor explicitly — the previous default constant
+   * (MIN_FUNCTION_CALLING_ACCURACY = 0.90) was ripped because it embedded
+   * routing policy in source. Pass `tuning.fcaComplexToolFloor` for the
+   * old default behaviour, or `tuning.fcaSimpleToolFloor` for cheap-pool
+   * eligibility.
    */
-  getFunctionCallingModels(minAccuracy = MIN_FUNCTION_CALLING_ACCURACY): ModelProfile[] {
+  async getFunctionCallingModels(minAccuracy?: number): Promise<ModelProfile[]> {
+    const floor =
+      typeof minAccuracy === 'number'
+        ? minAccuracy
+        : (await this.getTuning()).fcaComplexToolFloor;
     return Array.from(this.modelProfiles.values())
-      .filter(m => m.capabilities.functionCalling && m.capabilities.functionCallingAccuracy >= minAccuracy)
+      .filter(m => m.capabilities.functionCalling && m.capabilities.functionCallingAccuracy >= floor)
       .sort((a, b) => b.capabilities.functionCallingAccuracy - a.capabilities.functionCallingAccuracy);
   }
 
   /**
    * Get the best model for function calling
    */
-  getBestFunctionCallingModel(): ModelProfile | undefined {
-    const models = this.getFunctionCallingModels();
+  async getBestFunctionCallingModel(): Promise<ModelProfile | undefined> {
+    const models = await this.getFunctionCallingModels();
     return models[0];
   }
 

@@ -384,9 +384,6 @@ export class TieredFunctionCallingService {
   async makeDecision(
     message: string,
     tools: any[] | undefined,
-    // sliderConfig is accepted for caller compatibility but the OSS tiered
-    // function-calling service makes its decision from message + tool shape
-    // alone. The arg is ignored — kept so callers don't need to special-case.
     _sliderConfig?: { position?: number; overrides?: Record<string, unknown> },
   ): Promise<FunctionCallDecision> {
     void _sliderConfig;

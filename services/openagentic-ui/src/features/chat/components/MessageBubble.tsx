@@ -41,17 +41,6 @@ import type { NormalizedStreamEvent } from '../../../types/AnthropicStreamEvent'
 // (the other two live in useChatStream.ts and activity.types.ts; the
 // latter is a legit display-layer type with its own `metadata` nesting).
 import type { ContentBlock as StreamingContentBlock, SubAgentEntry } from '../hooks/useChatStream';
-import { buildFinalContentBlocks } from './MessageBubble/buildFinalContentBlocks';
-// Step 3 (2026-05-18) — optional StreamEngine wrapper. Gated by
-// VITE_FEATURE_STREAM_ENGINE; default OFF in helm production values.
-// When ON + isStreaming=true, the engine takes over rendering of the
-// streaming content blocks via its owned DOM container; on stream
-// completion the engine is finalized and AgenticActivityStream renders
-// the persisted UIContentBlock[] from the canonical reducer.
-import {
-  StreamEnginedActivityStream,
-  isStreamEngineEnabled,
-} from './MessageBubble/StreamEnginedActivityStream';
 
 // `splitModelLabel` removed 2026-04-30 (P0-2). The hook
 // (useChatStream.attachModelIdentifier) now stamps modelTag + modelId on the
@@ -900,30 +889,20 @@ const MessageBubble = memo(function MessageBubble({
     Array.isArray(persistedContentBlocks) &&
     persistedContentBlocks.length > 0;
 
-  // Delegate to the pure helper (see buildFinalContentBlocks for the
-  // chronological-interleave contract pinned at #814).
+  // Phase 6 (2026-05-22) — buildFinalContentBlocks deleted (flat-string
+  // tail rip). Direct passthrough of activity blocks; Phase 3 of the rip
+  // owns the persistence + reload symmetry. Server is the source of truth
+  // for the persisted chronology when present.
   const finalContentBlocks = useMemo(
     () => {
       if (hasPersistedBlocks) {
-        // Direct passthrough — server is the source of truth for the
-        // persisted chronology; the reducer wrote them in wire order.
         return persistedContentBlocks as any[];
       }
-      return buildFinalContentBlocks({
-        activityBlocks: activityStreamData.contentBlocks,
-        messageContent: message.content,
-        messageId: message.id,
-        isStreaming,
-        hasSteps,
-      });
+      return activityStreamData.contentBlocks as any[];
     },
     [
       hasPersistedBlocks,
       persistedContentBlocks,
-      isStreaming,
-      message.content,
-      message.id,
-      hasSteps,
       activityStreamData.contentBlocks,
     ],
   );
@@ -1244,64 +1223,13 @@ const MessageBubble = memo(function MessageBubble({
                     onDenyHitl={onDenyHitl}
                     streamingTables={streamingTables}
                     contentBlocks={
-                      // 3-Sev-0 #1 (2026-05-18) — REFINED PM after user spotted
-                      // compose tools broke under the broad zero-out.
-                      //
-                      // When the StreamEngine is the live painter (flag ON +
-                      // isStreaming), the engine paints `thinking`/`text`/
-                      // `tool_use`/`tool_round`/`follow_up` blocks in its
-                      // own DOM. AAS would double-paint those → "shit prints
-                      // twice".
-                      //
-                      // BUT the engine has NO React parity for compose
-                      // artifacts: `viz_render` (ECharts/D3/svg charts via
-                      // ChartBridge), `app_render` (compose_app iframes that
-                      // need parent theme tokens injected via React-side
-                      // AppRenderer), `streaming_table` (TanStack table) —
-                      // plus the engine isn't even given `themeTokens` at
-                      // construction so `var(--cm-*)` falls through to
-                      // defaults inside any iframe it does try to render.
-                      //
-                      // So during live stream:
-                      //   - Engine paints simple block types (no dup needed).
-                      //   - AAS paints artifact block types ONLY (React
-                      //     keeps full theme + chart fidelity).
-                      //   - The two never paint the same block type.
-                      //
-                      // On finalize the engine unmounts, AAS rehydrates from
-                      // `finalContentBlocks` (the full persisted chronology)
-                      // and renders everything.
-                      isStreaming && isStreamEngineEnabled()
-                        ? (streamingContentBlocks ?? [])
-                            .filter(b => b.type === 'viz_render' || b.type === 'app_render' || b.type === 'streaming_table')
-                            .map(block => ({
-                              id: `stream-${block.index}`,
-                              type: block.type,
-                              timestamp: block.timestamp ?? Date.now(),
-                              content: block.content,
-                              isComplete: block.isComplete,
-                              toolId: block.toolId,
-                              toolName: block.toolName,
-                              startTime: (block as any).startTime,
-                              duration: (block as any).duration,
-                              input: (block as any).input,
-                              result: (block as any).resultRaw ?? (block as any).result,
-                              metadata: block.toolName ? { toolName: block.toolName } : undefined,
-                              // 2026-05-19 — app_render render-critical fields.
-                              // Without these the InlineAppBadge → AppRenderer
-                              // chain mounts an empty "Mini app" stub (no iframe)
-                              // because AppRenderer's empty-html guard returns
-                              // null. The reducer (foldAppRenderFrame) populates
-                              // them from the wire frame; the adapter MUST
-                              // pass them through.
-                              title: (block as any).title,
-                              html: (block as any).html,
-                              nonce: (block as any).nonce,
-                              pyodideRequired: (block as any).pyodideRequired,
-                              kind: (block as any).kind,
-                              groupId: (block as any).groupId,
-                            }))
-                        : streamingContentBlocks && streamingContentBlocks.length > 0
+                      // Phase 6 (2026-05-22) — StreamEngine deleted. AAS owns
+                      // ALL block types during the live stream via the React
+                      // path. The dual-painter split (engine paints simple +
+                      // AAS paints artifacts) is gone; AAS handles the full
+                      // chronology, and on finalize falls through to the
+                      // persisted `finalContentBlocks`.
+                      streamingContentBlocks && streamingContentBlocks.length > 0
                           ? streamingContentBlocks.map(block => ({
                               id: `stream-${block.index}`,
                               // Wire-in D (#82) — preserve tool_round so the
@@ -1364,22 +1292,9 @@ const MessageBubble = memo(function MessageBubble({
                   />
                     );
                   })()}
-                  {/* Step 3 (2026-05-18) — StreamEngine handoff. Mounts
-                      ONLY when VITE_FEATURE_STREAM_ENGINE=true AND the
-                      message is actively streaming. The engine owns its
-                      own DOM subtree (data-cm-stream-engine="true"); it
-                      reads frames published from useChatStream's frame
-                      loop via the streamFrameBus singleton. On stream
-                      end the engine finalizes — AgenticActivityStream
-                      above takes over rendering from the persisted
-                      UIContentBlock[]. Handoff is structurally invisible
-                      because both speak the SDK SoT shape. */}
-                  {isStreaming && isStreamEngineEnabled() && (
-                    <StreamEnginedActivityStream
-                      messageId={message.id}
-                      isStreaming={isStreaming}
-                    />
-                  )}
+                  {/* Phase 6 (2026-05-22) — StreamEngine handoff mount
+                      DELETED. AAS above handles the full chronology
+                      during the live stream via the React path. */}
                   </ArtifactErrorBoundary>
               )}
 

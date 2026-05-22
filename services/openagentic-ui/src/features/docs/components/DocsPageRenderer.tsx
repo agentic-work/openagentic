@@ -16,6 +16,7 @@ const ChatModePage = React.lazy(() => import('../pages/ChatModePage'));
 // 2026-04-19 — IntelligenceSliderPage deleted (task #144, slider rip).
 const AgentDelegationPage = React.lazy(() => import('../pages/AgentDelegationPage'));
 const ArtifactsPage = React.lazy(() => import('../pages/ArtifactsPage'));
+const CodeModePage = React.lazy(() => import('../pages/CodeModePage'));
 const SandboxSecurityPage = React.lazy(() => import('../pages/SandboxSecurityPage'));
 const FlowBuilderPage = React.lazy(() => import('../pages/FlowBuilderPage'));
 const NodeTypesPage = React.lazy(() => import('../pages/NodeTypesPage'));
@@ -39,6 +40,7 @@ const AdminMonitoringPage = React.lazy(() => import('../pages/AdminMonitoringPag
 const AdminSecurityConfigPage = React.lazy(() => import('../pages/AdminSecurityConfigPage').catch(() => ({ default: () => null as any })));
 const AdminIntegrationsPage = React.lazy(() => import('../pages/AdminIntegrationsPage').catch(() => ({ default: () => null as any })));
 const AdminPromptPage = React.lazy(() => import('../pages/AdminPromptPage').catch(() => ({ default: () => null as any })));
+const AdminCodeModePage = React.lazy(() => import('../pages/AdminCodeModePage').catch(() => ({ default: () => null as any })));
 // Legacy admin pages (fallback)
 const ProviderManagementPage = React.lazy(() => import('../pages/ProviderManagementPage'));
 const AgentConfigurationPage = React.lazy(() => import('../pages/AgentConfigurationPage'));
@@ -66,6 +68,8 @@ const PAGE_COMPONENTS: Record<string, React.LazyExoticComponent<React.FC<any>>> 
   // 2026-04-19 — intelligence-slider route removed (task #144).
   'agents-delegation': AgentDelegationPage,
   'artifacts': ArtifactsPage,
+  // Code Mode
+  'code-mode': CodeModePage,
   'sandbox-security': SandboxSecurityPage,
   // Flows
   'flows-builder': FlowBuilderPage,
@@ -90,6 +94,7 @@ const PAGE_COMPONENTS: Record<string, React.LazyExoticComponent<React.FC<any>>> 
   'admin-security-config': AdminSecurityConfigPage,
   'admin-integrations': AdminIntegrationsPage,
   'admin-prompts': AdminPromptPage,
+  'admin-codemode': AdminCodeModePage,
   'admin-settings': SystemSettingsPage,
   // Architecture & DevOps
   'architecture': ArchitecturePage,
@@ -143,6 +148,15 @@ export const docsNavigation: DocsNavCategory[] = [
     ],
   },
   {
+    id: 'code',
+    title: 'Code Mode',
+    icon: 'code',
+    pages: [
+      { id: 'code-mode', title: 'IDE Interface', description: 'AI-powered code environment' },
+      { id: 'sandbox-security', title: 'Sandbox Security', description: 'Kubernetes isolation model' },
+    ],
+  },
+  {
     id: 'workflows',
     title: 'Flows',
     icon: 'flow',
@@ -187,6 +201,7 @@ export const docsNavigation: DocsNavCategory[] = [
       { id: 'admin-security-config', title: 'Security Config', description: 'Auth, DLP, rate limits', adminOnly: true },
       { id: 'admin-integrations', title: 'Integrations', description: 'Slack, Teams, webhooks', adminOnly: true },
       { id: 'admin-prompts', title: 'Prompt Engineering', description: 'Modules & effectiveness', adminOnly: true },
+      { id: 'admin-codemode', title: 'Code Mode Admin', description: 'Sessions & settings', adminOnly: true },
     ],
   },
   {

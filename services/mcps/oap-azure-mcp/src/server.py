@@ -7700,7 +7700,7 @@ async def azure_resource_graph_query(
       - "Find every VM tagged env=prod in the tenant"
       - "Which storage accounts have public network access enabled?"
       - "Count resources per type per subscription"
-      - "Find all resources in resource groups matching your-org-*"
+      - "Find all resources in resource groups matching ocio-omcp-*"
 
     Args:
         query: KQL query string. Examples:

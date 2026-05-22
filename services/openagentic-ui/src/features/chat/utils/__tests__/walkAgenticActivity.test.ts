@@ -36,7 +36,7 @@ describe('walkAgenticActivity', () => {
   it('walks the chronological children of an AAS root', () => {
     const root = mount(`
       <div data-aas-mounted="true">
-        <div class="inline-thinking-block" data-duration="2.1s">Thought · 2.1s · ~74 tok</div>
+        <div class="cm-thinking inline-thinking-natural" data-duration="2.1s">Thought · 2.1s · ~74 tok</div>
         <div class="interleaved-text-block">Good — all three cost tools are in catalog.</div>
         <div data-testid="tool-card" data-tool-name="azure_cost_by_service" data-tool-status="ok">
           <div class="t-name">azure_cost_by_service</div>

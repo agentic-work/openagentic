@@ -63,6 +63,11 @@ export interface MultiModelConfig {
     [ModelRole.FALLBACK]: ModelRoleConfig;
   };
 
+  /** Per-request slider overrides (OSS slider compat). */
+  sliderOverrides?: {
+    enableAbovePosition?: number;
+    scaleBySlider?: boolean;
+  };
   /** Routing strategy configuration */
   routing: {
     /** Complexity threshold (0-100) to trigger multi-model */
@@ -73,18 +78,6 @@ export interface MultiModelConfig {
     preferCheaperToolModel: boolean;
     /** Maximum handoffs before forcing synthesis */
     maxHandoffs: number;
-  };
-
-  /**
-   * Per-request slider overrides for multi-model dispatch. Optional; null/
-   * undefined means use the role-config defaults. The pipeline reads
-   * `enableAbovePosition` (slider threshold past which multi-model
-   * activates) and `scaleBySlider` (whether to scale handoff count by
-   * slider position).
-   */
-  sliderOverrides?: {
-    enableAbovePosition?: number;
-    scaleBySlider?: boolean;
   };
 }
 
@@ -305,7 +298,6 @@ export interface OrchestrationRequest {
   tools?: unknown[];
   // Orchestrator decides from message complexity + tool shape.
   config: MultiModelConfig;
-  /** Per-request slider state (position + per-tier overrides). Optional. */
   sliderConfig?: { position?: number; overrides?: Record<string, unknown> };
   emit: (event: string, data: unknown) => void;
 }

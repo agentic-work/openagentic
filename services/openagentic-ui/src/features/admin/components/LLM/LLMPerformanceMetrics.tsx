@@ -101,7 +101,11 @@ function sumByLabel(samples: PrometheusSample[], labelKey: string): Record<strin
   return out;
 }
 
-// 16 router tuning field names (mirrors RouterTuning interface)
+// 21 router tuning field names (mirrors RouterTuning interface). The
+// last 5 entries (fcaT3Floor + contextT3Floor + the three JSON maps)
+// were added 2026-05-22 (#1049) when SmartModelRouter T3 floors +
+// EXPLICIT_MOST_CAPABLE_RE + CAPABILITY_PROFILES literals were ripped
+// into the admin-editable RouterTuning DB row.
 export const TUNING_FIELDS = [
   'costWeight',
   'qualityWeight',
@@ -119,6 +123,11 @@ export const TUNING_FIELDS = [
   'fcaDestructiveFloor',
   'fcaInfraOpsFloor',
   'fcaComplexityBiasFloor',
+  'fcaT3Floor',
+  'contextT3Floor',
+  't3TriggerTaskTypes',
+  'capabilityProfileFloors',
+  'capabilityContextFloors',
 ] as const;
 
 // 5 tenant default categories

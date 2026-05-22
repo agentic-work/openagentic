@@ -2,7 +2,7 @@
  * Full Platform E2E Test Suite
  *
  * Tests EVERY interactive UI feature using Azure AD authentication.
- * Uses mcp-tester@openagentic.local (MFA disabled, admin user).
+ * Uses mcp-tester@phatoldsungmail.onmicrosoft.com (MFA disabled, admin user).
  *
  * Run:
  *   HEADLESS=true BASE_URL=https://chat-dev.openagentic.io \
@@ -12,7 +12,7 @@
 import { test, expect, Page } from '@playwright/test';
 
 const BASE_URL = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'mcp-tester@openagentic.local';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'mcp-tester@phatoldsungmail.onmicrosoft.com';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'TestMcp@2026';
 
 test.use({

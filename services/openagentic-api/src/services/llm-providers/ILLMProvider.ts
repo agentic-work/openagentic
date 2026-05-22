@@ -156,10 +156,8 @@ export type StreamFormat = CanonicalStreamFormat;
 export type { CanonicalStreamFormat } from '@agentic-work/llm-sdk/lib/normalizers/index.js';
 
 /**
- * Per-stream bookkeeping used by provider-specific normalizers
- * (OllamaProvider.normalizeOllamaChunk, AWSBedrockProvider's Gemma path).
- * The fields are intentionally optional + permissive — each normalizer
- * only writes the keys it needs and leaves the rest unset.
+ * Per-stream bookkeeping used by provider-specific normalizers.
+ * (Upstream pre-SDK rip exposed this; OSS keeps a local definition.)
  */
 export interface NormalizerState {
   streamStartEmitted?: boolean;

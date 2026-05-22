@@ -21,6 +21,7 @@ import type { ProviderManager } from './llm-providers/ProviderManager.js';
 import { extractToolTags } from '../utils/toolTagExtractor.js';
 import { randomUUID, createHash } from 'crypto';
 import { mintInterServiceSystemToken } from './llm-providers/util/mintInterServiceSystemToken.js';
+import { classifyMilvusHealth, MilvusRecoveringError } from '../utils/milvusHealth.js';
 
 // Collection name for tool cache
 const TOOLS_COLLECTION_NAME = 'mcp_tools_cache';
@@ -236,9 +237,19 @@ export class ToolSemanticCacheService {
         throw new Error('Embedding service connection test failed');
       }
 
-      // Check Milvus health
+      // Check Milvus health — classify response so callers can branch
+      // on transient collection-recovery vs fatal connection failure (#1055).
       const health = await this.client.checkHealth();
       this.logger.info('Milvus health check', { health });
+      const state = classifyMilvusHealth(health);
+      if (state === 'recovering') {
+        throw new MilvusRecoveringError(
+          `Milvus collections still loading: ${JSON.stringify((health as any)?.reasons)}`,
+        );
+      }
+      if (state === 'fatal') {
+        throw new Error(`Milvus health check failed: ${JSON.stringify(health)}`);
+      }
 
       // Create or load tools collection (will use auto-detected dimensions)
       await this.ensureCollectionExists();

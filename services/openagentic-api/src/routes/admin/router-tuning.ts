@@ -45,6 +45,19 @@ const RouterTuningPatchSchema = z
     costNormalizationCeiling: z.number().gt(0).max(1).optional(),
     // Boolean
     fcaQualityGatedByComplexity: z.boolean().optional(),
+    // T3 capability gate (#1049 rip, 2026-05-22) — FCA + context-window
+    // floors plus structural trigger taskType allowlist. The
+    // EXPLICIT_MOST_CAPABLE_RE regex safety-net was ripped at the same
+    // time per #805 (structural classifier only, no lexical sniff).
+    fcaT3Floor: FloorField.optional(),
+    contextT3Floor: z.number().int().min(0).max(10_000_000).optional(),
+    t3TriggerTaskTypes: z.array(z.string().min(1)).optional(),
+    // Per-taskType FCA / context floors — admin-tunable replacements for
+    // the hardcoded CAPABILITY_PROFILES literals in PromptClassifier.ts.
+    capabilityProfileFloors: z.record(z.string(), FloorField).optional(),
+    capabilityContextFloors: z
+      .record(z.string(), z.number().int().min(0).max(10_000_000))
+      .optional(),
     // T2 (#427-#432) — intent classifier toggle + per-intent top-K
     // (consumed by the legacy ranker service). The per-intent FCA floor
     // field that briefly lived alongside these was ripped 2026-05-02 with

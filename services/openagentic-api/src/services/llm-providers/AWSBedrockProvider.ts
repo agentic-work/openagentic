@@ -1303,9 +1303,6 @@ export class AWSBedrockProvider extends BaseLLMProvider {
           // events. Normalizer extracts fenced ```tool_calls blocks into
           // tool_use content_blocks; plain text flows through as text_delta.
           if (gemmaNormalizer) {
-            // OSS aliases the Gemma normalizer to the Ollama one (same
-            // wire shape). Wrap raw text deltas as an OllamaChunk so the
-            // normalizer's input contract is satisfied.
             const events = gemmaNormalizer.consume({ message: { content: delta.delta.text } } as any);
             for (const evt of events) {
               if (evt.type === 'message_start' || evt.type === 'message_stop') continue;

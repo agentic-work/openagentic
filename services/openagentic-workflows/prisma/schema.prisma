@@ -8,7 +8,7 @@ generator client {
   // Pin output so api + workflows don't clobber each other's generated
   // client at the hoisted .pnpm/.prisma location (different schemas →
   // different model delegates).
-  output          = "../node_modules/.prisma/workflows-client"
+
 }
 
 datasource db {

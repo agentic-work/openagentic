@@ -213,7 +213,7 @@ export class WorkflowSecretService {
       },
     });
 
-    return secrets.map((s) => this.sanitize(s));
+    return secrets.map((s: any) => this.sanitize(s));
   }
 
   /** Get a single secret by id (metadata only). */
@@ -507,7 +507,7 @@ export class WorkflowSecretService {
     const stores = await prisma.eSOSecretStore.findMany({
       orderBy: [{ is_default: 'desc' }, { name: 'asc' }],
     });
-    return stores.map((s) => ({
+    return stores.map((s: any) => ({
       id: s.id,
       name: s.name,
       kind: s.kind,
@@ -544,7 +544,7 @@ export class WorkflowSecretService {
           access_count: (secret.access_count ?? 0) + 1,
           last_accessed_at: new Date(),
         },
-      }).catch((err) => {
+      }).catch((err: any) => {
         logger.warn({ secretId: secret.id, error: err.message }, '[WorkflowSecrets] Failed to update access metrics');
       });
 

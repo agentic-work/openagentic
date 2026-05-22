@@ -8,6 +8,11 @@
  *   1.  POST /integrations/:platform/oauth-start         — Slack/MS-Teams OAuth bootstrap
  *   1b. GET  /integrations/:platform/oauth-callback      — completes the OAuth flow (state validation, token exchange, persist)
  *   2.  PATCH /chargeback/reports/:id                    — report status state-machine
+ *   3a. POST   /codemode/skills                          — direct CRUD for codemode skills
+ *   3b. DELETE /codemode/skills/:id
+ *   4a. POST   /codemode/plugins                         — direct CRUD for codemode plugins
+ *   4b. DELETE /codemode/plugins/:id
+ *   5. PUT   /codemode/mcp-policy                        — allow/deny MCP server lists
  *   6. POST  /llm-providers/registry/refresh-all         — bulk re-discovery sweep
  *   7a. GET  /workflow-settings                          — workflow governance config (read)
  *   7b. PUT  /workflow-settings                          — workflow governance config (write)
@@ -77,8 +82,8 @@ async function writeAudit(opts: {
   }
 }
 
-// system_configuration helpers — self-contained read/write against the
-// SystemConfiguration table.
+// system_configuration helpers (mirror routes/admin/codemode.ts so this
+// file stays self-contained and the codemode helpers' shapes are preserved).
 async function getSysConfig<T = any>(key: string): Promise<T | null> {
   const row = await prisma.systemConfiguration.findUnique({ where: { key } });
   if (!row) return null;
@@ -711,6 +716,208 @@ const adminV3ExtrasMutationsRoutes: FastifyPluginAsync = async (fastify) => {
       success: true,
       report: { id: updated.id, status: updated.status },
     });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 3. POST /codemode/skills    +    DELETE /codemode/skills/:id
+  //    Direct CRUD on the codemode.skills system_configuration array.
+  // ─────────────────────────────────────────────────────────────────────────
+  interface CodeModeSkillRow {
+    id: string;
+    name?: string;
+    description?: string;
+    enabled?: boolean;
+    tags?: string[];
+    source?: string;
+    [k: string]: any;
+  }
+
+  fastify.post<{ Body: CodeModeSkillRow }>(
+    '/codemode/skills',
+    async (request, reply) => {
+      const body = request.body ?? ({} as CodeModeSkillRow);
+      const id = typeof body.id === 'string' ? body.id.trim() : '';
+      if (!id) {
+        return reply.code(400).send({ success: false, error: 'id is required' });
+      }
+
+      const list: CodeModeSkillRow[] = (await getSysConfig<CodeModeSkillRow[]>('codemode.skills')) ?? [];
+      if (list.some((s) => s.id === id)) {
+        return reply.code(409).send({ success: false, error: `skill "${id}" already exists` });
+      }
+
+      const skill: CodeModeSkillRow = {
+        id,
+        name: typeof body.name === 'string' ? body.name : id,
+        description: typeof body.description === 'string' ? body.description : undefined,
+        enabled: body.enabled !== false,
+        tags: Array.isArray(body.tags) ? body.tags : [],
+        source: typeof body.source === 'string' ? body.source : 'admin-direct',
+      };
+      list.push(skill);
+      await setSysConfig('codemode.skills', list);
+      await writeAudit({
+        req: request,
+        action: 'admin.codemode.skills.create',
+        resource_type: 'CodeModeSkill',
+        resource_id: id,
+        details: { name: skill.name, enabled: skill.enabled },
+      });
+      loggers.services.info({ id }, '[admin.codemode.skills.create] skill added');
+      return reply.code(201).send({ success: true, skill });
+    },
+  );
+
+  fastify.delete<{ Params: { id: string } }>(
+    '/codemode/skills/:id',
+    async (request, reply) => {
+      const { id } = request.params;
+      if (!id || typeof id !== 'string') {
+        return reply.code(400).send({ success: false, error: 'id is required' });
+      }
+      const list: CodeModeSkillRow[] = (await getSysConfig<CodeModeSkillRow[]>('codemode.skills')) ?? [];
+      const idx = list.findIndex((s) => s.id === id);
+      if (idx === -1) {
+        return reply.code(404).send({ success: false, error: `skill "${id}" not found` });
+      }
+      const [removed] = list.splice(idx, 1);
+      await setSysConfig('codemode.skills', list);
+      await writeAudit({
+        req: request,
+        action: 'admin.codemode.skills.delete',
+        resource_type: 'CodeModeSkill',
+        resource_id: id,
+        details: { name: removed?.name ?? id },
+      });
+      loggers.services.info({ id }, '[admin.codemode.skills.delete] skill removed');
+      return reply.send({ success: true, removed });
+    },
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 4. POST /codemode/plugins   +   DELETE /codemode/plugins/:id
+  // ─────────────────────────────────────────────────────────────────────────
+  interface CodeModePluginRow {
+    id: string;
+    name?: string;
+    version?: string;
+    description?: string;
+    enabled?: boolean;
+    [k: string]: any;
+  }
+
+  fastify.post<{ Body: CodeModePluginRow }>(
+    '/codemode/plugins',
+    async (request, reply) => {
+      const body = request.body ?? ({} as CodeModePluginRow);
+      const id = typeof body.id === 'string' ? body.id.trim() : '';
+      if (!id) {
+        return reply.code(400).send({ success: false, error: 'id is required' });
+      }
+      const list: CodeModePluginRow[] = (await getSysConfig<CodeModePluginRow[]>('codemode.plugins')) ?? [];
+      if (list.some((p) => p.id === id)) {
+        return reply.code(409).send({ success: false, error: `plugin "${id}" already exists` });
+      }
+      const plugin: CodeModePluginRow = {
+        id,
+        name: typeof body.name === 'string' ? body.name : id,
+        version: typeof body.version === 'string' ? body.version : undefined,
+        description: typeof body.description === 'string' ? body.description : undefined,
+        enabled: body.enabled !== false,
+      };
+      list.push(plugin);
+      await setSysConfig('codemode.plugins', list);
+      await writeAudit({
+        req: request,
+        action: 'admin.codemode.plugins.create',
+        resource_type: 'CodeModePlugin',
+        resource_id: id,
+        details: { name: plugin.name, version: plugin.version, enabled: plugin.enabled },
+      });
+      loggers.services.info({ id }, '[admin.codemode.plugins.create] plugin added');
+      return reply.code(201).send({ success: true, plugin });
+    },
+  );
+
+  fastify.delete<{ Params: { id: string } }>(
+    '/codemode/plugins/:id',
+    async (request, reply) => {
+      const { id } = request.params;
+      if (!id || typeof id !== 'string') {
+        return reply.code(400).send({ success: false, error: 'id is required' });
+      }
+      const list: CodeModePluginRow[] = (await getSysConfig<CodeModePluginRow[]>('codemode.plugins')) ?? [];
+      const idx = list.findIndex((p) => p.id === id);
+      if (idx === -1) {
+        return reply.code(404).send({ success: false, error: `plugin "${id}" not found` });
+      }
+      const [removed] = list.splice(idx, 1);
+      await setSysConfig('codemode.plugins', list);
+      await writeAudit({
+        req: request,
+        action: 'admin.codemode.plugins.delete',
+        resource_type: 'CodeModePlugin',
+        resource_id: id,
+        details: { name: removed?.name ?? id },
+      });
+      loggers.services.info({ id }, '[admin.codemode.plugins.delete] plugin removed');
+      return reply.send({ success: true, removed });
+    },
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 5. PUT /codemode/mcp-policy
+  //    Body: { allow?: string[]; deny?: string[] }
+  //    Stores in codemode.mcp-policy SystemConfiguration row. Validates
+  //    that allow ∩ deny = ∅. Partial updates preserve the unspecified side.
+  // ─────────────────────────────────────────────────────────────────────────
+  fastify.put<{
+    Body: { allow?: string[]; deny?: string[] };
+  }>('/codemode/mcp-policy', async (request, reply) => {
+    const body = request.body ?? {};
+    if (body.allow !== undefined && !Array.isArray(body.allow)) {
+      return reply.code(400).send({ success: false, error: 'allow must be a string[]' });
+    }
+    if (body.deny !== undefined && !Array.isArray(body.deny)) {
+      return reply.code(400).send({ success: false, error: 'deny must be a string[]' });
+    }
+
+    const current = (await getSysConfig<{ allow?: string[]; deny?: string[]; allowManagedOnly?: boolean }>(
+      'codemode.mcp-policy',
+    )) ?? {};
+    const nextAllow = (body.allow ?? current.allow ?? []).map((s) => String(s));
+    const nextDeny = (body.deny ?? current.deny ?? []).map((s) => String(s));
+
+    const allowSet = new Set(nextAllow);
+    const overlap = nextDeny.filter((d) => allowSet.has(d));
+    if (overlap.length > 0) {
+      return reply.code(400).send({
+        success: false,
+        error: `allow ∩ deny intersection is non-empty: ${overlap.join(', ')}`,
+      });
+    }
+
+    const policy = {
+      ...current,
+      allow: nextAllow,
+      deny: nextDeny,
+    };
+    await setSysConfig('codemode.mcp-policy', policy);
+    await writeAudit({
+      req: request,
+      action: 'admin.codemode.mcp-policy.update',
+      resource_type: 'CodeModeMcpPolicy',
+      resource_id: 'codemode.mcp-policy',
+      details: {
+        allowCount: nextAllow.length,
+        denyCount: nextDeny.length,
+      },
+    });
+    loggers.services.info(
+      { allowCount: nextAllow.length, denyCount: nextDeny.length },
+      '[admin.codemode.mcp-policy.update] policy updated',
+    );
+    return reply.send({ success: true, policy });
   });
 
   // ─────────────────────────────────────────────────────────────────────────

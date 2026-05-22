@@ -70,12 +70,14 @@ describe('PromptClassifier — cost-audit detection', () => {
     ).not.toBe<TaskType>('cost-audit');
   });
 
-  it('cost-audit capability profile demands T3 (FCA >= 0.93)', () => {
+  it('cost-audit capability profile flags high reasoning preference', () => {
     const profile = getCapabilityProfile('cost-audit');
-    // T3 floor — frontier-grade. Excludes T2 (FCA 0.90) and below.
-    expect(profile.requiresToolUseReliability).toBeGreaterThanOrEqual(0.93);
+    // FCA + context floors moved to RouterTuning DB (#1049,
+    // 2026-05-22). Default tuning has fcaT3Floor=0.93 +
+    // capabilityContextFloors['cost-audit']=100_000; coverage for the
+    // floors themselves lives at
+    // src/services/model-routing/__tests__/SmartModelRouter.t3-capability-gate.test.ts.
+    expect(profile.taskType).toBe<TaskType>('cost-audit');
     expect(profile.requiresReasoning).toBe('high');
-    // Cost audits chew context (3-cloud bill JSON + tool fan-out).
-    expect(profile.requiresContextTokens).toBeGreaterThanOrEqual(100_000);
   });
 });

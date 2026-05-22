@@ -28,22 +28,28 @@ RUN npm install -g pnpm
 # Path prefix for docker-compose builds (empty for standalone)
 ARG SRC_PATH=.
 
-# Stage the shared workspace packages alongside the api so the workspace:*
-# deps resolve during install. Layout in builder:
+# Stage the shared workflow-engine package alongside the api so the
+# workspace:* dep resolves during install. Layout in builder:
 #   /app                      api service (WORKDIR)
-#   /shared/workflow-engine   workspace package (workspace:* dep target)
-#   /shared/llm-sdk           workspace package (@agentic-work/llm-sdk)
+#   /shared/workflow-engine   shared package (workspace:* dep target)
+#   /openagentic-sdk          vendored @agentic-work/llm-sdk (sibling repo)
 COPY services/shared/workflow-engine/package.json     /shared/workflow-engine/package.json
 COPY services/shared/workflow-engine/tsconfig.json    /shared/workflow-engine/tsconfig.json
 COPY services/shared/workflow-engine/src              /shared/workflow-engine/src
-COPY services/shared/llm-sdk/package.json             /shared/llm-sdk/package.json
-COPY services/shared/llm-sdk/tsconfig.json            /shared/llm-sdk/tsconfig.json
-COPY services/shared/llm-sdk/src                      /shared/llm-sdk/src
-COPY services/shared/llm-sdk/scripts                  /shared/llm-sdk/scripts
 
-# workflow-engine's package.json declares @agentic-work/llm-sdk as
-# workspace:* — rewrite to file:/shared/llm-sdk for the standalone image.
-RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('/shared/workflow-engine/package.json','utf8'));let touched=false;if(p.dependencies&&p.dependencies['@agentic-work/llm-sdk']==='workspace:*'){p.dependencies['@agentic-work/llm-sdk']='file:/shared/llm-sdk';touched=true;}if(touched){fs.writeFileSync('/shared/workflow-engine/package.json',JSON.stringify(p,null,2));console.log('rewrote workflow-engine SDK dep');}"
+# Vendored SDK — the build script rsyncs ../openagentic-sdk to
+# ./openagentic-sdk/ in the build context (canonical repo name).
+# The api package.json declares the dep as
+# `file:../../../openagentic-sdk`, which is unresolvable inside Docker.
+# Stage it at /openagentic-sdk and rewrite the dep below.
+COPY openagentic-sdk /openagentic-sdk
+
+# Sev-0 (2026-05-13) — workflow-engine's package.json also references
+# `file:../../../../openagentic-sdk`. pnpm resolves that to /openagentic-sdk
+# (4 ups from /shared/workflow-engine = /) which doesn't exist. Rewrite
+# it in-place to point at the staged /openagentic-sdk path, same fix as api/package.json
+# below.
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('/shared/workflow-engine/package.json','utf8'));let touched=false;if(p.dependencies&&typeof p.dependencies['@agentic-work/llm-sdk']==='string'&&p.dependencies['@agentic-work/llm-sdk'].startsWith('file:')){p.dependencies['@agentic-work/llm-sdk']='file:/openagentic-sdk';touched=true;}if(touched){fs.writeFileSync('/shared/workflow-engine/package.json',JSON.stringify(p,null,2));console.log('rewrote workflow-engine SDK dep');}"
 
 # Copy package files and prisma schema first (before install).
 # Note: per-service pnpm-lock.yaml does not exist (workspace lockfile is at repo root)
@@ -59,7 +65,7 @@ COPY ${SRC_PATH}/prisma ./prisma
 # the staged /shared and /openagentic-sdk directories. This keeps the source-tree
 # specs intact for dev-time pnpm resolution while letting `pnpm install`
 # succeed inside the image.
-RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));let touched=false;if(p.dependencies&&p.dependencies['@openagentic/workflow-engine']==='workspace:*'){p.dependencies['@openagentic/workflow-engine']='file:/shared/workflow-engine';touched=true;}if(p.dependencies&&p.dependencies['@agentic-work/llm-sdk']==='workspace:*'){p.dependencies['@agentic-work/llm-sdk']='file:/shared/llm-sdk';touched=true;}if(touched){fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('rewrote workspace deps');}"
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));let touched=false;if(p.dependencies&&p.dependencies['@openagentic/workflow-engine']==='workspace:*'){p.dependencies['@openagentic/workflow-engine']='file:/shared/workflow-engine';touched=true;}if(p.dependencies&&typeof p.dependencies['@agentic-work/llm-sdk']==='string'&&p.dependencies['@agentic-work/llm-sdk'].startsWith('file:')){p.dependencies['@agentic-work/llm-sdk']='file:/openagentic-sdk';touched=true;}if(touched){fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('rewrote workspace/sibling deps');}"
 
 # pnpm-lock.yaml was generated with workspace:* — strip it so the
 # rewritten file: dep resolves cleanly. Lockfile integrity is
@@ -76,21 +82,25 @@ RUN echo "auto-install-peers=true" > .npmrc && echo "shamefully-hoist=true" >> .
 # This also runs prisma generate as postinstall.
 RUN pnpm install --no-frozen-lockfile
 
-# Build the shared llm-sdk first, then replace pnpm's file: snapshot with a
-# symlink to it so workflow-engine + api can resolve the built dist/.
-RUN ln -sfn /app/node_modules /shared/llm-sdk/node_modules && \
-    cd /shared/llm-sdk && \
-    /app/node_modules/.bin/tsc -p tsconfig.json && \
-    node scripts/fix-esm-imports.js && \
-    rm -rf /app/node_modules/@agentic-work/llm-sdk && \
-    mkdir -p /app/node_modules/@agentic-work && \
-    ln -sfn /shared/llm-sdk /app/node_modules/@agentic-work/llm-sdk
-
-# Now build the shared workflow-engine package's dist/. The api + workflow
-# engine both find @agentic-work/llm-sdk via the symlink above.
+# Build the shared workflow-engine package's dist/ so the symlink at
+# /app/node_modules/@openagentic/workflow-engine resolves to compiled JS.
+# The shared package's tsconfig points at its own ./dist; we build using
+# the api's locally-installed tsc. The symlink to /app/node_modules lets
+# the shared sources resolve their bare imports (isolated-vm, axios,
+# etc.) during type-check; without it tsc fails because NodeNext refuses
+# to walk past the package boundary.
 RUN ln -sfn /app/node_modules /shared/workflow-engine/node_modules && \
-    cd /shared/workflow-engine && /app/node_modules/.bin/tsc -p tsconfig.json && \
-    rm -rf /app/node_modules/@openagentic/workflow-engine && \
+    cd /shared/workflow-engine && /app/node_modules/.bin/tsc -p tsconfig.json
+
+# Replace pnpm's file:-dep snapshot of @openagentic/workflow-engine (which
+# was copied at install time, BEFORE dist/ existed, so the package.json
+# `exports` map points at .d.ts files that aren't there) with a real
+# symlink to the freshly-built /shared/workflow-engine. Without this,
+# `pnpm tsc` later in the api fails with TS2307 "Cannot find module
+# @openagentic/workflow-engine/nodes/registry" — the cached snapshot
+# never sees the dist build. shamefully-hoist=true means the package
+# lives at the top of node_modules, not inside .pnpm/.
+RUN rm -rf /app/node_modules/@openagentic/workflow-engine && \
     mkdir -p /app/node_modules/@openagentic && \
     ln -sfn /shared/workflow-engine /app/node_modules/@openagentic/workflow-engine
 
@@ -185,17 +195,9 @@ COPY ${SRC_PATH}/prisma ./prisma
 # Only dist/ + package.json are needed; src/ is omitted for image-size hygiene.
 COPY --from=api-builder /shared/workflow-engine/dist          /shared/workflow-engine/dist
 COPY --from=api-builder /shared/workflow-engine/package.json  /shared/workflow-engine/package.json
-# Vendored llm-sdk — runtime needs dist/ + package.json so the
-# node_modules/@agentic-work/llm-sdk symlink resolves.
-COPY --from=api-builder /shared/llm-sdk/dist                  /shared/llm-sdk/dist
-COPY --from=api-builder /shared/llm-sdk/package.json          /shared/llm-sdk/package.json
-# Re-create the node_modules symlinks so the shared dist/'s bare imports
+# Re-create the node_modules symlink so the shared dist/'s bare imports
 # (isolated-vm, axios) resolve at runtime via standard Node walk-up.
-RUN ln -sfn /app/node_modules /shared/workflow-engine/node_modules && \
-    ln -sfn /app/node_modules /shared/llm-sdk/node_modules && \
-    rm -rf /app/node_modules/@agentic-work/llm-sdk && \
-    mkdir -p /app/node_modules/@agentic-work && \
-    ln -sfn /shared/llm-sdk /app/node_modules/@agentic-work/llm-sdk
+RUN ln -sfn /app/node_modules /shared/workflow-engine/node_modules
 
 # Copy RBAC system prompts (rev-2 chatmode plan §Layer-1).
 # Loaded by RoleKeyedSystemPrompt.ts at runtime via fileURLToPath

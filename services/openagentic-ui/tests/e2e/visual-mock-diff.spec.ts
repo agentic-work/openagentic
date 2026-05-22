@@ -64,7 +64,7 @@ async function loginIfNeeded(page: Page): Promise<void> {
     await page
       .getByLabel(/email|user|name/i)
       .first()
-      .fill(process.env.SSO_USER ?? 'mcp-tester@openagentic.local');
+      .fill(process.env.SSO_USER ?? 'mcp-tester@phatoldsungmail.onmicrosoft.com');
     await page.getByRole('button', { name: /next/i }).click();
     await page.getByLabel(/password/i).fill(process.env.SSO_PASS ?? 'TestMcp@2026');
     await page.getByRole('button', { name: /sign in/i }).click();

@@ -5,3 +5,4 @@ export { default as EmbeddingMetrics } from './EmbeddingMetrics';
 export { default as PerformanceMetrics } from './PerformanceMetrics';
 export { FeedbackAnalyticsView } from './FeedbackAnalyticsView';
 export { AuditLogsView } from './AuditLogsView';
+export { CodeModeMetricsDashboard } from './CodeModeMetricsDashboard';

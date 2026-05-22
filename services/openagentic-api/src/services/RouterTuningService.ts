@@ -37,6 +37,21 @@ export interface RouterTuning {
   fcaInfraOpsFloor: number;
   fcaCloudListFloor: number;
   fcaComplexityBiasFloor: number;
+  // T3 capability gate — FCA + context floors. Ripped from the
+  // hardcoded T3_FCA_FLOOR / T3_CONTEXT_FLOOR constants in
+  // SmartModelRouter.ts on 2026-05-22 (#1049).
+  fcaT3Floor: number;
+  contextT3Floor: number;
+  // T3 trigger taskType allowlist — structural classifier output only.
+  // No lexical / regex safety-net (per #805 rip). When the prompt
+  // classifier emits any TaskType in this list, the T3 gate fires.
+  t3TriggerTaskTypes: string[];
+  // Per-taskType capability floors — what each PromptClassifier-emitted
+  // TaskType requires for tool-use reliability (FCA) and context window
+  // size. Ripped from hardcoded CAPABILITY_PROFILES literals in
+  // PromptClassifier.ts on 2026-05-22 (#1049).
+  capabilityProfileFloors: Record<string, number>;
+  capabilityContextFloors: Record<string, number>;
   // T2 — LLM intent classifier (replaces 4 regex detectors). Output
   // flows to the chat pipeline; the FCA-escalation branch that consumed
   // the per-intent FCA-floor field was ripped 2026-05-02 alongside the
@@ -73,6 +88,40 @@ export const ROUTER_TUNING_DEFAULTS: Omit<RouterTuning, 'id' | 'updated_at' | 'u
   fcaInfraOpsFloor: 0.85,
   fcaCloudListFloor: 0.90,
   fcaComplexityBiasFloor: 0.93,
+  // T3 capability gate defaults — same numerics as the prior
+  // T3_FCA_FLOOR / T3_CONTEXT_FLOOR constants in SmartModelRouter.ts.
+  // Defaults match the migration seed; behaviour is a no-op until an
+  // admin edits them via /admin#router-tuning.
+  fcaT3Floor: 0.93,
+  contextT3Floor: 200_000,
+  t3TriggerTaskTypes: [
+    'cost-audit',
+    'architecture-design-agentic',
+    'multi-cloud-agentic',
+    'multi-system-agentic',
+  ],
+  capabilityProfileFloors: {
+    'multi-cloud-agentic': 0.90,
+    'multi-system-agentic': 0.90,
+    'cost-analysis-agentic': 0.90,
+    'cost-audit': 0.93,
+    'security-audit-agentic': 0.90,
+    'architecture-design-agentic': 0.90,
+    'single-system-read': 0.85,
+    'file-read': 0.85,
+    'pure-chat': 0.82,
+  },
+  capabilityContextFloors: {
+    'multi-cloud-agentic': 30_000,
+    'multi-system-agentic': 30_000,
+    'cost-analysis-agentic': 100_000,
+    'cost-audit': 100_000,
+    'security-audit-agentic': 30_000,
+    'architecture-design-agentic': 30_000,
+    'single-system-read': 8_000,
+    'file-read': 16_000,
+    'pure-chat': 4_000,
+  },
   // T2 defaults — classifier on, classifier-model auto-resolved from the
   // registry. Empty string is the sentinel for "look up the chat-role
   // default at construction time" (see startup/04-providers.ts). Admin
@@ -289,6 +338,8 @@ export class RouterTuningService {
       'fcaInfraOpsFloor',
       'fcaCloudListFloor',
       'fcaComplexityBiasFloor',
+      'fcaT3Floor',
+      'contextT3Floor',
       'costWeight',
       'qualityWeight',
       'costNormalizationCeiling',
@@ -356,6 +407,8 @@ export class RouterTuningService {
       'fcaInfraOpsFloor',
       'fcaCloudListFloor',
       'fcaComplexityBiasFloor',
+      'fcaT3Floor',
+      'contextT3Floor',
       'costWeight',
       'qualityWeight',
       'costNormalizationCeiling',
@@ -369,6 +422,41 @@ export class RouterTuningService {
       const val = patch[field];
       if (val !== undefined && (typeof val !== 'number' || isNaN(val as number))) {
         throw new TypeError(`RouterTuning.${field} must be a number, got ${typeof val}`);
+      }
+    }
+
+    // JSON shape validation — t3TriggerTaskTypes must be string[];
+    // capabilityProfileFloors / capabilityContextFloors must be
+    // Record<string, number>. Reject any other shape with TypeError
+    // so the API layer can return 400.
+    if (patch.t3TriggerTaskTypes !== undefined) {
+      if (
+        !Array.isArray(patch.t3TriggerTaskTypes) ||
+        !patch.t3TriggerTaskTypes.every((v) => typeof v === 'string')
+      ) {
+        throw new TypeError(
+          `RouterTuning.t3TriggerTaskTypes must be a string[] of TaskType identifiers, ` +
+            `got ${typeof patch.t3TriggerTaskTypes}`,
+        );
+      }
+    }
+
+    for (const field of ['capabilityProfileFloors', 'capabilityContextFloors'] as const) {
+      const val = patch[field];
+      if (val === undefined) continue;
+      if (val === null || typeof val !== 'object' || Array.isArray(val)) {
+        throw new TypeError(
+          `RouterTuning.${field} must be an object (Record<string, number>), got ${
+            Array.isArray(val) ? 'array' : typeof val
+          }`,
+        );
+      }
+      for (const [k, v] of Object.entries(val)) {
+        if (typeof v !== 'number' || isNaN(v as number)) {
+          throw new TypeError(
+            `RouterTuning.${field}["${k}"] must be a number, got ${typeof v}`,
+          );
+        }
       }
     }
 

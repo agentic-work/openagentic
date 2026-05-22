@@ -61,6 +61,18 @@ const FlowCostsView = lazy(() =>
   import('../components/Workflows/FlowCostsView').then(m => ({ default: m.FlowCostsView })),
 )
 
+// Code Mode
+const CodeModeSettingsView = lazy(() => import('../components/CodeMode/CodeModeSettingsView'))
+const CodeModeGlobalSettingsView = lazy(() => import('../components/CodeMode/CodeModeGlobalSettingsView'))
+const CodeModeMcpView = lazy(() => import('../components/CodeMode/CodeModeMcpView'))
+const CodeModeSkillsView = lazy(() => import('../components/CodeMode/CodeModeSkillsView'))
+const CodeModeUsersView = lazy(() => import('../components/CodeMode/CodeModeUsersView'))
+const CodeModeMetricsDashboard = lazy(() =>
+  import('../components/Monitoring/CodeModeMetricsDashboard').then(m => ({
+    default: m.CodeModeMetricsDashboard,
+  })),
+)
+
 // Agents
 const AgentManagementView = lazy(() =>
   import('../components/Agents').then(m => ({ default: m.AgentManagementView })),
@@ -211,9 +223,89 @@ function SectionLoading() {
 }
 
 // ---------------------------------------------------------------------------
+// Enterprise gate. Every leaf ID in this set renders the LockScreen
+// instead of its real route in the OSS edition. The leaves still appear
+// in the sidebar (visible + clickable) so operators understand the full
+// feature surface; the lock screen explains what they get with the
+// hosted edition and routes them to agenticwork.io/purchase.
+// ---------------------------------------------------------------------------
+const ENTERPRISE_LEAVES: Record<string, { feature: string; description?: string; capabilities?: string[] }> = {
+  // Admin v2 leaves (also covered by v3 mapping in AdminPortalHostV3.tsx)
+  'rate-limits': {
+    feature: 'Per-user rate limits',
+    description: 'Enforce per-user and per-tier request rate limits across chat, flows, and tool calls — required for multi-tenant deployments.',
+  },
+  'webhook-security': {
+    feature: 'Webhook security policies',
+    description: 'Signed-payload verification, IP allowlists, and replay-attack protection on inbound webhook receivers.',
+  },
+  'dlp-config': {
+    feature: 'DLP rules + exemption policies',
+    description: 'Configure data-loss-prevention rules, per-tool exemptions, and the redaction registry that gates LLM context.',
+  },
+  'dlp-audit': {
+    feature: 'DLP audit log',
+    description: 'Append-only audit trail of every DLP redaction + exemption decision, exportable for compliance review.',
+  },
+  'tiered-fc': {
+    feature: 'Tiered function-calling',
+    description: 'Route tool calls to cheaper models when a request doesn\'t need premium reasoning. Cuts tool-call cost ~60% on observed traffic.',
+  },
+  'chargeback': {
+    feature: 'Cost management + chargeback',
+    description: 'Per-user, per-team, and per-tenant cost tracking with monthly chargeback reports and budget alerts.',
+  },
+  'chargeback-dashboard': {
+    feature: 'Cost management + chargeback',
+    description: 'Per-user, per-team, and per-tenant cost tracking with monthly chargeback reports and budget alerts.',
+  },
+  'audit': { feature: 'Audit logs', description: 'SOC 2 / FedRAMP-grade append-only audit log of every admin action, signed and exportable.' },
+  'audit-logs': { feature: 'Audit logs', description: 'SOC 2 / FedRAMP-grade append-only audit log of every admin action, signed and exportable.' },
+  'admin-audit-logs': { feature: 'Audit logs', description: 'SOC 2 / FedRAMP-grade append-only audit log of every admin action, signed and exportable.' },
+  'credential-audit': { feature: 'Credential audit trail', description: 'Track every credential rotation, view, and export across the platform.' },
+  'flow-audit': { feature: 'Flow governance audit', description: 'Per-flow approval history, change tracking, and run-time policy enforcement events.' },
+  'llm-metrics': { feature: 'LLM performance metrics', description: 'Per-provider, per-model latency / cost / error-rate dashboards with historical trends.' },
+  'llm-performance': { feature: 'LLM performance metrics', description: 'Per-provider, per-model latency / cost / error-rate dashboards with historical trends.' },
+  'dashboard-metrics': { feature: 'Platform metrics dashboard', description: 'Tenant-wide chat / flow / tool usage rollups with time-series export.' },
+  // Code Mode (the heavy exec sandbox stays in the hosted edition)
+  'codemode': {
+    feature: 'Code Mode',
+    description: 'Per-user sandboxed coding workspace. The hosted edition spins up an isolated Kubernetes pod per session with your choice of coding CLI (Claude Code, Gemini CLI, Aider, …).',
+    capabilities: [
+      'Per-user isolated workspace',
+      'Choice of bundled coding CLI',
+      'Persistent file mounts',
+      'Live terminal + VS Code shell',
+      'MCP tool routing inside the sandbox',
+    ],
+  },
+  'codemode-settings':  { feature: 'Code Mode Settings', description: 'Default coding adapter, resource limits, and per-tier session policies.' },
+  'codemode-global':    { feature: 'Code Mode Global Settings', description: 'Cluster-wide quotas, image catalog, and admission policy for Code Mode pods.' },
+  'codemode-mcp':       { feature: 'Code Mode MCP policy', description: 'Allow/deny MCP servers per coding session.' },
+  'codemode-skills':    { feature: 'Code Mode Skills & Plugins', description: 'Approve, version, and roll out skills + plugins to user sessions.' },
+  'codemode-users':     { feature: 'Code Mode Users & Sessions', description: 'Per-user session inventory, kill-switch, and quota inspection.' },
+  'openagentic-metrics': { feature: 'Code Mode metrics', description: 'Active sessions, tokens, cost, and queue depth across the Code Mode fleet.' },
+};
+
+// Public helper: returns the enterprise lock-screen JSX if `id` is gated,
+// or null if the route should render normally. Imported by both v2 and v3
+// admin shells so they apply the same gate set.
+export function enterpriseLockFor(id: string): React.ReactNode | null {
+  const meta = ENTERPRISE_LEAVES[id];
+  if (!meta) return null;
+  // Lazy import to keep the upsell out of the critical chunk.
+  const { LockScreen } = require('../Upsell') as typeof import('../Upsell');
+  return <LockScreen feature={meta.feature} description={meta.description} capabilities={meta.capabilities} />;
+}
+
+// ---------------------------------------------------------------------------
 // Core dispatch — mirrors AdminPortal.renderMainContent() switch statement
 // ---------------------------------------------------------------------------
 function renderSection(id: string, theme: 'dark' | 'light'): React.ReactNode {
+  // OSS enterprise gate runs FIRST so locked leaves never hit the
+  // lazy-loaded route bundle.
+  const locked = enterpriseLockFor(id);
+  if (locked) return locked;
   switch (id) {
     // LLM
     case 'providers':
@@ -257,6 +349,20 @@ function renderSection(id: string, theme: 'dark' | 'light'): React.ReactNode {
       return <AdminWorkflowSettingsView />
     case 'native-workflow-costs':
       return <FlowCostsView theme={theme} />
+
+    // Code Mode
+    case 'codemode-settings':
+      return <CodeModeSettingsView theme={theme} />
+    case 'codemode-global':
+      return <CodeModeGlobalSettingsView theme={theme} />
+    case 'codemode-mcp':
+      return <CodeModeMcpView theme={theme} />
+    case 'codemode-skills':
+      return <CodeModeSkillsView theme={theme} />
+    case 'codemode-users':
+      return <CodeModeUsersView theme={theme} />
+    case 'openagentic-metrics':
+      return <CodeModeMetricsDashboard theme={theme} />
 
     // Agents
     case 'agent-registry':

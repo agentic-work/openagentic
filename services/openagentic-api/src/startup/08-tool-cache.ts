@@ -2,6 +2,16 @@ import { loggers } from '../utils/logger.js';
 import { prisma } from '../utils/prisma.js';
 import type { BootstrapStep } from './types.js';
 
+// #1055: Milvus segment-load after a fresh helm install (or any
+// data-tier restart) can take 5+ min for the api's ~10 collections.
+// Split the retry budget: fatal connection failures fail fast at
+// FATAL_MAX_ATTEMPTS; transient collection-recovery polls for up to
+// RECOVERY_MAX_ATTEMPTS × RECOVERY_INTERVAL_MS so the boot survives
+// a cold Milvus.
+const FATAL_MAX_ATTEMPTS = 10;
+const RECOVERY_MAX_ATTEMPTS = 30;
+const RECOVERY_INTERVAL_MS = 10000;
+
 export const INIT_TOOL_CACHE: BootstrapStep = {
   name: 'tool-cache-init',
   critical: true,
@@ -13,26 +23,43 @@ export const INIT_TOOL_CACHE: BootstrapStep = {
     const { ToolPgvectorSearchService, setToolPgvectorSearchService } = await import('../services/ToolPgvectorSearchService.js');
     const { UniversalEmbeddingService } = await import('../services/UniversalEmbeddingService.js');
 
-    // Retry Milvus connection with exponential backoff
+    // Retry Milvus connection: split-budget on recovering vs fatal (#1055).
     let milvusConnected = false;
-    for (let attempt = 1; attempt <= 10; attempt++) {
+    let fatalAttempt = 0;
+    let recoveryAttempt = 0;
+    while (true) {
       try {
         ctx.toolSemanticCache = new ToolSemanticCacheService(ctx.providerManager as any);
         await ctx.toolSemanticCache.initialize();
         ctx.toolSemanticCacheInitialized = true;
         milvusConnected = true;
-        loggers.services.info(`✅ Tool Semantic Cache connected to Milvus (attempt ${attempt})`);
+        loggers.services.info(`✅ Tool Semantic Cache connected to Milvus (fatalAttempt=${fatalAttempt}, recoveryAttempt=${recoveryAttempt})`);
         break;
       } catch (error: any) {
-        loggers.services.warn({ error: error.message, attempt },
-          `⚠️ Milvus connection attempt ${attempt}/10 failed — retrying in ${attempt * 3}s`);
-        await new Promise(resolve => setTimeout(resolve, attempt * 3000));
+        if (error?.name === 'MilvusRecoveringError') {
+          recoveryAttempt++;
+          if (recoveryAttempt >= RECOVERY_MAX_ATTEMPTS) {
+            loggers.services.fatal(`🚨 FATAL: Milvus still recovering after ${RECOVERY_MAX_ATTEMPTS} attempts (${(RECOVERY_MAX_ATTEMPTS * RECOVERY_INTERVAL_MS) / 1000}s) — collections never finished loading`);
+            break;
+          }
+          loggers.services.warn({ recoveryAttempt, reason: error.message },
+            `⏳ Milvus collections still loading — waiting ${RECOVERY_INTERVAL_MS / 1000}s (recovery ${recoveryAttempt}/${RECOVERY_MAX_ATTEMPTS})`);
+          await new Promise(resolve => setTimeout(resolve, RECOVERY_INTERVAL_MS));
+          continue;
+        }
+        fatalAttempt++;
+        if (fatalAttempt >= FATAL_MAX_ATTEMPTS) {
+          break;
+        }
+        loggers.services.warn({ error: error.message, fatalAttempt },
+          `⚠️ Milvus connection attempt ${fatalAttempt}/${FATAL_MAX_ATTEMPTS} failed — retrying in ${fatalAttempt * 3}s`);
+        await new Promise(resolve => setTimeout(resolve, fatalAttempt * 3000));
       }
     }
 
     if (!milvusConnected) {
-      loggers.services.fatal('🚨 FATAL: Cannot connect to Milvus after 10 attempts — shutting down');
-      throw new Error('Cannot connect to Milvus after 10 attempts');
+      loggers.services.fatal(`🚨 FATAL: Cannot connect to Milvus (fatalAttempts=${fatalAttempt}, recoveryAttempts=${recoveryAttempt}) — shutting down`);
+      throw new Error(`Cannot connect to Milvus after ${fatalAttempt} fatal + ${recoveryAttempt} recovery attempts`);
     }
 
     // Index ALL MCP tools into Milvus (BLOCKING)

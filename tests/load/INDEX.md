@@ -27,8 +27,8 @@ node concurrent-chat-sessions.test.js  # Direct execution
 - Generates JSON report
 
 **Configuration:**
-- API Key: `awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79`
-- Test User: admin@openagentic.local
+- API Key: `awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79`
+- Test User: phatoldsun@gmail.com
 - API URL: http://localhost:8000
 - Model: gemini-2.0-flash-001
 
@@ -189,7 +189,7 @@ cat ../test-results/concurrent-chat-sessions-results.json | jq '.sessions[].mess
 curl http://localhost:8000/health
 
 # Check MCP tools
-curl -H "X-API-Key: awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79" \
+curl -H "X-API-Key: awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79" \
   http://localhost:8000/api/chat/mcp/status
 
 # Test single session
@@ -223,7 +223,7 @@ tests/load/
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `API_URL` | http://localhost:8000 | API endpoint |
-| `API_KEY` | awc_test_openagentic-test_... | Auth key |
+| `API_KEY` | awc_test_phatoldsun_... | Auth key |
 | `NUM_SESSIONS` | 100 | Number of sessions |
 | `MESSAGES_PER_SESSION` | 20 | Messages per session |
 | `DEFAULT_MODEL` | gemini-2.0-flash-001 | LLM model |

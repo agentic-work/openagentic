@@ -1058,6 +1058,15 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ theme, embedded, onClose }) =
   };
 
   const renderMainContent = () => {
+    // OSS enterprise gate. Shared ENTERPRISE_LEAVES set lives in
+    // shell-v2/pageRouter; if this leaf is locked, render the upsell
+    // instead of the route.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { enterpriseLockFor } = require('../../shell-v2/pageRouter') as
+      typeof import('../../shell-v2/pageRouter');
+    const locked = enterpriseLockFor(activeSection);
+    if (locked) return locked;
+
     switch (activeSection) {
       case 'overview':
         return <DashboardOverview theme={theme} />;

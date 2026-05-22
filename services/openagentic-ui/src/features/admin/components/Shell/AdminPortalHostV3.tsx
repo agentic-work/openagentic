@@ -14,6 +14,7 @@ import { DefaultModelsPage } from '../../pages-v3/DefaultModelsPage'
 import { ModelRegistryPage } from '../../pages-v3/ModelRegistryPage'
 import { WorkflowsPage } from '../../pages-v3/WorkflowsPage'
 import { AuditLogsPage } from '../../pages-v3/AuditLogsPage'
+import { CodeModeHubPage, type CodeModeTab } from '../../pages-v3/CodeModeHubPage'
 import { SynthesisHubPage, type SynthesisTab } from '../../pages-v3/SynthesisHubPage'
 import { PromptsHubPage } from '../../pages-v3/PromptsHubPage'
 import { MonitoringHubPage, type MonitoringTab } from '../../pages-v3/MonitoringHubPage'
@@ -305,6 +306,16 @@ const MONITORING_LEAF_TO_TAB: Record<string, MonitoringTab> = {
 }
 
 function renderPage(leaf: AdminLeaf) {
+  // OSS enterprise gate. v3 leaves share the same ENTERPRISE_LEAVES set
+  // as v2 (defined in shell-v2/pageRouter); locked leaves render the
+  // upsell lock screen instead of the real route.
+  const { enterpriseLockFor } = require('../../shell-v2/pageRouter') as
+    typeof import('../../shell-v2/pageRouter');
+  const locked = enterpriseLockFor(leaf.id);
+  if (locked) {
+    return <LeafErrorBoundary leafName={leaf.name}>{locked as any}</LeafErrorBoundary>;
+  }
+
   if (leaf.id === 'dashboard') {
     return (
       <LeafErrorBoundary leafName={leaf.name}>
@@ -519,6 +530,19 @@ function renderPage(leaf: AdminLeaf) {
     return (
       <LeafErrorBoundary leafName={leaf.name}>
         <AgentsHubPage initialTab={initialTab} />
+      </LeafErrorBoundary>
+    )
+  }
+
+  // Code Mode — native v3, consolidates SIX v2 leaves (cm-settings,
+  // cm-global, cm-mcp, cm-skills, cm-users, cm-metrics) into a single
+  // tabbed hub. Leaf id picks the initial sub-tab. Read-only; mutations
+  // route back through v2 (?v3=0) for now.
+  if (leaf.id.startsWith('cm-')) {
+    const initialTab = leaf.id.slice(3) as CodeModeTab
+    return (
+      <LeafErrorBoundary leafName={leaf.name}>
+        <CodeModeHubPage initialTab={initialTab} />
       </LeafErrorBoundary>
     )
   }
