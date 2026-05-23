@@ -199,23 +199,50 @@ fi
 # Reach the same daemon Docker will hit, but from the host shell.
 LOCAL_OLLAMA="${OLLAMA_HOST//host.docker.internal/localhost}"
 
-# 2. Make sure the embed + chat models exist; auto-pull if missing.
+# 2. Make sure embed + chat models exist.
+#    Embed model: small (~270MB), always nomic-embed-text. Pull if missing.
+#    Chat model: detect the best tool-capable model the user already has, in
+#    rough order of quality. Only auto-pull when nothing usable is present —
+#    avoids a 5GB+ surprise on a box that already has e.g. llama3.1:8b loaded.
 EMBED_MODEL="${OLLAMA_EMBED_MODEL:-nomic-embed-text}"
-CHAT_MODEL="${OLLAMA_CHAT_MODEL:-gpt-oss:20b}"
+DEFAULT_CHAT="${OLLAMA_CHAT_MODEL:-qwen2.5:7b}"
 have_model() {
   curl -fsS --max-time 5 "$LOCAL_OLLAMA/api/tags" 2>/dev/null \
     | grep -qE "\"(name|model)\"[[:space:]]*:[[:space:]]*\"$1(:[^\"]*)?\""
 }
-for m in "$EMBED_MODEL" "$CHAT_MODEL"; do
-  if have_model "$m"; then
-    ok "Ollama has $m"
-  else
-    info "Pulling $m (this can take a few minutes for big models)…"
-    if ! curl -fsS -X POST "$LOCAL_OLLAMA/api/pull" -d "{\"name\":\"$m\"}" >/dev/null 2>&1; then
-      warn "Pull request for $m failed; pull manually later: ollama pull $m"
-    fi
-  fi
+# Embed model
+if have_model "$EMBED_MODEL"; then
+  ok "Ollama has $EMBED_MODEL"
+else
+  info "Pulling $EMBED_MODEL (~270MB)…"
+  curl -fsS -X POST "$LOCAL_OLLAMA/api/pull" -d "{\"name\":\"$EMBED_MODEL\"}" >/dev/null 2>&1 \
+    || warn "Pull failed; try manually later: ollama pull $EMBED_MODEL"
+fi
+
+# Chat model — auto-detect.
+CHAT_MODEL=""
+# Pull all available model names once; grep for tool-capable families in order.
+all_models=$(curl -fsS --max-time 5 "$LOCAL_OLLAMA/api/tags" 2>/dev/null | \
+  grep -oE "\"(name|model)\"[[:space:]]*:[[:space:]]*\"[^\"]+\"" | \
+  sed -E 's/.*"([^"]+)"$/\1/' | sort -u)
+# Priority order: small-and-strong first, then large-and-strongest, then any tool-capable family.
+for pat in 'qwen2\.5' 'qwen3' 'gpt-oss' 'llama3\.3' 'llama3\.1' 'llama-?3' 'mistral' 'gemma'; do
+  match=$(echo "$all_models" | grep -E "^$pat(:|$)" | head -1)
+  if [[ -n "$match" ]]; then CHAT_MODEL="$match"; break; fi
 done
+if [[ -n "$CHAT_MODEL" ]]; then
+  ok "Using existing chat model: $CHAT_MODEL"
+else
+  info "No tool-capable chat model found. Pulling $DEFAULT_CHAT (~4.7GB; ~3min on broadband)…"
+  if curl -fsS -X POST "$LOCAL_OLLAMA/api/pull" -d "{\"name\":\"$DEFAULT_CHAT\"}" >/dev/null 2>&1; then
+    ok "Pulled $DEFAULT_CHAT"
+    CHAT_MODEL="$DEFAULT_CHAT"
+  else
+    warn "Pull failed; the stack will boot but chat will fail until you pull a model:"
+    warn "  ollama pull $DEFAULT_CHAT"
+    CHAT_MODEL="$DEFAULT_CHAT"
+  fi
+fi
 
 # 3. Generate .env with random creds if it doesn't exist.
 gen_secret() {

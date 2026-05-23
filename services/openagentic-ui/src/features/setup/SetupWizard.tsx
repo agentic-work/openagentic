@@ -73,7 +73,14 @@ export const SetupWizard: React.FC = () => {
       setProbe(data);
       // Auto-pick sensible defaults so the user can just hit Start.
       if (data.chat?.length && !chatModel) {
-        const pref = data.chat.find((m: string) => /gpt-oss|llama|mistral|qwen/.test(m)) || data.chat[0];
+        // Prefer tool-capable models: qwen2.5 (strong tool calls + small), gpt-oss
+        // (strongest but 12GB), then llama3 family, then anything else. Picking
+        // a non-tool-capable model here would silently break MCP chat.
+        const pref = data.chat.find((m: string) => /qwen2?\.?5/.test(m))
+          || data.chat.find((m: string) => /gpt-oss/.test(m))
+          || data.chat.find((m: string) => /llama-?3/.test(m))
+          || data.chat.find((m: string) => /mistral|qwen|gemma/.test(m))
+          || data.chat[0];
         setChatModel(pref);
       }
       if (data.embed?.length && !embedModel) {

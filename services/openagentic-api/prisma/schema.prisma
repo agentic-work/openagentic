@@ -557,6 +557,7 @@ model ChatMessage {
   tool_results    Json?
   tool_call_id    String? // For tool response messages
   visualizations  Json?
+  content_blocks  Json?     // ordered [{id,index,type,content,isComplete,timestamp,startTime,duration}] — block-stream replay
   prometheus_data Json?
   user_id         String?
   parent_id       String?
@@ -707,6 +708,8 @@ model UserMemoryEntry {
   is_summary  Boolean   @default(false)
   summary_of  String[]  @default([])
   token_count Int?
+  // 'always' = injected on every turn; 'semantic' = pulled by similarity to current prompt
+  injection_mode String? @default("semantic")
   expires_at  DateTime?
   created_at  DateTime  @default(now())
   updated_at  DateTime  @updatedAt
@@ -2926,6 +2929,8 @@ model ModelRoleAssignment {
   role                String // 'reasoning', 'tool_execution', 'synthesis', 'fallback'
   model               String // Model identifier (e.g., 'claude-opus-4', 'claude-sonnet-4')
   provider            String // Provider name (e.g., 'anthropic', 'vertex-ai', 'azure-openai')
+  // Provenance: 'bootstrap' = seeded from helm values; 'admin' = added via admin UI; 'discovered' = auto-added via provider listModels()
+  managed_by          String?  @default("admin")
   priority            Int      @default(0) // Lower = higher priority
   enabled             Boolean  @default(true)
   slider_min_position Int      @default(0) // Minimum slider position to use this model
