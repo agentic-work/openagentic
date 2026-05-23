@@ -30,6 +30,18 @@ export interface McpField {
   hint?: string;
 }
 
+/**
+ * If a cloud MCP can use the user's host CLI credentials (mounted
+ * read-only into mcp-proxy by docker-compose.yml), describe how to detect
+ * them. The wizard surfaces "Use my local CLI creds" as the first option
+ * whenever `detect()` is truthy — picking it writes nothing to .env and
+ * just leaves the MCP enabled.
+ */
+export interface HostCredsHint {
+  description: string;        // shown in the menu, e.g. "az login (~/.azure)"
+  detect: () => boolean;      // returns true when host creds appear usable
+}
+
 export interface McpDefinition {
   id: string;
   label: string;
@@ -39,8 +51,16 @@ export interface McpDefinition {
   authType: McpAuthType;
   envFile?: string;
   envVars?: McpField[];
+  hostCreds?: HostCredsHint;
   defaultOn: boolean;
 }
+
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+const HOME = os.homedir();
+const exists = (p: string) => { try { return fs.existsSync(path.join(HOME, p)); } catch { return false; } };
 
 export const MCPS: McpDefinition[] = [
   {
@@ -83,7 +103,11 @@ export const MCPS: McpDefinition[] = [
       { env: 'AWS_SECRET_ACCESS_KEY', label: 'AWS secret access key', mask: true },
       { env: 'AWS_REGION',            label: 'AWS default region', hint: 'e.g. us-east-1' },
     ],
-    defaultOn: false,
+    hostCreds: {
+      description: 'Use my host AWS CLI creds (~/.aws — mounted read-only)',
+      detect: () => exists('.aws/credentials') || exists('.aws/config'),
+    },
+    defaultOn: true,
   },
   {
     id: 'azure',
@@ -99,7 +123,11 @@ export const MCPS: McpDefinition[] = [
       { env: 'AZURE_CLIENT_SECRET',   label: 'Azure client secret', mask: true },
       { env: 'AZURE_SUBSCRIPTION_ID', label: 'Default subscription id' },
     ],
-    defaultOn: false,
+    hostCreds: {
+      description: 'Use my host Azure CLI creds (~/.azure — mounted read-only)',
+      detect: () => exists('.azure/azureProfile.json') || exists('.azure/TokenCache'),
+    },
+    defaultOn: true,
   },
   {
     id: 'gcp',
@@ -114,7 +142,11 @@ export const MCPS: McpDefinition[] = [
       { env: 'GCP_REGION',           label: 'Default region', hint: 'e.g. us-central1' },
       { env: 'GCP_CREDENTIALS_FILE', label: 'Service-account JSON path', hint: 'inside the mcp-proxy container' },
     ],
-    defaultOn: false,
+    hostCreds: {
+      description: 'Use my host gcloud creds (~/.config/gcloud — mounted read-only)',
+      detect: () => exists('.config/gcloud/application_default_credentials.json') || exists('.config/gcloud/credentials.db'),
+    },
+    defaultOn: true,
   },
   {
     id: 'kubernetes',
@@ -126,7 +158,11 @@ export const MCPS: McpDefinition[] = [
     envVars: [
       { env: 'KUBECONFIG', label: 'Path to kubeconfig', hint: '~/.kube/config on most machines' },
     ],
-    defaultOn: false,
+    hostCreds: {
+      description: 'Use my host kubeconfig (~/.kube/config — mounted read-only)',
+      detect: () => exists('.kube/config'),
+    },
+    defaultOn: true,
   },
   {
     id: 'github',

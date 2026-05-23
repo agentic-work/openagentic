@@ -114,20 +114,35 @@ function icon(s: TaskState): { char: string; color: string } {
 }
 
 function toEnv(c: WizardConfig): Record<string, string> {
+  const useOllama = c.llmStrategy === 'ollama' || c.llmStrategy === 'both';
+  const useCloud  = c.llmStrategy === 'cloud'  || c.llmStrategy === 'both';
+
   const env: Record<string, string> = {
     ADMIN_USER_EMAIL: c.admin.email,
     ADMIN_SEED_PASSWORD: c.admin.password,
     LOCAL_ADMIN_USERNAME: c.admin.name,
-    OLLAMA_HOST: c.ollama.host,
-    OLLAMA_EMBED_MODEL: c.ollama.embedModel,
     UI_HOST_PORT: String(c.uiPort),
     MCPS_ENABLED: c.mcps.join(','),
   };
-  if (c.providers.anthropic)            env.ANTHROPIC_API_KEY = c.providers.anthropic;
-  if (c.providers.openai)               env.OPENAI_API_KEY = c.providers.openai;
-  if (c.providers.google)               env.GOOGLE_GENERATIVE_AI_API_KEY = c.providers.google;
-  if (c.providers.azureOpenAIEndpoint)  env.AZURE_OPENAI_ENDPOINT = c.providers.azureOpenAIEndpoint;
-  if (c.providers.azureOpenAIKey)       env.AZURE_OPENAI_API_KEY = c.providers.azureOpenAIKey;
+
+  // Ollama envs only when the strategy includes it. When skipped/cloud-only
+  // we explicitly disable Ollama so the api doesn't try to hit a phantom
+  // endpoint on first boot.
+  if (useOllama) {
+    env.OLLAMA_HOST = c.ollama.host;
+    env.OLLAMA_EMBED_MODEL = c.ollama.embedModel;
+    env.OLLAMA_ENABLED = 'true';
+  } else {
+    env.OLLAMA_ENABLED = 'false';
+  }
+
+  if (useCloud) {
+    if (c.providers.anthropic)            env.ANTHROPIC_API_KEY = c.providers.anthropic;
+    if (c.providers.openai)               env.OPENAI_API_KEY = c.providers.openai;
+    if (c.providers.google)               env.GOOGLE_GENERATIVE_AI_API_KEY = c.providers.google;
+    if (c.providers.azureOpenAIEndpoint)  env.AZURE_OPENAI_ENDPOINT = c.providers.azureOpenAIEndpoint;
+    if (c.providers.azureOpenAIKey)       env.AZURE_OPENAI_API_KEY = c.providers.azureOpenAIKey;
+  }
 
   // Per-MCP gating: flip the proxy's *_DISABLED var for anything NOT selected.
   // Selected ones get the env explicitly set to "false" so re-running the

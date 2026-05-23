@@ -1,7 +1,12 @@
 export type DeployTarget = 'docker' | 'helm';
+/** See steps/LlmStrategy.tsx for the user-facing copy. */
+export type LlmStrategy = 'ollama' | 'cloud' | 'both' | 'skip';
 
 export interface WizardConfig {
   target: DeployTarget;
+  /** Chosen in the LLM-strategy step. Gates whether OLLAMA_* and the
+   *  cloud-LLM API-key envs get written. */
+  llmStrategy: LlmStrategy;
   admin: {
     email: string;
     password: string;
@@ -30,6 +35,7 @@ export interface WizardConfig {
 
 export const DEFAULT_CONFIG: WizardConfig = {
   target: 'docker',
+  llmStrategy: 'both',
   admin: {
     email: 'admin@openagentic.local',
     password: '',

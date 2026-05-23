@@ -4,6 +4,8 @@ import { Banner, COLORS } from './ui/Theme.tsx';
 import { DeployTargetStep } from './steps/DeployTarget.tsx';
 import { HelmPreflightStep } from './steps/HelmPreflight.tsx';
 import { AdminUserStep } from './steps/AdminUser.tsx';
+import { LlmStrategyStep } from './steps/LlmStrategy.tsx';
+import type { LlmStrategy } from './lib/types.ts';
 import { OllamaStep } from './steps/Ollama.tsx';
 import { ProvidersStep } from './steps/Providers.tsx';
 import { McpSelectionStep } from './steps/McpSelection.tsx';
@@ -14,7 +16,7 @@ import { DEFAULT_CONFIG, type WizardConfig, type DeployTarget } from './lib/type
 import { defaultEnabledMcps } from './lib/mcps.ts';
 import { readCurrent } from './lib/env.ts';
 
-type Screen = 'target' | 'helm-preflight' | 'admin' | 'ollama' | 'providers' | 'mcps' | 'mcp-auth' | 'review' | 'launch' | 'done';
+type Screen = 'target' | 'helm-preflight' | 'admin' | 'llm-strategy' | 'ollama' | 'providers' | 'mcps' | 'mcp-auth' | 'review' | 'launch' | 'done';
 
 const App: React.FC = () => {
   // Seed from any existing .env so re-running the wizard is non-destructive.
@@ -43,22 +45,38 @@ const App: React.FC = () => {
     uiPort: existing.UI_HOST_PORT ? Number(existing.UI_HOST_PORT) : DEFAULT_CONFIG.uiPort,
   }));
   const [screen, setScreen] = useState<Screen>('target');
+  const llmStrategy = config.llmStrategy;
+  const setLlmStrategy = (s: LlmStrategy) => setConfig((c) => ({ ...c, llmStrategy: s }));
 
-  // Step numbering — Docker path = 8 screens total, Helm path inserts a
-  // preflight as step 2/9 so downstream steps bump by 1.
-  const total = config.target === 'helm' ? 9 : 8;
-  const stepOffset = config.target === 'helm' ? 1 : 0;  // admin onwards shift +1 on Helm
+  // Step numbering. The visible-step count varies with both the helm flag
+  // (adds the preflight screen) and the LLM strategy (skip → no Ollama
+  // and no providers; ollama-only → no providers; cloud-only → no Ollama).
+  const helmBump = config.target === 'helm' ? 1 : 0;
+  const ollamaCount    = (llmStrategy === 'ollama' || llmStrategy === 'both') ? 1 : 0;
+  const providersCount = (llmStrategy === 'cloud'  || llmStrategy === 'both') ? 1 : 0;
+  // base (Docker, both): target + admin + llm-strategy + ollama + providers + mcps + mcp-auth + review + launch = 9
+  const total = 1 + helmBump + 1 /*admin*/ + 1 /*llm-strategy*/ + ollamaCount + providersCount + 1 /*mcps*/ + 1 /*mcp-auth*/ + 1 /*review*/ + 1 /*launch*/;
+  let cursor = 1;
   const stepNum = {
-    target: 1,
-    helmPreflight: 2,
-    admin: 2 + stepOffset,
-    ollama: 3 + stepOffset,
-    providers: 4 + stepOffset,
-    mcps: 5 + stepOffset,
-    mcpAuth: 6 + stepOffset,
-    review: 7 + stepOffset,
-    launch: 8 + stepOffset,
+    target: cursor++,
+    helmPreflight: config.target === 'helm' ? cursor++ : 0,
+    admin: cursor++,
+    llmStrategy: cursor++,
+    ollama: ollamaCount ? cursor++ : 0,
+    providers: providersCount ? cursor++ : 0,
+    mcps: cursor++,
+    mcpAuth: cursor++,
+    review: cursor++,
+    launch: cursor++,
   };
+
+  const afterLlmStrategy = (s: LlmStrategy): Screen => {
+    if (s === 'ollama' || s === 'both') return 'ollama';
+    if (s === 'cloud')                  return 'providers';
+    return 'mcps';  // 'skip'
+  };
+  const afterOllama = (s: LlmStrategy): Screen =>
+    s === 'both' ? 'providers' : 'mcps';
 
   if (screen === 'target') {
     return (
@@ -92,7 +110,19 @@ const App: React.FC = () => {
         total={total}
         onDone={(admin) => {
           setConfig({ ...config, admin });
-          setScreen('ollama');
+          setScreen('llm-strategy');
+        }}
+      />
+    );
+  }
+  if (screen === 'llm-strategy') {
+    return (
+      <LlmStrategyStep
+        step={stepNum.llmStrategy}
+        total={total}
+        onPick={(s) => {
+          setLlmStrategy(s);
+          setScreen(afterLlmStrategy(s));
         }}
       />
     );
@@ -105,7 +135,7 @@ const App: React.FC = () => {
         total={total}
         onDone={(ollama) => {
           setConfig({ ...config, ollama });
-          setScreen('providers');
+          setScreen(afterOllama(llmStrategy));
         }}
       />
     );

@@ -65,21 +65,35 @@ interface PromptProps {
 const McpAuthPrompt: React.FC<PromptProps> = ({ mcp, auth, onDone }) => {
   const envFilePath = mcp.envFile ? path.join(CLOUD_SECRETS_DIR, mcp.envFile) : undefined;
   const envFileExists = !!envFilePath && fs.existsSync(envFilePath);
+  // 'fields' MCPs that have detectable host-creds also get the chooser
+  // (otherwise users get dropped straight into a text input for a path
+  // we could have detected for them).
+  const fieldsHasHostCreds = mcp.authType === 'fields' && (mcp.hostCreds?.detect() ?? false);
   const [phase, setPhase] = useState<Phase>(
-    mcp.authType === 'env-file' ? 'choose-source' : 'fields'
+    mcp.authType === 'env-file' || fieldsHasHostCreds ? 'choose-source' : 'fields'
   );
   const [fieldIdx, setFieldIdx] = useState(0);
   const [values, setValues] = useState<Record<string, string>>(
     mcp.envVars ? Object.fromEntries(mcp.envVars.map((f) => [f.env, auth[f.env] ?? ''])) : {}
   );
 
-  // Env-file source picker
-  if (phase === 'choose-source' && mcp.authType === 'env-file') {
+  // Env-file source picker.
+  // For MCPs that can use the user's mounted host CLI creds (~/.aws, ~/.azure,
+  // ~/.config/gcloud), surface that as the first option whenever detected —
+  // it's the zero-paste path and the one we steer users toward for the
+  // "5 minutes to 'show me my Azure subs'" flow.
+  if (phase === 'choose-source') {
+    const hostCredsAvailable = mcp.hostCreds?.detect() ?? false;
     const items = [
-      ...(envFileExists
-        ? [{ label: `Use ${envFilePath} (detected — recommended)`, value: 'use-file' as const }]
-        : [{ label: `Create empty ${envFilePath} stub (fill in later)`, value: 'stub' as const }]),
-      { label: 'Paste credentials inline now', value: 'paste' as const },
+      ...(hostCredsAvailable
+        ? [{ label: `${mcp.hostCreds!.description} (detected — recommended)`, value: 'host-creds' as const }]
+        : []),
+      ...(mcp.authType === 'env-file'
+        ? (envFileExists
+            ? [{ label: `Use ${envFilePath} (detected)`, value: 'use-file' as const }]
+            : [{ label: `Create empty ${envFilePath} stub (fill in later)`, value: 'stub' as const }])
+        : []),
+      { label: mcp.authType === 'env-file' ? 'Paste credentials inline now' : 'Enter credentials inline', value: 'paste' as const },
       { label: 'Skip (this MCP will stay disabled)', value: 'skip' as const },
     ];
     return (
@@ -89,8 +103,8 @@ const McpAuthPrompt: React.FC<PromptProps> = ({ mcp, auth, onDone }) => {
           <SelectInput
             items={items}
             onSelect={(i) => {
-              if (i.value === 'use-file' || i.value === 'stub') {
-                onDone({});  // source lives on-disk; nothing to merge into .env
+              if (i.value === 'host-creds' || i.value === 'use-file' || i.value === 'stub') {
+                onDone({});  // source lives on-disk / on mounted host volume; nothing to merge
               } else if (i.value === 'skip') {
                 onDone({ [`__skip_${mcp.id}`]: '1' });  // marker, Launch will strip from enabled
               } else {

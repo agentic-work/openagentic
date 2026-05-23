@@ -124,6 +124,10 @@ def script_minimal(child: pexpect.spawn) -> None:
     # password — must be >= 8 chars
     type_and_enter(child, "hunter2!!")
 
+    expect_screen(child, "How should the platform call LLMs?")
+    send(child, DOWN); send(child, DOWN)       # pick "Both" (3rd option)
+    send(child, ENTER)
+
     expect_screen(child, "Where is your Ollama?")
     send(child, ENTER)  # accept host.docker.internal:11434 default
 
@@ -167,6 +171,10 @@ def script_all_mcps_inline(child: pexpect.spawn) -> None:
     expect_screen(child, "Create your admin account")
     send(child, ENTER)
     type_and_enter(child, "supersecret")
+
+    expect_screen(child, "How should the platform call LLMs?")
+    send(child, DOWN); send(child, DOWN)
+    send(child, ENTER)
 
     expect_screen(child, "Where is your Ollama?")
     send(child, ENTER)
@@ -275,6 +283,9 @@ def script_skip_all_cloud(child: pexpect.spawn) -> None:
     expect_screen(child, "Create your admin account")
     send(child, ENTER)
     type_and_enter(child, "passw0rd!")
+    expect_screen(child, "How should the platform call LLMs?")
+    send(child, DOWN); send(child, DOWN)
+    send(child, ENTER)
     expect_screen(child, "Where is your Ollama?")
     send(child, ENTER)
     expect_screen(child, "LLM providers")
@@ -339,6 +350,46 @@ def assert_skip_all_cloud(env: dict[str, str]) -> list[str]:
     return fails
 
 
+def script_cloud_only(child: pexpect.spawn) -> None:
+    """LLM strategy = cloud LLMs only. Verifies Ollama step is skipped
+    and only OpenAI key is captured."""
+    expect_screen(child, "Where do you want to run openagentic?")
+    send(child, ENTER)
+    expect_screen(child, "Create your admin account")
+    send(child, ENTER)
+    type_and_enter(child, "passw0rd!")
+
+    expect_screen(child, "How should the platform call LLMs?")
+    send(child, DOWN)                          # "Cloud LLMs" — 2nd option
+    send(child, ENTER)
+
+    # Ollama step MUST be skipped — we should land on Providers next.
+    expect_screen(child, "LLM providers")
+    send(child, ENTER)                         # skip anthropic
+    type_and_enter(child, "sk-openai-test")    # openai
+    send(child, TAB)                           # skip the rest
+
+    expect_screen(child, "Which MCPs do you want enabled?")
+    send(child, "n")                           # clear all
+    send(child, SPACE)                         # web on
+    send(child, ENTER)
+
+    expect_screen(child, "Review & launch")
+    send(child, ENTER)
+    expect_screen(child, "dry-run", timeout=15.0)
+
+
+def assert_cloud_only(env: dict[str, str]) -> list[str]:
+    fails = []
+    if env.get("OLLAMA_ENABLED") != "false":
+        fails.append(f"OLLAMA_ENABLED expected 'false', got {env.get('OLLAMA_ENABLED')!r}")
+    if env.get("OLLAMA_HOST"):
+        fails.append(f"OLLAMA_HOST should NOT be set in cloud-only mode, got {env.get('OLLAMA_HOST')!r}")
+    if env.get("OPENAI_API_KEY") != "sk-openai-test":
+        fails.append(f"OPENAI_API_KEY expected 'sk-openai-test', got {env.get('OPENAI_API_KEY')!r}")
+    return fails
+
+
 VARIATIONS: list[Variation] = [
     Variation(
         name="minimal",
@@ -358,6 +409,12 @@ VARIATIONS: list[Variation] = [
         script=script_skip_all_cloud,
         assertions=assert_skip_all_cloud,
     ),
+    Variation(
+        name="cloud-only",
+        description="LLM strategy=cloud-only → no Ollama in .env, OpenAI key written",
+        script=script_cloud_only,
+        assertions=assert_cloud_only,
+    ),
 ]
 
 
@@ -373,6 +430,15 @@ def run(variation: Variation) -> bool:
     # Ink disables interactivity in CI; drop those vars even if our parent has them.
     for k in ("CI", "GITHUB_ACTIONS", "GITLAB_CI", "CIRCLECI", "TRAVIS"):
         env.pop(k, None)
+
+    # Sandbox HOME so the new hostCreds.detect() probes (~/.aws, ~/.azure,
+    # ~/.config/gcloud, ~/.kube) return false consistently — otherwise the
+    # menu grows an extra "Use my host CLI creds" option and the existing
+    # DOWN-press counts in each script go off by one.
+    import tempfile
+    sandbox_home = tempfile.mkdtemp(prefix="oa-wizard-pty-")
+    env["HOME"] = sandbox_home
+
     env.update(variation.env_overrides)
 
     child = pexpect.spawn(

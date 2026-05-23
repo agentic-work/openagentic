@@ -2,8 +2,17 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import SelectInput from 'ink-select-input';
 import { Screen, Hint, COLORS } from '../ui/Theme.tsx';
-import type { WizardConfig } from '../lib/types.ts';
+import type { WizardConfig, LlmStrategy } from '../lib/types.ts';
 import { mcpsThatNeedAuth } from '../lib/mcps.ts';
+
+const describeStrategy = (s: LlmStrategy): string => {
+  switch (s) {
+    case 'ollama': return 'local Ollama only';
+    case 'cloud':  return 'cloud LLMs only';
+    case 'both':   return 'Ollama + cloud LLMs';
+    case 'skip':   return 'skipped — configure in admin panel';
+  }
+};
 
 interface Props {
   config: WizardConfig;
@@ -47,9 +56,13 @@ export const ReviewStep: React.FC<Props> = ({ config, step, total, onLaunch, onC
         {row('deploy target', config.target)}
         {config.target === 'helm' && config.kubeconfigPath && row('kubeconfig', config.kubeconfigPath)}
         {row('admin email', config.admin.email)}
-        {row('ollama host', config.ollama.host)}
-        {row('embedding model', config.ollama.embedModel)}
-        {row('LLM providers', providerCount > 0 ? `${providerCount} configured` : 'Ollama only')}
+        {row('LLM strategy', describeStrategy(config.llmStrategy))}
+        {(config.llmStrategy === 'ollama' || config.llmStrategy === 'both') &&
+          row('ollama host', config.ollama.host)}
+        {(config.llmStrategy === 'ollama' || config.llmStrategy === 'both') &&
+          row('embedding model', config.ollama.embedModel)}
+        {(config.llmStrategy === 'cloud' || config.llmStrategy === 'both') &&
+          row('cloud LLM keys', providerCount > 0 ? `${providerCount} configured` : 'none — chat will fail until set')}
         {row('MCPs', mcpSummary)}
         {row('UI port', String(config.uiPort))}
         {missingCreds.length > 0 && (
