@@ -154,7 +154,57 @@ const verifyToken = async (request: FastifyRequest, reply: any) => {
 
 export const localAuthRoutes: FastifyPluginAsync = async (fastify) => {
   const logger = fastify.log;
-  
+
+  /**
+   * POST /magic
+   * One-shot autologin for the seeded admin user. install.sh generates a
+   * random token, hands it to the api via the MAGIC_BOOT_TOKEN env var,
+   * and opens the browser to `?magic=<token>`. The UI POSTs the token
+   * here, gets a JWT, and skips the login screen entirely.
+   *
+   * The token works exactly once (server clears it from memory after the
+   * first successful exchange) and only if MAGIC_BOOT_TOKEN was non-empty
+   * at startup. After consumption, all subsequent requests 401.
+   *
+   * This is intentionally NOT a generic magic-link-by-email flow; it's a
+   * narrow first-run convenience so the OSS five-minute install doesn't
+   * end on a credentials grep.
+   */
+  let magicToken: string | undefined =
+    process.env.MAGIC_BOOT_TOKEN && process.env.MAGIC_BOOT_TOKEN.length >= 16
+      ? process.env.MAGIC_BOOT_TOKEN
+      : undefined;
+  fastify.post<{ Body: { token?: string } }>('/magic', async (request, reply) => {
+    const submitted = request.body?.token;
+    if (!submitted || !magicToken || submitted !== magicToken) {
+      return reply.code(401).send({ error: 'invalid or expired magic token' });
+    }
+    // Consume — one shot only.
+    magicToken = undefined;
+
+    const adminEmail = process.env.ADMIN_USER_EMAIL || 'admin@openagentic.local';
+    const user = await prisma.user.findUnique({ where: { email: adminEmail } });
+    if (!user || !user.is_admin) {
+      return reply.code(404).send({ error: 'admin user not found' });
+    }
+
+    const signingSecret = JWT_SECRET || process.env.JWT_SECRET || process.env.SIGNING_SECRET;
+    if (!signingSecret) {
+      return reply.code(500).send({ error: 'JWT secret not configured' });
+    }
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, name: user.name, isAdmin: user.is_admin },
+      signingSecret,
+      { expiresIn: '24h' },
+    );
+    logger.info({ adminEmail }, 'Magic-link autologin consumed');
+    return reply.send({
+      success: true,
+      token,
+      user: { id: user.id, email: user.email, name: user.name, isAdmin: true, groups: user.groups },
+    });
+  });
+
   /**
    * POST /login
    * Authenticate local user with email/password

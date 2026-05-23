@@ -25,31 +25,41 @@ interface StarterPrompt {
   accentColor: string;
 }
 
+// The first three prompts each map 1:1 to a bundled MCP (azure / aws /
+// kubernetes) that defaults to ENABLED and uses the user's mounted host
+// CLI credentials. Picking any of them on a fresh install gives the
+// "holy fuck — my local LLM with no API key just did real ops work"
+// moment we're optimizing for.
 const STARTER_PROMPTS: StarterPrompt[] = [
-  // Cloud Operations
   {
-    id: 'azure-resources',
+    id: 'azure-subs',
     icon: <Cloud className="w-5 h-5" />,
-    title: 'List my Azure resources',
-    prompt: 'Show me all my Azure resources grouped by resource group with their current status and estimated monthly cost',
+    title: 'Show me my Azure subscriptions',
+    prompt: 'List my Azure subscriptions with id, state, and tenant. Use the azure MCP.',
     category: 'cloud',
     accentColor: '#3b82f6',
+  },
+  {
+    id: 'aws-account',
+    icon: <Cloud className="w-5 h-5" />,
+    title: 'Show me my AWS account',
+    prompt: 'Use the aws MCP to call sts get-caller-identity, then list my EC2 instances in us-east-1.',
+    category: 'cloud',
+    accentColor: '#ff9900',
   },
   {
     id: 'k8s-pods',
     icon: <Server className="w-5 h-5" />,
     title: 'Check Kubernetes health',
-    prompt: 'Show me all pods across my Kubernetes clusters, highlight any that are failing or restarting frequently',
+    prompt: 'Use the kubernetes MCP to list pods across all namespaces. Highlight anything not Running or restarting frequently.',
     category: 'cloud',
     accentColor: '#06b6d4',
   },
-
-  // Data & Analysis
   {
     id: 'cost-analysis',
     icon: <BarChart3 className="w-5 h-5" />,
     title: 'Analyze cloud costs',
-    prompt: 'Analyze my cloud spending for the last 30 days. Show me the top 5 cost drivers and suggest ways to optimize',
+    prompt: 'Pull the last 30 days of cloud spend from the cost MCPs. Show me top 5 cost drivers and suggest specific optimizations.',
     category: 'data',
     accentColor: '#00D26A',
   },
@@ -57,12 +67,18 @@ const STARTER_PROMPTS: StarterPrompt[] = [
     id: 'web-research',
     icon: <Search className="w-5 h-5" />,
     title: 'Research a topic',
-    prompt: 'Search the web for the latest best practices on [your topic] and summarize the key findings',
+    prompt: 'Search the web for the latest best practices on [your topic] and summarize the key findings.',
     category: 'data',
     accentColor: '#8b5cf6',
   },
-
-  // Code & Development
+  {
+    id: 'capabilities',
+    icon: <Lightbulb className="w-5 h-5" />,
+    title: 'What can you do?',
+    prompt: 'What can you help me with? Show me the MCP tools currently available and one example task per tool.',
+    category: 'general',
+    accentColor: '#ec4899',
+  },
   {
     id: 'debug-error',
     icon: <Code2 className="w-5 h-5" />,
@@ -75,19 +91,9 @@ const STARTER_PROMPTS: StarterPrompt[] = [
     id: 'write-script',
     icon: <FileText className="w-5 h-5" />,
     title: 'Write a script',
-    prompt: 'Write a Python script that [describe what you need]',
+    prompt: 'Write a Python script that [describe what you need].',
     category: 'code',
     accentColor: '#f59e0b',
-  },
-
-  // General
-  {
-    id: 'capabilities',
-    icon: <Lightbulb className="w-5 h-5" />,
-    title: 'What can you do?',
-    prompt: 'What can you help me with? Show me your capabilities and the tools available.',
-    category: 'general',
-    accentColor: '#ec4899',
   },
   {
     id: 'help',

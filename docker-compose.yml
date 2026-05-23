@@ -53,8 +53,18 @@ services:
       retries: 10
 
   # Milvus standalone (etcd + minio + milvus together)
+  # ─── Optional: Milvus + its deps (etcd + minio) ───────────────────────────
+  # Default install uses pgvector inside the postgres container for vector
+  # search — three fewer containers, ~1.5 GB less memory. Enable Milvus
+  # only if you specifically need it (large embeddings corpora, distributed
+  # search). Bring it up with:
+  #
+  #   docker compose --profile milvus up -d
+  #
+  # …and set MILVUS_HOST=milvus in your .env so the api picks it up.
   etcd:
     <<: *defaults
+    profiles: ["milvus"]
     image: quay.io/coreos/etcd:v3.5.18
     environment:
       ETCD_AUTO_COMPACTION_MODE: revision
@@ -76,6 +86,7 @@ services:
 
   minio:
     <<: *defaults
+    profiles: ["milvus"]
     image: minio/minio:RELEASE.2024-12-18T13-15-44Z
     environment:
       MINIO_ROOT_USER: minioadmin
@@ -91,6 +102,7 @@ services:
 
   milvus:
     <<: *defaults
+    profiles: ["milvus"]
     image: milvusdb/milvus:v2.4.15
     command: ["milvus", "run", "standalone"]
     environment:
@@ -160,8 +172,13 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-openagentic}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-openagentic}
       REDIS_URL: redis://redis:6379
-      MILVUS_HOST: milvus
+      # Default install uses pgvector inside postgres for vector search;
+      # Milvus is only reachable when `docker compose --profile milvus up`
+      # is used. SKIP_TOOL_SEMANTIC_CACHE=true makes the api skip the
+      # Milvus boot path entirely when the profile is off.
+      MILVUS_HOST: ${MILVUS_HOST:-milvus}
       MILVUS_PORT: "19530"
+      SKIP_TOOL_SEMANTIC_CACHE: ${SKIP_TOOL_SEMANTIC_CACHE:-true}
       OLLAMA_ENABLED: "true"
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
       OLLAMA_BASE_URL: ${OLLAMA_HOST:-http://host.docker.internal:11434}
@@ -211,10 +228,12 @@ services:
       # The user already picked their password via ADMIN_SEED_PASSWORD in .env
       # before first boot, so don't force another change on first login.
       ADMIN_REQUIRE_PASSWORD_RESET: ${ADMIN_REQUIRE_PASSWORD_RESET:-false}
+      # One-shot autologin token consumed by install.sh's browser-open.
+      # Empty in normal startups → /api/auth/magic always 401s.
+      MAGIC_BOOT_TOKEN: ${MAGIC_BOOT_TOKEN:-}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
-      milvus: { condition: service_healthy }
       ollama: { condition: service_healthy }
 
   ui:
@@ -265,14 +284,22 @@ services:
       dockerfile: services/openagentic-mcp-proxy/Dockerfile
       args:
         SRC_PATH: services/openagentic-mcp-proxy
-    # Cloud-MCP credentials live under ~/.openagentic/cloud-secrets/*.env.
-    # install.sh creates empty stubs on first run so these mounts never fail;
-    # the wizard (or the user, directly) fills them with real values. Any MCP
-    # the wizard didn't enable is shut off via the per-MCP _DISABLED vars.
+    # ── Cloud creds: prefer the user's existing host CLI configs ─────────
+    # ~/.azure, ~/.aws, ~/.config/gcloud are mounted read-only. The cloud
+    # MCPs (az / boto3 / google-auth) pick them up via their default
+    # credential chains — same auth the user already has on their box.
+    # Falls back to ~/.openagentic/cloud-secrets/*.env if the host dir is
+    # absent (install.sh creates empty stubs so the env_file mounts never
+    # fail). This is what makes "show me my Azure subs" work in 5 min.
     env_file:
       - ${HOME}/.openagentic/cloud-secrets/aws.env
       - ${HOME}/.openagentic/cloud-secrets/azure.env
       - ${HOME}/.openagentic/cloud-secrets/gcp.env
+    volumes:
+      - ${HOME}/.azure:/root/.azure:ro
+      - ${HOME}/.aws:/root/.aws:ro
+      - ${HOME}/.config/gcloud:/root/.config/gcloud:ro
+      - ${HOME}/.kube:/root/.kube:ro
     environment:
       API_HOST: api
       API_PORT: "8000"
@@ -280,16 +307,18 @@ services:
       # the proxy validate. Defaults here mirror the api service above.
       JWT_SECRET: ${JWT_SECRET:-openagentic-dev-jwt-secret-change-me}
       SIGNING_SECRET: ${SIGNING_SECRET:-openagentic-dev-signing-secret-change-me}
-      # Flipped true/false per MCP by the wizard.
-      MCPS_ENABLED: ${MCPS_ENABLED:-web,knowledge,admin}
+      # Cloud MCPs default to ENABLED — they'll auto-detect creds from the
+      # mounted host CLI configs above. If you don't have e.g. `az login`,
+      # the MCP just returns an "auth missing" error and the agent moves on.
+      MCPS_ENABLED: ${MCPS_ENABLED:-web,knowledge,admin,azure,aws,gcp,kubernetes}
       OpenAgentic_WEB_MCP_DISABLED: ${OpenAgentic_WEB_MCP_DISABLED:-false}
       OpenAgentic_KNOWLEDGE_MCP_DISABLED: ${OpenAgentic_KNOWLEDGE_MCP_DISABLED:-false}
       OpenAgentic_ADMIN_MCP_DISABLED: ${OpenAgentic_ADMIN_MCP_DISABLED:-false}
       SEQUENTIAL_THINKING_MCP_DISABLED: ${SEQUENTIAL_THINKING_MCP_DISABLED:-true}
-      OpenAgentic_AWS_MCP_DISABLED: ${OpenAgentic_AWS_MCP_DISABLED:-true}
-      OpenAgentic_AZURE_MCP_DISABLED: ${OpenAgentic_AZURE_MCP_DISABLED:-true}
-      OpenAgentic_GCP_MCP_DISABLED: ${OpenAgentic_GCP_MCP_DISABLED:-true}
-      OpenAgentic_KUBERNETES_MCP_DISABLED: ${OpenAgentic_KUBERNETES_MCP_DISABLED:-true}
+      OpenAgentic_AWS_MCP_DISABLED: ${OpenAgentic_AWS_MCP_DISABLED:-false}
+      OpenAgentic_AZURE_MCP_DISABLED: ${OpenAgentic_AZURE_MCP_DISABLED:-false}
+      OpenAgentic_GCP_MCP_DISABLED: ${OpenAgentic_GCP_MCP_DISABLED:-false}
+      OpenAgentic_KUBERNETES_MCP_DISABLED: ${OpenAgentic_KUBERNETES_MCP_DISABLED:-false}
       OpenAgentic_GITHUB_MCP_DISABLED: ${OpenAgentic_GITHUB_MCP_DISABLED:-true}
       OpenAgentic_PROMETHEUS_MCP_DISABLED: ${OpenAgentic_PROMETHEUS_MCP_DISABLED:-true}
       OpenAgentic_LOKI_MCP_DISABLED: ${OpenAgentic_LOKI_MCP_DISABLED:-true}

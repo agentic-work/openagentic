@@ -39,6 +39,55 @@ import { getMaintenanceMode, getDevLoginPage } from '@/config/runtime';
 import MinimalBackground from '@/shared/components/MinimalBackground';
 // OnboardingTutorial and WelcomeCapabilitySelector removed — replaced by OnboardingTour in ChatContainer
 
+/**
+ * One-shot autologin handler. install.sh opens
+ *   http://localhost:8080/auth/magic?token=<random>
+ * The token came from MAGIC_BOOT_TOKEN at api boot; this component
+ * exchanges it for a JWT, stores it like a normal login, and navigates
+ * to /. Token is single-use on the server. On any failure, falls back
+ * to /login so the user can type the seeded password.
+ */
+const MagicLinkHandler: React.FC = () => {
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('token');
+    if (!token) { setError('No token supplied'); return; }
+    (async () => {
+      try {
+        const res = await fetch(apiEndpoint('/auth/local/magic'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        if (!res.ok) throw new Error(`magic exchange failed (HTTP ${res.status})`);
+        const data = await res.json();
+        if (!data?.token) throw new Error('magic response missing token');
+        // Store the JWT the same way the regular login flow does, then
+        // hard-redirect so the AuthContext picks it up cleanly.
+        localStorage.setItem('auth_token', data.token);
+        window.location.replace('/');
+      } catch (e: any) {
+        loggers.auth.warn({ err: e?.message }, '[magic] autologin failed — falling back to /login');
+        setError(e?.message || 'magic exchange failed');
+        setTimeout(() => window.location.replace('/login'), 1500);
+      }
+    })();
+  }, []);
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center glass-card" style={{ padding: 32, maxWidth: 420 }}>
+        {error
+          ? <div style={{ color: 'var(--color-warning, #f59e0b)' }}>Autologin failed: {error}. Redirecting to login…</div>
+          : <>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
+              <p className="mt-4 text-text-secondary">Signing you in…</p>
+            </>
+        }
+      </div>
+    </div>
+  );
+};
+
 // Logout component that handles logout and redirect
 const LogoutHandler: React.FC = () => {
   const { logout } = useAuth();
@@ -261,6 +310,7 @@ function AppContent(): React.ReactElement {
             <Route path="/login" element={
               isAuthenticated ? <Navigate to="/" replace /> : <LoginComponent />
             } />
+            <Route path="/auth/magic" element={<MagicLinkHandler />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/auth/access-denied" element={<AccessDenied />} />
             <Route path="/logout" element={<LogoutHandler />} />
