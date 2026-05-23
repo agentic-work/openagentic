@@ -36,6 +36,7 @@ import { AdminQueryProvider } from '../../hooks/useAdminQuery'
 import { useAdminRibbon } from '../../hooks/useAdminRibbon'
 import { Banner, EmptyInline, PageHead } from '../../primitives-v3'
 import { AdminAgentDock, type AISuggestion } from '../../primitives-v2'
+import { enterpriseLockFor } from '../../shell-v2/pageRouter'
 
 /**
  * LeafErrorBoundary — catches render errors from a single leaf so a
@@ -308,8 +309,6 @@ function renderPage(leaf: AdminLeaf) {
   // OSS enterprise gate. v3 leaves share the same ENTERPRISE_LEAVES set
   // as v2 (defined in shell-v2/pageRouter); locked leaves render the
   // upsell lock screen instead of the real route.
-  const { enterpriseLockFor } = require('../../shell-v2/pageRouter') as
-    typeof import('../../shell-v2/pageRouter');
   const locked = enterpriseLockFor(leaf.id);
   if (locked) {
     return <LeafErrorBoundary leafName={leaf.name}>{locked as any}</LeafErrorBoundary>;

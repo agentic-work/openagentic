@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from 'react'
 import { DashboardOverview } from '../pages/dashboard/DashboardOverview'
 import { useTheme } from '../hooks/useTheme'
+import { LockScreen } from '../Upsell'
 
 // ---------------------------------------------------------------------------
 // Lazy-loaded v1 section components — paths mirror AdminPortal.tsx exactly
@@ -283,8 +284,6 @@ const ENTERPRISE_LEAVES: Record<string, { feature: string; description?: string;
 export function enterpriseLockFor(id: string): React.ReactNode | null {
   const meta = ENTERPRISE_LEAVES[id];
   if (!meta) return null;
-  // Lazy import to keep the upsell out of the critical chunk.
-  const { LockScreen } = require('../Upsell') as typeof import('../Upsell');
   return <LockScreen feature={meta.feature} description={meta.description} capabilities={meta.capabilities} />;
 }
 

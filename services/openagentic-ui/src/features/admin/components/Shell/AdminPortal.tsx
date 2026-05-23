@@ -143,6 +143,7 @@ import { useSystemConfig } from '@/hooks/useSystemConfig';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { featureFlags } from '@/config/featureFlags';
 import { apiRequest } from '@/utils/api';
+import { enterpriseLockFor } from '../../shell-v2/pageRouter';
 
 interface AdminPortalProps {
   theme: string;
@@ -1061,9 +1062,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ theme, embedded, onClose }) =
     // OSS enterprise gate. Shared ENTERPRISE_LEAVES set lives in
     // shell-v2/pageRouter; if this leaf is locked, render the upsell
     // instead of the route.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { enterpriseLockFor } = require('../../shell-v2/pageRouter') as
-      typeof import('../../shell-v2/pageRouter');
     const locked = enterpriseLockFor(activeSection);
     if (locked) return locked;
 
