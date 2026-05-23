@@ -17,7 +17,12 @@
 #                      GCP / k8s creds (mounted read-only into mcp-proxy).
 #
 #   --wizard       Launch the Ink TUI wizard for careful configuration
-#                  (provider choice, per-MCP creds, Helm, etc.).
+#                  (provider choice, per-MCP creds, Helm, etc.). Power-user
+#                  path; the Ink wizard writes the same .env shape that
+#                  --env consumes, so you can wizard once then commit it.
+#   --env PATH     Skip ALL prompts. Copy PATH to ./.env and bring up the
+#                  stack as-is. Useful for scripted installs / CI / 2nd
+#                  machines where you already have a known-good .env.
 #   --no-open      Don't auto-open the browser at the end.
 #   --ollama URL   Override the Ollama endpoint (default: localhost:11434).
 set -euo pipefail
@@ -50,13 +55,15 @@ step()  { printf '\n  %s▸%s %s\n' "$C_PURPLE" "$C_RESET" "$*"; }
 MODE=quick
 OPEN_BROWSER=1
 OLLAMA_HOST_OVERRIDE=""
+ENV_FILE_OVERRIDE=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --wizard)  MODE=wizard;     shift ;;
+    --env)     MODE=env-file; ENV_FILE_OVERRIDE="$2"; shift 2 ;;
     --no-open) OPEN_BROWSER=0;  shift ;;
     --ollama)  OLLAMA_HOST_OVERRIDE="$2"; shift 2 ;;
     -h|--help)
-      sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//;s/^#//'
+      sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//;s/^#//'
       exit 0 ;;
     *) shift ;;
   esac
@@ -107,6 +114,58 @@ mkdir -p "$SECRETS_DIR"
 for f in aws.env azure.env gcp.env; do
   [[ -f "$SECRETS_DIR/$f" ]] || printf '# Fill in via the wizard or by hand. Empty = MCP relies on mounted host CLI creds.\n' > "$SECRETS_DIR/$f"
 done
+
+# ─── Env-file path ──────────────────────────────────────────────────────────
+# Skips both wizard + auto-gen. Copies the user-supplied .env in, brings the
+# stack up, autologins via MAGIC_BOOT_TOKEN if the env defines one. The Ink
+# wizard writes the same shape, so this is the "I already configured it once,
+# now do it again" path.
+if [[ "$MODE" == "env-file" ]]; then
+  step "Env file"
+  [[ -n "$ENV_FILE_OVERRIDE" ]] || fatal '--env requires a path argument.'
+  [[ -f "$ENV_FILE_OVERRIDE" ]] || fatal "env file not found: $ENV_FILE_OVERRIDE"
+  cp "$ENV_FILE_OVERRIDE" .env
+  chmod 600 .env || true
+  ok "Copied $ENV_FILE_OVERRIDE → ./.env"
+
+  # Pull the MAGIC_BOOT_TOKEN out if the supplied env has one; otherwise mint
+  # a fresh one + write it back so first-run autologin still works.
+  if grep -qE '^MAGIC_BOOT_TOKEN=.{16,}' .env; then
+    export MAGIC_BOOT_TOKEN="$(grep -E '^MAGIC_BOOT_TOKEN=' .env | head -1 | cut -d= -f2-)"
+    ok 'Using MAGIC_BOOT_TOKEN from supplied env'
+  else
+    MAGIC_TOKEN="$(openssl rand -hex 24 2>/dev/null || head -c 32 /dev/urandom | base64 | tr -d '/+=' | head -c 32)"
+    export MAGIC_BOOT_TOKEN="$MAGIC_TOKEN"
+    echo "MAGIC_BOOT_TOKEN=$MAGIC_TOKEN" >> .env
+    ok 'Minted fresh MAGIC_BOOT_TOKEN'
+  fi
+
+  step "docker compose up"
+  docker compose up -d 2>&1 | tail -8
+
+  info 'Waiting for api healthy (~90s on first boot)…'
+  s=unknown
+  for _ in $(seq 1 90); do
+    s=$(docker inspect --format '{{.State.Health.Status}}' openagentic-api-1 2>/dev/null || echo unknown)
+    [[ "$s" == "healthy" ]]   && { ok 'api is healthy'; break; }
+    [[ "$s" == "unhealthy" ]] && fatal 'api went unhealthy. Check `docker logs openagentic-api-1`.'
+    sleep 2
+  done
+  [[ "$s" == "healthy" ]] || fatal 'api did not go healthy in ~3min.'
+
+  UI_HOST_PORT=$(grep -E '^UI_HOST_PORT=' .env | head -1 | cut -d= -f2- || echo 8080)
+  UI_HOST_PORT="${UI_HOST_PORT:-8080}"
+  MAGIC_URL="http://localhost:${UI_HOST_PORT}/auth/magic?token=${MAGIC_BOOT_TOKEN}"
+  printf '\n  %sOpenAgentic is up.%s\n' "$C_GREEN$C_BOLD" "$C_RESET"
+  printf '  Chat UI:    %s%s%s\n' "$C_BOLD" "http://localhost:${UI_HOST_PORT}" "$C_RESET"
+  printf '  Autologin:  %s%s%s\n\n' "$C_BOLD" "$MAGIC_URL" "$C_RESET"
+  if [[ "$OPEN_BROWSER" == "1" ]]; then
+    if   command -v xdg-open >/dev/null 2>&1; then xdg-open "$MAGIC_URL" >/dev/null 2>&1 || true
+    elif command -v open     >/dev/null 2>&1; then open     "$MAGIC_URL" >/dev/null 2>&1 || true
+    fi
+  fi
+  exit 0
+fi
 
 # ─── Wizard path ────────────────────────────────────────────────────────────
 if [[ "$MODE" == "wizard" ]]; then

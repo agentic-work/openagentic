@@ -52,6 +52,10 @@ const MagicLinkHandler: React.FC = () => {
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get('token');
     if (!token) { setError('No token supplied'); return; }
+    // Stash the boot token so the Setup wizard can replay it if we land on
+    // /setup (the api's overwrite guard requires it when an admin/provider
+    // already exists, which can happen on re-installs against a populated db).
+    try { window.sessionStorage.setItem('mb_token', token); } catch { /* ignore */ }
     (async () => {
       try {
         const res = await fetch(apiEndpoint('/auth/local/magic'), {
@@ -59,6 +63,12 @@ const MagicLinkHandler: React.FC = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token }),
         });
+        if (res.status === 401) {
+          // Magic token already consumed OR setup hasn't created the admin
+          // yet. Either way, /setup is the right place to land.
+          window.location.replace('/setup');
+          return;
+        }
         if (!res.ok) throw new Error(`magic exchange failed (HTTP ${res.status})`);
         const data = await res.json();
         if (!data?.token) throw new Error('magic response missing token');
@@ -112,6 +122,30 @@ const LogoutHandler: React.FC = () => {
   );
 };
 
+/**
+ * One-shot check against /api/setup/status. When the api reports the
+ * stack hasn't been initialized yet (no admin OR no provider), we send
+ * the user to /setup before any other route logic runs. Result is
+ * cached for the lifetime of the App so we don't refetch on every nav.
+ */
+type SetupState = { phase: 'loading' } | { phase: 'needs-setup' } | { phase: 'ready' };
+const useSetupStatus = (): SetupState => {
+  const [state, setState] = useState<SetupState>({ phase: 'loading' });
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(apiEndpoint('/setup/status'));
+        if (!r.ok) { setState({ phase: 'ready' }); return; }  // best-effort: don't block app
+        const data = await r.json();
+        setState({ phase: data?.needsSetup ? 'needs-setup' : 'ready' });
+      } catch {
+        setState({ phase: 'ready' });
+      }
+    })();
+  }, []);
+  return state;
+};
+
 // Protected route component with route-change session validation
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading, isApiDown, validateSession } = useAuth();
@@ -163,9 +197,13 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
+// Lazy-load the Setup wizard so its bundle only loads on first install.
+const SetupWizard = React.lazy(() => import('@/features/setup/SetupWizard'));
+
 // Main app content that needs auth
 function AppContent(): React.ReactElement {
   const navigate = useNavigate();
+  const setup = useSetupStatus();
   const [chatFunctions, setChatFunctions] = useState<{
     createNewSession: () => void;
     toggleMetrics: () => void;
@@ -307,14 +345,27 @@ function AppContent(): React.ReactElement {
                 }
               />
             )}
+            {/* First-run Setup wizard. Whenever /api/setup/status reports
+                needsSetup=true, anyone hitting /login or any protected
+                route gets bounced here. */}
+            <Route path="/setup" element={
+              <React.Suspense fallback={<div style={{ padding: 32, color: 'var(--color-textMuted)' }}>Loading setup…</div>}>
+                <SetupWizard />
+              </React.Suspense>
+            } />
             <Route path="/login" element={
-              isAuthenticated ? <Navigate to="/" replace /> : <LoginComponent />
+              setup.phase === 'needs-setup'
+                ? <Navigate to="/setup" replace />
+                : isAuthenticated
+                  ? <Navigate to="/" replace />
+                  : <LoginComponent />
             } />
             <Route path="/auth/magic" element={<MagicLinkHandler />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/auth/access-denied" element={<AccessDenied />} />
             <Route path="/logout" element={<LogoutHandler />} />
             <Route path="/*" element={
+              setup.phase === 'needs-setup' ? <Navigate to="/setup" replace /> :
               <ProtectedRoute>
                 <Routes>
                   <Route path="/" element={

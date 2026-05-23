@@ -65,6 +65,7 @@ import { validateAnyToken } from './auth/tokenValidator.js';
 import { UserPermissionsService } from './services/UserPermissionsService.js';
 // Modular plugins (HIGH-001 refactoring)
 import authPlugin from './plugins/auth.plugin.js';
+import setupPlugin from './plugins/setup.plugin.js';
 import adminPlugin from './plugins/admin.plugin.js';
 import healthPlugin from './plugins/health.plugin.js';
 import userPlugin from './plugins/user.plugin.js';
@@ -868,6 +869,14 @@ async function registerAllRoutes() {
     });
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register auth plugin');
+  }
+
+  // First-run Setup wizard endpoints (unauthenticated; idempotent — see
+  // src/routes/setup.ts for the overwrite guard via MAGIC_BOOT_TOKEN).
+  try {
+    await server.register(setupPlugin);
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register setup plugin');
   }
 
   // Register Health & Monitoring routes via modular plugin (HIGH-001 refactoring)
