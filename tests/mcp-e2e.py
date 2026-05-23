@@ -2,35 +2,39 @@
 """
 End-to-end MCP harness.
 
-Drives the install in three phases:
+Drives the full "5 minutes to first chat" flow in four phases:
 
-  1. Detect — figure out which host cloud CLIs the runner actually has
-     usable creds for (Azure az, AWS, gcloud, kubectl).
-  2. Wizard + boot — runs the Ink wizard via PTY (no --dry-run; this is
-     the real launch path), selecting the matching cloud MCPs and the
-     "Use my host CLI creds" option for each one. Waits for openagentic-api
-     to report healthy.
-  3. Probe — for every detected MCP, mints a JWT and sends a chat prompt
-     through /api/chat/stream that should trigger that MCP's tool, then
-     greps the streamed response for evidence that a real cloud API call
-     succeeded (subscription id, account number, project id, pod name).
+  1. Detect — which host cloud CLIs (Azure az, AWS, gcloud, kubectl)
+     have usable creds. The mcp-proxy mounts ~/.azure / ~/.aws /
+     ~/.config/gcloud / ~/.kube read-only, so detected creds work
+     end-to-end without anything pasted into the UI.
 
-Anything short of "we saw real data come back" is a hard failure. The
-point of the harness is to make "show me my Azure subs" demos reliable —
-so we don't pretend a stack is healthy when chat → tool_call → cloud is
-actually broken.
+  2. Setup — drive the in-UI first-run wizard at /setup via Playwright:
+     fill admin email/password, probe Ollama, pick chat + embed models,
+     hit Start. Lands in /chat. Mirrors what a real user does.
+
+  3. Login → JWT — yank the JWT out of localStorage (the wizard's
+     Start handler stored it there), reuse for the probe phase.
+
+  4. Probe — for each detected MCP, send a chat prompt through
+     /api/chat/stream and grep the response for real cloud data
+     (subscription id, 12-digit AWS account, projectId, kube-system pod
+     names) AND for known failure markers. Anything short of "real data
+     came back" is a hard failure.
 
 Usage:
-  python3 tests/mcp-e2e.py                    # full: detect + boot + probe + teardown
-  python3 tests/mcp-e2e.py --keep             # don't tear the stack down
-  python3 tests/mcp-e2e.py --skip-wizard      # assume stack already up; just probe
+  python3 tests/mcp-e2e.py                    # full: detect + setup + probe + teardown
+  python3 tests/mcp-e2e.py --keep             # leave stack up after probing
+  python3 tests/mcp-e2e.py --skip-setup       # assume the wizard's already done; just probe
   python3 tests/mcp-e2e.py --only azure,k8s   # probe just these MCPs
+  python3 tests/mcp-e2e.py --headed           # watch playwright drive the browser
 
 Env overrides:
   OLLAMA_HOST           default: http://host.docker.internal:11434
-  OLLAMA_CHAT_MODEL     default: gpt-oss:20b
-  COMPOSE_PROJECT       default: openagentic
-  API_PORT              default: 8080 (the host port docker-compose maps)
+  OLLAMA_CHAT_MODEL     default: llama3.2:3b
+  OLLAMA_EMBED_MODEL    default: nomic-embed-text
+  API_PORT              default: 8080
+  MCP_E2E_ADMIN_PASS    default: E2eMcpHarness!9
 """
 from __future__ import annotations
 
@@ -78,7 +82,9 @@ ADMIN_EMAIL = "admin@openagentic.local"
 ADMIN_PASS = os.environ.get("MCP_E2E_ADMIN_PASS", "E2eMcpHarness!9")
 API_PORT = int(os.environ.get("API_PORT", "8080"))
 API_BASE = f"http://localhost:{API_PORT}"
-OLLAMA_CHAT_MODEL = os.environ.get("OLLAMA_CHAT_MODEL", "gpt-oss:20b")
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://host.docker.internal:11434")
+OLLAMA_CHAT_MODEL = os.environ.get("OLLAMA_CHAT_MODEL", "llama3.2:3b")
+OLLAMA_EMBED_MODEL = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text")
 
 
 # ─── Host CLI detection ────────────────────────────────────────────────────
@@ -222,99 +228,96 @@ def detect_clis(only: Optional[set[str]]) -> list[CloudCli]:
     return out
 
 
-# ─── Wizard PTY driver ─────────────────────────────────────────────────────
-def drive_wizard(enabled_mcp_ids: Iterable[str]) -> None:
-    """Real launch (no WIZARD_DRY_RUN). Picks docker target, generated
-    admin password, Ollama-only LLM strategy, the enabled cloud MCPs, and
-    'Use my host CLI creds' for each one. Bails to docker-compose-up at
-    Review."""
+# ─── Playwright wizard driver ──────────────────────────────────────────────
+def drive_ui_setup(headed: bool = False) -> str:
+    """Open the UI, walk the first-run /setup wizard, return the JWT.
+
+    The setup wizard at /setup posts to /api/setup/complete and stores
+    the returned JWT in localStorage('auth_token'), then hard-redirects
+    to /chat. We yank the token out of localStorage on the chat page
+    and hand it back so the probe phase can reuse it.
+    """
     try:
-        import pexpect
+        from playwright.sync_api import sync_playwright
     except ImportError:
-        raise SystemExit("pexpect missing — run: pip install pexpect (or use the venv at tools/setup/tests/.venv)")
+        raise SystemExit(
+            "playwright python package missing. Install:\n"
+            "  python3 -m pip install playwright && python3 -m playwright install chromium"
+        )
 
-    ENTER, DOWN, SPACE, TAB = "\r", "\x1b[B", " ", "\t"
-    ANSI = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+    info(f"Opening {API_BASE} in {'headed' if headed else 'headless'} Chromium")
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=not headed)
+        ctx = browser.new_context(viewport={"width": 1280, "height": 900})
+        page = ctx.new_page()
+        page.set_default_timeout(15_000)
 
-    def expect(child, anchor: str, timeout: float = 30.0) -> None:
-        deadline = time.time() + timeout
-        buf = ""
-        while time.time() < deadline:
-            try:
-                chunk = child.read_nonblocking(size=4096, timeout=0.3)
-            except pexpect.TIMEOUT:
-                continue
-            except pexpect.EOF:
-                raise AssertionError(f"wizard exited before '{anchor}'. tail:\n{buf[-1500:]}")
-            text = ANSI.sub("", chunk.decode(errors="replace"))
-            buf += text
-            if anchor in buf:
-                return
-        raise AssertionError(f"timeout waiting for '{anchor}'. tail:\n{buf[-1500:]}")
-
-    env = os.environ.copy()
-    env["FORCE_COLOR"] = "0"
-    env["TERM"] = "xterm-256color"
-    env["ADMIN_USER_EMAIL"] = ADMIN_EMAIL
-    # Real launch — DO NOT set WIZARD_DRY_RUN.
-
-    child = pexpect.spawn(str(TSX_BIN), ["src/index.tsx"],
-                          cwd=str(SETUP_DIR), env=env, encoding=None,
-                          dimensions=(50, 140), timeout=30)
-
-    expect(child, "Where do you want to run openagentic?")
-    child.send(ENTER)  # docker
-
-    expect(child, "Create your admin account")
-    child.send(ENTER)
-    time.sleep(0.3)
-    child.send(ADMIN_PASS); time.sleep(0.3); child.send(ENTER)
-
-    expect(child, "How should the platform call LLMs?")
-    child.send(ENTER)  # Ollama-only (1st option)
-
-    expect(child, "Where is your Ollama?")
-    child.send(ENTER)  # accept default
-
-    expect(child, "Which MCPs do you want enabled?")
-    # The MCP selection step pre-checks defaults (web/knowledge/admin and
-    # the cloud MCPs that defaultOn=true). Press 'a' to select-all then
-    # let the auth step skip any whose creds we DON'T have.
-    child.send("a"); time.sleep(0.3); child.send(ENTER)
-
-    # For each cloud MCP that's enabled and has host-creds detected, pick
-    # the host-creds option (it's the first option whenever detected).
-    # For other auth screens we just hit ENTER / DOWNs as needed.
-    enabled = set(enabled_mcp_ids)
-    auth_order = ["aws", "azure", "gcp", "kubernetes", "github", "prometheus", "loki", "alertmanager"]
-    for mcp_id in auth_order:
-        label = {"aws": "AWS", "azure": "Azure", "gcp": "GCP", "kubernetes": "Kubernetes",
-                 "github": "GitHub", "prometheus": "Prometheus", "loki": "Loki",
-                 "alertmanager": "Alertmanager"}[mcp_id]
+        # Land on /. First-run gate should redirect us to /setup.
+        page.goto(API_BASE)
         try:
-            expect(child, f"{label}: credentials", timeout=20)
-        except AssertionError:
-            continue  # this MCP wasn't selected / has no auth step
-        if mcp_id in enabled:
-            # host-creds is the first option when detected → ENTER picks it.
-            child.send(ENTER)
-        else:
-            # Skip — last option. Navigate to it: DOWN until we hit "Skip".
-            # Safest is to hit DOWN 3-4 times then ENTER (handles 3-4 option menus).
-            for _ in range(4):
-                child.send(DOWN); time.sleep(0.05)
-            child.send(ENTER)
+            page.wait_for_url("**/setup", timeout=10_000)
+        except Exception:
+            current = page.url
+            raise SystemExit(
+                f"expected redirect to /setup, got {current}. "
+                f"Setup may already be done; pass --skip-setup."
+            )
+        ok("setup wizard opened")
 
-    expect(child, "Review & launch")
-    child.send(ENTER)  # Launch
+        # Admin email is pre-populated with admin@openagentic.local; replace
+        # it with ours in case the harness is being re-run.
+        page.get_by_label("Admin email").fill(ADMIN_EMAIL)
+        page.get_by_label("Admin password (≥ 8 chars)").fill(ADMIN_PASS)
+        # Ollama host is pre-populated; reset to the value the harness wants
+        # so a stale .env doesn't surprise us.
+        page.get_by_label("Ollama host").fill(OLLAMA_HOST)
+        info("filled admin + ollama fields")
 
-    # Real launch — wait for the "Open browser" task to finish or for the
-    # health task to settle. Generous timeout: first boot pulls images.
-    expect(child, "openagentic is running", timeout=600)
-    try:
-        child.terminate(force=True)
-    except Exception:
-        pass
+        # The wizard auto-probes on mount; click Probe to force a fresh one
+        # using the value we just typed, then wait for the model dropdowns
+        # to populate.
+        page.get_by_role("button", name=re.compile("Probe Ollama", re.I)).click()
+        # Wait for either the "found N chat + M embedding models" hint or
+        # for the dropdowns themselves to render.
+        try:
+            page.wait_for_selector("text=/found \\d+ chat \\+ \\d+ embedding models/", timeout=15_000)
+            ok("ollama probe succeeded")
+        except Exception:
+            warn("probe didn't surface model counts; continuing with whatever the form has")
+
+        # Pick the chat + embed models if dropdowns are present.
+        chat_select = page.locator('select').filter(has_text=re.compile(OLLAMA_CHAT_MODEL.split(":")[0], re.I)).first
+        if chat_select.count() > 0:
+            chat_select.select_option(label=OLLAMA_CHAT_MODEL)
+            ok(f"chat model set to {OLLAMA_CHAT_MODEL}")
+        embed_select = page.locator('select').filter(has_text=re.compile("embed|nomic", re.I)).first
+        if embed_select.count() > 0:
+            try:
+                embed_select.select_option(label=OLLAMA_EMBED_MODEL)
+                ok(f"embed model set to {OLLAMA_EMBED_MODEL}")
+            except Exception:
+                pass  # optional field
+
+        # Submit. Wait for the redirect to /chat (the wizard's success path).
+        page.get_by_role("button", name=re.compile("^Start$", re.I)).click()
+        try:
+            page.wait_for_url("**/chat", timeout=30_000)
+        except Exception:
+            # Surface any error the wizard displayed inline.
+            err = page.locator('text=/setup failed|setup transaction failed|HTTP \\d+/').first
+            err_msg = err.text_content() if err.count() > 0 else "no inline error visible"
+            (REPO / ".e2e-logs").mkdir(exist_ok=True)
+            page.screenshot(path=str(REPO / ".e2e-logs" / "setup-failed.png"))
+            raise SystemExit(f"setup never redirected to /chat. Inline error: {err_msg}")
+        ok("setup completed → /chat")
+
+        # Pull the JWT out of localStorage.
+        token = page.evaluate("() => localStorage.getItem('auth_token')")
+        if not token:
+            raise SystemExit("setup landed in /chat but no auth_token in localStorage")
+        ctx.close()
+        browser.close()
+        return token
 
 
 # ─── Wait for healthy ──────────────────────────────────────────────────────
@@ -413,10 +416,13 @@ def probe(cli: CloudCli, token: str) -> bool:
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--keep", action="store_true", help="leave the stack running after probing")
-    ap.add_argument("--skip-wizard", action="store_true", help="assume the stack is already running")
+    ap.add_argument("--skip-setup", action="store_true",
+                    help="setup is already done; log in via /api/auth/local/login instead of the UI wizard")
     ap.add_argument("--only", help="comma-separated MCP ids to probe (azure,aws,gcp,kubernetes)")
     ap.add_argument("--no-detect", action="store_true",
                     help="don't gate probes on host CLI detection (assumes stack already has the creds)")
+    ap.add_argument("--headed", action="store_true",
+                    help="run playwright in headed mode so you can watch the wizard fill itself in")
     args = ap.parse_args(argv)
 
     only: Optional[set[str]] = set(args.only.split(",")) if args.only else None
@@ -431,16 +437,20 @@ def main(argv: list[str]) -> int:
             warn("no host CLIs detected — nothing to probe; exiting cleanly")
             return 0
 
-    if not args.skip_wizard:
-        banner("Wizard + boot")
-        if not TSX_BIN.exists():
-            raise SystemExit(f"tsx missing — run: (cd {SETUP_DIR} && npm install)")
-        drive_wizard([c.mcp_id for c in clis])
-        wait_for_api_healthy()
+    # Always make sure the api is healthy before touching it. The harness
+    # assumes the stack has been brought up via install.sh already; we
+    # just verify, we don't boot for you.
+    banner("Stack health")
+    wait_for_api_healthy(timeout=60)
 
-    banner("Login")
-    token = login()
-    ok(f"got JWT (len={len(token)})")
+    if args.skip_setup:
+        banner("Login (skip-setup)")
+        token = login()
+        ok(f"got JWT via /api/auth/local/login (len={len(token)})")
+    else:
+        banner("Setup wizard (Playwright)")
+        token = drive_ui_setup(headed=args.headed)
+        ok(f"got JWT via /setup wizard (len={len(token)})")
 
     banner("Probe each detected MCP")
     results = [(c.label, probe(c, token)) for c in clis]
@@ -453,11 +463,7 @@ def main(argv: list[str]) -> int:
         mark = f"{GREEN}✓{RESET}" if ok_ else f"{RED}✗{RESET}"
         print(f"    {mark} {label}")
 
-    if not args.keep and not args.skip_wizard:
-        banner("Teardown")
-        subprocess.run(["docker", "compose", "down"], cwd=str(REPO), check=False)
-        ok("stack stopped")
-    elif args.keep:
+    if args.keep:
         print(f"\n  {GRAY}--keep set: stack left running at {API_BASE}{RESET}")
 
     return 0 if passed == total else 1

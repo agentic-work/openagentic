@@ -167,7 +167,10 @@ services:
         SRC_PATH: services/openagentic-api
     extra_hosts:
       - "ollama.local:127.0.0.1"
-      - "host.docker.internal"
+      # host-gateway is the docker keyword that resolves to the host's
+      # gateway IP, which is how Linux containers reach a process running
+      # on the host (Mac/Windows Desktop sets this automatically).
+      - "host.docker.internal:host-gateway"
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-openagentic}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-openagentic}
