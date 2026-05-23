@@ -99,7 +99,7 @@ export const setupRoutes: FastifyPluginAsync = async (fastify) => {
     // forwards it from sessionStorage when the page is opened via the magic link.
     const [existingAdminCount, existingProviderCount] = await Promise.all([
       prisma.user.count({ where: { is_admin: true } }),
-      prisma.lLMProvider.count({ where: { name: 'ollama-bootstrap' } }),
+      prisma.lLMProvider.count({ where: { name: 'ollama' } }),
     ]);
     if ((existingAdminCount > 0 || existingProviderCount > 0)) {
       const boot = process.env.MAGIC_BOOT_TOKEN;
@@ -140,7 +140,7 @@ export const setupRoutes: FastifyPluginAsync = async (fastify) => {
         });
 
         const provider = await tx.lLMProvider.upsert({
-          where: { name: 'ollama-bootstrap' },
+          where: { name: 'ollama' },
           update: {
             display_name: 'Ollama (bootstrap)',
             provider_type: 'ollama',
@@ -155,7 +155,7 @@ export const setupRoutes: FastifyPluginAsync = async (fastify) => {
             deleted_at: null,
           },
           create: {
-            name: 'ollama-bootstrap',
+            name: 'ollama',
             display_name: 'Ollama (bootstrap)',
             provider_type: 'ollama',
             enabled: true,
@@ -170,29 +170,49 @@ export const setupRoutes: FastifyPluginAsync = async (fastify) => {
         });
 
         // Chat role — pin the user's choice as the default reasoning model.
+        // capabilities is REQUIRED for SmartModelRouter to attach tools to
+        // completions (see SmartModelRouter.createProfileFromDiscovery —
+        // missing capabilities → all flags resolve to false, the model gets
+        // zero tools, and every tool-using chat turn fails silently).
+        const chatCaps = {
+          chat: true,
+          streaming: true,
+          jsonMode: true,
+          functionCalling: true,
+          functionCallingAccuracy: 0.78,
+          maxContextTokens: 8192,
+          maxOutputTokens: 4096,
+        };
         await tx.modelRoleAssignment.upsert({
           where: { role_model_provider: { role: 'chat', model: chatModel, provider: 'ollama' } } as any,
-          update: { enabled: true, priority: 10, updated_at: new Date() },
+          update: { enabled: true, priority: 10, capabilities: chatCaps, updated_at: new Date() },
           create: {
             role: 'chat',
             model: chatModel,
             provider: 'ollama',
             enabled: true,
             priority: 10,
+            capabilities: chatCaps,
             created_by: user.id,
           },
         });
 
         if (embedModel) {
+          const embedCaps = {
+            embeddings: true,
+            streaming: false,
+            maxContextTokens: 8192,
+          };
           await tx.modelRoleAssignment.upsert({
             where: { role_model_provider: { role: 'embedding', model: embedModel, provider: 'ollama' } } as any,
-            update: { enabled: true, priority: 10, updated_at: new Date() },
+            update: { enabled: true, priority: 10, capabilities: embedCaps, updated_at: new Date() },
             create: {
               role: 'embedding',
               model: embedModel,
               provider: 'ollama',
               enabled: true,
               priority: 10,
+              capabilities: embedCaps,
               created_by: user.id,
             },
           });

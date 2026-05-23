@@ -238,13 +238,15 @@ interface ModelSelectProps {
 const ModelSelect: React.FC<ModelSelectProps> = ({
   label, value, onChange, options, placeholder, optional,
 }) => {
+  const id = React.useId();
   // If the probe came back with options, render a select. Otherwise allow
   // free-text so the user can type a model name they intend to install.
   if (options.length > 0) {
     return (
       <div>
-        <label className="block text-sm text-text-primary mb-1">{label}</label>
+        <label htmlFor={id} className="block text-sm text-text-primary mb-1">{label}</label>
         <select
+          id={id}
           className="block w-full rounded-input-sm px-4 py-2.5 text-sm bg-surface-1 text-text-primary border border-border-primary focus:outline-none focus:shadow-focus-ring focus:border-accent-primary"
           value={value}
           onChange={(e) => onChange(e.target.value)}

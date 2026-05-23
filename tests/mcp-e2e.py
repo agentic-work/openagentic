@@ -82,9 +82,27 @@ ADMIN_EMAIL = "admin@openagentic.local"
 ADMIN_PASS = os.environ.get("MCP_E2E_ADMIN_PASS", "E2eMcpHarness!9")
 API_PORT = int(os.environ.get("API_PORT", "8080"))
 API_BASE = f"http://localhost:{API_PORT}"
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://host.docker.internal:11434")
+# OLLAMA_HOST is resolved lazily from .env after _read_env_value is defined,
+# so the harness uses whatever the running stack actually points at (the
+# probe POST sends this string to the api, which fetches it server-side).
 OLLAMA_CHAT_MODEL = os.environ.get("OLLAMA_CHAT_MODEL", "llama3.2:3b")
 OLLAMA_EMBED_MODEL = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text")
+
+
+# ─── Helpers ───────────────────────────────────────────────────────────────
+def _read_env_value(key: str) -> Optional[str]:
+    """Pull a single VAR=value out of repo .env. Returns None if absent."""
+    env_path = REPO / ".env"
+    if not env_path.exists():
+        return None
+    for line in env_path.read_text().splitlines():
+        m = re.match(rf'^\s*{re.escape(key)}\s*=\s*(.*?)\s*$', line)
+        if m:
+            v = m.group(1)
+            if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
+                v = v[1:-1]
+            return v
+    return None
 
 
 # ─── Host CLI detection ────────────────────────────────────────────────────
@@ -246,9 +264,27 @@ def drive_ui_setup(headed: bool = False) -> str:
         )
 
     info(f"Opening {API_BASE} in {'headed' if headed else 'headless'} Chromium")
+    # MAGIC_BOOT_TOKEN — pull from .env so we can satisfy the setup overwrite
+    # guard if InitializationService already seeded an admin user before the
+    # wizard runs (common when the api boots from .env-driven admin seeding).
+    magic = _read_env_value("MAGIC_BOOT_TOKEN")
+    # OLLAMA_HOST — read from .env so the harness uses whatever the running
+    # stack actually points at. The probe call is server-side, so the URL
+    # must be reachable FROM the api container — typically `http://ollama:11434`
+    # when using the in-compose ollama, or `http://host.docker.internal:11434`
+    # when pointed at a host ollama.
+    ollama_host = os.environ.get("OLLAMA_HOST") or _read_env_value("OLLAMA_HOST") or "http://ollama:11434"
+    info(f"Using ollama at {ollama_host}")
+
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=not headed)
         ctx = browser.new_context(viewport={"width": 1280, "height": 900})
+        # Pre-seed sessionStorage.mb_token on every page in this context so the
+        # Setup wizard can replay it as `magicToken` in /api/setup/complete.
+        if magic:
+            ctx.add_init_script(
+                f"try {{ window.sessionStorage.setItem('mb_token', {json.dumps(magic)}); }} catch (e) {{}}"
+            )
         page = ctx.new_page()
         page.set_default_timeout(15_000)
 
@@ -270,7 +306,7 @@ def drive_ui_setup(headed: bool = False) -> str:
         page.get_by_label("Admin password (≥ 8 chars)").fill(ADMIN_PASS)
         # Ollama host is pre-populated; reset to the value the harness wants
         # so a stale .env doesn't surprise us.
-        page.get_by_label("Ollama host").fill(OLLAMA_HOST)
+        page.get_by_label("Ollama host").fill(ollama_host)
         info("filled admin + ollama fields")
 
         # The wizard auto-probes on mount; click Probe to force a fresh one
@@ -366,12 +402,29 @@ def login() -> str:
     return body["token"]
 
 
-def chat_stream(token: str, prompt: str, timeout: int = 90) -> str:
-    """POST /api/chat/stream and concatenate everything that comes back."""
+def _create_chat_session(token: str) -> str:
+    """POST /api/chat/sessions → returns a sessionId we can stream messages into."""
+    code, body = http_json("POST", "/api/chat/sessions", body={"title": "mcp-e2e probe"}, token=token)
+    if code not in (200, 201) or not isinstance(body, dict):
+        raise RuntimeError(f"could not create chat session: HTTP {code} body={body!r}")
+    # api returns either { id } or { session: { id } } depending on the handler
+    sid = body.get("id") or (body.get("session") or {}).get("id")
+    if not sid:
+        raise RuntimeError(f"chat session response missing id: {body!r}")
+    return sid
+
+
+def chat_stream(token: str, prompt: str, timeout: int = 120) -> str:
+    """POST /api/chat/stream and concatenate everything that comes back.
+
+    The api expects `{ message, sessionId, model? }` (singular message,
+    one sessionId per chat) — not the OpenAI `messages: [...]` shape.
+    """
+    sid = _create_chat_session(token)
     body = json.dumps({
-        "messages": [{"role": "user", "content": prompt}],
+        "message": prompt,
+        "sessionId": sid,
         "model": OLLAMA_CHAT_MODEL,
-        "stream": True,
     }).encode()
     req = urllib.request.Request(f"{API_BASE}/api/chat/stream", method="POST", data=body)
     req.add_header("Content-Type", "application/json")
