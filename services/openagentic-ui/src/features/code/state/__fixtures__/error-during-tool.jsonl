@@ -1,6 +1,0 @@
-// fixture: error-during-tool — tool execution fails mid-turn; result subtype 'error_during_execution'
-{"type":"system","subtype":"init","cwd":"/workspace","session_id":"sess-fxt-8","tools":["Bash"],"mcp_servers":[],"model":"claude-opus-4","permissionMode":"bypassPermissions","slash_commands":["/help"],"apiKeySource":"env","openagentic_version":"0.6.7","uuid":"uuid-init-008","fast_mode_state":"inactive"}
-{"type":"stream_event","event":{"type":"message_start","message":{"id":"msg_err_1","type":"message","role":"assistant","content":[],"model":"claude-opus-4","stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":0,"output_tokens":0}}},"session_id":"sess-fxt-8","parent_tool_use_id":null,"uuid":"uuid-err-001"}
-{"type":"stream_event","event":{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_FAIL","name":"Bash","input":{}}},"session_id":"sess-fxt-8","parent_tool_use_id":null,"uuid":"uuid-err-002"}
-{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"command\":\"sleep 999"}},"session_id":"sess-fxt-8","parent_tool_use_id":null,"uuid":"uuid-err-003"}
-{"type":"result","subtype":"error_during_execution","is_error":true,"duration_ms":1000,"session_id":"sess-fxt-8","result":"subprocess hung","uuid":"uuid-err-res"}

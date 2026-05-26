@@ -88,7 +88,7 @@
     "chart.js": "^4.5.0",
     "chartjs-node-canvas": "^4.1.6",
     "chokidar": "^4.0.3",
-    "docx": "^9.0.2",
+    "docx": "9.6.1",
     "dotenv": "^16.4.7",
     "fastify": "^5.2.1",
     "glob": "^11.1.0",

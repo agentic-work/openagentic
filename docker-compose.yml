@@ -358,49 +358,6 @@ services:
     environment:
       API_URL: http://api:8000
 
-  # ─── Code Mode runtime (manager + per-session exec containers) ──────────
-  # Disabled by default — opt in with `docker compose --profile codemode up`.
-  # Adds ~2-3 GB and needs Docker socket access for the exec lifecycle.
-  manager:
-    <<: *defaults
-    profiles: ["codemode"]
-    image: ${OPENAGENTIC_REGISTRY:-harbor.agenticwork.io/openagentic}/openagentic-manager:${OPENAGENTIC_TAG:-latest}
-    build:
-      context: .
-      dockerfile: services/openagentic-manager/Dockerfile
-    container_name: openagentic-manager
-    expose: ["3050"]
-    volumes:
-      - code-workspaces:/workspaces
-    environment:
-      PORT: 3050
-      OPENAGENTIC_API_ENDPOINT: http://api:8000
-      OPENAGENTIC_API_KEY: openagentic-internal
-      WORKSPACES_PATH: /workspaces
-      INTERNAL_API_KEY: ${CODE_MANAGER_INTERNAL_KEY:-oap-code-manager-internal}
-      DEFAULT_MODEL: ${DEFAULT_CODE_MODEL:-}
-    depends_on:
-      api: { condition: service_started }
-
-  exec:
-    <<: *defaults
-    profiles: ["codemode"]
-    image: ${OPENAGENTIC_REGISTRY:-harbor.agenticwork.io/openagentic}/openagentic-exec:${OPENAGENTIC_TAG:-latest}
-    build:
-      context: .
-      dockerfile: services/openagentic-exec/Dockerfile
-    container_name: openagentic-exec
-    expose: ["3060"]
-    volumes:
-      - code-workspaces:/workspaces
-    environment:
-      PORT: 3060
-      WORKSPACES_PATH: /workspaces
-      INTERNAL_API_KEY: ${CODE_MANAGER_INTERNAL_KEY:-oap-code-manager-internal}
-      SANDBOX_ENABLED: ${SANDBOX_ENABLED:-true}
-      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
-      DEFAULT_MODEL: ${DEFAULT_CODE_MODEL:-}
-
 networks:
   oap:
     driver: bridge
@@ -412,4 +369,3 @@ volumes:
   minio-data:
   milvus-data:
   ollama-data:
-  code-workspaces:

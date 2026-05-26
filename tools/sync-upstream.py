@@ -27,9 +27,9 @@ RENAMES = [
     ('services/agenticwork-workflows',     'services/openagentic-workflows'),
     ('services/agenticwork-mcp-proxy',     'services/openagentic-mcp-proxy'),
     ('services/agenticwork-ollama',        'services/openagentic-ollama'),
-    ('services/agenticode-exec',           'services/openagentic-exec'),
-    ('services/agenticode-manager',        'services/openagentic-manager'),
-    ('services/agenticode-server',         'services/openagentic-server'),
+    ('services/agenticode-exec',           None),  # Code Mode is enterprise-only — OSS shows lock screen
+    ('services/agenticode-manager',        None),  # Code Mode is enterprise-only — OSS shows lock screen
+    ('services/agenticode-server',         None),  # Code Mode is enterprise-only — OSS shows lock screen
     ('services/agent-proxy',               'services/openagentic-proxy'),
     ('services/oat-executor',              'services/openagentic-synth'),
     ('services/mcps/awp-admin-mcp',        'services/mcps/oap-admin-mcp'),
@@ -95,6 +95,25 @@ SKIP_PREFIXES = (
     'helm/agenticwork/',
     # Upstream session notes / dev-only audit dumps
     'services/audit/',
+    # Code Mode — enterprise-only; OSS shows lock screen with upsell URL.
+    # Source, exec runtime, manager, admin pages, MCPs, helm templates,
+    # e2e specs — all OSS-out at sync time.
+    'services/openagentic-exec/', 'services/openagentic-manager/',
+    'services/openagentic-server/',
+    'services/openagentic-api/src/routes/code-mode/',
+    'services/openagentic-api/src/routes/admin/codemode',
+    'services/openagentic-api/src/routes/admin/code-mode-config',
+    'services/openagentic-api/src/routes/admin/coding-adapters',
+    'services/openagentic-api/src/services/coding-adapters/',
+    'services/openagentic-api/src/services/code/',
+    'services/openagentic-api/src/tests/codemode/',
+    'services/openagentic-ui/src/features/code/',
+    'services/openagentic-ui/src/features/admin/components/CodeMode/',
+    'services/openagentic-ui/src/features/admin/components/Code/',
+    'services/mcps/awp-agenticode-mcp/', 'services/mcps/oap-code-mcp/',
+    'helm/openagentic/templates/code-manager/',
+    'tests/e2e/ui/codemode', 'tests/e2e/codemode',
+    'tests/load/scenarios/codemode/',
     # Playwright reports (generated artifacts)
     'services/openagentic-ui/playwright-report/',
     'services/openagentic-ui/tests/e2e/playwright-report-tests-e2e/',
@@ -300,10 +319,17 @@ SKIP_NAMES = {
     'chat_api_stress_test.py',
     'playwright.config.deployed.ts',
     'COMPREHENSIVE_CODEBASE_SECURITY_v0.4.0.md',
-    # (Code Mode is included now — bans removed.)
-    # The 'agenticwork-code-mode.json' upstream filename is still stale brand;
-    # the openagentic-code-mode.json equivalent is what ships.
-    'agenticwork-code-mode.json',
+    # Code Mode bundle — enterprise-only; OSS shows lock screen.
+    'CodeModeProvisioningService.ts', 'CodeModeSyncService.ts', 'CodeModeMilvusService.ts',
+    'AgenticCodeService.ts', 'AWCodeStorageService.ts',
+    'code-mode-provisioning.ts', 'code-plugins.ts', 'admin-code.ts',
+    'code.ts', 'awcode.ts', 'admin-awcode.ts.disabled',
+    'codemode.plugin.ts',
+    'CodeModeMetricsDashboard.tsx', 'useCodeModeStore.ts',
+    'CodeModePage.tsx', 'AdminCodeModePage.tsx',
+    'CodeSessionsPanel.tsx', 'code-mode.gen.ts',
+    'agenticwork-code-mode.json', 'openagentic-code-mode.json',
+    'CodingCli.tsx',
 }
 
 # Extension-level bans (screenshots, archives, ad-hoc mockups)
@@ -314,6 +340,9 @@ SKIP_CONTENT_HINTS = (
     # Internal companion CLIs we never ship
     'agenticode-cli', 'managedSettings.json', 'managed-mcp.json',
     'GhostPilot', 'ghostpilot', 'GHOSTPILOT',
+    # Code Mode markers — drop any file dominated by them
+    'awcode', 'AWCode', 'AgenticCodeService', 'AgenticCodeSession',
+    'CodeModeProvisioning', 'CodeModeSession', 'useCodeModeWebSocket',
 )
 
 # Stale filename patterns left behind by past renames — filter by path, not content.
@@ -329,6 +358,11 @@ SKIP_PATH_HINTS = (
     '/stress-', '-stress-',
     # Pre-chainguard build artifacts
     '.pre-chainguard',
+    # Code Mode is enterprise-only — block anything with the marker.
+    # OSS shows lock screen via the UI entry point only.
+    'doc-generators/code-mode.gen.ts',
+    '/codemode-', '/code-mode-', '/codemode.', '/code-mode.',
+    'codemode.plugin', 'codemode.test', 'codemode-test', 'code-mode-test',
 )
 
 # ─── Preserve: our local fixes (never overwrite) ─────────────────────────────

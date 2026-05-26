@@ -31,8 +31,6 @@ type TableProbe = {
 const TABLES: TableProbe[] = [
   { schema: 'public', table: 'chat_sessions', column: 'model', label: 'ChatSession.model' },
   { schema: 'public', table: 'chat_messages', column: 'model', label: 'ChatMessage.model' },
-  { schema: 'public', table: 'awcode_sessions', column: 'model', label: 'AWCodeSession.model' },
-  { schema: 'public', table: 'awcode_messages', column: 'model', label: 'AWCodeMessage.model' },
   { schema: 'public', table: 'background_jobs', column: 'model', label: 'BackgroundJob.model' },
   { schema: 'public', table: 'token_usage', column: 'model', label: 'TokenUsage.model' },
   { schema: 'public', table: 'llm_request_logs', column: 'model', label: 'LLMRequestLog.model' },

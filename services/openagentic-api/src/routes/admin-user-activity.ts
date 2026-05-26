@@ -50,7 +50,7 @@ export const adminUserActivityRoutes: FastifyPluginAsync = async (fastify: Fasti
    *
    * Returns currently active users based on UserSession records
    * where is_active=true and last_accessed_at is within the last 15 minutes.
-   * Joins with User, ChatSession, and CodeModeProvisioning for context.
+   * Joins with User, ChatSession, and (chat sessions) for context.
    */
   fastify.get('/live', async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
