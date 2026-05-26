@@ -5,7 +5,7 @@ describe('LIVE Azure RG response shape', () => {
   it('emits streaming_table for the exact live shape', () => {
     const liveResponse = {
       success: true,
-      subscription_id: '00000000-0000-0000-0000-000000000000',
+      subscription_id: '815a115d-bf32-495c-a89f-b5ce6b349b57',
       count: 6,
       resource_groups: [
         { name: 'NetworkWatcherRG', location: 'eastus', provisioning_state: 'Succeeded', tags: {} },
@@ -15,7 +15,7 @@ describe('LIVE Azure RG response shape', () => {
         { name: 'test', location: 'eastus', provisioning_state: 'Succeeded', tags: {} },
         { name: 'DefaultResourceGroup-EUS2', location: 'eastus2', provisioning_state: 'Succeeded', tags: {} },
       ],
-      executed_as: { upn: 'mcp-tester@openagentic.local' },
+      executed_as: { upn: 'mcp-tester@phatoldsungmail.onmicrosoft.com' },
     };
     const write = vi.fn();
     const okObj = autoEmitStreamingTable({

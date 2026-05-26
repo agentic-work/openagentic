@@ -31,7 +31,7 @@ describe('unifiedAuth — tenantId propagation (SEV-0 Flows-fix-A1)', () => {
   it('Azure AD token: request.user.tenantId equals decoded.tid', () => {
     const validatedUser = {
       userId: 'azure_oid-1234',
-      email: 'mcp-tester@openagentic.local',
+      email: 'mcp-tester@phatoldsungmail.onmicrosoft.com',
       name: 'MCP Tester',
       isAdmin: false,
       groups: [],
@@ -119,7 +119,7 @@ describe('unifiedAuth + tenantContext integration (SEV-0 Flows-fix-A1)', () => {
   it('defaultTenantExtractor reads tenantId stamped by unifiedAuth (Azure AD)', () => {
     const validatedUser = {
       userId: 'azure_oid-9999',
-      email: 'mcp-tester@openagentic.local',
+      email: 'mcp-tester@phatoldsungmail.onmicrosoft.com',
       name: 'MCP Tester',
       isAdmin: false,
       groups: [],
@@ -133,7 +133,7 @@ describe('unifiedAuth + tenantContext integration (SEV-0 Flows-fix-A1)', () => {
   });
 
   it('PRE-FIX BUG: if unifiedAuth had not propagated tenantId, extractor returns null', () => {
-    // Simulate the pre-fix shape — same as the live observed state on the dev environment
+    // Simulate the pre-fix shape — same as the live observed state on chat-dev
     // where every authenticated request had request.tenantId === null.
     const requestUserMissingTenant: any = {
       id: 'u', userId: 'u', email: 'e@e.io', name: 'N',

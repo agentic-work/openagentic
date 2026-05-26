@@ -20,7 +20,7 @@ export { AdminIcon } from './Shared';
 export * from './Shared/AdminIcons';
 
 // Overview - Dashboard views
-export { DashboardOverview, AnalyticsDashboard } from './Overview';
+export { DashboardOverview } from './Overview';
 
 // System - User management and settings
 export {
@@ -39,7 +39,8 @@ export {
   MultiModelConfigView,
   MultiModelSankeyChart,
   OllamaManagementView,
-  TieredFCConfigView
+  TieredFCConfigView,
+  RouterTuningView
 } from './LLM';
 
 // MCP - Model Context Protocol management
@@ -52,9 +53,9 @@ export {
 } from './MCP';
 
 // Content - Prompts, templates, pipeline
+// PromptTemplateManager RIPPED 2026-05-11 (chatmode-rip Phase E final cleanup).
 export {
   PipelineSettingsView,
-  PromptTemplateManager,
   PromptMetrics
 } from './Content';
 
@@ -67,12 +68,23 @@ export {
   PerformanceMetrics,
   FeedbackAnalyticsView,
   AuditLogsView,
+  CodeModeMetricsDashboard
 } from './Monitoring';
 
 // Security - Rate limits, API tokens
 export { RateLimitsView, DeveloperAPIView } from './Security';
 
-// Prompts - Composable prompt modules
-export { PromptModulesView } from './Prompts/PromptModulesView';
+// Code - Code mode management (legacy)
+export { AWCodeSessionsView, AWCodeSettingsView } from './Code';
+
+// CodeMode - New admin section (replaces Openagentic)
+export { CodeModeSettingsView, CodeModeMcpView, CodeModeSkillsView, CodeModeUsersView, CodeModeGlobalSettingsView } from './CodeMode';
+
+// Prompts — Phase E.6 (2026-05-10) ripped the composable prompt-module
+// admin surface alongside PromptComposer/PromptModuleRegistry. Only the
+// effectiveness analytics view remains.
 export { EffectivenessView } from './Prompts/EffectivenessView';
+
+// System Configuration
+export { DefaultModelsView } from './SystemConfiguration';
 

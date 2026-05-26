@@ -42,7 +42,7 @@ export class ChatSummaryService {
     try {
       const session = await (this.prisma as any).chatSession.findUnique({
         where: { id: sessionId },
-        select: { id: true, message_count: true },
+        select: { id: true, message_count: true, user_id: true },
       });
 
       if (!session) {
@@ -78,6 +78,28 @@ export class ChatSummaryService {
           structured_summary: structured as any,
         },
       });
+
+      // #1085 sidecar — fire-and-forget upsert into the user's per-user
+      // Milvus memory so memory_search can recall "the chat we had last
+      // Tuesday about Azure RGs" on later sessions. Failures swallowed —
+      // the chat_sessions.summary write is the SoT, memory is best-effort.
+      if (session.user_id) {
+        void (async () => {
+          try {
+            const { getMilvusMemoryService } = await import('./MilvusMemoryService.js');
+            await getMilvusMemoryService(this.logger as any).upsertUserMemory(session.user_id, {
+              kind: 'session_summary',
+              title: `Session ${sessionId} summary`,
+              content: summaryText.slice(0, 4000),
+            });
+          } catch (err: any) {
+            this.logger.warn(
+              { err: err?.message ?? String(err), sessionId, userId: session.user_id },
+              '[ChatSummary] memory upsert failed — summary still persisted',
+            );
+          }
+        })();
+      }
     } catch (err: any) {
       this.logger.warn(
         { err: err?.message, sessionId },

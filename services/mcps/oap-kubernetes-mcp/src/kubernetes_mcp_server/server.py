@@ -80,29 +80,110 @@ def validate_namespace_write_access(namespace: str, operation: str = "modify"):
 # ============================================================================
 
 def get_k8s_client():
-    """Get or create the Kubernetes API client"""
+    """Get the Kubernetes API client.
+
+    2026-05-23 fix: explicit Bearer header attach. Live-debugged via
+    urllib3 request interception inside a running MCP pod:
+
+      Captured request from kubernetes-python client:
+        GET /api/v1/namespaces/agentic-dev/pods?limit=1
+        Headers: Accept, User-Agent, Content-Type
+        (Authorization MISSING — request 401'd at kube-apiserver)
+
+    Root cause: kubernetes-python's `Configuration.api_key` mechanism for
+    in-cluster bearer auth does NOT attach an Authorization header in this
+    runtime (k8s-python 35/36 + python 3.14 + FastMCP + in-cluster SA).
+    The `Configuration.api_key = {'authorization': 'bearer <tok>'}` was
+    present, but the ApiClient.call_api auth_settings lookup didn't
+    translate it into an HTTP header. Result: every list_namespaced_pod
+    call sent with NO auth → 401 Unauthorized.
+
+    Fix: read the projected SA token from disk explicitly and call
+    `api_client.set_default_header('Authorization', f'Bearer {tok}')`.
+    This bypasses Configuration.api_key entirely and guarantees the
+    Authorization header lands on every request. Verified: same pod,
+    same token, with set_default_header → 200 OK, 26 pods returned.
+    """
     global _k8s_api, _k8s_apps_api, _k8s_core_api
 
-    if _k8s_api is None:
+    try:
+        from kubernetes import client, config
+
+        # Try in-cluster config first, then fall back to kubeconfig.
+        in_cluster = False
         try:
-            from kubernetes import client, config
+            config.load_incluster_config()
+            in_cluster = True
+        except config.ConfigException:
+            config.load_kube_config()
 
-            # Try in-cluster config first, then fall back to kubeconfig
+        api_client = client.ApiClient()
+
+        # CRITICAL: kubernetes-python's auto-attach of in-cluster bearer
+        # auth is broken here. The async/FastMCP runtime path was found
+        # to silently strip `set_default_header('Authorization')` because
+        # `RESTClientObject.request` calls `update_params_for_auth` which
+        # rewrites headers based on `Configuration.api_key`. Direct sync
+        # test returned 200 (set_default_header survived); async FastMCP
+        # path returned 401 (rewrite overwrote it). Fix below patches
+        # BOTH (a) Configuration.api_key + api_key_prefix (canonical
+        # path kubernetes-python's auth_settings hook reads) AND
+        # (b) default_headers as belt-and-suspenders.
+        if in_cluster:
             try:
-                config.load_incluster_config()
-                logger.info("Loaded in-cluster Kubernetes config")
-            except config.ConfigException:
-                config.load_kube_config()
-                logger.info("Loaded kubeconfig from default location")
+                with open(
+                    "/var/run/secrets/kubernetes.io/serviceaccount/token", "r"
+                ) as fh:
+                    token = fh.read().strip()
+                if token:
+                    cfg = api_client.configuration
+                    # (a) Canonical kubernetes-python in-cluster auth path.
+                    # `Configuration.auth_settings()` looks up the dict
+                    # KEY 'BearerToken' (NOT 'authorization' / 'Authorization')
+                    # to build `{key: 'authorization', value: <prefixed_token>}`
+                    # for `update_params_for_auth`. Using the wrong dict
+                    # key silently no-ops and lets the overwrite wipe our
+                    # default_header. See client.Configuration.auth_settings.
+                    cfg.api_key = {"BearerToken": token}
+                    cfg.api_key_prefix = {"BearerToken": "Bearer"}
+                    # (b) Belt+suspenders — explicit default header. With
+                    # the canonical path now correct, auth_settings will
+                    # set lowercase 'authorization' from BearerToken, and
+                    # our 'Authorization' default_header coexists. urllib3
+                    # treats them case-insensitively on the wire.
+                    api_client.set_default_header(
+                        "Authorization", f"Bearer {token}"
+                    )
+                    # One-line proof on each init so we can diff
+                    # async-path vs sync-path in pod logs.
+                    has_default = (
+                        "Authorization" in api_client.default_headers
+                    )
+                    has_cfg_bearertoken = bool(cfg.api_key.get("BearerToken"))
+                    auth_settings_value = cfg.auth_settings().get(
+                        "BearerToken", {}
+                    ).get("value", "")
+                    auth_settings_ok = auth_settings_value.startswith(
+                        "Bearer "
+                    )
+                    logger.info(
+                        f"[k8s-auth] init: in_cluster=True "
+                        f"default_header_set={has_default} "
+                        f"cfg_BearerToken_set={has_cfg_bearertoken} "
+                        f"auth_settings_yields_bearer={auth_settings_ok} "
+                        f"token_len={len(token)}"
+                    )
+            except Exception as token_err:
+                logger.warning(
+                    f"Could not read SA token for explicit-header fix: {token_err}"
+                )
 
-            _k8s_api = client.ApiClient()
-            _k8s_core_api = client.CoreV1Api()
-            _k8s_apps_api = client.AppsV1Api()
-
-            logger.info("Kubernetes client initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize Kubernetes client: {e}")
-            raise RuntimeError(f"Kubernetes client initialization failed: {e}")
+        _k8s_api = api_client
+        _k8s_core_api = client.CoreV1Api(api_client=api_client)
+        _k8s_apps_api = client.AppsV1Api(api_client=api_client)
+    except Exception as e:
+        logger.error(f"Failed to initialize Kubernetes client: {e}")
+        raise RuntimeError(f"Kubernetes client initialization failed: {e}")
 
     return _k8s_api, _k8s_core_api, _k8s_apps_api
 

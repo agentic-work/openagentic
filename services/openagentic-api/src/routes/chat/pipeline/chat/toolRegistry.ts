@@ -48,6 +48,14 @@ import { WEB_FETCH_TOOL } from '../../../../services/WebFetchTool.js';
 import { SYNTH_TOOL } from '../../../../services/SynthTool.js';
 import { PATTERN_SAVE_TOOL } from '../../../../services/PatternSaveTool.js';
 import { PATTERN_RECALL_TOOL } from '../../../../services/PatternRecallTool.js';
+// 2026-05-24 — memory_search re-added to T1 catalog for #1085 (per-user RAG
+// memory). The dispatch arm + Milvus semanticRecall layer were wired in
+// commits 1-3 of #1085 but the TOOL DEFINITION wasn't being offered to the
+// model, so any model that tried to recall (gpt-oss:20b, Sonnet, etc.) hit
+// the #850 unknown-tool short-circuit and returned "tool not available."
+// Live evidence: chat-dev 2026-05-24, mcp-tester user, model called
+// memory_search → offeredCount=17, short-circuit fired, model apologized.
+import { MEMORY_SEARCH_TOOL_DEF } from '../../../../services/MemorySearchTool.js';
 // 2026-05-12 — visualization + clarification meta-tools brought BACK into
 // T1 (was discovery-only, but tool_search wasn't reliably surfacing them
 // for smaller models like gpt-oss:20b — model would fall back to mermaid).
@@ -55,6 +63,12 @@ import { COMPOSE_VISUAL_TOOL } from '../../../../services/ComposeVisualTool.js';
 import { COMPOSE_APP_TOOL } from '../../../../services/ComposeAppTool.js';
 import { RENDER_ARTIFACT_TOOL } from '../../../../services/RenderArtifactTool.js';
 import { REQUEST_CLARIFICATION_TOOL } from '../../../../services/RequestClarificationTool.js';
+// 2026-05-24 — generate_image brought BACK into the always-available meta-tool
+// surface. It was deleted with the legacy ChatPipeline.ts in the #741 chatmode
+// rip and never re-added; with no image-gen tool in the catalog the model
+// fabricated `<img src="https://unsplash...">` tags instead of generating a
+// real image. Sits next to compose_app so the model always sees it.
+import { GENERATE_IMAGE_TOOL } from '../../../../services/GenerateImageTool.js';
 
 export interface BuildChatToolArrayOptions {
   /** Pre-resolved MCP tools (no semantic top-K filter for chat). */
@@ -114,12 +128,18 @@ export function getAllBaseTools(
     SYNTH_TOOL,
     PATTERN_SAVE_TOOL,
     PATTERN_RECALL_TOOL,
+    // #1085 — per-user RAG memory recall. Sibling of memorize (write side
+    // routes via discovery / memorize tool). Dispatch arm wires both
+    // AgentMemoryService.recall (Postgres substring) AND
+    // MilvusMemoryService.searchUserMemories (per-user semantic vector).
+    MEMORY_SEARCH_TOOL_DEF,
     // Always-available visualization + clarification meta-tools — the model
     // shouldn't need to discover these. Live capture 2026-05-12 with
     // gpt-oss:20b: "No tool in catalog for compose_visual" → fell back to
     // mermaid (model training-data bias) when discovery-only.
     COMPOSE_VISUAL_TOOL,
     COMPOSE_APP_TOOL,
+    GENERATE_IMAGE_TOOL,
     RENDER_ARTIFACT_TOOL,
     REQUEST_CLARIFICATION_TOOL,
   ];

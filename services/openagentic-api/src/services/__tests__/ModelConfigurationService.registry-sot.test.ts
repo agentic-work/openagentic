@@ -2,7 +2,7 @@
  * ModelConfigurationService must derive its candidate pool from the Registry
  * (admin.model_role_assignments), not from admin.llm_providers.provider_config.models.
  *
- * Failure this pins: on the dev environment 2026-04-23, the live Registry has only
+ * Failure this pins: on chat-dev 2026-04-23, the live Registry has only
  *   chat|global.anthropic.claude-sonnet-4-6|aws-bedrock|enabled
  *   chat|gpt-oss:20b|ollama-hal|enabled
  * Yet `[ModelConfig] Configuration loaded` reports 152 models and
@@ -107,7 +107,7 @@ describe('ModelConfigurationService — Registry is the SoT', () => {
 
   it('returns only models named in the Registry — not the full provider_config.models catalog', async () => {
     const m = prismaMock();
-    // Mirrors the real dev state: provider advertises 3 models, registry enables one.
+    // Mirrors the real chat-dev state: provider advertises 3 models, registry enables one.
     m.lLMProvider.findMany.mockResolvedValue([
       {
         id: 'p-bedrock',

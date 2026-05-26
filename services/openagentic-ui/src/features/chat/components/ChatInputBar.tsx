@@ -20,6 +20,7 @@ import ChatInputToolbar from './ChatInputToolbar';
 // ToolApprovalPopup moved to ChatMessages for inline display
 import { MCPCallsDisplay } from './MCPInlineDisplay';
 import FileAttachmentThumbnails from './FileAttachmentThumbnails';
+import { LongRunStatusPill } from './LongRunStatusPill';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useSlashCommands, type SlashCommand } from '../hooks/useSlashCommands';
 import CommandAutocomplete from './CommandAutocomplete';
@@ -100,6 +101,14 @@ interface ChatInputBarProps {
   // Admin Tool Inspector
   onToggleToolInspector?: () => void;
   showToolInspector?: boolean;
+  // Sev-1 #923 — long-run progress indicator (visible inside the composer
+  // after the stream has been active for 30+ seconds). For multi-minute
+  // capstone prompts where the assistant header (and its ThinkingSphere)
+  // has scrolled out of view.
+  streamStartedAt?: number | null;
+  longRunModelLabel?: string;
+  longRunOutputTokens?: number;
+  longRunStatus?: string;
 }
 
 const ChatInputBar: React.FC<ChatInputBarProps> = ({
@@ -160,6 +169,11 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
   // Admin Tool Inspector
   onToggleToolInspector,
   showToolInspector = false,
+  // Sev-1 #923 — long-run progress indicator wiring
+  streamStartedAt = null,
+  longRunModelLabel,
+  longRunOutputTokens,
+  longRunStatus,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -413,23 +427,6 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
       onDrop={handleDrop}
     >
       <div className="max-w-3xl mx-auto mb-4">
-        {/* Floating MCP Calls Display - REMOVED: Duplicate of VerboseMCPDisplay in ChatMessages */}
-        {/* VerboseMCPDisplay in ChatMessages already shows MCP execution details beautifully */}
-        {/* <AnimatePresence>
-          {activeMcpCalls && activeMcpCalls.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="mb-4 flex justify-center w-full"
-            >
-              <div className="w-full">
-                <MCPCallsDisplay calls={activeMcpCalls} />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence> */}
-
         {/* Attachments Preview - Enhanced with FileAttachmentThumbnails */}
         <AnimatePresence>
           {attachments.length > 0 && (
@@ -447,16 +444,20 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
           )}
         </AnimatePresence>
 
-        {/* Unified Input Container - Gemini-style design with integrated toolbar */}
+        {/* Unified Input Container — M3 Expressive (task #160):
+            rounded-input (28px), surface-1 bg, soft-sm resting shadow,
+            200ms ease-emphasized transitions. No glassmorphism — the
+            textured blur competes with the pill shape. */}
         <div
           className={clsx(
-            'glass-surface relative',
-            'transition-all duration-200',
-            isDragging && 'border-2 border-theme-accent/30'
+            'relative bg-surface-1',
+            'transition-[border-color,box-shadow,background] duration-200 ease-emphasized',
+            isDragging && 'ring-2 ring-theme-accent/30'
           )}
           style={{
             border: isDragging ? undefined : '1px solid var(--color-border)',
-            borderRadius: '24px',
+            borderRadius: 'var(--radius-input)',
+            boxShadow: 'var(--shadow-soft-sm)',
           }}
         >
           {/* Drag Overlay */}
@@ -466,7 +467,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 flex items-center justify-center bg-blue-500/10 rounded-2xl z-10 border-2 border-dashed border-blue-500"
+                className="absolute inset-0 flex items-center justify-center bg-blue-500/10 rounded-input z-10 border-2 border-dashed border-blue-500"
               >
                 <div className="text-center">
                   <motion.div
@@ -494,7 +495,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="absolute top-0 left-0 right-0 -translate-y-full mb-2 p-3 rounded-lg shadow-lg border z-20 bg-theme-bg-card/95 border-theme-border-primary"
+                className="absolute top-0 left-0 right-0 -translate-y-full mb-2 p-3 rounded-popover shadow-soft-md border z-20 bg-theme-bg-card/95 border-theme-border-primary"
               >
                 <div className="space-y-2">
                   {Object.entries(uploadProgress).map(([fileKey, progress]) => {
@@ -537,8 +538,27 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
             />
           )}
 
-          {/* Textarea area - Auto-expanding input field */}
-          <div className="flex items-center gap-2 px-4 py-3 relative">
+          {/* Sev-1 #923 — Long-run progress pill. Lives inside the composer
+              container's normal flow (NOT floating — the floating bottom-
+              center pattern was ripped in #667). The pill returns null
+              before 30s elapsed so short responses stay clean. Visible
+              inside the same rounded surface as the textarea so it tracks
+              the user's eye line during multi-minute capstone prompts. */}
+          {(isStreaming || isLoading) && streamStartedAt != null && (
+            <div className="px-5 pt-3">
+              <LongRunStatusPill
+                isStreaming={isStreaming || isLoading}
+                streamStartedAt={streamStartedAt}
+                modelLabel={longRunModelLabel}
+                outputTokens={longRunOutputTokens}
+                status={longRunStatus}
+              />
+            </div>
+          )}
+
+          {/* Textarea — M3 Expressive (task #160): generous 16px vert /
+              20px horiz padding to balance the 28px pill shape. */}
+          <div className="flex items-center gap-2 pl-5 pr-3 py-4 relative">
             <div className="flex-1">
               <textarea
                 ref={textareaRef}
@@ -572,53 +592,66 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   maxHeight: `${28 * maxRows}px`,
                   background: 'transparent',
                   boxShadow: 'none',
-                  color: 'rgb(var(--text-primary))',
+                  // --text-primary is a hex value (#E8E8ED dark / #1F1F1F light)
+                  // not an "R G B" triple — DO NOT wrap it in rgb(). Apply it
+                  // directly so the typed text is always visible across themes.
+                  color: 'var(--text-primary)',
                 }}
               />
             </div>
 
-            {/* Send/Stop Buttons - Both visible during streaming to allow queuing */}
+            {/* Send/Stop — M3 Expressive (task #160): circular 40×40 pill
+                buttons anchored right. Press scale 0.98 over 150ms; the
+                idle state is the accent primary so the "send" affordance
+                reads instantly. */}
             <div className="flex items-center gap-1.5">
               <AnimatePresence>
-                {/* Stop button - shown during streaming/loading */}
                 {showStopButton && (
                   <motion.button
                     key="stop"
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={onStopGeneration}
                     aria-label="Stop generation"
                     className={clsx(
-                      'p-2 rounded-lg transition-colors',
+                      'h-10 w-10 rounded-pill flex items-center justify-center',
+                      'transition-[background,transform] duration-200 ease-emphasized',
+                      'focus-visible:outline-none focus-visible:shadow-focus-ring',
                       'bg-red-600 hover:bg-red-700 text-white'
                     )}
                   >
-                    <Square size={16} aria-hidden="true" />
+                    <Square size={14} aria-hidden="true" />
                   </motion.button>
                 )}
-                {/* Send button - shown when there's content (even during streaming) */}
                 {showSendButton && (
                   <motion.button
                     key="send"
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={onSend}
                     disabled={!hasContent && attachments.length === 0}
                     aria-label={showStopButton ? "Queue message" : "Send message"}
                     title={showStopButton ? "Queue this message for after current response" : "Send message"}
                     className={clsx(
-                      'p-2 rounded-lg transition-colors',
-                      (!hasContent && attachments.length === 0) && 'opacity-50 cursor-not-allowed',
-                      showStopButton ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-gray-600 hover:bg-gray-500 text-white'
+                      'h-10 w-10 rounded-pill flex items-center justify-center',
+                      'transition-[background,transform,opacity] duration-200 ease-emphasized',
+                      'focus-visible:outline-none focus-visible:shadow-focus-ring',
+                      (!hasContent && attachments.length === 0) && 'opacity-50 cursor-not-allowed'
                     )}
+                    style={{
+                      backgroundColor: showStopButton
+                        ? 'var(--color-primary)'
+                        : hasContent
+                          ? 'var(--color-primary)'
+                          : 'var(--surface-3)',
+                      color: 'var(--cm-bg)',
+                    }}
                   >
-                    <ArrowUp size={16} aria-hidden="true" />
+                    <ArrowUp size={16} aria-hidden="true" strokeWidth={2.5} />
                   </motion.button>
                 )}
               </AnimatePresence>
@@ -629,7 +662,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
           <div
             className="mx-4 h-px"
             style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              backgroundColor: 'color-mix(in srgb, var(--cm-text) 10%, transparent)',
               opacity: 0.3
             }}
           />

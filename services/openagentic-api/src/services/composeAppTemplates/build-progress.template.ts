@@ -50,7 +50,7 @@ const exampleParams: Params = {
     { phaseId: 'p2', ts: '12:01:14', level: 'info', text: 'Step 4/12: COPY package*.json ./' },
     { phaseId: 'p2', ts: '12:02:31', level: 'info', text: 'Step 9/12: RUN npm ci --omit=dev' },
     { phaseId: 'p2', ts: '12:03:09', level: 'info', text: '✓ build complete · sha256:c4a8e2…' },
-    { phaseId: 'p3', ts: '12:03:11', level: 'info', text: '> docker push localhost:5000/agentic/api:v0.7.1-c4a8e2' },
+    { phaseId: 'p3', ts: '12:03:11', level: 'info', text: '> docker push 10.2.10.131:30500/agentic/api:v0.7.1-c4a8e2' },
     { phaseId: 'p3', ts: '12:03:33', level: 'info', text: '✓ pushed (4 layers, 92 MiB)' },
     { phaseId: 'p4', ts: '12:03:35', level: 'info', text: '> helm upgrade openagentic ./helm/openagentic -f values-k3s-local.yaml' },
     { phaseId: 'p4', ts: '12:03:42', level: 'info', text: 'Release "openagentic" has been upgraded. Happy Helming!' },

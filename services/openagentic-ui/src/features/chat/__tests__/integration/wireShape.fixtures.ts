@@ -5,7 +5,7 @@
  * hand-author chunks. Every fixture under
  *   reports/verify-cadence/Q-loop-post-811-604acc6d/*.ndjson
  * is the actual NDJSON our /api/chat/stream emitted to a real customer
- * shaped prompt, captured against dev with a real admin OBO key.
+ * shaped prompt, captured against chat-dev with a real admin OBO key.
  *
  * If a fixture isn't present (operator hasn't captured it yet), the
  * harness SKIPS the test with a loud warn — same regime as the SDK
@@ -53,7 +53,7 @@ export function loadNDJSONFixture(
     console.warn(
       `[wireShape] SKIP — fixture not present at ${relPath}.\n` +
         '          Re-capture via:\n' +
-        '          curl -sk -N -X POST https://chat.openagentic.local/api/chat/stream \\\n' +
+        '          curl -sk -N -X POST https://chat-dev.openagentic.io/api/chat/stream \\\n' +
         '            -H "Authorization: Bearer $ADMIN_KEY" \\\n' +
         `            -H "Content-Type: application/json" \\\n` +
         `            -d '{"sessionId":"<sid>","message":"${prompt}","stream":true}' \\\n` +
@@ -76,7 +76,7 @@ export function loadNDJSONFixture(
 
 /**
  * Canonical Q1 capture: Azure subscriptions + resource groups via admin OBO.
- * Real wire from the dev environment, 2026-05-14, claude-sonnet-4-6 via Bedrock.
+ * Real wire from chat-dev, 2026-05-14, claude-sonnet-4-6 via Bedrock.
  * 815 frames · success=true.
  */
 export const Q1_AZURE_SUBS_RGS_FIXTURE = {

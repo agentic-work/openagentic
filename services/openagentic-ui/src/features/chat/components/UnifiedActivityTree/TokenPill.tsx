@@ -21,14 +21,14 @@ export function TokenPill({ tokensIn, tokensOut, cost, live }: TokenPillProps) {
       gap: 6,
       fontSize: 10,
       fontFamily: 'SF Mono, JetBrains Mono, monospace',
-      color: 'rgba(255,255,255,0.4)',
+      color: 'var(--cm-text-muted)',
       padding: '1px 6px',
       borderRadius: 3,
-      backgroundColor: 'rgba(255,255,255,0.03)',
+      backgroundColor: 'var(--cm-bg-tertiary)',
       animation: live ? 'pulse 2s ease-in-out infinite' : undefined,
     }}>
-      {tokensIn !== undefined && <span style={{ color: '#58a6ff' }}>↓{formatTokens(tokensIn)}</span>}
-      {tokensOut !== undefined && <span style={{ color: '#3fb950' }}>↑{formatTokens(tokensOut)}</span>}
+      {tokensIn !== undefined && <span style={{ color: 'var(--cm-accent)' }}>↓{formatTokens(tokensIn)}</span>}
+      {tokensOut !== undefined && <span style={{ color: 'var(--cm-success)' }}>↑{formatTokens(tokensOut)}</span>}
       {cost !== undefined && cost > 0 && <span>${cost.toFixed(3)}</span>}
     </span>
   );

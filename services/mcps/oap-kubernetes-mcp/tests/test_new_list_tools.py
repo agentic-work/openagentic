@@ -3,7 +3,7 @@ Regression test for the openagentic-kubernetes MCP tool registry (#881).
 
 Why this exists
 ---------------
-Q-loop drives on the dev environment surfaced repeated FAILED-tool-call attempts from
+Q-loop drives on chat-dev surfaced repeated FAILED-tool-call attempts from
 the model trying to enumerate cluster state via k8s list verbs that the
 MCP server simply did not register:
 

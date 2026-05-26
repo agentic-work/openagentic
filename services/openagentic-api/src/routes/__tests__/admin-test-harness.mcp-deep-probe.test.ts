@@ -147,7 +147,7 @@ describe('admin-test-harness — MCP category deep probe', () => {
    * NOT `Bearer ${process.env.MCP_PROXY_API_KEY}` (the wrong env var that's
    * never set in the live api pod → empty Bearer → 401 on every openagentic_* MCP).
    *
-   * Smoking gun: live harness probe on the dev environment showed mcp 1p/10f, all 10 fails
+   * Smoking gun: live harness probe on chat-dev showed mcp 1p/10f, all 10 fails
    * with `Request failed with status code 401`. api pod env: MCP_PROXY_API_KEY
    * length 0, INTERNAL_SERVICE_SECRET length 64. mcp-proxy auth scheme spec is
    * services/openagentic-mcp-proxy/src/main.py:913.

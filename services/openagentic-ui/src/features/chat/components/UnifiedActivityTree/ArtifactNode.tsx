@@ -14,37 +14,37 @@ export function ArtifactNode({ id, artifactType, title, content, sizeBytes, onAc
     padding: '2px 8px',
     fontSize: 10,
     fontFamily: 'SF Mono, JetBrains Mono, monospace',
-    border: '1px solid rgba(188,140,255,0.3)',
+    border: '1px solid color-mix(in srgb, var(--cm-accent) 30%, transparent)',
     background: 'transparent',
-    color: '#bc8cff',
+    color: 'var(--cm-accent)',
     cursor: 'pointer' as const,
     borderRadius: 3,
   };
 
   return (
     <div style={{
-      border: '1px solid rgba(188,140,255,0.2)',
+      border: '1px solid color-mix(in srgb, var(--cm-accent) 20%, transparent)',
       borderRadius: 6,
       padding: 8,
-      backgroundColor: 'rgba(188,140,255,0.03)',
+      backgroundColor: 'color-mix(in srgb, var(--cm-accent) 3%, transparent)',
     }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
         <span style={{
           fontSize: 10,
           fontFamily: 'SF Mono, JetBrains Mono, monospace',
-          color: '#bc8cff',
-          backgroundColor: 'rgba(188,140,255,0.15)',
+          color: 'var(--cm-accent)',
+          backgroundColor: 'color-mix(in srgb, var(--cm-accent) 15%, transparent)',
           padding: '1px 6px',
           borderRadius: 3,
         }}>
           {artifactType}
         </span>
-        <span style={{ fontSize: 12, color: '#e6edf3', fontFamily: 'SF Mono, JetBrains Mono, monospace' }}>
+        <span style={{ fontSize: 12, color: 'var(--cm-text)', fontFamily: 'SF Mono, JetBrains Mono, monospace' }}>
           {title}
         </span>
         {sizeBytes !== undefined && (
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginLeft: 'auto' }}>
+          <span style={{ fontSize: 10, color: 'var(--cm-text-muted)', marginLeft: 'auto' }}>
             {(sizeBytes / 1024).toFixed(1)}KB
           </span>
         )}
@@ -56,8 +56,8 @@ export function ArtifactNode({ id, artifactType, title, content, sizeBytes, onAc
           padding: 6,
           fontSize: 10,
           fontFamily: 'SF Mono, JetBrains Mono, monospace',
-          color: 'rgba(255,255,255,0.5)',
-          backgroundColor: 'rgba(0,0,0,0.2)',
+          color: 'var(--cm-text-secondary)',
+          backgroundColor: 'var(--cm-bg-tertiary)',
           borderRadius: 4,
           maxHeight: 140,
           overflow: 'hidden',

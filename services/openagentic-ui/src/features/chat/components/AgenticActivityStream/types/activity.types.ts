@@ -19,7 +19,8 @@ export type ContentBlockType =
   | 'task_update'
   | 'summary'
   | 'viz_render'   // Typed-block artifact path (compose_visual + render_artifact svg)
-  | 'app_render';  // Typed-block artifact path (compose_app + render_artifact react/html/python_plot)
+  | 'app_render'   // Typed-block artifact path (compose_app + render_artifact react/html/python_plot)
+  | 'image_render'; // Typed-block artifact path (generate_image — inline generated raster image)
 
 export interface ContentBlock {
   id: string;
@@ -85,6 +86,13 @@ export interface ContentBlock {
   html?: string;
   pyodideRequired?: boolean;
   nonce?: string | null;
+  // image_render only — generate_image inline image fields. `imageUrl` is
+  // ALWAYS a same-origin /api/images/:id path (the generate_image tool refuses
+  // external hosts; the SDK reducer drops external URLs defensively).
+  imageUrl?: string;
+  prompt?: string;
+  model?: string;
+  provider?: string;
 }
 
 export interface ContentBlockMetadata {

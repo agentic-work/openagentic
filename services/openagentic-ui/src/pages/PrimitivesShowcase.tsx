@@ -485,7 +485,7 @@ export default function PrimitivesShowcase(): JSX.Element {
               onFullscreen={() => {}}
             >
               <h1>Production Kubernetes Health · Weekly Summary</h1>
-              <div className="art-sub">your-deployment-prod-eastus2 · window 2026-03-20 → 2026-04-19 · for CTO review</div>
+              <div className="art-sub">omhs-prod-eastus2 · window 2026-03-20 → 2026-04-19 · for CTO review</div>
               <h2>Top 3 incidents this window</h2>
               <p>1. Argo Image Updater pinned to a force-moved tag, repo-server cache stale for 4h.</p>
               <p>2. Milvus replica eviction cascade after node-pool autoscale.</p>

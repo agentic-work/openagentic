@@ -16,6 +16,8 @@ export interface UserPermissions {
   deniedLlmProviders: string[];
   allowedMcpServers: string[];
   deniedMcpServers: string[];
+  /** true = user has flows/workflow access granted. Admins always true. */
+  workflowsEnabled: boolean;
   dailyTokenLimit: number | null;
   monthlyTokenLimit: number | null;
   dailyRequestLimit: number | null;
@@ -38,6 +40,7 @@ const DEFAULT_PERMISSIONS: UserPermissions = {
   deniedLlmProviders: [],
   allowedMcpServers: [],
   deniedMcpServers: [],
+  workflowsEnabled: false, // Flows disabled by default — admin grants per user
   dailyTokenLimit: null,
   monthlyTokenLimit: null,
   dailyRequestLimit: null,
@@ -90,8 +93,9 @@ export const useUserPermissions = () => {
         setPermissions({
           ...DEFAULT_PERMISSIONS,
           isAdmin,
-          // Admins get AWCode enabled by default
+          // Admins get AWCode + Flows enabled by default
           canUseAwcode: isAdmin,
+          workflowsEnabled: isAdmin,
         });
         return;
       }
@@ -112,6 +116,7 @@ export const useUserPermissions = () => {
         ...DEFAULT_PERMISSIONS,
         isAdmin,
         canUseAwcode: isAdmin,
+        workflowsEnabled: isAdmin,
       });
     } finally {
       setLoading(false);

@@ -50,46 +50,46 @@ const RISK_CONFIG: Record<
 > = {
   low: {
     label: 'Low Risk',
-    color: '#00D26A',
-    bg: 'rgba(34,197,94,0.12)',
-    border: 'rgba(34,197,94,0.4)',
-    glow: 'rgba(34,197,94,0.20)',
-    gradientFrom: '#00D26A',
-    gradientTo: '#16a34a',
-    pulseColor: 'rgba(34,197,94,0.15)',
+    color: 'var(--cm-success)',
+    bg: 'color-mix(in srgb, var(--cm-success) 12%, transparent)',
+    border: 'color-mix(in srgb, var(--cm-success) 40%, transparent)',
+    glow: 'color-mix(in srgb, var(--cm-success) 20%, transparent)',
+    gradientFrom: 'var(--cm-success)',
+    gradientTo: 'color-mix(in srgb, var(--cm-success) 70%, #000)',
+    pulseColor: 'color-mix(in srgb, var(--cm-success) 15%, transparent)',
     icon: 'shield',
   },
   medium: {
     label: 'Medium Risk',
-    color: '#f59e0b',
-    bg: 'rgba(245,158,11,0.12)',
-    border: 'rgba(245,158,11,0.4)',
-    glow: 'rgba(245,158,11,0.20)',
-    gradientFrom: '#f59e0b',
-    gradientTo: '#d97706',
-    pulseColor: 'rgba(245,158,11,0.15)',
+    color: 'var(--cm-warning)',
+    bg: 'color-mix(in srgb, var(--cm-warning) 12%, transparent)',
+    border: 'color-mix(in srgb, var(--cm-warning) 40%, transparent)',
+    glow: 'color-mix(in srgb, var(--cm-warning) 20%, transparent)',
+    gradientFrom: 'var(--cm-warning)',
+    gradientTo: 'color-mix(in srgb, var(--cm-warning) 70%, #000)',
+    pulseColor: 'color-mix(in srgb, var(--cm-warning) 15%, transparent)',
     icon: 'alert',
   },
   high: {
     label: 'High Risk',
-    color: '#ef4444',
-    bg: 'rgba(239,68,68,0.12)',
-    border: 'rgba(239,68,68,0.5)',
-    glow: 'rgba(239,68,68,0.30)',
-    gradientFrom: '#ef4444',
-    gradientTo: '#dc2626',
-    pulseColor: 'rgba(239,68,68,0.20)',
+    color: 'var(--cm-error)',
+    bg: 'color-mix(in srgb, var(--cm-error) 12%, transparent)',
+    border: 'color-mix(in srgb, var(--cm-error) 50%, transparent)',
+    glow: 'color-mix(in srgb, var(--cm-error) 30%, transparent)',
+    gradientFrom: 'var(--cm-error)',
+    gradientTo: 'color-mix(in srgb, var(--cm-error) 70%, #000)',
+    pulseColor: 'color-mix(in srgb, var(--cm-error) 20%, transparent)',
     icon: 'zap',
   },
   critical: {
     label: 'CRITICAL',
-    color: '#a855f7',
-    bg: 'rgba(168,85,247,0.12)',
-    border: 'rgba(168,85,247,0.6)',
-    glow: 'rgba(168,85,247,0.35)',
-    gradientFrom: '#a855f7',
-    gradientTo: '#7c3aed',
-    pulseColor: 'rgba(168,85,247,0.25)',
+    color: 'var(--cm-accent)',
+    bg: 'color-mix(in srgb, var(--cm-accent) 12%, transparent)',
+    border: 'color-mix(in srgb, var(--cm-accent) 60%, transparent)',
+    glow: 'color-mix(in srgb, var(--cm-accent) 35%, transparent)',
+    gradientFrom: 'var(--cm-accent)',
+    gradientTo: 'color-mix(in srgb, var(--cm-accent) 70%, #000)',
+    pulseColor: 'color-mix(in srgb, var(--cm-accent) 25%, transparent)',
     icon: 'skull',
   },
 };
@@ -310,7 +310,7 @@ const ToolApprovalPopup: React.FC<ToolApprovalPopupProps> = ({
             transition={{ duration: 0.25 }}
             className="fixed inset-0 z-[9999]"
             style={{
-              backgroundColor: 'rgba(0, 0, 0, 0.70)',
+              backgroundColor: 'color-mix(in srgb, var(--cm-bg) 70%, transparent)',
               backdropFilter: 'blur(8px)',
               WebkitBackdropFilter: 'blur(8px)',
             }}
@@ -358,9 +358,9 @@ const ToolApprovalPopup: React.FC<ToolApprovalPopupProps> = ({
                 '--hitl-glow': risk.glow,
                 animation: `hitl-glow-pulse 2s ease-in-out infinite`,
                 boxShadow: `
-                  0 25px 80px rgba(0,0,0,0.5),
-                  0 0 0 1px rgba(255,255,255,0.05),
-                  inset 0 1px 0 rgba(255,255,255,0.08),
+                  0 25px 80px color-mix(in srgb, var(--cm-text) 50%, transparent),
+                  0 0 0 1px color-mix(in srgb, var(--cm-bg) 5%, transparent),
+                  inset 0 1px 0 color-mix(in srgb, var(--cm-bg) 8%, transparent),
                   0 0 60px ${risk.glow}
                 `,
               } as React.CSSProperties}
@@ -431,11 +431,11 @@ const ToolApprovalPopup: React.FC<ToolApprovalPopupProps> = ({
                   <div className="flex flex-col items-center gap-1 flex-shrink-0">
                     <div className="relative w-12 h-12" title={`Auto-deny in ${formatted}`}>
                       <svg width={48} height={48} viewBox="0 0 48 48" className="transform -rotate-90">
-                        <circle cx={24} cy={24} r={20} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={3} />
+                        <circle cx={24} cy={24} r={20} fill="none" stroke="color-mix(in srgb, var(--cm-text) 8%, transparent)" strokeWidth={3} />
                         <circle
                           cx={24} cy={24} r={20}
                           fill="none"
-                          stroke={secondsLeft <= 10 ? '#ef4444' : risk.color}
+                          stroke={secondsLeft <= 10 ? 'var(--cm-error)' : risk.color}
                           strokeWidth={3}
                           strokeDasharray={125.66}
                           strokeDashoffset={125.66 * (1 - countdownFraction)}
@@ -445,7 +445,7 @@ const ToolApprovalPopup: React.FC<ToolApprovalPopupProps> = ({
                       </svg>
                       <span
                         className="absolute inset-0 flex items-center justify-center text-[10px] font-bold font-mono tabular-nums"
-                        style={{ color: secondsLeft <= 10 ? '#ef4444' : risk.color }}
+                        style={{ color: secondsLeft <= 10 ? 'var(--cm-error)' : risk.color }}
                       >
                         {formatted}
                       </span>
@@ -528,7 +528,7 @@ const ToolApprovalPopup: React.FC<ToolApprovalPopupProps> = ({
                         <pre
                           className="mt-2 p-3 rounded-lg text-xs font-mono leading-relaxed overflow-x-auto max-h-48 overflow-y-auto"
                           style={{
-                            backgroundColor: 'rgba(0,0,0,0.3)',
+                            backgroundColor: 'color-mix(in srgb, var(--cm-text) 30%, transparent)',
                             border: '1px solid var(--color-border)',
                             color: 'var(--color-textSecondary)',
                           }}
@@ -542,7 +542,7 @@ const ToolApprovalPopup: React.FC<ToolApprovalPopupProps> = ({
               )}
 
               {/* Separator */}
-              <div className="mx-6 my-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} />
+              <div className="mx-6 my-1" style={{ borderTop: '1px solid color-mix(in srgb, var(--cm-text) 6%, transparent)' }} />
 
               {/* Action buttons — LARGE and prominent */}
               <div className="flex items-center justify-between gap-3 px-6 py-4">
@@ -554,16 +554,16 @@ const ToolApprovalPopup: React.FC<ToolApprovalPopupProps> = ({
                   className="flex-1 px-6 py-3 rounded-xl text-sm font-semibold transition-all"
                   style={{
                     color: 'var(--color-textSecondary)',
-                    backgroundColor: 'rgba(255,255,255,0.04)',
+                    backgroundColor: 'color-mix(in srgb, var(--cm-text) 4%, transparent)',
                     border: '1px solid var(--color-border)',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.12)';
-                    e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)';
-                    e.currentTarget.style.color = '#ef4444';
+                    e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--cm-error) 12%, transparent)';
+                    e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--cm-error) 30%, transparent)';
+                    e.currentTarget.style.color = 'var(--cm-error)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.04)';
+                    e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--cm-text) 4%, transparent)';
                     e.currentTarget.style.borderColor = 'var(--color-border)';
                     e.currentTarget.style.color = 'var(--color-textSecondary)';
                   }}
@@ -578,9 +578,9 @@ const ToolApprovalPopup: React.FC<ToolApprovalPopupProps> = ({
                   onClick={onApprove}
                   className="flex-1 px-6 py-3 rounded-xl text-base font-bold transition-all"
                   style={{
-                    color: '#fff',
+                    color: 'var(--cm-bg)',
                     background: `linear-gradient(135deg, ${risk.gradientFrom}, ${risk.gradientTo})`,
-                    boxShadow: `0 4px 20px ${risk.glow}, inset 0 1px 0 rgba(255,255,255,0.15)`,
+                    boxShadow: `0 4px 20px ${risk.glow}, inset 0 1px 0 color-mix(in srgb, var(--cm-bg) 15%, transparent)`,
                     border: `1px solid ${risk.border}`,
                   }}
                 >

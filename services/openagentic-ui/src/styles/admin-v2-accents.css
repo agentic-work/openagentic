@@ -186,7 +186,7 @@ html[data-density="comfortable"] {
 
 /* ============================================================
    Admin v3 typography stack — locked 2026-05-06
-   Repo is your environment-airgap-strict (no Google Fonts CDN). Inter + JetBrains
+   Repo is CDC-airgap-strict (no Google Fonts CDN). Inter + JetBrains
    Mono are self-hosted (@font-face in index.css) and are the PRIMARY
    choices for the admin shell. Geist + Departure Mono are kept as
    optional secondaries — render only if a future build drops the

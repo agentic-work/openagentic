@@ -12,6 +12,7 @@ import {
   bedrockInferenceProfileToDiscoveredModel,
   extractFoundationIdFromProfile,
   indexFoundationSummaries,
+  isFoundationModelEligibleForDiscovery,
   type BedrockFoundationSummary,
   type BedrockInferenceProfileSummary,
 } from '../services/llm-providers/BedrockCapabilityInference';
@@ -48,7 +49,8 @@ describe('bedrockSummaryToDiscoveredModel', () => {
     expect(out.capabilities?.chat).toBe(false);
   });
 
-  it('flags image generation only when output is IMAGE and input lacks TEXT', () => {
+  it('flags image generation whenever output modality is IMAGE (incl. text-to-image)', () => {
+    // Editing model (image in → image out), e.g. Stable Image upscale/inpaint.
     const imageOnly = bedrockSummaryToDiscoveredModel({
       modelId: 'img-1',
       inputModalities: ['IMAGE'],
@@ -56,14 +58,35 @@ describe('bedrockSummaryToDiscoveredModel', () => {
     })!;
     expect(imageOnly.capabilities?.imageGeneration).toBe(true);
 
+    // Text-to-image generator (Nova Canvas / Titan Image / SD3): the model
+    // takes a TEXT prompt and emits an IMAGE. The prompt input does NOT make
+    // it a chat model — its output modality is IMAGE, so it IS image-gen.
     const textToImage = bedrockSummaryToDiscoveredModel({
       modelId: 'img-2',
       inputModalities: ['TEXT'],
       outputModalities: ['IMAGE'],
     })!;
-    // Text-driven image renderers are still chat-capable, so we don't
-    // flag them as imageGeneration-only.
-    expect(textToImage.capabilities?.imageGeneration).toBe(false);
+    expect(textToImage.capabilities?.imageGeneration).toBe(true);
+    expect(textToImage.capabilities?.chat).toBe(false);
+
+    // Prompt + source image edit model (Stable Image search-and-replace).
+    const promptPlusImage = bedrockSummaryToDiscoveredModel({
+      modelId: 'img-3',
+      inputModalities: ['TEXT', 'IMAGE'],
+      outputModalities: ['IMAGE'],
+    })!;
+    expect(promptPlusImage.capabilities?.imageGeneration).toBe(true);
+    expect(promptPlusImage.capabilities?.chat).toBe(false);
+
+    // A multimodal chat/vision model (image+text in, TEXT out) is NOT image-gen.
+    const visionChat = bedrockSummaryToDiscoveredModel({
+      modelId: 'chat-1',
+      inputModalities: ['TEXT', 'IMAGE'],
+      outputModalities: ['TEXT'],
+    })!;
+    expect(visionChat.capabilities?.imageGeneration).toBe(false);
+    expect(visionChat.capabilities?.chat).toBe(true);
+    expect(visionChat.capabilities?.vision).toBe(true);
   });
 
   it('defaults streaming to true when responseStreamingSupported is omitted', () => {
@@ -90,6 +113,55 @@ describe('bedrockSummaryToDiscoveredModel', () => {
     expect((out.capabilities as any)?.tools).toBeUndefined();
     expect((out.capabilities as any)?.thinking).toBeUndefined();
     expect((out as any).costTier).toBeUndefined();
+  });
+});
+
+describe('isFoundationModelEligibleForDiscovery', () => {
+  it('INCLUDES a LEGACY on-demand image model (Nova Canvas / Titan Image)', () => {
+    // AWS tags nova-canvas-v1:0 + titan-image-generator-v2:0 as LEGACY even
+    // though both are on-demand-invocable. They MUST appear in the add-catalog.
+    const novaCanvas: BedrockFoundationSummary = {
+      modelId: 'amazon.nova-canvas-v1:0',
+      inputModalities: ['TEXT', 'IMAGE'],
+      outputModalities: ['IMAGE'],
+      inferenceTypesSupported: ['ON_DEMAND', 'PROVISIONED'],
+      modelLifecycle: { status: 'LEGACY' },
+    };
+    expect(isFoundationModelEligibleForDiscovery(novaCanvas)).toBe(true);
+
+    const titanImage: BedrockFoundationSummary = {
+      modelId: 'amazon.titan-image-generator-v2:0',
+      inputModalities: ['TEXT', 'IMAGE'],
+      outputModalities: ['IMAGE'],
+      inferenceTypesSupported: ['PROVISIONED', 'ON_DEMAND'],
+      modelLifecycle: { status: 'LEGACY' },
+    };
+    expect(isFoundationModelEligibleForDiscovery(titanImage)).toBe(true);
+  });
+
+  it('includes an ACTIVE on-demand text model', () => {
+    expect(isFoundationModelEligibleForDiscovery({
+      modelId: 'x.chat-v1',
+      outputModalities: ['TEXT'],
+      inferenceTypesSupported: ['ON_DEMAND'],
+      modelLifecycle: { status: 'ACTIVE' },
+    })).toBe(true);
+  });
+
+  it('excludes a model that is NOT on-demand invocable', () => {
+    expect(isFoundationModelEligibleForDiscovery({
+      modelId: 'x.provisioned-only-v1',
+      outputModalities: ['TEXT'],
+      inferenceTypesSupported: ['PROVISIONED'],
+    })).toBe(false);
+  });
+
+  it('excludes a model with no usable output modality', () => {
+    expect(isFoundationModelEligibleForDiscovery({
+      modelId: 'x.weird-v1',
+      outputModalities: ['SPEECH'],
+      inferenceTypesSupported: ['ON_DEMAND'],
+    })).toBe(false);
   });
 });
 
@@ -169,6 +241,36 @@ describe('bedrockInferenceProfileToDiscoveredModel', () => {
     expect(out.capabilities?.chat).toBe(true);
     expect(out.capabilities?.vision).toBe(true);
     expect(out.capabilities?.streaming).toBe(true);
+  });
+
+  it('flags imageGeneration on a profile whose underlying foundation outputs IMAGE', () => {
+    // Stability "cross-region inference profile" → underlying foundation is a
+    // text-to-image generator (TEXT in, IMAGE out). The profile must inherit
+    // imageGeneration=true, not be silently dropped.
+    const imageFoundation: BedrockFoundationSummary = {
+      modelId: 'stability.stable-image-core-v1:0',
+      modelName: 'Stable Image Core',
+      providerName: 'Stability AI',
+      inputModalities: ['TEXT'],
+      outputModalities: ['IMAGE'],
+      responseStreamingSupported: false,
+    };
+    const idx = indexFoundationSummaries([imageFoundation]);
+    const out = bedrockInferenceProfileToDiscoveredModel(
+      {
+        inferenceProfileId: 'us.stability.stable-image-core-v1:0',
+        inferenceProfileName: 'US Stable Image Core',
+        models: [
+          {
+            modelArn:
+              'arn:aws:bedrock:us-east-1::foundation-model/stability.stable-image-core-v1:0',
+          },
+        ],
+      },
+      idx,
+    )!;
+    expect(out.capabilities?.imageGeneration).toBe(true);
+    expect(out.capabilities?.chat).toBe(false);
   });
 
   it('falls back to chat=true + streaming=true when ancestor lookup misses', () => {

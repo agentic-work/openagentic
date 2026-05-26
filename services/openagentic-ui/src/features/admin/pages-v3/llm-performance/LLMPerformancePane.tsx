@@ -175,9 +175,14 @@ export const LLMPerformancePane: React.FC<Props> = ({ timeRange }) => {
   const errByClass = usePromRange(errorRateByClass(timeRange), { minutes })
 
   // F2 — operations: chat / tool / agent counters
-  const chatTurnsInst = usePromInstant(`sum(rate(gen_ai_chat_turns_total[5m]))`)
-  const toolCallsInst = usePromInstant(`sum(rate(gen_ai_tool_calls_total[5m]))`)
-  const agentInvInst = usePromInstant(`sum(rate(gen_ai_agent_invocations_total[5m]))`)
+  // Coerce null → 0 via `OR on() vector(0)` so a freshly-deployed api pod
+  // that hasn't seen a chat / tool / agent event yet still shows 0.00/s
+  // instead of a dash. Without the OR, an absent metric series collapses
+  // the whole expression to no-data — the user reads dashes and assumes
+  // the dashboard is broken (2026-05-25 audit).
+  const chatTurnsInst = usePromInstant(`sum(rate(gen_ai_chat_turns_total[5m])) OR on() vector(0)`)
+  const toolCallsInst = usePromInstant(`sum(rate(gen_ai_tool_calls_total[5m])) OR on() vector(0)`)
+  const agentInvInst = usePromInstant(`sum(rate(gen_ai_agent_invocations_total[5m])) OR on() vector(0)`)
   const toolErrInst = usePromInstant(toolErrorPercent(timeRange))
   const agentErrInst = usePromInstant(agentErrorPercent(timeRange))
   const chatTurnsRange = usePromRange(chatTurnsRateByModel(timeRange), { minutes })

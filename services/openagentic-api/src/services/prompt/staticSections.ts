@@ -247,6 +247,45 @@ export function getArtifactDispatchMechanismRule(role: UserRole): string {
 **Example.** User: "render a sankey of RGs by subscription." → \`tool_use(azure_list_subscriptions)\` → \`tool_use(azure_list_resource_groups)\` → prose: "Got 3 subs and 12 RGs." → \`tool_use(compose_visual, {template:"sankey",...})\` → caption. The user sees a real chart, not a description of one.`;
 }
 
+/**
+ * #1057 Sev-0 (2026-05-22) — Unknown-scope clarification gate.
+ *
+ * Live failure: prompt "do a full security audit across all tenants of
+ * openagentic-omhs". openagentic-omhs is a downstream GitHub repo fork
+ * for the CDC customer, NOT an Azure tenant. The model had no mapping
+ * but dispatched 83 tool_use blocks against the test user's OWN dev
+ * tenant + AWS account, producing a verified-correct audit on the
+ * WRONG SCOPE.
+ *
+ * Correct behavior: when the user names a proper-noun scope the model
+ * cannot resolve to a concrete tenant/sub/account/cluster/org, the FIRST
+ * tool dispatch MUST be `request_clarification`. No `azure_list_*`,
+ * `aws_list_*`, `gcp_list_*`, `k8s_*`, etc. until the user disambiguates.
+ *
+ * Threading needle: a bare "list my Azure subs" / "show me my AWS accounts"
+ * has NO ambiguous proper noun — those resolve to the caller's RBAC scope
+ * and must NOT trigger clarification (would regress #641 C4). The trigger
+ * is specifically: an unknown PROPER NOUN paired with a scope word.
+ */
+export function getUnknownScopeClarificationGate(role: UserRole): string {
+  void role;
+  return `## Unknown-scope clarification gate — READ BEFORE ANY TOOL DISPATCH
+
+**When the user names a proper noun that maps to a scope (tenant, subscription, account, cluster, project, org, workspace, namespace) and you do NOT have a concrete mapping from that name to a real identifier you can pass to a tool — your FIRST tool_use MUST be \`request_clarification\`.** No \`azure_list_*\`, no \`aws_list_*\`, no \`gcp_*\`, no \`k8s_*\`, no \`tool_search\` until the user disambiguates.
+
+**Canonical failure mode.** User: "do a full security audit across all tenants of openagentic-omhs". The name \`openagentic-omhs\` is an unrecognized proper noun. You do NOT know whether it's a tenant, a subscription, an AWS account, a GitHub repo, or something else. The correct response is \`request_clarification\` with options: (a) Azure tenant — which tenant id? (b) Azure subscription — which sub? (c) AWS account — which account id? (d) Something else — paste a URL / id / link. NEVER guess and dispatch against the test user's own resources.
+
+**Rule of thumb.** If you found yourself about to call a list/inventory tool against a scope you can't point to a concrete id/arn/oid for, STOP and clarify. Acting on a fictional or made-up scope name is worse than asking — the user gets a confident, correct-looking report about the wrong thing.
+
+**When NOT to trigger this gate.** Bare scope-less prompts ("list my Azure subs", "show me my AWS accounts", "what pods are running") have NO ambiguous proper noun — the scope IS the caller's RBAC, which is already resolved. Don't clarify those; just dispatch. Likewise prompts that name a scope WORD without a proper noun ("show me all subscriptions", "audit my tenants") — those mean "everything I can see", which is fine.
+
+**The trigger is specifically an unknown PROPER NOUN paired with a scope word.** "audit tenants of <unknown-name>", "review subscriptions in <unknown-org>", "show me <unknown-cluster> pods". When the scope is recognized (a known tenant id, a known sub name, a known cluster), proceed normally.
+
+**Format of the clarification.** Use \`request_clarification\` with 3-5 options that cover (a) the most likely interpretations and (b) an "other / paste an id" escape hatch. Make the options concrete enough that the user picks with one tap.
+
+**Why this matters.** A confident audit of the wrong scope is harder to spot than no audit at all. The user reads it, believes it, and acts on it before noticing the scope drift. Asking costs one turn; getting it wrong costs trust.`;
+}
+
 export function getArtifactExplicitRequestGate(role: UserRole): string {
   void role;
   return `## Artifact emission — explicit-request gate (READ FIRST)

@@ -580,16 +580,16 @@ describe('makeRunSubagentViaRecursor — Phase E.8.e (unit)', () => {
 });
 
 // ============================================================================
-// Real-provider smoke (Ollama on host.docker.internal:11434 — gpt-oss:20b).
-// Skipped automatically when host.docker.internal:11434 is unreachable. Per
+// Real-provider smoke (Ollama on hal:11434 — gpt-oss:20b).
+// Skipped automatically when hal:11434 is unreachable. Per
 // feedback_real_provider_testing_regime_chatmode_pivot.md, this is the
 // MANDATORY wire-level test for Phase E.8.e — TaskTool → recursor → real
 // provider end-to-end. Pattern reused verbatim from chatLoopRecursor.test.ts.
 // ============================================================================
 const OLLAMA_CANDIDATES: string[] = [
   process.env.TEST_OLLAMA_BASE_URL ?? '',
-  'http://host.docker.internal:11434',
-  'http://10.0.0.142:11434',
+  'http://hal:11434',
+  'http://10.2.10.142:11434',
   process.env.OLLAMA_BASE_URL ?? '',
 ].filter(Boolean);
 

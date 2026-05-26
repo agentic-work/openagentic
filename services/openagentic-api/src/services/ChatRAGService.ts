@@ -47,7 +47,7 @@ export class ChatRAGService {
     }
     // Embedding dim must match what UniversalEmbeddingService produces.
     // Reads EMBEDDING_DIMENSIONS (3072 for Azure text-embedding-3-large in
-    // dev; 768 for Ollama nomic-embed-text in self-hosted only setups).
+    // chat-dev; 768 for Ollama nomic-embed-text in self-hosted only setups).
     this.embeddingDim = parseInt(process.env.EMBEDDING_DIMENSIONS || '3072', 10);
   }
 
@@ -360,7 +360,7 @@ export class ChatRAGService {
     // Ollama at a fixed URL while the search side (SharedKBService) used
     // UniversalEmbeddingService — different providers, different dims —
     // which meant ingested chunks were silently unreachable via the search
-    // path on the dev environment. See `[ChatRAG] DLP scan passed` / `Ingestion
+    // path on chat-dev. See `[ChatRAG] DLP scan passed` / `Ingestion
     // complete: ingested=1` + `Knowledge search completed: sharedResults=0`
     // wire evidence from execution 83d527dc-0a26-4243-afeb-024e938c428a.
     try {

@@ -19,7 +19,7 @@
 
 import { test, expect, request as playwrightRequest } from '@playwright/test';
 
-const BASE = process.env.BASE_URL || 'http://localhost:8080';
+const BASE = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
 const TEST_SECRET_NAME = 'E2E_MISSING_SECRET_TEST';
 
 test.describe('Flows — Missing-secrets wizard (#73)', () => {

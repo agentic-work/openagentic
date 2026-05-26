@@ -1,0 +1,2325 @@
+event: stream_start
+data: {"sessionId":"session_1771633357776_0as1q0pyd","messageId":"msg_1771633357926_83iwh172l"}
+
+event: message_saved
+data: {"messageId":"06Mj_55elZP6forV6HpM8","role":"user","content":"Run a complete infrastructure health audit. Use admin_full_system_test, admin_system_postgres_health_check, admin_system_redis_health_check, admin_system_milvus_health_check, k8s_cluster_health, and prometheus_health_summary. Report the status of each subsystem.","timestamp":"2026-02-21T00:22:38.119Z","source":"database","confirmed":true}
+
+event: context_injection_pending
+data: {"rag":true,"mcp":false,"timestamp":"2026-02-21T00:22:38.135Z"}
+
+event: memory_status
+data: {"memoriesRetrieved":10,"memoryTypes":["semantic"],"processingTime":275}
+
+event: message_saved
+data: {"messageId":"jzh5vvtZ6tFKx3I1pqZte","role":"assistant","content":"","timestamp":"2026-02-21T00:22:38.713Z","source":"database","confirmed":true,"streaming":true}
+
+event: completion_start
+data: {"model":"us.anthropic.claude-opus-4-6-v1","messageId":"jzh5vvtZ6tFKx3I1pqZte","source":"database"}
+
+event: cot_step
+data: {"step":{"id":"cot_thinking_1771633358713","type":"thinking","description":"Processing request","status":"in_progress","startTime":1771633358713}}
+
+event: content_block_start
+data: {"index":0,"blockType":"thinking"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"The user wants a"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" complete infrastructure health audit."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" Let"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" me run"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" all"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:22:40.927Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" the requested"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" checks"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" in"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" parallel"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" since"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" they're independent of each other."}
+
+event: content_block_stop
+data: {"index":0,"blockType":"thinking","finalContent":"The user wants a complete infrastructure health audit. Let me run all the requested checks in parallel since they're independent of each other."}
+
+event: content_block_start
+data: {"index":1,"blockType":"text"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":"Running"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":" all"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":" six"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":" health checks in parallel now"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":"."}
+
+event: content_block_stop
+data: {"index":1,"blockType":"text","finalContent":"Running all six health checks in parallel now."}
+
+event: content_block_start
+data: {"index":2,"blockType":"tool_use","toolId":"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH","toolName":"admin_full_system_test"}
+
+event: content_block_stop
+data: {"index":2,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH","toolName":"admin_full_system_test"}
+
+event: content_block_start
+data: {"index":3,"blockType":"tool_use","toolId":"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ","toolName":"admin_system_postgres_health_check"}
+
+event: content_block_stop
+data: {"index":3,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ","toolName":"admin_system_postgres_health_check"}
+
+event: content_block_start
+data: {"index":4,"blockType":"tool_use","toolId":"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx","toolName":"admin_system_redis_health_check"}
+
+event: content_block_stop
+data: {"index":4,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx","toolName":"admin_system_redis_health_check"}
+
+event: content_block_start
+data: {"index":5,"blockType":"tool_use","toolId":"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe","toolName":"admin_system_milvus_health_check"}
+
+event: content_block_stop
+data: {"index":5,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe","toolName":"admin_system_milvus_health_check"}
+
+event: content_block_start
+data: {"index":6,"blockType":"tool_use","toolId":"toolu_bdrk_013RXKnv8q1Jg9pzNnQ8ifZk","toolName":"k8s_cluster_health"}
+
+event: content_block_stop
+data: {"index":6,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_013RXKnv8q1Jg9pzNnQ8ifZk","toolName":"k8s_cluster_health"}
+
+event: content_block_start
+data: {"index":7,"blockType":"tool_use","toolId":"toolu_bdrk_017AdCNETp2pDoaGBs6qqzqN","toolName":"prometheus_health_summary"}
+
+event: content_block_stop
+data: {"index":7,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_017AdCNETp2pDoaGBs6qqzqN","toolName":"prometheus_health_summary"}
+
+event: cot_step
+data: {"step":{"id":"cot_thinking_1771633358713","type":"thinking","description":"Processing complete","status":"completed","endTime":1771633362854}}
+
+event: tool_calls_required
+data: {"toolCalls":[{"id":"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH","type":"function","function":{"name":"admin_full_system_test","arguments":"{}"}},{"id":"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ","type":"function","function":{"name":"admin_system_postgres_health_check","arguments":"{}"}},{"id":"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx","type":"function","function":{"name":"admin_system_redis_health_check","arguments":"{}"}},{"id":"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe","type":"function","function":{"name":"admin_system_milvus_health_check","arguments":"{}"}},{"id":"toolu_bdrk_013RXKnv8q1Jg9pzNnQ8ifZk","type":"function","function":{"name":"k8s_cluster_health","arguments":"{}"}},{"id":"toolu_bdrk_017AdCNETp2pDoaGBs6qqzqN","type":"function","function":{"name":"prometheus_health_summary","arguments":"{}"}}],"count":6}
+
+event: mcp_calls_data
+data: {"calls":[{"id":"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH","name":"admin_full_system_test","tool":"admin_full_system_test","toolName":"admin_full_system_test","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ","name":"admin_system_postgres_health_check","tool":"admin_system_postgres_health_check","toolName":"admin_system_postgres_health_check","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx","name":"admin_system_redis_health_check","tool":"admin_system_redis_health_check","toolName":"admin_system_redis_health_check","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe","name":"admin_system_milvus_health_check","tool":"admin_system_milvus_health_check","toolName":"admin_system_milvus_health_check","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_013RXKnv8q1Jg9pzNnQ8ifZk","name":"k8s_cluster_health","tool":"k8s_cluster_health","toolName":"k8s_cluster_health","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_017AdCNETp2pDoaGBs6qqzqN","name":"prometheus_health_summary","tool":"prometheus_health_summary","toolName":"prometheus_health_summary","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"}],"totalCalls":6,"round":1}
+
+event: message_updated
+data: {"messageId":"jzh5vvtZ6tFKx3I1pqZte","role":"assistant","content":"Running all six health checks in parallel now.","timestamp":"2026-02-21T00:22:42.865Z","toolCalls":[{"id":"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH","type":"function","function":{"name":"admin_full_system_test","arguments":"{}"}},{"id":"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ","type":"function","function":{"name":"admin_system_postgres_health_check","arguments":"{}"}},{"id":"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx","type":"function","function":{"name":"admin_system_redis_health_check","arguments":"{}"}},{"id":"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe","type":"function","function":{"name":"admin_system_milvus_health_check","arguments":"{}"}},{"id":"toolu_bdrk_013RXKnv8q1Jg9pzNnQ8ifZk","type":"function","function":{"name":"k8s_cluster_health","arguments":"{}"}},{"id":"toolu_bdrk_017AdCNETp2pDoaGBs6qqzqN","type":"function","function":{"name":"prometheus_health_summary","arguments":"{}"}}],"thinkingContent":"The user wants a complete infrastructure health audit. Let me run all the requested checks in parallel since they're independent of each other.","tokenUsage":{"prompt_tokens":0,"completion_tokens":205,"total_tokens":205},"model":"us.anthropic.claude-opus-4-6-v1","source":"database","confirmed":true,"final":true}
+
+event: tool_approval_request
+data: {"toolCallRound":1,"tools":[{"id":"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH","name":"admin_full_system_test","arguments":"{}"},{"id":"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ","name":"admin_system_postgres_health_check","arguments":"{}"},{"id":"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx","name":"admin_system_redis_health_check","arguments":"{}"},{"id":"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe","name":"admin_system_milvus_health_check","arguments":"{}"},{"id":"toolu_bdrk_013RXKnv8q1Jg9pzNnQ8ifZk","name":"k8s_cluster_health","arguments":"{}"},{"id":"toolu_bdrk_017AdCNETp2pDoaGBs6qqzqN","name":"prometheus_health_summary","arguments":"{}"}],"messageId":"msg_1771633357927_87h63wn4j"}
+
+event: tool_execution_start
+data: {"toolCallRound":1,"toolCount":6,"tools":[{"id":"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH","name":"admin_full_system_test"},{"id":"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ","name":"admin_system_postgres_health_check"},{"id":"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx","name":"admin_system_redis_health_check"},{"id":"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe","name":"admin_system_milvus_health_check"},{"id":"toolu_bdrk_013RXKnv8q1Jg9pzNnQ8ifZk","name":"k8s_cluster_health"},{"id":"toolu_bdrk_017AdCNETp2pDoaGBs6qqzqN","name":"prometheus_health_summary"}],"timestamp":"2026-02-21T00:22:42.868Z"}
+
+event: tool_executing
+data: {"name":"admin_full_system_test","arguments":{},"toolCallId":"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH","targetServer":"openagentic_admin","timestamp":"2026-02-21T00:22:43.080Z"}
+
+event: tool_error
+data: {"name":"admin_full_system_test","error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","toolCallId":"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH","targetServer":"openagentic_admin","timestamp":"2026-02-21T00:22:43.179Z"}
+
+event: tool_executing
+data: {"name":"admin_system_postgres_health_check","arguments":{},"toolCallId":"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ","targetServer":"openagentic_admin","timestamp":"2026-02-21T00:22:43.372Z"}
+
+event: tool_error
+data: {"name":"admin_system_postgres_health_check","error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","toolCallId":"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ","targetServer":"openagentic_admin","timestamp":"2026-02-21T00:22:43.433Z"}
+
+event: tool_executing
+data: {"name":"admin_system_redis_health_check","arguments":{},"toolCallId":"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx","targetServer":"openagentic_admin","timestamp":"2026-02-21T00:22:43.599Z"}
+
+event: tool_error
+data: {"name":"admin_system_redis_health_check","error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","toolCallId":"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx","targetServer":"openagentic_admin","timestamp":"2026-02-21T00:22:43.634Z"}
+
+event: tool_executing
+data: {"name":"admin_system_milvus_health_check","arguments":{},"toolCallId":"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe","targetServer":"openagentic_admin","timestamp":"2026-02-21T00:22:43.830Z"}
+
+event: tool_error
+data: {"name":"admin_system_milvus_health_check","error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","toolCallId":"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe","targetServer":"openagentic_admin","timestamp":"2026-02-21T00:22:43.894Z"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:22:43.927Z"}
+
+event: tool_executing
+data: {"name":"k8s_cluster_health","arguments":{},"toolCallId":"toolu_bdrk_013RXKnv8q1Jg9pzNnQ8ifZk","targetServer":"openagentic_kubernetes","timestamp":"2026-02-21T00:22:44.082Z"}
+
+event: tool_result
+data: {"name":"k8s_cluster_health","result":{"content":[{"type":"text","text":"{\n  \"success\": false,\n  \"error\": \"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\"\n}"}],"structuredContent":{"result":{"success":false,"error":"Kubernetes client initialization failed: Invalid kube-config file. No configuration found."}},"isError":false},"toolCallId":"toolu_bdrk_013RXKnv8q1Jg9pzNnQ8ifZk","executionTimeMs":321,"targetServer":"openagentic_kubernetes","timestamp":"2026-02-21T00:22:44.411Z"}
+
+event: tool_executing
+data: {"name":"prometheus_health_summary","arguments":{},"toolCallId":"toolu_bdrk_017AdCNETp2pDoaGBs6qqzqN","targetServer":"openagentic_prometheus","timestamp":"2026-02-21T00:22:44.803Z"}
+
+event: tool_result
+data: {"name":"prometheus_health_summary","result":{"content":[{"type":"text","text":"=== Prometheus Health Summary ===\n\nTargets: 50 up, 4 down\n  Down targets:\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\n    - kubernetes-apiservers: 10.2.10.131:6443\n    - kubernetes-pods: 10.42.5.19:8080\n    - kubernetes-pods: 10.42.2.37:8090\n\nAlerts: 0 firing, 0 pending\n\nKey Metrics:\n  HTTP Request Rate (5m): 1.7952168148148147\n  Error Rate (5m): 0\n  Active Sessions: 0"}],"structuredContent":{"result":"=== Prometheus Health Summary ===\n\nTargets: 50 up, 4 down\n  Down targets:\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\n    - kubernetes-apiservers: 10.2.10.131:6443\n    - kubernetes-pods: 10.42.5.19:8080\n    - kubernetes-pods: 10.42.2.37:8090\n\nAlerts: 0 firing, 0 pending\n\nKey Metrics:\n  HTTP Request Rate (5m): 1.7952168148148147\n  Error Rate (5m): 0\n  Active Sessions: 0"},"isError":false},"toolCallId":"toolu_bdrk_017AdCNETp2pDoaGBs6qqzqN","executionTimeMs":232,"targetServer":"openagentic_prometheus","timestamp":"2026-02-21T00:22:45.043Z"}
+
+event: tool_execution_complete
+data: {"toolCallRound":1,"toolCount":6,"executionTimeMs":2415,"successCount":2,"errorCount":4,"timestamp":"2026-02-21T00:22:45.283Z"}
+
+event: message_saved
+data: {"messageId":"NaBlImiIcVZ69YYDp4gWy","role":"tool","content":"Error: [INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","toolCallId":"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH","timestamp":"2026-02-21T00:22:45.291Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"ko8730b5E1PumgiiZm6Uj","role":"tool","content":"Error: [INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","toolCallId":"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ","timestamp":"2026-02-21T00:22:45.296Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"3P_z9iXUDxM46-ygz09e0","role":"tool","content":"Error: [INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","toolCallId":"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx","timestamp":"2026-02-21T00:22:45.300Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"ykQLfSqswExsMLcqAMmfa","role":"tool","content":"Error: [INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","toolCallId":"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe","timestamp":"2026-02-21T00:22:45.304Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"j_PPS7MpWkV1rlIo9Lo8O","role":"tool","content":"{\n  \"content\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"{\\n  \\\"success\\\": false,\\n  \\\"error\\\": \\\"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\\\"\\n}\"\n    }\n  ],\n  \"structuredContent\": {\n    \"result\": {\n      \"success\": false,\n      \"error\": \"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\"\n    }\n  },\n  \"isError\": false\n}","toolCallId":"toolu_bdrk_013RXKnv8q1Jg9pzNnQ8ifZk","timestamp":"2026-02-21T00:22:45.310Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"JkHmx-BunMs3ZcF13DKet","role":"tool","content":"{\n  \"content\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"=== Prometheus Health Summary ===\\n\\nTargets: 50 up, 4 down\\n  Down targets:\\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\\n    - kubernetes-apiservers: 10.2.10.131:6443\\n    - kubernetes-pods: 10.42.5.19:8080\\n    - kubernetes-pods: 10.42.2.37:8090\\n\\nAlerts: 0 firing, 0 pending\\n\\nKey Metrics:\\n  HTTP Request Rate (5m): 1.7952168148148147\\n  Error Rate (5m): 0\\n  Active Sessions: 0\"\n    }\n  ],\n  \"structuredContent\": {\n    \"result\": \"=== Prometheus Health Summary ===\\n\\nTargets: 50 up, 4 down\\n  Down targets:\\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\\n    - kubernetes-apiservers: 10.2.10.131:6443\\n    - kubernetes-pods: 10.42.5.19:8080\\n    - kubernetes-pods: 10.42.2.37:8090\\n\\nAlerts: 0 firing, 0 pending\\n\\nKey Metrics:\\n  HTTP Request Rate (5m): 1.7952168148148147\\n  Error Rate (5m): 0\\n  Active Sessions: 0\"\n  },\n  \"isError\": false\n}","toolCallId":"toolu_bdrk_017AdCNETp2pDoaGBs6qqzqN","timestamp":"2026-02-21T00:22:45.315Z","source":"database","confirmed":true}
+
+event: mcp_calls_data
+data: {"calls":[{"id":"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH","name":"admin_full_system_test","tool":"admin_full_system_test","toolName":"admin_full_system_test","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","status":"failed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"},{"id":"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ","name":"admin_system_postgres_health_check","tool":"admin_system_postgres_health_check","toolName":"admin_system_postgres_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","status":"failed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"},{"id":"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx","name":"admin_system_redis_health_check","tool":"admin_system_redis_health_check","toolName":"admin_system_redis_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","status":"failed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"},{"id":"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe","name":"admin_system_milvus_health_check","tool":"admin_system_milvus_health_check","toolName":"admin_system_milvus_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","status":"failed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"},{"id":"toolu_bdrk_013RXKnv8q1Jg9pzNnQ8ifZk","name":"k8s_cluster_health","tool":"k8s_cluster_health","toolName":"k8s_cluster_health","serverId":"openagentic_kubernetes","serverName":"openagentic_kubernetes","executedOn":"mcp-proxy","arguments":{},"result":{"content":[{"type":"text","text":"{\n  \"success\": false,\n  \"error\": \"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\"\n}"}],"structuredContent":{"result":{"success":false,"error":"Kubernetes client initialization failed: Invalid kube-config file. No configuration found."}},"isError":false},"status":"completed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"},{"id":"toolu_bdrk_017AdCNETp2pDoaGBs6qqzqN","name":"prometheus_health_summary","tool":"prometheus_health_summary","toolName":"prometheus_health_summary","serverId":"openagentic_prometheus","serverName":"openagentic_prometheus","executedOn":"mcp-proxy","arguments":{},"result":{"content":[{"type":"text","text":"=== Prometheus Health Summary ===\n\nTargets: 50 up, 4 down\n  Down targets:\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\n    - kubernetes-apiservers: 10.2.10.131:6443\n    - kubernetes-pods: 10.42.5.19:8080\n    - kubernetes-pods: 10.42.2.37:8090\n\nAlerts: 0 firing, 0 pending\n\nKey Metrics:\n  HTTP Request Rate (5m): 1.7952168148148147\n  Error Rate (5m): 0\n  Active Sessions: 0"}],"structuredContent":{"result":"=== Prometheus Health Summary ===\n\nTargets: 50 up, 4 down\n  Down targets:\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\n    - kubernetes-apiservers: 10.2.10.131:6443\n    - kubernetes-pods: 10.42.5.19:8080\n    - kubernetes-pods: 10.42.2.37:8090\n\nAlerts: 0 firing, 0 pending\n\nKey Metrics:\n  HTTP Request Rate (5m): 1.7952168148148147\n  Error Rate (5m): 0\n  Active Sessions: 0"},"isError":false},"status":"completed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"}],"totalCalls":6,"round":1}
+
+event: completion_restart
+data: {"toolCallRound":1,"reason":"processing_tool_results","timestamp":"2026-02-21T00:22:45.315Z"}
+
+event: message_saved
+data: {"messageId":"Oow5vsfO4Ch4LVsEx2mEa","role":"assistant","content":"","timestamp":"2026-02-21T00:22:45.321Z","source":"database","confirmed":true,"streaming":true}
+
+event: completion_start
+data: {"model":"us.anthropic.claude-opus-4-6-v1","messageId":"Oow5vsfO4Ch4LVsEx2mEa","source":"database"}
+
+event: cot_step
+data: {"step":{"id":"cot_thinking_1771633365321","type":"thinking","description":"Processing request","status":"in_progress","startTime":1771633365321}}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:22:46.927Z"}
+
+event: content_block_start
+data: {"index":0,"blockType":"text"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"<thinking"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":">\nLet"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" me also"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" try"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" supplement"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"al"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" checks"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" to"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" gather"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" more data"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" since"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" admin"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" M"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"CP tools"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" all"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" failed."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" I'll try"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" infrastructure"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" health"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" check"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":","}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" framework"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" status"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", and error"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" logs.\n</thinking>\n\nAdmin"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" MCP is"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" returning"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" internal"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" errors. Let me run"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" supplement"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"al checks to fill"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" gaps."}
+
+event: content_block_stop
+data: {"index":0,"blockType":"text","finalContent":"<thinking>\nLet me also try supplemental checks to gather more data since the admin MCP tools all failed. I'll try the infrastructure health check, framework status, and error logs.\n</thinking>\n\nAdmin MCP is returning internal errors. Let me run supplemental checks to fill the gaps."}
+
+event: content_block_start
+data: {"index":1,"blockType":"tool_use","toolId":"toolu_bdrk_01Uhu3dK8Jh8XsaRC15CRn8L","toolName":"admin_system_infrastructure_health_check"}
+
+event: content_block_stop
+data: {"index":1,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01Uhu3dK8Jh8XsaRC15CRn8L","toolName":"admin_system_infrastructure_health_check"}
+
+event: content_block_start
+data: {"index":2,"blockType":"tool_use","toolId":"toolu_bdrk_015zC721HQJb9swcSbnd1avD","toolName":"get_framework_status"}
+
+event: content_block_stop
+data: {"index":2,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_015zC721HQJb9swcSbnd1avD","toolName":"get_framework_status"}
+
+event: content_block_start
+data: {"index":3,"blockType":"tool_use","toolId":"toolu_bdrk_0155g9Zfw1XdoxuXSweUc4yY","toolName":"loki_search_errors"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:22:49.927Z"}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"{\"namespa"}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"ce\": \"a"}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"gentic"}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"work\""}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":", \"tim"}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"e_range\": \""}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"1h\"}"}
+
+event: content_block_stop
+data: {"index":3,"blockType":"tool_use","finalContent":"{\"namespace\": \"openagentic\", \"time_range\": \"1h\"}","toolId":"toolu_bdrk_0155g9Zfw1XdoxuXSweUc4yY","toolName":"loki_search_errors"}
+
+event: content_block_start
+data: {"index":4,"blockType":"tool_use","toolId":"toolu_bdrk_01XhFtrq8r1KydWkJSbc9DXn","toolName":"prometheus_alerts"}
+
+event: content_block_stop
+data: {"index":4,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01XhFtrq8r1KydWkJSbc9DXn","toolName":"prometheus_alerts"}
+
+event: content_block_start
+data: {"index":5,"blockType":"tool_use","toolId":"toolu_bdrk_01SMyHuSyCkpGpXy7JQkL1Nu","toolName":"list_available_mcps"}
+
+event: content_block_stop
+data: {"index":5,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01SMyHuSyCkpGpXy7JQkL1Nu","toolName":"list_available_mcps"}
+
+event: cot_step
+data: {"step":{"id":"cot_thinking_1771633365321","type":"thinking","description":"Processing complete","status":"completed","endTime":1771633370634}}
+
+event: tool_calls_required
+data: {"toolCalls":[{"id":"toolu_bdrk_01Uhu3dK8Jh8XsaRC15CRn8L","type":"function","function":{"name":"admin_system_infrastructure_health_check","arguments":"{}"}},{"id":"toolu_bdrk_015zC721HQJb9swcSbnd1avD","type":"function","function":{"name":"get_framework_status","arguments":"{}"}},{"id":"toolu_bdrk_0155g9Zfw1XdoxuXSweUc4yY","type":"function","function":{"name":"loki_search_errors","arguments":"{\"namespace\":\"openagentic\",\"time_range\":\"1h\"}"}},{"id":"toolu_bdrk_01XhFtrq8r1KydWkJSbc9DXn","type":"function","function":{"name":"prometheus_alerts","arguments":"{}"}},{"id":"toolu_bdrk_01SMyHuSyCkpGpXy7JQkL1Nu","type":"function","function":{"name":"list_available_mcps","arguments":"{}"}}],"count":5}
+
+event: mcp_calls_data
+data: {"calls":[{"id":"toolu_bdrk_01Uhu3dK8Jh8XsaRC15CRn8L","name":"admin_system_infrastructure_health_check","tool":"admin_system_infrastructure_health_check","toolName":"admin_system_infrastructure_health_check","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_015zC721HQJb9swcSbnd1avD","name":"get_framework_status","tool":"get_framework_status","toolName":"get_framework_status","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_0155g9Zfw1XdoxuXSweUc4yY","name":"loki_search_errors","tool":"loki_search_errors","toolName":"loki_search_errors","status":"pending","arguments":{"namespace":"openagentic","time_range":"1h"},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01XhFtrq8r1KydWkJSbc9DXn","name":"prometheus_alerts","tool":"prometheus_alerts","toolName":"prometheus_alerts","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01SMyHuSyCkpGpXy7JQkL1Nu","name":"list_available_mcps","tool":"list_available_mcps","toolName":"list_available_mcps","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"}],"totalCalls":5,"round":1}
+
+event: message_updated
+data: {"messageId":"Oow5vsfO4Ch4LVsEx2mEa","role":"assistant","content":"<thinking>\nLet me also try supplemental checks to gather more data since the admin MCP tools all failed. I'll try the infrastructure health check, framework status, and error logs.\n</thinking>\n\nAdmin MCP is returning internal errors. Let me run supplemental checks to fill the gaps.","timestamp":"2026-02-21T00:22:50.650Z","toolCalls":[{"id":"toolu_bdrk_01Uhu3dK8Jh8XsaRC15CRn8L","type":"function","function":{"name":"admin_system_infrastructure_health_check","arguments":"{}"}},{"id":"toolu_bdrk_015zC721HQJb9swcSbnd1avD","type":"function","function":{"name":"get_framework_status","arguments":"{}"}},{"id":"toolu_bdrk_0155g9Zfw1XdoxuXSweUc4yY","type":"function","function":{"name":"loki_search_errors","arguments":"{\"namespace\":\"openagentic\",\"time_range\":\"1h\"}"}},{"id":"toolu_bdrk_01XhFtrq8r1KydWkJSbc9DXn","type":"function","function":{"name":"prometheus_alerts","arguments":"{}"}},{"id":"toolu_bdrk_01SMyHuSyCkpGpXy7JQkL1Nu","type":"function","function":{"name":"list_available_mcps","arguments":"{}"}}],"mcpCalls":[{"id":"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH","name":"admin_full_system_test","tool":"admin_full_system_test","toolName":"admin_full_system_test","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","status":"failed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"},{"id":"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ","name":"admin_system_postgres_health_check","tool":"admin_system_postgres_health_check","toolName":"admin_system_postgres_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","status":"failed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"},{"id":"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx","name":"admin_system_redis_health_check","tool":"admin_system_redis_health_check","toolName":"admin_system_redis_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","status":"failed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"},{"id":"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe","name":"admin_system_milvus_health_check","tool":"admin_system_milvus_health_check","toolName":"admin_system_milvus_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","status":"failed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"},{"id":"toolu_bdrk_013RXKnv8q1Jg9pzNnQ8ifZk","name":"k8s_cluster_health","tool":"k8s_cluster_health","toolName":"k8s_cluster_health","serverId":"openagentic_kubernetes","serverName":"openagentic_kubernetes","executedOn":"mcp-proxy","arguments":{},"result":{"content":[{"type":"text","text":"{\n  \"success\": false,\n  \"error\": \"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\"\n}"}],"structuredContent":{"result":{"success":false,"error":"Kubernetes client initialization failed: Invalid kube-config file. No configuration found."}},"isError":false},"status":"completed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"},{"id":"toolu_bdrk_017AdCNETp2pDoaGBs6qqzqN","name":"prometheus_health_summary","tool":"prometheus_health_summary","toolName":"prometheus_health_summary","serverId":"openagentic_prometheus","serverName":"openagentic_prometheus","executedOn":"mcp-proxy","arguments":{},"result":{"content":[{"type":"text","text":"=== Prometheus Health Summary ===\n\nTargets: 50 up, 4 down\n  Down targets:\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\n    - kubernetes-apiservers: 10.2.10.131:6443\n    - kubernetes-pods: 10.42.5.19:8080\n    - kubernetes-pods: 10.42.2.37:8090\n\nAlerts: 0 firing, 0 pending\n\nKey Metrics:\n  HTTP Request Rate (5m): 1.7952168148148147\n  Error Rate (5m): 0\n  Active Sessions: 0"}],"structuredContent":{"result":"=== Prometheus Health Summary ===\n\nTargets: 50 up, 4 down\n  Down targets:\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\n    - kubernetes-apiservers: 10.2.10.131:6443\n    - kubernetes-pods: 10.42.5.19:8080\n    - kubernetes-pods: 10.42.2.37:8090\n\nAlerts: 0 firing, 0 pending\n\nKey Metrics:\n  HTTP Request Rate (5m): 1.7952168148148147\n  Error Rate (5m): 0\n  Active Sessions: 0"},"isError":false},"status":"completed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"}],"tokenUsage":{"prompt_tokens":0,"completion_tokens":229,"total_tokens":229},"model":"us.anthropic.claude-opus-4-6-v1","source":"database","confirmed":true,"final":true}
+
+event: tool_approval_request
+data: {"toolCallRound":2,"tools":[{"id":"toolu_bdrk_01Uhu3dK8Jh8XsaRC15CRn8L","name":"admin_system_infrastructure_health_check","arguments":"{}"},{"id":"toolu_bdrk_015zC721HQJb9swcSbnd1avD","name":"get_framework_status","arguments":"{}"},{"id":"toolu_bdrk_0155g9Zfw1XdoxuXSweUc4yY","name":"loki_search_errors","arguments":"{\"namespace\":\"openagentic\",\"time_range\":\"1h\"}"},{"id":"toolu_bdrk_01XhFtrq8r1KydWkJSbc9DXn","name":"prometheus_alerts","arguments":"{}"},{"id":"toolu_bdrk_01SMyHuSyCkpGpXy7JQkL1Nu","name":"list_available_mcps","arguments":"{}"}],"messageId":"msg_1771633357927_87h63wn4j"}
+
+event: tool_execution_start
+data: {"toolCallRound":2,"toolCount":5,"tools":[{"id":"toolu_bdrk_01Uhu3dK8Jh8XsaRC15CRn8L","name":"admin_system_infrastructure_health_check"},{"id":"toolu_bdrk_015zC721HQJb9swcSbnd1avD","name":"get_framework_status"},{"id":"toolu_bdrk_0155g9Zfw1XdoxuXSweUc4yY","name":"loki_search_errors"},{"id":"toolu_bdrk_01XhFtrq8r1KydWkJSbc9DXn","name":"prometheus_alerts"},{"id":"toolu_bdrk_01SMyHuSyCkpGpXy7JQkL1Nu","name":"list_available_mcps"}],"timestamp":"2026-02-21T00:22:50.653Z"}
+
+event: tool_executing
+data: {"name":"admin_system_infrastructure_health_check","arguments":{},"toolCallId":"toolu_bdrk_01Uhu3dK8Jh8XsaRC15CRn8L","targetServer":"openagentic_admin","timestamp":"2026-02-21T00:22:50.869Z"}
+
+event: tool_error
+data: {"name":"admin_system_infrastructure_health_check","error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01Uhu3dK8Jh8XsaRC15CRn8L\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","toolCallId":"toolu_bdrk_01Uhu3dK8Jh8XsaRC15CRn8L","targetServer":"openagentic_admin","timestamp":"2026-02-21T00:22:50.931Z"}
+
+event: tool_executing
+data: {"name":"get_framework_status","arguments":{},"toolCallId":"toolu_bdrk_015zC721HQJb9swcSbnd1avD","targetServer":"openagentic_agent_architect","timestamp":"2026-02-21T00:22:51.352Z"}
+
+event: tool_result
+data: {"name":"get_framework_status","result":{"content":[{"type":"text","text":"{\n  \"langgraph\": {\n    \"status\": \"healthy\",\n    \"url\": \"http://openagentic-langgraph:3100\"\n  },\n  \"crewai\": {\n    \"status\": \"healthy\",\n    \"url\": \"http://openagentic-crewai:3200\"\n  },\n  \"flowise\": {\n    \"status\": \"unhealthy\",\n    \"url\": \"http://openagentic-api:8000/api/flowise-workspace\"\n  },\n  \"default_framework\": \"langgraph\"\n}"}],"structuredContent":{"result":"{\n  \"langgraph\": {\n    \"status\": \"healthy\",\n    \"url\": \"http://openagentic-langgraph:3100\"\n  },\n  \"crewai\": {\n    \"status\": \"healthy\",\n    \"url\": \"http://openagentic-crewai:3200\"\n  },\n  \"flowise\": {\n    \"status\": \"unhealthy\",\n    \"url\": \"http://openagentic-api:8000/api/flowise-workspace\"\n  },\n  \"default_framework\": \"langgraph\"\n}"},"isError":false},"toolCallId":"toolu_bdrk_015zC721HQJb9swcSbnd1avD","executionTimeMs":40,"targetServer":"openagentic_agent_architect","timestamp":"2026-02-21T00:22:51.403Z"}
+
+event: tool_executing
+data: {"name":"loki_search_errors","arguments":{"namespace":"openagentic","time_range":"1h"},"toolCallId":"toolu_bdrk_0155g9Zfw1XdoxuXSweUc4yY","targetServer":"openagentic_loki","timestamp":"2026-02-21T00:22:51.796Z"}
+
+event: tool_result
+data: {"name":"loki_search_errors","result":{"content":[{"type":"text","text":"No errors found in the last 1h"}],"structuredContent":{"result":"No errors found in the last 1h"},"isError":false},"toolCallId":"toolu_bdrk_0155g9Zfw1XdoxuXSweUc4yY","executionTimeMs":156,"targetServer":"openagentic_loki","timestamp":"2026-02-21T00:22:51.971Z"}
+
+event: tool_executing
+data: {"name":"prometheus_alerts","arguments":{},"toolCallId":"toolu_bdrk_01XhFtrq8r1KydWkJSbc9DXn","targetServer":"openagentic_prometheus","timestamp":"2026-02-21T00:22:52.376Z"}
+
+event: tool_result
+data: {"name":"prometheus_alerts","result":{"content":[{"type":"text","text":"No active alerts"}],"structuredContent":{"result":"No active alerts"},"isError":false},"toolCallId":"toolu_bdrk_01XhFtrq8r1KydWkJSbc9DXn","executionTimeMs":38,"targetServer":"openagentic_prometheus","timestamp":"2026-02-21T00:22:52.429Z"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:22:52.927Z"}
+
+event: tool_executing
+data: {"name":"list_available_mcps","arguments":{},"toolCallId":"toolu_bdrk_01SMyHuSyCkpGpXy7JQkL1Nu","targetServer":"openagentic_knowledge","timestamp":"2026-02-21T00:22:53.707Z"}
+
+event: tool_result
+data: {"name":"list_available_mcps","result":{"content":[{"type":"text","text":"{\"mcps\":{\"oap-azure-mcp\":{\"description\":\"Azure cloud operations via ARM and Graph APIs\",\"primary_tools\":[\"azure_arm_execute\",\"azure_graph_execute\",\"azure_keyvault_secret\",\"azure_cost_query\"],\"use_cases\":[\"Azure infrastructure management\",\"Azure AD/Entra ID operations\",\"Cost analysis\"]},\"oap-aws-mcp\":{\"description\":\"AWS cloud operations\",\"primary_tools\":[\"call_aws\",\"aws_identity\",\"aws_list_ec2\",\"aws_list_s3\",\"aws_cost_summary\"],\"use_cases\":[\"AWS infrastructure management\",\"EC2, S3, Lambda operations\",\"Cost tracking\"]},\"oap-web-mcp\":{\"description\":\"Web search and content fetching\",\"primary_tools\":[\"web_search\",\"web_fetch\",\"web_news_search\"],\"use_cases\":[\"Real-time information\",\"Weather\",\"News\",\"Documentation lookup\"]},\"oap-flowise-mcp\":{\"description\":\"Flowise workflow management\",\"primary_tools\":[\"flowise_list_chatflows\",\"flowise_create_agentflow\",\"flowise_execute_chatflow\"],\"use_cases\":[\"Creating AI workflows\",\"Managing agent pipelines\"]},\"oap-diagram-mcp\":{\"description\":\"Diagram generation using Mermaid\",\"primary_tools\":[\"create_diagram\"],\"use_cases\":[\"Architecture diagrams\",\"Flowcharts\",\"Sequence diagrams\"]},\"oap-admin-mcp\":{\"description\":\"OpenAgentic platform administration\",\"primary_tools\":[\"system_health\",\"user_list\",\"audit_logs\"],\"use_cases\":[\"System monitoring\",\"User management\",\"Audit logs\"]},\"oap-memory-mcp\":{\"description\":\"Conversation memory and knowledge storage\",\"primary_tools\":[\"memory_store\",\"memory_recall\",\"memory_search\"],\"use_cases\":[\"Storing user preferences\",\"Recalling past conversations\",\"Knowledge management\"]},\"oap-knowledge-mcp\":{\"description\":\"This MCP! Tool guidance and documentation for other MCPs\",\"primary_tools\":[\"suggest_tools_for_task\",\"get_tool_examples\",\"search_tool_documentation\",\"list_available_mcps\"],\"use_cases\":[\"Learning how to use tools\",\"Finding the right tool for a task\",\"Getting tool examples\"]}},\"total_mcps\":8,\"usage_hint\":\"Use suggest_tools_for_task(task) to find the right tool for your task, or get_tool_examples(tool_name) for detailed usage.\"}"}],"structuredContent":{"mcps":{"oap-azure-mcp":{"description":"Azure cloud operations via ARM and Graph APIs","primary_tools":["azure_arm_execute","azure_graph_execute","azure_keyvault_secret","azure_cost_query"],"use_cases":["Azure infrastructure management","Azure AD/Entra ID operations","Cost analysis"]},"oap-aws-mcp":{"description":"AWS cloud operations","primary_tools":["call_aws","aws_identity","aws_list_ec2","aws_list_s3","aws_cost_summary"],"use_cases":["AWS infrastructure management","EC2, S3, Lambda operations","Cost tracking"]},"oap-web-mcp":{"description":"Web search and content fetching","primary_tools":["web_search","web_fetch","web_news_search"],"use_cases":["Real-time information","Weather","News","Documentation lookup"]},"oap-flowise-mcp":{"description":"Flowise workflow management","primary_tools":["flowise_list_chatflows","flowise_create_agentflow","flowise_execute_chatflow"],"use_cases":["Creating AI workflows","Managing agent pipelines"]},"oap-diagram-mcp":{"description":"Diagram generation using Mermaid","primary_tools":["create_diagram"],"use_cases":["Architecture diagrams","Flowcharts","Sequence diagrams"]},"oap-admin-mcp":{"description":"OpenAgentic platform administration","primary_tools":["system_health","user_list","audit_logs"],"use_cases":["System monitoring","User management","Audit logs"]},"oap-memory-mcp":{"description":"Conversation memory and knowledge storage","primary_tools":["memory_store","memory_recall","memory_search"],"use_cases":["Storing user preferences","Recalling past conversations","Knowledge management"]},"oap-knowledge-mcp":{"description":"This MCP! Tool guidance and documentation for other MCPs","primary_tools":["suggest_tools_for_task","get_tool_examples","search_tool_documentation","list_available_mcps"],"use_cases":["Learning how to use tools","Finding the right tool for a task","Getting tool examples"]}},"total_mcps":8,"usage_hint":"Use suggest_tools_for_task(task) to find the right tool for your task, or get_tool_examples(tool_name) for detailed usage."},"isError":false},"toolCallId":"toolu_bdrk_01SMyHuSyCkpGpXy7JQkL1Nu","executionTimeMs":31,"targetServer":"openagentic_knowledge","timestamp":"2026-02-21T00:22:53.766Z"}
+
+event: tool_execution_complete
+data: {"toolCallRound":2,"toolCount":5,"executionTimeMs":3318,"successCount":4,"errorCount":1,"timestamp":"2026-02-21T00:22:53.971Z"}
+
+event: message_saved
+data: {"messageId":"nnMGUwIzc6F9lcSoQsFhO","role":"tool","content":"Error: [INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01Uhu3dK8Jh8XsaRC15CRn8L\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","toolCallId":"toolu_bdrk_01Uhu3dK8Jh8XsaRC15CRn8L","timestamp":"2026-02-21T00:22:53.978Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"gmNKc3FKQ6UZYrYVGGzXE","role":"tool","content":"{\n  \"content\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"{\\n  \\\"langgraph\\\": {\\n    \\\"status\\\": \\\"healthy\\\",\\n    \\\"url\\\": \\\"http://openagentic-langgraph:3100\\\"\\n  },\\n  \\\"crewai\\\": {\\n    \\\"status\\\": \\\"healthy\\\",\\n    \\\"url\\\": \\\"http://openagentic-crewai:3200\\\"\\n  },\\n  \\\"flowise\\\": {\\n    \\\"status\\\": \\\"unhealthy\\\",\\n    \\\"url\\\": \\\"http://openagentic-api:8000/api/flowise-workspace\\\"\\n  },\\n  \\\"default_framework\\\": \\\"langgraph\\\"\\n}\"\n    }\n  ],\n  \"structuredContent\": {\n    \"result\": \"{\\n  \\\"langgraph\\\": {\\n    \\\"status\\\": \\\"healthy\\\",\\n    \\\"url\\\": \\\"http://openagentic-langgraph:3100\\\"\\n  },\\n  \\\"crewai\\\": {\\n    \\\"status\\\": \\\"healthy\\\",\\n    \\\"url\\\": \\\"http://openagentic-crewai:3200\\\"\\n  },\\n  \\\"flowise\\\": {\\n    \\\"status\\\": \\\"unhealthy\\\",\\n    \\\"url\\\": \\\"http://openagentic-api:8000/api/flowise-workspace\\\"\\n  },\\n  \\\"default_framework\\\": \\\"langgraph\\\"\\n}\"\n  },\n  \"isError\": false\n}","toolCallId":"toolu_bdrk_015zC721HQJb9swcSbnd1avD","timestamp":"2026-02-21T00:22:53.982Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"jix3qk10qfiahmt2C4yD3","role":"tool","content":"{\n  \"content\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"No errors found in the last 1h\"\n    }\n  ],\n  \"structuredContent\": {\n    \"result\": \"No errors found in the last 1h\"\n  },\n  \"isError\": false\n}","toolCallId":"toolu_bdrk_0155g9Zfw1XdoxuXSweUc4yY","timestamp":"2026-02-21T00:22:53.987Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"2hBA4DvKJ7Q8HVzWn-BVk","role":"tool","content":"{\n  \"content\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"No active alerts\"\n    }\n  ],\n  \"structuredContent\": {\n    \"result\": \"No active alerts\"\n  },\n  \"isError\": false\n}","toolCallId":"toolu_bdrk_01XhFtrq8r1KydWkJSbc9DXn","timestamp":"2026-02-21T00:22:53.992Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"S5oFhWpcV6Zzh5ozciuVa","role":"tool","content":"{\n  \"content\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"{\\\"mcps\\\":{\\\"oap-azure-mcp\\\":{\\\"description\\\":\\\"Azure cloud operations via ARM and Graph APIs\\\",\\\"primary_tools\\\":[\\\"azure_arm_execute\\\",\\\"azure_graph_execute\\\",\\\"azure_keyvault_secret\\\",\\\"azure_cost_query\\\"],\\\"use_cases\\\":[\\\"Azure infrastructure management\\\",\\\"Azure AD/Entra ID operations\\\",\\\"Cost analysis\\\"]},\\\"oap-aws-mcp\\\":{\\\"description\\\":\\\"AWS cloud operations\\\",\\\"primary_tools\\\":[\\\"call_aws\\\",\\\"aws_identity\\\",\\\"aws_list_ec2\\\",\\\"aws_list_s3\\\",\\\"aws_cost_summary\\\"],\\\"use_cases\\\":[\\\"AWS infrastructure management\\\",\\\"EC2, S3, Lambda operations\\\",\\\"Cost tracking\\\"]},\\\"oap-web-mcp\\\":{\\\"description\\\":\\\"Web search and content fetching\\\",\\\"primary_tools\\\":[\\\"web_search\\\",\\\"web_fetch\\\",\\\"web_news_search\\\"],\\\"use_cases\\\":[\\\"Real-time information\\\",\\\"Weather\\\",\\\"News\\\",\\\"Documentation lookup\\\"]},\\\"oap-flowise-mcp\\\":{\\\"description\\\":\\\"Flowise workflow management\\\",\\\"primary_tools\\\":[\\\"flowise_list_chatflows\\\",\\\"flowise_create_agentflow\\\",\\\"flowise_execute_chatflow\\\"],\\\"use_cases\\\":[\\\"Creating AI workflows\\\",\\\"Managing agent pipelines\\\"]},\\\"oap-diagram-mcp\\\":{\\\"description\\\":\\\"Diagram generation using Mermaid\\\",\\\"primary_tools\\\":[\\\"create_diagram\\\"],\\\"use_cases\\\":[\\\"Architecture diagrams\\\",\\\"Flowcharts\\\",\\\"Sequence diagrams\\\"]},\\\"oap-admin-mcp\\\":{\\\"description\\\":\\\"OpenAgentic platform administration\\\",\\\"primary_tools\\\":[\\\"system_health\\\",\\\"user_list\\\",\\\"audit_logs\\\"],\\\"use_cases\\\":[\\\"System monitoring\\\",\\\"User management\\\",\\\"Audit logs\\\"]},\\\"oap-memory-mcp\\\":{\\\"description\\\":\\\"Conversation memory and knowledge storage\\\",\\\"primary_tools\\\":[\\\"memory_store\\\",\\\"memory_recall\\\",\\\"memory_search\\\"],\\\"use_cases\\\":[\\\"Storing user preferences\\\",\\\"Recalling past conversations\\\",\\\"Knowledge management\\\"]},\\\"oap-knowledge-mcp\\\":{\\\"description\\\":\\\"This MCP! Tool guidance and documentation for other MCPs\\\",\\\"primary_tools\\\":[\\\"suggest_tools_for_task\\\",\\\"get_tool_examples\\\",\\\"search_tool_documentation\\\",\\\"list_available_mcps\\\"],\\\"use_cases\\\":[\\\"Learning how to use tools\\\",\\\"Finding the right tool for a task\\\",\\\"Getting tool examples\\\"]}},\\\"total_mcps\\\":8,\\\"usage_hint\\\":\\\"Use suggest_tools_for_task(task) to find the right tool for your task, or get_tool_examples(tool_name) for detailed usage.\\\"}\"\n    }\n  ],\n  \"structuredContent\": {\n    \"mcps\": {\n      \"oap-azure-mcp\": {\n        \"description\": \"Azure cloud operations via ARM and Graph APIs\",\n        \"primary_tools\": [\n          \"azure_arm_execute\",\n          \"azure_graph_execute\",\n          \"azure_keyvault_secret\",\n          \"azure_cost_query\"\n        ],\n        \"use_cases\": [\n          \"Azure infrastructure management\",\n          \"Azure AD/Entra ID operations\",\n          \"Cost analysis\"\n        ]\n      },\n      \"oap-aws-mcp\": {\n        \"description\": \"AWS cloud operations\",\n        \"primary_tools\": [\n          \"call_aws\",\n          \"aws_identity\",\n          \"aws_list_ec2\",\n          \"aws_list_s3\",\n          \"aws_cost_summary\"\n        ],\n        \"use_cases\": [\n          \"AWS infrastructure management\",\n          \"EC2, S3, Lambda operations\",\n          \"Cost tracking\"\n        ]\n      },\n      \"oap-web-mcp\": {\n        \"description\": \"Web search and content fetching\",\n        \"primary_tools\": [\n          \"web_search\",\n          \"web_fetch\",\n          \"web_news_search\"\n        ],\n        \"use_cases\": [\n          \"Real-time information\",\n          \"Weather\",\n          \"News\",\n          \"Documentation lookup\"\n        ]\n      },\n      \"oap-flowise-mcp\": {\n        \"description\": \"Flowise workflow management\",\n        \"primary_tools\": [\n          \"flowise_list_chatflows\",\n          \"flowise_create_agentflow\",\n          \"flowise_execute_chatflow\"\n        ],\n        \"use_cases\": [\n          \"Creating AI workflows\",\n          \"Managing agent pipelines\"\n        ]\n      },\n      \"oap-diagram-mcp\": {\n        \"description\": \"Diagram generation using Mermaid\",\n        \"primary_tools\": [\n          \"create_diagram\"\n        ],\n        \"use_cases\": [\n          \"Architecture diagrams\",\n          \"Flowcharts\",\n          \"Sequence diagrams\"\n        ]\n      },\n      \"oap-admin-mcp\": {\n        \"description\": \"OpenAgentic platform administration\",\n        \"primary_tools\": [\n          \"system_health\",\n          \"user_list\",\n          \"audit_logs\"\n        ],\n        \"use_cases\": [\n          \"System monitoring\",\n          \"User management\",\n          \"Audit logs\"\n        ]\n      },\n      \"oap-memory-mcp\": {\n        \"description\": \"Conversation memory and knowledge storage\",\n        \"primary_tools\": [\n          \"memory_store\",\n          \"memory_recall\",\n          \"memory_search\"\n        ],\n        \"use_cases\": [\n          \"Storing user preferences\",\n          \"Recalling past conversations\",\n          \"Knowledge management\"\n        ]\n      },\n      \"oap-knowledge-mcp\": {\n        \"description\": \"This MCP! Tool guidance and documentation for other MCPs\",\n        \"primary_tools\": [\n          \"suggest_tools_for_task\",\n          \"get_tool_examples\",\n          \"search_tool_documentation\",\n          \"list_available_mcps\"\n        ],\n        \"use_cases\": [\n          \"Learning how to use tools\",\n          \"Finding the right tool for a task\",\n          \"Getting tool examples\"\n        ]\n      }\n    },\n    \"total_mcps\": 8,\n    \"usage_hint\": \"Use suggest_tools_for_task(task) to find the right tool for your task, or get_tool_examples(tool_name) for detailed usage.\"\n  },\n  \"isError\": false\n}","toolCallId":"toolu_bdrk_01SMyHuSyCkpGpXy7JQkL1Nu","timestamp":"2026-02-21T00:22:53.997Z","source":"database","confirmed":true}
+
+event: mcp_calls_data
+data: {"calls":[{"id":"toolu_bdrk_01Uhu3dK8Jh8XsaRC15CRn8L","name":"admin_system_infrastructure_health_check","tool":"admin_system_infrastructure_health_check","toolName":"admin_system_infrastructure_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01Uhu3dK8Jh8XsaRC15CRn8L\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","status":"failed","startTime":1771633370679,"endTime":1771633373997,"duration":3318,"timestamp":"2026-02-21T00:22:53.997Z"},{"id":"toolu_bdrk_015zC721HQJb9swcSbnd1avD","name":"get_framework_status","tool":"get_framework_status","toolName":"get_framework_status","serverId":"openagentic_agent_architect","serverName":"openagentic_agent_architect","executedOn":"mcp-proxy","arguments":{},"result":{"content":[{"type":"text","text":"{\n  \"langgraph\": {\n    \"status\": \"healthy\",\n    \"url\": \"http://openagentic-langgraph:3100\"\n  },\n  \"crewai\": {\n    \"status\": \"healthy\",\n    \"url\": \"http://openagentic-crewai:3200\"\n  },\n  \"flowise\": {\n    \"status\": \"unhealthy\",\n    \"url\": \"http://openagentic-api:8000/api/flowise-workspace\"\n  },\n  \"default_framework\": \"langgraph\"\n}"}],"structuredContent":{"result":"{\n  \"langgraph\": {\n    \"status\": \"healthy\",\n    \"url\": \"http://openagentic-langgraph:3100\"\n  },\n  \"crewai\": {\n    \"status\": \"healthy\",\n    \"url\": \"http://openagentic-crewai:3200\"\n  },\n  \"flowise\": {\n    \"status\": \"unhealthy\",\n    \"url\": \"http://openagentic-api:8000/api/flowise-workspace\"\n  },\n  \"default_framework\": \"langgraph\"\n}"},"isError":false},"status":"completed","startTime":1771633370679,"endTime":1771633373997,"duration":3318,"timestamp":"2026-02-21T00:22:53.997Z"},{"id":"toolu_bdrk_0155g9Zfw1XdoxuXSweUc4yY","name":"loki_search_errors","tool":"loki_search_errors","toolName":"loki_search_errors","serverId":"openagentic_loki","serverName":"openagentic_loki","executedOn":"mcp-proxy","arguments":{"namespace":"openagentic","time_range":"1h"},"result":{"content":[{"type":"text","text":"No errors found in the last 1h"}],"structuredContent":{"result":"No errors found in the last 1h"},"isError":false},"status":"completed","startTime":1771633370679,"endTime":1771633373997,"duration":3318,"timestamp":"2026-02-21T00:22:53.997Z"},{"id":"toolu_bdrk_01XhFtrq8r1KydWkJSbc9DXn","name":"prometheus_alerts","tool":"prometheus_alerts","toolName":"prometheus_alerts","serverId":"openagentic_prometheus","serverName":"openagentic_prometheus","executedOn":"mcp-proxy","arguments":{},"result":{"content":[{"type":"text","text":"No active alerts"}],"structuredContent":{"result":"No active alerts"},"isError":false},"status":"completed","startTime":1771633370679,"endTime":1771633373997,"duration":3318,"timestamp":"2026-02-21T00:22:53.997Z"},{"id":"toolu_bdrk_01SMyHuSyCkpGpXy7JQkL1Nu","name":"list_available_mcps","tool":"list_available_mcps","toolName":"list_available_mcps","serverId":"openagentic_knowledge","serverName":"openagentic_knowledge","executedOn":"mcp-proxy","arguments":{},"result":{"content":[{"type":"text","text":"{\"mcps\":{\"oap-azure-mcp\":{\"description\":\"Azure cloud operations via ARM and Graph APIs\",\"primary_tools\":[\"azure_arm_execute\",\"azure_graph_execute\",\"azure_keyvault_secret\",\"azure_cost_query\"],\"use_cases\":[\"Azure infrastructure management\",\"Azure AD/Entra ID operations\",\"Cost analysis\"]},\"oap-aws-mcp\":{\"description\":\"AWS cloud operations\",\"primary_tools\":[\"call_aws\",\"aws_identity\",\"aws_list_ec2\",\"aws_list_s3\",\"aws_cost_summary\"],\"use_cases\":[\"AWS infrastructure management\",\"EC2, S3, Lambda operations\",\"Cost tracking\"]},\"oap-web-mcp\":{\"description\":\"Web search and content fetching\",\"primary_tools\":[\"web_search\",\"web_fetch\",\"web_news_search\"],\"use_cases\":[\"Real-time information\",\"Weather\",\"News\",\"Documentation lookup\"]},\"oap-flowise-mcp\":{\"description\":\"Flowise workflow management\",\"primary_tools\":[\"flowise_list_chatflows\",\"flowise_create_agentflow\",\"flowise_execute_chatflow\"],\"use_cases\":[\"Creating AI workflows\",\"Managing agent pipelines\"]},\"oap-diagram-mcp\":{\"description\":\"Diagram generation using Mermaid\",\"primary_tools\":[\"create_diagram\"],\"use_cases\":[\"Architecture diagrams\",\"Flowcharts\",\"Sequence diagrams\"]},\"oap-admin-mcp\":{\"description\":\"OpenAgentic platform administration\",\"primary_tools\":[\"system_health\",\"user_list\",\"audit_logs\"],\"use_cases\":[\"System monitoring\",\"User management\",\"Audit logs\"]},\"oap-memory-mcp\":{\"description\":\"Conversation memory and knowledge storage\",\"primary_tools\":[\"memory_store\",\"memory_recall\",\"memory_search\"],\"use_cases\":[\"Storing user preferences\",\"Recalling past conversations\",\"Knowledge management\"]},\"oap-knowledge-mcp\":{\"description\":\"This MCP! Tool guidance and documentation for other MCPs\",\"primary_tools\":[\"suggest_tools_for_task\",\"get_tool_examples\",\"search_tool_documentation\",\"list_available_mcps\"],\"use_cases\":[\"Learning how to use tools\",\"Finding the right tool for a task\",\"Getting tool examples\"]}},\"total_mcps\":8,\"usage_hint\":\"Use suggest_tools_for_task(task) to find the right tool for your task, or get_tool_examples(tool_name) for detailed usage.\"}"}],"structuredContent":{"mcps":{"oap-azure-mcp":{"description":"Azure cloud operations via ARM and Graph APIs","primary_tools":["azure_arm_execute","azure_graph_execute","azure_keyvault_secret","azure_cost_query"],"use_cases":["Azure infrastructure management","Azure AD/Entra ID operations","Cost analysis"]},"oap-aws-mcp":{"description":"AWS cloud operations","primary_tools":["call_aws","aws_identity","aws_list_ec2","aws_list_s3","aws_cost_summary"],"use_cases":["AWS infrastructure management","EC2, S3, Lambda operations","Cost tracking"]},"oap-web-mcp":{"description":"Web search and content fetching","primary_tools":["web_search","web_fetch","web_news_search"],"use_cases":["Real-time information","Weather","News","Documentation lookup"]},"oap-flowise-mcp":{"description":"Flowise workflow management","primary_tools":["flowise_list_chatflows","flowise_create_agentflow","flowise_execute_chatflow"],"use_cases":["Creating AI workflows","Managing agent pipelines"]},"oap-diagram-mcp":{"description":"Diagram generation using Mermaid","primary_tools":["create_diagram"],"use_cases":["Architecture diagrams","Flowcharts","Sequence diagrams"]},"oap-admin-mcp":{"description":"OpenAgentic platform administration","primary_tools":["system_health","user_list","audit_logs"],"use_cases":["System monitoring","User management","Audit logs"]},"oap-memory-mcp":{"description":"Conversation memory and knowledge storage","primary_tools":["memory_store","memory_recall","memory_search"],"use_cases":["Storing user preferences","Recalling past conversations","Knowledge management"]},"oap-knowledge-mcp":{"description":"This MCP! Tool guidance and documentation for other MCPs","primary_tools":["suggest_tools_for_task","get_tool_examples","search_tool_documentation","list_available_mcps"],"use_cases":["Learning how to use tools","Finding the right tool for a task","Getting tool examples"]}},"total_mcps":8,"usage_hint":"Use suggest_tools_for_task(task) to find the right tool for your task, or get_tool_examples(tool_name) for detailed usage."},"isError":false},"status":"completed","startTime":1771633370679,"endTime":1771633373997,"duration":3318,"timestamp":"2026-02-21T00:22:53.997Z"}],"totalCalls":11,"round":2}
+
+event: completion_restart
+data: {"toolCallRound":2,"reason":"processing_tool_results","timestamp":"2026-02-21T00:22:53.998Z"}
+
+event: message_saved
+data: {"messageId":"71r8tmIaMVx1o4n2fGFw0","role":"assistant","content":"","timestamp":"2026-02-21T00:22:54.007Z","source":"database","confirmed":true,"streaming":true}
+
+event: completion_start
+data: {"model":"us.anthropic.claude-opus-4-6-v1","messageId":"71r8tmIaMVx1o4n2fGFw0","source":"database"}
+
+event: cot_step
+data: {"step":{"id":"cot_thinking_1771633374008","type":"thinking","description":"Processing request","status":"in_progress","startTime":1771633374008}}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:22:55.927Z"}
+
+event: content_block_start
+data: {"index":0,"blockType":"text"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"---"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n## Ag"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"enticWork Infrastructure Health Audit"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n**"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Audit"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Timestamp"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":** 2026"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"-02"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"-21"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"T00"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":22"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"UTC\n\n---"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n### Executive"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Summary\n\nThe"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" platform"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" is **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"partially"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" degrad"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ed**"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":". The Admin"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" MCP backend"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" is experiencing"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" a"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" persistent"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" internal error (`"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Attempt to overwrite 'args'"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" in LogRecord`) blocking"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" all database"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" and"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" system"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"-"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"test"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" health"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" checks. Four"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Prometheus"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" scr"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ape targets"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" remain"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" down"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" —"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" a"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:22:58.927Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" pattern"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" unchanged"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" across"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" your"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" previous"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" three"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" aud"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"its."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Flo"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"wise remains"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" unh"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ealthy."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Core"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" orchest"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ration ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"L"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"angGraph, Cre"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"wAI)"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" and"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"50"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"of"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" 54"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Prometheus"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" targets"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" are operational."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n---\n\n### Primary"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Health"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Checks\n\n| #"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Subs"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ystem | Tool"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | Status |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Detail"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n|---|-----------|------|"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"------"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":|-----"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"---|\n| 1 | **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Full"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" System Test"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | `admin_full_system"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_test` | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"❌ Error"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | HTTP"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" 500 —"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Log"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Record` overwrite bug"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:23:01.926Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" in"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Admin MCP |\n| 2"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | **PostgreSQL** | `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"admin_system_postgres_health_"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"check` | ❌ Error"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | Same"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Admin"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" MCP internal"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" error |\n| 3 |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" **Redis** | `admin_system"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_redis_health_check` |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ❌ Error | Same Admin"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" MCP internal error |\n| "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"4 | **Milvus"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | `admin_system_m"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ilvus_health_check` |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ❌ Error | Same Admin"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" MCP internal error |\n| "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"5 | **Kubernetes"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Cluster** | `k8s_"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"cluster_health` | ❌"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" No"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ku"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"beconfig | Client"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" init"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" failed —"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" no"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" config found |\n| 6 "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"| **Prometheus** | `prometheus"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_health_summary` | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"⚠️ "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"50"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" up /"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" 4 down | See"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" target"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" breakdown"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" below"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n\n---\n\n### Supplement"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"al"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Checks\n\n|"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Subsystem | Tool | Status | Detail"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n|-----------|------|:"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"------:|--------|\n| **Infrastructure"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Health** | `admin_system_"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"infrastructure_health_check` | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"❌ Error | Same `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Log"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Record` bug"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n| **L"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:23:04.927Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"angGraph** | `get_framework"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_status` | ✅"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Healthy | `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ag"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"enticwork-langgraph:"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"3100` |\n| **Cre"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"wAI** | `get"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_framework_status` | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"✅ Healthy | `agentic"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"work-crewai:3200"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"` |\n| **Flowise"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | `get_framework_status"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"` | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"❌ Unhealthy | `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"openagentic-api:8000"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"/api/flowise-workspace`"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n| **Application"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Errors"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Loki)** | `l"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"oki_search_errors` | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"✅ Clean"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | No errors in"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" last 1h |\n| **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Firing"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Alerts** | `prometheus_alerts"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"` | ✅ None"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"0 firing"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", 0 pending |\n\n---"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n### Prometheus Target"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Breakdown\n\n| Target"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Endpoint"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | Status | Likely"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Cause |\n|--------|-------"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"---|:------:|------------"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"--|\n| **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"kube-state-metrics** |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `kube-state-metrics."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"kube-system:"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"8080` | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"❌ Down | Pod"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" crash"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" or"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" service"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" mesh"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" issue |\n| **kubernetes-ap"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"iservers** | `10.2"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":".10.131:6443`"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:23:07.927Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | ❌ Down | API"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" server unre"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"achable from"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Prometheus"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n| **kubernetes-pods**"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | `10.42.5."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"19:8080` | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"❌ Down | Application"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" pod down"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n| **kubernetes-pods** |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `10.42.2.37"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":8090` | ❌"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Down | Application pod down |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n**"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Prometheus"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Metrics"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":**"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n| Metric | Value |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Assessment"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n|--------|------"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":|"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"----------:|\n| **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Targets"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" UP"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | 50 | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"✅ |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n| **Targets DOWN** |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" 4 | ❌"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n| **Firing"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Alerts** | 0 | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"⚠️ Should"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" be >"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"0 given"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"4 down targets |\n| **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"HTTP"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Request Rate (5m)** |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" 1.795"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" req"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"/s | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"✅ Normal"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"up"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:23:10.927Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" from"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" 0"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":".363"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"in previous audit) |\n| **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Error Rate (5m)** |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" 0 | ✅"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n| **Active Sessions** | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"0 | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"⚠️ Zero"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" at"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" audit time"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n\n---\n\n### M"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"CP Server"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Registry"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n| MCP Server"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | Status"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | Primary"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Tools |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n|------------|:------:|------------"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"---|\n| **aw"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"p-azure-mcp** |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ✅ Registered"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | `azure_arm_execute`,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `azure_graph_execute`, `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"azure_cost"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_query` |\n| **aw"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"p-aws-mcp** |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ✅ Registered | `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"call_aws`, `aws_identity"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"`, `aws_list_ec2"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"`"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n| **openagentic-web"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"-mcp** | ✅"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Registered | `web_search"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"`, `web_fetch`, `web"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_news_search` |\n|"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" **openagentic-flowise-m"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"cp** | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"✅ Registered | `flowise"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_list_chatflows`, `flo"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"wise_create_agentflow`"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n| **openagentic-diagram"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"-mcp** | ✅"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Registered | `create_diagram"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"` |\n| **openagentic-"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"admin-mcp** | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"❌ Error"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | `system_health`, `user"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_list`, `audit_logs`"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:23:13.928Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n| **openagentic-memory"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"-mcp** | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"✅ Registered | `memory_"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"store`, `memory_recall`, `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"memory_search` |\n| **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"oap-knowledge-mcp**"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | ✅ Registered |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `suggest_tools_for_task"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"`, `list"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"_available_mcps` |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n\n---\n\n### Trend"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Comparison"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"vs"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Previous Audits)\n\n|"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Subs"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ystem | Previous"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Audit | This"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Audit |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Trend"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n|-----------|:-"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"-------------:|:----------:|:-----"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":|"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n| **Admin"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" MCP** | ❌"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Failed"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | ❌ Failed ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"new"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" error"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":") | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"⚠️ Different"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" error signature"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n| **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Kubernetes M"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"CP** | ❌ No"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ku"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"beconfig | ❌ No"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" kubeconfig | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"➡"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"️ Persistent"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:23:16.928Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n| **Prometheus UP"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"/"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"DOWN** | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"50 "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"/ 4 | 50 "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"/ 4 | ➡"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"️ Same"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"4 targets"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n| **HTTP"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Rate"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"5m)** | 0."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"363 req"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"/s | 1.795 "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"req/s | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"↗"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"️ **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"5"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"×"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" increase** |\n| **Error Rate"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" (5m)** |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Unav"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ailable | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"0 | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"✅"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Improved"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" visibility"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n| **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"L"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"oki errors"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"1"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"h)** | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"0 | 0 | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"✅ Stable"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n| **Flowise**"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | ❌ Unheal"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"thy | ❌ Unh"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ealthy | ➡️"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Persistent"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n| **L"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"angGraph /"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" CrewAI** | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"✅ /"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"✅ | ✅ /"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ✅ | ➡"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"️ Stable"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |\n| **L"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:23:19.928Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"oki connectivity"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | ❌"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" E"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"CONNREFUSED | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"✅"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Responding"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"↗️ Improved"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n| **Alert"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Config"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"0 firing"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"missing"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":") | 0 firing (still"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" missing) | "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"⚠️ No"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" alert"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ing for"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" down"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" targets |\n\n---\n\n### Findings"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" &"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Recommendations\n\n| #"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | Finding"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | Priority"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | Recommendation |\n|---|------"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"---|:"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"--------:|-------------"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"---|\n| 1 | **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Admin"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" MCP internal"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" error** —"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Attempt to overwrite 'args"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"' in LogRecord` is"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" a Python"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" logging bug,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" likely"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" in"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the M"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"CP's"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" structured"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" logging config. All"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"5 admin tools"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" fail"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:23:22.928Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | **P"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"0"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | Inspect"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"aw"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"p-admin-mcp`"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" container"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" logs."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Likely"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" a"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" confl"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"icting `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Log"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Record` attribute"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" in"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" a"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" logging"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" formatter"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" or"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" handler."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Restart the pod"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" after"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" pat"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ching the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" logging"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" config. |\n| 2 "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"| **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Flo"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"wise unhealthy** — persistent"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" across"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"3+"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" audits |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" **P1** | Investigate"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Flowise workspace"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" proxy"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" at"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `openagentic-api:8"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"000/api/flowise-workspace"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"`. Check upstream"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Flowise pod"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" health"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" and"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" network policy"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":". |\n| 3 |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" **4"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Prometheus targets down** — unchanged"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" across"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" all"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" audits | **P1"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | These"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:23:25.928Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" are st"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ale:"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `kube-state-metrics`,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" API"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" server, and "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"2"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" pods (`"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"10"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":".42.5.19:8"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"080`,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `10.42.2.37"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":":8090`). Either"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" fix"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the targets"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" or remove"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" st"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ale scr"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ape configs to"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" reduce"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" noise"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":". |\n| 4 |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" **No"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" alert"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ing rules"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" firing"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** despite"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" 4 down targets | **P"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"2** | Prometheus"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" has"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" no active"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" alert"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" rules for"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" target"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" health"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":". Add"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"up"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" =="}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" 0` alert"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" rules"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" to ensure"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" visibility"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":". |\n| 5 |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" **Kubernetes M"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"CP has"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" no kubeconfig** —"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" persistent"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" | **P2"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | Mount"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" a"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" valid"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" kubeconfig or configure"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:23:28.929Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" in"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"-"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"cluster auth for"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" K"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"8s M"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"CP server"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":". |"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"\n| 6 | **HTTP"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" request"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" rate 5×"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" higher"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** than previous audit | **Info"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"** | Positive"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" trend —"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" indicates"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" increased"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" platform"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" usage. Monitor"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" for capacity"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" implications"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":". |\n\n>"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" ["}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"!WARNING"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"]\n> **Critical blo"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"cker:** The Admin MCP failure"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" prevents"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" all database health"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" checks ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"PostgreSQL, Redis, Milv"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"us)"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" and the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" full"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" system test. Until"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" this is resolved, backend"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" data"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"-"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"layer"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" health is"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"un"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ob"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"servable**"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" through"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" platform"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" tool"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ing."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" The"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `LogRecord` over"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"write error"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" suggests"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" a Python"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:23:31.929Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" logging misc"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"onfiguration introduced"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" in a"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" recent deployment"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" —"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" check"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the latest"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" revision"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" of the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" `oap-admin-mcp"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"` deployment"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"."}
+
+event: content_block_stop
+data: {"index":0,"blockType":"text","finalContent":"---\n\n## OpenAgentic Infrastructure Health Audit\n\n**Audit Timestamp:** 2026-02-21T00:22 UTC\n\n---\n\n### Executive Summary\n\nThe platform is **partially degraded**. The Admin MCP backend is experiencing a persistent internal error (`Attempt to overwrite 'args' in LogRecord`) blocking all database and system-test health checks. Four Prometheus scrape targets remain down — a pattern unchanged across your previous three audits. Flowise remains unhealthy. Core orchestration (LangGraph, CrewAI) and 50 of 54 Prometheus targets are operational.\n\n---\n\n### Primary Health Checks\n\n| # | Subsystem | Tool | Status | Detail |\n|---|-----------|------|:------:|--------|\n| 1 | **Full System Test** | `admin_full_system_test` | ❌ Error | HTTP 500 — `LogRecord` overwrite bug in Admin MCP |\n| 2 | **PostgreSQL** | `admin_system_postgres_health_check` | ❌ Error | Same Admin MCP internal error |\n| 3 | **Redis** | `admin_system_redis_health_check` | ❌ Error | Same Admin MCP internal error |\n| 4 | **Milvus** | `admin_system_milvus_health_check` | ❌ Error | Same Admin MCP internal error |\n| 5 | **Kubernetes Cluster** | `k8s_cluster_health` | ❌ No kubeconfig | Client init failed — no config found |\n| 6 | **Prometheus** | `prometheus_health_summary` | ⚠️ 50 up / 4 down | See target breakdown below |\n\n---\n\n### Supplemental Checks\n\n| Subsystem | Tool | Status | Detail |\n|-----------|------|:------:|--------|\n| **Infrastructure Health** | `admin_system_infrastructure_health_check` | ❌ Error | Same `LogRecord` bug |\n| **LangGraph** | `get_framework_status` | ✅ Healthy | `openagentic-langgraph:3100` |\n| **CrewAI** | `get_framework_status` | ✅ Healthy | `openagentic-crewai:3200` |\n| **Flowise** | `get_framework_status` | ❌ Unhealthy | `openagentic-api:8000/api/flowise-workspace` |\n| **Application Errors (Loki)** | `loki_search_errors` | ✅ Clean | No errors in last 1h |\n| **Firing Alerts** | `prometheus_alerts` | ✅ None | 0 firing, 0 pending |\n\n---\n\n### Prometheus Target Breakdown\n\n| Target | Endpoint | Status | Likely Cause |\n|--------|----------|:------:|--------------|\n| **kube-state-metrics** | `kube-state-metrics.kube-system:8080` | ❌ Down | Pod crash or service mesh issue |\n| **kubernetes-apiservers** | `10.2.10.131:6443` | ❌ Down | API server unreachable from Prometheus |\n| **kubernetes-pods** | `10.42.5.19:8080` | ❌ Down | Application pod down |\n| **kubernetes-pods** | `10.42.2.37:8090` | ❌ Down | Application pod down |\n\n**Prometheus Metrics:**\n\n| Metric | Value | Assessment |\n|--------|------:|:----------:|\n| **Targets UP** | 50 | ✅ |\n| **Targets DOWN** | 4 | ❌ |\n| **Firing Alerts** | 0 | ⚠️ Should be >0 given 4 down targets |\n| **HTTP Request Rate (5m)** | 1.795 req/s | ✅ Normal (up from 0.363 in previous audit) |\n| **Error Rate (5m)** | 0 | ✅ |\n| **Active Sessions** | 0 | ⚠️ Zero at audit time |\n\n---\n\n### MCP Server Registry\n\n| MCP Server | Status | Primary Tools |\n|------------|:------:|---------------|\n| **oap-azure-mcp** | ✅ Registered | `azure_arm_execute`, `azure_graph_execute`, `azure_cost_query` |\n| **oap-aws-mcp** | ✅ Registered | `call_aws`, `aws_identity`, `aws_list_ec2` |\n| **oap-web-mcp** | ✅ Registered | `web_search`, `web_fetch`, `web_news_search` |\n| **oap-flowise-mcp** | ✅ Registered | `flowise_list_chatflows`, `flowise_create_agentflow` |\n| **oap-diagram-mcp** | ✅ Registered | `create_diagram` |\n| **oap-admin-mcp** | ❌ Error | `system_health`, `user_list`, `audit_logs` |\n| **oap-memory-mcp** | ✅ Registered | `memory_store`, `memory_recall`, `memory_search` |\n| **oap-knowledge-mcp** | ✅ Registered | `suggest_tools_for_task`, `list_available_mcps` |\n\n---\n\n### Trend Comparison (vs. Previous Audits)\n\n| Subsystem | Previous Audit | This Audit | Trend |\n|-----------|:--------------:|:----------:|:-----:|\n| **Admin MCP** | ❌ Failed | ❌ Failed (new error) | ⚠️ Different error signature |\n| **Kubernetes MCP** | ❌ No kubeconfig | ❌ No kubeconfig | ➡️ Persistent |\n| **Prometheus UP/DOWN** | 50 / 4 | 50 / 4 | ➡️ Same 4 targets |\n| **HTTP Rate (5m)** | 0.363 req/s | 1.795 req/s | ↗️ **5× increase** |\n| **Error Rate (5m)** | Unavailable | 0 | ✅ Improved visibility |\n| **Loki errors (1h)** | 0 | 0 | ✅ Stable |\n| **Flowise** | ❌ Unhealthy | ❌ Unhealthy | ➡️ Persistent |\n| **LangGraph / CrewAI** | ✅ / ✅ | ✅ / ✅ | ➡️ Stable |\n| **Loki connectivity** | ❌ ECONNREFUSED | ✅ Responding | ↗️ Improved |\n| **Alert Config** | 0 firing (missing) | 0 firing (still missing) | ⚠️ No alerting for down targets |\n\n---\n\n### Findings & Recommendations\n\n| # | Finding | Priority | Recommendation |\n|---|---------|:--------:|----------------|\n| 1 | **Admin MCP internal error** — `Attempt to overwrite 'args' in LogRecord` is a Python logging bug, likely in the MCP's structured logging config. All 5 admin tools fail. | **P0** | Inspect `oap-admin-mcp` container logs. Likely a conflicting `LogRecord` attribute in a logging formatter or handler. Restart the pod after patching the logging config. |\n| 2 | **Flowise unhealthy** — persistent across 3+ audits | **P1** | Investigate Flowise workspace proxy at `openagentic-api:8000/api/flowise-workspace`. Check upstream Flowise pod health and network policy. |\n| 3 | **4 Prometheus targets down** — unchanged across all audits | **P1** | These are stale: `kube-state-metrics`, API server, and 2 pods (`10.42.5.19:8080`, `10.42.2.37:8090`). Either fix the targets or remove stale scrape configs to reduce noise. |\n| 4 | **No alerting rules firing** despite 4 down targets | **P2** | Prometheus has no active alert rules for target health. Add `up == 0` alert rules to ensure visibility. |\n| 5 | **Kubernetes MCP has no kubeconfig** — persistent | **P2** | Mount a valid kubeconfig or configure in-cluster auth for the K8s MCP server. |\n| 6 | **HTTP request rate 5× higher** than previous audit | **Info** | Positive trend — indicates increased platform usage. Monitor for capacity implications. |\n\n> [!WARNING]\n> **Critical blocker:** The Admin MCP failure prevents all database health checks (PostgreSQL, Redis, Milvus) and the full system test. Until this is resolved, backend data-layer health is **unobservable** through platform tooling. The `LogRecord` overwrite error suggests a Python logging misconfiguration introduced in a recent deployment — check the latest revision of the `oap-admin-mcp` deployment."}
+
+event: cot_step
+data: {"step":{"id":"cot_thinking_1771633374008","type":"thinking","description":"Processing complete","status":"completed","endTime":1771633413517}}
+
+event: content_safety_warning
+data: {"messageId":"71r8tmIaMVx1o4n2fGFw0","issues":["Repetition detected: \"| ✅ registered\" (7x), \"✅ registered |\" (7x)"],"hadNonEnglish":false,"hadRepetition":true,"truncated":false}
+
+event: message_updated
+data: {"messageId":"71r8tmIaMVx1o4n2fGFw0","role":"assistant","content":"---\n\n## OpenAgentic Infrastructure Health Audit\n\n**Audit Timestamp:** 2026-02-21T00:22 UTC\n\n---\n\n### Executive Summary\n\nThe platform is **partially degraded**. The Admin MCP backend is experiencing a persistent internal error (`Attempt to overwrite 'args' in LogRecord`) blocking all database and system-test health checks. Four Prometheus scrape targets remain down — a pattern unchanged across your previous three audits. Flowise remains unhealthy. Core orchestration (LangGraph, CrewAI) and 50 of 54 Prometheus targets are operational.\n\n---\n\n### Primary Health Checks\n\n| # | Subsystem | Tool | Status | Detail |\n|---|-----------|------|:------:|--------|\n| 1 | **Full System Test** | `admin_full_system_test` | ❌ Error | HTTP 500 — `LogRecord` overwrite bug in Admin MCP |\n| 2 | **PostgreSQL** | `admin_system_postgres_health_check` | ❌ Error | Same Admin MCP internal error |\n| 3 | **Redis** | `admin_system_redis_health_check` | ❌ Error | Same Admin MCP internal error |\n| 4 | **Milvus** | `admin_system_milvus_health_check` | ❌ Error | Same Admin MCP internal error |\n| 5 | **Kubernetes Cluster** | `k8s_cluster_health` | ❌ No kubeconfig | Client init failed — no config found |\n| 6 | **Prometheus** | `prometheus_health_summary` | ⚠️ 50 up / 4 down | See target breakdown below |\n\n---\n\n### Supplemental Checks\n\n| Subsystem | Tool | Status | Detail |\n|-----------|------|:------:|--------|\n| **Infrastructure Health** | `admin_system_infrastructure_health_check` | ❌ Error | Same `LogRecord` bug |\n| **LangGraph** | `get_framework_status` | ✅ Healthy | `openagentic-langgraph:3100` |\n| **CrewAI** | `get_framework_status` | ✅ Healthy | `openagentic-crewai:3200` |\n| **Flowise** | `get_framework_status` | ❌ Unhealthy | `openagentic-api:8000/api/flowise-workspace` |\n| **Application Errors (Loki)** | `loki_search_errors` | ✅ Clean | No errors in last 1h |\n| **Firing Alerts** | `prometheus_alerts` | ✅ None | 0 firing, 0 pending |\n\n---\n\n### Prometheus Target Breakdown\n\n| Target | Endpoint | Status | Likely Cause |\n|--------|----------|:------:|--------------|\n| **kube-state-metrics** | `kube-state-metrics.kube-system:8080` | ❌ Down | Pod crash or service mesh issue |\n| **kubernetes-apiservers** | `10.2.10.131:6443` | ❌ Down | API server unreachable from Prometheus |\n| **kubernetes-pods** | `10.42.5.19:8080` | ❌ Down | Application pod down |\n| **kubernetes-pods** | `10.42.2.37:8090` | ❌ Down | Application pod down |\n\n**Prometheus Metrics:**\n\n| Metric | Value | Assessment |\n|--------|------:|:----------:|\n| **Targets UP** | 50 | ✅ |\n| **Targets DOWN** | 4 | ❌ |\n| **Firing Alerts** | 0 | ⚠️ Should be >0 given 4 down targets |\n| **HTTP Request Rate (5m)** | 1.795 req/s | ✅ Normal (up from 0.363 in previous audit) |\n| **Error Rate (5m)** | 0 | ✅ |\n| **Active Sessions** | 0 | ⚠️ Zero at audit time |\n\n---\n\n### MCP Server Registry\n\n| MCP Server | Status | Primary Tools |\n|------------|:------:|---------------|\n| **oap-azure-mcp** | ✅ Registered | `azure_arm_execute`, `azure_graph_execute`, `azure_cost_query` |\n| **oap-aws-mcp** | ✅ Registered | `call_aws`, `aws_identity`, `aws_list_ec2` |\n| **oap-web-mcp** | ✅ Registered | `web_search`, `web_fetch`, `web_news_search` |\n| **oap-flowise-mcp** | ✅ Registered | `flowise_list_chatflows`, `flowise_create_agentflow` |\n| **oap-diagram-mcp** | ✅ Registered | `create_diagram` |\n| **oap-admin-mcp** | ❌ Error | `system_health`, `user_list`, `audit_logs` |\n| **oap-memory-mcp** | ✅ Registered | `memory_store`, `memory_recall`, `memory_search` |\n| **oap-knowledge-mcp** | ✅ Registered | `suggest_tools_for_task`, `list_available_mcps` |\n\n---\n\n### Trend Comparison (vs. Previous Audits)\n\n| Subsystem | Previous Audit | This Audit | Trend |\n|-----------|:--------------:|:----------:|:-----:|\n| **Admin MCP** | ❌ Failed | ❌ Failed (new error) | ⚠️ Different error signature |\n| **Kubernetes MCP** | ❌ No kubeconfig | ❌ No kubeconfig | ➡️ Persistent |\n| **Prometheus UP/DOWN** | 50 / 4 | 50 / 4 | ➡️ Same 4 targets |\n| **HTTP Rate (5m)** | 0.363 req/s | 1.795 req/s | ↗️ **5× increase** |\n| **Error Rate (5m)** | Unavailable | 0 | ✅ Improved visibility |\n| **Loki errors (1h)** | 0 | 0 | ✅ Stable |\n| **Flowise** | ❌ Unhealthy | ❌ Unhealthy | ➡️ Persistent |\n| **LangGraph / CrewAI** | ✅ / ✅ | ✅ / ✅ | ➡️ Stable |\n| **Loki connectivity** | ❌ ECONNREFUSED | ✅ Responding | ↗️ Improved |\n| **Alert Config** | 0 firing (missing) | 0 firing (still missing) | ⚠️ No alerting for down targets |\n\n---\n\n### Findings & Recommendations\n\n| # | Finding | Priority | Recommendation |\n|---|---------|:--------:|----------------|\n| 1 | **Admin MCP internal error** — `Attempt to overwrite 'args' in LogRecord` is a Python logging bug, likely in the MCP's structured logging config. All 5 admin tools fail. | **P0** | Inspect `oap-admin-mcp` container logs. Likely a conflicting `LogRecord` attribute in a logging formatter or handler. Restart the pod after patching the logging config. |\n| 2 | **Flowise unhealthy** — persistent across 3+ audits | **P1** | Investigate Flowise workspace proxy at `openagentic-api:8000/api/flowise-workspace`. Check upstream Flowise pod health and network policy. |\n| 3 | **4 Prometheus targets down** — unchanged across all audits | **P1** | These are stale: `kube-state-metrics`, API server, and 2 pods (`10.42.5.19:8080`, `10.42.2.37:8090`). Either fix the targets or remove stale scrape configs to reduce noise. |\n| 4 | **No alerting rules firing** despite 4 down targets | **P2** | Prometheus has no active alert rules for target health. Add `up == 0` alert rules to ensure visibility. |\n| 5 | **Kubernetes MCP has no kubeconfig** — persistent | **P2** | Mount a valid kubeconfig or configure in-cluster auth for the K8s MCP server. |\n| 6 | **HTTP request rate 5× higher** than previous audit | **Info** | Positive trend — indicates increased platform usage. Monitor for capacity implications. |\n\n> [!WARNING]\n> **Critical blocker:** The Admin MCP failure prevents all database health checks (PostgreSQL, Redis, Milvus) and the full system test. Until this is resolved, backend data-layer health is **unobservable** through platform tooling. The `LogRecord` overwrite error suggests a Python logging misconfiguration introduced in a recent deployment — check the latest revision of the `oap-admin-mcp` deployment.","timestamp":"2026-02-21T00:23:33.534Z","mcpCalls":[{"id":"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH","name":"admin_full_system_test","tool":"admin_full_system_test","toolName":"admin_full_system_test","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01NLTbND1oYRxpKgVmQkE9zH\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","status":"failed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"},{"id":"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ","name":"admin_system_postgres_health_check","tool":"admin_system_postgres_health_check","toolName":"admin_system_postgres_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01He37jmVokW1AgGUpa3gcDJ\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","status":"failed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"},{"id":"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx","name":"admin_system_redis_health_check","tool":"admin_system_redis_health_check","toolName":"admin_system_redis_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01KicjGpvPBD52uBRJZPnRjx\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","status":"failed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"},{"id":"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe","name":"admin_system_milvus_health_check","tool":"admin_system_milvus_health_check","toolName":"admin_system_milvus_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01CHxN1QkqRCnVgWpbZfwDNe\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","status":"failed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"},{"id":"toolu_bdrk_013RXKnv8q1Jg9pzNnQ8ifZk","name":"k8s_cluster_health","tool":"k8s_cluster_health","toolName":"k8s_cluster_health","serverId":"openagentic_kubernetes","serverName":"openagentic_kubernetes","executedOn":"mcp-proxy","arguments":{},"result":{"content":[{"type":"text","text":"{\n  \"success\": false,\n  \"error\": \"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\"\n}"}],"structuredContent":{"result":{"success":false,"error":"Kubernetes client initialization failed: Invalid kube-config file. No configuration found."}},"isError":false},"status":"completed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"},{"id":"toolu_bdrk_017AdCNETp2pDoaGBs6qqzqN","name":"prometheus_health_summary","tool":"prometheus_health_summary","toolName":"prometheus_health_summary","serverId":"openagentic_prometheus","serverName":"openagentic_prometheus","executedOn":"mcp-proxy","arguments":{},"result":{"content":[{"type":"text","text":"=== Prometheus Health Summary ===\n\nTargets: 50 up, 4 down\n  Down targets:\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\n    - kubernetes-apiservers: 10.2.10.131:6443\n    - kubernetes-pods: 10.42.5.19:8080\n    - kubernetes-pods: 10.42.2.37:8090\n\nAlerts: 0 firing, 0 pending\n\nKey Metrics:\n  HTTP Request Rate (5m): 1.7952168148148147\n  Error Rate (5m): 0\n  Active Sessions: 0"}],"structuredContent":{"result":"=== Prometheus Health Summary ===\n\nTargets: 50 up, 4 down\n  Down targets:\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\n    - kubernetes-apiservers: 10.2.10.131:6443\n    - kubernetes-pods: 10.42.5.19:8080\n    - kubernetes-pods: 10.42.2.37:8090\n\nAlerts: 0 firing, 0 pending\n\nKey Metrics:\n  HTTP Request Rate (5m): 1.7952168148148147\n  Error Rate (5m): 0\n  Active Sessions: 0"},"isError":false},"status":"completed","startTime":1771633362900,"endTime":1771633365315,"duration":2415,"timestamp":"2026-02-21T00:22:45.315Z"},{"id":"toolu_bdrk_01Uhu3dK8Jh8XsaRC15CRn8L","name":"admin_system_infrastructure_health_check","tool":"admin_system_infrastructure_health_check","toolName":"admin_system_infrastructure_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[INTERNAL_ERROR] HTTP error: 500 - {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error: \\\"Attempt to overwrite 'args' in LogRecord\\\"\"},\"id\":\"toolu_bdrk_01Uhu3dK8Jh8XsaRC15CRn8L\"} | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","status":"failed","startTime":1771633370679,"endTime":1771633373997,"duration":3318,"timestamp":"2026-02-21T00:22:53.997Z"},{"id":"toolu_bdrk_015zC721HQJb9swcSbnd1avD","name":"get_framework_status","tool":"get_framework_status","toolName":"get_framework_status","serverId":"openagentic_agent_architect","serverName":"openagentic_agent_architect","executedOn":"mcp-proxy","arguments":{},"result":{"content":[{"type":"text","text":"{\n  \"langgraph\": {\n    \"status\": \"healthy\",\n    \"url\": \"http://openagentic-langgraph:3100\"\n  },\n  \"crewai\": {\n    \"status\": \"healthy\",\n    \"url\": \"http://openagentic-crewai:3200\"\n  },\n  \"flowise\": {\n    \"status\": \"unhealthy\",\n    \"url\": \"http://openagentic-api:8000/api/flowise-workspace\"\n  },\n  \"default_framework\": \"langgraph\"\n}"}],"structuredContent":{"result":"{\n  \"langgraph\": {\n    \"status\": \"healthy\",\n    \"url\": \"http://openagentic-langgraph:3100\"\n  },\n  \"crewai\": {\n    \"status\": \"healthy\",\n    \"url\": \"http://openagentic-crewai:3200\"\n  },\n  \"flowise\": {\n    \"status\": \"unhealthy\",\n    \"url\": \"http://openagentic-api:8000/api/flowise-workspace\"\n  },\n  \"default_framework\": \"langgraph\"\n}"},"isError":false},"status":"completed","startTime":1771633370679,"endTime":1771633373997,"duration":3318,"timestamp":"2026-02-21T00:22:53.997Z"},{"id":"toolu_bdrk_0155g9Zfw1XdoxuXSweUc4yY","name":"loki_search_errors","tool":"loki_search_errors","toolName":"loki_search_errors","serverId":"openagentic_loki","serverName":"openagentic_loki","executedOn":"mcp-proxy","arguments":{"namespace":"openagentic","time_range":"1h"},"result":{"content":[{"type":"text","text":"No errors found in the last 1h"}],"structuredContent":{"result":"No errors found in the last 1h"},"isError":false},"status":"completed","startTime":1771633370679,"endTime":1771633373997,"duration":3318,"timestamp":"2026-02-21T00:22:53.997Z"},{"id":"toolu_bdrk_01XhFtrq8r1KydWkJSbc9DXn","name":"prometheus_alerts","tool":"prometheus_alerts","toolName":"prometheus_alerts","serverId":"openagentic_prometheus","serverName":"openagentic_prometheus","executedOn":"mcp-proxy","arguments":{},"result":{"content":[{"type":"text","text":"No active alerts"}],"structuredContent":{"result":"No active alerts"},"isError":false},"status":"completed","startTime":1771633370679,"endTime":1771633373997,"duration":3318,"timestamp":"2026-02-21T00:22:53.997Z"},{"id":"toolu_bdrk_01SMyHuSyCkpGpXy7JQkL1Nu","name":"list_available_mcps","tool":"list_available_mcps","toolName":"list_available_mcps","serverId":"openagentic_knowledge","serverName":"openagentic_knowledge","executedOn":"mcp-proxy","arguments":{},"result":{"content":[{"type":"text","text":"{\"mcps\":{\"oap-azure-mcp\":{\"description\":\"Azure cloud operations via ARM and Graph APIs\",\"primary_tools\":[\"azure_arm_execute\",\"azure_graph_execute\",\"azure_keyvault_secret\",\"azure_cost_query\"],\"use_cases\":[\"Azure infrastructure management\",\"Azure AD/Entra ID operations\",\"Cost analysis\"]},\"oap-aws-mcp\":{\"description\":\"AWS cloud operations\",\"primary_tools\":[\"call_aws\",\"aws_identity\",\"aws_list_ec2\",\"aws_list_s3\",\"aws_cost_summary\"],\"use_cases\":[\"AWS infrastructure management\",\"EC2, S3, Lambda operations\",\"Cost tracking\"]},\"oap-web-mcp\":{\"description\":\"Web search and content fetching\",\"primary_tools\":[\"web_search\",\"web_fetch\",\"web_news_search\"],\"use_cases\":[\"Real-time information\",\"Weather\",\"News\",\"Documentation lookup\"]},\"oap-flowise-mcp\":{\"description\":\"Flowise workflow management\",\"primary_tools\":[\"flowise_list_chatflows\",\"flowise_create_agentflow\",\"flowise_execute_chatflow\"],\"use_cases\":[\"Creating AI workflows\",\"Managing agent pipelines\"]},\"oap-diagram-mcp\":{\"description\":\"Diagram generation using Mermaid\",\"primary_tools\":[\"create_diagram\"],\"use_cases\":[\"Architecture diagrams\",\"Flowcharts\",\"Sequence diagrams\"]},\"oap-admin-mcp\":{\"description\":\"OpenAgentic platform administration\",\"primary_tools\":[\"system_health\",\"user_list\",\"audit_logs\"],\"use_cases\":[\"System monitoring\",\"User management\",\"Audit logs\"]},\"oap-memory-mcp\":{\"description\":\"Conversation memory and knowledge storage\",\"primary_tools\":[\"memory_store\",\"memory_recall\",\"memory_search\"],\"use_cases\":[\"Storing user preferences\",\"Recalling past conversations\",\"Knowledge management\"]},\"oap-knowledge-mcp\":{\"description\":\"This MCP! Tool guidance and documentation for other MCPs\",\"primary_tools\":[\"suggest_tools_for_task\",\"get_tool_examples\",\"search_tool_documentation\",\"list_available_mcps\"],\"use_cases\":[\"Learning how to use tools\",\"Finding the right tool for a task\",\"Getting tool examples\"]}},\"total_mcps\":8,\"usage_hint\":\"Use suggest_tools_for_task(task) to find the right tool for your task, or get_tool_examples(tool_name) for detailed usage.\"}"}],"structuredContent":{"mcps":{"oap-azure-mcp":{"description":"Azure cloud operations via ARM and Graph APIs","primary_tools":["azure_arm_execute","azure_graph_execute","azure_keyvault_secret","azure_cost_query"],"use_cases":["Azure infrastructure management","Azure AD/Entra ID operations","Cost analysis"]},"oap-aws-mcp":{"description":"AWS cloud operations","primary_tools":["call_aws","aws_identity","aws_list_ec2","aws_list_s3","aws_cost_summary"],"use_cases":["AWS infrastructure management","EC2, S3, Lambda operations","Cost tracking"]},"oap-web-mcp":{"description":"Web search and content fetching","primary_tools":["web_search","web_fetch","web_news_search"],"use_cases":["Real-time information","Weather","News","Documentation lookup"]},"oap-flowise-mcp":{"description":"Flowise workflow management","primary_tools":["flowise_list_chatflows","flowise_create_agentflow","flowise_execute_chatflow"],"use_cases":["Creating AI workflows","Managing agent pipelines"]},"oap-diagram-mcp":{"description":"Diagram generation using Mermaid","primary_tools":["create_diagram"],"use_cases":["Architecture diagrams","Flowcharts","Sequence diagrams"]},"oap-admin-mcp":{"description":"OpenAgentic platform administration","primary_tools":["system_health","user_list","audit_logs"],"use_cases":["System monitoring","User management","Audit logs"]},"oap-memory-mcp":{"description":"Conversation memory and knowledge storage","primary_tools":["memory_store","memory_recall","memory_search"],"use_cases":["Storing user preferences","Recalling past conversations","Knowledge management"]},"oap-knowledge-mcp":{"description":"This MCP! Tool guidance and documentation for other MCPs","primary_tools":["suggest_tools_for_task","get_tool_examples","search_tool_documentation","list_available_mcps"],"use_cases":["Learning how to use tools","Finding the right tool for a task","Getting tool examples"]}},"total_mcps":8,"usage_hint":"Use suggest_tools_for_task(task) to find the right tool for your task, or get_tool_examples(tool_name) for detailed usage."},"isError":false},"status":"completed","startTime":1771633370679,"endTime":1771633373997,"duration":3318,"timestamp":"2026-02-21T00:22:53.997Z"}],"tokenUsage":{"prompt_tokens":0,"completion_tokens":2228,"total_tokens":2228},"model":"us.anthropic.claude-opus-4-6-v1","source":"database","confirmed":true,"final":true}
+
+event: done
+data: {"messageId":"71r8tmIaMVx1o4n2fGFw0","toolCalls":[],"usage":{"prompt_tokens":0,"completion_tokens":2228,"total_tokens":2228},"finishReason":"stop","model":"us.anthropic.claude-opus-4-6-v1","source":"database"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:23:34.929Z"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:23:37.929Z"}
+
+event: ping
+data: {"timestamp":"2026-02-21T00:23:40.929Z"}
+
+event: response_complete
+data: {"messageId":"msg_1771633357927_87h63wn4j","sessionId":"session_1771633357776_0as1q0pyd","messageCount":15,"tokenUsage":{"prompt_tokens":0,"completion_tokens":2228,"total_tokens":2228}}
+
+event: thinking_complete
+data: {"stage":"complete"}
+
+event: stream_complete
+data: {"success":true,"processingTime":65049}
+

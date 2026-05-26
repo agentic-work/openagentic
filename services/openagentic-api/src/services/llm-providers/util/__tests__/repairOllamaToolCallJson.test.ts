@@ -85,35 +85,4 @@ describe('repairOllamaToolCallJson — #869 detection + repair', () => {
     expect(out?.repaired).toBe('{"k":5,"query":"x"}');
     expect(out?.parsed).toEqual({ k: 5, query: 'x' });
   });
-
-  // #1025 (2026-05-22) — Ollama wraps the parse error in its own JSON body,
-  // so the errorText hitting the repair function has backslash-escaped quotes
-  // INSIDE the raw='...' clause. The previous KEY_EQUALS_VALUE_RE required
-  // `{"` adjacent and could not match `{\"`. Live failure on Q2:
-  //   raw='{\"k=5\",\"query\":\"k8s_list_pods agentic-dev\"}'
-  //
-  // Repair must unescape JSON-style \" → " inside the raw fragment before
-  // applying the key=value rewrite. Backslash-escaped backslashes (\\) and
-  // backslash-escaped forward-slashes (\/) likewise unescape to themselves.
-  it('repairs JSON-escaped error body — raw=\'{\\"k=5\\",...}\' (Q2 live shape)', () => {
-    const errText =
-      `{"error":"error parsing tool call: raw='{\\"k=5\\",\\"query\\":\\"k8s_list_pods agentic-dev\\"}', err=invalid character ',' after object key"}`;
-    const out = repairOllamaToolCallJson(errText);
-    expect(out).not.toBeNull();
-    expect(out?.parsed).toEqual({ k: 5, query: 'k8s_list_pods agentic-dev' });
-  });
-
-  it('repairs JSON-escaped error body with mixed key=value + key:value', () => {
-    const errText =
-      `{"error":"error parsing tool call: raw='{\\"limit=10\\",\\"name\\":\\"foo\\"}', err=..."}`;
-    const out = repairOllamaToolCallJson(errText);
-    expect(out?.parsed).toEqual({ limit: 10, name: 'foo' });
-  });
-
-  it('passes already-valid JSON-escaped fragments', () => {
-    const errText =
-      `{"error":"error parsing tool call: raw='{\\"k\\":5,\\"q\\":\\"x\\"}', err=..."}`;
-    const out = repairOllamaToolCallJson(errText);
-    expect(out?.parsed).toEqual({ k: 5, q: 'x' });
-  });
 });

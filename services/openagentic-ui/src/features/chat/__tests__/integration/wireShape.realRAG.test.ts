@@ -4,7 +4,7 @@
  * Source: reports/verify-cadence/step-4-rag/rag-mcp-tools-kubernetes.ndjson
  * Prompt: "What tools do we have available for managing Kubernetes?
  *          Search our internal tool catalog."
- * Captured 2026-05-14 against dev with admin OBO. 473 frames,
+ * Captured 2026-05-14 against chat-dev with admin OBO. 473 frames,
  * success=true. tool_search fired against Milvus mcp_tools and returned
  * 10 real grounded results (k8s_cluster_health, k8s_create_namespace, ...).
  *

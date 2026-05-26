@@ -141,7 +141,7 @@ const SandboxExecCardComponent: React.FC<SandboxExecCardProps> = ({
   }, [onKill, request.requestId]);
 
   const title = request.title || LANGUAGE_LABEL[request.language] || 'Sandbox';
-  const accent = state === 'error' ? '#f87171' : '#8b5cf6';
+  const accent = state === 'error' ? 'var(--cm-error)' : 'var(--cm-accent)';
 
   return (
     <div
@@ -150,9 +150,9 @@ const SandboxExecCardComponent: React.FC<SandboxExecCardProps> = ({
       data-language={request.language}
       style={{
         margin: '8px 0',
-        border: '1px solid rgba(139,92,246,0.22)',
+        border: '1px solid color-mix(in srgb, var(--cm-accent) 22%, transparent)',
         borderRadius: 10,
-        background: '#0b0d12',
+        background: 'var(--cm-bg)',
         fontFamily: 'JetBrains Mono, monospace',
         overflow: 'hidden',
       }}
@@ -163,8 +163,8 @@ const SandboxExecCardComponent: React.FC<SandboxExecCardProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '8px 12px',
-          background: 'rgba(139,92,246,0.06)',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          background: 'color-mix(in srgb, var(--cm-accent) 6%, transparent)',
+          borderBottom: '1px solid var(--cm-border)',
           fontSize: 11,
         }}
       >
@@ -176,11 +176,11 @@ const SandboxExecCardComponent: React.FC<SandboxExecCardProps> = ({
               height: 7,
               borderRadius: '50%',
               background: accent,
-              boxShadow: state === 'running' ? `0 0 0 3px ${accent}33` : undefined,
+              boxShadow: state === 'running' ? `0 0 0 3px color-mix(in srgb, ${accent} 20%, transparent)` : undefined,
             }}
           />
-          <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{title}</span>
-          <span style={{ color: '#71717a' }}>
+          <span style={{ color: 'var(--cm-text)', fontWeight: 600 }}>{title}</span>
+          <span style={{ color: 'var(--cm-text-muted)' }}>
             · {request.language}
             {result?.durationMs != null && (
               <> · {(result.durationMs / 1000).toFixed(2)}s</>
@@ -193,7 +193,7 @@ const SandboxExecCardComponent: React.FC<SandboxExecCardProps> = ({
               type="button"
               onClick={kill}
               data-testid="sandbox-kill"
-              style={buttonStyle('#f87171')}
+              style={buttonStyle('var(--cm-error)')}
             >
               <StopIcon /> stop
             </button>
@@ -217,10 +217,10 @@ const SandboxExecCardComponent: React.FC<SandboxExecCardProps> = ({
           margin: 0,
           padding: '10px 12px',
           fontSize: 12,
-          color: '#e2e8f0',
+          color: 'var(--cm-text)',
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
-          borderBottom: '1px solid rgba(255,255,255,0.04)',
+          borderBottom: '1px solid var(--cm-border)',
         }}
       >
         {request.code}
@@ -232,19 +232,19 @@ const SandboxExecCardComponent: React.FC<SandboxExecCardProps> = ({
           style={{
             padding: '8px 12px',
             fontSize: 11,
-            color: '#a1a1aa',
-            background: 'rgba(255,255,255,0.02)',
+            color: 'var(--cm-text-muted)',
+            background: 'color-mix(in srgb, var(--cm-text) 2%, transparent)',
           }}
         >
           {state === 'running' && !result && (
-            <span style={{ color: '#71717a' }}>running…</span>
+            <span style={{ color: 'var(--cm-text-muted)' }}>running…</span>
           )}
           {result?.stdout && (
             <pre
               data-testid="sandbox-stdout"
               style={{
                 margin: 0,
-                color: '#86efac',
+                color: 'var(--cm-success)',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
               }}
@@ -257,7 +257,7 @@ const SandboxExecCardComponent: React.FC<SandboxExecCardProps> = ({
               data-testid="sandbox-stderr"
               style={{
                 margin: '4px 0 0',
-                color: '#fca5a5',
+                color: 'var(--cm-error)',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
               }}
@@ -270,7 +270,7 @@ const SandboxExecCardComponent: React.FC<SandboxExecCardProps> = ({
               data-testid="sandbox-return"
               style={{
                 margin: '4px 0 0',
-                color: '#e2e8f0',
+                color: 'var(--cm-text)',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
               }}
@@ -292,14 +292,14 @@ const SandboxExecCardComponent: React.FC<SandboxExecCardProps> = ({
                     maxWidth: '100%',
                     maxHeight: 360,
                     borderRadius: 4,
-                    background: '#fff',
+                    background: 'var(--cm-bg)',
                   }}
                 />
               ))}
             </div>
           )}
           {result?.errorCode && (
-            <div style={{ marginTop: 4, color: '#f87171', fontSize: 10 }}>
+            <div style={{ marginTop: 4, color: 'var(--cm-error)', fontSize: 10 }}>
               [{result.errorCode}
               {result.timedOut ? ' · timed out' : ''}]
             </div>
@@ -317,8 +317,8 @@ function buttonStyle(color: string, disabled = false): React.CSSProperties {
     gap: 4,
     padding: '3px 9px',
     borderRadius: 99,
-    background: 'rgba(255,255,255,0.04)',
-    border: `1px solid ${color}55`,
+    background: 'color-mix(in srgb, var(--cm-text) 4%, transparent)',
+    border: `1px solid color-mix(in srgb, ${color} 33%, transparent)`,
     color,
     fontSize: 11,
     fontFamily: 'JetBrains Mono, monospace',

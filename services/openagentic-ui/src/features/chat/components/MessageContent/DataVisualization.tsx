@@ -175,7 +175,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({ data, onRefresh }
             style={{
               position: 'fixed',
               inset: 0,
-              background: 'rgba(0,0,0,0.72)',
+              background: 'color-mix(in srgb, var(--cm-bg) 72%, transparent)',
               zIndex: 80,
               display: 'flex',
               alignItems: 'center',

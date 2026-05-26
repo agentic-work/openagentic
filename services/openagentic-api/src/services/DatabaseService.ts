@@ -336,7 +336,7 @@ export class DatabaseService {
       //
       // Why dynamic: the prisma schema declares columns as Unsupported("halfvec")
       // (no dim) so the same codebase runs on local k3s with nomic-embed-text
-      // (768), your environment dev/stg with text-embedding-3-large (3072), and whatever
+      // (768), CDC dev/stg with text-embedding-3-large (3072), and whatever
       // else a customer might configure. See docs/rules/no-hardcoded-models.md.
       //
       // Runs AFTER prisma db push (in initialize()) so columns exist; resolves

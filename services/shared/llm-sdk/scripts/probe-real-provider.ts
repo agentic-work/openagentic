@@ -4,7 +4,7 @@
  *
  * Calls real providers (AIF Chat / AIF Responses / Vertex Gemini / Ollama)
  * from THIS machine using the same credentials the api pod consumes, pipes
- * every raw chunk through the matching agenticwork-sdk normalizer, and emits
+ * every raw chunk through the matching openagentic-sdk normalizer, and emits
  * canonical events to disk along with a capability-aware pass/fail matrix.
  *
  * The capability catalog (src/lib/capabilities) declares which canonical
@@ -591,7 +591,7 @@ async function main() {
 //   2. Model picks the right tools (or none)             ← may or may not fire
 //   3. Tools dispatch + return data                      ← may or may not fire
 //   4. Model synthesizes the response                    ← ≥1 text_delta MUST fire
-//   5. UI renders inline per agenticwork-sdk canonical   ← stream must envelope cleanly
+//   5. UI renders inline per openagentic-sdk canonical   ← stream must envelope cleanly
 //
 // On a direct-provider probe (no api round-trip), tool dispatch is signalled
 // by the model emitting content_block_start:tool_use — we don't actually

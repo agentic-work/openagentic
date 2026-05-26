@@ -47,6 +47,7 @@ import { executeSynthOBO } from '../../../../services/SynthOBODispatcher.js';
 import type { SynthInput } from '../../../../services/SynthTool.js';
 import type { SynthOBOBrokerLike } from '../../../../services/SynthOBODispatcher.js';
 import { getAgentMemoryService } from '../../../../services/AgentMemoryService.js';
+import { getMilvusMemoryService } from '../../../../services/MilvusMemoryService.js';
 import { getSynthExecutorClient } from '../../../../services/SynthExecutorClient.js';
 import { getLargeResultStorageService } from '../../../../services/LargeResultStorageService.js';
 
@@ -298,11 +299,29 @@ async function dispatchMemorySearch(
   input: MemorySearchInput,
 ): Promise<ToolDispatchResult> {
   const svc = getAgentMemoryService();
+  // #1085 — wire MilvusMemoryService.searchUserMemories as the semantic side.
+  // The per-user Milvus collection is populated by the sidecar emits in commit
+  // 3 (ConversationCompactionWorker, GenerateImageTool, LargeResultStorageService).
+  // Adapter swallows its own failures via executeMemorySearch's try-wrap, so a
+  // Milvus outage never blocks the substring path.
+  const milvus = getMilvusMemoryService(ctx.logger as any);
   const result = await executeMemorySearch(
     { userId: ctx.userId, logger: ctx.logger },
     input,
     {
       recall: (userId, opts) => svc.recall(userId, opts) as any,
+      semanticRecall: async (userId, query, limit) => {
+        const hits = await milvus.searchUserMemories(userId, { text: query, limit });
+        // Adapt RankedMemory → memory_search hit shape. entity_name → key,
+        // observations → value, score → confidence.
+        return hits.map((h: any) => ({
+          id: String(h.id),
+          category: String(h.metadata?.entityType ?? h.type ?? 'entity_fact'),
+          key: String(h.metadata?.entityName ?? h.entities?.[0] ?? h.id),
+          value: String(h.summary ?? h.content ?? ''),
+          confidence: typeof h.relevanceScore === 'number' ? h.relevanceScore : 0,
+        }));
+      },
     },
   );
   return {

@@ -10,9 +10,9 @@
 
 import { test, expect, Page } from '@playwright/test';
 
-const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:8080';
+const BASE_URL = process.env.TEST_BASE_URL || 'https://chat-dev.openagentic.io';
 const LOCAL_ADMIN_EMAIL = 'admin@openagentic.io';
-const LOCAL_ADMIN_PASSWORD = process.env.LOCAL_ADMIN_PASSWORD || '';
+const LOCAL_ADMIN_PASSWORD = process.env.LOCAL_ADMIN_PASSWORD || '6py8Q~XNcKAJ~.SIrZAIBy__l7oDoPteWp2Habm3';
 
 // Screenshot directory
 const SCREENSHOT_DIR = 'tests/e2e/screenshots/mcp-agent';

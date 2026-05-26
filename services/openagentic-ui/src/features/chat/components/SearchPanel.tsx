@@ -307,7 +307,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
             onClick={onClose}
             className="fixed inset-0 z-[2000]"
             style={{
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              backgroundColor: 'color-mix(in srgb, var(--cm-text) 50%, transparent)',
               backdropFilter: 'blur(4px)'
             }}
           />
@@ -322,7 +322,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
             style={{
               backgroundColor: 'var(--color-surface)',
               borderRight: '1px solid var(--color-border)',
-              boxShadow: '4px 0 24px rgba(0, 0, 0, 0.3)'
+              boxShadow: '4px 0 24px color-mix(in srgb, var(--cm-text) 30%, transparent)'
             }}
           >
             {/* Header */}
@@ -427,7 +427,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
                     style={{
                       backgroundColor: 'var(--color-background)',
                       border: '1px solid var(--color-border)',
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                      boxShadow: '0 2px 8px color-mix(in srgb, var(--cm-text) 10%, transparent)'
                     }}
                   >
                     {/* Title */}

@@ -36,15 +36,15 @@ export const TOOL_PARALLEL_HEADER_STYLES = {
     width: '100%',
     gap: '10px',
     padding: '8px 12px',
-    background: 'var(--bg-2, #16181c)',
-    border: '1px solid var(--line-2, rgba(255,255,255,0.10))',
+    background: 'var(--cm-bg-secondary)',
+    border: '1px solid var(--cm-border)',
     borderRadius: '8px',
     cursor: 'pointer',
     textAlign: 'left' as const,
   } as React.CSSProperties,
   label: {
     flex: 1,
-    color: 'var(--fg-1, #d4d4d8)',
+    color: 'var(--cm-text)',
     fontSize: '13px',
     fontWeight: 500,
   } as React.CSSProperties,
@@ -52,12 +52,12 @@ export const TOOL_PARALLEL_HEADER_STYLES = {
     display: 'flex',
     gap: '12px',
     fontSize: '11px',
-    color: 'var(--fg-3, #71717a)',
+    color: 'var(--cm-text-muted)',
     fontFamily: 'JetBrains Mono, monospace',
     fontVariantNumeric: 'tabular-nums' as const,
   } as React.CSSProperties,
   failedStat: {
-    color: '#ef4444',
+    color: 'var(--cm-error)',
   } as React.CSSProperties,
 };
 
@@ -73,7 +73,7 @@ function chevronStyle(expanded: boolean): React.CSSProperties {
     transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
     transition: 'transform 0.15s ease',
     flexShrink: 0,
-    color: 'var(--fg-3, #71717a)',
+    color: 'var(--cm-text-muted)',
   };
 }
 

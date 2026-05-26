@@ -346,7 +346,7 @@ describe('PermissionService — Claude-Code-style glob rules', () => {
 
       // Q1-fix-8 (2026-05-12) — canonical frame is `hitl_approval`. The
       // legacy `mcp_approval_required` dual-emit was ripped to stop the
-      // double-card render on the dev environment.
+      // double-card render on chat-dev.
       await vi.waitFor(() => expect(events.find(e => e.event === 'hitl_approval')).toBeDefined(), { timeout: 2_000 });
       const req = events.find(e => e.event === 'hitl_approval')!.data as any;
       // Sev-0 fix 2026-05-12 — submitter MUST match the toolCall's userId.

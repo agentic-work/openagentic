@@ -24,7 +24,7 @@
  *   - Empty / null / non-string input returns an empty result without
  *     throwing.
  *
- * RED tests pin exact shapes observed live on the dev environment (#925).
+ * RED tests pin exact shapes observed live on chat-dev (#925).
  */
 import { describe, it, expect } from 'vitest';
 import { stripFreestyleHtml } from '../stripFreestyleHtml.js';

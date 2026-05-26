@@ -188,6 +188,27 @@ export class LargeResultStorageService {
       tokensSaved: Math.ceil(sizeBytes / 4)
     }, '✅ Large result stored successfully in Redis - context tokens saved!');
 
+    // #1085 sidecar — fire-and-forget upsert into the user's Milvus memory so
+    // memory_search can recall the large result's summary on later turns.
+    // Failures swallowed; Redis-side storage is the SoT, memory is best-effort.
+    if (userId) {
+      void (async () => {
+        try {
+          const { getMilvusMemoryService } = await import('./MilvusMemoryService.js');
+          await getMilvusMemoryService(this.logger as any).upsertUserMemory(userId, {
+            kind: 'large_tool_result',
+            title: `${toolName} result (${resultId})`,
+            content: typeof summary === 'string' ? summary : JSON.stringify(summary).slice(0, 4000),
+          });
+        } catch (err: any) {
+          this.logger.warn(
+            { err: err?.message ?? String(err), resultId, toolName },
+            '[large-result] memory upsert failed — result still stored in Redis',
+          );
+        }
+      })();
+    }
+
     return {
       resultId,
       summary,

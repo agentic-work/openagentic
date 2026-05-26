@@ -41,7 +41,7 @@ async function buildApp(pm: any): Promise<FastifyInstance> {
 describe('GET /api/admin/llm-providers/health — status code semantics', () => {
   it('returns 200 with overall=healthy when every provider is healthy', async () => {
     const app = await buildApp(makeFakeProviderManager([
-      ['ollama-hal', { status: 'healthy', endpoint: 'http://10.0.0.142:11434' }],
+      ['ollama-hal', { status: 'healthy', endpoint: 'http://10.2.10.142:11434' }],
       ['aws-bedrock', { status: 'healthy' }],
     ]));
     try {

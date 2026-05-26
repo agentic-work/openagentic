@@ -12,7 +12,12 @@ import { INIT_DATABASE } from './03-database.js';
 import { INIT_PROVIDERS } from './04-providers.js';
 import { INIT_MILVUS } from './05-milvus.js';
 import { INIT_RAG } from './06-rag.js';
-import { INIT_MCP_INDEX } from './07-mcp-index.js';
+// #1059 — mcp-proxy now OWNS mcp_tools INDEXING (the WRITE side: Milvus +
+// pgvector writer). Step 07 (mcp-index) RIPPED. BUT step 08 (tool-cache) is
+// the api-side READER that wires `ctx.toolSemanticCache` for the
+// /api/internal/tool-search endpoint — it MUST stay. Without it the route
+// returns 503 in 0ms and every model tool_search call fails (root cause
+// found while driving Q1 on 0.7.1-b23ed3c1).
 import { INIT_TOOL_CACHE } from './08-tool-cache.js';
 import { INIT_PROMPT_CACHE } from './09-prompt-cache.js';
 import { START_JOB_WATCHER } from './10-job-watcher.js';
@@ -21,7 +26,7 @@ import { START_JOB_WATCHER } from './10-job-watcher.js';
 import { INIT_AGENT_REGISTRY } from './12-agent-registry.js';
 import { INIT_MILVUS_COLLECTION_PROBE } from './13-milvus-collection-probe.js';
 import { SEED_BUILT_IN_AGENTS_MD } from './14-agent-md-to-db-seeder.js';
-// SEED_ONCALL_TEMPLATES removed — moved into SEED_WORKFLOW_TEMPLATES inline
+// SEED_OMHS_TEMPLATES removed — moved into SEED_WORKFLOW_TEMPLATES inline
 // (services/openagentic-api/src/routes/workflows.ts) for the same reason
 // SEED_PLATFORM_TEMPLATES was removed: the dedicated seeders wrote to the
 // `WorkflowTemplate` marketplace model with an invalid where:{name}
@@ -34,7 +39,9 @@ export const STEPS: BootstrapStep[] = [
   INIT_PROVIDERS,
   INIT_MILVUS,
   INIT_RAG,
-  INIT_MCP_INDEX,
+  // #1059 — INIT_MCP_INDEX (writer) moved to mcp-proxy. INIT_TOOL_CACHE
+  // (reader, wires ctx.toolSemanticCache for /api/internal/tool-search)
+  // STAYS — without it model tool_search dispatches 503 in 0ms.
   INIT_TOOL_CACHE,
   INIT_PROMPT_CACHE,
   // Initialize the BuiltInAgentRegistry before job watcher / portal so any

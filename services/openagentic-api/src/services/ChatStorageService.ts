@@ -22,6 +22,7 @@ import { prisma, prismaBase } from '../utils/prisma.js';
 import { AITitleGenerationService } from './AITitleGenerationService.js';
 import { TitleGenerationClient } from './TitleGenerationClient.js';
 import { ChatSummaryService } from './ChatSummaryService.js';
+import { stripMarkdownTables } from '../lib/text/stripMarkdownTables.js';
 // Repository pattern - gradual integration
 import { SimpleChatSessionRepository } from '../repositories/SimpleChatSessionRepository.js';
 import { buildSessionListWhere } from '../repositories/sessionListWhere.js';
@@ -757,11 +758,40 @@ export class ChatStorageService {
         : 'user';
       
       // Build comprehensive token_usage object matching Prisma schema
-      const tokenUsage = options.tokenUsage || (options.tokenCount ? { 
+      const tokenUsage = options.tokenUsage || (options.tokenCount ? {
         totalTokens: options.tokenCount,
         promptTokens: 0,
-        completionTokens: 0 
+        completionTokens: 0
       } : null);
+
+      // Sev-0 #1069 (dup-render) — when the assistant turn ALSO emitted a
+      // streaming_table or compose_visual({template:'table'}) artifact, the
+      // model frequently includes the same data as a markdown table in its
+      // prose. The UI's SharedMarkdownRenderer swaps every markdown table to
+      // a canonical <V2StreamingTable> — same primitive the artifact mounts.
+      // Result: the user sees the data TWICE on the persisted/reloaded
+      // message. Strip markdown tables from `content` + any `text`
+      // content_block via remark/mdast (no regex). The streamed turn
+      // flickers a markdown table briefly; persisted+reload state is clean.
+      const turnEmittedTable = Boolean(
+        (Array.isArray(options.visualizations) && options.visualizations.some((v: any) =>
+          v?.type === 'streaming_table'
+          || (v?.type === 'visual_render' && (v?.data?.template === 'table' || v?.template === 'table'))
+          || (v?.type === 'viz_render' && (v?.data?.template === 'table' || v?.template === 'table'))
+        ))
+        || (Array.isArray(options.contentBlocks) && options.contentBlocks.some((b: any) =>
+          b?.type === 'viz_render' && b?.template === 'table'
+        ))
+      );
+      const persistedContent = messageRole === 'assistant'
+        ? stripMarkdownTables(content, turnEmittedTable)
+        : content;
+      const persistedContentBlocks = (messageRole === 'assistant' && turnEmittedTable && Array.isArray(options.contentBlocks))
+        ? options.contentBlocks.map((b: any) =>
+            (b?.type === 'text' && typeof b?.content === 'string')
+              ? { ...b, content: stripMarkdownTables(b.content, true) }
+              : b)
+        : options.contentBlocks;
 
       // Create message using Prisma with only supported fields from schema
       const message = await this.prisma.chatMessage.create({
@@ -769,7 +799,7 @@ export class ChatStorageService {
           id: messageId,
           session_id: sessionId,
           role: messageRole,
-          content,
+          content: persistedContent,
           model: options.model || null,
           token_usage: tokenUsage || null,
           mcp_calls: options.mcpCalls || null,
@@ -786,7 +816,7 @@ export class ChatStorageService {
           // column for `content_blocks` isn't included in some generator
           // builds; pass through `unknown` to satisfy strict input types
           // while preserving the SDK-typed input shape as the SoT.
-          content_blocks: (options.contentBlocks ?? undefined) as unknown as never,
+          content_blocks: (persistedContentBlocks ?? undefined) as unknown as never,
         } as any,
       });
 

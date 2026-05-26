@@ -3,7 +3,7 @@
  * the `html` field for `app_render` blocks and `nonce` / `pyodideRequired` /
  * `title` so the downstream InlineAppBadge → AppRenderer mounts an iframe.
  *
- * Pre-fix repro (live 2026-05-19 dev `0.7.1-30bfb8ab`):
+ * Pre-fix repro (live 2026-05-19 chat-dev `0.7.1-30bfb8ab`):
  *   - Wire frame `app_render` carries `html` (9355 bytes, validated, nonce-
  *     attached) and `title: "cloud_run_health_dashboard"` per WIRE-CAPTURE.
  *   - applyCanonicalFrame.foldAppRenderFrame folds it into a ContentBlock

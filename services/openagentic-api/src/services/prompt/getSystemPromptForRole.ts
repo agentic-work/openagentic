@@ -19,6 +19,7 @@ import { systemPromptSection, resolveSystemPromptSections } from './sections.js'
 import {
   getArtifactDispatchMechanismRule,
   getArtifactExplicitRequestGate,
+  getUnknownScopeClarificationGate,
   getCostAuditCompositionSection,
   getDiscoveryFlowSection,
   getDoingTasksSection,
@@ -246,6 +247,13 @@ export async function getSystemPromptForRole(
     // code-fences instead of dispatching tool_use. User saw raw JSON; no
     // widget mounted. Placed FIRST so mechanism is read before any "when
     // to emit" rule — without the mechanism, the gate below is moot.
+    // Sev-0 #1057 (2026-05-22) — Unknown-scope clarification gate. Placed
+    // BEFORE artifact_dispatch_mechanism so the model checks the user's
+    // scope words against its mapping BEFORE planning any tool dispatch.
+    // Live trigger: "do a full security audit across all tenants of
+    // openagentic-omhs" — openagentic-omhs is a repo fork, not a tenant;
+    // model used to assume the test user's own dev tenant.
+    systemPromptSection('unknown_scope_clarification', () => getUnknownScopeClarificationGate(role)),
     systemPromptSection('artifact_dispatch_mechanism', () => getArtifactDispatchMechanismRule(role)),
     // Sev-0 #928 (2026-05-17 PM) — explicit-request artifact gate. TOP
     // PRIORITY rule: emit compose_app / compose_visual / render_artifact

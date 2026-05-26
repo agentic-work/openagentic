@@ -70,7 +70,7 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
   // Used for: URL verification challenge, message events, app_mention events.
   //
   // Configure in Slack App → Event Subscriptions → Request URL:
-  //   http://localhost:8080/api/v1/hooks/slack
+  //   https://chat-dev.openagentic.io/api/v1/hooks/slack
   // ────────────────────────────────────────────────────────────────────
 
   scope.post('/slack', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -235,7 +235,7 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
   // POST /api/v1/hooks/teams
   // Public endpoint — Teams verifies via Bot Framework JWT token.
   // Configure in Azure Bot Service → Messaging endpoint:
-  //   http://localhost:8080/api/v1/hooks/teams
+  //   https://chat-dev.openagentic.io/api/v1/hooks/teams
   // ─────────────────────────────────────────────────────────────────────
 
   fastify.post('/teams', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -604,7 +604,7 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
   //   receivers:
   //     - name: openagentic
   //       webhook_configs:
-  //         - url: http://localhost:8080/api/v1/hooks/alertmanager
+  //         - url: https://chat-dev.openagentic.io/api/v1/hooks/alertmanager
   // ─────────────────────────────────────────────────────────────────────
 
   fastify.post('/alertmanager', async (request: FastifyRequest, reply: FastifyReply) => {

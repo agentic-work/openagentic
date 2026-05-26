@@ -40,14 +40,14 @@ export interface ModelSelectorDropdownProps {
 
 // Provider display config — order, colors, labels
 const PROVIDER_CONFIG: Record<string, { label: string; color: string; icon: string; iconUrl?: string; order: number }> = {
-  'vertex-ai': { label: 'Google', color: '#4285F4', icon: 'G', order: 1 },
-  'google-vertex': { label: 'Google', color: '#4285F4', icon: 'G', order: 1 },
-  'anthropic': { label: 'Anthropic', color: '#EA580C', icon: 'A', order: 2 },
-  'aws-bedrock': { label: 'AWS Bedrock', color: '#FF9900', icon: 'B', order: 3 },
-  'openai': { label: 'OpenAI', color: '#10A37F', icon: 'O', order: 4 },
-  'azure-openai': { label: 'Azure OpenAI', color: '#0078D4', icon: 'Az', order: 5 },
-  'azure-ai-foundry': { label: 'Azure AI Foundry', color: '#0078D4', icon: 'AF', order: 5 },
-  'ollama': { label: 'Ollama (Local)', color: '#1a1a2e', icon: 'O', iconUrl: 'https://ollama.com/public/ollama.png', order: 6 },
+  'vertex-ai': { label: 'Google', color: 'var(--cm-info)', icon: 'G', order: 1 },
+  'google-vertex': { label: 'Google', color: 'var(--cm-info)', icon: 'G', order: 1 },
+  'anthropic': { label: 'Anthropic', color: 'var(--cm-warning)', icon: 'A', order: 2 },
+  'aws-bedrock': { label: 'AWS Bedrock', color: 'var(--cm-warning)', icon: 'B', order: 3 },
+  'openai': { label: 'OpenAI', color: 'var(--cm-success)', icon: 'O', order: 4 },
+  'azure-openai': { label: 'Azure OpenAI', color: 'var(--cm-accent)', icon: 'Az', order: 5 },
+  'azure-ai-foundry': { label: 'Azure AI Foundry', color: 'var(--cm-accent)', icon: 'AF', order: 5 },
+  'ollama': { label: 'Ollama (Local)', color: 'var(--cm-bg-tertiary)', icon: 'O', iconUrl: 'https://ollama.com/public/ollama.png', order: 6 },
 };
 
 // Recommended models per provider (first one shown as "recommended")
@@ -72,11 +72,11 @@ function getCostTier(model: ModelOption): 'free' | 'low' | 'mid' | 'high' | 'pre
 }
 
 const COST_DISPLAY: Record<string, { label: string; color: string }> = {
-  'free': { label: 'Free', color: '#22C55E' },
-  'low': { label: '$', color: '#86EFAC' },
-  'mid': { label: '$$', color: '#FCD34D' },
-  'high': { label: '$$$', color: '#FB923C' },
-  'premium': { label: '$$$$', color: '#F87171' },
+  'free': { label: 'Free', color: 'var(--cm-success)' },
+  'low': { label: '$', color: 'var(--cm-success)' },
+  'mid': { label: '$$', color: 'var(--cm-warning)' },
+  'high': { label: '$$$', color: 'var(--cm-warning)' },
+  'premium': { label: '$$$$', color: 'var(--cm-error)' },
 };
 
 export const ModelSelectorDropdown: React.FC<ModelSelectorDropdownProps> = ({
@@ -219,7 +219,7 @@ export const ModelSelectorDropdown: React.FC<ModelSelectorDropdownProps> = ({
         backdropFilter: 'blur(20px) saturate(180%)',
         backgroundColor: 'var(--color-surface)',
         border: '1px solid var(--color-border)',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+        boxShadow: '0 20px 60px color-mix(in srgb, var(--cm-text) 40%, transparent)',
         color: 'var(--color-text)',
         display: 'flex',
         flexDirection: 'column',
@@ -253,7 +253,7 @@ export const ModelSelectorDropdown: React.FC<ModelSelectorDropdownProps> = ({
             onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = !selectedModel ? 'color-mix(in srgb, var(--color-primary) 20%, transparent)' : 'transparent'; }}
           >
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold" style={{ background: 'linear-gradient(135deg, #3B82F6, #A855F7)', color: '#fff' }}>
+              <div className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold" style={{ background: 'linear-gradient(135deg, var(--cm-info), var(--cm-accent))', color: 'var(--cm-bg)' }}>
                 AI
               </div>
               <div>
@@ -269,7 +269,7 @@ export const ModelSelectorDropdown: React.FC<ModelSelectorDropdownProps> = ({
 
         {/* Provider groups */}
         {groupedModels.map(([provider, models]) => {
-          const config = PROVIDER_CONFIG[provider] || { label: provider, color: '#888', icon: '?', order: 99 };
+          const config = PROVIDER_CONFIG[provider] || { label: provider, color: 'var(--cm-text-muted)', icon: '?', order: 99 };
 
           return (
             <div key={provider} className="mt-2">
@@ -277,9 +277,9 @@ export const ModelSelectorDropdown: React.FC<ModelSelectorDropdownProps> = ({
               <div className="flex items-center gap-2 px-3 py-1.5">
                 <div
                   className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold overflow-hidden"
-                  style={{ backgroundColor: config.iconUrl ? 'transparent' : config.color, color: '#fff' }}
+                  style={{ backgroundColor: config.iconUrl ? 'transparent' : config.color, color: 'var(--cm-bg)' }}
                 >
-                  {config.iconUrl ? <img src={config.iconUrl} width={20} height={20} alt={config.label} style={{ borderRadius: 3, backgroundColor: '#fff', padding: 1 }} /> : config.icon}
+                  {config.iconUrl ? <img src={config.iconUrl} width={20} height={20} alt={config.label} style={{ borderRadius: 3, backgroundColor: 'var(--cm-bg)', padding: 1 }} /> : config.icon}
                 </div>
                 <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-textMuted)' }}>
                   {config.label}
@@ -317,7 +317,7 @@ export const ModelSelectorDropdown: React.FC<ModelSelectorDropdownProps> = ({
                       <div className="flex items-center gap-1.5">
                         <span className="font-medium truncate">{model.name}</span>
                         {recommended && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold shrink-0" style={{ backgroundColor: 'color-mix(in srgb, #22C55E 20%, transparent)', color: '#22C55E' }}>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold shrink-0" style={{ backgroundColor: 'color-mix(in srgb, var(--cm-success) 20%, transparent)', color: 'var(--cm-success)' }}>
                             REC
                           </span>
                         )}
@@ -325,27 +325,27 @@ export const ModelSelectorDropdown: React.FC<ModelSelectorDropdownProps> = ({
                       {/* Capability badges */}
                       <div className="flex items-center gap-1 mt-1 flex-wrap">
                         {model.thinking && (
-                          <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: 'color-mix(in srgb, #A78BFA 15%, transparent)', color: '#A78BFA' }}>
+                          <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: 'color-mix(in srgb, var(--cm-accent) 15%, transparent)', color: 'var(--cm-accent)' }}>
                             think
                           </span>
                         )}
                         {model.capabilities?.includes('vision') && (
-                          <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: 'color-mix(in srgb, #3B82F6 15%, transparent)', color: '#60A5FA' }}>
+                          <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: 'color-mix(in srgb, var(--cm-info) 15%, transparent)', color: 'var(--cm-info)' }}>
                             vision
                           </span>
                         )}
                         {model.capabilities?.includes('function-calling') && (
-                          <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: 'color-mix(in srgb, #F97316 15%, transparent)', color: '#FBBF24' }}>
+                          <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: 'color-mix(in srgb, var(--cm-warning) 15%, transparent)', color: 'var(--cm-warning)' }}>
                             tools
                           </span>
                         )}
                         {model.contextWindow && model.contextWindow >= 200000 && (
-                          <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: 'color-mix(in srgb, #6366F1 15%, transparent)', color: '#818CF8' }}>
+                          <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: 'color-mix(in srgb, var(--cm-accent) 15%, transparent)', color: 'var(--cm-accent)' }}>
                             {Math.round(model.contextWindow / 1000)}k ctx
                           </span>
                         )}
                         {model.pullRequired && (
-                          <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: 'color-mix(in srgb, #EF4444 15%, transparent)', color: '#F87171' }}>
+                          <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: 'color-mix(in srgb, var(--cm-error) 15%, transparent)', color: 'var(--cm-error)' }}>
                             pull required
                           </span>
                         )}

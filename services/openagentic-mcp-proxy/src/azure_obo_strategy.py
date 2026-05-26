@@ -2,7 +2,7 @@
 Audience-aware OBO strategy for Azure tool calls.
 
 Background — live capture 2026-05-13 on the Flows azure-advisor-savings-report
-execution (dev, mcp-tester session):
+execution (chat-dev, mcp-tester session):
 
     OBO token exchange failed: invalid_grant — AADSTS500131:
     Assertion audience does not match the Client app presenting the assertion.

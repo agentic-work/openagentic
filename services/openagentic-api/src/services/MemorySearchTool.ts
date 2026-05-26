@@ -84,6 +84,17 @@ export interface MemorySearchDeps {
     userId: string,
     opts?: { category?: string; key?: string; limit?: number },
   ) => Promise<Array<{ id: string; category: string; key: string; value: string; confidence: number }>>;
+  /**
+   * Optional semantic-RAG adapter (#1085) — production wires
+   * MilvusMemoryService.searchUserMemories. When wired, both recalls run in
+   * parallel and hits are merged with substring winning on `key` collision
+   * (same SoT, no churn). Failures here NEVER fail the whole search.
+   */
+  semanticRecall?: (
+    userId: string,
+    query: string,
+    limit: number,
+  ) => Promise<Array<{ id: string; category: string; key: string; value: string; confidence: number }>>;
 }
 
 /**
@@ -99,23 +110,46 @@ export async function executeMemorySearch(
   try {
     const userId = ctx.userId ?? 'anonymous';
     const limit = input.limit ?? 10;
-    const hits = await deps.recall(userId, {
+
+    const recallPromise = deps.recall(userId, {
       category: input.category,
       key: input.query,
       limit,
     });
-    return {
-      ok: true,
-      output: {
-        memories: hits.map((h) => ({
-          id: h.id,
-          category: h.category,
-          key: h.key,
-          value: h.value,
-          confidence: h.confidence,
-        })),
-      },
-    };
+    // Semantic side wrapped in its own try so a Milvus outage NEVER nukes
+    // the substring path. Logged once for observability.
+    const semanticPromise: Promise<typeof recallPromise extends Promise<infer T> ? T : never> =
+      deps.semanticRecall
+        ? deps.semanticRecall(userId, input.query, limit).catch((err: any) => {
+            ctx.logger?.warn?.(
+              { err: err?.message ?? String(err) },
+              '[memory_search] semantic recall failed — falling back to substring only',
+            );
+            return [];
+          })
+        : (Promise.resolve([]) as any);
+
+    const [substringHits, semanticHits] = await Promise.all([recallPromise, semanticPromise]);
+
+    // Merge with substring winning on duplicate `key`. Substring hits are the
+    // user's curated `memorize` writes; semantic hits are sidecar/auto-stored
+    // and should not override them.
+    const seenKeys = new Set<string>();
+    const merged: MemorySearchHit[] = [];
+    for (const h of substringHits) {
+      seenKeys.add(h.key);
+      merged.push({ id: h.id, category: h.category, key: h.key, value: h.value, confidence: h.confidence });
+      if (merged.length >= limit) break;
+    }
+    if (merged.length < limit) {
+      for (const h of semanticHits) {
+        if (seenKeys.has(h.key)) continue;
+        merged.push({ id: h.id, category: h.category, key: h.key, value: h.value, confidence: h.confidence });
+        if (merged.length >= limit) break;
+      }
+    }
+
+    return { ok: true, output: { memories: merged } };
   } catch (err: any) {
     ctx.logger?.warn?.({ err: err?.message ?? String(err) }, '[memory_search] recall failed');
     return {

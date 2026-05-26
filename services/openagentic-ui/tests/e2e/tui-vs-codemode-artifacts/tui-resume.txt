@@ -1,0 +1,50 @@
+   [openagentic]
+   /tmp.0 • nemotron3:33b
+
+   /? help  •  ctrl+c cancel  •  /exit quit
+
+   ────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Resume Session (1 of 50)
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ⌕ Search…                                                                                                                                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+❯ /release-notes
+  9 seconds ago · HEAD · 1.8KB
+
+  /pr-comments
+  39 seconds ago · HEAD · 2.4KB
+
+  /plan
+  51 seconds ago · HEAD · 1.7KB
+
+  /model
+  1 minute ago · HEAD · 1.7KB
+
+  Unknown skill: migrate-installer
+  1 minute ago · HEAD · 1.3KB
+
+  /init
+  2 minutes ago · HEAD · 2.6KB
+
+  /update-config
+  2 minutes ago · HEAD · 1.7KB
+
+  Unknown skill: doctor
+  2 minutes ago · HEAD · 1.3KB
+
+  /cost
+  3 minutes ago · HEAD · 2KB
+
+  /context
+  3 minutes ago · HEAD · 10.5KB
+
+  /superpowers:systematic-debugging
+  3 minutes ago · HEAD · 11.1KB
+
+↓ /model
+  4 minutes ago · HEAD · 1.7KB
+  Ctrl+A to show all projects · Ctrl+B to toggle branch · Ctrl+V to preview · Ctrl+R to rename · Type to search · Esc to cancel ·

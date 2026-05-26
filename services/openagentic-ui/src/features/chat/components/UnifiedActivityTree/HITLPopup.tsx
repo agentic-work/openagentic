@@ -24,14 +24,14 @@ export function HITLPopup({ visible, request, onApprove, onDeny }: HITLPopupProp
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: 'rgba(0,0,0,0.7)',
+      backgroundColor: 'color-mix(in srgb, var(--cm-bg) 70%, transparent)',
       backdropFilter: 'blur(4px)',
       zIndex: 9999,
     }}>
       <div style={{
         width: 480,
-        backgroundColor: '#161b22',
-        border: '1px solid rgba(255,255,255,0.1)',
+        backgroundColor: 'var(--cm-bg-secondary)',
+        border: '1px solid var(--cm-border)',
         borderRadius: 12,
         padding: 24,
         fontFamily: 'SF Mono, JetBrains Mono, monospace',
@@ -41,8 +41,8 @@ export function HITLPopup({ visible, request, onApprove, onDeny }: HITLPopupProp
           <span style={{ fontSize: 16 }}>Approval Required</span>
           <span style={{
             fontSize: 10,
-            color: '#d29922',
-            backgroundColor: 'rgba(210,153,34,0.15)',
+            color: 'var(--cm-warning)',
+            backgroundColor: 'color-mix(in srgb, var(--cm-warning) 15%, transparent)',
             padding: '2px 8px',
             borderRadius: 3,
             animation: 'pulse 2s ease-in-out infinite',
@@ -53,13 +53,13 @@ export function HITLPopup({ visible, request, onApprove, onDeny }: HITLPopupProp
 
         {/* Context */}
         {request.agentName && (
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>
+          <div style={{ fontSize: 11, color: 'var(--cm-text-secondary)', marginBottom: 8 }}>
             Agent: {request.agentName}
           </div>
         )}
 
         {/* Description */}
-        <div style={{ fontSize: 12, color: '#e6edf3', marginBottom: 16 }}>
+        <div style={{ fontSize: 12, color: 'var(--cm-text)', marginBottom: 16 }}>
           {request.description}
         </div>
 
@@ -72,17 +72,17 @@ export function HITLPopup({ visible, request, onApprove, onDeny }: HITLPopupProp
           fontSize: 11,
         }}>
           <div>
-            <div style={{ color: 'rgba(255,255,255,0.4)' }}>Tool</div>
-            <div style={{ color: '#e6edf3' }}>{request.tool}</div>
+            <div style={{ color: 'var(--cm-text-muted)' }}>Tool</div>
+            <div style={{ color: 'var(--cm-text)' }}>{request.tool}</div>
           </div>
           <div>
-            <div style={{ color: 'rgba(255,255,255,0.4)' }}>Scope</div>
-            <div style={{ color: '#e6edf3' }}>{request.scope}</div>
+            <div style={{ color: 'var(--cm-text-muted)' }}>Scope</div>
+            <div style={{ color: 'var(--cm-text)' }}>{request.scope}</div>
           </div>
           {Object.entries(request.metadata).map(([key, value]) => (
             <div key={key}>
-              <div style={{ color: 'rgba(255,255,255,0.4)' }}>{key}</div>
-              <div style={{ color: '#e6edf3' }}>{value}</div>
+              <div style={{ color: 'var(--cm-text-muted)' }}>{key}</div>
+              <div style={{ color: 'var(--cm-text)' }}>{value}</div>
             </div>
           ))}
         </div>
@@ -90,7 +90,7 @@ export function HITLPopup({ visible, request, onApprove, onDeny }: HITLPopupProp
         {/* Waiting indicator */}
         <div style={{
           fontSize: 11,
-          color: '#d29922',
+          color: 'var(--cm-warning)',
           marginBottom: 16,
           display: 'flex',
           alignItems: 'center',
@@ -98,7 +98,7 @@ export function HITLPopup({ visible, request, onApprove, onDeny }: HITLPopupProp
         }}>
           <span style={{
             width: 6, height: 6, borderRadius: '50%',
-            backgroundColor: '#d29922',
+            backgroundColor: 'var(--cm-warning)',
             animation: 'pulse 1.5s ease-in-out infinite',
           }} />
           Waiting for approval...
@@ -111,9 +111,9 @@ export function HITLPopup({ visible, request, onApprove, onDeny }: HITLPopupProp
             style={{
               padding: '8px 20px',
               fontSize: 12,
-              border: '1px solid #f85149',
+              border: '1px solid var(--cm-error)',
               background: 'transparent',
-              color: '#f85149',
+              color: 'var(--cm-error)',
               cursor: 'pointer',
               borderRadius: 6,
               fontFamily: 'inherit',
@@ -127,8 +127,8 @@ export function HITLPopup({ visible, request, onApprove, onDeny }: HITLPopupProp
               padding: '8px 20px',
               fontSize: 12,
               border: 'none',
-              background: '#238636',
-              color: '#ffffff',
+              background: 'var(--cm-success)',
+              color: 'var(--cm-bg)',
               cursor: 'pointer',
               borderRadius: 6,
               fontFamily: 'inherit',

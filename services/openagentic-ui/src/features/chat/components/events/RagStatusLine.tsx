@@ -74,16 +74,16 @@ const RagStatusLineComponent: React.FC<RagStatusLineProps> = ({
         gap: 8,
         padding: '4px 0',
         fontSize: 12,
-        color: done ? '#a1a1aa' : '#7dd3fc',
+        color: done ? 'var(--cm-text-muted)' : 'var(--cm-info)',
         fontFamily: 'Inter, sans-serif',
       }}
     >
-      <span style={{ color: done ? '#86efac' : '#7dd3fc', display: 'inline-flex' }}>
+      <span style={{ color: done ? 'var(--cm-success)' : 'var(--cm-info)', display: 'inline-flex' }}>
         <SearchIcon spinning={!done} />
       </span>
       <span>{label}</span>
       {(collectionText || timeText) && (
-        <span style={{ color: '#71717a', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>
+        <span style={{ color: 'var(--cm-text-muted)', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>
           {collectionText}
           {timeText}
         </span>

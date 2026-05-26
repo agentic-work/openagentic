@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
  * seeding path — it has to be hand-run per environment. The permanent path
  * is `services/templateSeeder.ts` invoked from `index.ts` on workflows-svc
  * boot. This test cages that wiring so a future refactor cannot silently
- * regress to "templates only land on the dev environment because someone ran a script".
+ * regress to "templates only land on chat-dev because someone ran a script".
  *
  * Caged invariants:
  *   1. `services/templateSeeder.ts` exists and exports `seedTemplatesOnBoot`.

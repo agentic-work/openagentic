@@ -89,22 +89,22 @@ const HandoffPillComponent: React.FC<HandoffPillProps> = ({
         padding: '5px 10px',
         borderRadius: 99,
         background:
-          'linear-gradient(90deg, rgba(139,92,246,0.12), rgba(99,102,241,0.12))',
-        border: '1px solid rgba(139,92,246,0.32)',
+          'linear-gradient(90deg, color-mix(in srgb, var(--cm-accent) 12%, transparent), color-mix(in srgb, var(--cm-accent) 12%, transparent))',
+        border: '1px solid color-mix(in srgb, var(--cm-accent) 32%, transparent)',
         fontSize: 11,
-        color: '#d4d4d8',
+        color: 'var(--cm-text-secondary)',
         fontFamily: 'JetBrains Mono, monospace',
         lineHeight: 1,
       }}
     >
       {routeEscalatedDestructive ? <ShieldIcon /> : <ArrowIcon />}
-      <span style={{ color: '#71717a', textDecoration: 'line-through' }}>{from}</span>
-      <span style={{ color: '#71717a' }}>→</span>
-      <span style={{ color: '#a78bfa', fontWeight: 600 }}>{to}</span>
+      <span style={{ color: 'var(--cm-text-muted)', textDecoration: 'line-through' }}>{from}</span>
+      <span style={{ color: 'var(--cm-text-muted)' }}>→</span>
+      <span style={{ color: 'var(--cm-accent)', fontWeight: 600 }}>{to}</span>
       {reasonText && (
         <span
           style={{
-            color: '#a1a1aa',
+            color: 'var(--cm-text-secondary)',
             fontFamily: 'Inter, sans-serif',
             marginLeft: 4,
             fontSize: 11,

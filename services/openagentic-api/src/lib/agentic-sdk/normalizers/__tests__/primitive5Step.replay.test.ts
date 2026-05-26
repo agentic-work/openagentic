@@ -32,7 +32,7 @@
  * Re-capture:
  *   AIF_TENANT_ID=… AIF_CLIENT_ID=… AIF_CLIENT_SECRET=… AIF_ENDPOINT_URL=… \
  *     bun scripts/probe-real-provider.ts --scenario primitive-5-step --provider aif-chat --model gpt-5.4
- *   OLLAMA_BASE_URL=http://host.docker.internal:11434 \
+ *   OLLAMA_BASE_URL=http://hal:11434 \
  *     bun scripts/probe-real-provider.ts --scenario primitive-5-step --provider ollama --model gpt-oss:20b
  *   (etc for vertex, bedrock, aif-responses)
  */

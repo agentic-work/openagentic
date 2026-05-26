@@ -35,6 +35,9 @@ vi.mock('../../utils/prisma.js', () => {
       findFirst: vi.fn(),
       findMany: vi.fn(),
     },
+    systemConfiguration: {
+      findUnique: vi.fn().mockResolvedValue(null),
+    },
     user: {
       findUnique: vi.fn(),
     },
@@ -80,6 +83,8 @@ describe('ModelConfigurationService.getDefaultChatModel — #508 Phase 2 (no sel
     m.modelRoleAssignment.create.mockReset();
     m.lLMProvider.findFirst.mockReset();
     m.lLMProvider.findMany.mockReset();
+    (m as any).systemConfiguration.findUnique.mockReset();
+    (m as any).systemConfiguration.findUnique.mockResolvedValue(null);
     m.user.findUnique.mockReset();
   });
 

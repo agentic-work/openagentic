@@ -918,19 +918,24 @@ const OverviewPane = ({
     buckets: TsBucket[]
     topTools?: Array<{ tool: string; count: number }>
   }
+  // bucket= intentionally omitted so the api picks the right default per
+  // window: 1h for sub-day windows (1h/6h/12h/24h) → ~24 hourly points on
+  // the 24h chart; 1d for week+ windows. Pre-fix the UI hardcoded
+  // bucket=1d which collapsed 24h to a single datapoint — user audit
+  // 2026-05-25 "ttft graph is just one datapoint".
   const tokensTs = useAdminQuery<TsResp>(
     ['analytics-timeseries', 'tokens', timeRange],
-    `/admin/analytics/system/timeseries?metric=tokens&window=${timeRange}&bucket=1d`,
+    `/admin/analytics/system/timeseries?metric=tokens&window=${timeRange}`,
     { staleTime: 60_000 },
   )
   const ttftTs = useAdminQuery<TsResp>(
     ['analytics-timeseries', 'ttft', timeRange],
-    `/admin/analytics/system/timeseries?metric=ttft&window=${timeRange}&bucket=1d`,
+    `/admin/analytics/system/timeseries?metric=ttft&window=${timeRange}`,
     { staleTime: 60_000 },
   )
   const toolsTs = useAdminQuery<TsResp>(
     ['analytics-timeseries', 'tools', timeRange],
-    `/admin/analytics/system/timeseries?metric=tools&window=${timeRange}&bucket=1d`,
+    `/admin/analytics/system/timeseries?metric=tools&window=${timeRange}`,
     { staleTime: 60_000 },
   )
 
@@ -946,7 +951,11 @@ const OverviewPane = ({
       }
     }
     const topModels = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([m]) => m)
-    const xLabels = buckets.map((b) => b.t)
+    // Format `b.t` (ISO timestamp) → "HH:MM" via formatHourLabel — matches
+    // every sibling OT chart on the dashboard (tsToLabels uses the same
+    // helper). Pre-fix the x-axis showed the raw ISO string which looked
+    // hideous next to the HH:MM siblings. 2026-05-25 audit.
+    const xLabels = buckets.map((b) => formatHourLabel(b.t))
     const series: ChartSeries[] = topModels.map((m, i) => ({
       name: m,
       data: buckets.map((b) => Number(b.byModel?.[m] ?? 0)),
@@ -1224,10 +1233,12 @@ const OverviewPane = ({
         </Panel>
       </Grid>
 
-      {/* #929 — primary-metrics over time, per-model breakdown + tool pie.
-          Three additional charts wired to /api/admin/analytics/system/timeseries
-          (added 2026-05-18). Lives under the same "01 · primary metrics" SectionBar. */}
-      <Grid cols={3}>
+      {/* #929 — primary-metrics over time, per-model breakdown. 2026-05-25:
+          split into two grids so the OT pair gets ~50% width each (matches
+          every sibling OT panel above) instead of being squeezed to ~33%
+          alongside the donut. Tool Usage donut moved to its own row below;
+          donuts read fine at panel width without needing a 3-col cram. */}
+      <Grid cols={2}>
         <Panel>
           <PanelHead
             title="Tokens by Model"
@@ -1241,7 +1252,7 @@ const OverviewPane = ({
           {tokensByModel.series.length > 0 && (
             <div style={{ padding: 8 }}>
               <MetricChart
-                variant="line"
+                variant="area"
                 yFormat="tok"
                 xLabels={tokensByModel.xLabels}
                 series={tokensByModel.series}
@@ -1263,7 +1274,7 @@ const OverviewPane = ({
           {ttftByModel.series.length > 0 && (
             <div style={{ padding: 8 }}>
               <MetricChart
-                variant="line"
+                variant="area"
                 yFormat="ms"
                 xLabels={ttftByModel.xLabels}
                 series={ttftByModel.series}
@@ -1272,6 +1283,8 @@ const OverviewPane = ({
             </div>
           )}
         </Panel>
+      </Grid>
+      <Grid cols={2}>
         <Panel>
           <PanelHead
             title="Tool Usage"

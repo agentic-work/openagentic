@@ -1,0 +1,74 @@
+Now updating the incident status to investigating and adding initial findings:## Incident Created & Diagnostics Complete
+
+**Incident ID:** `INC-20260221-0001`
+**Title:** VAL-04 Test: API Latency Spike
+**Severity:** SEV2 | **Status:** INVESTIGATING
+**Service:** openagentic-api
+**Created:** 2026-02-21T00:31:34.975Z
+
+---
+
+## Diagnostic Results
+
+### 1. Prometheus Service Availability (`up` query)
+
+**54 targets** scraped. **51 UP, 3 DOWN** (94.4% availability).
+
+| Target | Instance | Status | Namespace |
+|--------|----------|:------:|-----------|
+| **openagentic-api** | `10.42.5.20:8000` | ✅ UP | agentic-dev |
+| **openagentic-mcp-proxy** | `10.42.5.25:8080` | ✅ UP | agentic-dev |
+| **openagentic-crewai** | `10.42.1.90:3200` | ✅ UP | agentic-dev |
+| **openagentic-langgraph** | `10.42.1.91:3100` | ✅ UP | agentic-dev |
+| **openagentic-code-manager** | `10.42.5.19:8080` | ❌ DOWN | agentic-dev |
+| **openagentic-openagentic-synth** | `10.42.2.37:8090` | ❌ DOWN | agentic-dev |
+| **kubernetes-apiservers** | `10.2.10.131:6443` | ❌ DOWN | default |
+
+### 2. Kubernetes Pod Health (agentic-dev)
+
+⚠️ **Kubernetes MCP kubeconfig initialization failed** — `Invalid kube-config file. No configuration found.` This is a **known issue** from previous audits. Pod listing could not be completed via the Kubernetes MCP. Prometheus data above provides partial visibility.
+
+### 3. Loki Error Search (agentic-dev, last 15m)
+
+| Metric | Value |
+|--------|------:|
+| **Total errors found** | **200** |
+| **ERROR-level entries** | 174 |
+| **FAILED-level entries** | 26 |
+
+#### Error Breakdown by Source
+
+| Source Pod | Error Type | Severity |
+|------------|-----------|:--------:|
+| **openagentic-postgresql-0** | FK constraint violation: `user_query_audit_message_id_fkey` — INSERT on `user_query_audit` fails because parent `message` record doesn't exist | ❌ Critical |
+| **openagentic-milvus-standalone** | `result_summary` varchar exceeds 512 char limit (520 chars) in `tool_success_tracking` collection | ⚠️ Warning |
+| **openagentic-milvus-standalone** | Embedding dimension mismatch: float data length 1024 vs expected dim 1536 in `chat_conversations_v2` | ⚠️ Warning |
+| **openagentic-milvus-standalone** | `field source not exist` in `azure_sdk_documentation` search | ⚠️ Warning |
+| **openagentic-milvus-standalone** | Collections `chat_conversations` and `app_documentation` not found | ⚠️ Warning |
+| **openagentic-mcp-proxy** | Admin MCP returning HTTP 500 (3 occurrences) | ⚠️ Warning |
+| **openagentic-api** | Tool execution batch failures (3 failed calls at 00:29:29, 2 at 00:29:34) | ⚠️ Warning |
+
+---
+
+## Key Findings
+
+> [!WARNING]
+> **Primary contributor to latency:** The PostgreSQL FK constraint violations on `user_query_audit` are occurring on every tool call, creating cascading retry/failure cycles. This is the **same issue** identified in the previous incident `INC-20260220-0001`.
+
+**1. PostgreSQL Audit Race Condition (P0)**
+- **Pattern:** `INSERT INTO user_query_audit` fires before the parent `message` record commits
+- **Rate:** ~174 errors in 15 minutes (~11.6/min)
+- **Impact:** Audit trail is silently broken; each failed INSERT adds latency to the request path
+
+**2. Two OpenAgentic Pods DOWN (P1)**
+- **code-manager** (`10.42.5.19:8080`) and **openagentic-synth** (`10.42.2.37:8090`) are unreachable
+- **Impact:** Code execution and OAT workflows are offline
+
+**3. Milvus Schema Mismatches (P2)**
+- Embedding dimension mismatch (1024 vs 1536) blocking conversation memory writes
+- VARCHAR overflow in `tool_success_tracking` collection
+- Missing collections and fields suggesting schema drift
+---TURN 2---
+
+---TURN 3---
+

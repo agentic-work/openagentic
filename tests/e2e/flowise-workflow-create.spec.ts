@@ -6,9 +6,9 @@
 
 import { test, expect, Page, FrameLocator } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:8080';
+const BASE_URL = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
 const LOCAL_ADMIN_EMAIL = process.env.TEST_EMAIL || 'admin@openagentic.io';
-const LOCAL_ADMIN_PASSWORD = process.env.TEST_PASSWORD || '';
+const LOCAL_ADMIN_PASSWORD = process.env.TEST_PASSWORD || '6py8Q~XNcKAJ~.SIrZAIBy__l7oDoPteWp2Habm3';
 
 test.describe('Flowise Workflow Creation', () => {
   test.setTimeout(300000); // 5 minutes for workflow creation

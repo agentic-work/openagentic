@@ -14,7 +14,7 @@
  * single source of stream-shape truth across all OpenAgentic AI surfaces.
  *
  * Real-data discipline (feedback_no_synthetic_chunks_only_real_provider_captures):
- * a second test probes host.docker.internal:11434/gpt-oss:20b. When reachable it drives a
+ * a second test probes hal:11434/gpt-oss:20b. When reachable it drives a
  * live multi-token stream through the platform shim; when unreachable it
  * skips-with-warn (does NOT synthesize chunks to fake reachability).
  */
@@ -126,15 +126,15 @@ describe('llm_completion streams per-token canonical events (Tier B)', () => {
   });
 });
 
-describe('llm_completion streams from real host.docker.internal:11434/gpt-oss:20b', () => {
+describe('llm_completion streams from real hal:11434/gpt-oss:20b', () => {
   it('emits multi-token canonical events from a live Ollama stream', async () => {
     // Real-data discipline: probe hal first; skip-with-warn if unreachable.
     // We register a passthrough on the probe URL so MSW does not log a
     // noisy "unhandled request" warning while we check reachability.
-    harnessServer.use(http.get('http://host.docker.internal:11434/api/tags', () => passthrough()));
+    harnessServer.use(http.get('http://hal:11434/api/tags', () => passthrough()));
     let halReachable = false;
     try {
-      const r = await fetch('http://host.docker.internal:11434/api/tags', {
+      const r = await fetch('http://hal:11434/api/tags', {
         signal: AbortSignal.timeout(2_000),
       });
       halReachable = r.ok;
@@ -145,7 +145,7 @@ describe('llm_completion streams from real host.docker.internal:11434/gpt-oss:20
     if (!halReachable) {
       // eslint-disable-next-line no-console
       console.warn(
-        '[llm_completion.streaming] host.docker.internal:11434 unreachable — skipping live ' +
+        '[llm_completion.streaming] hal:11434 unreachable — skipping live ' +
           'multi-token assertion. Re-run from a host with cluster DNS to ' +
           'exercise the full hal->shim->engine canonical stream.',
       );
@@ -170,7 +170,7 @@ describe('llm_completion streams from real host.docker.internal:11434/gpt-oss:20
           // content tokens within the test budget.
           options: { num_predict: 256 },
         };
-        const ollamaRes = await fetch('http://host.docker.internal:11434/api/chat', {
+        const ollamaRes = await fetch('http://hal:11434/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(ollamaReq),

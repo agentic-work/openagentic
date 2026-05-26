@@ -1,7 +1,7 @@
 /**
- * Phase F Layer 3 — End-to-end 5-step primitive verification on the dev environment
+ * Phase F Layer 3 — End-to-end 5-step primitive verification on chat-dev
  *
- * Drives the capstone cross-cloud-list prompt through the live dev
+ * Drives the capstone cross-cloud-list prompt through the live chat-dev
  * pipeline against the operator-configured Smart-Router model + 2-3 named
  * providers (Bedrock Sonnet 4.6, AIF gpt-5.4, Ollama gpt-oss:20b). Asserts
  * the 5-step primitive renders the minimum DOM primitives from
@@ -28,7 +28,7 @@
  *
  *   Run this spec:
  *     cd /home/trent/openagentic/agentic/tests/e2e
- *     BASE_URL=http://localhost:8080 npx playwright test five-step-primitive.spec.ts
+ *     BASE_URL=https://chat-dev.openagentic.io npx playwright test five-step-primitive.spec.ts
  *
  * Evidence captured to:
  *   tests/e2e/test-results/five-step-primitive-<provider>/screenshot.png
@@ -39,7 +39,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'node:child_process';
 
-const BASE = process.env.BASE_URL || 'http://localhost:8080';
+const BASE = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
 const AUTH_FILE = path.join(__dirname, '../../.auth/user.json');
 const EVIDENCE_DIR = path.join(
   __dirname,
@@ -230,7 +230,7 @@ function gitSha(): string {
   }
 }
 
-test.describe('Phase F Layer 3 — 5-step primitive end-to-end on the dev environment', () => {
+test.describe('Phase F Layer 3 — 5-step primitive end-to-end on chat-dev', () => {
   test.setTimeout(360_000);
 
   // Sanity gate — skip the whole describe block when auth is unusable.
@@ -289,13 +289,13 @@ test.describe('Phase F Layer 3 — 5-step primitive end-to-end on the dev enviro
   });
 
   // The remaining per-model probes are gated on the model registry exposing
-  // a way to override the routed model. Today's dev uses Smart Router
+  // a way to override the routed model. Today's chat-dev uses Smart Router
   // exclusively — there is NO body field to force a particular model
   // (see `services/openagentic-api/CLAUDE.md` Model Routing Rules:
   // "Smart Router is always on — never specify a model: field in API bodies"
   // and feedback memory `feedback_provider_neutral_routing_locked`). So we
   // do NOT run a per-model matrix here; the SDK probe runner (Layer 4)
-  // owns per-model coverage at the wire layer. The dev layer asserts
+  // owns per-model coverage at the wire layer. The chat-dev layer asserts
   // the platform's end-to-end primitive on the operator-configured
   // routing.
 });

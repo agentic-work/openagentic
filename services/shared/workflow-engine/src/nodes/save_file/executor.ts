@@ -4,7 +4,7 @@
  * Wraps `ctx.persistArtifact` (same hook webhook_response uses for
  * `persistAsArtifact: true`). The hook delegates to the api's
  * ArtifactService, which writes to whichever BlobStorageService backend
- * is configured (MinIO on the dev environment, S3/GCS/Azure on cloud envs).
+ * is configured (MinIO on chat-dev, S3/GCS/Azure on cloud envs).
  *
  * Text-mode only for now. Binary mode (Buffer / BinaryRef) lands when
  * the binary data plane (Tier 2 #5) ships — see

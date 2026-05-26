@@ -43,18 +43,18 @@ interface WorkflowData {
 }
 
 const statusColors: Record<string, string> = {
-  active: '#00ff00',
-  draft: '#9e9e9e',
-  running: '#ff9800',
-  completed: '#00ff00',
-  failed: '#f44336',
-  paused: '#9c27b0',
+  active: 'var(--cm-success)',
+  draft: 'var(--cm-text-muted)',
+  running: 'var(--cm-warning)',
+  completed: 'var(--cm-success)',
+  failed: 'var(--cm-error)',
+  paused: 'var(--cm-accent)',
 };
 
 const StatusDot: React.FC<{ status: string }> = ({ status }) => (
   <span
     className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-    style={{ backgroundColor: statusColors[status] || '#9e9e9e' }}
+    style={{ backgroundColor: statusColors[status] || 'var(--cm-text-muted)' }}
   />
 );
 
@@ -70,16 +70,16 @@ export const WorkflowRenderer: React.FC<MCPRendererProps> = ({
   if (status === 'calling') {
     return (
       <div className="wf-chat-card" style={{
-        background: 'var(--color-surface, #1C1C1E)',
-        border: '1px solid var(--color-border, rgba(255,255,255,0.08))',
+        background: 'var(--cm-bg-secondary)',
+        border: '1px solid var(--cm-border)',
         borderRadius: 12,
         padding: '12px 16px',
         display: 'flex',
         alignItems: 'center',
         gap: 10,
       }}>
-        <div className="wf-exec-spinner" style={{ width: 16, height: 16, borderColor: '#ff9800', borderTopColor: 'transparent', borderWidth: 2, borderRadius: '50%', borderStyle: 'solid', animation: 'wf-spin 0.8s linear infinite' }} />
-        <span style={{ color: 'var(--color-text-secondary, #8E8E93)', fontSize: 13 }}>
+        <div className="wf-exec-spinner" style={{ width: 16, height: 16, borderColor: 'var(--cm-warning)', borderTopColor: 'transparent', borderWidth: 2, borderRadius: '50%', borderStyle: 'solid', animation: 'wf-spin 0.8s linear infinite' }} />
+        <span style={{ color: 'var(--cm-text-secondary)', fontSize: 13 }}>
           {toolName.replace('workflow_', '').replace(/_/g, ' ')}...
         </span>
       </div>
@@ -89,16 +89,16 @@ export const WorkflowRenderer: React.FC<MCPRendererProps> = ({
   if (!data.success && data.error) {
     return (
       <div style={{
-        background: 'rgba(244, 67, 54, 0.08)',
-        border: '1px solid rgba(244, 67, 54, 0.2)',
+        background: 'color-mix(in srgb, var(--cm-error) 8%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--cm-error) 20%, transparent)',
         borderRadius: 12,
         padding: '12px 16px',
         display: 'flex',
         alignItems: 'center',
         gap: 10,
       }}>
-        <XCircle style={{ width: 16, height: 16, color: '#f44336', flexShrink: 0 }} />
-        <span style={{ color: '#f44336', fontSize: 13 }}>{data.error}</span>
+        <XCircle style={{ width: 16, height: 16, color: 'var(--cm-error)', flexShrink: 0 }} />
+        <span style={{ color: 'var(--cm-error)', fontSize: 13 }}>{data.error}</span>
       </div>
     );
   }
@@ -107,8 +107,8 @@ export const WorkflowRenderer: React.FC<MCPRendererProps> = ({
   if (toolName === 'workflow_list' && data.workflows) {
     return (
       <div style={{
-        background: 'var(--color-surface, #1C1C1E)',
-        border: '1px solid var(--color-border, rgba(255,255,255,0.08))',
+        background: 'var(--cm-bg-secondary)',
+        border: '1px solid var(--cm-border)',
         borderRadius: 12,
         overflow: 'hidden',
       }}>
@@ -117,9 +117,9 @@ export const WorkflowRenderer: React.FC<MCPRendererProps> = ({
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          borderBottom: '1px solid var(--color-border, rgba(255,255,255,0.08))',
+          borderBottom: '1px solid var(--cm-border)',
         }}>
-          <Workflow style={{ width: 16, height: 16, color: 'var(--user-accent-primary, #3b82f6)' }} />
+          <Workflow style={{ width: 16, height: 16, color: 'var(--cm-accent)' }} />
           <span style={{ color: 'var(--color-text)', fontSize: 13, fontWeight: 600 }}>
             {data.count} Workflow{data.count !== 1 ? 's' : ''}
           </span>
@@ -131,14 +131,14 @@ export const WorkflowRenderer: React.FC<MCPRendererProps> = ({
               display: 'flex',
               alignItems: 'center',
               gap: 10,
-              borderBottom: '1px solid var(--color-border, rgba(255,255,255,0.04))',
+              borderBottom: '1px solid color-mix(in srgb, var(--cm-border) 50%, transparent)',
             }}>
               <StatusDot status={wf.status || 'draft'} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {wf.name}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--color-text-tertiary, #636366)', display: 'flex', gap: 8 }}>
+                <div style={{ fontSize: 11, color: 'var(--cm-text-muted)', display: 'flex', gap: 8 }}>
                   <span>{wf.node_count} nodes</span>
                   <span>{wf.execution_count} runs</span>
                 </div>
@@ -154,32 +154,32 @@ export const WorkflowRenderer: React.FC<MCPRendererProps> = ({
   if ((toolName === 'workflow_create' || toolName === 'workflow_create_from_description') && data.workflow_id) {
     return (
       <div style={{
-        background: 'var(--color-surface, #1C1C1E)',
-        border: '1px solid var(--color-border, rgba(255,255,255,0.08))',
+        background: 'var(--cm-bg-secondary)',
+        border: '1px solid var(--cm-border)',
         borderRadius: 12,
         padding: '14px 16px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
           <div style={{
-            width: 32, height: 32, borderRadius: '50%', background: 'rgba(0, 255, 0, 0.15)',
+            width: 32, height: 32, borderRadius: '50%', background: 'color-mix(in srgb, var(--cm-success) 15%, transparent)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <CheckCircle style={{ width: 18, height: 18, color: '#00ff00' }} />
+            <CheckCircle style={{ width: 18, height: 18, color: 'var(--cm-success)' }} />
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
               {data.name || 'Workflow Created'}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary, #636366)' }}>
+            <div style={{ fontSize: 12, color: 'var(--cm-text-muted)' }}>
               {data.message}
             </div>
           </div>
         </div>
         {data.tip && (
           <div style={{
-            fontSize: 12, color: 'var(--color-text-secondary, #8E8E93)',
+            fontSize: 12, color: 'var(--cm-text-secondary)',
             padding: '8px 10px', borderRadius: 8,
-            background: 'var(--color-bg-secondary, rgba(255,255,255,0.04))',
+            background: 'var(--cm-bg-tertiary)',
             marginTop: 4,
           }}>
             {data.tip}
@@ -196,9 +196,9 @@ export const WorkflowRenderer: React.FC<MCPRendererProps> = ({
             gap: 6,
             padding: '6px 12px',
             borderRadius: 8,
-            border: '1px solid var(--color-border, rgba(255,255,255,0.08))',
+            border: '1px solid var(--cm-border)',
             background: 'transparent',
-            color: 'var(--user-accent-primary, #3b82f6)',
+            color: 'var(--cm-accent)',
             fontSize: 12,
             fontWeight: 500,
             cursor: 'pointer',
@@ -215,8 +215,8 @@ export const WorkflowRenderer: React.FC<MCPRendererProps> = ({
   if (toolName === 'workflow_execute' && data.execution_id) {
     return (
       <div style={{
-        background: 'var(--color-surface, #1C1C1E)',
-        border: '1px solid var(--color-border, rgba(255,255,255,0.08))',
+        background: 'var(--cm-bg-secondary)',
+        border: '1px solid var(--cm-border)',
         borderRadius: 12,
         padding: '14px 16px',
         display: 'flex',
@@ -224,19 +224,19 @@ export const WorkflowRenderer: React.FC<MCPRendererProps> = ({
         gap: 10,
       }}>
         <div style={{
-          width: 32, height: 32, borderRadius: '50%', background: 'rgba(255, 152, 0, 0.15)',
+          width: 32, height: 32, borderRadius: '50%', background: 'color-mix(in srgb, var(--cm-warning) 15%, transparent)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <Play style={{ width: 16, height: 16, color: '#ff9800' }} />
+          <Play style={{ width: 16, height: 16, color: 'var(--cm-warning)' }} />
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
             Execution Started
           </div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-tertiary, #636366)' }}>
+          <div style={{ fontSize: 12, color: 'var(--cm-text-muted)' }}>
             {data.message}
           </div>
-          <div style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--color-text-tertiary, #636366)', marginTop: 2 }}>
+          <div style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--cm-text-muted)', marginTop: 2 }}>
             ID: {data.execution_id}
           </div>
         </div>
@@ -251,17 +251,17 @@ export const WorkflowRenderer: React.FC<MCPRendererProps> = ({
     const edges = wf.edges || [];
     return (
       <div style={{
-        background: 'var(--color-surface, #1C1C1E)',
-        border: '1px solid var(--color-border, rgba(255,255,255,0.08))',
+        background: 'var(--cm-bg-secondary)',
+        border: '1px solid var(--cm-border)',
         borderRadius: 12,
         overflow: 'hidden',
       }}>
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border, rgba(255,255,255,0.08))' }}>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--cm-border)' }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{wf.name}</div>
           {wf.description && (
-            <div style={{ fontSize: 12, color: 'var(--color-text-tertiary, #636366)', marginTop: 2 }}>{wf.description}</div>
+            <div style={{ fontSize: 12, color: 'var(--cm-text-muted)', marginTop: 2 }}>{wf.description}</div>
           )}
-          <div style={{ display: 'flex', gap: 12, marginTop: 6, fontSize: 11, color: 'var(--color-text-tertiary, #636366)' }}>
+          <div style={{ display: 'flex', gap: 12, marginTop: 6, fontSize: 11, color: 'var(--cm-text-muted)' }}>
             <span>{nodes.length} nodes</span>
             <span>{edges.length} edges</span>
             <span>{wf.executionCount || 0} runs</span>
@@ -271,7 +271,7 @@ export const WorkflowRenderer: React.FC<MCPRendererProps> = ({
           onClick={() => setExpanded(!expanded)}
           style={{
             width: '100%', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 6,
-            background: 'transparent', border: 'none', color: 'var(--color-text-secondary, #8E8E93)',
+            background: 'transparent', border: 'none', color: 'var(--cm-text-secondary)',
             fontSize: 12, cursor: 'pointer', textAlign: 'left',
           }}
         >
@@ -283,9 +283,9 @@ export const WorkflowRenderer: React.FC<MCPRendererProps> = ({
             {nodes.map((n: any) => (
               <div key={n.id} style={{
                 display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0',
-                fontSize: 12, color: 'var(--color-text-secondary, #8E8E93)',
+                fontSize: 12, color: 'var(--cm-text-secondary)',
               }}>
-                <Zap style={{ width: 10, height: 10, color: statusColors[n.type] || '#607d8b' }} />
+                <Zap style={{ width: 10, height: 10, color: statusColors[n.type] || 'var(--cm-text-muted)' }} />
                 <span style={{ fontWeight: 500, color: 'var(--color-text)' }}>{n.data?.label || n.id}</span>
                 <span style={{ fontSize: 11, opacity: 0.6 }}>({n.type})</span>
               </div>
@@ -300,15 +300,15 @@ export const WorkflowRenderer: React.FC<MCPRendererProps> = ({
   if (data.message) {
     return (
       <div style={{
-        background: 'var(--color-surface, #1C1C1E)',
-        border: '1px solid var(--color-border, rgba(255,255,255,0.08))',
+        background: 'var(--cm-bg-secondary)',
+        border: '1px solid var(--cm-border)',
         borderRadius: 12,
         padding: '12px 16px',
         display: 'flex',
         alignItems: 'center',
         gap: 10,
       }}>
-        <Activity style={{ width: 16, height: 16, color: 'var(--user-accent-primary, #3b82f6)', flexShrink: 0 }} />
+        <Activity style={{ width: 16, height: 16, color: 'var(--cm-accent)', flexShrink: 0 }} />
         <span style={{ color: 'var(--color-text)', fontSize: 13 }}>{data.message}</span>
       </div>
     );

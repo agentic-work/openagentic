@@ -208,4 +208,20 @@ describe('listRegistryCandidatePool (MC-I unit — provider.enabled cross-check)
     const assignFindMany = (fakePrisma.modelRoleAssignment.findMany as ReturnType<typeof vi.fn>);
     expect(assignFindMany.mock.calls[0][0].orderBy).toEqual([{ priority: 'asc' }]);
   });
+
+  it('maps the function_calling_accuracy column to functionCallingAccuracy (null when absent)', async () => {
+    const fakePrisma = buildFakePrisma(
+      [{ name: 'prov-fca' }],
+      [
+        { id: 'f1', model: 'model-scored', provider: 'prov-fca', role: 'chat', priority: 1, capabilities: { chat: true }, function_calling_accuracy: 0.87 } as any,
+        { id: 'f2', model: 'model-unscored', provider: 'prov-fca', role: 'chat', priority: 2, capabilities: { chat: true } } as any,
+      ],
+    );
+
+    const pool = await listRegistryCandidatePool(fakePrisma);
+    const byModel = new Map(pool.map(p => [p.model, p]));
+
+    expect(byModel.get('model-scored')?.functionCallingAccuracy).toBe(0.87);
+    expect(byModel.get('model-unscored')?.functionCallingAccuracy).toBeNull();
+  });
 });

@@ -4,26 +4,27 @@ import React, { createContext, useContext, useState, useCallback, ReactNode } fr
 export type AdminSection =
   | 'overview' | 'analytics'
   | 'users' | 'user-lockout' | 'auth-control'
-  | 'llm-providers' | 'multi-model' | 'ollama' | 'tiered-fc'
+  | 'llm-providers' | 'multi-model' | 'ollama' | 'tiered-fc' | 'llm-router-tuning' | 'llm-default-models'
   | 'mcp-servers' | 'mcp-access' | 'mcp-tools' | 'mcp-inspector' | 'mcp-logs'
   | 'prompts' | 'templates' | 'pipeline'
   | 'monitoring' | 'usage' | 'performance' | 'feedback' | 'audit' | 'code-metrics'
   | 'rate-limits' | 'api-tokens'
   | 'awcode-sessions' | 'awcode-settings'
-  | 'codemode-settings' | 'codemode-mcp' | 'codemode-skills' | 'codemode-users'
+  | 'codemode-settings' | 'codemode-mcp' | 'codemode-skills' | 'codemode-users' | 'codemode-global'
   | 'settings';
 
 // Section categories for sidebar
 export const SECTION_CATEGORIES = {
   overview: ['overview', 'analytics'],
   system: ['users', 'user-lockout', 'auth-control', 'settings'],
-  llm: ['llm-providers', 'multi-model', 'ollama', 'tiered-fc'],
+  llm: ['llm-providers', 'llm-default-models', 'multi-model', 'ollama', 'tiered-fc', 'llm-router-tuning'],
   mcp: ['mcp-servers', 'mcp-access', 'mcp-tools', 'mcp-inspector', 'mcp-logs'],
   content: ['prompts', 'templates', 'pipeline'],
   monitoring: ['monitoring', 'usage', 'performance', 'feedback', 'audit', 'code-metrics'],
   security: ['rate-limits', 'api-tokens'],
   code: ['awcode-sessions', 'awcode-settings'],
-  codemode: ['codemode-settings', 'codemode-mcp', 'codemode-skills', 'codemode-users'],
+  codemode: ['codemode-settings', 'codemode-global', 'codemode-mcp', 'codemode-skills', 'codemode-users'],
+  systemConfig: [],
 } as const;
 
 interface AdminContextState {

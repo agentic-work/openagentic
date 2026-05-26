@@ -31,16 +31,20 @@ export interface KpiGridProps {
   className?: string;
 }
 
+// Rule 8(b): resolve ALL colors via global --cm-* theme tokens (flip per
+// [data-theme] in index.css). No hardcoded hex / rgb — the prior --bg-2/--fg-*/
+// --line-2 namespace was not themed, so the hardcoded fallbacks won regardless
+// of the active theme (the "KPI card ignores global CSS" bug).
 const SEVERITY_COLORS: Record<NonNullable<KpiTile['severity']>, string> = {
-  ok: '#22c55e',
-  warn: '#f59e0b',
-  err: '#ef4444',
+  ok: 'var(--cm-success)',
+  warn: 'var(--cm-warning)',
+  err: 'var(--cm-error)',
 };
 
 const TONE_COLORS: Record<NonNullable<KpiTile['deltaTone']>, string> = {
-  g: '#22c55e',
-  r: '#ef4444',
-  n: 'var(--fg-2, #a1a1aa)',
+  g: 'var(--cm-success)',
+  r: 'var(--cm-error)',
+  n: 'var(--cm-text-muted)',
 };
 
 const KPI_GRID_STYLES = {
@@ -50,8 +54,8 @@ const KPI_GRID_STYLES = {
     gap: '12px',
   }),
   tile: (severity?: KpiTile['severity']): React.CSSProperties => ({
-    background: 'var(--bg-2, #16181c)',
-    border: '1px solid var(--line-2, rgba(255,255,255,0.10))',
+    background: 'var(--cm-bg-secondary)',
+    border: '1px solid var(--cm-border)',
     padding: '14px 16px',
     borderRadius: '10px',
     ...(severity
@@ -66,14 +70,14 @@ const KPI_GRID_STYLES = {
     fontSize: '11px',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.04em',
-    color: 'var(--fg-3, #71717a)',
+    color: 'var(--cm-text-muted)',
   },
   value: {
     fontSize: '24px',
     fontWeight: 600,
     fontFamily: '"JetBrains Mono", ui-monospace, monospace',
     fontVariantNumeric: 'tabular-nums' as const,
-    color: 'var(--fg-0, #f8fafc)',
+    color: 'var(--cm-text)',
     marginTop: '4px',
   },
   delta: (tone: NonNullable<KpiTile['deltaTone']>): React.CSSProperties => ({

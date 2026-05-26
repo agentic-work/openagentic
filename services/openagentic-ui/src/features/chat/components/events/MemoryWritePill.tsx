@@ -36,9 +36,9 @@ const FloppyIcon = () => (
 );
 
 const SCOPE_COLOR: Record<MemoryScope, string> = {
-  user: '#22c55e',      // green
-  session: '#a78bfa',   // violet
-  shared: '#0ea5e9',    // sky
+  user: 'var(--cm-success)',      // green
+  session: 'var(--cm-accent)',    // violet
+  shared: 'var(--cm-info)',       // sky
 };
 
 function truncate(input: string, max: number): string {
@@ -71,10 +71,10 @@ const MemoryWritePillComponent: React.FC<MemoryWritePillProps> = ({
         gap: 8,
         padding: '4px 10px',
         borderRadius: 99,
-        background: 'rgba(34,197,94,0.08)',
-        border: `1px solid ${scopeColor}33`,
+        background: 'color-mix(in srgb, var(--cm-success) 8%, transparent)',
+        border: `1px solid color-mix(in srgb, ${scopeColor} 20%, transparent)`,
         fontSize: 11,
-        color: '#d4d4d8',
+        color: 'var(--cm-text-secondary)',
         fontFamily: 'JetBrains Mono, monospace',
         lineHeight: 1,
       }}
@@ -85,10 +85,10 @@ const MemoryWritePillComponent: React.FC<MemoryWritePillProps> = ({
       <span style={{ fontWeight: 600, color: scopeColor }}>
         Remembered
       </span>
-      <span style={{ color: '#71717a' }}>· {scope}</span>
+      <span style={{ color: 'var(--cm-text-muted)' }}>· {scope}</span>
       <span
         style={{
-          color: '#a1a1aa',
+          color: 'var(--cm-text-secondary)',
           fontFamily: 'Inter, sans-serif',
           marginLeft: 4,
           maxWidth: 240,
@@ -100,7 +100,7 @@ const MemoryWritePillComponent: React.FC<MemoryWritePillProps> = ({
         : {preview}
       </span>
       {tokenLabel && (
-        <span style={{ color: '#71717a', marginLeft: 4 }}>· {tokenLabel}</span>
+        <span style={{ color: 'var(--cm-text-muted)', marginLeft: 4 }}>· {tokenLabel}</span>
       )}
     </span>
   );

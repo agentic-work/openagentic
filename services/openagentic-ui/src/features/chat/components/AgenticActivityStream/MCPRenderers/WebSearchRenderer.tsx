@@ -84,8 +84,8 @@ export const WebSearchRenderer: React.FC<MCPRendererProps> = ({
       style={{
         borderRadius: 6,
         border: '1px solid color-mix(in srgb, var(--color-border) 60%, transparent)',
-        borderLeft: `2px solid ${status === 'success' ? '#2ea043' : status === 'error' ? '#da3633' : '#58a6ff'}`,
-        background: status === 'success' ? 'rgba(46, 160, 67, 0.06)' : status === 'error' ? 'rgba(218, 54, 51, 0.06)' : 'rgba(88, 166, 255, 0.06)',
+        borderLeft: `2px solid ${status === 'success' ? 'var(--cm-success)' : status === 'error' ? 'var(--cm-error)' : 'var(--cm-info)'}`,
+        background: status === 'success' ? 'color-mix(in srgb, var(--cm-success) 6%, transparent)' : status === 'error' ? 'color-mix(in srgb, var(--cm-error) 6%, transparent)' : 'color-mix(in srgb, var(--cm-info) 6%, transparent)',
         overflow: 'hidden',
         transition: 'border-color 0.2s, background 0.2s',
       }}
@@ -102,11 +102,11 @@ export const WebSearchRenderer: React.FC<MCPRendererProps> = ({
       >
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
           {status === 'calling' ? (
-            <Loader2 size={14} style={{ color: '#58a6ff', animation: 'spin 1s linear infinite' }} />
+            <Loader2 size={14} style={{ color: 'var(--cm-info)', animation: 'spin 1s linear infinite' }} />
           ) : status === 'success' ? (
-            <Check size={14} style={{ color: '#2ea043' }} />
+            <Check size={14} style={{ color: 'var(--cm-success)' }} />
           ) : (
-            <Globe size={14} style={{ color: '#58a6ff' }} />
+            <Globe size={14} style={{ color: 'var(--cm-info)' }} />
           )}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -145,7 +145,7 @@ export const WebSearchRenderer: React.FC<MCPRendererProps> = ({
                 alignItems: 'flex-start',
                 gap: 10,
                 padding: '8px 0',
-                borderBottom: idx < Math.min(results.length, 5) - 1 ? '1px solid var(--color-border-light, rgba(0,0,0,0.05))' : 'none',
+                borderBottom: idx < Math.min(results.length, 5) - 1 ? '1px solid color-mix(in srgb, var(--cm-border) 50%, transparent)' : 'none',
               }}
             >
               <img

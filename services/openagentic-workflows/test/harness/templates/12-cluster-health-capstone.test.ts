@@ -162,7 +162,7 @@ function installMocks(): void {
   );
 
   // Slack incoming webhook — accept any hooks.slack.com or pre-resolved
-  // workspace webhook URL. openagentic-mcp-proxy is the dev pattern.
+  // workspace webhook URL. openagentic-mcp-proxy is the chat-dev pattern.
   harnessServer.use(
     http.post(/hooks\.slack\.com|slack/, () =>
       HttpResponse.text('ok', { status: 200 }),

@@ -71,7 +71,6 @@ def ok(msg: str) -> None:    print(f"  {GREEN}✓{RESET} {msg}")
 def warn(msg: str) -> None:  print(f"  {YELLOW}!{RESET} {msg}")
 def fail(msg: str) -> None:  print(f"  {RED}✗{RESET} {msg}")
 
-
 # ─── Paths + config ─────────────────────────────────────────────────────────
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
@@ -88,7 +87,6 @@ API_BASE = f"http://localhost:{API_PORT}"
 OLLAMA_CHAT_MODEL = os.environ.get("OLLAMA_CHAT_MODEL", "llama3.2:3b")
 OLLAMA_EMBED_MODEL = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text")
 
-
 # ─── Helpers ───────────────────────────────────────────────────────────────
 def _read_env_value(key: str) -> Optional[str]:
     """Pull a single VAR=value out of repo .env. Returns None if absent."""
@@ -104,7 +102,6 @@ def _read_env_value(key: str) -> Optional[str]:
             return v
     return None
 
-
 # ─── Host CLI detection ────────────────────────────────────────────────────
 @dataclass
 class CloudCli:
@@ -115,7 +112,6 @@ class CloudCli:
     prompt: str                          # natural-language ask sent to /api/chat/stream
     success_re: re.Pattern[str]          # regex over the streamed response that indicates SUCCESS
     failure_hints: list[re.Pattern[str]] = field(default_factory=list)  # known-failure markers
-
 
 def _az_summary() -> Optional[str]:
     # az is the host-side CLI; mcp-proxy reads ~/.azure inside the container.
@@ -135,7 +131,6 @@ def _az_summary() -> Optional[str]:
     except Exception:
         return None
 
-
 def _aws_summary() -> Optional[str]:
     if not ((HOME / ".aws" / "credentials").exists() or (HOME / ".aws" / "config").exists()):
         return None
@@ -151,7 +146,6 @@ def _aws_summary() -> Optional[str]:
         return f"account {data.get('Account','?')}"
     except Exception:
         return None
-
 
 def _gcp_summary() -> Optional[str]:
     gcloud_dir = HOME / ".config" / "gcloud"
@@ -169,7 +163,6 @@ def _gcp_summary() -> Optional[str]:
     except Exception:
         return None
 
-
 def _k8s_summary() -> Optional[str]:
     if not (HOME / ".kube" / "config").exists():
         return None
@@ -184,7 +177,6 @@ def _k8s_summary() -> Optional[str]:
         return f"context {out.stdout.strip()}"
     except Exception:
         return None
-
 
 CLIS: list[CloudCli] = [
     CloudCli(
@@ -231,7 +223,6 @@ CLIS: list[CloudCli] = [
     ),
 ]
 
-
 def detect_clis(only: Optional[set[str]]) -> list[CloudCli]:
     out: list[CloudCli] = []
     for c in CLIS:
@@ -244,7 +235,6 @@ def detect_clis(only: Optional[set[str]]) -> list[CloudCli]:
         else:
             warn(f"{c.label}: no usable host creds — will not probe this MCP")
     return out
-
 
 # ─── Playwright wizard driver ──────────────────────────────────────────────
 def drive_ui_setup(headed: bool = False) -> str:
@@ -355,7 +345,6 @@ def drive_ui_setup(headed: bool = False) -> str:
         browser.close()
         return token
 
-
 # ─── Wait for healthy ──────────────────────────────────────────────────────
 def wait_for_api_healthy(timeout: int = 180) -> None:
     deadline = time.time() + timeout
@@ -373,7 +362,6 @@ def wait_for_api_healthy(timeout: int = 180) -> None:
             pass
         time.sleep(3)
     raise SystemExit(f"api did not go healthy in {timeout}s")
-
 
 # ─── API helpers ────────────────────────────────────────────────────────────
 def http_json(method: str, path: str, *, body: Optional[dict] = None,
@@ -393,14 +381,12 @@ def http_json(method: str, path: str, *, body: Optional[dict] = None,
         try:    return e.code, json.loads(payload)
         except Exception: return e.code, payload
 
-
 def login() -> str:
     code, body = http_json("POST", "/api/auth/local/login",
                            body={"username": ADMIN_EMAIL, "password": ADMIN_PASS})
     if code != 200 or not isinstance(body, dict) or not body.get("token"):
         raise SystemExit(f"login failed: HTTP {code} body={body!r}")
     return body["token"]
-
 
 def _create_chat_session(token: str) -> str:
     """POST /api/chat/sessions → returns a sessionId we can stream messages into."""
@@ -412,7 +398,6 @@ def _create_chat_session(token: str) -> str:
     if not sid:
         raise RuntimeError(f"chat session response missing id: {body!r}")
     return sid
-
 
 def chat_stream(token: str, prompt: str, timeout: int = 120) -> str:
     """POST /api/chat/stream and concatenate everything that comes back.
@@ -438,7 +423,6 @@ def chat_stream(token: str, prompt: str, timeout: int = 120) -> str:
             chunks.append(line.decode(errors="replace"))
     return "".join(chunks)
 
-
 # ─── Probe ─────────────────────────────────────────────────────────────────
 def probe(cli: CloudCli, token: str) -> bool:
     info(f"chatting: {cli.prompt}")
@@ -463,7 +447,6 @@ def probe(cli: CloudCli, token: str) -> bool:
     (REPO / ".e2e-logs").mkdir(exist_ok=True)
     (REPO / ".e2e-logs" / f"mcp-{cli.id}-nomatch.txt").write_text(resp)
     return False
-
 
 # ─── Main ──────────────────────────────────────────────────────────────────
 def main(argv: list[str]) -> int:
@@ -520,7 +503,6 @@ def main(argv: list[str]) -> int:
         print(f"\n  {GRAY}--keep set: stack left running at {API_BASE}{RESET}")
 
     return 0 if passed == total else 1
-
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

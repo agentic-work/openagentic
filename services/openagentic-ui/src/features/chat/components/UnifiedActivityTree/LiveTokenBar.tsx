@@ -22,7 +22,7 @@ export function LiveTokenBar({
   contextUsed, contextMax, isStreaming,
 }: LiveTokenBarProps) {
   const contextPercent = contextMax > 0 ? Math.round((contextUsed / contextMax) * 100) : 0;
-  const contextColor = contextPercent < 50 ? '#3fb950' : contextPercent < 80 ? '#d29922' : '#f85149';
+  const contextColor = contextPercent < 50 ? 'var(--cm-success)' : contextPercent < 80 ? 'var(--cm-warning)' : 'var(--cm-error)';
 
   return (
     <div style={{
@@ -32,16 +32,16 @@ export function LiveTokenBar({
       padding: '6px 12px',
       fontSize: 11,
       fontFamily: 'SF Mono, JetBrains Mono, monospace',
-      color: 'rgba(255,255,255,0.5)',
-      backgroundColor: 'rgba(255,255,255,0.02)',
-      borderTop: '1px solid rgba(255,255,255,0.06)',
+      color: 'var(--cm-text-secondary)',
+      backgroundColor: 'var(--cm-bg-secondary)',
+      borderTop: '1px solid var(--cm-border)',
       animation: isStreaming ? 'pulse 3s ease-in-out infinite' : undefined,
     }}>
       {/* Token counts */}
       <span>
-        <span style={{ color: '#58a6ff' }}>↓{formatTokens(tokensIn)}</span>
+        <span style={{ color: 'var(--cm-accent)' }}>↓{formatTokens(tokensIn)}</span>
         {' '}
-        <span style={{ color: '#3fb950' }}>↑{formatTokens(tokensOut)}</span>
+        <span style={{ color: 'var(--cm-success)' }}>↑{formatTokens(tokensOut)}</span>
       </span>
 
       {/* Cost */}
@@ -56,7 +56,7 @@ export function LiveTokenBar({
         <div style={{
           width: 60,
           height: 4,
-          backgroundColor: 'rgba(255,255,255,0.06)',
+          backgroundColor: 'var(--cm-bg-tertiary)',
           borderRadius: 2,
           overflow: 'hidden',
         }}>

@@ -128,7 +128,7 @@ export class UserPermissionsService {
    */
   async getUserPermissions(userId: string, userGroups: string[] = []): Promise<UserPermissions> {
     // Check cache
-    const cacheKey = `${userId}:${userGroups.sort().join(',')}`;
+    const cacheKey = `${userId}:${[...userGroups].sort((a, b) => a.localeCompare(b)).join(',')}`;
     const cached = this.permissionCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       return cached.permissions;

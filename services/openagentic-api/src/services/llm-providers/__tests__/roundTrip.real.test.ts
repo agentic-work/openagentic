@@ -22,7 +22,7 @@
  * Provider cred matrix (set in ~/.zshrc or CI):
  *
  *   Bedrock-Anthropic : AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
- *   Ollama            : OLLAMA_BASE_URL (defaults to http://host.docker.internal:11434)
+ *   Ollama            : OLLAMA_BASE_URL (defaults to http://hal:11434)
  *   Anthropic direct  : ANTHROPIC_API_KEY
  *   AIF Chat / Anth   : AIF_TENANT_ID, AIF_CLIENT_ID, AIF_CLIENT_SECRET, AIF_ENDPOINT_URL
  *   AIF Responses     : (same AIF env)
@@ -204,7 +204,7 @@ describe.skipIf(!hasAwsCreds)('REAL round-trip — Bedrock-Anthropic', () => {
 //  OLLAMA
 // ────────────────────────────────────────────────────────────────────────
 
-const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || 'http://host.docker.internal:11434';
+const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || 'http://hal:11434';
 const hasOllama = (async () => {
   try {
     const ac = new AbortController();

@@ -77,25 +77,25 @@ const ArtifactStartBannerComponent: React.FC<ArtifactStartBannerProps> = ({
         padding: '5px 10px',
         borderRadius: 99,
         background:
-          'linear-gradient(90deg, rgba(139,92,246,0.12), rgba(99,102,241,0.12))',
-        border: '1px solid rgba(139,92,246,0.32)',
+          'linear-gradient(90deg, color-mix(in srgb, var(--cm-accent) 12%, transparent), color-mix(in srgb, var(--cm-accent) 12%, transparent))',
+        border: '1px solid color-mix(in srgb, var(--cm-accent) 32%, transparent)',
         fontSize: 11,
-        color: '#d4d4d8',
+        color: 'var(--cm-text-secondary)',
         fontFamily: 'JetBrains Mono, monospace',
         lineHeight: 1,
       }}
     >
-      <span style={{ color: '#a78bfa' }}>
+      <span style={{ color: 'var(--cm-accent)' }}>
         <Icon size={12} />
       </span>
-      <span style={{ color: '#a78bfa', fontWeight: 600 }}>
+      <span style={{ color: 'var(--cm-accent)', fontWeight: 600 }}>
         {complete ? 'Drafted' : 'Drafting'} {title}
       </span>
-      <span style={{ color: '#71717a' }}>· {subtitle}</span>
+      <span style={{ color: 'var(--cm-text-muted)' }}>· {subtitle}</span>
       {complete && (
         <span
           data-testid="artifact-complete-check"
-          style={{ color: '#22c55e', display: 'inline-flex', alignItems: 'center' }}
+          style={{ color: 'var(--cm-success)', display: 'inline-flex', alignItems: 'center' }}
           aria-label="complete"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"

@@ -2,7 +2,7 @@
  * #653 — getDefaultChatModel must skip Registry rows whose backing provider
  * is disabled.
  *
- * Live capture 2026-05-06 23:52Z: dev had `gemini-2.5-pro` row
+ * Live capture 2026-05-06 23:52Z: chat-dev had `gemini-2.5-pro` row
  * (role=chat, enabled=true) in admin.model_role_assignments, but the
  * Vertex provider serving it had `llm_providers.enabled=false`. The
  * existing query was:
@@ -32,6 +32,7 @@ vi.mock('../../utils/prisma.js', () => {
   const mock = {
     lLMProvider: { findMany: vi.fn() },
     modelRoleAssignment: { findFirst: vi.fn(), findMany: vi.fn() },
+    systemConfiguration: { findUnique: vi.fn().mockResolvedValue(null) },
   };
   (globalThis as any).__prismaMock = mock;
   return { prisma: mock };
@@ -65,6 +66,8 @@ describe('ModelConfigurationService.getDefaultChatModel — provider enabled joi
     m.lLMProvider.findMany.mockReset();
     m.modelRoleAssignment.findFirst.mockReset();
     m.modelRoleAssignment.findMany.mockReset();
+    (m as any).systemConfiguration.findUnique.mockReset();
+    (m as any).systemConfiguration.findUnique.mockResolvedValue(null);
   });
 
   afterEach(() => vi.clearAllMocks());

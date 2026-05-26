@@ -208,7 +208,7 @@ const AdminToolInspector: React.FC<AdminToolInspectorProps> = ({ visible, onClos
           maxWidth: '90vw',
           backgroundColor: 'var(--color-surface)',
           borderLeft: '1px solid var(--color-border)',
-          boxShadow: '-4px 0 20px rgba(0,0,0,0.15)',
+          boxShadow: '-4px 0 20px color-mix(in srgb, var(--cm-text) 15%, transparent)',
         }}
       >
         {/* Header */}
@@ -310,8 +310,8 @@ const AdminToolInspector: React.FC<AdminToolInspectorProps> = ({ visible, onClos
                   {tool.status === 'success' || tool.status === 'completed' ?
                     <CheckCircle className="w-3.5 h-3.5" style={{ color: 'var(--color-success)' }} /> :
                     tool.status === 'error' ?
-                    <XCircle className="w-3.5 h-3.5" style={{ color: '#ef4444' }} /> :
-                    <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: '#f59e0b' }} />
+                    <XCircle className="w-3.5 h-3.5" style={{ color: 'var(--cm-error)' }} /> :
+                    <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: 'var(--cm-warning)' }} />
                   }
                 </span>
               </button>
@@ -380,8 +380,8 @@ const AdminToolInspector: React.FC<AdminToolInspectorProps> = ({ visible, onClos
                         </div>
                         <pre className="text-[11px] font-mono p-2 rounded-md overflow-x-auto max-h-[300px] overflow-y-auto" style={{
                           backgroundColor: 'var(--color-background)',
-                          color: tool.error ? '#ef4444' : 'var(--color-text)',
-                          border: `1px solid ${tool.error ? '#ef4444' : 'var(--color-border)'}`,
+                          color: tool.error ? 'var(--cm-error)' : 'var(--color-text)',
+                          border: `1px solid ${tool.error ? 'var(--cm-error)' : 'var(--color-border)'}`,
                         }}>
                           {typeof tool.result === 'string' ? tool.result : JSON.stringify(tool.result, null, 2)}
                         </pre>
@@ -391,9 +391,9 @@ const AdminToolInspector: React.FC<AdminToolInspectorProps> = ({ visible, onClos
                     {/* Error */}
                     {tool.error && (
                       <div className="p-2 rounded-md text-xs" style={{
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        color: '#ef4444',
-                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        backgroundColor: 'color-mix(in srgb, var(--cm-error) 10%, transparent)',
+                        color: 'var(--cm-error)',
+                        border: '1px solid color-mix(in srgb, var(--cm-error) 30%, transparent)',
                       }}>
                         {tool.error}
                       </div>
@@ -418,7 +418,7 @@ const AdminToolInspector: React.FC<AdminToolInspectorProps> = ({ visible, onClos
                   <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--color-textSecondary)' }} /> :
                   <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--color-textSecondary)' }} />
                 }
-                <Bot className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#8b5cf6' }} />
+                <Bot className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--cm-accent)' }} />
                 <span className="text-xs font-medium truncate" style={{ color: 'var(--color-text)' }}>
                   {agent.name}
                 </span>
@@ -434,8 +434,8 @@ const AdminToolInspector: React.FC<AdminToolInspectorProps> = ({ visible, onClos
                   {agent.status === 'completed' ?
                     <CheckCircle className="w-3.5 h-3.5" style={{ color: 'var(--color-success)' }} /> :
                     agent.status === 'failed' ?
-                    <XCircle className="w-3.5 h-3.5" style={{ color: '#ef4444' }} /> :
-                    <Brain className="w-3.5 h-3.5" style={{ color: '#3b82f6' }} />
+                    <XCircle className="w-3.5 h-3.5" style={{ color: 'var(--cm-error)' }} /> :
+                    <Brain className="w-3.5 h-3.5" style={{ color: 'var(--cm-info)' }} />
                   }
                 </span>
               </button>

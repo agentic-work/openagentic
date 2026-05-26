@@ -3,7 +3,7 @@
  * inline with an assistant message whose canonical stop_reason was
  * `content_filter`, `safety`, or `recitation`. Before B8 these all
  * collapsed to `end_turn` and the UI showed a truncated bubble with no
- * indication that a safety filter fired. For your environment FedRAMP-Hi audit this
+ * indication that a safety filter fired. For CDC FedRAMP-Hi audit this
  * hid a SAFETY event from the operator + audit log.
  *
  * Visual: subtle red/orange border + icon + compliance copy. Sits
@@ -66,10 +66,10 @@ const ContentFilterBannerComponent: React.FC<ContentFilterBannerProps> = ({
         padding: '10px 12px',
         margin: '8px 0',
         borderRadius: 8,
-        border: '1px solid rgba(239,68,68,0.55)',
+        border: '1px solid color-mix(in srgb, var(--cm-error) 55%, transparent)',
         background:
-          'linear-gradient(90deg, rgba(239,68,68,0.10), rgba(249,115,22,0.08))',
-        color: '#fecaca',
+          'linear-gradient(90deg, color-mix(in srgb, var(--cm-error) 10%, transparent), color-mix(in srgb, var(--cm-warning) 8%, transparent))',
+        color: 'var(--cm-error)',
         fontFamily: 'var(--font-v3-mono, JetBrains Mono, monospace)',
         fontSize: 12,
         lineHeight: '1.45em',
@@ -77,7 +77,7 @@ const ContentFilterBannerComponent: React.FC<ContentFilterBannerProps> = ({
     >
       <span
         aria-hidden="true"
-        style={{ color: '#f87171', flexShrink: 0, marginTop: 1 }}
+        style={{ color: 'var(--cm-error)', flexShrink: 0, marginTop: 1 }}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" strokeWidth="2.4">
@@ -89,17 +89,17 @@ const ContentFilterBannerComponent: React.FC<ContentFilterBannerProps> = ({
       <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <span
           data-testid="content-filter-banner-headline"
-          style={{ color: '#f87171', fontWeight: 600, letterSpacing: 0.1 }}
+          style={{ color: 'var(--cm-error)', fontWeight: 600, letterSpacing: 0.1 }}
         >
           {headline}
         </span>
-        <span data-testid="content-filter-banner-message" style={{ color: '#fecaca' }}>
+        <span data-testid="content-filter-banner-message" style={{ color: 'var(--cm-error)' }}>
           {message}
         </span>
         {model ? (
           <span
             data-testid="content-filter-banner-model"
-            style={{ color: '#a3a3a3', fontSize: 11, marginTop: 2 }}
+            style={{ color: 'var(--cm-text-muted)', fontSize: 11, marginTop: 2 }}
           >
             model: {model}
           </span>

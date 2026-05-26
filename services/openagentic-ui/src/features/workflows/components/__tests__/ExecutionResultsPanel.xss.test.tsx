@@ -95,7 +95,7 @@ describe('ExecutionResultsPanel — XSS resistance (S6)', () => {
       expect(srcdoc).toContain('Content-Security-Policy');
       expect(srcdoc).toContain("default-src 'none'");
       expect(srcdoc).toContain("'nonce-test-abc'");
-      expect(srcdoc).toContain('connect-src https://chat.openagentic.local');
+      expect(srcdoc).toContain('connect-src https://chat-dev.openagentic.io');
       // <script> tag should be nonced (so legitimate model JS can run
       // under the CSP, while injected scripts without the nonce are
       // blocked at parse time).

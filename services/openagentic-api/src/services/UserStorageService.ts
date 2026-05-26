@@ -8,6 +8,7 @@
  */
 
 import crypto from 'crypto';
+import { promises as dnsPromises } from 'dns';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -79,6 +80,13 @@ export interface UserStorageDeps {
    */
   adminOps?: MinioAdminOps;
   k8sSecretWriter?: K8sSecretWriter;
+  /**
+   * Resolve a hostname to its A records. Injectable for tests; defaults to
+   * `dns.promises.resolve4`. Used to convert the configured cluster-DNS
+   * `storageEndpoint` into a host-reachable ClusterIP before it is written
+   * into the csi-s3 node-stage Secret — see `resolveHostReachableEndpoint`.
+   */
+  endpointResolver?: (host: string) => Promise<string[]>;
   /** MinIO root access key — required when `adminOps` is unset. */
   rootAccessKey?: string;
   /** MinIO root secret key — required when `adminOps` is unset. */
@@ -167,6 +175,52 @@ async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+/**
+ * Convert a cluster-DNS S3 endpoint into a host-reachable ClusterIP endpoint.
+ *
+ * WHY: the csi-s3 (yandex) driver mounts each PVC by launching geesefs as a
+ * transient systemd unit on the NODE HOST. The host network namespace does not
+ * use cluster DNS (CoreDNS), so `openagentic-minio.<ns>.svc.cluster.local` —
+ * and the bare `openagentic-minio` — both resolve via the host's upstream
+ * resolver to a public IP (observed: 72.75.224.129) → `connection refused` →
+ * `Timeout waiting for mount`. The api pod, by contrast, CAN resolve cluster
+ * DNS, so it resolves the configured hostname to the Service ClusterIP (which
+ * IS reachable from the host net ns) and writes THAT into the node-stage
+ * Secret. Best-effort: any failure falls back to the verbatim endpoint.
+ */
+export async function resolveHostReachableEndpoint(
+  endpoint: string,
+  resolve4: (host: string) => Promise<string[]>,
+  logger?: { warn: (...a: unknown[]) => void },
+): Promise<string> {
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return endpoint;
+  }
+  const host = url.hostname;
+  // Already an IP literal (IPv4 or IPv6) — host can reach it directly.
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(':')) {
+    return endpoint;
+  }
+  try {
+    const ips = await resolve4(host);
+    const ip = ips?.[0];
+    if (ip) {
+      const port = url.port ? `:${url.port}` : '';
+      const path = url.pathname && url.pathname !== '/' ? url.pathname : '';
+      return `${url.protocol}//${ip}${port}${path}`;
+    }
+  } catch (e) {
+    logger?.warn(
+      { host, endpoint, err: e instanceof Error ? e.message : String(e) },
+      '[USER-STORAGE] endpoint DNS resolution failed; using hostname verbatim (geesefs mount may fail if host cannot resolve cluster DNS)',
+    );
+  }
+  return endpoint;
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -178,6 +232,7 @@ export class UserStorageService {
   private readonly rootAccessKey: string | undefined;
   private readonly rootSecretKey: string | undefined;
   private readonly storageEndpoint: string | undefined;
+  private readonly endpointResolver: (host: string) => Promise<string[]>;
   private readonly logger: UserStorageDeps['logger'];
   private readonly namespace: string;
 
@@ -188,6 +243,7 @@ export class UserStorageService {
     this.rootAccessKey = deps.rootAccessKey;
     this.rootSecretKey = deps.rootSecretKey;
     this.storageEndpoint = deps.storageEndpoint;
+    this.endpointResolver = deps.endpointResolver ?? ((host) => dnsPromises.resolve4(host));
     this.logger = deps.logger;
     // Namespace MUST be supplied by caller (typically `featureFlags.k8sNamespace`).
     // No fallback: a wrong default would silently scope the user-bucket Secret
@@ -257,6 +313,14 @@ export class UserStorageService {
     }
     const secretExists = await this.secretWriter.exists(secretName, this.namespace);
     if (!secretExists) {
+      // geesefs runs on the NODE HOST (systemd) where cluster DNS is NXDOMAIN,
+      // so resolve the configured hostname to a host-reachable ClusterIP before
+      // writing. See resolveHostReachableEndpoint.
+      const nodeStageEndpoint = await resolveHostReachableEndpoint(
+        this.storageEndpoint!,
+        this.endpointResolver,
+        this.logger,
+      );
       await this.step('writeSecret', userId, () =>
         this.secretWriter!.write({
           name: secretName,
@@ -267,7 +331,7 @@ export class UserStorageService {
           // bucket name from the PV's volumeHandle (pvc-<uuid>) and creates
           // it on first mount via the admin provisioner Secret.
           data: {
-            endpoint: this.storageEndpoint!,
+            endpoint: nodeStageEndpoint,
             accessKeyID: this.rootAccessKey!,
             secretAccessKey: this.rootSecretKey!,
           },

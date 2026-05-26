@@ -77,7 +77,7 @@ if (!WORKFLOW_SERVICE_URL) {
 
 // Imported template definitions — kept in standalone files to keep this
 // router file readable while still seeding via SEED_WORKFLOW_TEMPLATES on
-// the canonical `workflow` table (where dev's templates panel reads).
+// the canonical `workflow` table (where chat-dev's templates panel reads).
 import {
   nodes as pdAutoTriageNodes,
   edges as pdAutoTriageEdges,
@@ -86,28 +86,28 @@ import {
   nodes as deepResearchNodes,
   edges as deepResearchEdges,
 } from '../services/__seed__/templates/07-deep-research-team.js';
-// your-deployment On-Call team template pack — moved from oncallTemplateSeeder (which
+// OMHS On-Call team template pack — moved from omhsTemplateSeeder (which
 // silently failed on every boot — wrong table + invalid upsert key, see
 // fix commit) to the canonical seed path.
 import {
-  nodes as oncallPdTriageNodes,
-  edges as oncallPdTriageEdges,
+  nodes as omhsPdTriageNodes,
+  edges as omhsPdTriageEdges,
 } from '../services/__seed__/templates/01-pagerduty-triage.js';
 import {
-  nodes as oncallAlertmanagerNodes,
-  edges as oncallAlertmanagerEdges,
+  nodes as omhsAlertmanagerNodes,
+  edges as omhsAlertmanagerEdges,
 } from '../services/__seed__/templates/02-alertmanager-pd.js';
 import {
-  nodes as oncallSplunkNodes,
-  edges as oncallSplunkEdges,
+  nodes as omhsSplunkNodes,
+  edges as omhsSplunkEdges,
 } from '../services/__seed__/templates/03-splunk-detection-triage.js';
 import {
-  nodes as oncallK8sNodes,
-  edges as oncallK8sEdges,
+  nodes as omhsK8sNodes,
+  edges as omhsK8sEdges,
 } from '../services/__seed__/templates/04-k8s-cluster-health.js';
 import {
-  nodes as oncallLokiPromNodes,
-  edges as oncallLokiPromEdges,
+  nodes as omhsLokiPromNodes,
+  edges as omhsLokiPromEdges,
 } from '../services/__seed__/templates/05-loki-prom-incident.js';
 
 // Helper to transform workflow from DB schema to API response format.
@@ -3104,7 +3104,7 @@ export const workflowRoutes: FastifyPluginAsync = async (fastify: FastifyInstanc
           return reply.code(404).send({ error: 'Workflow not found' });
         }
 
-        const apiUrl = process.env.PUBLIC_URL || 'http://localhost:8080';
+        const apiUrl = process.env.PUBLIC_URL || 'https://chat-dev.openagentic.io';
         const workflowName = workflow.name;
         const definition = workflow.definition as any || {};
         const triggerNode = (definition.nodes || []).find((n: any) => (n.type || n.data?.type) === 'trigger');
@@ -4718,54 +4718,54 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // your-deployment On-Call team template pack — 5 incident-response / monitoring flows
-  // tailored to the your-deployment use case. Moved here from oncallTemplateSeeder which
+  // OMHS On-Call team template pack — 5 incident-response / monitoring flows
+  // tailored to the OMHS use case. Moved here from omhsTemplateSeeder which
   // silently failed on every boot (wrong table + invalid upsert key).
   // ══════════════════════════════════════════════════════════════════════════
   {
-    name: 'your-deployment PagerDuty Triage',
+    name: 'OMHS PagerDuty Triage',
     description: 'Webhook trigger receives PagerDuty incident payloads, auto-acknowledges the incident, uses an LLM to classify severity, then routes critical alerts to Slack and warning alerts to email.',
     icon: 'AlertTriangle',
     category: 'incident-response',
-    tags: ['pagerduty', 'triage', 'on-call', 'slack', 'email', 'your-deployment'],
+    tags: ['pagerduty', 'triage', 'on-call', 'slack', 'email', 'omhs'],
     color: '#dc2626',
-    definition: { nodes: oncallPdTriageNodes, edges: oncallPdTriageEdges },
+    definition: { nodes: omhsPdTriageNodes, edges: omhsPdTriageEdges },
   },
   {
-    name: 'your-deployment Alertmanager → PagerDuty',
+    name: 'OMHS Alertmanager → PagerDuty',
     description: 'Receives Prometheus Alertmanager firing payloads via webhook, groups alerts by severity, triggers a PagerDuty incident for critical alerts, and posts a summary to Slack for all firing alerts.',
     icon: 'BarChart',
     category: 'monitoring',
-    tags: ['alertmanager', 'prometheus', 'pagerduty', 'slack', 'on-call', 'your-deployment'],
+    tags: ['alertmanager', 'prometheus', 'pagerduty', 'slack', 'on-call', 'omhs'],
     color: '#ea580c',
-    definition: { nodes: oncallAlertmanagerNodes, edges: oncallAlertmanagerEdges },
+    definition: { nodes: omhsAlertmanagerNodes, edges: omhsAlertmanagerEdges },
   },
   {
-    name: 'your-deployment Splunk Detection Triage',
+    name: 'OMHS Splunk Detection Triage',
     description: 'Polls Splunk every 15 minutes for new notable events, uses an LLM to summarize detections, triggers a PagerDuty incident for high/critical severity findings, and stores all results in the knowledge base.',
     icon: 'Search',
     category: 'incident-response',
-    tags: ['splunk', 'siem', 'detection', 'pagerduty', 'knowledge-base', 'your-deployment'],
+    tags: ['splunk', 'siem', 'detection', 'pagerduty', 'knowledge-base', 'omhs'],
     color: '#0891b2',
-    definition: { nodes: oncallSplunkNodes, edges: oncallSplunkEdges },
+    definition: { nodes: omhsSplunkNodes, edges: omhsSplunkEdges },
   },
   {
-    name: 'your-deployment K8s Cluster Health',
+    name: 'OMHS K8s Cluster Health',
     description: 'Hourly cluster health probe using read-only oap-kubernetes-mcp tools (cluster health, node list, pod list in target namespace). LLM synthesizes the three signals into a concise report and posts it to Slack. No pod spawn, no privileged sandbox.',
     icon: 'Activity',
     category: 'infra-ops',
-    tags: ['kubernetes', 'k8s', 'mcp', 'health-check', 'slack', 'your-deployment'],
+    tags: ['kubernetes', 'k8s', 'mcp', 'health-check', 'slack', 'omhs'],
     color: '#0ea5e9',
-    definition: { nodes: oncallK8sNodes, edges: oncallK8sEdges },
+    definition: { nodes: omhsK8sNodes, edges: omhsK8sEdges },
   },
   {
-    name: 'your-deployment Loki + Prom Incident',
+    name: 'OMHS Loki + Prom Incident',
     description: 'Queries Prometheus for high error rates and Loki for error logs every 5 minutes, merges both signal streams, uses an LLM to correlate and confirm real incidents, then triggers a PagerDuty incident for confirmed findings.',
     icon: 'GitMerge',
     category: 'monitoring',
-    tags: ['loki', 'prometheus', 'observability', 'pagerduty', 'correlation', 'your-deployment'],
+    tags: ['loki', 'prometheus', 'observability', 'pagerduty', 'correlation', 'omhs'],
     color: '#16a34a',
-    definition: { nodes: oncallLokiPromNodes, edges: oncallLokiPromEdges },
+    definition: { nodes: omhsLokiPromNodes, edges: omhsLokiPromEdges },
   },
 ];
 

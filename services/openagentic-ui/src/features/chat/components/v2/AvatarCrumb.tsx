@@ -50,33 +50,33 @@ const SIZE_FONT: Record<AvatarSize, number> = {
 
 const VARIANT_STYLE: Record<AvatarVariant, React.CSSProperties> = {
   asst: {
-    background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
-    color: '#fff',
+    background: 'linear-gradient(135deg, var(--cm-accent), var(--cm-accent))',
+    color: 'var(--cm-bg)',
   },
   c: {
-    background: 'rgba(245,158,11,0.20)',
-    color: '#f59e0b',
-    border: '1px solid rgba(245,158,11,0.40)',
+    background: 'color-mix(in srgb, var(--cm-warning) 20%, transparent)',
+    color: 'var(--cm-warning)',
+    border: '1px solid color-mix(in srgb, var(--cm-warning) 40%, transparent)',
   },
   g: {
-    background: 'rgba(16,185,129,0.20)',
-    color: '#10b981',
-    border: '1px solid rgba(16,185,129,0.40)',
+    background: 'color-mix(in srgb, var(--cm-success) 20%, transparent)',
+    color: 'var(--cm-success)',
+    border: '1px solid color-mix(in srgb, var(--cm-success) 40%, transparent)',
   },
   s: {
-    background: 'rgba(239,68,68,0.20)',
-    color: '#ef4444',
-    border: '1px solid rgba(239,68,68,0.40)',
+    background: 'color-mix(in srgb, var(--cm-error) 20%, transparent)',
+    color: 'var(--cm-error)',
+    border: '1px solid color-mix(in srgb, var(--cm-error) 40%, transparent)',
   },
   k: {
-    background: 'rgba(59,130,246,0.20)',
-    color: '#3b82f6',
-    border: '1px solid rgba(59,130,246,0.40)',
+    background: 'color-mix(in srgb, var(--cm-accent) 20%, transparent)',
+    color: 'var(--cm-accent)',
+    border: '1px solid color-mix(in srgb, var(--cm-accent) 40%, transparent)',
   },
   user: {
-    background: 'var(--bg-3, #1c1f24)',
-    color: 'var(--fg-1, #d4d4d8)',
-    border: '1px solid var(--line-2, rgba(255,255,255,0.10))',
+    background: 'var(--cm-bg-tertiary)',
+    color: 'var(--cm-text)',
+    border: '1px solid var(--cm-border)',
   },
 };
 

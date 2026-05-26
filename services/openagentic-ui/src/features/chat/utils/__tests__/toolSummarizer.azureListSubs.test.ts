@@ -1,12 +1,12 @@
 /**
- * Live capture 2026-05-12 on the dev environment (post-SEV-0 OBO fix in 8f2ffe56):
+ * Live capture 2026-05-12 on chat-dev (post-SEV-0 OBO fix in 8f2ffe56):
  *
  *   List Subscriptions
  *   0 subscriptions          ← chip badge
  *
  *   2 Azure subscriptions visible:   ← model body text
  *     Azure subscription 1  6ed638e7-...
- *     openagentic-dev       00000000-...
+ *     openagentic-dev       815a115d-...
  *
  * Root cause: `toolSummarizer.ts:252-256` calls
  *   `countArray(unwrapResult(r), ['subscriptions', 'value']) ?? 0`
@@ -32,9 +32,9 @@ describe('azure_list_subscriptions summarizer — 2026-05-12 live capture', () =
       count: 2,
       subscriptions: [
         { id: '6ed638e7-7deb-4773-b516-a2a2b9dbb948', name: 'Azure subscription 1', state: 'Enabled' },
-        { id: '00000000-0000-0000-0000-000000000000', name: 'openagentic-dev', state: 'Enabled' },
+        { id: '815a115d-bf32-495c-a89f-b5ce6b349b57', name: 'openagentic-dev', state: 'Enabled' },
       ],
-      executed_as: { upn: 'mcp-tester@openagentic.local' },
+      executed_as: { upn: 'mcp-tester@phatoldsungmail.onmicrosoft.com' },
     };
     const summary = summarizeToolCall('azure_list_subscriptions', {}, result);
     expect(summary?.text).toMatch(/2 subscriptions/);

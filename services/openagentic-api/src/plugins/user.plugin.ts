@@ -13,6 +13,7 @@ import { FastifyInstance, FastifyPluginAsync, FastifyRequest, FastifyReply } fro
 import fp from 'fastify-plugin';
 import { loggers } from '../utils/logger.js';
 import { PrismaClient } from '@prisma/client';
+import { UserPermissionsService } from '../services/UserPermissionsService.js';
 
 interface UserPluginOptions {
   prisma: PrismaClient;
@@ -28,13 +29,11 @@ const userPlugin: FastifyPluginAsync<UserPluginOptions> = async (
 
   loggers.routes.info('Registering user routes plugin...');
 
-  // Import UserPermissionsService
-  const { UserPermissionsService } = await import('../services/UserPermissionsService.js');
   const userPermissionsService = new UserPermissionsService(prisma, loggers.services);
 
   // User permissions endpoint - returns the authenticated user's resolved permissions
   fastify.get('/api/user/permissions', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
@@ -55,6 +54,8 @@ const userPlugin: FastifyPluginAsync<UserPluginOptions> = async (
         isAdmin,
         // Admins always have AWCode access
         canUseAwcode: isAdmin || permissions.canUseAwcode,
+        // Admins always have Flows access; non-admins only if granted
+        workflowsEnabled: isAdmin || permissions.workflowsEnabled,
         // MCP panel visible if any MCP access
         mcpPanelEnabled: permissions.allowedMcpServers.length === 0 || permissions.allowedMcpServers.length > 0,
       });
@@ -71,7 +72,7 @@ const userPlugin: FastifyPluginAsync<UserPluginOptions> = async (
 
   // Available MCP tools endpoint (with user permission filtering)
   fastify.get('/api/user/available-tools', {
-    preHandler: authMiddleware
+    onRequest: authMiddleware
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       loggers.routes.debug('Fetching available MCP tools from MCP Proxy');

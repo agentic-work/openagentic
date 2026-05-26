@@ -6,12 +6,12 @@ describe('deriveResourceLink — BLOCKER-002 fix', () => {
     test('azure_delete_resource_group with subscription produces deep portal link', () => {
       const link = deriveResourceLink('azure_delete_resource_group', {
         name: 'test-rg-uc-a14-20260418',
-        subscription_id: '00000000-0000-0000-0000-000000000000',
+        subscription_id: '815a115d-bf32-495c-a89f-b5ce6b349b57',
       });
       expect(link?.provider).toBe('azure');
       expect(link?.identifier).toBe('test-rg-uc-a14-20260418');
       expect(link?.href).toContain('portal.azure.com');
-      expect(link?.href).toContain('00000000-0000-0000-0000-000000000000');
+      expect(link?.href).toContain('815a115d-bf32-495c-a89f-b5ce6b349b57');
       expect(link?.href).toContain('test-rg-uc-a14-20260418');
     });
 
@@ -24,10 +24,10 @@ describe('deriveResourceLink — BLOCKER-002 fix', () => {
 
     test('azure_list_subscriptions picks up subscription id', () => {
       const link = deriveResourceLink('azure_list_subscriptions', {
-        subscription_id: '00000000-0000-0000-0000-000000000000',
+        subscription_id: '815a115d-bf32-495c-a89f-b5ce6b349b57',
       });
       expect(link?.provider).toBe('azure');
-      expect(link?.href).toContain('subscriptions/00000000');
+      expect(link?.href).toContain('subscriptions/815a115d');
     });
 
     test('azure_list_aks_clusters surfaces cluster name', () => {

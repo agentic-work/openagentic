@@ -206,14 +206,14 @@ describe('pagerduty_incident/executor', () => {
         routingKey: 'rk',
         summary: 'hi',
         client: 'OpenAgentic',
-        clientUrl: 'http://localhost:8080/x',
+        clientUrl: 'https://chat-dev.openagentic.io/x',
       }),
       null,
       makeCtx(),
     );
     const sent = postSpy.mock.calls[0][1] as any;
     expect(sent.client).toBe('OpenAgentic');
-    expect(sent.client_url).toBe('http://localhost:8080/x');
+    expect(sent.client_url).toBe('https://chat-dev.openagentic.io/x');
   });
 
   it('summary is templated against input', async () => {

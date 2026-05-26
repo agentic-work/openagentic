@@ -244,4 +244,49 @@ describe('GET /system/timeseries — Sev-1 #929 primary-metrics-over-time', () =
     expect(body.window).toBe('30d');
     expect(body.bucket).toBe('1d');
   });
+
+  // ── hour-based windows (admin Dashboard "01 · primary metrics over time") ──
+  // The Dashboard sends ?window=24h&bucket=1d which used to return
+  // HTTP 400 "Invalid window '24h'". The dashboard needs sub-day windows.
+
+  it('returns 200 for window=1h', async () => {
+    const res = await app.inject({ method: 'GET', url: '/system/timeseries?metric=tokens&window=1h' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.success).toBe(true);
+    expect(body.metric).toBe('tokens');
+    expect(body.window).toBe('1h');
+    // Sub-day window defaults to 1h bucket
+    expect(body.bucket).toBe('1h');
+  });
+
+  it('returns 200 for window=6h', async () => {
+    const res = await app.inject({ method: 'GET', url: '/system/timeseries?metric=tokens&window=6h' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.success).toBe(true);
+    expect(body.metric).toBe('tokens');
+    expect(body.window).toBe('6h');
+    expect(body.bucket).toBe('1h');
+  });
+
+  it('returns 200 for window=12h', async () => {
+    const res = await app.inject({ method: 'GET', url: '/system/timeseries?metric=tokens&window=12h' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.success).toBe(true);
+    expect(body.metric).toBe('tokens');
+    expect(body.window).toBe('12h');
+    expect(body.bucket).toBe('1h');
+  });
+
+  it('returns 200 for window=24h', async () => {
+    const res = await app.inject({ method: 'GET', url: '/system/timeseries?metric=tokens&window=24h' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.success).toBe(true);
+    expect(body.metric).toBe('tokens');
+    expect(body.window).toBe('24h');
+    expect(body.bucket).toBe('1h');
+  });
 });

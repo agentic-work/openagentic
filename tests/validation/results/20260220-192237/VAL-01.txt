@@ -1,0 +1,379 @@
+Running all six health checks in parallel now.
+
+Admin MCP is returning internal errors. Let me run supplemental checks to fill the gaps.---
+
+## OpenAgentic Infrastructure Health Audit
+
+**Audit Timestamp:** 2026-02-21T00:22 UTC
+
+---
+
+### Executive Summary
+
+The platform is **partially degraded**. The Admin MCP backend is experiencing a persistent internal error (`Attempt to overwrite 'args' in LogRecord`) blocking all database and system-test health checks. Four Prometheus scrape targets remain down — a pattern unchanged across your previous three audits. Flowise remains unhealthy. Core orchestration (LangGraph, CrewAI) and 50 of 54 Prometheus targets are operational.
+
+---
+
+### Primary Health Checks
+
+| # | Subsystem | Tool | Status | Detail |
+|---|-----------|------|:------:|--------|
+| 1 | **Full System Test** | `admin_full_system_test` | ❌ Error | HTTP 500 — `LogRecord` overwrite bug in Admin MCP |
+| 2 | **PostgreSQL** | `admin_system_postgres_health_check` | ❌ Error | Same Admin MCP internal error |
+| 3 | **Redis** | `admin_system_redis_health_check` | ❌ Error | Same Admin MCP internal error |
+| 4 | **Milvus** | `admin_system_milvus_health_check` | ❌ Error | Same Admin MCP internal error |
+| 5 | **Kubernetes Cluster** | `k8s_cluster_health` | ❌ No kubeconfig | Client init failed — no config found |
+| 6 | **Prometheus** | `prometheus_health_summary` | ⚠️ 50 up / 4 down | See target breakdown below |
+
+---
+
+### Supplemental Checks
+
+| Subsystem | Tool | Status | Detail |
+|-----------|------|:------:|--------|
+| **Infrastructure Health** | `admin_system_infrastructure_health_check` | ❌ Error | Same `LogRecord` bug |
+| **LangGraph** | `get_framework_status` | ✅ Healthy | `openagentic-langgraph:3100` |
+| **CrewAI** | `get_framework_status` | ✅ Healthy | `openagentic-crewai:3200` |
+| **Flowise** | `get_framework_status` | ❌ Unhealthy | `openagentic-api:8000/api/flowise-workspace` |
+| **Application Errors (Loki)** | `loki_search_errors` | ✅ Clean | No errors in last 1h |
+| **Firing Alerts** | `prometheus_alerts` | ✅ None | 0 firing, 0 pending |
+
+---
+
+### Prometheus Target Breakdown
+
+| Target | Endpoint | Status | Likely Cause |
+|--------|----------|:------:|--------------|
+| **kube-state-metrics** | `kube-state-metrics.kube-system:8080` | ❌ Down | Pod crash or service mesh issue |
+| **kubernetes-apiservers** | `10.2.10.131:6443` | ❌ Down | API server unreachable from Prometheus |
+| **kubernetes-pods** | `10.42.5.19:8080` | ❌ Down | Application pod down |
+| **kubernetes-pods** | `10.42.2.37:8090` | ❌ Down | Application pod down |
+
+**Prometheus Metrics:**
+
+| Metric | Value | Assessment |
+|--------|------:|:----------:|
+| **Targets UP** | 50 | ✅ |
+| **Targets DOWN** | 4 | ❌ |
+| **Firing Alerts** | 0 | ⚠️ Should be >0 given 4 down targets |
+| **HTTP Request Rate (5m)** | 1.795 req/s | ✅ Normal (up from 0.363 in previous audit) |
+| **Error Rate (5m)** | 0 | ✅ |
+| **Active Sessions** | 0 | ⚠️ Zero at audit time |
+
+---
+
+### MCP Server Registry
+
+| MCP Server | Status | Primary Tools |
+|------------|:------:|---------------|
+| **oap-azure-mcp** | ✅ Registered | `azure_arm_execute`, `azure_graph_execute`, `azure_cost_query` |
+| **oap-aws-mcp** | ✅ Registered | `call_aws`, `aws_identity`, `aws_list_ec2` |
+| **oap-web-mcp** | ✅ Registered | `web_search`, `web_fetch`, `web_news_search` |
+| **oap-flowise-mcp** | ✅ Registered | `flowise_list_chatflows`, `flowise_create_agentflow` |
+| **oap-diagram-mcp** | ✅ Registered | `create_diagram` |
+| **oap-admin-mcp** | ❌ Error | `system_health`, `user_list`, `audit_logs` |
+| **oap-memory-mcp** | ✅ Registered | `memory_store`, `memory_recall`, `memory_search` |
+| **oap-knowledge-mcp** | ✅ Registered | `suggest_tools_for_task`, `list_available_mcps` |
+
+---
+
+### Trend Comparison (vs. Previous Audits)
+
+| Subsystem | Previous Audit | This Audit | Trend |
+|-----------|:--------------:|:----------:|:-----:|
+| **Admin MCP** | ❌ Failed | ❌ Failed (new error) | ⚠️ Different error signature |
+| **Kubernetes MCP** | ❌ No kubeconfig | ❌ No kubeconfig | ➡️ Persistent |
+| **Prometheus UP/DOWN** | 50 / 4 | 50 / 4 | ➡️ Same 4 targets |
+| **HTTP Rate (5m)** | 0.363 req/s | 1.795 req/s | ↗️ **5× increase** |
+| **Error Rate (5m)** | Unavailable | 0 | ✅ Improved visibility |
+| **Loki errors (1h)** | 0 | 0 | ✅ Stable |
+| **Flowise** | ❌ Unhealthy | ❌ Unhealthy | ➡️ Persistent |
+| **LangGraph / CrewAI** | ✅ / ✅ | ✅ / ✅ | ➡️ Stable |
+| **Loki connectivity** | ❌ ECONNREFUSED | ✅ Responding | ↗️ Improved |
+| **Alert Config** | 0 firing (missing) | 0 firing (still missing) | ⚠️ No alerting for down targets |
+
+---
+
+### Findings & Recommendations
+
+| # | Finding | Priority | Recommendation |
+|---|---------|:--------:|----------------|
+| 1 | **Admin MCP internal error** — `Attempt to overwrite 'args' in LogRecord` is a Python logging bug, likely in the MCP's structured logging config. All 5 admin tools fail. | **P0** | Inspect `oap-admin-mcp` container logs. Likely a conflicting `LogRecord` attribute in a logging formatter or handler. Restart the pod after patching the logging config. |
+| 2 | **Flowise unhealthy** — persistent across 3+ audits | **P1** | Investigate Flowise workspace proxy at `openagentic-api:8000/api/flowise-workspace`. Check upstream Flowise pod health and network policy. |
+| 3 | **4 Prometheus targets down** — unchanged across all audits | **P1** | These are stale: `kube-state-metrics`, API server, and 2 pods (`10.42.5.19:8080`, `10.42.2.37:8090`). Either fix the targets or remove stale scrape configs to reduce noise. |
+| 4 | **No alerting rules firing** despite 4 down targets | **P2** | Prometheus has no active alert rules for target health. Add `up == 0` alert rules to ensure visibility. |
+| 5 | **Kubernetes MCP has no kubeconfig** — persistent | **P2** | Mount a valid kubeconfig or configure in-cluster auth for the K8s MCP server. |
+| 6 | **HTTP request rate 5× higher** than previous audit | **Info** | Positive trend — indicates increased platform usage. Monitor for capacity implications. |
+
+> [!WARNING]
+> **Critical blocker:** The Admin MCP failure prevents all database health checks (PostgreSQL, Redis, Milvus) and the full system test. Until this is resolved, backend data-layer health is **unobservable** through platform tooling. The `LogRecord` overwrite error suggests a Python logging misconfiguration introduced in a recent deployment — check the latest revision of the `oap-admin-mcp` deployment.
+---TURN 2---
+Major findings from the Loki error search. Let me quantify the error rate and dig deeper into the Milvus dimension mismatch.## Deep Investigation Results
+
+**Audit Timestamp:** 2026-02-21T00:24 UTC — I uncovered **5 distinct root causes** creating a cascade of failures across the platform. Here is the complete analysis.
+
+---
+
+### Tool Execution Summary
+
+| # | Tool Requested | Status | Result |
+|---|----------------|:------:|--------|
+| 1 | `admin_system_postgres_raw_query` | ❌ Blocked | Admin MCP `LogRecord` overwrite error — same as health audit |
+| 2 | `loki_search_errors` (agentic-dev, 30m) | ✅ **200 errors** | Massive error storm identified |
+| 3 | `k8s_list_pods` (agentic-dev) | ❌ Blocked | Kubeconfig missing — same persistent issue |
+| 4 | `loki_count_logs` (Milvus failures) | ✅ **7,313 errors** | Quantified ingestion failure rate |
+| 5 | `loki_query` (dimension mismatch) | ✅ Root cause confirmed | Embedding model produces 1024-dim, Milvus expects 1536 |
+| 6 | `loki_query` (Redis errors) | ✅ **3 occurrences** | Redis client API incompatibility found |
+
+---
+
+### Root Cause Analysis
+
+```diagram
+{
+  "type": "flowchart",
+  "title": "Error Cascade - 5 Root Causes",
+  "layout": "vertical",
+  "nodes": [
+    {"id": "rc1", "label": "RC1: Embedding Dimension\nMismatch (1024 vs 1536)", "shape": "rectangle", "color": "error"},
+    {"id": "rc2", "label": "RC2: Missing Milvus\nCollections", "shape": "rectangle", "color": "error"},
+    {"id": "rc3", "label": "RC3: Redis Client API\nIncompatibility", "shape": "rectangle", "color": "warning"},
+    {"id": "rc4", "label": "RC4: Schema Mismatch\n(field 'source' not found)", "shape": "rectangle", "color": "error"},
+    {"id": "rc5", "label": "RC5: Admin MCP\nLogRecord Bug", "shape": "rectangle", "color": "error"},
+    {"id": "e1", "label": "7,313 Milvus\nwrite failures/30m", "shape": "rounded", "color": "error"},
+    {"id": "e2", "label": "Knowledge Search\ncompletely broken", "shape": "rounded", "color": "error"},
+    {"id": "e3", "label": "Rate Limiting\nbypassed", "shape": "rounded", "color": "warning"},
+    {"id": "e4", "label": "RAG Search returns\n0 results", "shape": "rounded", "color": "error"},
+    {"id": "e5", "label": "Postgres/Redis/Milvus\nhealth unobservable", "shape": "rounded", "color": "muted"}
+  ],
+  "edges": [
+    {"source": "rc1", "target": "e1", "label": "every ingestion"},
+    {"source": "rc2", "target": "e2", "label": "collection not found"},
+    {"source": "rc3", "target": "e3", "label": "every chat request"},
+    {"source": "rc4", "target": "e4", "label": "search fails"},
+    {"source": "rc5", "target": "e5", "label": "all admin tools blocked"}
+  ]
+}
+```
+
+---
+
+### RC1: Embedding Dimension Mismatch (P0 — Highest Volume)
+
+> **7,313 failed writes in 30 minutes** — escalating from ~5/sec to 578/sec
+
+**The smoking gun from Milvus:**
+```
+Failed to execute insert task: the length(1024) of float data should divide the dim(1536)
+collection=chat_conversations_v2
+```
+
+**The smoking gun from the API:**
+```
+model: "amazon.titan-embed-text-v2:0"
+dimensions: 1024
+```
+
+| Component | Expected Dimension | Actual Dimension | Status |
+|-----------|:-----------------:|:----------------:|:------:|
+| **Milvus `chat_conversations_v2`** | 1536 | — | Collection schema |
+| **Amazon Titan Embed v2** | — | 1024 | Embedding model |
+| **Result** | — | — | ❌ Every insert rejected |
+
+**Root Cause:** The Milvus collection `chat_conversations_v2` was created with `dim=1536` (likely for OpenAI `text-embedding-ada-002` or `text-embedding-3-large`). The platform was switched to **Amazon Titan Embed v2** which outputs **1024 dimensions**. The `AzureSDKKnowledgeIngester` and `SemanticLearningService` are continuously trying to write 1024-dim vectors into a 1536-dim collection and getting rejected by Milvus.
+
+**Impact:** All new knowledge ingestion is silently failing. The knowledge base is **frozen in time** — no new Azure SDK documentation, no new chat conversation embeddings are being stored.
+
+---
+
+### RC2: Missing Milvus Collections (P0)
+
+```
+collection not found [database=default] [collection=chat_conversations]
+collection not found [database=default] [collection=app_documentation]
+```
+
+| Collection | Status |
+|-----------|:------:|
+| `chat_conversations` | ❌ Not found |
+| `app_documentation` | ❌ Not found |
+| `chat_conversations_v2` | ✅ Exists (but dimension mismatch) |
+| `azure_sdk_documentation` | ✅ Exists (but schema mismatch) |
+
+**Root Cause:** Collections `chat_conversations` and `app_documentation` were either never created, dropped during migration, or exist in a different database. The `KnowledgeIngestion` service queries them on every user message and fails silently.
+
+---
+
+### RC3: Redis Client API Incompatibility (P1)
+
+```
+service: "ChatAuthService"
+error: "redis.zremrangebyscore is not a function"
+msg: "Rate limit check failed"
+```
+
+**Occurrences:** 3 in the last 30 minutes (fires on every new chat session).
+
+**Root Cause:** The Redis client library being used by `openagentic-api` does not expose the `zremrangebyscore` method. This is typically caused by:
+- Using `ioredis` v5+ where sorted set commands were renamed
+- Using a Redis cluster client that doesn't support this command directly
+- Redis client was replaced or upgraded without updating calling code
+
+**Impact:** Rate limiting is **completely bypassed**. The `ChatAuthService` catches the error and allows the request through — which means there is **no rate limiting active** on the platform right now.
+
+---
+
+### RC4: Milvus Schema Mismatch — `azure_sdk_documentation` (P1)
+
+```
+collection=azure_sdk_documentation
+error="field source not exist"
+OutputFields="[content,source,source_url,type,category,priority,metadata]"
+```
+
+**Root Cause:** The collection `azure_sdk_documentation` (ID: `464399067589254901`) does not have a field called `source`. The application requests it in `OutputFields`, causing every search query against this collection to fail.
+
+---
+
+### RC5: Admin MCP `LogRecord` Bug (P0 — Observability Blocker)
+
+```
+Internal error: "Attempt to overwrite 'args' in LogRecord"
+```
+
+This Python logging framework bug blocks all `admin_system_*` tools, preventing us from running your requested PostgreSQL vacuum query.
+
+---
+
+### Additional Errors Found
+
+| Error | Source | Severity |
+|-------|--------|:--------:|
+| **`Cannot read properties of null (reading 'success')`** | `ChatPipeline` → response attachments | ⚠️ P2 |
+| **Content safety: repetition detected (7x)** | Content filter flagging repeated table rows | ⚠️ P2 |
+| **`ArtifactService` returns 0 results** | Downstream effect of RC2/RC4 — RAG has no data | ❌ P1 |
+
+---
+
+### Recommendations
+
+| Priority | Action | Root Cause | Impact |
+|:--------:|--------|:----------:|--------|
+| **P0** | **Recreate Milvus collections with `dim=1024`** or change embedding model to produce 1536-dim vectors. Run: `collection.alter(dim=1024)` or recreate + backfill. | RC1 | Unblocks **7,313 failed writes/30m** — restores knowledge ingestion |
+| **P0** | **Create missing collections** `chat_conversations` and `app_documentation` with correct 1024-dim schema | RC2 | Restores conversation memory and documentation search |
+| **P0** | **Fix Admin MCP logging** — find the handler that sets `args` on `LogRecord` and rename it (e.g., `log_args`) | RC5 | Unblocks all admin health checks, PostgreSQL queries, Redis/Milvus inspection |
+| **P1** | **Fix Redis rate limiter** — replace `redis.zremrangebyscore()` with `redis.zRemRangeByScore()` (ioredis v5+ camelCase convention) or downpin ioredis | RC3 | Restores rate limiting — currently **completely disabled** |
+| **P1** | **Add `source` field to `azure_sdk_documentation`** collection or remove it from the query's `OutputFields` | RC4 | Restores Azure SDK documentation RAG search |
+| **P2** | **Add null check in ChatPipeline response attachment handler** — `if (result?.success)` instead of `result.success` | Null ref | Prevents silent pipeline errors |
+
+> [!WARNING]
+> **Critical finding:** The combination of RC1 + RC2 + RC4 means **all RAG/knowledge features are effectively non-functional**. The platform is operating as a pure LLM passthrough with no retrieval augmentation. Users are getting responses without any organizational knowledge context. This has been silently degrading quality for every interaction.
+---TURN 3---
+## OpenAgentic Platform Health Score
+
+# 38 / 100
+
+The platform is **operationally functional for basic chat** but its knowledge layer, observability stack, and rate limiting are all broken. Users can send messages and get LLM responses, but every RAG-enhanced feature is silently failing.
+
+---
+
+### Score Breakdown
+
+| Domain | Weight | Score | Weighted | Rationale |
+|--------|:------:|:-----:|:--------:|-----------|
+| **Core Orchestration** (LangGraph, CrewAI) | 20% | 90 | 18.0 | Both healthy; Flowise unhealthy but not default |
+| **Vector DB / Knowledge** (Milvus) | 25% | 5 | 1.3 | 7,313 write failures/30m, 2 missing collections, 1 schema mismatch |
+| **Observability** (Prometheus, Loki, Admin) | 20% | 35 | 7.0 | Prometheus 50/54 targets up, Loki working, but Admin MCP fully blocked (all 5 tools) |
+| **Data Layer** (Postgres, Redis) | 20% | 30 | 6.0 | Redis `zremrangebyscore` broken = no rate limiting; Postgres health unverifiable |
+| **Kubernetes / Infra** | 15% | 40 | 6.0 | 4 Prometheus targets persistently down, K8s MCP has no kubeconfig, 0 alerting rules |
+| | | **Total** | **38.3** | |
+
+---
+
+### Top 3 Issues Requiring Immediate Attention
+
+### 1. Milvus Embedding Dimension Mismatch — 7,313 Failed Writes in 30 Minutes
+
+This is the single highest-volume failure on the platform. The `AzureSDKKnowledgeIngester` generates embeddings via **Amazon Titan Embed v2** at **1,024 dimensions**, but the Milvus collection `chat_conversations_v2` expects **1,536 dimensions**. Every insert is rejected.
+
+| Metric | Value |
+|--------|------:|
+| **Failed writes (30m)** | 7,313 |
+| **Sustained error rate** | ~5 errors/sec (steady-state), spiking to **578/sec** |
+| **Collections affected** | `chat_conversations_v2` (dim mismatch), `azure_sdk_documentation` (field `source` not found) |
+| **Collections missing entirely** | `chat_conversations`, `app_documentation` |
+| **RAG search results returned** | **0** (confirmed in ArtifactService logs) |
+
+**Business impact:** Every user interaction that relies on knowledge retrieval — Azure SDK help, conversation history recall, documentation search — returns **zero results**. The LLM is answering purely from its training data with no platform-specific context.
+
+**Fix:** Either recreate the Milvus collections with `dim=1024` to match Titan Embed v2, or configure the embedding service to output 1,536 dimensions to match the existing schema. The former is faster; the latter preserves any existing data.
+
+---
+
+### 2. Redis Client API Break — Rate Limiting Completely Disabled
+
+The `ChatAuthService` calls `redis.zremrangebyscore()` on every incoming chat request and gets:
+
+```
+"redis.zremrangebyscore is not a function"
+```
+
+This was observed **3 times in 30 minutes** (once per user session in the window), and the service catches the error and **allows the request through unconditionally**.
+
+| Metric | Value |
+|--------|------:|
+| **Occurrences in 30m** | 3 (1 per chat session start) |
+| **Rate limiting status** | **Completely bypassed** |
+| **Affected service** | `ChatAuthService` in `openagentic-api-6ffdf956b5-6gztf` |
+| **Root cause** | Redis client library upgrade (likely ioredis v4→v5 camelCase rename) |
+
+**Business impact:** Any user or bot can send unlimited requests with zero throttling. This is both a **cost exposure** (uncontrolled Bedrock API spend) and a **security vulnerability** (no abuse protection).
+
+**Fix:** Update the call from `redis.zremrangebyscore()` to `redis.zRemRangeByScore()` (ioredis v5 convention), or pin ioredis to v4.x.
+
+---
+
+### 3. Admin MCP Total Failure — 5 Health Tools Blocked, Postgres Unverifiable
+
+Every tool in the `oap-admin-mcp` server returns:
+
+```
+Internal error: "Attempt to overwrite 'args' in LogRecord"
+```
+
+This is a Python logging framework bug where a custom handler or formatter sets an attribute named `args` on `LogRecord`, conflicting with the built-in field.
+
+| Metric | Value |
+|--------|------:|
+| **Blocked tools** | `admin_full_system_test`, `postgres_health_check`, `redis_health_check`, `milvus_health_check`, `infrastructure_health_check`, `postgres_raw_query` |
+| **Audits affected** | 3+ consecutive audits (persisting across sessions) |
+| **Postgres vacuum query** | ❌ Could not execute — your `pg_stat_user_tables` query is unrunnable |
+| **Direct consequence** | Database layer health is **completely unobservable** through platform tooling |
+
+**Business impact:** You cannot verify PostgreSQL dead tuple counts, Redis key patterns, Milvus collection health, or run the full system test. Any database-level degradation (bloat, connection exhaustion, index corruption) will go undetected until it causes a user-facing outage.
+
+**Fix:** In the `oap-admin-mcp` Python codebase, find the logging handler or formatter that sets `record.args` and rename the attribute to avoid the collision with Python's built-in `LogRecord.args`.
+
+---
+
+### Summary Posture
+
+```mermaid
+quadrantChart
+    title Platform Health Quadrant
+    x-axis Low Severity --> High Severity
+    y-axis Low Volume --> High Volume
+    quadrant-1 Critical - Fix Now
+    quadrant-2 Monitor
+    quadrant-3 Low Priority
+    quadrant-4 Investigate
+    Milvus Dim Mismatch: [0.9, 0.95]
+    Admin MCP Blocked: [0.85, 0.3]
+    Redis Rate Limit: [0.75, 0.2]
+    Missing Collections: [0.7, 0.6]
+    4 Prom Targets Down: [0.4, 0.15]
+    Flowise Unhealthy: [0.3, 0.1]
+```
+
+> [!CAUTION]
+> The platform scores **38/100** not because it's down, but because **every intelligent feature is silently broken**. Users get responses, but with zero RAG context, no rate protection, and no admin visibility into the data layer. This is a "lights are on but nobody's home" scenario that will erode trust in platform quality if not addressed within the next deployment cycle.

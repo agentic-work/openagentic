@@ -62,23 +62,23 @@ const HallucinationWarningComponent: React.FC<HallucinationWarningProps> = ({
         gap: 8,
         padding: '6px 10px',
         borderRadius: 8,
-        border: '1px solid rgba(239,68,68,0.28)',
-        background: 'rgba(239,68,68,0.06)',
+        border: '1px solid color-mix(in srgb, var(--cm-error) 28%, transparent)',
+        background: 'color-mix(in srgb, var(--cm-error) 6%, transparent)',
         fontSize: 12,
-        color: '#fca5a5',
+        color: 'var(--cm-error)',
         margin: '6px 0',
         maxWidth: 620,
       }}
     >
       <AlertIcon />
-      <span style={{ fontWeight: 600, color: '#f8fafc' }}>
+      <span style={{ fontWeight: 600, color: 'var(--cm-text)' }}>
         {revised ? 'Auto-corrected' : 'Possible inaccuracy'}
       </span>
-      <span style={{ color: '#a1a1aa' }}>· {message || defaultMsg}</span>
+      <span style={{ color: 'var(--cm-text-secondary)' }}>· {message || defaultMsg}</span>
       {(confidenceLabel || typeof warningCount === 'number' || typeof toolCount === 'number') && (
         <span
           style={{
-            color: '#71717a',
+            color: 'var(--cm-text-muted)',
             fontFamily: 'JetBrains Mono, monospace',
             fontSize: 11,
             marginLeft: 4,

@@ -44,6 +44,12 @@ const LIGHT_PALETTE = {
 export function buildPreambleCSS(theme: WidgetTheme, opts: PreambleOptions = {}): string {
   const p = theme === 'light' ? LIGHT_PALETTE : DARK_PALETTE;
   const accent = opts.accent ?? '#8b5cf6';
+  // CLAUDE.md Rule 8(b) — iframe-rendered compose_visual artifacts MUST be
+  // able to resolve `var(--cm-*)` tokens. We define BOTH naming families:
+  //   - canonical `--cm-*` (matches AppRenderer iframe injection + index.css)
+  //   - legacy `--accent` / `--bg-*` / `--fg-*` (back-compat for older
+  //     templates whose CSS already references them)
+  // Both resolve to the parent's currently-active theme/accent.
   return `
 :root {
   color-scheme: ${theme};
@@ -65,6 +71,53 @@ export function buildPreambleCSS(theme: WidgetTheme, opts: PreambleOptions = {})
   --info: #38bdf8;
   --font-sans: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  /* Canonical --cm-* aliases (CLAUDE.md Rule 8(b)) — iframe-rendered
+     compose_visual SVG/HTML resolves the same tokens the parent document
+     uses. ComposeVisualTool emits fill=var(--cm-accent) and similar;
+     without these aliases the iframe would fall back to the literal hex
+     defaults baked into ComposeVisualTool SVG and ignore the parent
+     theme/accent picker. */
+  --cm-accent: var(--accent);
+  --cm-accent-soft: var(--accent-soft);
+  --cm-bg: var(--bg-0);
+  --cm-bg-0: var(--bg-0);
+  --cm-bg-1: var(--bg-1);
+  --cm-bg-2: var(--bg-2);
+  --cm-bg-3: var(--bg-3);
+  --cm-fg: var(--fg-1);
+  --cm-fg-0: var(--fg-0);
+  --cm-fg-1: var(--fg-1);
+  --cm-fg-2: var(--fg-2);
+  --cm-fg-3: var(--fg-3);
+  --cm-fg-dim: var(--fg-2);
+  --cm-fg-muted: var(--fg-3);
+  --cm-border: var(--line-1);
+  --cm-line-1: var(--line-1);
+  --cm-line-2: var(--line-2);
+  --cm-ok: var(--ok);
+  --cm-success: var(--ok);
+  --cm-warn: var(--warn);
+  --cm-err: var(--err);
+  --cm-error: var(--err);
+  --cm-info: var(--info);
+  /* --mw-* aliases used by table / kpi_grid HTML emitted by
+     ComposeVisualTool. Mirrors index.css aliasing in the parent doc. */
+  --mw-bg-0: var(--bg-0);
+  --mw-bg-1: var(--bg-1);
+  --mw-bg-2: var(--bg-2);
+  --mw-bg-3: var(--bg-3);
+  --mw-fg-0: var(--fg-0);
+  --mw-fg-1: var(--fg-1);
+  --mw-fg-2: var(--fg-2);
+  --mw-fg-3: var(--fg-3);
+  --mw-line-1: var(--line-1);
+  --mw-line-2: var(--line-2);
+  --mw-accent: var(--accent);
+  --mw-accent-soft: var(--accent-soft);
+  --mw-success: var(--ok);
+  --mw-danger: var(--err);
+  --mw-warning: var(--warn);
+  --mw-info: var(--info);
 }
 html, body { margin: 0; padding: 0; background: transparent; color: var(--fg-1); font-family: var(--font-sans); }
 body { padding: 8px; }

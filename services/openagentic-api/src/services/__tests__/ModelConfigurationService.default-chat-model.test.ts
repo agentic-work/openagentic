@@ -22,6 +22,9 @@ vi.mock('../../utils/prisma.js', () => {
       findFirst: vi.fn(),
       findMany: vi.fn(),
     },
+    systemConfiguration: {
+      findUnique: vi.fn(),
+    },
     user: {
       findUnique: vi.fn(),
     },
@@ -62,9 +65,56 @@ describe('ModelConfigurationService.getDefaultChatModel — Registry-role SoT', 
     m.modelRoleAssignment.findMany.mockReset();
     m.lLMProvider.findFirst.mockReset();
     m.lLMProvider.findMany.mockReset();
+    // Default: no admin-configured chat default → fall through to the
+    // priority scan (existing behaviour the tests below pin).
+    (m as any).systemConfiguration.findUnique.mockReset();
+    (m as any).systemConfiguration.findUnique.mockResolvedValue(null);
   });
 
   afterEach(() => vi.clearAllMocks());
+
+  // DEFAULT-FIRST (2026-05-24): the admin-configured chat default
+  // (system_configuration.default_models.chat — what the Admin UI writes)
+  // must WIN over the raw priority-scan, mirroring getDefaultCodeModel.
+  // Live bug it fixes: model_role_assignments had nvidia.nemotron-nano-12b-v2
+  // AND claude-sonnet-4-5 both at priority=10 (tie); the scan returned the
+  // vision model nemotron as the "chat default", which fast-failed every
+  // unpinned chat turn. The admin had set default_models.chat=sonnet-4.5 in
+  // the UI but the resolver ignored it.
+  it('returns the admin-configured default_models.chat over the priority-tie winner', async () => {
+    const m = prismaMock();
+    (m as any).systemConfiguration.findUnique.mockResolvedValue({
+      value: { chat: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0' },
+    });
+    // Priority-tie: nemotron (vision) sorts first, sonnet second — both servable.
+    m.modelRoleAssignment.findMany.mockResolvedValue([
+      { model: 'nvidia.nemotron-nano-12b-v2', provider: 'bedrock-dev' },
+      { model: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0', provider: 'bedrock-dev' },
+      { model: 'gpt-oss:20b', provider: 'hal-ollama' },
+    ]);
+    m.lLMProvider.findMany.mockResolvedValue([{ name: 'bedrock-dev' }, { name: 'hal-ollama' }]);
+
+    const model = await ModelConfigurationService.getDefaultChatModel();
+    // The CONFIGURED default wins — NOT the priority-first nemotron.
+    expect(model).toBe('us.anthropic.claude-sonnet-4-5-20250929-v1:0');
+    expect(model).not.toBe('nvidia.nemotron-nano-12b-v2');
+  });
+
+  it('falls back to the priority scan when the configured default is NOT a servable chat row', async () => {
+    const m = prismaMock();
+    // Admin configured a model that has no enabled chat assignment (stale).
+    (m as any).systemConfiguration.findUnique.mockResolvedValue({
+      value: { chat: 'gpt-image-1-not-a-chat-model' },
+    });
+    m.modelRoleAssignment.findMany.mockResolvedValue([
+      { model: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0', provider: 'bedrock-dev' },
+    ]);
+    m.lLMProvider.findMany.mockResolvedValue([{ name: 'bedrock-dev' }]);
+
+    const model = await ModelConfigurationService.getDefaultChatModel();
+    // Stale config ignored → lowest-priority servable chat row.
+    expect(model).toBe('us.anthropic.claude-sonnet-4-5-20250929-v1:0');
+  });
 
   it('returns the enabled role="chat" row with the lowest priority', async () => {
     prismaMock().modelRoleAssignment.findMany.mockResolvedValueOnce([{

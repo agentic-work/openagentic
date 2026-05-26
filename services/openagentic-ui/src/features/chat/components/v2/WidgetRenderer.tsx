@@ -136,9 +136,9 @@ function ActionButton({
         display: 'inline-grid',
         placeItems: 'center',
         borderRadius: 6,
-        border: '1px solid var(--line-2, rgba(255,255,255,0.10))',
-        background: 'color-mix(in srgb, var(--cm-bg, #0f1012) 78%, transparent)',
-        color: 'var(--fg-1, #d4d4d8)',
+        border: '1px solid var(--cm-border)',
+        background: 'color-mix(in srgb, var(--cm-bg) 78%, transparent)',
+        color: 'var(--cm-text)',
         cursor: 'pointer',
         backdropFilter: 'blur(6px)',
         fontSize: 14,
@@ -255,12 +255,12 @@ export function WidgetRenderer({
           style={{
             margin: '12px 0',
             padding: 12,
-            border: '1px dashed var(--err, #f87171)',
+            border: '1px dashed var(--cm-error)',
             borderRadius: 6,
-            color: 'var(--err, #f87171)',
+            color: 'var(--cm-error)',
             fontSize: 12,
             fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
-            background: 'rgba(248,113,113,0.06)',
+            background: 'color-mix(in srgb, var(--cm-error) 6%, transparent)',
           }}
         >
           compose_visual({template}): content didn't parse to {'{ nodes, edges }'}.
@@ -424,8 +424,8 @@ export function WidgetRenderer({
           alignItems: 'center',
           gap: 8,
           padding: '10px 12px',
-          borderBottom: '1px solid var(--cm-border, rgba(255,255,255,0.06))',
-          background: 'var(--cm-bg-2, rgba(255,255,255,0.02))',
+          borderBottom: '1px solid var(--cm-border)',
+          background: 'var(--cm-bg-secondary)',
         }}
       >
         <div
@@ -433,10 +433,10 @@ export function WidgetRenderer({
             width: 22,
             height: 22,
             borderRadius: 6,
-            background: 'var(--cm-accent-soft, color-mix(in srgb, var(--cm-accent, #8b5cf6) 14%, transparent))',
+            background: 'color-mix(in srgb, var(--cm-accent) 14%, transparent)',
             display: 'grid',
             placeItems: 'center',
-            color: 'var(--cm-accent, #8b5cf6)',
+            color: 'var(--cm-accent)',
             fontSize: 13,
           }}
           aria-hidden
@@ -445,7 +445,7 @@ export function WidgetRenderer({
           style={{
             fontFamily: '"JetBrains Mono", monospace',
             fontSize: 12,
-            color: 'var(--cm-fg, #f8fafc)',
+            color: 'var(--cm-text)',
           }}
         >compose_visual</span>
         <span
@@ -453,9 +453,9 @@ export function WidgetRenderer({
             fontSize: 10,
             padding: '2px 6px',
             borderRadius: 4,
-            background: 'var(--cm-accent-soft, color-mix(in srgb, var(--cm-accent, #8b5cf6) 14%, transparent))',
-            color: 'var(--cm-accent, #8b5cf6)',
-            border: '1px solid color-mix(in srgb, var(--cm-accent, #8b5cf6) 32%, transparent)',
+            background: 'color-mix(in srgb, var(--cm-accent) 14%, transparent)',
+            color: 'var(--cm-accent)',
+            border: '1px solid color-mix(in srgb, var(--cm-accent) 32%, transparent)',
             marginLeft: 4,
             fontFamily: '"JetBrains Mono", monospace',
           }}
@@ -479,7 +479,7 @@ export function WidgetRenderer({
             marginLeft: 'auto',
             fontFamily: '"JetBrains Mono", monospace',
             fontSize: 11,
-            color: 'var(--cm-fg-muted, #71717a)',
+            color: 'var(--cm-text-muted)',
           }}
         >{isLoading ? 'streaming…' : 'rendered'}</span>
       </div>
@@ -585,7 +585,7 @@ export function WidgetRenderer({
             style={{
               position: 'fixed',
               inset: 0,
-              background: 'color-mix(in srgb, var(--cm-bg, #000) 78%, transparent)',
+              background: 'color-mix(in srgb, var(--cm-bg) 78%, transparent)',
               backdropFilter: 'blur(6px)',
               zIndex: 9999,
               display: 'flex',
@@ -602,7 +602,7 @@ export function WidgetRenderer({
                 alignItems: 'center',
                 gap: 8,
                 padding: '0 4px 12px',
-                color: 'var(--fg-0, #f8fafc)',
+                color: 'var(--cm-text)',
                 fontFamily: 'JetBrains Mono, monospace',
                 fontSize: 13,
               }}
@@ -623,9 +623,9 @@ export function WidgetRenderer({
               style={{
                 flex: 1,
                 width: '100%',
-                border: '1px solid var(--line-1, rgba(255,255,255,0.06))',
+                border: '1px solid var(--cm-border)',
                 borderRadius: 10,
-                background: 'var(--bg-1, #0f1012)',
+                background: 'var(--cm-bg)',
               }}
             />
           </div>,
@@ -645,7 +645,7 @@ function WidgetLoading({ messages }: { messages?: string[] }) {
         padding: '24px 12px',
         display: 'grid',
         placeItems: 'center',
-        color: 'var(--fg-2, #a1a1aa)',
+        color: 'var(--cm-text-secondary)',
         fontSize: 13,
         minHeight: 96,
       }}
@@ -657,8 +657,8 @@ function WidgetLoading({ messages }: { messages?: string[] }) {
           gap: 8,
           padding: '6px 12px',
           borderRadius: 999,
-          border: '1px solid var(--line-1, rgba(255,255,255,0.06))',
-          background: 'var(--bg-2, #16181c)',
+          border: '1px solid var(--cm-border)',
+          background: 'var(--cm-bg-secondary)',
           animation: 'cm-widget-pulse 1.6s ease-in-out infinite',
         }}
       >
@@ -668,8 +668,8 @@ function WidgetLoading({ messages }: { messages?: string[] }) {
             width: 8,
             height: 8,
             borderRadius: 50,
-            background: 'var(--accent, #8b5cf6)',
-            boxShadow: '0 0 8px var(--accent, #8b5cf6)',
+            background: 'var(--cm-accent)',
+            boxShadow: '0 0 8px var(--cm-accent)',
           }}
         />
         {list[0]}

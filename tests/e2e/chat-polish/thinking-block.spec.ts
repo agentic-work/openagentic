@@ -2,7 +2,7 @@
  * Fix 1 regression — Thinking block header shows "Thought for X.Xs · ~N tokens"
  * and is collapsed by default.
  *
- * Targets chat.openagentic.local with the mcp-tester auth state. Runs after
+ * Targets chat-dev.openagentic.io with the mcp-tester auth state. Runs after
  * `auth.setup.ts` populates .auth/user.json.
  */
 

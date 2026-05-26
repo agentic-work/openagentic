@@ -41,14 +41,30 @@ const ShieldIcon = ({ color }: { color: string }) => (
 function colorForState(state: DlpScanState) {
   switch (state) {
     case 'blocked':
-      return { fg: '#f87171', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.28)' };
+      return {
+        fg: 'var(--cm-error)',
+        bg: 'color-mix(in srgb, var(--cm-error) 8%, transparent)',
+        border: 'color-mix(in srgb, var(--cm-error) 28%, transparent)',
+      };
     case 'redacted':
-      return { fg: '#fcd34d', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.28)' };
+      return {
+        fg: 'var(--cm-warning)',
+        bg: 'color-mix(in srgb, var(--cm-warning) 8%, transparent)',
+        border: 'color-mix(in srgb, var(--cm-warning) 28%, transparent)',
+      };
     case 'passed':
-      return { fg: '#86efac', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.28)' };
+      return {
+        fg: 'var(--cm-success)',
+        bg: 'color-mix(in srgb, var(--cm-success) 8%, transparent)',
+        border: 'color-mix(in srgb, var(--cm-success) 28%, transparent)',
+      };
     case 'scanning':
     default:
-      return { fg: '#a1a1aa', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)' };
+      return {
+        fg: 'var(--cm-text-secondary)',
+        bg: 'color-mix(in srgb, var(--cm-text) 4%, transparent)',
+        border: 'var(--cm-border)',
+      };
   }
 }
 
@@ -102,7 +118,7 @@ const DlpScanStatusComponent: React.FC<DlpScanStatusProps> = ({
     >
       <ShieldIcon color={colors.fg} />
       <span style={{ fontWeight: 600 }}>{label}</span>
-      {detail && <span style={{ color: '#71717a' }}>· {detail}</span>}
+      {detail && <span style={{ color: 'var(--cm-text-muted)' }}>· {detail}</span>}
     </span>
   );
 };

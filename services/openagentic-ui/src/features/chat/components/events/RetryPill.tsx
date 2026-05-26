@@ -61,10 +61,10 @@ const RetryPillComponent: React.FC<RetryPillProps> = ({
         gap: 6,
         padding: '4px 9px',
         borderRadius: 99,
-        background: 'rgba(245,158,11,0.08)',
-        border: '1px solid rgba(245,158,11,0.28)',
+        background: 'color-mix(in srgb, var(--cm-warning) 8%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--cm-warning) 28%, transparent)',
         fontSize: 11,
-        color: '#fcd34d',
+        color: 'var(--cm-warning)',
         fontFamily: 'JetBrains Mono, monospace',
         lineHeight: 1,
       }}
@@ -73,7 +73,7 @@ const RetryPillComponent: React.FC<RetryPillProps> = ({
       <span style={{ fontWeight: 600 }}>
         Retry {attempt}/{maxAttempts}
       </span>
-      <span style={{ color: '#a1a1aa' }}>
+      <span style={{ color: 'var(--cm-text-muted)' }}>
         · re-executing {toolLabel}
         {elapsedSec ? ` (${elapsedSec})` : null}
         ...
@@ -81,7 +81,7 @@ const RetryPillComponent: React.FC<RetryPillProps> = ({
       {reason && (
         <span
           style={{
-            color: '#71717a',
+            color: 'var(--cm-text-muted)',
             fontFamily: 'Inter, sans-serif',
             marginLeft: 4,
             maxWidth: 200,

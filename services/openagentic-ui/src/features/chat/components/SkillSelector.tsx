@@ -411,13 +411,13 @@ When creating frontend code:
 
 // Category labels and colors
 const CATEGORY_CONFIG: Record<SkillCategory, { label: string; color: string }> = {
-  cloud: { label: 'Cloud', color: '#3b82f6' },
-  security: { label: 'Security', color: '#ef4444' },
-  data: { label: 'Data', color: '#00D26A' },
-  devops: { label: 'DevOps', color: '#f59e0b' },
-  code: { label: 'Code', color: '#a855f7' },
-  docs: { label: 'Docs', color: '#06b6d4' },
-  design: { label: 'Design', color: '#ec4899' },
+  cloud: { label: 'Cloud', color: 'var(--cm-info)' },
+  security: { label: 'Security', color: 'var(--cm-error)' },
+  data: { label: 'Data', color: 'var(--cm-success)' },
+  devops: { label: 'DevOps', color: 'var(--cm-warning)' },
+  code: { label: 'Code', color: 'var(--cm-accent)' },
+  docs: { label: 'Docs', color: 'var(--cm-info)' },
+  design: { label: 'Design', color: 'var(--cm-accent)' },
 };
 
 interface SkillSelectorDropdownProps {
@@ -502,7 +502,7 @@ const SkillSelectorDropdown: React.FC<SkillSelectorDropdownProps> = ({
         backdropFilter: 'blur(16px) saturate(180%)',
         backgroundColor: 'var(--color-surface)',
         border: '1px solid var(--color-border)',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+        boxShadow: '0 25px 50px -12px color-mix(in srgb, var(--cm-text) 50%, transparent)',
         color: 'var(--color-text)',
       }}
     >
@@ -519,8 +519,8 @@ const SkillSelectorDropdown: React.FC<SkillSelectorDropdownProps> = ({
             <span
               className="ml-2 px-2 py-0.5 rounded-full text-xs font-medium"
               style={{
-                backgroundColor: 'rgba(139, 92, 246, 0.2)',
-                color: 'rgb(139, 92, 246)',
+                backgroundColor: 'color-mix(in srgb, var(--cm-accent) 20%, transparent)',
+                color: 'var(--cm-accent)',
               }}
             >
               {activeSkillNames.length} active
@@ -561,7 +561,7 @@ const SkillSelectorDropdown: React.FC<SkillSelectorDropdownProps> = ({
                   className="w-full p-3 rounded-lg text-left transition-all duration-150 mb-1"
                   style={{
                     backgroundColor: isActive
-                      ? `${CATEGORY_CONFIG[skill.category].color}15`
+                      ? `color-mix(in srgb, ${CATEGORY_CONFIG[skill.category].color} 8%, transparent)`
                       : 'transparent',
                     border: `1px solid ${isActive
                       ? CATEGORY_CONFIG[skill.category].color
@@ -646,10 +646,10 @@ export const SkillSelectorButton: React.FC<SkillSelectorButtonProps> = ({
         className="skill-button flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
         style={{
           backgroundColor: hasActiveSkills
-            ? 'rgba(139, 92, 246, 0.15)'
+            ? 'color-mix(in srgb, var(--cm-accent) 15%, transparent)'
             : 'var(--color-surfaceSecondary)',
-          color: hasActiveSkills ? 'rgb(139, 92, 246)' : 'var(--color-textMuted)',
-          border: `1px solid ${hasActiveSkills ? 'rgba(139, 92, 246, 0.3)' : 'transparent'}`,
+          color: hasActiveSkills ? 'var(--cm-accent)' : 'var(--color-textMuted)',
+          border: `1px solid ${hasActiveSkills ? 'color-mix(in srgb, var(--cm-accent) 30%, transparent)' : 'transparent'}`,
           opacity: disabled ? 0.5 : 1,
           cursor: disabled ? 'not-allowed' : 'pointer',
         }}
@@ -661,8 +661,8 @@ export const SkillSelectorButton: React.FC<SkillSelectorButtonProps> = ({
           <span
             className="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
             style={{
-              backgroundColor: 'rgb(139, 92, 246)',
-              color: 'white',
+              backgroundColor: 'var(--cm-accent)',
+              color: 'var(--cm-bg)',
             }}
           >
             {activeSkillNames.length}
@@ -671,7 +671,7 @@ export const SkillSelectorButton: React.FC<SkillSelectorButtonProps> = ({
         <ChevronDown
           size={12}
           style={{
-            color: hasActiveSkills ? 'rgb(139, 92, 246)' : 'var(--color-textMuted)',
+            color: hasActiveSkills ? 'var(--cm-accent)' : 'var(--color-textMuted)',
           }}
         />
       </motion.button>

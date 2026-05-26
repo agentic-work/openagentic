@@ -88,7 +88,7 @@ export const nodes: WorkflowNode[] = [
     type: 'knowledge_ingest',
     data: {
       label: 'Store in Knowledge Base',
-      collection: 'your-deployment-incident-history',
+      collection: 'omhs-incident-history',
       source: 'splunk-detection-triage',
       content:
         '{{steps.llm-summarize-1.result.summary}}\n\nRaw events: {{steps.splunk-search-1.result.events}}',

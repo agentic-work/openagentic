@@ -18,7 +18,7 @@ import { test, expect, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const BASE = process.env.BASE_URL || 'http://localhost:8080';
+const BASE = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
 const AUTH_FILE = path.join(__dirname, '../../.auth/user.json');
 
 test.use({

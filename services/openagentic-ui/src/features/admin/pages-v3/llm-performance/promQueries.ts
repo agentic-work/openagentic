@@ -106,13 +106,19 @@ export function errorRateByClass(window: TimeWindow): string {
   return `sum by (error_class) (rate(gen_ai_errors_total[${w}]))`
 }
 
-/** Error % across all requests = errors / (requests + errors). */
+/** Error % across all requests = errors / (requests + errors).
+ *  Both numerator and denominator wrapped with `OR on() vector(0)` so a
+ *  pod with no errors AND no requests yet renders 0% instead of an
+ *  empty dash. Without wrapping the denominator, empty-vector + scalar
+ *  yields empty (PromQL), so the whole ratio collapses to no-data.
+ *  2026-05-25 audit. */
 export function errorPercent(window: TimeWindow): string {
   const w = rateWindowFor(window)
-  return `(
-  sum(rate(gen_ai_errors_total[${w}]))
+  return `((
+  sum(rate(gen_ai_errors_total[${w}])) OR on() vector(0)
+)
   /
-  (sum(rate(gen_ai_client_operation_duration_seconds_count[${w}])) + 1e-9)
+  ((sum(rate(gen_ai_client_operation_duration_seconds_count[${w}])) OR on() vector(0)) + 1e-9)
 ) * 100`.trim()
 }
 
@@ -141,13 +147,16 @@ export function topToolsByCount(window: TimeWindow): string {
   return `topk(10, sum by (tool_name) (rate(gen_ai_tool_calls_total[${w}])))`
 }
 
-/** Tool error % across all dispatches. */
+/** Tool error % across all dispatches.
+ *  Both halves wrapped with `OR on() vector(0)` so a pod with zero tool
+ *  calls at all renders 0% instead of —. */
 export function toolErrorPercent(window: TimeWindow): string {
   const w = rateWindowFor(window)
-  return `(
-  sum(rate(gen_ai_tool_calls_total{outcome="error"}[${w}]))
+  return `((
+  sum(rate(gen_ai_tool_calls_total{outcome="error"}[${w}])) OR on() vector(0)
+)
   /
-  (sum(rate(gen_ai_tool_calls_total[${w}])) + 1e-9)
+  ((sum(rate(gen_ai_tool_calls_total[${w}])) OR on() vector(0)) + 1e-9)
 ) * 100`.trim()
 }
 
@@ -157,13 +166,16 @@ export function agentInvocationsRateByAgent(window: TimeWindow): string {
   return `sum by (agent_id, outcome) (rate(gen_ai_agent_invocations_total[${w}]))`
 }
 
-/** Sub-agent error % across all invocations. */
+/** Sub-agent error % across all invocations.
+ *  Both halves wrapped with `OR on() vector(0)` so a pod with zero
+ *  agent invocations at all renders 0% instead of —. */
 export function agentErrorPercent(window: TimeWindow): string {
   const w = rateWindowFor(window)
-  return `(
-  sum(rate(gen_ai_agent_invocations_total{outcome="error"}[${w}]))
+  return `((
+  sum(rate(gen_ai_agent_invocations_total{outcome="error"}[${w}])) OR on() vector(0)
+)
   /
-  (sum(rate(gen_ai_agent_invocations_total[${w}])) + 1e-9)
+  ((sum(rate(gen_ai_agent_invocations_total[${w}])) OR on() vector(0)) + 1e-9)
 ) * 100`.trim()
 }
 

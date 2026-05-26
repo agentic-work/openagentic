@@ -205,7 +205,7 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
     position: 'fixed',
     inset: 0,
     zIndex: 150,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'color-mix(in srgb, var(--cm-text) 35%, transparent)',
     opacity: isOpen ? 1 : 0,
     pointerEvents: isOpen ? 'auto' : 'none',
     transition: 'opacity 0.25s ease',
@@ -223,7 +223,7 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
     flexDirection: 'column',
     backgroundColor: 'var(--color-surface)',
     borderLeft: '1px solid var(--color-border)',
-    boxShadow: '-4px 0 24px rgba(0,0,0,0.18)',
+    boxShadow: '-4px 0 24px color-mix(in srgb, var(--cm-text) 18%, transparent)',
     transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
     transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
   };
@@ -473,7 +473,7 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
             position: 'fixed',
             inset: 0,
             zIndex: 1100,
-            background: 'rgba(0,0,0,0.6)',
+            background: 'color-mix(in srgb, var(--cm-text) 60%, transparent)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -491,7 +491,7 @@ const ArtifactsPanel: React.FC<ArtifactsPanelProps> = ({ theme, isOpen, onClose 
               border: '1px solid var(--color-border)',
               borderRadius: 12,
               overflow: 'hidden',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+              boxShadow: '0 20px 60px color-mix(in srgb, var(--cm-text) 40%, transparent)',
             }}
           >
             <div

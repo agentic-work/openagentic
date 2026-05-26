@@ -5,8 +5,8 @@
 const config = {
   // API Configuration
   apiUrl: process.env.API_URL || 'http://localhost:8000',
-  // Use admin@openagentic.local test API key (documented in fixed shit.md)
-  apiKey: process.env.API_KEY || 'awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79',
+  // Use phatoldsun@gmail.com test API key (documented in fixed shit.md)
+  apiKey: process.env.API_KEY || 'awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79',
 
   // UI Configuration
   uiUrl: process.env.UI_URL || 'http://localhost',

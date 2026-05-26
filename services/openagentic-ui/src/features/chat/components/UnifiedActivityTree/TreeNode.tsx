@@ -8,12 +8,12 @@ interface TreeNodeProps {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  success: 'var(--ok, #22c55e)',
-  thinking: 'var(--accent, #8b5cf6)',
-  running: 'var(--info, #38bdf8)',
-  error: 'var(--err, #ef4444)',
-  artifact: 'var(--accent, #8b5cf6)',
-  hitl: 'var(--warn, #f59e0b)',
+  success: 'var(--cm-success)',
+  thinking: 'var(--cm-accent)',
+  running: 'var(--cm-info)',
+  error: 'var(--cm-error)',
+  artifact: 'var(--cm-accent)',
+  hitl: 'var(--cm-warning)',
 };
 
 /**
@@ -24,8 +24,8 @@ const STATUS_COLORS: Record<string, string> = {
 function depthBorderColor(depth: number): string {
   // 0 → no border, 1 → line-2, 2+ → line-3.
   if (depth <= 0) return 'transparent';
-  if (depth === 1) return 'var(--line-2, rgba(255,255,255,0.10))';
-  return 'var(--line-3, rgba(255,255,255,0.16))';
+  if (depth === 1) return 'color-mix(in srgb, var(--cm-border) 80%, transparent)';
+  return 'var(--cm-border)';
 }
 
 export function TreeNode({ status, children, isLast = false, depth = 0 }: TreeNodeProps) {
@@ -48,7 +48,7 @@ export function TreeNode({ status, children, isLast = false, depth = 0 }: TreeNo
           top: 0,
           bottom: 0,
           width: 1,
-          backgroundColor: 'rgba(255,255,255,0.05)',
+          backgroundColor: 'color-mix(in srgb, var(--cm-border) 50%, transparent)',
         }} />
       )}
       {/* Horizontal connector */}
@@ -59,7 +59,7 @@ export function TreeNode({ status, children, isLast = false, depth = 0 }: TreeNo
           top: 10,
           width: 12,
           height: 1,
-          backgroundColor: 'rgba(255,255,255,0.05)',
+          backgroundColor: 'color-mix(in srgb, var(--cm-border) 50%, transparent)',
         }} />
       )}
       {/* Status dot */}

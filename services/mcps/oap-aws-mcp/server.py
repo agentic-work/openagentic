@@ -419,7 +419,7 @@ def _get_credentials_for_user(
 
         name '_get_credentials_for_user' is not defined
 
-    Captured live on the dev environment 2026-05-07T18:36 ("show me my cloud
+    Captured live on chat-dev 2026-05-07T18:36 ("show me my cloud
     resources" turn) — AWS branch returned the bare NameError to the
     model, which honestly reported "AWS inventory is blocked by a tool
     runtime error".

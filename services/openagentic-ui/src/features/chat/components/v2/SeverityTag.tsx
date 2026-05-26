@@ -33,27 +33,27 @@ const BASE_STYLE: React.CSSProperties = {
 export const SEVERITY_TAG_STYLES: Record<Severity, React.CSSProperties> = {
   ok: {
     ...BASE_STYLE,
-    background: 'rgba(34,197,94,0.14)',
-    color: '#22c55e',
-    border: '1px solid rgba(34,197,94,0.32)',
+    background: 'color-mix(in srgb, var(--cm-success) 14%, transparent)',
+    color: 'var(--cm-success)',
+    border: '1px solid color-mix(in srgb, var(--cm-success) 32%, transparent)',
   },
   warn: {
     ...BASE_STYLE,
-    background: 'rgba(245,158,11,0.14)',
-    color: '#f59e0b',
-    border: '1px solid rgba(245,158,11,0.32)',
+    background: 'color-mix(in srgb, var(--cm-warning) 14%, transparent)',
+    color: 'var(--cm-warning)',
+    border: '1px solid color-mix(in srgb, var(--cm-warning) 32%, transparent)',
   },
   err: {
     ...BASE_STYLE,
-    background: 'rgba(239,68,68,0.14)',
-    color: '#ef4444',
-    border: '1px solid rgba(239,68,68,0.32)',
+    background: 'color-mix(in srgb, var(--cm-error) 14%, transparent)',
+    color: 'var(--cm-error)',
+    border: '1px solid color-mix(in srgb, var(--cm-error) 32%, transparent)',
   },
   info: {
     ...BASE_STYLE,
-    background: 'rgba(56,189,248,0.14)',
-    color: '#38bdf8',
-    border: '1px solid rgba(56,189,248,0.32)',
+    background: 'color-mix(in srgb, var(--cm-info) 14%, transparent)',
+    color: 'var(--cm-info)',
+    border: '1px solid color-mix(in srgb, var(--cm-info) 32%, transparent)',
   },
 };
 

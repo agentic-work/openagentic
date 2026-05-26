@@ -167,7 +167,7 @@ export const OnboardingTour: React.FC = () => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
             className="fixed inset-0 z-[9998]"
-            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+            style={{ backgroundColor: 'color-mix(in srgb, var(--cm-text) 50%, transparent)' }}
             onClick={handleComplete}
           />
 
@@ -183,8 +183,8 @@ export const OnboardingTour: React.FC = () => {
                 left: highlightRect.left - 4,
                 width: highlightRect.width + 8,
                 height: highlightRect.height + 8,
-                boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
-                border: '2px solid var(--color-primary, #0A84FF)',
+                boxShadow: '0 0 0 9999px color-mix(in srgb, var(--cm-text) 50%, transparent)',
+                border: '2px solid var(--color-primary, var(--cm-accent))',
                 pointerEvents: 'none',
               }}
             />

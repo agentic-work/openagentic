@@ -53,8 +53,8 @@ const MODE_CONFIG: Record<HITLMode, {
     label: 'Standard',
     description: 'Default enforcement — approval required for HIGH and CRITICAL risk tools only.',
     color: 'var(--color-success)',
-    bg: 'rgba(34,197,94,0.12)',
-    border: 'rgba(34,197,94,0.3)',
+    bg: 'color-mix(in srgb, var(--cm-success) 12%, transparent)',
+    border: 'color-mix(in srgb, var(--cm-success) 30%, transparent)',
     rules: [
       'LOW risk tools: auto-approved',
       'MEDIUM risk tools: policy-configurable',
@@ -65,9 +65,9 @@ const MODE_CONFIG: Record<HITLMode, {
   plan: {
     label: 'Plan Mode',
     description: 'Maximum oversight — ALL tool calls require human approval before execution.',
-    color: '#f59e0b',
-    bg: 'rgba(245,158,11,0.12)',
-    border: 'rgba(245,158,11,0.3)',
+    color: 'var(--cm-warning)',
+    bg: 'color-mix(in srgb, var(--cm-warning) 12%, transparent)',
+    border: 'color-mix(in srgb, var(--cm-warning) 30%, transparent)',
     rules: [
       'ALL tools require approval regardless of risk',
       'No auto-approval for any risk level',
@@ -78,9 +78,9 @@ const MODE_CONFIG: Record<HITLMode, {
   deployment: {
     label: 'Deployment Mode',
     description: 'Infrastructure focus — approval required for anything that modifies production resources.',
-    color: '#ef4444',
-    bg: 'rgba(239,68,68,0.12)',
-    border: 'rgba(239,68,68,0.3)',
+    color: 'var(--cm-error)',
+    bg: 'color-mix(in srgb, var(--cm-error) 12%, transparent)',
+    border: 'color-mix(in srgb, var(--cm-error) 30%, transparent)',
     rules: [
       'Read-only operations: auto-approved',
       'ANY write/modify/delete operation: requires approval',
@@ -92,16 +92,16 @@ const MODE_CONFIG: Record<HITLMode, {
 
 const RISK_COLORS: Record<string, string> = {
   low: 'var(--color-success)',
-  medium: '#f59e0b',
-  high: '#ef4444',
-  critical: '#a855f7',
+  medium: 'var(--cm-warning)',
+  high: 'var(--cm-error)',
+  critical: 'var(--cm-accent)',
 };
 
 const ACTION_STYLES: Record<string, { color: string; label: string }> = {
-  'approved': { color: '#00D26A', label: 'Approved' },
-  'denied': { color: '#ef4444', label: 'Denied' },
-  'auto-approved': { color: '#6b7280', label: 'Auto' },
-  'expired': { color: '#f59e0b', label: 'Expired' },
+  'approved': { color: 'var(--cm-success)', label: 'Approved' },
+  'denied': { color: 'var(--cm-error)', label: 'Denied' },
+  'auto-approved': { color: 'var(--cm-text-muted)', label: 'Auto' },
+  'expired': { color: 'var(--cm-warning)', label: 'Expired' },
 };
 
 // ---------------------------------------------------------------------------
@@ -138,7 +138,7 @@ const HITLPanel: React.FC<HITLPanelProps> = ({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-[9990]"
-            style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+            style={{ backgroundColor: 'color-mix(in srgb, var(--cm-text) 50%, transparent)' }}
             onClick={onClose}
           />
 
@@ -153,7 +153,7 @@ const HITLPanel: React.FC<HITLPanelProps> = ({
             style={{
               backgroundColor: 'var(--color-surface)',
               borderLeft: '1px solid var(--color-border)',
-              boxShadow: '-8px 0 40px rgba(0,0,0,0.3)',
+              boxShadow: '-8px 0 40px color-mix(in srgb, var(--cm-text) 30%, transparent)',
             }}
           >
             {/* Header */}
@@ -253,7 +253,7 @@ const HITLPanel: React.FC<HITLPanelProps> = ({
                 <div className="grid grid-cols-2 gap-2">
                   <StatCard label="Total Requests" value={stats.total} color="var(--color-text)" />
                   <StatCard label="Approved" value={stats.approved} color="var(--color-success)" />
-                  <StatCard label="Denied" value={stats.denied} color="#ef4444" />
+                  <StatCard label="Denied" value={stats.denied} color="var(--cm-error)" />
                   <StatCard label="Avg Response" value={stats.avgResponseMs > 0 ? `${Math.round(stats.avgResponseMs / 1000)}s` : '—'} color="var(--color-textMuted)" />
                 </div>
               </section>
@@ -290,14 +290,14 @@ const HITLPanel: React.FC<HITLPanelProps> = ({
                         >
                           <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: RISK_COLORS[entry.riskLevel] || '#6b7280' }} />
+                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: RISK_COLORS[entry.riskLevel] || 'var(--cm-text-muted)' }} />
                               <span className="text-xs font-mono font-semibold" style={{ color: 'var(--color-text)' }}>
                                 {entry.toolName}
                               </span>
                             </div>
                             <span
                               className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded"
-                              style={{ color: actionStyle.color, backgroundColor: `${actionStyle.color}15` }}
+                              style={{ color: actionStyle.color, backgroundColor: `color-mix(in srgb, ${actionStyle.color} 8%, transparent)` }}
                             >
                               {actionStyle.label}
                             </span>
@@ -318,7 +318,7 @@ const HITLPanel: React.FC<HITLPanelProps> = ({
                             )}
                             <span
                               className="text-[10px] uppercase"
-                              style={{ color: RISK_COLORS[entry.riskLevel] || '#6b7280', opacity: 0.7 }}
+                              style={{ color: RISK_COLORS[entry.riskLevel] || 'var(--cm-text-muted)', opacity: 0.7 }}
                             >
                               {entry.riskLevel}
                             </span>

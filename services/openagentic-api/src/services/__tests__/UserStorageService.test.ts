@@ -11,6 +11,7 @@ import {
   hashUserId,
   bucketNameForUser,
   minioUserForUser,
+  resolveHostReachableEndpoint,
   type MinioAdminOps,
   type MinioClientSurface,
   type K8sSecretWriter,
@@ -169,6 +170,12 @@ function setup(opts?: { noSecretWriter?: boolean; iam?: boolean }) {
     rootSecretKey: iam ? undefined : 'ROOT_SECRET_KEY_ABC123',
     storageEndpoint: iam ? undefined : 'http://minio.test:9000',
     k8sSecretWriter: opts?.noSecretWriter ? undefined : secretWriter,
+    // Deterministic: tests must not hit real DNS. A throwing resolver makes
+    // resolveHostReachableEndpoint fall back to the verbatim hostname, so the
+    // existing `endpoint === 'http://minio.test:9000'` assertions stay green.
+    endpointResolver: async () => {
+      throw new Error('test-no-dns');
+    },
     logger,
     namespace: 'agentic-dev',
   });
@@ -200,6 +207,48 @@ describe('hashUserId', () => {
   it('handles special chars without throwing', () => {
     const h = hashUserId('user+test@例え.テスト');
     expect(h).toMatch(/^[0-9a-f]{12}$/);
+  });
+});
+
+// resolveHostReachableEndpoint — geesefs runs on the HOST via systemd, where
+// cluster DNS (*.svc.cluster.local) is NXDOMAIN. The node-stage Secret endpoint
+// MUST be a host-reachable ClusterIP, so the api (which CAN resolve cluster DNS)
+// resolves the configured hostname to an IP at write time. Root cause of the
+// recurring "Timeout waiting for mount" on codemode exec pods.
+describe('resolveHostReachableEndpoint', () => {
+  it('resolves a cluster DNS host to its ClusterIP', async () => {
+    const out = await resolveHostReachableEndpoint(
+      'http://openagentic-minio.agentic-dev.svc.cluster.local:9000',
+      async () => ['10.43.46.174'],
+    );
+    expect(out).toBe('http://10.43.46.174:9000');
+  });
+
+  it('leaves an IP-literal endpoint unchanged and does NOT call the resolver', async () => {
+    const resolver = vi.fn(async () => ['1.2.3.4']);
+    const out = await resolveHostReachableEndpoint('http://10.43.46.174:9000', resolver);
+    expect(out).toBe('http://10.43.46.174:9000');
+    expect(resolver).not.toHaveBeenCalled();
+  });
+
+  it('returns the original endpoint when DNS resolution fails (best-effort, never throws)', async () => {
+    const out = await resolveHostReachableEndpoint(
+      'http://openagentic-minio.agentic-dev.svc.cluster.local:9000',
+      async () => {
+        throw new Error('ENOTFOUND');
+      },
+    );
+    expect(out).toBe('http://openagentic-minio.agentic-dev.svc.cluster.local:9000');
+  });
+
+  it('returns the original endpoint when the resolver yields an empty list', async () => {
+    const out = await resolveHostReachableEndpoint('http://minio:9000', async () => []);
+    expect(out).toBe('http://minio:9000');
+  });
+
+  it('preserves the port and omits a trailing slash', async () => {
+    const out = await resolveHostReachableEndpoint('http://minio:9000', async () => ['10.0.0.5']);
+    expect(out).toBe('http://10.0.0.5:9000');
   });
 });
 
@@ -247,6 +296,29 @@ describe('UserStorageService.ensureUserBucket (root-creds mode — default)', ()
     expect(call.data.endpoint).toBe('http://minio.test:9000');
     expect(call.data.accessKeyID).toBe('ROOT_ACCESS');
     expect(call.data.secretAccessKey).toBe('ROOT_SECRET_KEY_ABC123');
+  });
+
+  it('writes the node-stage Secret endpoint as a host-reachable ClusterIP (resolves cluster DNS at write time)', async () => {
+    const minio = makeFakeMinio();
+    const secretWriter = makeSecretWriter();
+    const logger = makeLogger();
+    const svc = new UserStorageService({
+      minioClient: minio.client,
+      rootAccessKey: 'ROOT_ACCESS',
+      rootSecretKey: 'ROOT_SECRET_KEY_ABC123',
+      storageEndpoint: 'http://openagentic-minio.agentic-dev.svc.cluster.local:9000',
+      k8sSecretWriter: secretWriter,
+      endpointResolver: async () => ['10.43.46.174'],
+      logger,
+      namespace: 'agentic-dev',
+    });
+
+    await svc.ensureUserBucket('alice@example.com');
+
+    const call = secretWriter.write.mock.calls[0][0];
+    // The csi-s3 driver runs geesefs on the host (systemd); the host cannot
+    // resolve *.svc.cluster.local, so the Secret MUST carry the ClusterIP.
+    expect(call.data.endpoint).toBe('http://10.43.46.174:9000');
   });
 
   it('second call is idempotent — Secret present, writer not re-invoked', async () => {

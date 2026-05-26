@@ -62,35 +62,46 @@ export const INIT_TOOL_CACHE: BootstrapStep = {
       throw new Error(`Cannot connect to Milvus after ${fatalAttempt} fatal + ${recoveryAttempt} recovery attempts`);
     }
 
-    // Index ALL MCP tools into Milvus (BLOCKING)
-    loggers.services.info('🔄 Indexing ALL MCP tools into Milvus (BLOCKING)...');
-    await ctx.toolSemanticCache!.autoIndexToolsWhenReady();
-    loggers.services.info('✅ MCP tools indexed in Milvus — semantic search operational');
-
-    // Post-index verification
-    let verificationFailed: string | null = null;
-    try {
-      const { verifyToolSearch } = await import('../services/startup-helpers/verifyToolSearch.js');
-      const verifyTimeoutMs = Number.parseInt(process.env.TOOL_INDEX_VERIFY_TIMEOUT_MS ?? '15000', 10);
-      const verification = await verifyToolSearch(ctx.toolSemanticCache!, verifyTimeoutMs, loggers.services as any);
-      if (verification.ok) {
-        const stats = (await ctx.toolSemanticCache!.getCacheStats?.()) || ({} as any);
-        loggers.services.info({
-          sampleTools: verification.sampleToolNames,
-          totalIndexed: (stats as any).totalTools || 'unknown',
-        }, '✅ POST-INDEX VERIFICATION: Semantic search returning results');
-      } else {
-        verificationFailed = `Post-indexing verification did not pass: ${verification.reason}`;
-        loggers.services.warn(`⚠ ${verificationFailed} — continuing startup (set TOOL_INDEX_VERIFY_REQUIRED=true to hard-fail)`);
-      }
-    } catch (verifyErr: any) {
-      loggers.services.warn({ error: verifyErr.message }, '⚠️ Tool search verification failed (non-critical)');
-    }
-    // Hard-fail check is OUTSIDE the try-catch so the orchestrator receives the throw
-    if (verificationFailed && process.env.TOOL_INDEX_VERIFY_REQUIRED === 'true') {
-      loggers.services.fatal(`🚨 FATAL: ${verificationFailed}`);
-      throw new Error(verificationFailed);
-    }
+    // #1058: MCP tool indexing runs in BACKGROUND — must NEVER block bootstrap.
+    //
+    // The blocking version (pre-#1058) hung indefinitely on cold helm-install
+    // because Milvus reports `insertedCount: "0"` after a successful flush;
+    // autoIndexToolsWhenReady then loops on `rowCount: 0 → force re-index` with
+    // no upper bound, the await in step 08 never resolves, the api stays 0/1
+    // Ready, and k8s eventually CrashLoopBackOffs the pod.
+    //
+    // Step 07 (`mcp-index`) already populates the PostgreSQL pgvector primary
+    // source of truth before this step runs. Milvus is a "FALLBACK/resilience
+    // replica" — the api is fully serviceable on pgvector alone. Indexing into
+    // Milvus completes opportunistically in the background; tool search degrades
+    // gracefully to pgvector if Milvus indexing never finishes.
+    loggers.services.info('🔄 MCP tool semantic-cache indexing dispatched to background (non-blocking) — pgvector primary remains available');
+    ctx.toolSemanticCache!.autoIndexToolsWhenReady()
+      .then(async () => {
+        loggers.services.info('✅ Background MCP tool indexing complete');
+        try {
+          const { verifyToolSearch } = await import('../services/startup-helpers/verifyToolSearch.js');
+          const verifyTimeoutMs = Number.parseInt(process.env.TOOL_INDEX_VERIFY_TIMEOUT_MS ?? '15000', 10);
+          const verification = await verifyToolSearch(ctx.toolSemanticCache!, verifyTimeoutMs, loggers.services as any);
+          if (verification.ok) {
+            const stats = (await ctx.toolSemanticCache!.getCacheStats?.()) || ({} as any);
+            loggers.services.info({
+              sampleTools: verification.sampleToolNames,
+              totalIndexed: (stats as any).totalTools || 'unknown',
+            }, '✅ POST-INDEX VERIFICATION: Semantic search returning results');
+          } else {
+            loggers.services.warn({ reason: verification.reason },
+              '⚠️ Post-indexing verification did not pass — tool search falls back to pgvector (api remains Ready)');
+          }
+        } catch (verifyErr: any) {
+          loggers.services.warn({ error: verifyErr.message },
+            '⚠️ Tool search verification failed (non-critical, api remains Ready)');
+        }
+      })
+      .catch((err: any) => {
+        loggers.services.error({ error: err?.message, stack: err?.stack },
+          '⚠️ Background MCP tool indexing failed — tool search falls back to pgvector (api remains Ready)');
+      });
 
     // ToolPgvectorSearchService
     try {

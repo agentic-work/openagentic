@@ -99,26 +99,26 @@ const ContextCompactedNoticeComponent: React.FC<ContextCompactedNoticeProps> = (
         gap: 8,
         padding: '4px 10px',
         borderRadius: 99,
-        background: 'rgba(139,92,246,0.08)',
-        border: '1px solid rgba(139,92,246,0.28)',
+        background: 'color-mix(in srgb, var(--cm-accent) 8%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--cm-accent) 28%, transparent)',
         fontSize: 11,
-        color: '#d4d4d8',
+        color: 'var(--cm-text-secondary)',
         fontFamily: 'JetBrains Mono, monospace',
         lineHeight: 1,
       }}
     >
-      <span style={{ color: '#a78bfa' }}>
+      <span style={{ color: 'var(--cm-accent)' }}>
         <LightningIcon />
       </span>
-      <span style={{ fontWeight: 600, color: '#a78bfa' }}>
+      <span style={{ fontWeight: 600, color: 'var(--cm-accent)' }}>
         Trimmed {tokensLabel} tokens
       </span>
-      <span style={{ color: '#71717a', fontFamily: 'Inter, sans-serif' }}>
+      <span style={{ color: 'var(--cm-text-muted)', fontFamily: 'Inter, sans-serif' }}>
         ({messagesLabel})
       </span>
       {tooltip && (
         <span
-          style={{ color: '#71717a', display: 'inline-flex', alignItems: 'center' }}
+          style={{ color: 'var(--cm-text-muted)', display: 'inline-flex', alignItems: 'center' }}
           aria-label="more info"
         >
           <InfoIcon />

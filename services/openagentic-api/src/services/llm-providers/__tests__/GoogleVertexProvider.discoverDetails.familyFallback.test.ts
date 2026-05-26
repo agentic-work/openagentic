@@ -4,7 +4,7 @@
  * returns sparse data (gemini-2.5-pro, gemini-3, etc. — REST often
  * omits inputTokenLimit + supportedGenerationMethods).
  *
- * Live evidence (dev 2026-05-06): adding gemini-2.5-pro produced
+ * Live evidence (chat-dev 2026-05-06): adding gemini-2.5-pro produced
  * capabilities.{chat,tools,streaming,nativeToolCalling}=false +
  * contextWindow=null because the REST data was sparse and the original
  * implementation took it at face value.

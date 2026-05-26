@@ -1,0 +1,831 @@
+event: stream_start
+data: {"sessionId":"session_1771623270002_1sbj10ccs","messageId":"msg_1771623270380_bkrrxsoaw"}
+
+event: message_saved
+data: {"messageId":"_i2FFun5_wG1tB3FkLKK5","role":"user","content":"Perform a complete infrastructure health audit of this OpenAgentic platform. I need you to:\n\n1. Run admin_full_system_test to check all backend services\n2. Use admin_system_postgres_health_check to verify database health, then run admin_system_postgres_raw_query to show me the top 10 largest tables by row count\n3. Use admin_system_redis_health_check and admin_system_redis_list_keys_by_pattern with pattern '*' to show cache utilization\n4. Use admin_system_milvus_health_check and admin_system_milvus_list_collections to show vector DB status\n5. Use k8s_cluster_health to get overall cluster status\n6. Use k8s_list_pods in the agentic-dev namespace and report any pods not in Running state\n7. Use prometheus_health_summary to check monitoring stack\n8. Use loki_search_errors to find any errors in the last 1 hour\n\nPresent the results as a structured health report with RED/YELLOW/GREEN status for each subsystem. Include actual metrics (row counts, memory usage, pod counts). Do NOT skip any of these checks.","timestamp":"2026-02-20T21:34:30.623Z","source":"database","confirmed":true}
+
+event: context_injection_pending
+data: {"rag":true,"mcp":false,"timestamp":"2026-02-20T21:34:30.635Z"}
+
+event: memory_status
+data: {"memoriesRetrieved":10,"memoryTypes":["semantic"],"processingTime":281}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:34:33.380Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:34:36.380Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:34:39.381Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:34:42.381Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:34:45.381Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:34:48.381Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:34:51.381Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:34:54.381Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:34:57.381Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:00.382Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:03.382Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:06.382Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:09.382Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:12.382Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:15.382Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:18.382Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:21.382Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:24.383Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:27.384Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:30.384Z"}
+
+event: message_saved
+data: {"messageId":"X1qioK9-v81w3At4NH0UW","role":"assistant","content":"","timestamp":"2026-02-20T21:35:31.590Z","source":"database","confirmed":true,"streaming":true}
+
+event: completion_start
+data: {"model":"us.anthropic.claude-opus-4-6-v1","messageId":"X1qioK9-v81w3At4NH0UW","source":"database"}
+
+event: cot_step
+data: {"step":{"id":"cot_thinking_1771623331958","type":"thinking","description":"Processing request","status":"in_progress","startTime":1771623331958}}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:33.384Z"}
+
+event: content_block_start
+data: {"index":0,"blockType":"thinking"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"The user wants a"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" comprehensive infrastructure health audit."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" Let me execute"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" all the independent"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" calls"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" first"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":", then follow"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" up with dependent"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" ones"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" Let"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" me identify"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" dependencies"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":":\n\n1. admin_full_"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"system_test - independent"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"\n2. admin_system_postgres"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"_health_check - independent;"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" admin"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"_system_postgres_raw_query"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" - independent"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"doesn"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"'t depend on health"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" check result"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":")\n3. admin_system_"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"redis_health_check - independent;"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" admin_system_redis_list_"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"keys_by_pattern - independent"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"\n4. admin_system_milv"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"us_health_check - independent;"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" admin_system_milvus_"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"list_collections - independent\n5."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" k8s_cluster_health -"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" independent\n"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:36.384Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:39.384Z"}
+
+event: content_block_stop
+data: {"index":0,"blockType":"thinking","finalContent":"The user wants a comprehensive infrastructure health audit. Let me execute all the independent calls first, then follow up with dependent ones. Let me identify dependencies:\n\n1. admin_full_system_test - independent\n2. admin_system_postgres_health_check - independent; admin_system_postgres_raw_query - independent (doesn't depend on health check result)\n3. admin_system_redis_health_check - independent; admin_system_redis_list_keys_by_pattern - independent\n4. admin_system_milvus_health_check - independent; admin_system_milvus_list_collections - independent\n5. k8s_cluster_health - independent\n"}
+
+event: content_block_start
+data: {"index":1,"blockType":"text"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":"Executing"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":" all "}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":"10"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":" checks"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":" in"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":" parallel now"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":"."}
+
+event: content_block_stop
+data: {"index":1,"blockType":"text","finalContent":"Executing all 10 checks in parallel now."}
+
+event: content_block_start
+data: {"index":2,"blockType":"tool_use","toolId":"toolu_bdrk_01WVvaHfQc5oBTRpNS5QZB1S","toolName":"admin_full_system_test"}
+
+event: content_block_stop
+data: {"index":2,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01WVvaHfQc5oBTRpNS5QZB1S","toolName":"admin_full_system_test"}
+
+event: content_block_start
+data: {"index":3,"blockType":"tool_use","toolId":"toolu_bdrk_01U82aKvifwmTpM8mFUe3F2c","toolName":"admin_system_postgres_health_check"}
+
+event: content_block_stop
+data: {"index":3,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01U82aKvifwmTpM8mFUe3F2c","toolName":"admin_system_postgres_health_check"}
+
+event: content_block_start
+data: {"index":4,"blockType":"tool_use","toolId":"toolu_bdrk_0149t3kkK8S8xg3nYaKcLqyX","toolName":"admin_system_postgres_raw_query"}
+
+event: content_block_stop
+data: {"index":4,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_0149t3kkK8S8xg3nYaKcLqyX","toolName":"admin_system_postgres_raw_query"}
+
+event: content_block_start
+data: {"index":5,"blockType":"tool_use","toolId":"toolu_bdrk_01F3Zd2cNDiS5wmcLtSZiNYs","toolName":"admin_system_redis_health_check"}
+
+event: content_block_stop
+data: {"index":5,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01F3Zd2cNDiS5wmcLtSZiNYs","toolName":"admin_system_redis_health_check"}
+
+event: content_block_start
+data: {"index":6,"blockType":"tool_use","toolId":"toolu_bdrk_014f6himrS2HKSXWb6CVUfFD","toolName":"admin_system_redis_list_keys_by_pattern"}
+
+event: content_block_stop
+data: {"index":6,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_014f6himrS2HKSXWb6CVUfFD","toolName":"admin_system_redis_list_keys_by_pattern"}
+
+event: content_block_start
+data: {"index":7,"blockType":"tool_use","toolId":"toolu_bdrk_01Xot6PUyCncTZg9XUBoyvJ1","toolName":"admin_system_milvus_health_check"}
+
+event: content_block_stop
+data: {"index":7,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01Xot6PUyCncTZg9XUBoyvJ1","toolName":"admin_system_milvus_health_check"}
+
+event: content_block_start
+data: {"index":8,"blockType":"tool_use","toolId":"toolu_bdrk_01CdKtQVgNAr6WUDrt9oRj1p","toolName":"admin_system_milvus_list_collections"}
+
+event: content_block_stop
+data: {"index":8,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01CdKtQVgNAr6WUDrt9oRj1p","toolName":"admin_system_milvus_list_collections"}
+
+event: content_block_start
+data: {"index":9,"blockType":"tool_use","toolId":"toolu_bdrk_01FA2VhUfRWTTUEpvxJZ5cHc","toolName":"k8s_cluster_health"}
+
+event: content_block_stop
+data: {"index":9,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01FA2VhUfRWTTUEpvxJZ5cHc","toolName":"k8s_cluster_health"}
+
+event: content_block_start
+data: {"index":10,"blockType":"tool_use","toolId":"toolu_bdrk_01RwLs4JgyX1JyFn2W9bTHNN","toolName":"k8s_list_pods"}
+
+event: content_block_delta
+data: {"index":10,"blockType":"tool_use","content":"{\"names"}
+
+event: content_block_delta
+data: {"index":10,"blockType":"tool_use","content":"pace\": "}
+
+event: content_block_delta
+data: {"index":10,"blockType":"tool_use","content":"\"agentic-de"}
+
+event: content_block_delta
+data: {"index":10,"blockType":"tool_use","content":"v\"}"}
+
+event: content_block_stop
+data: {"index":10,"blockType":"tool_use","finalContent":"{\"namespace\": \"agentic-dev\"}","toolId":"toolu_bdrk_01RwLs4JgyX1JyFn2W9bTHNN","toolName":"k8s_list_pods"}
+
+event: content_block_start
+data: {"index":11,"blockType":"tool_use","toolId":"toolu_bdrk_01P83V42sdKJu5mqWhfe7VgK","toolName":"prometheus_health_summary"}
+
+event: content_block_stop
+data: {"index":11,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01P83V42sdKJu5mqWhfe7VgK","toolName":"prometheus_health_summary"}
+
+event: content_block_start
+data: {"index":12,"blockType":"tool_use","toolId":"toolu_bdrk_01GkRrc9xGWnAZuKGNEvcAYW","toolName":"loki_search_errors"}
+
+event: content_block_delta
+data: {"index":12,"blockType":"tool_use","content":"{\"time_range"}
+
+event: content_block_delta
+data: {"index":12,"blockType":"tool_use","content":"\": \"1h\"}"}
+
+event: content_block_stop
+data: {"index":12,"blockType":"tool_use","finalContent":"{\"time_range\": \"1h\"}","toolId":"toolu_bdrk_01GkRrc9xGWnAZuKGNEvcAYW","toolName":"loki_search_errors"}
+
+event: cot_step
+data: {"step":{"id":"cot_thinking_1771623331958","type":"thinking","description":"Processing complete","status":"completed","endTime":1771623341925}}
+
+event: tool_calls_required
+data: {"toolCalls":[{"id":"toolu_bdrk_01WVvaHfQc5oBTRpNS5QZB1S","type":"function","function":{"name":"admin_full_system_test","arguments":"{}"}},{"id":"toolu_bdrk_01U82aKvifwmTpM8mFUe3F2c","type":"function","function":{"name":"admin_system_postgres_health_check","arguments":"{}"}},{"id":"toolu_bdrk_0149t3kkK8S8xg3nYaKcLqyX","type":"function","function":{"name":"admin_system_postgres_raw_query","arguments":"{}"}},{"id":"toolu_bdrk_01F3Zd2cNDiS5wmcLtSZiNYs","type":"function","function":{"name":"admin_system_redis_health_check","arguments":"{}"}},{"id":"toolu_bdrk_014f6himrS2HKSXWb6CVUfFD","type":"function","function":{"name":"admin_system_redis_list_keys_by_pattern","arguments":"{}"}},{"id":"toolu_bdrk_01Xot6PUyCncTZg9XUBoyvJ1","type":"function","function":{"name":"admin_system_milvus_health_check","arguments":"{}"}},{"id":"toolu_bdrk_01CdKtQVgNAr6WUDrt9oRj1p","type":"function","function":{"name":"admin_system_milvus_list_collections","arguments":"{}"}},{"id":"toolu_bdrk_01FA2VhUfRWTTUEpvxJZ5cHc","type":"function","function":{"name":"k8s_cluster_health","arguments":"{}"}},{"id":"toolu_bdrk_01RwLs4JgyX1JyFn2W9bTHNN","type":"function","function":{"name":"k8s_list_pods","arguments":"{\"namespace\":\"agentic-dev\"}"}},{"id":"toolu_bdrk_01P83V42sdKJu5mqWhfe7VgK","type":"function","function":{"name":"prometheus_health_summary","arguments":"{}"}},{"id":"toolu_bdrk_01GkRrc9xGWnAZuKGNEvcAYW","type":"function","function":{"name":"loki_search_errors","arguments":"{\"time_range\":\"1h\"}"}}],"count":11}
+
+event: mcp_calls_data
+data: {"calls":[{"id":"toolu_bdrk_01WVvaHfQc5oBTRpNS5QZB1S","name":"admin_full_system_test","tool":"admin_full_system_test","toolName":"admin_full_system_test","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01U82aKvifwmTpM8mFUe3F2c","name":"admin_system_postgres_health_check","tool":"admin_system_postgres_health_check","toolName":"admin_system_postgres_health_check","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_0149t3kkK8S8xg3nYaKcLqyX","name":"admin_system_postgres_raw_query","tool":"admin_system_postgres_raw_query","toolName":"admin_system_postgres_raw_query","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01F3Zd2cNDiS5wmcLtSZiNYs","name":"admin_system_redis_health_check","tool":"admin_system_redis_health_check","toolName":"admin_system_redis_health_check","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_014f6himrS2HKSXWb6CVUfFD","name":"admin_system_redis_list_keys_by_pattern","tool":"admin_system_redis_list_keys_by_pattern","toolName":"admin_system_redis_list_keys_by_pattern","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01Xot6PUyCncTZg9XUBoyvJ1","name":"admin_system_milvus_health_check","tool":"admin_system_milvus_health_check","toolName":"admin_system_milvus_health_check","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01CdKtQVgNAr6WUDrt9oRj1p","name":"admin_system_milvus_list_collections","tool":"admin_system_milvus_list_collections","toolName":"admin_system_milvus_list_collections","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01FA2VhUfRWTTUEpvxJZ5cHc","name":"k8s_cluster_health","tool":"k8s_cluster_health","toolName":"k8s_cluster_health","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01RwLs4JgyX1JyFn2W9bTHNN","name":"k8s_list_pods","tool":"k8s_list_pods","toolName":"k8s_list_pods","status":"pending","arguments":{"namespace":"agentic-dev"},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01P83V42sdKJu5mqWhfe7VgK","name":"prometheus_health_summary","tool":"prometheus_health_summary","toolName":"prometheus_health_summary","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01GkRrc9xGWnAZuKGNEvcAYW","name":"loki_search_errors","tool":"loki_search_errors","toolName":"loki_search_errors","status":"pending","arguments":{"time_range":"1h"},"serverId":"pending","serverName":"pending"}],"totalCalls":11,"round":1}
+
+event: message_updated
+data: {"messageId":"X1qioK9-v81w3At4NH0UW","role":"assistant","content":"Executing all 10 checks in parallel now.","timestamp":"2026-02-20T21:35:41.932Z","toolCalls":[{"id":"toolu_bdrk_01WVvaHfQc5oBTRpNS5QZB1S","type":"function","function":{"name":"admin_full_system_test","arguments":"{}"}},{"id":"toolu_bdrk_01U82aKvifwmTpM8mFUe3F2c","type":"function","function":{"name":"admin_system_postgres_health_check","arguments":"{}"}},{"id":"toolu_bdrk_0149t3kkK8S8xg3nYaKcLqyX","type":"function","function":{"name":"admin_system_postgres_raw_query","arguments":"{}"}},{"id":"toolu_bdrk_01F3Zd2cNDiS5wmcLtSZiNYs","type":"function","function":{"name":"admin_system_redis_health_check","arguments":"{}"}},{"id":"toolu_bdrk_014f6himrS2HKSXWb6CVUfFD","type":"function","function":{"name":"admin_system_redis_list_keys_by_pattern","arguments":"{}"}},{"id":"toolu_bdrk_01Xot6PUyCncTZg9XUBoyvJ1","type":"function","function":{"name":"admin_system_milvus_health_check","arguments":"{}"}},{"id":"toolu_bdrk_01CdKtQVgNAr6WUDrt9oRj1p","type":"function","function":{"name":"admin_system_milvus_list_collections","arguments":"{}"}},{"id":"toolu_bdrk_01FA2VhUfRWTTUEpvxJZ5cHc","type":"function","function":{"name":"k8s_cluster_health","arguments":"{}"}},{"id":"toolu_bdrk_01RwLs4JgyX1JyFn2W9bTHNN","type":"function","function":{"name":"k8s_list_pods","arguments":"{\"namespace\":\"agentic-dev\"}"}},{"id":"toolu_bdrk_01P83V42sdKJu5mqWhfe7VgK","type":"function","function":{"name":"prometheus_health_summary","arguments":"{}"}},{"id":"toolu_bdrk_01GkRrc9xGWnAZuKGNEvcAYW","type":"function","function":{"name":"loki_search_errors","arguments":"{\"time_range\":\"1h\"}"}}],"thinkingContent":"The user wants a comprehensive infrastructure health audit. Let me execute all the independent calls first, then follow up with dependent ones. Let me identify dependencies:\n\n1. admin_full_system_test - independent\n2. admin_system_postgres_health_check - independent; admin_system_postgres_raw_query - independent (doesn't depend on health check result)\n3. admin_system_redis_health_check - independent; admin_system_redis_list_keys_by_pattern - independent\n4. admin_system_milvus_health_check - independent; admin_system_milvus_list_collections - independent\n5. k8s_cluster_health - independent\n","tokenUsage":{"prompt_tokens":0,"completion_tokens":551,"total_tokens":551},"model":"us.anthropic.claude-opus-4-6-v1","source":"database","confirmed":true,"final":true}
+
+event: tool_approval_request
+data: {"toolCallRound":1,"tools":[{"id":"toolu_bdrk_01WVvaHfQc5oBTRpNS5QZB1S","name":"admin_full_system_test","arguments":"{}"},{"id":"toolu_bdrk_01U82aKvifwmTpM8mFUe3F2c","name":"admin_system_postgres_health_check","arguments":"{}"},{"id":"toolu_bdrk_0149t3kkK8S8xg3nYaKcLqyX","name":"admin_system_postgres_raw_query","arguments":"{}"},{"id":"toolu_bdrk_01F3Zd2cNDiS5wmcLtSZiNYs","name":"admin_system_redis_health_check","arguments":"{}"},{"id":"toolu_bdrk_014f6himrS2HKSXWb6CVUfFD","name":"admin_system_redis_list_keys_by_pattern","arguments":"{}"},{"id":"toolu_bdrk_01Xot6PUyCncTZg9XUBoyvJ1","name":"admin_system_milvus_health_check","arguments":"{}"},{"id":"toolu_bdrk_01CdKtQVgNAr6WUDrt9oRj1p","name":"admin_system_milvus_list_collections","arguments":"{}"},{"id":"toolu_bdrk_01FA2VhUfRWTTUEpvxJZ5cHc","name":"k8s_cluster_health","arguments":"{}"},{"id":"toolu_bdrk_01RwLs4JgyX1JyFn2W9bTHNN","name":"k8s_list_pods","arguments":"{\"namespace\":\"agentic-dev\"}"},{"id":"toolu_bdrk_01P83V42sdKJu5mqWhfe7VgK","name":"prometheus_health_summary","arguments":"{}"},{"id":"toolu_bdrk_01GkRrc9xGWnAZuKGNEvcAYW","name":"loki_search_errors","arguments":"{\"time_range\":\"1h\"}"}],"messageId":"msg_1771623270380_byywdasm7"}
+
+event: tool_execution_start
+data: {"toolCallRound":1,"toolCount":11,"tools":[{"id":"toolu_bdrk_01WVvaHfQc5oBTRpNS5QZB1S","name":"admin_full_system_test"},{"id":"toolu_bdrk_01U82aKvifwmTpM8mFUe3F2c","name":"admin_system_postgres_health_check"},{"id":"toolu_bdrk_0149t3kkK8S8xg3nYaKcLqyX","name":"admin_system_postgres_raw_query"},{"id":"toolu_bdrk_01F3Zd2cNDiS5wmcLtSZiNYs","name":"admin_system_redis_health_check"},{"id":"toolu_bdrk_014f6himrS2HKSXWb6CVUfFD","name":"admin_system_redis_list_keys_by_pattern"},{"id":"toolu_bdrk_01Xot6PUyCncTZg9XUBoyvJ1","name":"admin_system_milvus_health_check"},{"id":"toolu_bdrk_01CdKtQVgNAr6WUDrt9oRj1p","name":"admin_system_milvus_list_collections"},{"id":"toolu_bdrk_01FA2VhUfRWTTUEpvxJZ5cHc","name":"k8s_cluster_health"},{"id":"toolu_bdrk_01RwLs4JgyX1JyFn2W9bTHNN","name":"k8s_list_pods"},{"id":"toolu_bdrk_01P83V42sdKJu5mqWhfe7VgK","name":"prometheus_health_summary"},{"id":"toolu_bdrk_01GkRrc9xGWnAZuKGNEvcAYW","name":"loki_search_errors"}],"timestamp":"2026-02-20T21:35:41.934Z"}
+
+event: tool_executing
+data: {"name":"admin_full_system_test","arguments":{},"toolCallId":"toolu_bdrk_01WVvaHfQc5oBTRpNS5QZB1S","targetServer":"openagentic_admin","timestamp":"2026-02-20T21:35:42.158Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:42.383Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:45.384Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:48.384Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:51.384Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:54.384Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:35:57.384Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:00.384Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:03.384Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:06.384Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:09.384Z"}
+
+event: tool_error
+data: {"name":"admin_full_system_test","error":"[INTERNAL_ERROR]  | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","toolCallId":"toolu_bdrk_01WVvaHfQc5oBTRpNS5QZB1S","targetServer":"openagentic_admin","timestamp":"2026-02-20T21:36:12.212Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:12.385Z"}
+
+event: tool_executing
+data: {"name":"admin_system_postgres_health_check","arguments":{},"toolCallId":"toolu_bdrk_01U82aKvifwmTpM8mFUe3F2c","targetServer":"openagentic_admin","timestamp":"2026-02-20T21:36:12.449Z"}
+
+event: tool_error
+data: {"name":"admin_system_postgres_health_check","error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","toolCallId":"toolu_bdrk_01U82aKvifwmTpM8mFUe3F2c","targetServer":"openagentic_admin","timestamp":"2026-02-20T21:36:12.460Z"}
+
+event: tool_executing
+data: {"name":"admin_system_postgres_raw_query","arguments":{},"toolCallId":"toolu_bdrk_0149t3kkK8S8xg3nYaKcLqyX","targetServer":"openagentic_admin","timestamp":"2026-02-20T21:36:12.664Z"}
+
+event: tool_error
+data: {"name":"admin_system_postgres_raw_query","error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","toolCallId":"toolu_bdrk_0149t3kkK8S8xg3nYaKcLqyX","targetServer":"openagentic_admin","timestamp":"2026-02-20T21:36:12.684Z"}
+
+event: tool_executing
+data: {"name":"admin_system_redis_health_check","arguments":{},"toolCallId":"toolu_bdrk_01F3Zd2cNDiS5wmcLtSZiNYs","targetServer":"openagentic_admin","timestamp":"2026-02-20T21:36:12.875Z"}
+
+event: tool_error
+data: {"name":"admin_system_redis_health_check","error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","toolCallId":"toolu_bdrk_01F3Zd2cNDiS5wmcLtSZiNYs","targetServer":"openagentic_admin","timestamp":"2026-02-20T21:36:12.895Z"}
+
+event: tool_executing
+data: {"name":"admin_system_redis_list_keys_by_pattern","arguments":{},"toolCallId":"toolu_bdrk_014f6himrS2HKSXWb6CVUfFD","targetServer":"openagentic_admin","timestamp":"2026-02-20T21:36:13.858Z"}
+
+event: tool_error
+data: {"name":"admin_system_redis_list_keys_by_pattern","error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","toolCallId":"toolu_bdrk_014f6himrS2HKSXWb6CVUfFD","targetServer":"openagentic_admin","timestamp":"2026-02-20T21:36:13.879Z"}
+
+event: tool_executing
+data: {"name":"admin_system_milvus_health_check","arguments":{},"toolCallId":"toolu_bdrk_01Xot6PUyCncTZg9XUBoyvJ1","targetServer":"openagentic_admin","timestamp":"2026-02-20T21:36:14.100Z"}
+
+event: tool_error
+data: {"name":"admin_system_milvus_health_check","error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","toolCallId":"toolu_bdrk_01Xot6PUyCncTZg9XUBoyvJ1","targetServer":"openagentic_admin","timestamp":"2026-02-20T21:36:14.118Z"}
+
+event: tool_executing
+data: {"name":"admin_system_milvus_list_collections","arguments":{},"toolCallId":"toolu_bdrk_01CdKtQVgNAr6WUDrt9oRj1p","targetServer":"openagentic_admin","timestamp":"2026-02-20T21:36:14.526Z"}
+
+event: tool_error
+data: {"name":"admin_system_milvus_list_collections","error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","toolCallId":"toolu_bdrk_01CdKtQVgNAr6WUDrt9oRj1p","targetServer":"openagentic_admin","timestamp":"2026-02-20T21:36:14.542Z"}
+
+event: tool_executing
+data: {"name":"k8s_cluster_health","arguments":{},"toolCallId":"toolu_bdrk_01FA2VhUfRWTTUEpvxJZ5cHc","targetServer":"openagentic_kubernetes","timestamp":"2026-02-20T21:36:14.746Z"}
+
+event: tool_result
+data: {"name":"k8s_cluster_health","result":{"content":[{"type":"text","text":"{\n  \"success\": false,\n  \"error\": \"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\"\n}"}],"structuredContent":{"result":{"success":false,"error":"Kubernetes client initialization failed: Invalid kube-config file. No configuration found."}},"isError":false},"toolCallId":"toolu_bdrk_01FA2VhUfRWTTUEpvxJZ5cHc","executionTimeMs":393,"targetServer":"openagentic_kubernetes","timestamp":"2026-02-20T21:36:15.149Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:15.394Z"}
+
+event: tool_executing
+data: {"name":"k8s_list_pods","arguments":{"namespace":"agentic-dev"},"toolCallId":"toolu_bdrk_01RwLs4JgyX1JyFn2W9bTHNN","targetServer":"openagentic_kubernetes","timestamp":"2026-02-20T21:36:15.790Z"}
+
+event: tool_result
+data: {"name":"k8s_list_pods","result":{"content":[{"type":"text","text":"{\n  \"success\": false,\n  \"error\": \"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\"\n}"}],"structuredContent":{"result":{"success":false,"error":"Kubernetes client initialization failed: Invalid kube-config file. No configuration found."}},"isError":false},"toolCallId":"toolu_bdrk_01RwLs4JgyX1JyFn2W9bTHNN","executionTimeMs":24,"targetServer":"openagentic_kubernetes","timestamp":"2026-02-20T21:36:15.830Z"}
+
+event: tool_executing
+data: {"name":"prometheus_health_summary","arguments":{},"toolCallId":"toolu_bdrk_01P83V42sdKJu5mqWhfe7VgK","targetServer":"openagentic_prometheus","timestamp":"2026-02-20T21:36:16.240Z"}
+
+event: tool_result
+data: {"name":"prometheus_health_summary","result":{"content":[{"type":"text","text":"=== Prometheus Health Summary ===\n\nTargets: 50 up, 4 down\n  Down targets:\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\n    - kubernetes-apiservers: 10.2.10.131:6443\n    - kubernetes-pods: 10.42.2.37:8090\n    - kubernetes-pods: 10.42.5.19:8080\n\nAlerts: 0 firing, 0 pending\n\nKey Metrics:\n  HTTP Request Rate (5m): 0.34490740740740744\n  Error Rate (5m): unavailable\n  Active Sessions: 0"}],"structuredContent":{"result":"=== Prometheus Health Summary ===\n\nTargets: 50 up, 4 down\n  Down targets:\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\n    - kubernetes-apiservers: 10.2.10.131:6443\n    - kubernetes-pods: 10.42.2.37:8090\n    - kubernetes-pods: 10.42.5.19:8080\n\nAlerts: 0 firing, 0 pending\n\nKey Metrics:\n  HTTP Request Rate (5m): 0.34490740740740744\n  Error Rate (5m): unavailable\n  Active Sessions: 0"},"isError":false},"toolCallId":"toolu_bdrk_01P83V42sdKJu5mqWhfe7VgK","executionTimeMs":206,"targetServer":"openagentic_prometheus","timestamp":"2026-02-20T21:36:16.455Z"}
+
+event: tool_executing
+data: {"name":"loki_search_errors","arguments":{"time_range":"1h"},"toolCallId":"toolu_bdrk_01GkRrc9xGWnAZuKGNEvcAYW","targetServer":"openagentic_loki","timestamp":"2026-02-20T21:36:16.859Z"}
+
+event: tool_result
+data: {"name":"loki_search_errors","result":{"content":[{"type":"text","text":"No errors found in the last 1h"}],"structuredContent":{"result":"No errors found in the last 1h"},"isError":false},"toolCallId":"toolu_bdrk_01GkRrc9xGWnAZuKGNEvcAYW","executionTimeMs":160,"targetServer":"openagentic_loki","timestamp":"2026-02-20T21:36:17.027Z"}
+
+event: tool_execution_complete
+data: {"toolCallRound":1,"toolCount":11,"executionTimeMs":35275,"successCount":4,"errorCount":7,"timestamp":"2026-02-20T21:36:17.209Z"}
+
+event: message_saved
+data: {"messageId":"d4_bCXRUKJeZIn3frgkp8","role":"tool","content":"Error: [INTERNAL_ERROR]  | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","toolCallId":"toolu_bdrk_01WVvaHfQc5oBTRpNS5QZB1S","timestamp":"2026-02-20T21:36:17.232Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"jkgtqapW6okNi849ILtm5","role":"tool","content":"Error: [SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","toolCallId":"toolu_bdrk_01U82aKvifwmTpM8mFUe3F2c","timestamp":"2026-02-20T21:36:17.238Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"t-HaoZS6GR90cA5JC56IB","role":"tool","content":"Error: [SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","toolCallId":"toolu_bdrk_0149t3kkK8S8xg3nYaKcLqyX","timestamp":"2026-02-20T21:36:17.243Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"FX3pvLIUcBNrjLSuftPVi","role":"tool","content":"Error: [SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","toolCallId":"toolu_bdrk_01F3Zd2cNDiS5wmcLtSZiNYs","timestamp":"2026-02-20T21:36:17.247Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"8Rt20BQUvbn_WWXtynVBy","role":"tool","content":"Error: [SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","toolCallId":"toolu_bdrk_014f6himrS2HKSXWb6CVUfFD","timestamp":"2026-02-20T21:36:17.250Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"NkKdUnIutQKg-cwX3K_pK","role":"tool","content":"Error: [SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","toolCallId":"toolu_bdrk_01Xot6PUyCncTZg9XUBoyvJ1","timestamp":"2026-02-20T21:36:17.254Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"IWT2r8CIgtDsltMnxfYkc","role":"tool","content":"Error: [SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","toolCallId":"toolu_bdrk_01CdKtQVgNAr6WUDrt9oRj1p","timestamp":"2026-02-20T21:36:17.258Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"HrwqO3n7kOsE03Hnnzb8f","role":"tool","content":"{\n  \"content\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"{\\n  \\\"success\\\": false,\\n  \\\"error\\\": \\\"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\\\"\\n}\"\n    }\n  ],\n  \"structuredContent\": {\n    \"result\": {\n      \"success\": false,\n      \"error\": \"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\"\n    }\n  },\n  \"isError\": false\n}","toolCallId":"toolu_bdrk_01FA2VhUfRWTTUEpvxJZ5cHc","timestamp":"2026-02-20T21:36:17.262Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"4n0aIrSxHJhZtMHsHU6dj","role":"tool","content":"{\n  \"content\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"{\\n  \\\"success\\\": false,\\n  \\\"error\\\": \\\"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\\\"\\n}\"\n    }\n  ],\n  \"structuredContent\": {\n    \"result\": {\n      \"success\": false,\n      \"error\": \"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\"\n    }\n  },\n  \"isError\": false\n}","toolCallId":"toolu_bdrk_01RwLs4JgyX1JyFn2W9bTHNN","timestamp":"2026-02-20T21:36:17.266Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"jjRFrmV3x6XK-4_uqK6AZ","role":"tool","content":"{\n  \"content\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"=== Prometheus Health Summary ===\\n\\nTargets: 50 up, 4 down\\n  Down targets:\\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\\n    - kubernetes-apiservers: 10.2.10.131:6443\\n    - kubernetes-pods: 10.42.2.37:8090\\n    - kubernetes-pods: 10.42.5.19:8080\\n\\nAlerts: 0 firing, 0 pending\\n\\nKey Metrics:\\n  HTTP Request Rate (5m): 0.34490740740740744\\n  Error Rate (5m): unavailable\\n  Active Sessions: 0\"\n    }\n  ],\n  \"structuredContent\": {\n    \"result\": \"=== Prometheus Health Summary ===\\n\\nTargets: 50 up, 4 down\\n  Down targets:\\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\\n    - kubernetes-apiservers: 10.2.10.131:6443\\n    - kubernetes-pods: 10.42.2.37:8090\\n    - kubernetes-pods: 10.42.5.19:8080\\n\\nAlerts: 0 firing, 0 pending\\n\\nKey Metrics:\\n  HTTP Request Rate (5m): 0.34490740740740744\\n  Error Rate (5m): unavailable\\n  Active Sessions: 0\"\n  },\n  \"isError\": false\n}","toolCallId":"toolu_bdrk_01P83V42sdKJu5mqWhfe7VgK","timestamp":"2026-02-20T21:36:17.270Z","source":"database","confirmed":true}
+
+event: message_saved
+data: {"messageId":"0dzn_FIFpcma2mPPgbfme","role":"tool","content":"{\n  \"content\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"No errors found in the last 1h\"\n    }\n  ],\n  \"structuredContent\": {\n    \"result\": \"No errors found in the last 1h\"\n  },\n  \"isError\": false\n}","toolCallId":"toolu_bdrk_01GkRrc9xGWnAZuKGNEvcAYW","timestamp":"2026-02-20T21:36:17.274Z","source":"database","confirmed":true}
+
+event: mcp_calls_data
+data: {"calls":[{"id":"toolu_bdrk_01WVvaHfQc5oBTRpNS5QZB1S","name":"admin_full_system_test","tool":"admin_full_system_test","toolName":"admin_full_system_test","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[INTERNAL_ERROR]  | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","status":"failed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_01U82aKvifwmTpM8mFUe3F2c","name":"admin_system_postgres_health_check","tool":"admin_system_postgres_health_check","toolName":"admin_system_postgres_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","status":"failed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_0149t3kkK8S8xg3nYaKcLqyX","name":"admin_system_postgres_raw_query","tool":"admin_system_postgres_raw_query","toolName":"admin_system_postgres_raw_query","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","status":"failed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_01F3Zd2cNDiS5wmcLtSZiNYs","name":"admin_system_redis_health_check","tool":"admin_system_redis_health_check","toolName":"admin_system_redis_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","status":"failed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_014f6himrS2HKSXWb6CVUfFD","name":"admin_system_redis_list_keys_by_pattern","tool":"admin_system_redis_list_keys_by_pattern","toolName":"admin_system_redis_list_keys_by_pattern","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","status":"failed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_01Xot6PUyCncTZg9XUBoyvJ1","name":"admin_system_milvus_health_check","tool":"admin_system_milvus_health_check","toolName":"admin_system_milvus_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","status":"failed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_01CdKtQVgNAr6WUDrt9oRj1p","name":"admin_system_milvus_list_collections","tool":"admin_system_milvus_list_collections","toolName":"admin_system_milvus_list_collections","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","status":"failed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_01FA2VhUfRWTTUEpvxJZ5cHc","name":"k8s_cluster_health","tool":"k8s_cluster_health","toolName":"k8s_cluster_health","serverId":"openagentic_kubernetes","serverName":"openagentic_kubernetes","executedOn":"mcp-proxy","arguments":{},"result":{"content":[{"type":"text","text":"{\n  \"success\": false,\n  \"error\": \"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\"\n}"}],"structuredContent":{"result":{"success":false,"error":"Kubernetes client initialization failed: Invalid kube-config file. No configuration found."}},"isError":false},"status":"completed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_01RwLs4JgyX1JyFn2W9bTHNN","name":"k8s_list_pods","tool":"k8s_list_pods","toolName":"k8s_list_pods","serverId":"openagentic_kubernetes","serverName":"openagentic_kubernetes","executedOn":"mcp-proxy","arguments":{"namespace":"agentic-dev"},"result":{"content":[{"type":"text","text":"{\n  \"success\": false,\n  \"error\": \"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\"\n}"}],"structuredContent":{"result":{"success":false,"error":"Kubernetes client initialization failed: Invalid kube-config file. No configuration found."}},"isError":false},"status":"completed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_01P83V42sdKJu5mqWhfe7VgK","name":"prometheus_health_summary","tool":"prometheus_health_summary","toolName":"prometheus_health_summary","serverId":"openagentic_prometheus","serverName":"openagentic_prometheus","executedOn":"mcp-proxy","arguments":{},"result":{"content":[{"type":"text","text":"=== Prometheus Health Summary ===\n\nTargets: 50 up, 4 down\n  Down targets:\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\n    - kubernetes-apiservers: 10.2.10.131:6443\n    - kubernetes-pods: 10.42.2.37:8090\n    - kubernetes-pods: 10.42.5.19:8080\n\nAlerts: 0 firing, 0 pending\n\nKey Metrics:\n  HTTP Request Rate (5m): 0.34490740740740744\n  Error Rate (5m): unavailable\n  Active Sessions: 0"}],"structuredContent":{"result":"=== Prometheus Health Summary ===\n\nTargets: 50 up, 4 down\n  Down targets:\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\n    - kubernetes-apiservers: 10.2.10.131:6443\n    - kubernetes-pods: 10.42.2.37:8090\n    - kubernetes-pods: 10.42.5.19:8080\n\nAlerts: 0 firing, 0 pending\n\nKey Metrics:\n  HTTP Request Rate (5m): 0.34490740740740744\n  Error Rate (5m): unavailable\n  Active Sessions: 0"},"isError":false},"status":"completed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_01GkRrc9xGWnAZuKGNEvcAYW","name":"loki_search_errors","tool":"loki_search_errors","toolName":"loki_search_errors","serverId":"openagentic_loki","serverName":"openagentic_loki","executedOn":"mcp-proxy","arguments":{"time_range":"1h"},"result":{"content":[{"type":"text","text":"No errors found in the last 1h"}],"structuredContent":{"result":"No errors found in the last 1h"},"isError":false},"status":"completed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"}],"totalCalls":11,"round":1}
+
+event: completion_restart
+data: {"toolCallRound":1,"reason":"processing_tool_results","timestamp":"2026-02-20T21:36:17.274Z"}
+
+event: message_saved
+data: {"messageId":"5MwPfasYwga37KRi7DAd8","role":"assistant","content":"","timestamp":"2026-02-20T21:36:17.285Z","source":"database","confirmed":true,"streaming":true}
+
+event: completion_start
+data: {"model":"us.anthropic.claude-opus-4-6-v1","messageId":"5MwPfasYwga37KRi7DAd8","source":"database"}
+
+event: cot_step
+data: {"step":{"id":"cot_thinking_1771623377641","type":"thinking","description":"Processing request","status":"in_progress","startTime":1771623377641}}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:18.394Z"}
+
+event: content_block_start
+data: {"index":0,"blockType":"text"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"<thinking"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":">\nThe"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" admin"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" M"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"CP server"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" is down"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":", and the Kubernetes M"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"CP can"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"'t connect"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Let me try"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the infrastructure"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" health"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" check"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" tool"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" and"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Flo"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"wise health"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" check,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" and also use"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" the run"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"book"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" diagnost"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ics for the admin"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" service"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" Let me also try to"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" get some"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" additional"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" diagnost"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"ics.\n</thinking>\n\nThe"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:21.394Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"aw"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"p_admin M"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"CP server is down**,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" which"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" blocks"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" most"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" backend"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" checks"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":". Let me run"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" fall"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"back diagnostics to"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" gather"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" what"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" I"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" can."}
+
+event: content_block_stop
+data: {"index":0,"blockType":"text","finalContent":"<thinking>\nThe admin MCP server is down, and the Kubernetes MCP can't connect. Let me try the infrastructure health check tool and Flowise health check, and also use the runbook diagnostics for the admin service. Let me also try to get some additional diagnostics.\n</thinking>\n\nThe **openagentic_admin MCP server is down**, which blocks most backend checks. Let me run fallback diagnostics to gather what I can."}
+
+event: content_block_start
+data: {"index":1,"blockType":"tool_use","toolId":"toolu_bdrk_01MMXN7pxR24rEQeQUh4c9sK","toolName":"admin_system_infrastructure_health_check"}
+
+event: content_block_stop
+data: {"index":1,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01MMXN7pxR24rEQeQUh4c9sK","toolName":"admin_system_infrastructure_health_check"}
+
+event: content_block_start
+data: {"index":2,"blockType":"tool_use","toolId":"toolu_bdrk_019qPb7mE5e8T6DwofARfFAT","toolName":"runbook_quick_diagnostics"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"{\"service"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"\": \"openagentic-ad"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"min\""}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":", \"names"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"pace\": \""}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"age"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"nticwork"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"\"}"}
+
+event: content_block_stop
+data: {"index":2,"blockType":"tool_use","finalContent":"{\"service\": \"openagentic-admin\", \"namespace\": \"openagentic\"}","toolId":"toolu_bdrk_019qPb7mE5e8T6DwofARfFAT","toolName":"runbook_quick_diagnostics"}
+
+event: content_block_start
+data: {"index":3,"blockType":"tool_use","toolId":"toolu_bdrk_01VtdVrRpgWNfYybZuL1yYvk","toolName":"loki_query"}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"{\"qu"}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"ery\":"}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":" \"{na"}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"mespace=\\\""}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"age"}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"nticwork"}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"\\\""}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"} "}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"|= "}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"\\\"er"}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"ror\\\"\""}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":", \"st"}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"art\": \"1h\""}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:24.394Z"}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":", \"li"}
+
+event: content_block_delta
+data: {"index":3,"blockType":"tool_use","content":"mit\": 50}"}
+
+event: content_block_stop
+data: {"index":3,"blockType":"tool_use","finalContent":"{\"query\": \"{namespace=\\\"openagentic\\\"} |= \\\"error\\\"\", \"start\": \"1h\", \"limit\": 50}","toolId":"toolu_bdrk_01VtdVrRpgWNfYybZuL1yYvk","toolName":"loki_query"}
+
+event: content_block_start
+data: {"index":4,"blockType":"tool_use","toolId":"toolu_bdrk_01BBeeWzVqnYmZvdmDcYqepj","toolName":"loki_streams"}
+
+event: content_block_stop
+data: {"index":4,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01BBeeWzVqnYmZvdmDcYqepj","toolName":"loki_streams"}
+
+event: content_block_start
+data: {"index":5,"blockType":"tool_use","toolId":"toolu_bdrk_01R2X5oLQs4UFbhqLgdQzdeA","toolName":"get_framework_status"}
+
+event: content_block_stop
+data: {"index":5,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01R2X5oLQs4UFbhqLgdQzdeA","toolName":"get_framework_status"}
+
+event: cot_step
+data: {"step":{"id":"cot_thinking_1771623377641","type":"thinking","description":"Processing complete","status":"completed","endTime":1771623384942}}
+
+event: tool_calls_required
+data: {"toolCalls":[{"id":"toolu_bdrk_01MMXN7pxR24rEQeQUh4c9sK","type":"function","function":{"name":"admin_system_infrastructure_health_check","arguments":"{}"}},{"id":"toolu_bdrk_019qPb7mE5e8T6DwofARfFAT","type":"function","function":{"name":"runbook_quick_diagnostics","arguments":"{\"service\":\"openagentic-admin\",\"namespace\":\"openagentic\"}"}},{"id":"toolu_bdrk_01VtdVrRpgWNfYybZuL1yYvk","type":"function","function":{"name":"loki_query","arguments":"{\"query\":\"{namespace=\\\"openagentic\\\"} |= \\\"error\\\"\",\"start\":\"1h\",\"limit\":50}"}},{"id":"toolu_bdrk_01BBeeWzVqnYmZvdmDcYqepj","type":"function","function":{"name":"loki_streams","arguments":"{}"}},{"id":"toolu_bdrk_01R2X5oLQs4UFbhqLgdQzdeA","type":"function","function":{"name":"get_framework_status","arguments":"{}"}}],"count":5}
+
+event: mcp_calls_data
+data: {"calls":[{"id":"toolu_bdrk_01MMXN7pxR24rEQeQUh4c9sK","name":"admin_system_infrastructure_health_check","tool":"admin_system_infrastructure_health_check","toolName":"admin_system_infrastructure_health_check","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_019qPb7mE5e8T6DwofARfFAT","name":"runbook_quick_diagnostics","tool":"runbook_quick_diagnostics","toolName":"runbook_quick_diagnostics","status":"pending","arguments":{"service":"openagentic-admin","namespace":"openagentic"},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01VtdVrRpgWNfYybZuL1yYvk","name":"loki_query","tool":"loki_query","toolName":"loki_query","status":"pending","arguments":{"query":"{namespace=\"openagentic\"} |= \"error\"","start":"1h","limit":50},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01BBeeWzVqnYmZvdmDcYqepj","name":"loki_streams","tool":"loki_streams","toolName":"loki_streams","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01R2X5oLQs4UFbhqLgdQzdeA","name":"get_framework_status","tool":"get_framework_status","toolName":"get_framework_status","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"}],"totalCalls":5,"round":1}
+
+event: message_updated
+data: {"messageId":"5MwPfasYwga37KRi7DAd8","role":"assistant","content":"<thinking>\nThe admin MCP server is down, and the Kubernetes MCP can't connect. Let me try the infrastructure health check tool and Flowise health check, and also use the runbook diagnostics for the admin service. Let me also try to get some additional diagnostics.\n</thinking>\n\nThe **openagentic_admin MCP server is down**, which blocks most backend checks. Let me run fallback diagnostics to gather what I can.","timestamp":"2026-02-20T21:36:24.969Z","toolCalls":[{"id":"toolu_bdrk_01MMXN7pxR24rEQeQUh4c9sK","type":"function","function":{"name":"admin_system_infrastructure_health_check","arguments":"{}"}},{"id":"toolu_bdrk_019qPb7mE5e8T6DwofARfFAT","type":"function","function":{"name":"runbook_quick_diagnostics","arguments":"{\"service\":\"openagentic-admin\",\"namespace\":\"openagentic\"}"}},{"id":"toolu_bdrk_01VtdVrRpgWNfYybZuL1yYvk","type":"function","function":{"name":"loki_query","arguments":"{\"query\":\"{namespace=\\\"openagentic\\\"} |= \\\"error\\\"\",\"start\":\"1h\",\"limit\":50}"}},{"id":"toolu_bdrk_01BBeeWzVqnYmZvdmDcYqepj","type":"function","function":{"name":"loki_streams","arguments":"{}"}},{"id":"toolu_bdrk_01R2X5oLQs4UFbhqLgdQzdeA","type":"function","function":{"name":"get_framework_status","arguments":"{}"}}],"mcpCalls":[{"id":"toolu_bdrk_01WVvaHfQc5oBTRpNS5QZB1S","name":"admin_full_system_test","tool":"admin_full_system_test","toolName":"admin_full_system_test","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[INTERNAL_ERROR]  | Suggestion: An unexpected error occurred. Try a different approach or ask the user for guidance.","status":"failed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_01U82aKvifwmTpM8mFUe3F2c","name":"admin_system_postgres_health_check","tool":"admin_system_postgres_health_check","toolName":"admin_system_postgres_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","status":"failed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_0149t3kkK8S8xg3nYaKcLqyX","name":"admin_system_postgres_raw_query","tool":"admin_system_postgres_raw_query","toolName":"admin_system_postgres_raw_query","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","status":"failed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_01F3Zd2cNDiS5wmcLtSZiNYs","name":"admin_system_redis_health_check","tool":"admin_system_redis_health_check","toolName":"admin_system_redis_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","status":"failed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_014f6himrS2HKSXWb6CVUfFD","name":"admin_system_redis_list_keys_by_pattern","tool":"admin_system_redis_list_keys_by_pattern","toolName":"admin_system_redis_list_keys_by_pattern","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","status":"failed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_01Xot6PUyCncTZg9XUBoyvJ1","name":"admin_system_milvus_health_check","tool":"admin_system_milvus_health_check","toolName":"admin_system_milvus_health_check","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","status":"failed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_01CdKtQVgNAr6WUDrt9oRj1p","name":"admin_system_milvus_list_collections","tool":"admin_system_milvus_list_collections","toolName":"admin_system_milvus_list_collections","serverId":"openagentic_admin","serverName":"openagentic_admin","executedOn":"mcp-proxy","arguments":{},"result":null,"error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","status":"failed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_01FA2VhUfRWTTUEpvxJZ5cHc","name":"k8s_cluster_health","tool":"k8s_cluster_health","toolName":"k8s_cluster_health","serverId":"openagentic_kubernetes","serverName":"openagentic_kubernetes","executedOn":"mcp-proxy","arguments":{},"result":{"content":[{"type":"text","text":"{\n  \"success\": false,\n  \"error\": \"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\"\n}"}],"structuredContent":{"result":{"success":false,"error":"Kubernetes client initialization failed: Invalid kube-config file. No configuration found."}},"isError":false},"status":"completed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_01RwLs4JgyX1JyFn2W9bTHNN","name":"k8s_list_pods","tool":"k8s_list_pods","toolName":"k8s_list_pods","serverId":"openagentic_kubernetes","serverName":"openagentic_kubernetes","executedOn":"mcp-proxy","arguments":{"namespace":"agentic-dev"},"result":{"content":[{"type":"text","text":"{\n  \"success\": false,\n  \"error\": \"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\"\n}"}],"structuredContent":{"result":{"success":false,"error":"Kubernetes client initialization failed: Invalid kube-config file. No configuration found."}},"isError":false},"status":"completed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_01P83V42sdKJu5mqWhfe7VgK","name":"prometheus_health_summary","tool":"prometheus_health_summary","toolName":"prometheus_health_summary","serverId":"openagentic_prometheus","serverName":"openagentic_prometheus","executedOn":"mcp-proxy","arguments":{},"result":{"content":[{"type":"text","text":"=== Prometheus Health Summary ===\n\nTargets: 50 up, 4 down\n  Down targets:\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\n    - kubernetes-apiservers: 10.2.10.131:6443\n    - kubernetes-pods: 10.42.2.37:8090\n    - kubernetes-pods: 10.42.5.19:8080\n\nAlerts: 0 firing, 0 pending\n\nKey Metrics:\n  HTTP Request Rate (5m): 0.34490740740740744\n  Error Rate (5m): unavailable\n  Active Sessions: 0"}],"structuredContent":{"result":"=== Prometheus Health Summary ===\n\nTargets: 50 up, 4 down\n  Down targets:\n    - kube-state-metrics: kube-state-metrics.kube-system.svc.cluster.local:8080\n    - kubernetes-apiservers: 10.2.10.131:6443\n    - kubernetes-pods: 10.42.2.37:8090\n    - kubernetes-pods: 10.42.5.19:8080\n\nAlerts: 0 firing, 0 pending\n\nKey Metrics:\n  HTTP Request Rate (5m): 0.34490740740740744\n  Error Rate (5m): unavailable\n  Active Sessions: 0"},"isError":false},"status":"completed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"},{"id":"toolu_bdrk_01GkRrc9xGWnAZuKGNEvcAYW","name":"loki_search_errors","tool":"loki_search_errors","toolName":"loki_search_errors","serverId":"openagentic_loki","serverName":"openagentic_loki","executedOn":"mcp-proxy","arguments":{"time_range":"1h"},"result":{"content":[{"type":"text","text":"No errors found in the last 1h"}],"structuredContent":{"result":"No errors found in the last 1h"},"isError":false},"status":"completed","startTime":1771623341999,"endTime":1771623377274,"duration":35275,"timestamp":"2026-02-20T21:36:17.274Z"}],"tokenUsage":{"prompt_tokens":0,"completion_tokens":327,"total_tokens":327},"model":"us.anthropic.claude-opus-4-6-v1","source":"database","confirmed":true,"final":true}
+
+event: tool_approval_request
+data: {"toolCallRound":2,"tools":[{"id":"toolu_bdrk_01MMXN7pxR24rEQeQUh4c9sK","name":"admin_system_infrastructure_health_check","arguments":"{}"},{"id":"toolu_bdrk_019qPb7mE5e8T6DwofARfFAT","name":"runbook_quick_diagnostics","arguments":"{\"service\":\"openagentic-admin\",\"namespace\":\"openagentic\"}"},{"id":"toolu_bdrk_01VtdVrRpgWNfYybZuL1yYvk","name":"loki_query","arguments":"{\"query\":\"{namespace=\\\"openagentic\\\"} |= \\\"error\\\"\",\"start\":\"1h\",\"limit\":50}"},{"id":"toolu_bdrk_01BBeeWzVqnYmZvdmDcYqepj","name":"loki_streams","arguments":"{}"},{"id":"toolu_bdrk_01R2X5oLQs4UFbhqLgdQzdeA","name":"get_framework_status","arguments":"{}"}],"messageId":"msg_1771623270380_byywdasm7"}
+
+event: tool_execution_start
+data: {"toolCallRound":2,"toolCount":5,"tools":[{"id":"toolu_bdrk_01MMXN7pxR24rEQeQUh4c9sK","name":"admin_system_infrastructure_health_check"},{"id":"toolu_bdrk_019qPb7mE5e8T6DwofARfFAT","name":"runbook_quick_diagnostics"},{"id":"toolu_bdrk_01VtdVrRpgWNfYybZuL1yYvk","name":"loki_query"},{"id":"toolu_bdrk_01BBeeWzVqnYmZvdmDcYqepj","name":"loki_streams"},{"id":"toolu_bdrk_01R2X5oLQs4UFbhqLgdQzdeA","name":"get_framework_status"}],"timestamp":"2026-02-20T21:36:24.974Z"}
+
+event: tool_executing
+data: {"name":"admin_system_infrastructure_health_check","arguments":{},"toolCallId":"toolu_bdrk_01MMXN7pxR24rEQeQUh4c9sK","targetServer":"openagentic_admin","timestamp":"2026-02-20T21:36:25.178Z"}
+
+event: tool_error
+data: {"name":"admin_system_infrastructure_health_check","error":"[SERVER_UNAVAILABLE] MCP server 'openagentic_admin' is not available: MCP server openagentic_admin is not running (status: failed) | Suggestion: The MCP server 'openagentic_admin' may be restarting. Wait a moment and retry, or use a different tool.","toolCallId":"toolu_bdrk_01MMXN7pxR24rEQeQUh4c9sK","targetServer":"openagentic_admin","timestamp":"2026-02-20T21:36:25.199Z"}
+
+event: tool_executing
+data: {"name":"runbook_quick_diagnostics","arguments":{"service":"openagentic-admin","namespace":"openagentic"},"toolCallId":"toolu_bdrk_019qPb7mE5e8T6DwofARfFAT","targetServer":"openagentic_runbook","timestamp":"2026-02-20T21:36:25.416Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:27.394Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:30.395Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:33.395Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:36.395Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:39.395Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:42.395Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:45.396Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:48.396Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:51.397Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:54.398Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:36:57.398Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:37:00.398Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:37:03.398Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:37:06.398Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:37:09.398Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:37:12.398Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:37:15.399Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:37:18.398Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:37:21.399Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:37:24.399Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:37:27.399Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:37:30.399Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:37:33.399Z"}
+

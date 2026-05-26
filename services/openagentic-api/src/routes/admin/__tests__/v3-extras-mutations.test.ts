@@ -162,11 +162,11 @@ describe('POST /api/admin/integrations/:platform/oauth-start', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/admin/integrations/slack/oauth-start',
-      payload: { redirect_uri: 'http://localhost:8080/admin/integrations/oauth-callback' },
+      payload: { redirect_uri: 'https://chat-dev.openagentic.io/admin/integrations/oauth-callback' },
     });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(decodeURIComponent(body.authorize_url)).toContain('chat.openagentic.local/admin/integrations/oauth-callback');
+    expect(decodeURIComponent(body.authorize_url)).toContain('chat-dev.openagentic.io/admin/integrations/oauth-callback');
     await app.close();
   });
 });

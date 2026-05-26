@@ -122,7 +122,7 @@ const SynthIndicator: React.FC<SynthIndicatorProps> = ({
           dropdownOpen && (enabled ? 'bg-purple-500/20' : 'bg-white/5'),
         )}
         style={{
-          color: enabled ? '#a855f7' : 'var(--color-textMuted)',
+          color: enabled ? 'var(--cm-accent)' : 'var(--color-textMuted)',
         }}
       >
         <BeakerIcon size={18} />
@@ -134,9 +134,9 @@ const SynthIndicator: React.FC<SynthIndicatorProps> = ({
             animate={{ scale: 1 }}
             className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold leading-none"
             style={{
-              backgroundColor: '#a855f7',
-              color: '#fff',
-              boxShadow: '0 0 8px rgba(168,85,247,0.5)',
+              backgroundColor: 'var(--cm-accent)',
+              color: 'var(--cm-bg)',
+              boxShadow: '0 0 8px color-mix(in srgb, var(--cm-accent) 50%, transparent)',
             }}
           >
             {pendingCount > 9 ? '9+' : pendingCount}
@@ -149,7 +149,7 @@ const SynthIndicator: React.FC<SynthIndicatorProps> = ({
             className="absolute inset-0 rounded-lg pointer-events-none"
             style={{
               animation: 'synth-pulse 2s ease-in-out infinite',
-              border: '1px solid rgba(168,85,247,0.3)',
+              border: '1px solid color-mix(in srgb, var(--cm-accent) 30%, transparent)',
             }}
           />
         )}
@@ -169,7 +169,7 @@ const SynthIndicator: React.FC<SynthIndicatorProps> = ({
               backdropFilter: 'blur(16px) saturate(180%)',
               WebkitBackdropFilter: 'blur(16px) saturate(180%)',
               border: '1px solid var(--color-border)',
-              boxShadow: '0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)',
+              boxShadow: '0 12px 40px color-mix(in srgb, var(--cm-text) 40%, transparent), 0 0 0 1px color-mix(in srgb, var(--cm-text) 5%, transparent)',
             }}
           >
             {/* Dropdown header */}
@@ -178,7 +178,7 @@ const SynthIndicator: React.FC<SynthIndicatorProps> = ({
               style={{ borderBottom: '1px solid var(--color-border)' }}
             >
               <div className="flex items-center gap-2">
-                <SparkleAccent size={14} color="#a855f7" />
+                <SparkleAccent size={14} color="var(--cm-accent)" />
                 <span
                   className="text-sm font-semibold"
                   style={{ color: 'var(--color-text)' }}
@@ -226,9 +226,9 @@ const SynthIndicator: React.FC<SynthIndicatorProps> = ({
                     className="relative w-11 h-6 rounded-full transition-colors"
                     style={{
                       backgroundColor: enabled
-                        ? 'rgba(168,85,247,0.3)'
-                        : 'rgba(107,114,128,0.3)',
-                      border: `1px solid ${enabled ? 'rgba(168,85,247,0.5)' : 'rgba(107,114,128,0.5)'}`,
+                        ? 'color-mix(in srgb, var(--cm-accent) 30%, transparent)'
+                        : 'color-mix(in srgb, var(--cm-text-muted) 30%, transparent)',
+                      border: `1px solid ${enabled ? 'color-mix(in srgb, var(--cm-accent) 50%, transparent)' : 'color-mix(in srgb, var(--cm-text-muted) 50%, transparent)'}`,
                     }}
                   >
                     <motion.div
@@ -237,8 +237,8 @@ const SynthIndicator: React.FC<SynthIndicatorProps> = ({
                       className="absolute top-1 w-4 h-4 rounded-full shadow"
                       style={{
                         backgroundColor: enabled
-                          ? 'rgb(168,85,247)'
-                          : 'rgb(107,114,128)',
+                          ? 'var(--cm-accent)'
+                          : 'var(--cm-text-muted)',
                       }}
                     />
                   </button>
@@ -250,10 +250,10 @@ const SynthIndicator: React.FC<SynthIndicatorProps> = ({
                 className="flex items-center justify-between p-2.5 rounded-lg"
                 style={{
                   backgroundColor: hasPending
-                    ? 'rgba(168,85,247,0.08)'
+                    ? 'color-mix(in srgb, var(--cm-accent) 8%, transparent)'
                     : 'var(--color-surfaceSecondary)',
                   border: hasPending
-                    ? '1px solid rgba(168,85,247,0.2)'
+                    ? '1px solid color-mix(in srgb, var(--cm-accent) 20%, transparent)'
                     : '1px solid var(--color-border)',
                 }}
               >
@@ -262,8 +262,8 @@ const SynthIndicator: React.FC<SynthIndicatorProps> = ({
                     <span
                       className="w-2 h-2 rounded-full"
                       style={{
-                        backgroundColor: '#a855f7',
-                        boxShadow: '0 0 6px rgba(168,85,247,0.6)',
+                        backgroundColor: 'var(--cm-accent)',
+                        boxShadow: '0 0 6px color-mix(in srgb, var(--cm-accent) 60%, transparent)',
                       }}
                     />
                   ) : (
@@ -275,7 +275,7 @@ const SynthIndicator: React.FC<SynthIndicatorProps> = ({
                   <span
                     className="text-xs font-medium"
                     style={{
-                      color: hasPending ? '#a855f7' : 'var(--color-textSecondary)',
+                      color: hasPending ? 'var(--cm-accent)' : 'var(--color-textSecondary)',
                     }}
                   >
                     {hasPending
@@ -287,8 +287,8 @@ const SynthIndicator: React.FC<SynthIndicatorProps> = ({
                   <span
                     className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
                     style={{
-                      backgroundColor: 'rgba(168,85,247,0.2)',
-                      color: '#a855f7',
+                      backgroundColor: 'color-mix(in srgb, var(--cm-accent) 20%, transparent)',
+                      color: 'var(--cm-accent)',
                     }}
                   >
                     Action Required
@@ -316,11 +316,11 @@ const SynthIndicator: React.FC<SynthIndicatorProps> = ({
       <style>{`
         @keyframes synth-pulse {
           0%, 100% {
-            box-shadow: 0 0 0 0 rgba(168,85,247,0.0);
+            box-shadow: 0 0 0 0 color-mix(in srgb, var(--cm-accent) 0%, transparent);
             opacity: 1;
           }
           50% {
-            box-shadow: 0 0 12px 2px rgba(168,85,247,0.25);
+            box-shadow: 0 0 12px 2px color-mix(in srgb, var(--cm-accent) 25%, transparent);
             opacity: 0.7;
           }
         }

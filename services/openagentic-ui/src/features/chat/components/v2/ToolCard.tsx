@@ -110,7 +110,34 @@ export function isCostTool(name: string): boolean {
  *   - no scalar keys, only objects    → "N args" fallback
  */
 export function summarizeToolInput(input: unknown): string | null {
-  if (input == null || typeof input !== 'object') return null;
+  if (input == null) return null;
+  // #868 Q2 regression fix (2026-05-23): during the `running` state,
+  // `inputDeltaContent` is a STRING (partial or complete JSON) from
+  // `tool_use_input_delta` frames — see ToolCallCard.tsx:62-65 and
+  // chatLoop/AnthropicProvider input_json_delta accumulator. The
+  // earlier `typeof input !== 'object'` guard returned null for the
+  // entire user-visible "Running…" window, so parallel fan-out cards
+  // (e.g. 6× aws_list_iam_attached_user_policies UserName=<each>) all
+  // rendered identically and looked like retry-spam. Real-model live
+  // evidence: Q2 on 0.7.1-49dada91 with gpt-oss:20b.
+  if (typeof input === 'string') {
+    const s = input.trim();
+    if (!s) return null;
+    // Try strict JSON parse first (complete arg blob).
+    try {
+      return summarizeToolInput(JSON.parse(s));
+    } catch {
+      // Partial/streaming JSON — extract first quoted-string field
+      // via regex so the user sees SOMETHING that differentiates the
+      // call (UserName="blitz", subscription_id="6ed638e7…", etc).
+      const kv = s.match(/"([A-Za-z_][\w-]*)"\s*:\s*"([^"]{1,80})"/);
+      if (kv) return `${kv[1]}: ${kv[2]}`;
+      const nkv = s.match(/"([A-Za-z_][\w-]*)"\s*:\s*(-?\d+(?:\.\d+)?|true|false)/);
+      if (nkv) return `${nkv[1]}: ${nkv[2]}`;
+      return null;
+    }
+  }
+  if (typeof input !== 'object') return null;
   const obj = input as Record<string, unknown>;
   const keys = Object.keys(obj);
   if (keys.length === 0) return null;

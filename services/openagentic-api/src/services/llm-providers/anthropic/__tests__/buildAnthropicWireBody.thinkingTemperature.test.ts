@@ -10,7 +10,7 @@
  * default sampling params: temperature MUST be 1, and top_p / top_k must
  * not be modified.
  *
- * Live error from the dev environment 2026-05-12T15:40Z, model claude-sonnet-4-6,
+ * Live error from chat-dev 2026-05-12T15:40Z, model claude-sonnet-4-6,
  * prompt: "show me all of my cloud resources by type — e.g. compute,
  * storage, etc and a full cost interactive table". Empty bubble. The
  * model dispatcher routed to Sonnet (T3 prompt) → AWSBedrockProvider →

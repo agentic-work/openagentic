@@ -790,7 +790,7 @@ const MessageBubble = memo(function MessageBubble({
           // activity-stream adapter can populate ToolCall.input/.output and
           // surface rich summaries (favicons on web_search, resource names on
           // cloud creates, etc.). Without these, tool chips render as
-          // bare title-only stubs. openagentic-your-deployment#330.
+          // bare title-only stubs. openagentic-omhs#330.
           const stepId = `interleaved-tool-${message.id}-${idx}`;
           if (!existingToolIds.has(step.id) && !existingToolIds.has(stepId)) {
             interleavedSteps.push({
@@ -977,9 +977,9 @@ const MessageBubble = memo(function MessageBubble({
                     aria-label="Edit message content"
                     className="flex-1 px-4 py-2 rounded-2xl resize-none"
                     style={{
-                      background: 'var(--user-accent-primary, rgb(124, 58, 237))',
-                      color: 'white',
-                      border: '2px solid rgba(255, 255, 255, 0.3)',
+                      background: 'var(--user-accent-primary, var(--cm-accent))',
+                      color: 'var(--cm-bg)',
+                      border: '2px solid color-mix(in srgb, var(--cm-bg) 30%, transparent)',
                       minHeight: '44px'
                     }}
                     autoFocus
@@ -988,7 +988,7 @@ const MessageBubble = memo(function MessageBubble({
                     onClick={() => onEditSubmit(message.id)}
                     aria-label="Submit edited message"
                     className="p-2 rounded-full hover:bg-white/10 transition-colors"
-                    style={{ color: 'var(--user-accent-primary, rgb(124, 58, 237))' }}
+                    style={{ color: 'var(--user-accent-primary, var(--cm-accent))' }}
                   >
                     <Send size={16} aria-hidden="true" />
                   </button>
@@ -1012,9 +1012,9 @@ const MessageBubble = memo(function MessageBubble({
                     className="rounded-[14px] px-4 py-3 text-left"
                     data-testid="user-message-bubble"
                     style={{
-                      background: 'var(--bg-2, rgba(255,255,255,0.04))',
-                      color: 'var(--fg-0, #f8fafc)',
-                      border: '1px solid var(--line-2, rgba(255,255,255,0.1))',
+                      background: 'var(--bg-2, var(--cm-bg-secondary))',
+                      color: 'var(--fg-0, var(--cm-text))',
+                      border: '1px solid var(--line-2, var(--cm-border))',
                       boxShadow: 'var(--mk-shadow-sm)',
                       // Editorial typography — mirror codemode .cm-markdown.
                       // Inter first, tighter letter-spacing, full font-feature
@@ -1048,7 +1048,7 @@ const MessageBubble = memo(function MessageBubble({
                       style={{
                         marginTop: 4,
                         fontSize: 10,
-                        color: 'var(--fg-3, #71717a)',
+                        color: 'var(--fg-3, var(--cm-text-muted))',
                         fontFamily: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
                         fontVariantNumeric: 'tabular-nums',
                         textAlign: 'right',
@@ -1124,9 +1124,9 @@ const MessageBubble = memo(function MessageBubble({
                       height: 18,
                       borderRadius: '50%',
                       background:
-                        'radial-gradient(circle at 32% 30%, var(--accent, #8b5cf6) 0%, color-mix(in srgb, var(--accent, #8b5cf6) 65%, #000) 80%, color-mix(in srgb, var(--accent, #8b5cf6) 40%, #000) 100%)',
+                        'radial-gradient(circle at 32% 30%, var(--accent, var(--cm-accent)) 0%, color-mix(in srgb, var(--accent, var(--cm-accent)) 65%, #000) 80%, color-mix(in srgb, var(--accent, var(--cm-accent)) 40%, #000) 100%)',
                       boxShadow:
-                        '0 0 0 1px var(--accent-line, rgba(139,92,246,0.32)), 0 1px 6px color-mix(in srgb, var(--accent, #8b5cf6) 35%, transparent)',
+                        '0 0 0 1px var(--accent-line, color-mix(in srgb, var(--cm-accent) 32%, transparent)), 0 1px 6px color-mix(in srgb, var(--accent, var(--cm-accent)) 35%, transparent)',
                     }}
                   >
                     <span
@@ -1137,7 +1137,7 @@ const MessageBubble = memo(function MessageBubble({
                         width: 5,
                         height: 5,
                         borderRadius: '50%',
-                        background: 'rgba(255,255,255,0.55)',
+                        background: 'color-mix(in srgb, var(--cm-accent) 30%, #fff)',
                         filter: 'blur(0.5px)',
                       }}
                     />
@@ -1281,6 +1281,14 @@ const MessageBubble = memo(function MessageBubble({
                               pyodideRequired: (block as any).pyodideRequired,
                               kind: (block as any).kind,
                               groupId: (block as any).groupId,
+                              // generate_image — image_render block fields.
+                              // AAS reads block.imageUrl to mount the inline
+                              // <img>. imageUrl is always same-origin (the
+                              // tool + reducer reject external hosts).
+                              imageUrl: (block as any).imageUrl,
+                              prompt: (block as any).prompt,
+                              model: (block as any).model,
+                              provider: (block as any).provider,
                             }))
                           : finalContentBlocks
                     }

@@ -211,14 +211,39 @@ export function wrapWithAutoTableEmit(
 // observable, which matches operator intuition ("did the cache ever wake up?").
 let __lazyResolverFirstHitLogged = false;
 
+/**
+ * Optional L1 (Redis exact-match) cache tier. Per-user, sub-ms latency,
+ * read BEFORE the L2 semantic cache. See `RedisToolResultCacheL1.ts`.
+ *
+ * When `opts.l1Cache` is provided, the wrap does:
+ *   1. L1.searchExact → hit → return immediately with _meta.cacheLayer:'L1'
+ *   2. L2.searchCache → hit → write-through to L1 + return
+ *   3. inner execute → on success: fire-and-forget BOTH L1.storeExact and L2.cacheResult
+ *
+ * When `opts.l1Cache` is absent/undefined, the wrap is byte-identical to the
+ * pre-L1 L2-only behavior. Every L1 op is wrapped in try/catch — Redis
+ * down or throwing falls through to L2 and inner, never propagates.
+ */
+export interface WrapOpts {
+  /** Optional L1 Redis exact-match cache (per-user). */
+  l1Cache?: { searchExact: (...args: any[]) => Promise<unknown | null>; storeExact: (...args: any[]) => Promise<boolean> } | null;
+  /** L1 TTL override (seconds). Default 300. */
+  l1TtlSeconds?: number;
+}
+
 export function wrapWithToolResultCache(
   cache: ToolResultCacheLike | (() => ToolResultCacheLike | undefined | null) | undefined | null,
   inner: (ctx: any, name: string, input: any) => Promise<{ ok: boolean; output?: unknown; error?: string }>,
+  opts: WrapOpts = {},
 ): (ctx: any, name: string, input: any) => Promise<{ ok: boolean; output?: unknown; error?: string }> {
+  const l1Cache = opts.l1Cache ?? null;
+  const l1TtlSeconds = opts.l1TtlSeconds ?? 300;
+
   // No-op fast path: callers that explicitly disabled caching (null/undefined)
   // get the inner executor verbatim — zero overhead, identity-preserved so the
   // existing "wrapWithToolResultCache returns inner verbatim" test still pins.
-  if (cache === undefined || cache === null) return inner;
+  // Note: the identity-preservation only applies when BOTH L1 and L2 are absent.
+  if ((cache === undefined || cache === null) && !l1Cache) return inner;
 
   // Decide once at wrap time whether the input is a resolver or a concrete
   // cache. Resolver path re-checks on every call; concrete path captures.
@@ -231,9 +256,9 @@ export function wrapWithToolResultCache(
       ? (cache as () => ToolResultCacheLike | undefined | null)()
       : (cache as ToolResultCacheLike);
 
-    if (!liveCache) {
-      // Cache not ready yet (post-init pending) — fall through to inner,
-      // preserving the pre-cache pipeline behavior.
+    if (!liveCache && !l1Cache) {
+      // Neither L1 nor L2 ready — fall through to inner, preserving the
+      // pre-cache pipeline behavior.
       return inner(ctx, name, input);
     }
 
@@ -257,8 +282,38 @@ export function wrapWithToolResultCache(
         ? ctx.userMessage
         : (typeof ctx?.user?.lastMessage === 'string' ? ctx.user.lastMessage : undefined);
 
-    // ─── Cache-before ─────────────────────────────────────────────────
-    if (!isUncacheableTool(name)) {
+    // ─── L1 (Redis exact-match) cache-before ──────────────────────────
+    // Per-user, sub-ms latency, read BEFORE L2 semantic. Same exact tool +
+    // args within TTL window short-circuits the entire dispatch including
+    // L2 vector search. Resilient — any L1 throw falls through silently.
+    if (l1Cache && !isUncacheableTool(name)) {
+      try {
+        const l1Hit = await l1Cache.searchExact(tenantId, userId, name, input);
+        if (l1Hit !== null && l1Hit !== undefined) {
+          try {
+            ctx?.logger?.info?.(
+              { toolName: name, cacheLayer: 'L1' },
+              '[TOOL-CACHE] L1 HIT (Redis exact-match) — skipping MCP execution',
+            );
+          } catch { /* noop */ }
+          const wrapped =
+            l1Hit && typeof l1Hit === 'object'
+              ? { ...(l1Hit as object), _meta: { ...(((l1Hit as any)?._meta) ?? {}), cacheHit: true, cacheLayer: 'L1' } }
+              : { value: l1Hit, _meta: { cacheHit: true, cacheLayer: 'L1' } };
+          return { ok: true, output: wrapped };
+        }
+      } catch (err) {
+        try {
+          ctx?.logger?.warn?.(
+            { err: String(err), toolName: name },
+            '[TOOL-CACHE] L1 searchExact threw — falling through to L2',
+          );
+        } catch { /* noop */ }
+      }
+    }
+
+    // ─── L2 (Milvus/pgvector semantic) cache-before ───────────────────
+    if (liveCache && !isUncacheableTool(name)) {
       try {
         const hit = await liveCache.searchCache(
           tenantId,
@@ -288,8 +343,15 @@ export function wrapWithToolResultCache(
           // splitter passes _meta through to the UI channel.
           const wrapped =
             hit.result && typeof hit.result === 'object'
-              ? { ...(hit.result as object), _meta: { ...(((hit.result as any)?._meta) ?? {}), cacheHit: true, cacheSimilarity: hit.similarity, crossUserHit: hit.crossUserHit } }
-              : { value: hit.result, _meta: { cacheHit: true, cacheSimilarity: hit.similarity, crossUserHit: hit.crossUserHit } };
+              ? { ...(hit.result as object), _meta: { ...(((hit.result as any)?._meta) ?? {}), cacheHit: true, cacheLayer: 'L2', cacheSimilarity: hit.similarity, crossUserHit: hit.crossUserHit } }
+              : { value: hit.result, _meta: { cacheHit: true, cacheLayer: 'L2', cacheSimilarity: hit.similarity, crossUserHit: hit.crossUserHit } };
+
+          // Write-through: populate L1 so the next exact repeat hits L1
+          // instead of paying the L2 vector round-trip again. Fire-and-forget.
+          if (l1Cache) {
+            void l1Cache.storeExact(tenantId, userId, name, input, hit.result, l1TtlSeconds).catch(() => {});
+          }
+
           return { ok: true, output: wrapped };
         }
       } catch (err) {
@@ -315,30 +377,37 @@ export function wrapWithToolResultCache(
       result.output !== ''
     ) {
       // Fire-and-forget — never block the dispatch on cache write failures.
-      void (async () => {
-        try {
-          const resourceScope = extractResourceScope(name, input);
-          // `shouldBeShared` is informational (logging / metrics) — the
-          // service computes is_shared internally from
-          // extractResourceScope + getRequiredPermission. We log the
-          // local derivation for parity / observability.
-          const localShared = shouldBeShared(name, resourceScope);
+      // BOTH layers get populated: L1 (Redis exact) for fast repeat hits,
+      // L2 (Milvus semantic) for cross-user paraphrase hits.
+      if (l1Cache) {
+        void l1Cache.storeExact(tenantId, userId, name, input, result.output, l1TtlSeconds).catch(() => {});
+      }
+      if (liveCache) {
+        void (async () => {
           try {
-            ctx?.logger?.debug?.(
-              { toolName: name, resourceScope, isShared: localShared },
-              '[TOOL-CACHE] caching result (fire-and-forget)',
-            );
-          } catch { /* noop */ }
-          await liveCache.cacheResult(tenantId, userId, name, input, result.output, queryText);
-        } catch (err) {
-          try {
-            ctx?.logger?.warn?.(
-              { err: String(err), toolName: name },
-              '[TOOL-CACHE] cacheResult threw (fire-and-forget non-fatal)',
-            );
-          } catch { /* noop */ }
-        }
-      })();
+            const resourceScope = extractResourceScope(name, input);
+            // `shouldBeShared` is informational (logging / metrics) — the
+            // service computes is_shared internally from
+            // extractResourceScope + getRequiredPermission. We log the
+            // local derivation for parity / observability.
+            const localShared = shouldBeShared(name, resourceScope);
+            try {
+              ctx?.logger?.debug?.(
+                { toolName: name, resourceScope, isShared: localShared },
+                '[TOOL-CACHE] caching result (fire-and-forget)',
+              );
+            } catch { /* noop */ }
+            await liveCache.cacheResult(tenantId, userId, name, input, result.output, queryText);
+          } catch (err) {
+            try {
+              ctx?.logger?.warn?.(
+                { err: String(err), toolName: name },
+                '[TOOL-CACHE] cacheResult threw (fire-and-forget non-fatal)',
+              );
+            } catch { /* noop */ }
+          }
+        })();
+      }
     }
 
     return result;
@@ -377,6 +446,7 @@ import {
   shouldBeShared,
   extractResourceScope,
 } from './ToolResultCacheService.js';
+import { getRedisToolResultCacheL1 } from './RedisToolResultCacheL1.js';
 // Phase C.5 (2026-05-11) — lazy process-singleton for the CredentialBroker.
 // Production wiring resolves the singleton via this getter; tests pass an
 // explicit stub via `BuildChatV2DepsOptions.synthCredentialBroker`.
@@ -943,6 +1013,12 @@ export interface BuildChatV2DepsOptions {
    * pipeline runs without caching.
    */
   toolResultCache?: ToolResultCacheLike | null;
+  /**
+   * L1 (Redis exact-match) cache override (tests). When omitted (production),
+   * the factory resolves `getRedisToolResultCacheL1()` and wires it ahead of
+   * the L2 semantic cache. See `RedisToolResultCacheL1.ts`.
+   */
+  l1Cache?: { searchExact: (...args: any[]) => Promise<unknown | null>; storeExact: (...args: any[]) => Promise<boolean> } | null;
 }
 
 /**
@@ -1211,11 +1287,17 @@ export function buildChatV2Deps(opts: BuildChatV2DepsOptions): ChatV2DepsWithPer
   //   - lazyToolResultCacheResolver (production) → wrap re-checks per call
   //   - resolvedToolResultCache (test injection) → wrap captures once
   //   - both undefined (opt-out / no path) → no wrap, inner returned verbatim
+  // L1 Redis exact-match cache — per-user, sub-ms latency, sits IN FRONT of
+  // the L2 semantic cache. Lazy-resolved via singleton so it works regardless
+  // of Redis init ordering (Redis connects fast, but the singleton is cheap
+  // either way). Tests inject via opts.l1Cache when they need to override.
+  const l1Cache = opts.l1Cache ?? getRedisToolResultCacheL1();
+
   const wrappedExecuteMcpTool = lazyToolResultCacheResolver
-    ? wrapWithToolResultCache(lazyToolResultCacheResolver, innerExecuteMcpTool)
+    ? wrapWithToolResultCache(lazyToolResultCacheResolver, innerExecuteMcpTool, { l1Cache })
     : resolvedToolResultCache
-      ? wrapWithToolResultCache(resolvedToolResultCache, innerExecuteMcpTool)
-      : innerExecuteMcpTool;
+      ? wrapWithToolResultCache(resolvedToolResultCache, innerExecuteMcpTool, { l1Cache })
+      : wrapWithToolResultCache(null, innerExecuteMcpTool, { l1Cache });
 
   const base: RunChatDeps = {
     providerManager: opts.providerManager,

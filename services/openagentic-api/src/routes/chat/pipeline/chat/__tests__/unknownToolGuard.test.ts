@@ -122,4 +122,39 @@ describe('buildOfferedToolNames', () => {
   it('handles empty array', () => {
     expect(buildOfferedToolNames([]).size).toBe(0);
   });
+
+  // Regression of #850 (2026-05-23): the chatLoop bug was computing the
+  // set ONCE at turn-start, missing tools added mid-loop by tool_search
+  // discovery. Live trace: 16 offered initially → 7×tool_search → model
+  // dispatched k8s_list_pods (legitimately discovered) → guard rejected
+  // as "hallucinated" → synthetic error → model told user "tool not
+  // available". Fix: rebuild the set every dispatch. This test pins that
+  // rebuilding after a mid-loop mutation of the underlying array DOES
+  // pick up the new tool.
+  it('picks up tools appended to the underlying array (discovery scenario)', () => {
+    const tools: unknown[] = [
+      { type: 'function', function: { name: 'tool_search' } },
+      { type: 'function', function: { name: 'Task' } },
+    ];
+    // First snapshot — only the meta tools.
+    const before = buildOfferedToolNames(tools);
+    expect(before.has('k8s_list_pods')).toBe(false);
+    expect(before.size).toBe(2);
+
+    // Discovery hook mutates the array (chatLoop.ts:671 `tools.push(def)`).
+    tools.push({ type: 'function', function: { name: 'k8s_list_pods' } });
+
+    // Second snapshot — must include the freshly-pushed tool. This is what
+    // the chatLoop fix at the dispatch site relies on.
+    const after = buildOfferedToolNames(tools);
+    expect(after.has('k8s_list_pods')).toBe(true);
+    expect(after.has('tool_search')).toBe(true);
+    expect(after.size).toBe(3);
+
+    // Crucially: the "before" set must NOT have been mutated retroactively.
+    // The helper must return a fresh Set per call, otherwise a buggy caller
+    // that holds onto an old reference would still appear to work.
+    expect(before.has('k8s_list_pods')).toBe(false);
+    expect(before.size).toBe(2);
+  });
 });

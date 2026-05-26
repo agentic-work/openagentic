@@ -7,9 +7,12 @@
  *   - expanded: full WidgetRenderer chrome with a Collapse header button.
  *     Expanded state is marked with a nested `data-testid="viz-render-expanded"`.
  *
- * Diagram-class templates (arch_diagram / reactflow_arch / arch) show a
- * Pop out button that dispatches `openDiagramModal(blockId)`. The modal
- * itself is a separate task; the dispatch is a debug-log stub for now.
+ * EVERY visualization gets an "Expand" button that opens a full-screen
+ * modal (ChartExpandModal) with the same WidgetRenderer at larger size +
+ * wheel-zoom + pan. Sev-0 #1065 — previously this was gated to
+ * arch_diagram / reactflow_arch / arch only AND the click handler was a
+ * console.debug stub, so sankey / line / bar / donut / network / chord
+ * / heatmap had NO openable + zoom/scan affordance.
  *
  * Expand/collapse state is persisted per block.id in sessionStorage.
  *
@@ -17,21 +20,16 @@
  * chrome propagates parent theme via existing WidgetRenderer plumbing.
  */
 
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 
 import { WidgetRenderer } from '../v2/WidgetRenderer';
+import { ChartExpandModal } from '../../../../lib/charts/ChartExpandModal';
 
 import type { ContentBlock } from './types/activity.types';
 
 export interface InlineVizBadgeProps {
   block: ContentBlock;
 }
-
-const DIAGRAM_TEMPLATES: ReadonlySet<string> = new Set([
-  'arch_diagram',
-  'reactflow_arch',
-  'arch',
-]);
 
 function storageKey(id: string): string {
   return `viz-render-expanded:${id}`;
@@ -53,9 +51,9 @@ function readInitialExpanded(id: string): boolean {
 
 export const InlineVizBadge: React.FC<InlineVizBadgeProps> = ({ block }) => {
   const [expanded, setExpanded] = useState<boolean>(() => readInitialExpanded(block.id));
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
   const isStreaming = !block.isComplete;
   const template = block.template || block.kind || 'visualization';
-  const isDiagramClass = useMemo(() => DIAGRAM_TEMPLATES.has(template), [template]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -77,17 +75,15 @@ export const InlineVizBadge: React.FC<InlineVizBadgeProps> = ({ block }) => {
     [toggle],
   );
 
-  const onPopOut = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      // Modal pop-out for diagram-class templates is a separate task —
-      // dispatch is a stub until the modal infrastructure lands. The
-      // hook name keeps the integration contract documented in code.
-      // eslint-disable-next-line no-console
-      console.debug('[viz-render] openDiagramModal stub', block.id);
-    },
-    [block.id],
-  );
+  // Sev-0 #1065 — Expand opens the ChartExpandModal for ANY viz template
+  // (sankey, line, bar, donut, network, chord, heatmap, arch_diagram, …).
+  // Modal mounts the same WidgetRenderer at full-screen size so wheel-zoom
+  // + click-drag pan from the underlying chart primitive work naturally.
+  const onPopOut = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setModalOpen(true);
+  }, []);
+  const onModalClose = useCallback(() => setModalOpen(false), []);
 
   return (
     <div
@@ -150,34 +146,36 @@ export const InlineVizBadge: React.FC<InlineVizBadgeProps> = ({ block }) => {
             background: 'var(--cm-bg)',
           }}
         >
-          {isDiagramClass && (
-            <div
+          {/* Sev-0 #1065 — Expand button shown for EVERY viz template
+             (sankey, line, bar, donut, network, chord, heatmap, arch_*).
+             Click opens a full-screen modal where the chart primitive's
+             native wheel-zoom + click-drag pan kicks in. */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              padding: '6px 10px',
+              borderBottom: '1px solid var(--cm-border)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={onPopOut}
+              aria-label="Expand visualization"
+              data-testid="viz-render-popout"
               style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                padding: '6px 10px',
-                borderBottom: '1px solid var(--cm-border)',
+                background: 'transparent',
+                border: '1px solid var(--cm-border)',
+                color: 'var(--accent)',
+                cursor: 'pointer',
+                fontSize: 12,
+                padding: '2px 8px',
+                borderRadius: 4,
               }}
             >
-              <button
-                type="button"
-                onClick={onPopOut}
-                aria-label="Pop out diagram"
-                data-testid="viz-render-popout"
-                style={{
-                  background: 'transparent',
-                  border: '1px solid var(--cm-border)',
-                  color: 'var(--accent)',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  padding: '2px 8px',
-                  borderRadius: 4,
-                }}
-              >
-                Pop out
-              </button>
-            </div>
-          )}
+              Expand
+            </button>
+          </div>
           <WidgetRenderer
             template={template}
             kind={(block.kind as 'svg' | 'html' | 'reactflow_arch' | 'arch_diagram' | 'chart') ?? 'svg'}
@@ -188,6 +186,21 @@ export const InlineVizBadge: React.FC<InlineVizBadgeProps> = ({ block }) => {
           />
         </div>
       )}
+      <ChartExpandModal
+        title={block.title || template}
+        subtitle={block.caption}
+        open={modalOpen}
+        onClose={onModalClose}
+      >
+        <WidgetRenderer
+          template={template}
+          kind={(block.kind as 'svg' | 'html' | 'reactflow_arch' | 'arch_diagram' | 'chart') ?? 'svg'}
+          content={block.content}
+          title={block.title}
+          caption={block.caption}
+          loadingMessages={block.loadingMessages}
+        />
+      </ChartExpandModal>
     </div>
   );
 };

@@ -406,6 +406,107 @@ export function withEmptyToolResultGuard(content: unknown): string {
 }
 
 /**
+ * Sev-0 META #1105 (2026-05-24) — empty-result fabrication guard
+ * (separate system message injection layer).
+ *
+ * Live evidence (2026-05-24): model dispatched `memory_search`, tool
+ * returned `[]`, model fabricated a full table of fake compute-prod /
+ * data-warehouse / ml-training dollar values to fill the void. User
+ * caught it. Latest in a Sev-0 META pattern (#826, #878, #883, #887,
+ * #899, #1009, #1017).
+ *
+ * Layer 3 of the empty-result defense (companion to Layer 1
+ * static-prompt clause + Layer 2 SYSTEM-NOTE prefix on tool_result
+ * content). Adds a SEPARATE `{role:'system', content: ...}` message
+ * pushed into `messages[]` AFTER the `role:'tool'` message, so the
+ * model sees an unambiguous in-band directive on its next turn:
+ *
+ *   "⚠️ The previous tool call returned no data (empty result). Do
+ *    NOT invent or fabricate values to fill this absence. Either:
+ *    (a) state honestly that the tool returned no results, OR (b)
+ *    call request_clarification to ask the user for the correct
+ *    scope/parameters. Reporting "no data" is a CORRECT and
+ *    EXPECTED behavior — fabrication is a failure."
+ *
+ * The wider detection heuristic catches shapes the layer-2
+ * `isEmptyToolResultContent` does NOT (by design — that one is
+ * surgical on the tool_result body):
+ *   - `{count: 0}` (no rows/items/data wrapper)
+ *   - `{results: []}` (different wrapper key)
+ *   - MCP envelope `{content: [{text: '<json>'}]}` where the
+ *     parsed `text` matches any of the empty shapes
+ */
+export const EMPTY_RESULT_GUARD_SYSTEM_MESSAGE =
+  '⚠️ The previous tool call returned no data (empty result). Do NOT invent or fabricate values to fill this absence. Either: (a) state honestly that the tool returned no results, OR (b) call request_clarification to ask the user for the correct scope/parameters. Reporting "no data" is a CORRECT and EXPECTED behavior — fabrication is a failure.';
+
+/**
+ * #1105 — wider empty-result detection used by the separate-system-message
+ * injection layer. Catches the shapes `isEmptyToolResultContent` skips
+ * plus unwraps MCP envelopes whose `.content[0].text` is a JSON string
+ * matching an empty shape.
+ *
+ * Returns true for ANY of:
+ *   - all the shapes `isEmptyToolResultContent` flags (delegated), PLUS
+ *   - `{count: 0}` standalone
+ *   - `{results: []}` (wrapper key besides rows/items/data)
+ *   - `{rows:[], count: 0}` (already true via rows:[], but pinned)
+ *   - MCP envelope `{content: [{text: '<JSON>'}]}` where the parsed
+ *     JSON matches any empty shape above
+ */
+export function isEmptyForFabricationGuard(content: unknown, isError = false): boolean {
+  // Delegate the core empty shapes to the existing helper.
+  if (isEmptyToolResultContent(content, isError)) return true;
+
+  // Recognize the layer-2 SYSTEM NOTE prefix — when layer-2 has already
+  // wrapped an empty payload, the string starts with the prefix. We
+  // treat that as "still empty" so layer-3 can add its separate system
+  // message even though the string itself is substantive in isolation.
+  if (typeof content === 'string' && content.startsWith(EMPTY_TOOL_RESULT_SYSTEM_NOTE)) {
+    return true;
+  }
+
+  if (typeof content === 'object' && content !== null && !Array.isArray(content)) {
+    const obj = content as Record<string, unknown>;
+
+    // {count: 0} — even without a rows/items/data wrapper, count:0 is the
+    // canonical "zero hits" signal from search/list APIs.
+    if (typeof obj.count === 'number' && obj.count === 0) return true;
+
+    // {results: []} — wrapper key besides rows/items/data.
+    if (Array.isArray(obj.results) && obj.results.length === 0) return true;
+
+    // MCP envelope unwrap: { content: [{ type?:'text', text: '<JSON>' }, ...] }
+    // The python-MCP family (openagentic-*) returns this shape verbatim. The model
+    // sees the text payload; we must look through it to detect emptiness.
+    if (Array.isArray(obj.content) && obj.content.length > 0) {
+      const first = obj.content[0] as { text?: unknown } | null | undefined;
+      if (first && typeof first === 'object' && typeof first.text === 'string') {
+        const trimmed = first.text.trim();
+        // Empty text payload directly.
+        if (trimmed === '' || trimmed === '[]' || trimmed === '{}' || trimmed === 'null') {
+          return true;
+        }
+        // JSON-parse the text and recurse — depth-limited to one level so
+        // we don't pathologically chase nested envelopes.
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (isEmptyToolResultContent(parsed, false)) return true;
+          if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+            const p = parsed as Record<string, unknown>;
+            if (typeof p.count === 'number' && p.count === 0) return true;
+            if (Array.isArray(p.results) && p.results.length === 0) return true;
+          }
+        } catch {
+          // Non-JSON text payload — leave to layer 2.
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
  * #1020 task-attention guard (Q17 empirical, 2026-05-21).
  *
  * Q14 vs Q17 evidence: same kube-system 33-pod inventory prompt, same model
@@ -765,6 +866,21 @@ export async function chatLoop(
   // from what it already has. Mirrors the synthesisRetried bound but
   // keyed on tool repetition rather than empty-end_turn.
   const NO_PROGRESS_THRESHOLD = 3;
+  // Bug B (2026-05-24) — artifact tools (compose_visual, compose_app,
+  // render_artifact, generate_image) are NEVER usefully called more than
+  // once with the same args within a single loop. Duplicate emission
+  // ships a duplicate artifact to the UI. Tighten the no-progress
+  // threshold to 2 (i.e. guard fires on the 2nd identical call) for
+  // these tools; non-artifact tools keep the original threshold of 3.
+  const ARTIFACT_TOOL_NAMES: ReadonlySet<string> = new Set([
+    'compose_visual',
+    'compose_app',
+    'render_artifact',
+    'generate_image',
+  ]);
+  function noProgressThresholdFor(toolName: string): number {
+    return ARTIFACT_TOOL_NAMES.has(toolName) ? 2 : NO_PROGRESS_THRESHOLD;
+  }
   const toolCallCounts = new Map<string, number>();
   // Discovery primitives vary their args (query string) per call. Original
   // 2026-05-12 fix tracked them by NAME ONLY so repeated tool_search /
@@ -1282,7 +1398,7 @@ export async function chatLoop(
       toolCallCounts.set(sig, count);
       if (
         !noProgressGuardFired &&
-        count >= NO_PROGRESS_THRESHOLD &&
+        count >= noProgressThresholdFor(block.name) &&
         (!noProgressTriggerTool || count > noProgressTriggerTool.count)
       ) {
         noProgressTriggerTool = { name: block.name, count };
@@ -1347,7 +1463,14 @@ export async function chatLoop(
     // `ask` and HITL popped a useless "approve list?" prompt that timed-
     // out after 120s. We catch the unknown name BEFORE the permission gate
     // and feed a synthetic tool_result back so the model can self-correct.
-    const offeredToolNames = buildOfferedToolNames(tools);
+    //
+    // 2026-05-23 (regression of #850): the set was originally built ONCE
+    // here at turn start. Discovery via tool_search mutates `tools` mid-loop
+    // (line ~671 `tools.push(def)`), so a tool the model legitimately
+    // discovered (e.g. k8s_list_pods after tool_search) would still be
+    // flagged as unknown. Fix: rebuild the set on every dispatch so the
+    // discovered tools are honored. `buildOfferedToolNames` is O(N) and
+    // the catalog stays under a few hundred items — negligible cost.
 
     /**
      * Phase 3 — wrap the unwrapped `deps.dispatch` so:
@@ -1374,6 +1497,10 @@ export async function chatLoop(
       // HITL on a name that does not exist. The synthesized tool_result
       // tells the model the real catalog so it can self-correct on the
       // next turn (and the no-progress guard at #763 traps repeats).
+      // Recompute every dispatch — see comment above (regression of #850).
+      // `tools` is mutated mid-loop by discovery (tool_search side-channel),
+      // so we MUST snapshot the current set, not a stale turn-start one.
+      const offeredToolNames = buildOfferedToolNames(tools);
       const unknownToolErr = findUnknownToolCallError(call.name, offeredToolNames);
       if (unknownToolErr) {
         ctx.logger.warn(
@@ -1424,7 +1551,13 @@ export async function chatLoop(
         const latestUserText = extractLatestUserText(messages);
         const userAsked = userMessageHasExplicitArtifactVerb(latestUserText);
         const conceptual = isConceptualTemplate(call.input);
-        if (!userAsked && !conceptual && !conversationHasNumericGrounding(messages)) {
+        // Bug A (2026-05-24) — drop the conversationHasNumericGrounding
+        // bypass. memory_search results containing numbers were tripping the
+        // bypass on prompts where the user did NOT ask for a chart, causing
+        // unsolicited compose_visual emission. Per
+        // [[feedback_artifacts_must_be_explicitly_requested]]: require
+        // userAsked || conceptual; no numeric-grounding escape valve.
+        if (!userAsked && !conceptual) {
           ctx.logger.warn(
             {
               toolName: call.name,
@@ -1432,13 +1565,13 @@ export async function chatLoop(
               messagesCount: messages.length,
               latestUserText: latestUserText?.slice(0, 200),
             },
-            '[chat] #871/#947 anti-bias gate — compose_visual/compose_app dispatched with no prior numeric tool_result AND no explicit user-ask AND non-conceptual template; emitting synthetic tool_result error',
+            '[chat] #871/#947 anti-bias gate — compose_visual/compose_app dispatched without explicit user-ask AND non-conceptual template; emitting synthetic tool_result error',
           );
           return {
             ok: false,
             error:
-              `compose_visual and compose_app require structured numeric data from a prior tool_result in the conversation. ` +
-              `No such tool_result is in scope for this turn — fetch the data with a real tool first (e.g. azure_cost_query / aws_cost_explorer / gcp_billing_query), or answer in plain prose if the user's question does not need a chart.`,
+              `compose_visual and compose_app fire only when the user explicitly asks for a chart, diagram, or app (verbs like render, plot, visualize, draw, make a chart, make a diagram). ` +
+              `The current user prompt did not request a visualization — answer in plain prose, or call request_clarification if the user's intent is ambiguous.`,
           };
         }
         if (userAsked || conceptual) {
@@ -1718,6 +1851,49 @@ export async function chatLoop(
     }
 
     messages.push({ role: 'tool', content: toolResults });
+
+    // Sev-0 META #1105 (2026-05-24) — fabrication-on-empty-tool-result
+    // guard. Layer 3 of the empty-result defense: when ANY tool_result
+    // landing in the next turn's `messages` is empty per the wider
+    // detection heuristic (catches `{count:0}`, `{results:[]}`, and
+    // MCP-envelope-wrapped empties on top of the layer-2 shapes), push
+    // a SEPARATE `role:'system'` message right after the tool message
+    // so the model sees an unambiguous in-band directive on its next
+    // turn: "Do NOT invent or fabricate". Live evidence: model
+    // dispatched memory_search, tool returned `[]`, model fabricated
+    // a full table of fake compute-prod / data-warehouse / ml-training
+    // dollar values. The layer-2 SYSTEM NOTE prefix on the tool_result
+    // content alone was insufficient — gpt-oss:20b still ignored it.
+    // The separate system message lands BETWEEN the tool message and
+    // the next provider call, which keeps it salient for the model.
+    {
+      let anyEmpty = false;
+      for (const r of toolResults) {
+        if (isEmptyForFabricationGuard(r.content, r.is_error === true)) {
+          anyEmpty = true;
+          break;
+        }
+      }
+      if (anyEmpty) {
+        ctx.logger.warn(
+          {
+            turn,
+            toolResultCount: toolResults.length,
+          },
+          '[chat] [empty-result-guard] #1105 — at least one tool_result is empty; injecting role:"system" fabrication-refusal directive into next-turn messages',
+        );
+        // chatLoop's messages array is typed `user|assistant|tool` to match
+        // ProviderRequest. We push role:'system' here per Sev-0 META #1105
+        // spec — the directive lands as a distinct salient frame between
+        // the empty tool_result and the next provider call. Downstream
+        // providers (ProviderManager.createCompletion) fold system-role
+        // messages mid-array into the prompt appropriately.
+        (messages as Array<{ role: string; content: any }>).push({
+          role: 'system',
+          content: EMPTY_RESULT_GUARD_SYSTEM_MESSAGE,
+        });
+      }
+    }
 
     // C3 — update the accumulated MCP result count and compose-dispatched flag
     // for the pre-turn detector on the next iteration.

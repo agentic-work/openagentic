@@ -68,10 +68,10 @@ const ReconnectedPillComponent: React.FC<ReconnectedPillProps> = ({
         gap: 6,
         padding: '4px 9px',
         borderRadius: 99,
-        background: 'rgba(34,197,94,0.10)',
-        border: '1px solid rgba(34,197,94,0.28)',
+        background: 'color-mix(in srgb, var(--cm-success) 10%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--cm-success) 28%, transparent)',
         fontSize: 11,
-        color: '#86efac',
+        color: 'var(--cm-success)',
         fontFamily: 'JetBrains Mono, monospace',
         lineHeight: 1,
         animation: 'reconnected-pill-pulse 0.35s ease-out',
@@ -82,7 +82,7 @@ const ReconnectedPillComponent: React.FC<ReconnectedPillProps> = ({
       {suffix && (
         <span
           style={{
-            color: '#a1a1aa',
+            color: 'var(--cm-text-muted)',
             fontFamily: 'Inter, sans-serif',
             marginLeft: 4,
           }}

@@ -57,8 +57,8 @@ const CorrectionBlockComponent: React.FC<CorrectionBlockProps> = ({
       title={title}
       style={{
         padding: '8px 12px',
-        border: '1px solid rgba(239,68,68,0.28)',
-        background: 'rgba(239,68,68,0.05)',
+        border: '1px solid color-mix(in srgb, var(--cm-error) 28%, transparent)',
+        background: 'color-mix(in srgb, var(--cm-error) 5%, transparent)',
         borderRadius: 8,
         fontSize: 12,
         margin: '6px 0',
@@ -69,7 +69,7 @@ const CorrectionBlockComponent: React.FC<CorrectionBlockProps> = ({
           display: 'inline-flex',
           alignItems: 'center',
           gap: 5,
-          color: '#fca5a5',
+          color: 'var(--cm-error)',
           fontSize: 11,
           fontWeight: 600,
           textTransform: 'uppercase',
@@ -84,8 +84,8 @@ const CorrectionBlockComponent: React.FC<CorrectionBlockProps> = ({
         <del
           data-testid="correction-wrong"
           style={{
-            color: '#71717a',
-            textDecorationColor: 'rgba(239,68,68,0.6)',
+            color: 'var(--cm-text-muted)',
+            textDecorationColor: 'color-mix(in srgb, var(--cm-error) 60%, transparent)',
           }}
         >
           {wrongPreview}
@@ -95,8 +95,8 @@ const CorrectionBlockComponent: React.FC<CorrectionBlockProps> = ({
           data-testid="correction-corrected"
           style={{
             textDecoration: 'none',
-            color: '#f8fafc',
-            background: 'rgba(34,197,94,0.08)',
+            color: 'var(--cm-text)',
+            background: 'color-mix(in srgb, var(--cm-success) 8%, transparent)',
             padding: '1px 4px',
             borderRadius: 3,
           }}
@@ -106,7 +106,7 @@ const CorrectionBlockComponent: React.FC<CorrectionBlockProps> = ({
         {reason && (
           <span
             style={{
-              color: '#71717a',
+              color: 'var(--cm-text-muted)',
               marginLeft: 8,
               fontSize: 11,
             }}

@@ -38,7 +38,7 @@ import {
 import type { CanonicalEvent } from '../CanonicalEvent.js';
 
 const PROMPT_TOOL_NAME = 'azure_list_subscriptions';
-const PROMPT_TOOL_ARGS = { tenantId: 'openagentic-test' };
+const PROMPT_TOOL_ARGS = { tenantId: 'phatoldsun' };
 const PROMPT_TEXT = "I'll call the subscription tool now.";
 
 /**
@@ -210,7 +210,7 @@ function runOpenAI(): CanonicalEvent[] {
             tool_calls: [
               {
                 index: 0,
-                function: { arguments: 'openagentic-test"}' },
+                function: { arguments: 'phatoldsun"}' },
               },
             ],
           },

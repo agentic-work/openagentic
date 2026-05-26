@@ -24,7 +24,7 @@ export interface ModelRow {
   fca: number | null         // function-calling accuracy (MCR-derived)
   inputCostPer1k: number | null
   outputCostPer1k: number | null
-  costSource: 'registry' | 'mcr-estimate' | 'unknown'
+  costSource: 'registry' | 'mcr-estimate' | 'local-free' | 'estimated' | 'unknown'
   avgLatencyMs: number | null
   family: string | null
   raw: LlmRegistryRow

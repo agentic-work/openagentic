@@ -231,12 +231,12 @@ describe('aggregate node — mocked /v1/chat/completions', () => {
   });
 });
 
-describe('aggregate — live host.docker.internal:11434/gpt-oss:20b', () => {
+describe('aggregate — live hal:11434/gpt-oss:20b', () => {
   it('reduce mode produces a real summary from the live model', async () => {
-    harnessServer.use(http.get('http://host.docker.internal:11434/api/tags', () => passthrough()));
+    harnessServer.use(http.get('http://hal:11434/api/tags', () => passthrough()));
     let halReachable = false;
     try {
-      const r = await fetch('http://host.docker.internal:11434/api/tags', { signal: AbortSignal.timeout(2_000) });
+      const r = await fetch('http://hal:11434/api/tags', { signal: AbortSignal.timeout(2_000) });
       halReachable = r.ok;
     } catch {
       halReachable = false;
@@ -244,7 +244,7 @@ describe('aggregate — live host.docker.internal:11434/gpt-oss:20b', () => {
     if (!halReachable) {
       // eslint-disable-next-line no-console
       console.warn(
-        '[aggregate.live] host.docker.internal:11434 unreachable — skipping live reduce assertion. ' +
+        '[aggregate.live] hal:11434 unreachable — skipping live reduce assertion. ' +
           'Re-run from a host with cluster DNS to exercise the registered model.',
       );
       return;
@@ -255,7 +255,7 @@ describe('aggregate — live host.docker.internal:11434/gpt-oss:20b', () => {
         const body = (await request.json()) as {
           messages: Array<{ role: string; content: string }>;
         };
-        const ollamaRes = await fetch('http://host.docker.internal:11434/api/chat', {
+        const ollamaRes = await fetch('http://hal:11434/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

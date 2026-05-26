@@ -13,7 +13,7 @@
  *     npx tsx tests/e2e/helpers/saveAuthState.ts
  *
  * Or, if you want to capture from an existing browser session, paste
- * the value of `localStorage.auth_token` from the dev devtools.
+ * the value of `localStorage.auth_token` from the chat-dev devtools.
  *
  * Output: writes `.auth/user.json` at the repo root.
  */
@@ -21,7 +21,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-const ORIGIN = process.env.BASE_URL || 'http://localhost:8080';
+const ORIGIN = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
 const COOKIE_DOMAIN = new URL(ORIGIN).hostname;
 const OUT_PATH = path.join(__dirname, '..', '..', '..', '.auth', 'user.json');
 
@@ -38,7 +38,7 @@ function main() {
   const jwt = process.env.AUTH_JWT;
   if (!jwt) {
     console.error('AUTH_JWT env var is required.');
-    console.error('Get it from the dev environment devtools: localStorage.getItem("auth_token")');
+    console.error('Get it from chat-dev devtools: localStorage.getItem("auth_token")');
     process.exit(1);
   }
   const exp = decodeJwtExp(jwt) ?? Math.floor(Date.now() / 1000) + 86400;

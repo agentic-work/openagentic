@@ -366,7 +366,7 @@ const getToolIcon = (toolName: string): React.ReactNode => {
  * stay on the string-flattened `getCompactSummary` to preserve their
  * existing layout assumptions.
  *
- * Closes openagentic-your-deployment#330 Tier 1 — the favicon URLs were already
+ * Closes openagentic-omhs#330 Tier 1 — the favicon URLs were already
  * being computed by `summarizeToolCall` and discarded by the string
  * collapse below; this helper exposes them.
  */
@@ -412,7 +412,7 @@ const getCompactSummary = (toolCall: ToolCall): string | null => {
  * as small chips with optional hint tooltips. Designed to fit on the
  * single-line success row alongside the duration timestamp.
  *
- * openagentic-your-deployment#330 Tier 2.
+ * openagentic-omhs#330 Tier 2.
  */
 /** Map a RichSummary.icon name to a component from `@/shared/icons`. */
 const RICH_ICON_MAP = {
@@ -438,10 +438,10 @@ const RICH_ICON_MAP = {
 const SummaryRich: React.FC<{ summary: RichSummary }> = ({ summary }) => {
   const toneColor = (tone: 'default' | 'success' | 'warn' | 'danger' | 'info' | undefined) => {
     switch (tone) {
-      case 'success': return { bg: 'color-mix(in srgb, #16a34a 18%, transparent)', fg: '#16a34a' };
-      case 'warn':    return { bg: 'color-mix(in srgb, #d97706 18%, transparent)', fg: '#d97706' };
-      case 'danger':  return { bg: 'color-mix(in srgb, #dc2626 18%, transparent)', fg: '#dc2626' };
-      case 'info':    return { bg: 'color-mix(in srgb, var(--color-primary) 18%, transparent)', fg: 'var(--color-primary)' };
+      case 'success': return { bg: 'color-mix(in srgb, var(--cm-success) 18%, transparent)', fg: 'var(--cm-success)' };
+      case 'warn':    return { bg: 'color-mix(in srgb, var(--cm-warning) 18%, transparent)', fg: 'var(--cm-warning)' };
+      case 'danger':  return { bg: 'color-mix(in srgb, var(--cm-error) 18%, transparent)', fg: 'var(--cm-error)' };
+      case 'info':    return { bg: 'color-mix(in srgb, var(--cm-accent) 18%, transparent)', fg: 'var(--cm-accent)' };
       default:        return { bg: 'color-mix(in srgb, var(--color-text) 8%, transparent)', fg: 'var(--color-text-secondary)' };
     }
   };
@@ -546,7 +546,7 @@ const SummaryRich: React.FC<{ summary: RichSummary }> = ({ summary }) => {
                 {item.badge && (() => {
                   // Per-item status pill (✓ / ✕ / running / etc) — used by
                   // delegate_to_agents to surface sub-agent outcomes at a
-                  // glance. openagentic-your-deployment#330 Tier 4.
+                  // glance. openagentic-omhs#330 Tier 4.
                   const c = toneColor(item.badgeTone);
                   return (
                     <span
@@ -685,10 +685,10 @@ const StatusDot: React.FC<StatusDotProps> = memo(({ status, size = 14 }) => {
         width: size,
         height: size,
         borderRadius: '50%',
-        background: '#2ea043',
+        background: 'var(--cm-success)',
         flexShrink: 0,
       }}>
-        <Check size={size * 0.6} style={{ color: '#fff' }} />
+        <Check size={size * 0.6} style={{ color: 'var(--cm-bg)' }} />
       </span>
     );
   }
@@ -701,10 +701,10 @@ const StatusDot: React.FC<StatusDotProps> = memo(({ status, size = 14 }) => {
         width: size,
         height: size,
         borderRadius: '50%',
-        background: '#da3633',
+        background: 'var(--cm-error)',
         flexShrink: 0,
       }}>
-        <XCircle size={size * 0.6} style={{ color: '#fff' }} />
+        <XCircle size={size * 0.6} style={{ color: 'var(--cm-bg)' }} />
       </span>
     );
   }
@@ -726,7 +726,7 @@ StatusDot.displayName = 'StatusDot';
 // ============================================================================
 // Category Badge — icon-led pill (icon + category name). Replaces the
 // text-only badge so users can scan tool steps by category at a glance
-// (☁️ AWS, ☁️ Azure, ⎈ Kubernetes, etc). openagentic-your-deployment#330.
+// (☁️ AWS, ☁️ Azure, ⎈ Kubernetes, etc). openagentic-omhs#330.
 // ============================================================================
 
 const CATEGORY_ICON_MAP: Record<string, React.FC<any>> = {
@@ -1532,7 +1532,7 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
                 - 'links' → SummaryLinks (favicon + title pills)
                 - 'text'  → flat text span
               Anything else (kind 'none' or null) renders nothing.
-              See openagentic-your-deployment#330. */}
+              See openagentic-omhs#330. */}
           {finalStatus === 'success' && structuredSummary?.kind === 'rich' ? (
             <SummaryRich summary={structuredSummary} />
           ) : finalStatus === 'success' && structuredSummary?.kind === 'links' && structuredSummary.items.length > 0 ? (
@@ -1555,7 +1555,7 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
           {finalStatus === 'error' && errorMessage && (
             <span style={{
               fontSize: 11,
-              color: '#da3633',
+              color: 'var(--cm-error)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -1713,9 +1713,15 @@ const TreeStepsContainer: React.FC<TreeStepsContainerProps> = memo(({
   const errorCount = toolCalls.filter(t => t.status === 'error' || detectErrorInOutput(t.output)).length;
   const successCount = toolCalls.filter(t => t.status === 'success' && !detectErrorInOutput(t.output)).length;
   const allComplete = runningCount === 0 && !isStreaming;
-  // Historical loads (session switch, page reload) ALWAYS start collapsed.
-  // Active streaming starts expanded so user can watch progress.
-  const [isExpanded, setIsExpanded] = useState(isHistorical ? false : !allComplete);
+  // Walls of tool calls (3+ steps) ALWAYS start minimized — the summary header
+  // ("Running N steps...") carries the live signal; the user expands on demand.
+  // Small step lists (1-2) stay expanded while streaming so a single running
+  // tool is visible. Historical loads always start collapsed.
+  const topLevelCount = toolCalls.filter(tc => !tc.parentToolId).length;
+  const isWall = topLevelCount >= 3;
+  const [isExpanded, setIsExpanded] = useState(
+    isWall ? false : isHistorical ? false : !allComplete
+  );
 
   // Auto-collapse 300ms after all complete
   useEffect(() => {
@@ -1782,8 +1788,8 @@ const TreeStepsContainer: React.FC<TreeStepsContainerProps> = memo(({
           <span style={{
             fontSize: 11,
             fontWeight: 600,
-            color: '#fff',
-            background: '#da3633',
+            color: 'var(--cm-bg)',
+            background: 'var(--cm-error)',
             padding: '0 6px',
             borderRadius: 8,
           }}>
@@ -1909,6 +1915,33 @@ interface HitlInlineCardProps {
 }
 
 const HitlInlineCard: React.FC<HitlInlineCardProps> = ({ entry, onApprove, onDeny }) => {
+  // Optimistic-feedback state. The status flip from pending→approved only
+  // lands when the next NDJSON frame arrives after the model's next turn
+  // completes (10-20s). Without local state, the user clicks Approve and
+  // nothing visually changes — they think the click was lost. Tracked in
+  // the live regression on chat-dev 2026-05-24 ("hitl gate isnt working").
+  const [pendingAction, setPendingAction] = React.useState<'approve' | 'deny' | null>(null);
+
+  // When the parent flips entry.status (server confirmed), reset local state.
+  React.useEffect(() => {
+    if (entry.status !== 'pending') setPendingAction(null);
+  }, [entry.status]);
+
+  const handleApprove = () => {
+    if (pendingAction) return;
+    setPendingAction('approve');
+    onApprove?.(entry.requestId);
+  };
+  const handleDeny = () => {
+    if (pendingAction) return;
+    setPendingAction('deny');
+    onDeny?.(entry.requestId);
+  };
+
+  const isApproving = pendingAction === 'approve';
+  const isDenying = pendingAction === 'deny';
+  const isSubmitting = pendingAction !== null;
+
   return (
     <div
       data-testid="hitl-approval-card"
@@ -1935,35 +1968,39 @@ const HitlInlineCard: React.FC<HitlInlineCardProps> = ({ entry, onApprove, onDen
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             data-testid="hitl-approve-btn"
-            onClick={() => onApprove?.(entry.requestId)}
+            onClick={handleApprove}
+            disabled={isSubmitting}
             style={{
               border: '1px solid var(--cm-success)',
-              background: 'transparent',
-              color: 'var(--cm-success)',
+              background: isApproving ? 'var(--cm-success)' : 'transparent',
+              color: isApproving ? 'var(--cm-bg-0)' : 'var(--cm-success)',
               padding: '4px 10px',
               borderRadius: 4,
-              cursor: 'pointer',
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
               fontFamily: 'inherit',
               fontSize: 11,
+              opacity: isSubmitting && !isApproving ? 0.5 : 1,
             }}
           >
-            Approve
+            {isApproving ? 'Approving…' : 'Approve'}
           </button>
           <button
             data-testid="hitl-deny-btn"
-            onClick={() => onDeny?.(entry.requestId)}
+            onClick={handleDeny}
+            disabled={isSubmitting}
             style={{
               border: '1px solid var(--cm-error)',
-              background: 'transparent',
-              color: 'var(--cm-error)',
+              background: isDenying ? 'var(--cm-error)' : 'transparent',
+              color: isDenying ? 'var(--cm-bg-0)' : 'var(--cm-error)',
               padding: '4px 10px',
               borderRadius: 4,
-              cursor: 'pointer',
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
               fontFamily: 'inherit',
               fontSize: 11,
+              opacity: isSubmitting && !isDenying ? 0.5 : 1,
             }}
           >
-            Deny
+            {isDenying ? 'Denying…' : 'Deny'}
           </button>
         </div>
       )}
@@ -2203,7 +2240,7 @@ const ExpandableToolItem: React.FC<{
           {hasError && errorMsg && (
             <span style={{
               fontSize: 11,
-              color: '#da3633',
+              color: 'var(--cm-error)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -2979,16 +3016,25 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
   // its own JSX path, so users observed chips even with the toggle OFF.
   const followupChipsEnabled = useFollowupChipsStore((s) => s.enabled);
 
-  // #646 Option B — lookup table from agent role → SubAgentEntry. The
-  // incoming prop `subAgents?: ReadonlyArray<SubAgentEntry>` carries
-  // sub_agent_started / sub_agent_completed lifecycle entries; we convert
-  // it to a Map so the agent_group branch below can decide per-role
-  // whether to upgrade to a rich SubAgentCard or fall back to the
-  // lightweight AgentExecutionTimeline. Roles are case-sensitive (server
-  // emits the canonical kebab-case role name on sub_agent_started).
-  const subAgentByRole = useMemo(() => {
-    const m = new Map<string, SubAgentEntry>();
-    for (const sa of subAgents ?? []) m.set(sa.role, sa);
+  // #646 Option B — lookup table from agent role → SubAgentEntry[].
+  // #1113 (2026-05-25) — promoted from single-entry Map to multi-entry list:
+  // N parallel Tasks sharing the same `subagent_type` (e.g. 3 × cloud_operations)
+  // produced 3 SubAgentEntry rows in subAgents[] but the old Map.set(role, sa)
+  // last-write-wins collapsed them to one, so every agent_group iteration
+  // pulled the LAST entry and rendered all N cards with the SAME description
+  // (live evidence on 0.7.1-cd220a7e: 3 cards all titled "GCP IAM audit"
+  // despite api logs showing 3 distinct dispatches "Azure / AWS / GCP").
+  // Now we keep the dispatch-order list and the iterator (line ~3870) pops
+  // one per agent_group via a per-render counter (see roleConsumed map).
+  // Roles are case-sensitive (server emits canonical kebab-case on
+  // sub_agent_started).
+  const subAgentsByRole = useMemo(() => {
+    const m = new Map<string, SubAgentEntry[]>();
+    for (const sa of subAgents ?? []) {
+      const existing = m.get(sa.role) ?? [];
+      existing.push(sa);
+      m.set(sa.role, existing);
+    }
     return m;
   }, [subAgents]);
 
@@ -3020,7 +3066,7 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
     // inline at their wire-emit chronological position; treat them as
     // interleaved content so AAS mounts when an assistant turn produced
     // only artifacts and no thinking/text/tool_use.
-    const hasArtifact = contentBlocks.some(b => b.type === 'viz_render' || b.type === 'app_render');
+    const hasArtifact = contentBlocks.some(b => b.type === 'viz_render' || b.type === 'app_render' || b.type === 'image_render');
     // F1-6 (2026-05-17) — follow_up chip row counts as interleaved content
     // so a turn with ONLY a follow_up block (degenerate, but possible on
     // session reload) still mounts AAS.
@@ -3204,6 +3250,55 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
       return (
         <div key={block.id} className="interleaved-app-render">
           <InlineAppBadge block={block} />
+        </div>
+      );
+    } else if (block.type === 'image_render') {
+      // generate_image — inline generated raster image. The src is ALWAYS a
+      // same-origin /api/images/:id url (the tool + SDK reducer reject
+      // external hosts), so the model can never satisfy an image request by
+      // fabricating an <img src="https://unsplash..."> tag — it must call
+      // generate_image, which lands here. Theme tokens only (CLAUDE.md 8b).
+      const imgSrc = (block as any).imageUrl as string | undefined;
+      if (!imgSrc) return null;
+      const altText =
+        (block as any).prompt || (block as any).title || 'Generated image';
+      return (
+        <div
+          key={block.id}
+          className="interleaved-image-render"
+          data-testid="image-render"
+          data-block-id={block.id}
+          style={{
+            margin: '10px 0',
+            borderRadius: 12,
+            overflow: 'hidden',
+            border: '1px solid var(--cm-line-2)',
+            background: 'var(--cm-bg-1)',
+            maxWidth: 640,
+          }}
+        >
+          <img
+            src={imgSrc}
+            alt={altText}
+            loading="lazy"
+            style={{
+              display: 'block',
+              width: '100%',
+              height: 'auto',
+            }}
+          />
+          {(block as any).prompt ? (
+            <div
+              style={{
+                padding: '6px 10px',
+                fontSize: '0.8125rem',
+                color: 'var(--cm-fg-2)',
+                borderTop: '1px solid var(--cm-line-2)',
+              }}
+            >
+              {(block as any).prompt}
+            </div>
+          ) : null}
         </div>
       );
     } else if (block.type === 'follow_up') {
@@ -3437,8 +3532,20 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
 
           {/* F.3 — when a completed tool returned a row-array (common for
               list_/query_ paginated MCP calls), reveal rows progressively
-              in an inline table instead of dumping the whole array. */}
+              in an inline table instead of dumping the whole array.
+              Sev-0 #1069 (2026-05-23) — gated OFF when the model already
+              emitted an explicit compose_visual block in this turn. The
+              auto-detect was rendering a SECOND table directly beneath
+              the canonical StreamingTable from the compose_visual:table
+              branch (line 3192) — same data, two surfaces, identical
+              cells. User: "the cards are duped- shitting the good one
+              out at the end and the fucked up one inline". Model owns
+              artifact intent; defer to its explicit emission when present. */}
           {!isAgentBlock && !isRunning && toolCall?.output != null && (() => {
+            const hasExplicitArtifact = contentBlocks.some(
+              b => b.type === 'viz_render' || b.type === 'app_render' || b.type === 'image_render'
+            );
+            if (hasExplicitArtifact) return null;
             const tableData = detectTableData(toolCall.output);
             if (!tableData) return null;
             return (
@@ -3661,6 +3768,14 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
               return out;
             };
 
+            // #1113 — per-role dispatch counter shared across all agent_groups
+            // in this message. Each agent_group represents one Task call; when
+            // N parallel Tasks all share role=cloud_operations the groups are
+            // emitted in dispatch order and we consume one SubAgentEntry per
+            // group (FIFO from subAgentsByRole.get(role)). Initialized fresh
+            // per render — recomputed alongside renderedGroups.
+            const roleConsumedIdx = new Map<string, number>();
+
             const renderedGroups = groups.map((group, gIdx) => {
               // #922+#831 — HITL inline placement is now block-scoped:
               //   - `tool_group` (single OR cluster): HITL is embedded
@@ -3754,7 +3869,14 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
                       const blocks = blocksByRole.get(role)!;
                       const steps = buildSteps(blocks);
                       const stillExecuting = blocks.some(b => !b.isComplete);
-                      const sa = subAgentByRole.get(role);
+                      // #1113 — consume from the per-role dispatch FIFO so
+                      // N parallel Tasks sharing role each get their OWN
+                      // SubAgentEntry (distinct description / model / status)
+                      // instead of all rendering the last-write-wins entry.
+                      const roleEntries = subAgentsByRole.get(role) ?? [];
+                      const consumedIdx = roleConsumedIdx.get(role) ?? 0;
+                      const sa = roleEntries[consumedIdx];
+                      if (sa) roleConsumedIdx.set(role, consumedIdx + 1);
 
                       // Lightweight timeline showing the agent's tool steps
                       // (always rendered). When a SubAgentCard is available

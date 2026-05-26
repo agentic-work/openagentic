@@ -313,6 +313,46 @@ export const TASK_TOOL = {
   function: {
     name: 'Task',
     description: HEADER + '\n  (run-time list injected at dispatch)\n' + FOOTER,
+    /** #1110 — input_examples reach the wire via AWSBedrockProvider's
+     * description inlining (#1112). The examples below show parallel
+     * fan-outs with DISTINCT per-Task descriptions so the model learns
+     * to vary the label rather than repeating one across all parallel
+     * blocks (which collapses the UI cards to a single label). */
+    input_examples: [
+      {
+        description: 'Azure IAM audit',
+        prompt: 'List every Azure subscription. For each, list role assignments. Identify principals with Owner or User Access Administrator across >1 subscription. Return JSON findings array.',
+        subagent_type: 'cloud_operations',
+        multi_step_justification: {
+          tool_count_estimate: 6,
+          requires_dedicated_context: true,
+          why: 'enumerate subs → enumerate role assignments per sub → group by principal → flag cross-scope owners',
+          single_tool_alternative: 'none — requires chained reads across N subscriptions',
+        },
+      },
+      {
+        description: 'AWS IAM audit',
+        prompt: 'List every AWS account in the org. For each, list IAM users/roles with AdministratorAccess. Identify principals with cross-account admin. Return JSON findings array.',
+        subagent_type: 'cloud_operations',
+        multi_step_justification: {
+          tool_count_estimate: 5,
+          requires_dedicated_context: true,
+          why: 'enumerate accounts → enumerate IAM principals per account → group by principal → flag cross-account admins',
+          single_tool_alternative: 'none — requires chained reads across N accounts',
+        },
+      },
+      {
+        description: 'GCP IAM audit',
+        prompt: 'List every GCP project. For each, fetch the IAM policy. Identify principals with roles/owner across >1 project. Return JSON findings array.',
+        subagent_type: 'cloud_operations',
+        multi_step_justification: {
+          tool_count_estimate: 5,
+          requires_dedicated_context: true,
+          why: 'enumerate projects → fetch IAM policy per project → group by principal → flag cross-project owners',
+          single_tool_alternative: 'none — requires chained reads across N projects',
+        },
+      },
+    ],
     parameters: {
       type: 'object',
       required: ['description', 'prompt', 'multi_step_justification'],
@@ -320,8 +360,13 @@ export const TASK_TOOL = {
         description: {
           type: 'string',
           description:
-            'A short (3-5 word) human-readable label for the sub-task. ' +
-            'Shown in the UI sub-agent card.',
+            'A short (3-5 word) human-readable label for THIS specific ' +
+            'sub-task. Shown verbatim in the UI sub-agent card title. ' +
+            '#1110 — when emitting MULTIPLE parallel Task blocks in one ' +
+            'turn, each MUST have a DISTINCT description naming its ' +
+            'specific scope: "Azure IAM audit", "AWS IAM audit", "GCP IAM ' +
+            'audit" — NEVER repeat the same description across parallel ' +
+            'Task calls or all cards collide on one label.',
         },
         prompt: {
           type: 'string',

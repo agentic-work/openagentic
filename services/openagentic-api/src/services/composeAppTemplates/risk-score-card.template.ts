@@ -28,7 +28,7 @@ const ParamsSchema = z.object({
 type Params = z.infer<typeof ParamsSchema>;
 
 const exampleParams: Params = {
-  title: 'your-deployment-prod — overall risk score',
+  title: 'omhs-prod — overall risk score',
   subtitle: 'higher is worse · weekly scan',
   score: 42,
   categories: [

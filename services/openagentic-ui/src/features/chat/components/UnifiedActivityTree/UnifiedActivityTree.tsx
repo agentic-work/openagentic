@@ -125,7 +125,7 @@ export function UnifiedActivityTree({
             <span
               style={{
                 fontSize: 11,
-                color: '#d29922',
+                color: 'var(--cm-warning)',
                 fontFamily: 'SF Mono, JetBrains Mono, monospace',
               }}
             >
@@ -135,7 +135,7 @@ export function UnifiedActivityTree({
               <div
                 style={{
                   fontSize: 11,
-                  color: 'rgba(255,255,255,0.4)',
+                  color: 'var(--cm-text-muted)',
                   marginTop: 2,
                   maxHeight: 60,
                   overflow: 'hidden',
@@ -163,8 +163,8 @@ export function UnifiedActivityTree({
                   fontSize: 10,
                   padding: '1px 6px',
                   borderRadius: 3,
-                  backgroundColor: 'rgba(88,166,255,0.1)',
-                  color: '#58a6ff',
+                  backgroundColor: 'color-mix(in srgb, var(--cm-accent) 10%, transparent)',
+                  color: 'var(--cm-accent)',
                   fontFamily: 'SF Mono, JetBrains Mono, monospace',
                 }}
               >
@@ -173,14 +173,14 @@ export function UnifiedActivityTree({
               <span
                 style={{
                   fontSize: 11,
-                  color: '#e6edf3',
+                  color: 'var(--cm-text)',
                   fontFamily: 'SF Mono, JetBrains Mono, monospace',
                 }}
               >
                 {node.data.toolName}
               </span>
               {node.data.durationMs > 0 && (
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>
+                <span style={{ fontSize: 10, color: 'var(--cm-text-muted)' }}>
                   {node.data.durationMs}ms
                 </span>
               )}
@@ -246,8 +246,8 @@ export function UnifiedActivityTree({
               data-collapsed={isCollapsed ? 'true' : 'false'}
               data-status={node.status}
               style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--cm-bg-secondary)',
+                border: '1px solid var(--cm-border)',
                 borderLeft: `3px solid ${color}`,
                 borderRadius: 10,
                 margin: '6px 0',
@@ -261,8 +261,8 @@ export function UnifiedActivityTree({
                   alignItems: 'center',
                   gap: 10,
                   padding: '9px 12px',
-                  background: 'rgba(255,255,255,0.02)',
-                  borderBottom: '1px solid rgba(255,255,255,0.06)',
+                  background: 'var(--cm-bg-tertiary)',
+                  borderBottom: '1px solid var(--cm-border)',
                 }}
               >
                 <button
@@ -277,7 +277,7 @@ export function UnifiedActivityTree({
                     height: 26,
                     borderRadius: 6,
                     backgroundColor: color,
-                    color: '#0d1117',
+                    color: 'var(--cm-bg)',
                     fontSize: 12,
                     fontWeight: 700,
                     fontFamily: 'Inter, sans-serif',
@@ -296,7 +296,7 @@ export function UnifiedActivityTree({
                   <span
                     style={{
                       fontSize: 13,
-                      color: '#e6edf3',
+                      color: 'var(--cm-text)',
                       fontWeight: 600,
                       lineHeight: 1.2,
                     }}
@@ -306,7 +306,7 @@ export function UnifiedActivityTree({
                   <span
                     style={{
                       fontSize: 11,
-                      color: 'rgba(255,255,255,0.45)',
+                      color: 'var(--cm-text-secondary)',
                       lineHeight: 1.2,
                       fontFamily: 'SF Mono, JetBrains Mono, monospace',
                     }}
@@ -322,7 +322,7 @@ export function UnifiedActivityTree({
                     gap: 10,
                     fontFamily: 'SF Mono, JetBrains Mono, monospace',
                     fontSize: 11,
-                    color: 'rgba(255,255,255,0.45)',
+                    color: 'var(--cm-text-secondary)',
                   }}
                 >
                   <span data-testid="agent-turn-count">{turnLabel}</span>
@@ -349,7 +349,7 @@ export function UnifiedActivityTree({
                     <span
                       style={{
                         fontSize: 11,
-                        color: 'rgba(255,255,255,0.35)',
+                        color: 'var(--cm-text-muted)',
                         fontStyle: 'italic',
                       }}
                     >
@@ -361,22 +361,22 @@ export function UnifiedActivityTree({
                       data-testid="agent-return"
                       style={{
                         background: statusOk
-                          ? 'rgba(16,185,129,0.05)'
-                          : 'rgba(239,68,68,0.06)',
+                          ? 'color-mix(in srgb, var(--cm-success) 5%, transparent)'
+                          : 'color-mix(in srgb, var(--cm-error) 6%, transparent)',
                         border: `1px solid ${
                           statusOk
-                            ? 'rgba(16,185,129,0.2)'
-                            : 'rgba(239,68,68,0.25)'
+                            ? 'color-mix(in srgb, var(--cm-success) 20%, transparent)'
+                            : 'color-mix(in srgb, var(--cm-error) 25%, transparent)'
                         }`,
                         borderRadius: 8,
                         padding: '8px 10px',
                         fontSize: 12,
-                        color: statusOk ? '#6ee7b7' : '#fca5a5',
+                        color: statusOk ? 'var(--cm-success)' : 'var(--cm-error)',
                         fontFamily: 'SF Mono, JetBrains Mono, monospace',
                         marginTop: 4,
                       }}
                     >
-                      <strong style={{ color: statusOk ? '#34d399' : '#f87171' }}>
+                      <strong style={{ color: statusOk ? 'var(--cm-success)' : 'var(--cm-error)' }}>
                         return_value:
                       </strong>{' '}
                       {`{ turns: ${turnCount}${
@@ -394,7 +394,7 @@ export function UnifiedActivityTree({
           <div
             style={{
               fontSize: 11,
-              color: '#d29922',
+              color: 'var(--cm-warning)',
               fontFamily: 'SF Mono, JetBrains Mono, monospace',
             }}
           >
@@ -422,7 +422,7 @@ export function UnifiedActivityTree({
           <div
             style={{
               fontSize: 11,
-              color: '#f85149',
+              color: 'var(--cm-error)',
               fontFamily: 'SF Mono, JetBrains Mono, monospace',
             }}
           >

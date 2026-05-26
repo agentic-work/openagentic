@@ -241,8 +241,8 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
         borderRadius: '12px',
         overflow: 'hidden',
         border: '1px solid',
-        borderColor: isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(209, 213, 219, 0.8)',
-        background: isDark ? '#0d1117' : '#ffffff',
+        borderColor: 'var(--cm-border)',
+        background: 'var(--cm-bg)',
         marginBottom: '16px'
       }}
     >
@@ -253,25 +253,25 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '10px 14px',
-          background: isDark ? '#161b22' : '#f6f8fa',
+          background: 'var(--cm-bg-secondary)',
           borderBottom: '1px solid',
-          borderColor: isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(209, 213, 219, 0.8)',
+          borderColor: 'var(--cm-border)',
           cursor: 'pointer'
         }}
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <GitBranch size={16} style={{ color: isDark ? '#8b949e' : '#57606a' }} />
+          <GitBranch size={16} style={{ color: 'var(--cm-text-muted)' }} />
           <span style={{
             fontSize: '13px',
             fontWeight: 600,
-            color: isDark ? '#c9d1d9' : '#24292f'
+            color: 'var(--cm-text)'
           }}>
             {title || 'Artifact Update'}
           </span>
           <span style={{
             fontSize: '11px',
-            color: isDark ? '#8b949e' : '#57606a'
+            color: 'var(--cm-text-muted)'
           }}>
             {language}
           </span>
@@ -280,11 +280,11 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {/* Stats */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '2px', color: '#22C55E' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '2px', color: 'var(--cm-success)' }}>
               <Plus size={12} />
               {stats.additions}
             </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '2px', color: '#f85149' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '2px', color: 'var(--cm-error)' }}>
               <Minus size={12} />
               {stats.deletions}
             </span>
@@ -300,10 +300,10 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
               padding: '4px 8px',
               background: 'transparent',
               border: '1px solid',
-              borderColor: isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(209, 213, 219, 0.8)',
+              borderColor: 'var(--cm-border)',
               borderRadius: '6px',
               cursor: 'pointer',
-              color: isDark ? '#8b949e' : '#57606a',
+              color: 'var(--cm-text-muted)',
               fontSize: '11px'
             }}
           >
@@ -319,10 +319,10 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
-              color: isDark ? '#8b949e' : '#57606a'
+              color: 'var(--cm-text-muted)'
             }}
           >
-            {copied ? <Check size={14} style={{ color: '#22C55E' }} /> : <Copy size={14} />}
+            {copied ? <Check size={14} style={{ color: 'var(--cm-success)' }} /> : <Copy size={14} />}
           </button>
 
           {/* Expand */}
@@ -350,8 +350,8 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
                   fontSize: '13px',
                   lineHeight: '1.5',
                   fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
-                  color: isDark ? '#c9d1d9' : '#24292f',
-                  background: isDark ? '#0d1117' : '#ffffff'
+                  color: 'var(--cm-text)',
+                  background: 'var(--cm-bg)'
                 }}
               >
                 {modifiedCode}
@@ -363,7 +363,7 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
                   <div style={{
                     padding: '20px',
                     textAlign: 'center',
-                    color: isDark ? '#8b949e' : '#57606a',
+                    color: 'var(--cm-text-muted)',
                     fontSize: '13px'
                   }}>
                     No changes detected
@@ -374,8 +374,8 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
                       {/* Hunk header */}
                       <div style={{
                         padding: '8px 16px',
-                        background: isDark ? 'rgba(56, 139, 253, 0.1)' : 'rgba(9, 105, 218, 0.1)',
-                        color: isDark ? '#58a6ff' : '#0969da',
+                        background: 'color-mix(in srgb, var(--cm-info) 10%, transparent)',
+                        color: 'var(--cm-info)',
                         fontSize: '12px',
                         fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace'
                       }}>
@@ -392,9 +392,9 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
                             fontSize: '13px',
                             lineHeight: '1.5',
                             background: line.type === 'add'
-                              ? isDark ? 'rgba(46, 160, 67, 0.15)' : 'rgba(46, 160, 67, 0.2)'
+                              ? 'color-mix(in srgb, var(--cm-success) 15%, transparent)'
                               : line.type === 'remove'
-                                ? isDark ? 'rgba(248, 81, 73, 0.15)' : 'rgba(248, 81, 73, 0.2)'
+                                ? 'color-mix(in srgb, var(--cm-error) 15%, transparent)'
                                 : 'transparent'
                           }}
                         >
@@ -403,8 +403,8 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
                             display: 'flex',
                             minWidth: '80px',
                             borderRight: '1px solid',
-                            borderColor: isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(209, 213, 219, 0.8)',
-                            color: isDark ? '#484f58' : '#8c959f',
+                            borderColor: 'var(--cm-border)',
+                            color: 'var(--cm-text-muted)',
                             fontSize: '12px',
                             userSelect: 'none'
                           }}>
@@ -413,7 +413,7 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
                               textAlign: 'right',
                               padding: '0 8px',
                               background: line.type === 'remove'
-                                ? isDark ? 'rgba(248, 81, 73, 0.2)' : 'rgba(248, 81, 73, 0.25)'
+                                ? 'color-mix(in srgb, var(--cm-error) 20%, transparent)'
                                 : 'transparent'
                             }}>
                               {line.oldLineNumber || ''}
@@ -423,7 +423,7 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
                               textAlign: 'right',
                               padding: '0 8px',
                               background: line.type === 'add'
-                                ? isDark ? 'rgba(46, 160, 67, 0.2)' : 'rgba(46, 160, 67, 0.25)'
+                                ? 'color-mix(in srgb, var(--cm-success) 20%, transparent)'
                                 : 'transparent'
                             }}>
                               {line.newLineNumber || ''}
@@ -434,7 +434,7 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
                           <div style={{
                             width: '24px',
                             textAlign: 'center',
-                            color: line.type === 'add' ? '#22C55E' : line.type === 'remove' ? '#f85149' : 'transparent',
+                            color: line.type === 'add' ? 'var(--cm-success)' : line.type === 'remove' ? 'var(--cm-error)' : 'transparent',
                             fontWeight: 600
                           }}>
                             {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
@@ -447,7 +447,7 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
                             flex: 1,
                             whiteSpace: 'pre',
                             overflow: 'visible',
-                            color: isDark ? '#c9d1d9' : '#24292f'
+                            color: 'var(--cm-text)'
                           }}>
                             {line.content || ' '}
                           </pre>
@@ -470,8 +470,8 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
           gap: '8px',
           padding: '10px 14px',
           borderTop: '1px solid',
-          borderColor: isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(209, 213, 219, 0.8)',
-          background: isDark ? '#161b22' : '#f6f8fa'
+          borderColor: 'var(--cm-border)',
+          background: 'var(--cm-bg-secondary)'
         }}>
           {onReject && (
             <button
@@ -480,10 +480,10 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
                 padding: '6px 12px',
                 background: 'transparent',
                 border: '1px solid',
-                borderColor: isDark ? 'rgba(248, 81, 73, 0.5)' : 'rgba(248, 81, 73, 0.6)',
+                borderColor: 'color-mix(in srgb, var(--cm-error) 50%, transparent)',
                 borderRadius: '6px',
                 cursor: 'pointer',
-                color: '#f85149',
+                color: 'var(--cm-error)',
                 fontSize: '12px',
                 fontWeight: 500
               }}
@@ -496,11 +496,11 @@ export const ArtifactDiffRenderer: React.FC<ArtifactDiffRendererProps> = ({
               onClick={onApply}
               style={{
                 padding: '6px 12px',
-                background: '#22863A',
+                background: 'var(--cm-success)',
                 border: 'none',
                 borderRadius: '6px',
                 cursor: 'pointer',
-                color: '#ffffff',
+                color: 'var(--cm-bg)',
                 fontSize: '12px',
                 fontWeight: 500
               }}

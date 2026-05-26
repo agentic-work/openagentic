@@ -1,0 +1,894 @@
+event: stream_start
+data: {"sessionId":"session_1771624651857_6i2nd3940","messageId":"msg_1771624652155_dco4nts45"}
+
+event: message_saved
+data: {"messageId":"lumk_FYGjoI8qXmOvficH","role":"user","content":"Simulate a production incident response workflow. Do ALL of these steps:\n\n1. Use incident_create to create a new P2 incident titled 'API Response Degradation - Elevated Latency' with description 'Users reporting slow chat responses, p99 latency above 10s threshold'\n\n2. Use incident_list to verify the incident was created\n\n3. Use prometheus_query to check actual API latency: query 'histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))' or a simpler query like 'up' to check service health\n\n4. Use loki_query to search for slow requests: query '{namespace=\"agentic-dev\",container=\"api\"} |= \"slow\" or \"timeout\"' for the last 30 minutes\n\n5. Use k8s_list_pods in namespace agentic-dev to check for any pod restarts or issues\n\n6. Use runbook_list to find available runbooks for diagnostics\n\n7. Use runbook_quick_diagnostics with the target service 'openagentic-api'\n\n8. Use incident_add_note to the incident with your diagnostic findings\n\n9. Use incident_resolve to resolve the incident with a summary of findings\n\nReport the full incident timeline with each action taken.","timestamp":"2026-02-20T21:57:32.377Z","source":"database","confirmed":true}
+
+event: context_injection_pending
+data: {"rag":true,"mcp":false,"timestamp":"2026-02-20T21:57:32.393Z"}
+
+event: memory_status
+data: {"memoriesRetrieved":10,"memoryTypes":["semantic"],"processingTime":349}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:57:35.155Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:57:38.155Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:57:41.155Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:57:44.155Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:57:47.156Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:57:50.156Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:57:53.156Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:57:56.156Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:57:59.157Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:02.157Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:05.157Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:08.157Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:11.157Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:14.158Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:17.158Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:20.158Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:23.158Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:26.158Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:29.159Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:32.159Z"}
+
+event: message_saved
+data: {"messageId":"_2j_-javWjHxdtVaBmaYj","role":"assistant","content":"","timestamp":"2026-02-20T21:58:33.497Z","source":"database","confirmed":true,"streaming":true}
+
+event: completion_start
+data: {"model":"us.anthropic.claude-opus-4-6-v1","messageId":"_2j_-javWjHxdtVaBmaYj","source":"database"}
+
+event: cot_step
+data: {"step":{"id":"cot_thinking_1771624713847","type":"thinking","description":"Processing request","status":"in_progress","startTime":1771624713847}}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:35.159Z"}
+
+event: content_block_start
+data: {"index":0,"blockType":"thinking"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"The user wants me to simulate a production"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" incident response workflow with"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" multiple"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" steps. Let me execute"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" all the independent"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" calls"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" first"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":", then chain"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" dependent"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" ones."}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" "}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"\n\nStep"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" 1: Create"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" incident ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"must"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" be first"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" -"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" other"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" steps depend on the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" incident ID"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":")\nSteps"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" 2-7"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":": Can"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" mostly"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" run"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" in parallel after"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" step"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" 1 ("}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"except step"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" 2 which ver"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"ifies creation"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":")\nSteps"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" 8-9:"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" Depend on findings"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" from steps"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" 3"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":"-7\n\nLet me start by creating"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:38.159Z"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" the incident,"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" then run"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" the"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" diagnostic"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" steps"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"thinking","content":" in parallel."}
+
+event: content_block_stop
+data: {"index":0,"blockType":"thinking","finalContent":"The user wants me to simulate a production incident response workflow with multiple steps. Let me execute all the independent calls first, then chain the dependent ones. \n\nStep 1: Create the incident (must be first - other steps depend on the incident ID)\nSteps 2-7: Can mostly run in parallel after step 1 (except step 2 which verifies creation)\nSteps 8-9: Depend on findings from steps 3-7\n\nLet me start by creating the incident, then run the diagnostic steps in parallel."}
+
+event: content_block_start
+data: {"index":1,"blockType":"text"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":"Starting"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":" the"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":" incident response workflow. Creating"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":" the incident first, then running all"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":" diagnost"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"text","content":"ics in parallel."}
+
+event: content_block_stop
+data: {"index":1,"blockType":"text","finalContent":"Starting the incident response workflow. Creating the incident first, then running all diagnostics in parallel."}
+
+event: content_block_start
+data: {"index":2,"blockType":"tool_use","toolId":"toolu_bdrk_0135p94uXgfg1KZKPoYpfRJJ","toolName":"incident_create"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"{\"titl"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"e\": \"API Res"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"pon"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"se "}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"Degradation"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":" -"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":" Elev"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"ated Late"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"ncy\""}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":", \"de"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"scripti"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"on\": \"Use"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"rs "}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"reportin"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"g slow ch"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"at respons"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"es"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":", p99"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":" latency abo"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"ve 10s t"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"hr"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"esh"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"old\""}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":", \"sev"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"erity\": "}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"\"sev2\""}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":", \""}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"service\": \""}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"agenticwor"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"k-api\""}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":", \"imp"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"act\": \"User-"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"facing c"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"hat r"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"esponses d"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"egra"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"ded. P99"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":" latency exc"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"eeding 10s"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":" SL"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"A th"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"reshold"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":", affe"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"cting a"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"ll pl"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"atf"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"orm "}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"us"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"ers.\""}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:41.159Z"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":", \"tags\": \""}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"latency,"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"api,user-i"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"mpact,c"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"hat\"}"}
+
+event: content_block_stop
+data: {"index":2,"blockType":"tool_use","finalContent":"{\"title\": \"API Response Degradation - Elevated Latency\", \"description\": \"Users reporting slow chat responses, p99 latency above 10s threshold\", \"severity\": \"sev2\", \"service\": \"openagentic-api\", \"impact\": \"User-facing chat responses degraded. P99 latency exceeding 10s SLA threshold, affecting all platform users.\", \"tags\": \"latency,api,user-impact,chat\"}","toolId":"toolu_bdrk_0135p94uXgfg1KZKPoYpfRJJ","toolName":"incident_create"}
+
+event: cot_step
+data: {"step":{"id":"cot_thinking_1771624713847","type":"thinking","description":"Processing complete","status":"completed","endTime":1771624721589}}
+
+event: tool_calls_required
+data: {"toolCalls":[{"id":"toolu_bdrk_0135p94uXgfg1KZKPoYpfRJJ","type":"function","function":{"name":"incident_create","arguments":"{\"title\":\"API Response Degradation - Elevated Latency\",\"description\":\"Users reporting slow chat responses, p99 latency above 10s threshold\",\"severity\":\"sev2\",\"service\":\"openagentic-api\",\"impact\":\"User-facing chat responses degraded. P99 latency exceeding 10s SLA threshold, affecting all platform users.\",\"tags\":\"latency,api,user-impact,chat\"}"}}],"count":1}
+
+event: mcp_calls_data
+data: {"calls":[{"id":"toolu_bdrk_0135p94uXgfg1KZKPoYpfRJJ","name":"incident_create","tool":"incident_create","toolName":"incident_create","status":"pending","arguments":{"title":"API Response Degradation - Elevated Latency","description":"Users reporting slow chat responses, p99 latency above 10s threshold","severity":"sev2","service":"openagentic-api","impact":"User-facing chat responses degraded. P99 latency exceeding 10s SLA threshold, affecting all platform users.","tags":"latency,api,user-impact,chat"},"serverId":"pending","serverName":"pending"}],"totalCalls":1,"round":1}
+
+event: message_updated
+data: {"messageId":"_2j_-javWjHxdtVaBmaYj","role":"assistant","content":"Starting the incident response workflow. Creating the incident first, then running all diagnostics in parallel.","timestamp":"2026-02-20T21:58:41.594Z","toolCalls":[{"id":"toolu_bdrk_0135p94uXgfg1KZKPoYpfRJJ","type":"function","function":{"name":"incident_create","arguments":"{\"title\":\"API Response Degradation - Elevated Latency\",\"description\":\"Users reporting slow chat responses, p99 latency above 10s threshold\",\"severity\":\"sev2\",\"service\":\"openagentic-api\",\"impact\":\"User-facing chat responses degraded. P99 latency exceeding 10s SLA threshold, affecting all platform users.\",\"tags\":\"latency,api,user-impact,chat\"}"}}],"thinkingContent":"The user wants me to simulate a production incident response workflow with multiple steps. Let me execute all the independent calls first, then chain the dependent ones. \n\nStep 1: Create the incident (must be first - other steps depend on the incident ID)\nSteps 2-7: Can mostly run in parallel after step 1 (except step 2 which verifies creation)\nSteps 8-9: Depend on findings from steps 3-7\n\nLet me start by creating the incident, then run the diagnostic steps in parallel.","tokenUsage":{"prompt_tokens":0,"completion_tokens":345,"total_tokens":345},"model":"us.anthropic.claude-opus-4-6-v1","source":"database","confirmed":true,"final":true}
+
+event: tool_approval_request
+data: {"toolCallRound":1,"tools":[{"id":"toolu_bdrk_0135p94uXgfg1KZKPoYpfRJJ","name":"incident_create","arguments":"{\"title\":\"API Response Degradation - Elevated Latency\",\"description\":\"Users reporting slow chat responses, p99 latency above 10s threshold\",\"severity\":\"sev2\",\"service\":\"openagentic-api\",\"impact\":\"User-facing chat responses degraded. P99 latency exceeding 10s SLA threshold, affecting all platform users.\",\"tags\":\"latency,api,user-impact,chat\"}"}],"messageId":"msg_1771624652155_ii94o6t0l"}
+
+event: tool_execution_start
+data: {"toolCallRound":1,"toolCount":1,"tools":[{"id":"toolu_bdrk_0135p94uXgfg1KZKPoYpfRJJ","name":"incident_create"}],"timestamp":"2026-02-20T21:58:41.596Z"}
+
+event: tool_executing
+data: {"name":"incident_create","arguments":{"title":"API Response Degradation - Elevated Latency","description":"Users reporting slow chat responses, p99 latency above 10s threshold","severity":"sev2","service":"openagentic-api","impact":"User-facing chat responses degraded. P99 latency exceeding 10s SLA threshold, affecting all platform users.","tags":"latency,api,user-impact,chat"},"toolCallId":"toolu_bdrk_0135p94uXgfg1KZKPoYpfRJJ","targetServer":"openagentic_incident","timestamp":"2026-02-20T21:58:41.804Z"}
+
+event: tool_result
+data: {"name":"incident_create","result":{"content":[{"type":"text","text":"=== Incident Created ===\n\n🟠 SEV2 | 📋 OPEN\nID: INC-20260220-0001\nTitle: API Response Degradation - Elevated Latency\nService: openagentic-api\nCreated: 2026-02-20T21:58:41.828448Z\n\nNext steps:\n  1. Assign the incident: incident_assign(id, assignee)\n  2. Update status to investigating: incident_update_status(id, 'investigating')\n  3. Add updates as you investigate: incident_add_note(id, note)"}],"structuredContent":{"result":"=== Incident Created ===\n\n🟠 SEV2 | 📋 OPEN\nID: INC-20260220-0001\nTitle: API Response Degradation - Elevated Latency\nService: openagentic-api\nCreated: 2026-02-20T21:58:41.828448Z\n\nNext steps:\n  1. Assign the incident: incident_assign(id, assignee)\n  2. Update status to investigating: incident_update_status(id, 'investigating')\n  3. Add updates as you investigate: incident_add_note(id, note)"},"isError":false},"toolCallId":"toolu_bdrk_0135p94uXgfg1KZKPoYpfRJJ","executionTimeMs":28,"targetServer":"openagentic_incident","timestamp":"2026-02-20T21:58:41.848Z"}
+
+event: tool_execution_complete
+data: {"toolCallRound":1,"toolCount":1,"executionTimeMs":426,"successCount":1,"errorCount":0,"timestamp":"2026-02-20T21:58:42.022Z"}
+
+event: message_saved
+data: {"messageId":"1s4PYiK-ll59PHHdieN9Q","role":"tool","content":"{\n  \"content\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"=== Incident Created ===\\n\\n🟠 SEV2 | 📋 OPEN\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\\n\\nNext steps:\\n  1. Assign the incident: incident_assign(id, assignee)\\n  2. Update status to investigating: incident_update_status(id, 'investigating')\\n  3. Add updates as you investigate: incident_add_note(id, note)\"\n    }\n  ],\n  \"structuredContent\": {\n    \"result\": \"=== Incident Created ===\\n\\n🟠 SEV2 | 📋 OPEN\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\\n\\nNext steps:\\n  1. Assign the incident: incident_assign(id, assignee)\\n  2. Update status to investigating: incident_update_status(id, 'investigating')\\n  3. Add updates as you investigate: incident_add_note(id, note)\"\n  },\n  \"isError\": false\n}","toolCallId":"toolu_bdrk_0135p94uXgfg1KZKPoYpfRJJ","timestamp":"2026-02-20T21:58:42.031Z","source":"database","confirmed":true}
+
+event: mcp_calls_data
+data: {"calls":[{"id":"toolu_bdrk_0135p94uXgfg1KZKPoYpfRJJ","name":"incident_create","tool":"incident_create","toolName":"incident_create","serverId":"openagentic_incident","serverName":"openagentic_incident","executedOn":"mcp-proxy","arguments":{"title":"API Response Degradation - Elevated Latency","description":"Users reporting slow chat responses, p99 latency above 10s threshold","severity":"sev2","service":"openagentic-api","impact":"User-facing chat responses degraded. P99 latency exceeding 10s SLA threshold, affecting all platform users.","tags":"latency,api,user-impact,chat"},"result":{"content":[{"type":"text","text":"=== Incident Created ===\n\n🟠 SEV2 | 📋 OPEN\nID: INC-20260220-0001\nTitle: API Response Degradation - Elevated Latency\nService: openagentic-api\nCreated: 2026-02-20T21:58:41.828448Z\n\nNext steps:\n  1. Assign the incident: incident_assign(id, assignee)\n  2. Update status to investigating: incident_update_status(id, 'investigating')\n  3. Add updates as you investigate: incident_add_note(id, note)"}],"structuredContent":{"result":"=== Incident Created ===\n\n🟠 SEV2 | 📋 OPEN\nID: INC-20260220-0001\nTitle: API Response Degradation - Elevated Latency\nService: openagentic-api\nCreated: 2026-02-20T21:58:41.828448Z\n\nNext steps:\n  1. Assign the incident: incident_assign(id, assignee)\n  2. Update status to investigating: incident_update_status(id, 'investigating')\n  3. Add updates as you investigate: incident_add_note(id, note)"},"isError":false},"status":"completed","startTime":1771624721606,"endTime":1771624722032,"duration":426,"timestamp":"2026-02-20T21:58:42.032Z"}],"totalCalls":1,"round":1}
+
+event: completion_restart
+data: {"toolCallRound":1,"reason":"processing_tool_results","timestamp":"2026-02-20T21:58:42.032Z"}
+
+event: message_saved
+data: {"messageId":"4ip0ZrcwltMmlONMhMzJo","role":"assistant","content":"","timestamp":"2026-02-20T21:58:42.047Z","source":"database","confirmed":true,"streaming":true}
+
+event: completion_start
+data: {"model":"us.anthropic.claude-opus-4-6-v1","messageId":"4ip0ZrcwltMmlONMhMzJo","source":"database"}
+
+event: cot_step
+data: {"step":{"id":"cot_thinking_1771624722049","type":"thinking","description":"Processing request","status":"in_progress","startTime":1771624722049}}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:44.160Z"}
+
+event: content_block_start
+data: {"index":0,"blockType":"text"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"Incident **"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"INC-20260220-0"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":"001** created"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":". Moving"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" to"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" investigating status and"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" launching"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" all"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" parallel"}
+
+event: content_block_delta
+data: {"index":0,"blockType":"text","content":" diagnostics."}
+
+event: content_block_stop
+data: {"index":0,"blockType":"text","finalContent":"Incident **INC-20260220-0001** created. Moving to investigating status and launching all parallel diagnostics."}
+
+event: content_block_start
+data: {"index":1,"blockType":"tool_use","toolId":"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk","toolName":"incident_update_status"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"{\"id\": \"INC"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"-2026"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"0220-0001"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"\""}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":", \"statu"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"s\": \"investi"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"gating\""}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":", \"note\": "}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"\"Beginnin"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"g syst"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"ematic inves"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"tigation:"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":" Promet"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"heus metr"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"ic"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"s, L"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"oki log"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"s, Kube"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"rnetes p"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"od healt"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"h, and servi"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"ce"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":" di"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"agnostic"}
+
+event: content_block_delta
+data: {"index":1,"blockType":"tool_use","content":"s.\"}"}
+
+event: content_block_stop
+data: {"index":1,"blockType":"tool_use","finalContent":"{\"id\": \"INC-20260220-0001\", \"status\": \"investigating\", \"note\": \"Beginning systematic investigation: Prometheus metrics, Loki logs, Kubernetes pod health, and service diagnostics.\"}","toolId":"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk","toolName":"incident_update_status"}
+
+event: content_block_start
+data: {"index":2,"blockType":"tool_use","toolId":"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE","toolName":"incident_list"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":"{\"status\":"}
+
+event: content_block_delta
+data: {"index":2,"blockType":"tool_use","content":" \"open\"}"}
+
+event: content_block_stop
+data: {"index":2,"blockType":"tool_use","finalContent":"{\"status\": \"open\"}","toolId":"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE","toolName":"incident_list"}
+
+event: content_block_start
+data: {"index":3,"blockType":"tool_use","toolId":"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u","toolName":"prometheus_alerts"}
+
+event: content_block_stop
+data: {"index":3,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u","toolName":"prometheus_alerts"}
+
+event: content_block_start
+data: {"index":4,"blockType":"tool_use","toolId":"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw","toolName":"loki_query"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:47.159Z"}
+
+event: content_block_delta
+data: {"index":4,"blockType":"tool_use","content":"{\"qu"}
+
+event: content_block_delta
+data: {"index":4,"blockType":"tool_use","content":"er"}
+
+event: content_block_delta
+data: {"index":4,"blockType":"tool_use","content":"y\":"}
+
+event: content_block_delta
+data: {"index":4,"blockType":"tool_use","content":" \"{namesp"}
+
+event: content_block_delta
+data: {"index":4,"blockType":"tool_use","content":"ace=\\\""}
+
+event: content_block_delta
+data: {"index":4,"blockType":"tool_use","content":"agentic-dev\\"}
+
+event: content_block_delta
+data: {"index":4,"blockType":"tool_use","content":"\"} |= \\\"slow"}
+
+event: content_block_delta
+data: {"index":4,"blockType":"tool_use","content":"\\\" or "}
+
+event: content_block_delta
+data: {"index":4,"blockType":"tool_use","content":"|= \\\"timeo"}
+
+event: content_block_delta
+data: {"index":4,"blockType":"tool_use","content":"ut\\\"\""}
+
+event: content_block_delta
+data: {"index":4,"blockType":"tool_use","content":", \"start\""}
+
+event: content_block_delta
+data: {"index":4,"blockType":"tool_use","content":": "}
+
+event: content_block_delta
+data: {"index":4,"blockType":"tool_use","content":"\"30m\""}
+
+event: content_block_delta
+data: {"index":4,"blockType":"tool_use","content":", \"limit\": "}
+
+event: content_block_delta
+data: {"index":4,"blockType":"tool_use","content":"50}"}
+
+event: content_block_stop
+data: {"index":4,"blockType":"tool_use","finalContent":"{\"query\": \"{namespace=\\\"agentic-dev\\\"} |= \\\"slow\\\" or |= \\\"timeout\\\"\", \"start\": \"30m\", \"limit\": 50}","toolId":"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw","toolName":"loki_query"}
+
+event: content_block_start
+data: {"index":5,"blockType":"tool_use","toolId":"toolu_bdrk_01TGMYi875wbwTWu8BSvr4eK","toolName":"loki_search_errors"}
+
+event: content_block_delta
+data: {"index":5,"blockType":"tool_use","content":"{\"na"}
+
+event: content_block_delta
+data: {"index":5,"blockType":"tool_use","content":"mespace\": \""}
+
+event: content_block_delta
+data: {"index":5,"blockType":"tool_use","content":"agen"}
+
+event: content_block_delta
+data: {"index":5,"blockType":"tool_use","content":"tic-dev\""}
+
+event: content_block_delta
+data: {"index":5,"blockType":"tool_use","content":", \"ti"}
+
+event: content_block_delta
+data: {"index":5,"blockType":"tool_use","content":"me_range\":"}
+
+event: content_block_delta
+data: {"index":5,"blockType":"tool_use","content":" \"30m\"}"}
+
+event: content_block_stop
+data: {"index":5,"blockType":"tool_use","finalContent":"{\"namespace\": \"agentic-dev\", \"time_range\": \"30m\"}","toolId":"toolu_bdrk_01TGMYi875wbwTWu8BSvr4eK","toolName":"loki_search_errors"}
+
+event: content_block_start
+data: {"index":6,"blockType":"tool_use","toolId":"toolu_bdrk_01CwRJ3B86sSSj8kfZJYY3Ce","toolName":"k8s_cluster_health"}
+
+event: content_block_stop
+data: {"index":6,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01CwRJ3B86sSSj8kfZJYY3Ce","toolName":"k8s_cluster_health"}
+
+event: content_block_start
+data: {"index":7,"blockType":"tool_use","toolId":"toolu_bdrk_01NeLmEo6LbyPi8tU7CCMxMK","toolName":"runbook_quick_diagnostics"}
+
+event: content_block_delta
+data: {"index":7,"blockType":"tool_use","content":"{\"service\":"}
+
+event: content_block_delta
+data: {"index":7,"blockType":"tool_use","content":" \"agen"}
+
+event: content_block_delta
+data: {"index":7,"blockType":"tool_use","content":"ticwork-api\""}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:50.160Z"}
+
+event: content_block_delta
+data: {"index":7,"blockType":"tool_use","content":", \""}
+
+event: content_block_delta
+data: {"index":7,"blockType":"tool_use","content":"namespace"}
+
+event: content_block_delta
+data: {"index":7,"blockType":"tool_use","content":"\": \""}
+
+event: content_block_delta
+data: {"index":7,"blockType":"tool_use","content":"openagentic\"}"}
+
+event: content_block_stop
+data: {"index":7,"blockType":"tool_use","finalContent":"{\"service\": \"openagentic-api\", \"namespace\": \"openagentic\"}","toolId":"toolu_bdrk_01NeLmEo6LbyPi8tU7CCMxMK","toolName":"runbook_quick_diagnostics"}
+
+event: content_block_start
+data: {"index":8,"blockType":"tool_use","toolId":"toolu_bdrk_01LofiwCx2RAnsFkBK8mY1dP","toolName":"get_framework_status"}
+
+event: content_block_stop
+data: {"index":8,"blockType":"tool_use","finalContent":"","toolId":"toolu_bdrk_01LofiwCx2RAnsFkBK8mY1dP","toolName":"get_framework_status"}
+
+event: cot_step
+data: {"step":{"id":"cot_thinking_1771624722049","type":"thinking","description":"Processing complete","status":"completed","endTime":1771624730413}}
+
+event: tool_calls_required
+data: {"toolCalls":[{"id":"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk","type":"function","function":{"name":"incident_update_status","arguments":"{\"id\":\"INC-20260220-0001\",\"status\":\"investigating\",\"note\":\"Beginning systematic investigation: Prometheus metrics, Loki logs, Kubernetes pod health, and service diagnostics.\"}"}},{"id":"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE","type":"function","function":{"name":"incident_list","arguments":"{\"status\":\"open\"}"}},{"id":"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u","type":"function","function":{"name":"prometheus_alerts","arguments":"{}"}},{"id":"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw","type":"function","function":{"name":"loki_query","arguments":"{\"query\":\"{namespace=\\\"agentic-dev\\\"} |= \\\"slow\\\" or |= \\\"timeout\\\"\",\"start\":\"30m\",\"limit\":50}"}},{"id":"toolu_bdrk_01TGMYi875wbwTWu8BSvr4eK","type":"function","function":{"name":"loki_search_errors","arguments":"{\"namespace\":\"agentic-dev\",\"time_range\":\"30m\"}"}},{"id":"toolu_bdrk_01CwRJ3B86sSSj8kfZJYY3Ce","type":"function","function":{"name":"k8s_cluster_health","arguments":"{}"}},{"id":"toolu_bdrk_01NeLmEo6LbyPi8tU7CCMxMK","type":"function","function":{"name":"runbook_quick_diagnostics","arguments":"{\"service\":\"openagentic-api\",\"namespace\":\"openagentic\"}"}},{"id":"toolu_bdrk_01LofiwCx2RAnsFkBK8mY1dP","type":"function","function":{"name":"get_framework_status","arguments":"{}"}}],"count":8}
+
+event: mcp_calls_data
+data: {"calls":[{"id":"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk","name":"incident_update_status","tool":"incident_update_status","toolName":"incident_update_status","status":"pending","arguments":{"id":"INC-20260220-0001","status":"investigating","note":"Beginning systematic investigation: Prometheus metrics, Loki logs, Kubernetes pod health, and service diagnostics."},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE","name":"incident_list","tool":"incident_list","toolName":"incident_list","status":"pending","arguments":{"status":"open"},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u","name":"prometheus_alerts","tool":"prometheus_alerts","toolName":"prometheus_alerts","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw","name":"loki_query","tool":"loki_query","toolName":"loki_query","status":"pending","arguments":{"query":"{namespace=\"agentic-dev\"} |= \"slow\" or |= \"timeout\"","start":"30m","limit":50},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01TGMYi875wbwTWu8BSvr4eK","name":"loki_search_errors","tool":"loki_search_errors","toolName":"loki_search_errors","status":"pending","arguments":{"namespace":"agentic-dev","time_range":"30m"},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01CwRJ3B86sSSj8kfZJYY3Ce","name":"k8s_cluster_health","tool":"k8s_cluster_health","toolName":"k8s_cluster_health","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01NeLmEo6LbyPi8tU7CCMxMK","name":"runbook_quick_diagnostics","tool":"runbook_quick_diagnostics","toolName":"runbook_quick_diagnostics","status":"pending","arguments":{"service":"openagentic-api","namespace":"openagentic"},"serverId":"pending","serverName":"pending"},{"id":"toolu_bdrk_01LofiwCx2RAnsFkBK8mY1dP","name":"get_framework_status","tool":"get_framework_status","toolName":"get_framework_status","status":"pending","arguments":{},"serverId":"pending","serverName":"pending"}],"totalCalls":8,"round":1}
+
+event: message_updated
+data: {"messageId":"4ip0ZrcwltMmlONMhMzJo","role":"assistant","content":"Incident **INC-20260220-0001** created. Moving to investigating status and launching all parallel diagnostics.","timestamp":"2026-02-20T21:58:50.428Z","toolCalls":[{"id":"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk","type":"function","function":{"name":"incident_update_status","arguments":"{\"id\":\"INC-20260220-0001\",\"status\":\"investigating\",\"note\":\"Beginning systematic investigation: Prometheus metrics, Loki logs, Kubernetes pod health, and service diagnostics.\"}"}},{"id":"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE","type":"function","function":{"name":"incident_list","arguments":"{\"status\":\"open\"}"}},{"id":"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u","type":"function","function":{"name":"prometheus_alerts","arguments":"{}"}},{"id":"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw","type":"function","function":{"name":"loki_query","arguments":"{\"query\":\"{namespace=\\\"agentic-dev\\\"} |= \\\"slow\\\" or |= \\\"timeout\\\"\",\"start\":\"30m\",\"limit\":50}"}},{"id":"toolu_bdrk_01TGMYi875wbwTWu8BSvr4eK","type":"function","function":{"name":"loki_search_errors","arguments":"{\"namespace\":\"agentic-dev\",\"time_range\":\"30m\"}"}},{"id":"toolu_bdrk_01CwRJ3B86sSSj8kfZJYY3Ce","type":"function","function":{"name":"k8s_cluster_health","arguments":"{}"}},{"id":"toolu_bdrk_01NeLmEo6LbyPi8tU7CCMxMK","type":"function","function":{"name":"runbook_quick_diagnostics","arguments":"{\"service\":\"openagentic-api\",\"namespace\":\"openagentic\"}"}},{"id":"toolu_bdrk_01LofiwCx2RAnsFkBK8mY1dP","type":"function","function":{"name":"get_framework_status","arguments":"{}"}}],"mcpCalls":[{"id":"toolu_bdrk_0135p94uXgfg1KZKPoYpfRJJ","name":"incident_create","tool":"incident_create","toolName":"incident_create","serverId":"openagentic_incident","serverName":"openagentic_incident","executedOn":"mcp-proxy","arguments":{"title":"API Response Degradation - Elevated Latency","description":"Users reporting slow chat responses, p99 latency above 10s threshold","severity":"sev2","service":"openagentic-api","impact":"User-facing chat responses degraded. P99 latency exceeding 10s SLA threshold, affecting all platform users.","tags":"latency,api,user-impact,chat"},"result":{"content":[{"type":"text","text":"=== Incident Created ===\n\n🟠 SEV2 | 📋 OPEN\nID: INC-20260220-0001\nTitle: API Response Degradation - Elevated Latency\nService: openagentic-api\nCreated: 2026-02-20T21:58:41.828448Z\n\nNext steps:\n  1. Assign the incident: incident_assign(id, assignee)\n  2. Update status to investigating: incident_update_status(id, 'investigating')\n  3. Add updates as you investigate: incident_add_note(id, note)"}],"structuredContent":{"result":"=== Incident Created ===\n\n🟠 SEV2 | 📋 OPEN\nID: INC-20260220-0001\nTitle: API Response Degradation - Elevated Latency\nService: openagentic-api\nCreated: 2026-02-20T21:58:41.828448Z\n\nNext steps:\n  1. Assign the incident: incident_assign(id, assignee)\n  2. Update status to investigating: incident_update_status(id, 'investigating')\n  3. Add updates as you investigate: incident_add_note(id, note)"},"isError":false},"status":"completed","startTime":1771624721606,"endTime":1771624722032,"duration":426,"timestamp":"2026-02-20T21:58:42.032Z"}],"tokenUsage":{"prompt_tokens":0,"completion_tokens":462,"total_tokens":462},"model":"us.anthropic.claude-opus-4-6-v1","source":"database","confirmed":true,"final":true}
+
+event: tool_approval_request
+data: {"toolCallRound":2,"tools":[{"id":"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk","name":"incident_update_status","arguments":"{\"id\":\"INC-20260220-0001\",\"status\":\"investigating\",\"note\":\"Beginning systematic investigation: Prometheus metrics, Loki logs, Kubernetes pod health, and service diagnostics.\"}"},{"id":"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE","name":"incident_list","arguments":"{\"status\":\"open\"}"},{"id":"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u","name":"prometheus_alerts","arguments":"{}"},{"id":"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw","name":"loki_query","arguments":"{\"query\":\"{namespace=\\\"agentic-dev\\\"} |= \\\"slow\\\" or |= \\\"timeout\\\"\",\"start\":\"30m\",\"limit\":50}"},{"id":"toolu_bdrk_01TGMYi875wbwTWu8BSvr4eK","name":"loki_search_errors","arguments":"{\"namespace\":\"agentic-dev\",\"time_range\":\"30m\"}"},{"id":"toolu_bdrk_01CwRJ3B86sSSj8kfZJYY3Ce","name":"k8s_cluster_health","arguments":"{}"},{"id":"toolu_bdrk_01NeLmEo6LbyPi8tU7CCMxMK","name":"runbook_quick_diagnostics","arguments":"{\"service\":\"openagentic-api\",\"namespace\":\"openagentic\"}"},{"id":"toolu_bdrk_01LofiwCx2RAnsFkBK8mY1dP","name":"get_framework_status","arguments":"{}"}],"messageId":"msg_1771624652155_ii94o6t0l"}
+
+event: tool_execution_start
+data: {"toolCallRound":2,"toolCount":8,"tools":[{"id":"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk","name":"incident_update_status"},{"id":"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE","name":"incident_list"},{"id":"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u","name":"prometheus_alerts"},{"id":"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw","name":"loki_query"},{"id":"toolu_bdrk_01TGMYi875wbwTWu8BSvr4eK","name":"loki_search_errors"},{"id":"toolu_bdrk_01CwRJ3B86sSSj8kfZJYY3Ce","name":"k8s_cluster_health"},{"id":"toolu_bdrk_01NeLmEo6LbyPi8tU7CCMxMK","name":"runbook_quick_diagnostics"},{"id":"toolu_bdrk_01LofiwCx2RAnsFkBK8mY1dP","name":"get_framework_status"}],"timestamp":"2026-02-20T21:58:50.431Z"}
+
+event: tool_executing
+data: {"name":"incident_update_status","arguments":{"id":"INC-20260220-0001","status":"investigating","note":"Beginning systematic investigation: Prometheus metrics, Loki logs, Kubernetes pod health, and service diagnostics."},"toolCallId":"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk","targetServer":"openagentic_incident","timestamp":"2026-02-20T21:58:50.636Z"}
+
+event: tool_result
+data: {"name":"incident_update_status","result":{"content":[{"type":"text","text":"Incident INC-20260220-0001 status updated to investigating\n\n🟠 SEV2 | 🔍 INVESTIGATING\nID: INC-20260220-0001\nTitle: API Response Degradation - Elevated Latency\nService: openagentic-api\nCreated: 2026-02-20T21:58:41.828448Z"}],"structuredContent":{"result":"Incident INC-20260220-0001 status updated to investigating\n\n🟠 SEV2 | 🔍 INVESTIGATING\nID: INC-20260220-0001\nTitle: API Response Degradation - Elevated Latency\nService: openagentic-api\nCreated: 2026-02-20T21:58:41.828448Z"},"isError":false},"toolCallId":"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk","executionTimeMs":25,"targetServer":"openagentic_incident","timestamp":"2026-02-20T21:58:50.677Z"}
+
+event: tool_executing
+data: {"name":"incident_list","arguments":{"status":"open"},"toolCallId":"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE","targetServer":"openagentic_incident","timestamp":"2026-02-20T21:58:51.242Z"}
+
+event: tool_result
+data: {"name":"incident_list","result":{"content":[{"type":"text","text":"No incidents found matching criteria"}],"structuredContent":{"result":"No incidents found matching criteria"},"isError":false},"toolCallId":"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE","executionTimeMs":13,"targetServer":"openagentic_incident","timestamp":"2026-02-20T21:58:51.267Z"}
+
+event: tool_executing
+data: {"name":"prometheus_alerts","arguments":{},"toolCallId":"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u","targetServer":"openagentic_prometheus","timestamp":"2026-02-20T21:58:51.678Z"}
+
+event: tool_result
+data: {"name":"prometheus_alerts","result":{"content":[{"type":"text","text":"No active alerts"}],"structuredContent":{"result":"No active alerts"},"isError":false},"toolCallId":"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u","executionTimeMs":46,"targetServer":"openagentic_prometheus","timestamp":"2026-02-20T21:58:51.736Z"}
+
+event: tool_executing
+data: {"name":"loki_query","arguments":{"query":"{namespace=\"agentic-dev\"} |= \"slow\" or |= \"timeout\"","start":"30m","limit":50},"toolCallId":"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw","targetServer":"openagentic_loki","timestamp":"2026-02-20T21:58:52.281Z"}
+
+event: tool_result
+data: {"name":"loki_query","result":{"content":[{"type":"text","text":"HTTP error querying Loki: Client error '400 Bad Request' for url 'http://loki.monitoring-stack:3100/loki/api/v1/query_range?query=%7Bnamespace%3D%22agentic-dev%22%7D+%7C%3D+%22slow%22+or+%7C%3D+%22timeout%22&limit=50&direction=backward&start=1771622932297719040'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400"}],"structuredContent":{"result":"HTTP error querying Loki: Client error '400 Bad Request' for url 'http://loki.monitoring-stack:3100/loki/api/v1/query_range?query=%7Bnamespace%3D%22agentic-dev%22%7D+%7C%3D+%22slow%22+or+%7C%3D+%22timeout%22&limit=50&direction=backward&start=1771622932297719040'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400"},"isError":false},"toolCallId":"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw","executionTimeMs":34,"targetServer":"openagentic_loki","timestamp":"2026-02-20T21:58:52.326Z"}
+
+event: tool_executing
+data: {"name":"loki_search_errors","arguments":{"namespace":"agentic-dev","time_range":"30m"},"toolCallId":"toolu_bdrk_01TGMYi875wbwTWu8BSvr4eK","targetServer":"openagentic_loki","timestamp":"2026-02-20T21:58:52.716Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:53.160Z"}
+
+event: tool_result
+data: {"name":"loki_search_errors","result":{"content":[{"type":"text","text":"=== Error Log Search Results ===\nTime range: last 30m\nFilters: namespace=agentic-dev, app=all\nTotal errors found: 200\n============================================================\n\n\nERROR (137):\n----------------------------------------\n[2026-02-20 21:58:52] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:52.325 GMT [124491] STATEMENT:  INSERT INTO \"admin\".\"user_query_audit\" (\"id\",\"user_id\",\"session_id\",\"message_id\",\"raw_query\",\"query_type\",\"intent\",\"mcp_server\",\"tools_called\",\"success\",\"error_code\",\"created_at\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING \"admin\".\"user_query_audit\".\"id\", \"admin\".\"user_query_audit\".\"user_id\", \"admin\".\"user_query_audit\".\"session_id\", \"admin\".\"user_query_audit\".\"message_id\", \"admin\".\"user_query_audit\".\"raw_query\", \"admin\".\"user_query_audit\".\"query_type\", \"admin\".\"user_query_audit\".\"intent\", \"admin\".\"user_query_audit\".\"ip_address\", \"admin\".\"user_query_audit\".\"user_agent\", \"admin\".\"user_query_audit\".\"referrer\", \"admin\".\"user_query_audit\".\"mcp_server\", \"admin\".\"user_query_audit\".\"tools_called\", \"admin\".\"user_query_audit\".\"tool_results\", \"admin\".\"user_query_audit\".\"request_payload\", \"admin\".\"user_query_audit\".\"response_payload\", \"admin\".\"user_query_audit\".\"response_time_ms\", \"admin\".\"user_query_audit\".\"success\", \"admin\".\"user_query_audit\".\"error_code\", \"admin\".\"user_query_audit\".\"error_message\", \"admin\".\"user_query_audit\".\"model_used\", \"admin\".\"user_query_audit\".\"tokens_consumed\", \"admin\".\"user_query_audit\".\"cost_estimate\", \"admin\".\"user_query_audit\".\"ml_training_data\", \"admin\".\"user_query_audit\".\"created_at\"\n[2026-02-20 21:58:52] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:52.325 GMT [124491] ERROR:  insert or update on table \"user_query_audit\" violates foreign key constraint \"user_query_audit_message_id_fkey\"\n[2026-02-20 21:58:51] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:51.735 GMT [124735] STATEMENT:  INSERT INTO \"admin\".\"user_query_audit\" (\"id\",\"user_id\",\"session_id\",\"message_id\",\"raw_query\",\"query_type\",\"intent\",\"mcp_server\",\"tools_called\",\"success\",\"error_code\",\"created_at\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING \"admin\".\"user_query_audit\".\"id\", \"admin\".\"user_query_audit\".\"user_id\", \"admin\".\"user_query_audit\".\"session_id\", \"admin\".\"user_query_audit\".\"message_id\", \"admin\".\"user_query_audit\".\"raw_query\", \"admin\".\"user_query_audit\".\"query_type\", \"admin\".\"user_query_audit\".\"intent\", \"admin\".\"user_query_audit\".\"ip_address\", \"admin\".\"user_query_audit\".\"user_agent\", \"admin\".\"user_query_audit\".\"referrer\", \"admin\".\"user_query_audit\".\"mcp_server\", \"admin\".\"user_query_audit\".\"tools_called\", \"admin\".\"user_query_audit\".\"tool_results\", \"admin\".\"user_query_audit\".\"request_payload\", \"admin\".\"user_query_audit\".\"response_payload\", \"admin\".\"user_query_audit\".\"response_time_ms\", \"admin\".\"user_query_audit\".\"success\", \"admin\".\"user_query_audit\".\"error_code\", \"admin\".\"user_query_audit\".\"error_message\", \"admin\".\"user_query_audit\".\"model_used\", \"admin\".\"user_query_audit\".\"tokens_consumed\", \"admin\".\"user_query_audit\".\"cost_estimate\", \"admin\".\"user_query_audit\".\"ml_training_data\", \"admin\".\"user_query_audit\".\"created_at\"\n[2026-02-20 21:58:51] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:51.735 GMT [124735] ERROR:  insert or update on table \"user_query_audit\" violates foreign key constraint \"user_query_audit_message_id_fkey\"\n[2026-02-20 21:58:51] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:51.266 GMT [124735] STATEMENT:  INSERT INTO \"admin\".\"user_query_audit\" (\"id\",\"user_id\",\"session_id\",\"message_id\",\"raw_query\",\"query_type\",\"intent\",\"mcp_server\",\"tools_called\",\"success\",\"error_code\",\"created_at\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING \"admin\".\"user_query_audit\".\"id\", \"admin\".\"user_query_audit\".\"user_id\", \"admin\".\"user_query_audit\".\"session_id\", \"admin\".\"user_query_audit\".\"message_id\", \"admin\".\"user_query_audit\".\"raw_query\", \"admin\".\"user_query_audit\".\"query_type\", \"admin\".\"user_query_audit\".\"intent\", \"admin\".\"user_query_audit\".\"ip_address\", \"admin\".\"user_query_audit\".\"user_agent\", \"admin\".\"user_query_audit\".\"referrer\", \"admin\".\"user_query_audit\".\"mcp_server\", \"admin\".\"user_query_audit\".\"tools_called\", \"admin\".\"user_query_audit\".\"tool_results\", \"admin\".\"user_query_audit\".\"request_payload\", \"admin\".\"user_query_audit\".\"response_payload\", \"admin\".\"user_query_audit\".\"response_time_ms\", \"admin\".\"user_query_audit\".\"success\", \"admin\".\"user_query_audit\".\"error_code\", \"admin\".\"user_query_audit\".\"error_message\", \"admin\".\"user_query_audit\".\"model_used\", \"admin\".\"user_query_audit\".\"tokens_consumed\", \"admin\".\"user_query_audit\".\"cost_estimate\", \"admin\".\"user_query_audit\".\"ml_training_data\", \"admin\".\"user_query_audit\".\"created_at\"\n[2026-02-20 21:58:51] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:51.266 GMT [124735] ERROR:  insert or update on table \"user_query_audit\" violates foreign key constraint \"user_query_audit_message_id_fkey\"\n[2026-02-20 21:58:50] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:50.675 GMT [124491] STATEMENT:  INSERT INTO \"admin\".\"user_query_audit\" (\"id\",\"user_id\",\"session_id\",\"message_id\",\"raw_query\",\"query_type\",\"intent\",\"mcp_server\",\"tools_called\",\"success\",\"error_code\",\"created_at\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING \"admin\".\"user_query_audit\".\"id\", \"admin\".\"user_query_audit\".\"user_id\", \"admin\".\"user_query_audit\".\"session_id\", \"admin\".\"user_query_audit\".\"message_id\", \"admin\".\"user_query_audit\".\"raw_query\", \"admin\".\"user_query_audit\".\"query_type\", \"admin\".\"user_query_audit\".\"intent\", \"admin\".\"user_query_audit\".\"ip_address\", \"admin\".\"user_query_audit\".\"user_agent\", \"admin\".\"user_query_audit\".\"referrer\", \"admin\".\"user_query_audit\".\"mcp_server\", \"admin\".\"user_query_audit\".\"tools_called\", \"admin\".\"user_query_audit\".\"tool_results\", \"admin\".\"user_query_audit\".\"request_payload\", \"admin\".\"user_query_audit\".\"response_payload\", \"admin\".\"user_query_audit\".\"response_time_ms\", \"admin\".\"user_query_audit\".\"success\", \"admin\".\"user_query_audit\".\"error_code\", \"admin\".\"user_query_audit\".\"error_message\", \"admin\".\"user_query_audit\".\"model_used\", \"admin\".\"user_query_audit\".\"tokens_consumed\", \"admin\".\"user_query_audit\".\"cost_estimate\", \"admin\".\"user_query_audit\".\"ml_training_data\", \"admin\".\"user_query_audit\".\"created_at\"\n[2026-02-20 21:58:50] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:50.675 GMT [124491] ERROR:  insert or update on table \"user_query_audit\" violates foreign key constraint \"user_query_audit_message_id_fkey\"\n[2026-02-20 21:58:41] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:41.846 GMT [124735] STATEMENT:  INSERT INTO \"admin\".\"user_query_audit\" (\"id\",\"user_id\",\"session_id\",\"message_id\",\"raw_query\",\"query_type\",\"intent\",\"mcp_server\",\"tools_called\",\"success\",\"error_code\",\"created_at\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING \"admin\".\"user_query_audit\".\"id\", \"admin\".\"user_query_audit\".\"user_id\", \"admin\".\"user_query_audit\".\"session_id\", \"admin\".\"user_query_audit\".\"message_id\", \"admin\".\"user_query_audit\".\"raw_query\", \"admin\".\"user_query_audit\".\"query_type\", \"admin\".\"user_query_audit\".\"intent\", \"admin\".\"user_query_audit\".\"ip_address\", \"admin\".\"user_query_audit\".\"user_agent\", \"admin\".\"user_query_audit\".\"referrer\", \"admin\".\"user_query_audit\".\"mcp_server\", \"admin\".\"user_query_audit\".\"tools_called\", \"admin\".\"user_query_audit\".\"tool_results\", \"admin\".\"user_query_audit\".\"request_payload\", \"admin\".\"user_query_audit\".\"response_payload\", \"admin\".\"user_query_audit\".\"response_time_ms\", \"admin\".\"user_query_audit\".\"success\", \"admin\".\"user_query_audit\".\"error_code\", \"admin\".\"user_query_audit\".\"error_message\", \"admin\".\"user_query_audit\".\"model_used\", \"admin\".\"user_query_audit\".\"tokens_consumed\", \"admin\".\"user_query_audit\".\"cost_estimate\", \"admin\".\"user_query_audit\".\"ml_training_data\", \"admin\".\"user_query_audit\".\"created_at\"\n[2026-02-20 21:58:41] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:41.846 GMT [124735] ERROR:  insert or update on table \"user_query_audit\" violates foreign key constraint \"user_query_audit_message_id_fkey\"\n[2026-02-20 21:58:33] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] INFO:     10.42.5.20:34758 - \"POST /v1/embeddings HTTP/1.1\" 500 Internal Server Error\n[2026-02-20 21:58:33] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] INFO:     10.42.5.20:34748 - \"POST /v1/embeddings HTTP/1.1\" 500 Internal Server Error\n[2026-02-20 21:58:33] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] INFO:     10.42.5.20:34742 - \"POST /v1/embeddings HTTP/1.1\" 500 Internal Server Error\n[2026-02-20 21:58:32] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] INFO:     10.42.5.20:34738 - \"POST /v1/embeddings HTTP/1.1\" 500 Internal Server Error\n[2026-02-20 21:58:32] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] INFO:     10.42.5.20:34734 - \"POST /v1/embeddings HTTP/1.1\" 500 Internal Server Error\n[2026-02-20 21:58:51] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:51,725 - mcp-proxy - INFO - Result: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"No active alerts\"}], \"structuredContent\": {\"result\": \"No active alerts\"}, \"isError\": false}}\n[2026-02-20 21:58:51] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:51,725 - mcp-manager - INFO - [openagentic_prometheus] RESPONSE: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"No active alerts\"}], \"structuredContent\": {\"result\": \"No active alerts\"}, \"isError\": false}}\n[2026-02-20 21:58:51] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:51,259 - mcp-proxy - INFO - Result: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"No incidents found matching criteria\"}], \"structuredContent\": {\"result\": \"No incidents found matching criteria\"}, \"isError\": false}}\n[2026-02-20 21:58:51] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:51,258 - mcp-manager - INFO - [openagentic_incident] RESPONSE: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"No incidents found matching criteria\"}], \"structuredContent\": {\"result\": \"No incidents found matching criteria\"}, \"isError\": false}}\n[2026-02-20 21:58:50] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:50,661 - mcp-proxy - INFO - Result: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"Incident INC-20260220-0001 status updated to investigating\\n\\n\\ud83d\\udfe0 SEV2 | \\ud83d\\udd0d INVESTIGATING\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\"}], \"structuredContent\": {\"result\": \"Incident INC-20260220-0001 status updated to investigating\\n\\n\\ud83d\\udfe0 SEV2 | \\ud83d\\udd0d INVESTIGATING\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\"}, \"isError\": false}}\n[2026-02-20 21:58:50] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:50,660 - mcp-manager - INFO - [openagentic_incident] RESPONSE: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"Incident INC-20260220-0001 status updated to investigating\\n\\n\\ud83d\\udfe0 SEV2 | \\ud83d\\udd0d INVESTIGATING\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\"}], \"structuredContent\": {\"result\": \"Incident INC-20260220-0001 status updated to investigating\\n\\n\\ud83d\\udfe0 SEV2 | \\ud83d\\udd0d INVESTIGATING\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\"}, \"isError\": false}}\n[2026-02-20 21:58:41] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:41,833 - mcp-proxy - INFO - Result: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_0135p94uXgfg1KZKPoYpfRJJ\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"=== Incident Created ===\\n\\n\\ud83d\\udfe0 SEV2 | \\ud83d\\udccb OPEN\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\\n\\nNext steps:\\n  1. Assign the incident: incident_assign(id, assignee)\\n  2. Update status to investigating: incident_update_status(id, 'investigating')\\n  3. Add updates as you investigate: incident_add_note(id, note)\"}], \"structuredContent\": {\"result\": \"=== Incident Created ===\\n\\n\\ud83d\\udfe0 SEV2 | \\ud83d\\udccb OPEN\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\\n\\nNext steps:\\n  1. Assign the incident: incident_assign(id, assignee)\\n  2. Update status to investigating: incident_update_status(id, 'investigating')\\n  3. Add updates as you investigate: incident_add_note(id, note)\"}, \"isError\": false}}\n[2026-02-20 21:58:41] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:41,832 - mcp-manager - INFO - [openagentic_incident] RESPONSE: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_0135p94uXgfg1KZKPoYpfRJJ\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"=== Incident Created ===\\n\\n\\ud83d\\udfe0 SEV2 | \\ud83d\\udccb OPEN\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\\n\\nNext steps:\\n  1. Assign the incident: incident_assign(id, assignee)\\n  2. Update status to investigating: incident_update_status(id, 'investigating')\\n  3. Add updates as you investigate: incident_add_note(id, note)\"}], \"structuredContent\": {\"result\": \"=== Incident Created ===\\n\\n\\ud83d\\udfe0 SEV2 | \\ud83d\\udccb OPEN\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\\n\\nNext steps:\\n  1. Assign the incident: incident_assign(id, assignee)\\n  2. Update status to investigating: incident_update_status(id, 'investigating')\\n  3. Add updates as you investigate: incident_add_note(id, note)\"}, \"isError\": false}}\n[2026-02-20 21:58:52] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:52,318 - mcp-proxy - INFO - Result: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"HTTP error querying Loki: Client error '400 Bad Request' for url 'http://loki.monitoring-stack:3100/loki/api/v1/query_range?query=%7Bnamespace%3D%22agentic-dev%22%7D+%7C%3D+%22slow%22+or+%7C%3D+%22timeout%22&limit=50&direction=backward&start=1771622932297719040'\\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400\"}], \"structuredContent\": {\"result\": \"HTTP error querying Loki: Client error '400 Bad Request' for url 'http://loki.monitoring-stack:3100/loki/api/v1/query_range?query=%7Bnamespace%3D%22agentic-dev%22%7D+%7C%3D+%22slow%22+or+%7C%3D+%22timeout%22&limit=50&direction=backward&start=1771622932297719040'\\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400\"}, \"isError\": false}}\n[2026-02-20 21:58:52] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:52,318 - mcp-manager - INFO - [openagentic_loki] RESPONSE: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"HTTP error querying Loki: Client error '400 Bad Request' for url 'http://loki.monitoring-stack:3100/loki/api/v1/query_range?query=%7Bnamespace%3D%22agentic-dev%22%7D+%7C%3D+%22slow%22+or+%7C%3D+%22timeout%22&limit=50&direction=backward&start=1771622932297719040'\\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400\"}], \"structuredContent\": {\"result\": \"HTTP error querying Loki: Client error '400 Bad Request' for url 'http://loki.monitoring-stack:3100/loki/api/v1/query_range?query=%7Bnamespace%3D%22agentic-dev%22%7D+%7C%3D+%22slow%22+or+%7C%3D+%22timeout%22&limit=50&direction=backward&start=1771622932297719040'\\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400\"}, \"isError\": false}}\n[2026-02-20 21:58:33] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:33,348 - mcp-proxy - ERROR - Embeddings generation error: ConnectTimeout: ConnectTimeout('')\n[2026-02-20 21:58:33] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:33,346 - mcp-proxy - ERROR - Embeddings generation error: ConnectTimeout: ConnectTimeout('')\n[2026-02-20 21:58:33] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:33,329 - mcp-proxy - ERROR - Embeddings generation error: ConnectTimeout: ConnectTimeout('')\n[2026-02-20 21:58:32] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:32,444 - mcp-proxy - ERROR - Embeddings generation error: ConnectTimeout: ConnectTimeout('')\n[2026-02-20 21:58:32] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:32,433 - mcp-proxy - ERROR - Embeddings generation error: ConnectTimeout: ConnectTimeout('')\n[2026-02-20 21:58:51] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624731727,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"toolCallId\":\"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u\",\"toolName\":\"prometheus_alerts\",\"targetServer\":\"openagentic_prometheus\",\"statusCode\":200,\"hasResult\":true,\"executionTime\":46,\"resultPreview\":\"{\\\"content\\\":[{\\\"type\\\":\\\"text\\\",\\\"text\\\":\\\"No active alerts\\\"}],\\\"structuredContent\\\":{\\\"result\\\":\\\"No active alerts\\\"},\\\"isError\\\":false}\",\"msg\":\"[TOOL-EXEC] Tool execution completed via MCP Proxy\"}\n[2026-02-20 21:58:51] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624731260,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"toolCallId\":\"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE\",\"toolName\":\"incident_list\",\"targetServer\":\"openagentic_incident\",\"statusCode\":200,\"hasResult\":true,\"executionTime\":13,\"resultPreview\":\"{\\\"content\\\":[{\\\"type\\\":\\\"text\\\",\\\"text\\\":\\\"No incidents found matching criteria\\\"}],\\\"structuredContent\\\":{\\\"result\\\":\\\"No incidents found matching criteria\\\"},\\\"isError\\\":false}\",\"msg\":\"[TOOL-EXEC] Tool execution completed via MCP Proxy\"}\n[2026-02-20 21:54:58] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:54:58.124Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":507,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\"\\\\n| **Error\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:58:52] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":50,\"time\":1771624732326,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"error\":{\"code\":\"P2003\",\"meta\":{\"modelName\":\"UserQueryAudit\",\"constraint\":\"user_query_audit_message_id_fkey\"},\"clientVersion\":\"6.19.2\",\"name\":\"PrismaClientKnownRequestError\"},\"auditData\":{\"userId\":\"4d570723-e099-47ac-8aad-dedc48ce2a55\",\"userName\":\"System Administrator\",\"userEmail\":\"admin@openagentic.io\",\"sessionId\":\"session_1771624651857_6i2nd3940\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"toolCallId\":\"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw\",\"toolName\":\"loki_query\",\"resolvedToolName\":\"loki_query\",\"mcpServer\":\"openagentic_loki\",\"mcpProxyHost\":\"mcp-proxy\",\"requestPayload\":\"[TRUNCATED]\",\"responsePayload\":\"[TRUNCATED]\",\"executionTimeMs\":34,\"requestSizeBytes\":191,\"responseSizeBytes\":1055,\"success\":true,\"userToken\":true,\"modelUsed\":\"us.anthropic.claude-opus-4-6-v1\",\"modelProvider\":\"bedrock\"},\"msg\":\"[MCP-AUDIT] Failed to log MCP call audit data\"}\n[2026-02-20 21:58:52] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] prisma:error \n[2026-02-20 21:58:52] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624732319,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"toolCallId\":\"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw\",\"toolName\":\"loki_query\",\"targetServer\":\"openagentic_loki\",\"statusCode\":200,\"hasResult\":true,\"executionTime\":34,\"resultPreview\":\"{\\\"content\\\":[{\\\"type\\\":\\\"text\\\",\\\"text\\\":\\\"HTTP error querying Loki: Client error '400 Bad Request' for url 'http://loki.monitoring-stack:3100/loki/api/v1/query_range?query=%7Bnamespace%3D%22agentic-dev%22%7D\",\"msg\":\"[TOOL-EXEC] Tool execution completed via MCP Proxy\"}\n[2026-02-20 21:58:51] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":50,\"time\":1771624731736,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"error\":{\"code\":\"P2003\",\"meta\":{\"modelName\":\"UserQueryAudit\",\"constraint\":\"user_query_audit_message_id_fkey\"},\"clientVersion\":\"6.19.2\",\"name\":\"PrismaClientKnownRequestError\"},\"auditData\":{\"userId\":\"4d570723-e099-47ac-8aad-dedc48ce2a55\",\"userName\":\"System Administrator\",\"userEmail\":\"admin@openagentic.io\",\"sessionId\":\"session_1771624651857_6i2nd3940\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"toolCallId\":\"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u\",\"toolName\":\"prometheus_alerts\",\"resolvedToolName\":\"prometheus_alerts\",\"mcpServer\":\"openagentic_prometheus\",\"mcpProxyHost\":\"mcp-proxy\",\"requestPayload\":\"[TRUNCATED]\",\"responsePayload\":\"[TRUNCATED]\",\"executionTimeMs\":46,\"requestSizeBytes\":112,\"responseSizeBytes\":291,\"success\":true,\"userToken\":true,\"modelUsed\":\"us.anthropic.claude-opus-4-6-v1\",\"modelProvider\":\"bedrock\"},\"msg\":\"[MCP-AUDIT] Failed to log MCP call audit data\"}\n[2026-02-20 21:58:51] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] prisma:error \n[2026-02-20 21:58:51] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":50,\"time\":1771624731267,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"error\":{\"code\":\"P2003\",\"meta\":{\"modelName\":\"UserQueryAudit\",\"constraint\":\"user_query_audit_message_id_fkey\"},\"clientVersion\":\"6.19.2\",\"name\":\"PrismaClientKnownRequestError\"},\"auditData\":{\"userId\":\"4d570723-e099-47ac-8aad-dedc48ce2a55\",\"userName\":\"System Administrator\",\"userEmail\":\"admin@openagentic.io\",\"sessionId\":\"session_1771624651857_6i2nd3940\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"toolCallId\":\"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE\",\"toolName\":\"incident_list\",\"resolvedToolName\":\"incident_list\",\"mcpServer\":\"openagentic_incident\",\"mcpProxyHost\":\"mcp-proxy\",\"requestPayload\":\"[TRUNCATED]\",\"responsePayload\":\"[TRUNCATED]\",\"executionTimeMs\":13,\"requestSizeBytes\":121,\"responseSizeBytes\":431,\"success\":true,\"userToken\":true,\"modelUsed\":\"us.anthropic.claude-opus-4-6-v1\",\"modelProvider\":\"bedrock\"},\"msg\":\"[MCP-AUDIT] Failed to log MCP call audit data\"}\n[2026-02-20 21:58:51] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] prisma:error \n[2026-02-20 21:58:50] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":50,\"time\":1771624730677,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"error\":{\"code\":\"P2003\",\"meta\":{\"modelName\":\"UserQueryAudit\",\"constraint\":\"user_query_audit_message_id_fkey\"},\"clientVersion\":\"6.19.2\",\"name\":\"PrismaClientKnownRequestError\"},\"auditData\":{\"userId\":\"4d570723-e099-47ac-8aad-dedc48ce2a55\",\"userName\":\"System Administrator\",\"userEmail\":\"admin@openagentic.io\",\"sessionId\":\"session_1771624651857_6i2nd3940\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"toolCallId\":\"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk\",\"toolName\":\"incident_update_status\",\"resolvedToolName\":\"incident_update_status\",\"mcpServer\":\"openagentic_incident\",\"mcpProxyHost\":\"mcp-proxy\",\"requestPayload\":\"[TRUNCATED]\",\"responsePayload\":\"[TRUNCATED]\",\"executionTimeMs\":25,\"requestSizeBytes\":288,\"responseSizeBytes\":765,\"success\":true,\"userToken\":true,\"modelUsed\":\"us.anthropic.claude-opus-4-6-v1\",\"modelProvider\":\"bedrock\"},\"msg\":\"[MCP-AUDIT] Failed to log MCP call audit data\"}\n[2026-02-20 21:58:50] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] prisma:error \n[2026-02-20 21:58:50] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624730431,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"toolCallCount\":8,\"toolNames\":[\"incident_update_status\",\"incident_list\",\"prometheus_alerts\",\"loki_query\",\"loki_search_errors\",\"k8s_cluster_health\",\"runbook_quick_diagnostics\",\"get_framework_status\"],\"hasUserToken\":true,\"hasIdToken\":false,\"hasAwsTools\":false,\"idTokenLength\":0,\"userTokenLength\":68,\"msg\":\"[TOOL-EXEC] Executing tool calls via MCP Proxy\"}\n[2026-02-20 21:58:50] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624730431,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"toolCallRound\":2,\"toolCount\":8,\"tools\":[{\"id\":\"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk\",\"name\":\"incident_update_status\",\"arguments\":\"{\\\"id\\\":\\\"INC-20260220-0001\\\",\\\"status\\\":\\\"investigating\\\",\\\"note\\\":\\\"Beginning systematic investigation: Prometheus metrics, Loki logs, Kubernetes pod health, and service diagnostics.\\\"}\"},{\"id\":\"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE\",\"name\":\"incident_list\",\"arguments\":\"{\\\"status\\\":\\\"open\\\"}\"},{\"id\":\"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u\",\"name\":\"prometheus_alerts\",\"arguments\":\"{}\"},{\"id\":\"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw\",\"name\":\"loki_query\",\"arguments\":\"{\\\"query\\\":\\\"{namespace=\\\\\\\"agentic-dev\\\\\\\"} |= \\\\\\\"slow\\\\\\\" or |= \\\\\\\"timeout\\\\\\\"\\\",\\\"start\\\":\\\"30m\\\",\\\"limit\\\":50}\"},{\"id\":\"toolu_bdrk_01TGMYi875wbwTWu8BSvr4eK\",\"name\":\"loki_search_errors\",\"arguments\":\"{\\\"namespace\\\":\\\"agentic-dev\\\",\\\"time_range\\\":\\\"30m\\\"}\"},{\"id\":\"toolu_bdrk_01CwRJ3B86sSSj8kfZJYY3Ce\",\"name\":\"k8s_cluster_health\",\"arguments\":\"{}\"},{\"id\":\"toolu_bdrk_01NeLmEo6LbyPi8tU7CCMxMK\",\"name\":\"runbook_quick_diagnostics\",\"arguments\":\"{\\\"service\\\":\\\"openagentic-api\\\",\\\"namespace\\\":\\\"openagentic\\\"}\"},{\"id\":\"toolu_bdrk_01LofiwCx2RAnsFkBK8mY1dP\",\"name\":\"get_framework_status\",\"arguments\":\"{}\"}],\"msg\":\"Requesting user approval for tool execution\"}\n[2026-02-20 21:58:50] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624730415,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"toolCallCount\":8,\"toolNames\":[\"incident_update_status\",\"incident_list\",\"prometheus_alerts\",\"loki_query\",\"loki_search_errors\",\"k8s_cluster_health\",\"runbook_quick_diagnostics\",\"get_framework_status\"],\"msg\":\"[COMPLETION] 🔧 Emitted mcp_calls_data for immediate UI badge display\"}\n[2026-02-20 21:58:50] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624730414,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"toolCallCount\":8,\"toolNames\":[\"incident_update_status\",\"incident_list\",\"prometheus_alerts\",\"loki_query\",\"loki_search_errors\",\"k8s_cluster_health\",\"runbook_quick_diagnostics\",\"get_framework_status\"],\"msg\":\"[COMPLETION] Tool calls detected\"}\n[2026-02-20 21:58:50] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624730413,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"index\":5,\"toolId\":\"toolu_bdrk_01TGMYi875wbwTWu8BSvr4eK\",\"toolName\":\"loki_search_errors\",\"argsLength\":49,\"msg\":\"[ANTHROPIC-TOOLCALL] ✅ Converted content_block tool_use to toolCall\"}\n[2026-02-20 21:58:47] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624727789,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"index\":5,\"blockType\":\"tool_use\",\"toolName\":\"loki_search_errors\",\"msg\":\"[INTERLEAVED] 📦 content_block_start - emitting to SSE\"}\n[2026-02-20 21:58:47] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:58:47.789Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":68,\"rawChunkType\":\"content_block_start\",\"rawChunkKeys\":[\"type\",\"index\",\"content_block\"],\"hasContent\":false,\"hasContentBlock\":true,\"hasDelta\":false,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_start\\\",\\\"index\\\":5,\\\"content_block\\\":{\\\"type\\\":\\\"tool_use\\\",\\\"id\\\":\\\"toolu_bdrk_01TGMYi875wbwTWu8BSvr4eK\\\",\\\"name\\\":\\\"loki_search_errors\\\",\\\"input\\\":{}}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:58:42] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:58:42.048Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"toolCount\":54,\"toolNames\":[\"web_search\",\"web_news_search\",\"k8s_cluster_health\",\"k8s_rollout_status\",\"k8s_get_events\",\"k8s_rollout_history\",\"k8s_explain_resource\",\"admin_system_infrastructure_health_check\",\"admin_full_system_test\",\"runbook_quick_diagnostics\",\"flowise_get_workflow_analytics\",\"incident_create\",\"loki_search_errors\",\"incident_resolve\",\"admin_system_redis_health_check\",\"admin_system_postgres_health_check\",\"incident_link_runbook\",\"admin_audit_get_error_analysis\",\"incident_escalate\",\"prometheus_alerts\",\"loki_log_rate\",\"admin_system_milvus_health_check\",\"incident_assign\",\"get_framework_status\",\"loki_streams\",\"incident_list\",\"incident_get\",\"flowise_add_agentic_mcp_tools\",\"flowise_test_chatflow\",\"incident_update_status\",\"flowise_create_chatflow_advanced\",\"flowise_validate_and_fix_flow\",\"incident_summary\",\"incident_close\",\"loki_query\",\"runbook_quick_scale\",\"admin_system_postgres_raw_query\",\"incident_add_note\",\"flowise_get_feedback\",\"flowise_create_chatflow\",\"azure_app_gateway_backend_health\",\"prometheus_rules\",\"admin_system_users_list_all\",\"prometheus_query_range\",\"flowise_create_agentflow\",\"admin_system_postgres_list_tables\",\"flowise_get_creation_guide\",\"admin_audit_get_user_chats\",\"flowise_update_chatflow\",\"runbook_quick_restart\",\"flowise_create_from_template\",\"get_tool_examples\",\"synth_synthesize\",\"spawn_parallel_agents\"],\"firstToolSchema\":{\"name\":\"web_search\",\"hasInputSchema\":true,\"inputSchemaType\":\"object\"},\"msg\":\"[AWSBedrockProvider] 🔧 Tools configured for request\"}\n  ... and 87 more\n\nPANIC (1):\n----------------------------------------\n[2026-02-20 21:54:59] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:54:59.141Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":526,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\"panic\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n\nFAILED (54):\n----------------------------------------\n[2026-02-20 21:58:50] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:50.857 +00:00] [WARN] [proxy/impl.go:2670] [\"Failed to execute insert task in task scheduler: length of varchar field result_summary exceeds max length, row number: 0, length: 520, max length: 512: invalid parameter\"] [traceID=09319a680dad47fd2fe81282fcbe04cf] [role=proxy] [db=default] [collection=tool_success_tracking] [partition=] [len(FieldsData)=14] [len(HashKeys)=0] [NumRows=1]\n[2026-02-20 21:58:50] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:50.857 +00:00] [WARN] [proxy/task_scheduler.go:508] [\"Failed to pre-execute task: length of varchar field result_summary exceeds max length, row number: 0, length: 520, max length: 512: invalid parameter\"] [traceID=09319a680dad47fd2fe81282fcbe04cf]\n[2026-02-20 21:58:42] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:42.000 +00:00] [WARN] [proxy/impl.go:2670] [\"Failed to execute insert task in task scheduler: length of varchar field result_summary exceeds max length, row number: 0, length: 518, max length: 512: invalid parameter\"] [traceID=932a94e4eea799644760b07a276aa4db] [role=proxy] [db=default] [collection=tool_success_tracking] [partition=] [len(FieldsData)=14] [len(HashKeys)=0] [NumRows=1]\n[2026-02-20 21:58:42] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:42.000 +00:00] [WARN] [proxy/task_scheduler.go:508] [\"Failed to pre-execute task: length of varchar field result_summary exceeds max length, row number: 0, length: 518, max length: 512: invalid parameter\"] [traceID=932a94e4eea799644760b07a276aa4db]\n[2026-02-20 21:58:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_7_464399067589254901v0]\n[2026-02-20 21:58:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_2_464399067589054779v0]\n[2026-02-20 21:58:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_8_464399067589259038v0]\n[2026-02-20 21:58:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_6_464399067589254880v0]\n[2026-02-20 21:58:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_4_464399067589054824v0]\n[2026-02-20 21:58:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_5_464399067589254855v0]\n[2026-02-20 21:58:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:18.427 +00:00] [INFO] [importv2/util.go:273] [\"import task stats\"] [type=ImportTask] [pending=0] [inProgress=0] [completed=0] [failed=0]\n[2026-02-20 21:58:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:18.427 +00:00] [INFO] [importv2/util.go:273] [\"import task stats\"] [type=PreImportTask] [pending=0] [inProgress=0] [completed=0] [failed=0]\n[2026-02-20 21:58:17] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:17.932 +00:00] [INFO] [datacoord/import_checker.go:137] [\"import task stats\"] [type=ImportTask] [pending=0] [inProgress=0] [completed=0] [failed=0]\n[2026-02-20 21:58:17] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:17.932 +00:00] [INFO] [datacoord/import_checker.go:137] [\"import task stats\"] [type=PreImportTask] [pending=0] [inProgress=0] [completed=0] [failed=0]\n[2026-02-20 21:57:58] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:58.432 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_10_464399067590266433v0]\n[2026-02-20 21:57:33] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:33.118 +00:00] [WARN] [proxy/impl.go:2670] [\"Failed to execute insert task in task scheduler: the length(1024) of float data should divide the dim(1536)\"] [traceID=8f7874ff37de205a9b4e95931aa48053] [role=proxy] [db=default] [collection=chat_conversations_v2] [partition=] [len(FieldsData)=7] [len(HashKeys)=0] [NumRows=1]\n[2026-02-20 21:57:33] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:33.118 +00:00] [WARN] [proxy/task_scheduler.go:508] [\"Failed to pre-execute task: the length(1024) of float data should divide the dim(1536)\"] [traceID=8f7874ff37de205a9b4e95931aa48053]\n[2026-02-20 21:57:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_5_464399067589254855v0]\n[2026-02-20 21:57:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_4_464399067589054824v0]\n[2026-02-20 21:57:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_2_464399067589054779v0]\n[2026-02-20 21:57:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_7_464399067589254901v0]\n[2026-02-20 21:57:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_8_464399067589259038v0]\n[2026-02-20 21:57:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_6_464399067589254880v0]\n[2026-02-20 21:56:58] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:58.432 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_10_464399067590266433v0]\n[2026-02-20 21:56:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_7_464399067589254901v0]\n[2026-02-20 21:56:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_4_464399067589054824v0]\n[2026-02-20 21:56:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_8_464399067589259038v0]\n[2026-02-20 21:56:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_6_464399067589254880v0]\n[2026-02-20 21:56:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_2_464399067589054779v0]\n[2026-02-20 21:56:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_5_464399067589254855v0]\n[2026-02-20 21:56:17] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:17.932 +00:00] [INFO] [datacoord/import_checker.go:137] [\"import task stats\"] [type=ImportTask] [pending=0] [inProgress=0] [completed=0] [failed=0]\n[2026-02-20 21:56:17] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:17.932 +00:00] [INFO] [datacoord/import_checker.go:137] [\"import task stats\"] [type=PreImportTask] [pending=0] [inProgress=0] [completed=0] [failed=0]\n[2026-02-20 21:55:58] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:55:58.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_10_464399067590266433v0]\n[2026-02-20 21:55:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:55:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_5_464399067589254855v0]\n[2026-02-20 21:55:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:55:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_2_464399067589054779v0]\n[2026-02-20 21:55:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:55:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_8_464399067589259038v0]\n[2026-02-20 21:55:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:55:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_6_464399067589254880v0]\n[2026-02-20 21:55:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:55:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_7_464399067589254901v0]\n[2026-02-20 21:55:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:55:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_4_464399067589054824v0]\n[2026-02-20 21:54:58] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:54:58.431 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_10_464399067590266433v0]\n[2026-02-20 21:55:55] [agentic-dev/openagentic-ollama-7c6f67474c-75nwb] time=2026-02-20T21:55:55.821Z level=INFO source=images.go:848 msg=\"request failed: Get \\\"https://registry.ollama.ai/v2/library/us.anthropic.claude-opus-4-6-v1/manifests/latest\\\": net/http: TLS handshake timeout\"\n[2026-02-20 21:55:14] [agentic-dev/openagentic-ollama-7c6f67474c-75nwb] time=2026-02-20T21:55:14.921Z level=INFO source=images.go:848 msg=\"request failed: Get \\\"https://registry.ollama.ai/v2/library/anthropic.claude-haiku-4-5-20251001-v1/manifests/0\\\": net/http: TLS handshake timeout\"\n[2026-02-20 21:55:04] [agentic-dev/openagentic-ollama-7c6f67474c-75nwb] time=2026-02-20T21:55:04.617Z level=INFO source=images.go:848 msg=\"request failed: Get \\\"https://registry.ollama.ai/v2/library/us.anthropic.claude-sonnet-4-6/manifests/latest\\\": net/http: TLS handshake timeout\"\n[2026-02-20 21:55:03] [agentic-dev/openagentic-ollama-7c6f67474c-75nwb] time=2026-02-20T21:55:03.733Z level=INFO source=images.go:848 msg=\"request failed: Get \\\"https://registry.ollama.ai/v2/library/anthropic.claude-haiku-4-5-20251001-v1/manifests/0\\\": net/http: TLS handshake timeout\"\n[2026-02-20 21:58:42] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624722022,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"totalToolCalls\":1,\"successfulCalls\":1,\"failedCalls\":0,\"hasCodeExecutionContext\":false,\"msg\":\"[TOOL-EXEC] Tool execution batch completed\"}\n[2026-02-20 21:57:40] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":40,\"time\":1771624660509,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"messageId\":\"msg_1771624466613_4c3hf7nd2\",\"issues\":[\"Repetition detected: -------------------------..., \\\"❌ mcp proxy\\\" (5x), \\\"mcp proxy down\\\" (5x)\"],\"hadNonEnglish\":false,\"hadRepetition\":true,\"truncated\":false,\"originalLength\":19207,\"cleanedLength\":18878,\"msg\":\"[CONTENT-SAFETY] ⚠️ Content validation failed - applying fixes\"}\n[2026-02-20 21:56:10] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:56:10.517Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":222,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\" Synthesis failed |\\\\n| `spawn_\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:56:08] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:56:08.288Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":183,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\" failed\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:55:56] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624556258,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"totalToolCalls\":1,\"successfulCalls\":1,\"failedCalls\":0,\"hasCodeExecutionContext\":false,\"msg\":\"[TOOL-EXEC] Tool execution batch completed\"}\n[2026-02-20 21:55:35] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":40,\"time\":1771624535034,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"messageId\":\"msg_1771624237101_1ktuncv6w\",\"issues\":[\"Repetition detected: ──────────────────────────────..., ──────────────────────────────..., ──────────────────────────────...\"],\"hadNonEnglish\":false,\"hadRepetition\":true,\"truncated\":false,\"originalLength\":12552,\"cleanedLength\":12348,\"msg\":\"[CONTENT-SAFETY] ⚠️ Content validation failed - applying fixes\"}\n  ... and 4 more\n\nCRASH (8):\n----------------------------------------\n[2026-02-20 21:55:33] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:55:33.461Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":1153,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\"p_admin MCP crash\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:55:31] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:55:31.518Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":1116,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\" crashed (3\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:55:26] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:55:26.973Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":1035,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\"-restart crashed\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:55:26] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:55:26.068Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":1018,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\" single pod crash casc\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:55:17] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:55:17.548Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":861,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\"p_admin crash\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:55:15] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:55:15.978Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":831,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\"p_admin crash\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:54:57] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:54:57.434Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":494,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\"admin-mcp` crash\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:54:56] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:54:56.313Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":473,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\" Crashed\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}"}],"structuredContent":{"result":"=== Error Log Search Results ===\nTime range: last 30m\nFilters: namespace=agentic-dev, app=all\nTotal errors found: 200\n============================================================\n\n\nERROR (137):\n----------------------------------------\n[2026-02-20 21:58:52] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:52.325 GMT [124491] STATEMENT:  INSERT INTO \"admin\".\"user_query_audit\" (\"id\",\"user_id\",\"session_id\",\"message_id\",\"raw_query\",\"query_type\",\"intent\",\"mcp_server\",\"tools_called\",\"success\",\"error_code\",\"created_at\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING \"admin\".\"user_query_audit\".\"id\", \"admin\".\"user_query_audit\".\"user_id\", \"admin\".\"user_query_audit\".\"session_id\", \"admin\".\"user_query_audit\".\"message_id\", \"admin\".\"user_query_audit\".\"raw_query\", \"admin\".\"user_query_audit\".\"query_type\", \"admin\".\"user_query_audit\".\"intent\", \"admin\".\"user_query_audit\".\"ip_address\", \"admin\".\"user_query_audit\".\"user_agent\", \"admin\".\"user_query_audit\".\"referrer\", \"admin\".\"user_query_audit\".\"mcp_server\", \"admin\".\"user_query_audit\".\"tools_called\", \"admin\".\"user_query_audit\".\"tool_results\", \"admin\".\"user_query_audit\".\"request_payload\", \"admin\".\"user_query_audit\".\"response_payload\", \"admin\".\"user_query_audit\".\"response_time_ms\", \"admin\".\"user_query_audit\".\"success\", \"admin\".\"user_query_audit\".\"error_code\", \"admin\".\"user_query_audit\".\"error_message\", \"admin\".\"user_query_audit\".\"model_used\", \"admin\".\"user_query_audit\".\"tokens_consumed\", \"admin\".\"user_query_audit\".\"cost_estimate\", \"admin\".\"user_query_audit\".\"ml_training_data\", \"admin\".\"user_query_audit\".\"created_at\"\n[2026-02-20 21:58:52] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:52.325 GMT [124491] ERROR:  insert or update on table \"user_query_audit\" violates foreign key constraint \"user_query_audit_message_id_fkey\"\n[2026-02-20 21:58:51] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:51.735 GMT [124735] STATEMENT:  INSERT INTO \"admin\".\"user_query_audit\" (\"id\",\"user_id\",\"session_id\",\"message_id\",\"raw_query\",\"query_type\",\"intent\",\"mcp_server\",\"tools_called\",\"success\",\"error_code\",\"created_at\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING \"admin\".\"user_query_audit\".\"id\", \"admin\".\"user_query_audit\".\"user_id\", \"admin\".\"user_query_audit\".\"session_id\", \"admin\".\"user_query_audit\".\"message_id\", \"admin\".\"user_query_audit\".\"raw_query\", \"admin\".\"user_query_audit\".\"query_type\", \"admin\".\"user_query_audit\".\"intent\", \"admin\".\"user_query_audit\".\"ip_address\", \"admin\".\"user_query_audit\".\"user_agent\", \"admin\".\"user_query_audit\".\"referrer\", \"admin\".\"user_query_audit\".\"mcp_server\", \"admin\".\"user_query_audit\".\"tools_called\", \"admin\".\"user_query_audit\".\"tool_results\", \"admin\".\"user_query_audit\".\"request_payload\", \"admin\".\"user_query_audit\".\"response_payload\", \"admin\".\"user_query_audit\".\"response_time_ms\", \"admin\".\"user_query_audit\".\"success\", \"admin\".\"user_query_audit\".\"error_code\", \"admin\".\"user_query_audit\".\"error_message\", \"admin\".\"user_query_audit\".\"model_used\", \"admin\".\"user_query_audit\".\"tokens_consumed\", \"admin\".\"user_query_audit\".\"cost_estimate\", \"admin\".\"user_query_audit\".\"ml_training_data\", \"admin\".\"user_query_audit\".\"created_at\"\n[2026-02-20 21:58:51] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:51.735 GMT [124735] ERROR:  insert or update on table \"user_query_audit\" violates foreign key constraint \"user_query_audit_message_id_fkey\"\n[2026-02-20 21:58:51] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:51.266 GMT [124735] STATEMENT:  INSERT INTO \"admin\".\"user_query_audit\" (\"id\",\"user_id\",\"session_id\",\"message_id\",\"raw_query\",\"query_type\",\"intent\",\"mcp_server\",\"tools_called\",\"success\",\"error_code\",\"created_at\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING \"admin\".\"user_query_audit\".\"id\", \"admin\".\"user_query_audit\".\"user_id\", \"admin\".\"user_query_audit\".\"session_id\", \"admin\".\"user_query_audit\".\"message_id\", \"admin\".\"user_query_audit\".\"raw_query\", \"admin\".\"user_query_audit\".\"query_type\", \"admin\".\"user_query_audit\".\"intent\", \"admin\".\"user_query_audit\".\"ip_address\", \"admin\".\"user_query_audit\".\"user_agent\", \"admin\".\"user_query_audit\".\"referrer\", \"admin\".\"user_query_audit\".\"mcp_server\", \"admin\".\"user_query_audit\".\"tools_called\", \"admin\".\"user_query_audit\".\"tool_results\", \"admin\".\"user_query_audit\".\"request_payload\", \"admin\".\"user_query_audit\".\"response_payload\", \"admin\".\"user_query_audit\".\"response_time_ms\", \"admin\".\"user_query_audit\".\"success\", \"admin\".\"user_query_audit\".\"error_code\", \"admin\".\"user_query_audit\".\"error_message\", \"admin\".\"user_query_audit\".\"model_used\", \"admin\".\"user_query_audit\".\"tokens_consumed\", \"admin\".\"user_query_audit\".\"cost_estimate\", \"admin\".\"user_query_audit\".\"ml_training_data\", \"admin\".\"user_query_audit\".\"created_at\"\n[2026-02-20 21:58:51] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:51.266 GMT [124735] ERROR:  insert or update on table \"user_query_audit\" violates foreign key constraint \"user_query_audit_message_id_fkey\"\n[2026-02-20 21:58:50] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:50.675 GMT [124491] STATEMENT:  INSERT INTO \"admin\".\"user_query_audit\" (\"id\",\"user_id\",\"session_id\",\"message_id\",\"raw_query\",\"query_type\",\"intent\",\"mcp_server\",\"tools_called\",\"success\",\"error_code\",\"created_at\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING \"admin\".\"user_query_audit\".\"id\", \"admin\".\"user_query_audit\".\"user_id\", \"admin\".\"user_query_audit\".\"session_id\", \"admin\".\"user_query_audit\".\"message_id\", \"admin\".\"user_query_audit\".\"raw_query\", \"admin\".\"user_query_audit\".\"query_type\", \"admin\".\"user_query_audit\".\"intent\", \"admin\".\"user_query_audit\".\"ip_address\", \"admin\".\"user_query_audit\".\"user_agent\", \"admin\".\"user_query_audit\".\"referrer\", \"admin\".\"user_query_audit\".\"mcp_server\", \"admin\".\"user_query_audit\".\"tools_called\", \"admin\".\"user_query_audit\".\"tool_results\", \"admin\".\"user_query_audit\".\"request_payload\", \"admin\".\"user_query_audit\".\"response_payload\", \"admin\".\"user_query_audit\".\"response_time_ms\", \"admin\".\"user_query_audit\".\"success\", \"admin\".\"user_query_audit\".\"error_code\", \"admin\".\"user_query_audit\".\"error_message\", \"admin\".\"user_query_audit\".\"model_used\", \"admin\".\"user_query_audit\".\"tokens_consumed\", \"admin\".\"user_query_audit\".\"cost_estimate\", \"admin\".\"user_query_audit\".\"ml_training_data\", \"admin\".\"user_query_audit\".\"created_at\"\n[2026-02-20 21:58:50] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:50.675 GMT [124491] ERROR:  insert or update on table \"user_query_audit\" violates foreign key constraint \"user_query_audit_message_id_fkey\"\n[2026-02-20 21:58:41] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:41.846 GMT [124735] STATEMENT:  INSERT INTO \"admin\".\"user_query_audit\" (\"id\",\"user_id\",\"session_id\",\"message_id\",\"raw_query\",\"query_type\",\"intent\",\"mcp_server\",\"tools_called\",\"success\",\"error_code\",\"created_at\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING \"admin\".\"user_query_audit\".\"id\", \"admin\".\"user_query_audit\".\"user_id\", \"admin\".\"user_query_audit\".\"session_id\", \"admin\".\"user_query_audit\".\"message_id\", \"admin\".\"user_query_audit\".\"raw_query\", \"admin\".\"user_query_audit\".\"query_type\", \"admin\".\"user_query_audit\".\"intent\", \"admin\".\"user_query_audit\".\"ip_address\", \"admin\".\"user_query_audit\".\"user_agent\", \"admin\".\"user_query_audit\".\"referrer\", \"admin\".\"user_query_audit\".\"mcp_server\", \"admin\".\"user_query_audit\".\"tools_called\", \"admin\".\"user_query_audit\".\"tool_results\", \"admin\".\"user_query_audit\".\"request_payload\", \"admin\".\"user_query_audit\".\"response_payload\", \"admin\".\"user_query_audit\".\"response_time_ms\", \"admin\".\"user_query_audit\".\"success\", \"admin\".\"user_query_audit\".\"error_code\", \"admin\".\"user_query_audit\".\"error_message\", \"admin\".\"user_query_audit\".\"model_used\", \"admin\".\"user_query_audit\".\"tokens_consumed\", \"admin\".\"user_query_audit\".\"cost_estimate\", \"admin\".\"user_query_audit\".\"ml_training_data\", \"admin\".\"user_query_audit\".\"created_at\"\n[2026-02-20 21:58:41] [agentic-dev/openagentic-postgresql-0] 2026-02-20 21:58:41.846 GMT [124735] ERROR:  insert or update on table \"user_query_audit\" violates foreign key constraint \"user_query_audit_message_id_fkey\"\n[2026-02-20 21:58:33] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] INFO:     10.42.5.20:34758 - \"POST /v1/embeddings HTTP/1.1\" 500 Internal Server Error\n[2026-02-20 21:58:33] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] INFO:     10.42.5.20:34748 - \"POST /v1/embeddings HTTP/1.1\" 500 Internal Server Error\n[2026-02-20 21:58:33] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] INFO:     10.42.5.20:34742 - \"POST /v1/embeddings HTTP/1.1\" 500 Internal Server Error\n[2026-02-20 21:58:32] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] INFO:     10.42.5.20:34738 - \"POST /v1/embeddings HTTP/1.1\" 500 Internal Server Error\n[2026-02-20 21:58:32] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] INFO:     10.42.5.20:34734 - \"POST /v1/embeddings HTTP/1.1\" 500 Internal Server Error\n[2026-02-20 21:58:51] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:51,725 - mcp-proxy - INFO - Result: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"No active alerts\"}], \"structuredContent\": {\"result\": \"No active alerts\"}, \"isError\": false}}\n[2026-02-20 21:58:51] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:51,725 - mcp-manager - INFO - [openagentic_prometheus] RESPONSE: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"No active alerts\"}], \"structuredContent\": {\"result\": \"No active alerts\"}, \"isError\": false}}\n[2026-02-20 21:58:51] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:51,259 - mcp-proxy - INFO - Result: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"No incidents found matching criteria\"}], \"structuredContent\": {\"result\": \"No incidents found matching criteria\"}, \"isError\": false}}\n[2026-02-20 21:58:51] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:51,258 - mcp-manager - INFO - [openagentic_incident] RESPONSE: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"No incidents found matching criteria\"}], \"structuredContent\": {\"result\": \"No incidents found matching criteria\"}, \"isError\": false}}\n[2026-02-20 21:58:50] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:50,661 - mcp-proxy - INFO - Result: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"Incident INC-20260220-0001 status updated to investigating\\n\\n\\ud83d\\udfe0 SEV2 | \\ud83d\\udd0d INVESTIGATING\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\"}], \"structuredContent\": {\"result\": \"Incident INC-20260220-0001 status updated to investigating\\n\\n\\ud83d\\udfe0 SEV2 | \\ud83d\\udd0d INVESTIGATING\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\"}, \"isError\": false}}\n[2026-02-20 21:58:50] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:50,660 - mcp-manager - INFO - [openagentic_incident] RESPONSE: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"Incident INC-20260220-0001 status updated to investigating\\n\\n\\ud83d\\udfe0 SEV2 | \\ud83d\\udd0d INVESTIGATING\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\"}], \"structuredContent\": {\"result\": \"Incident INC-20260220-0001 status updated to investigating\\n\\n\\ud83d\\udfe0 SEV2 | \\ud83d\\udd0d INVESTIGATING\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\"}, \"isError\": false}}\n[2026-02-20 21:58:41] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:41,833 - mcp-proxy - INFO - Result: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_0135p94uXgfg1KZKPoYpfRJJ\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"=== Incident Created ===\\n\\n\\ud83d\\udfe0 SEV2 | \\ud83d\\udccb OPEN\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\\n\\nNext steps:\\n  1. Assign the incident: incident_assign(id, assignee)\\n  2. Update status to investigating: incident_update_status(id, 'investigating')\\n  3. Add updates as you investigate: incident_add_note(id, note)\"}], \"structuredContent\": {\"result\": \"=== Incident Created ===\\n\\n\\ud83d\\udfe0 SEV2 | \\ud83d\\udccb OPEN\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\\n\\nNext steps:\\n  1. Assign the incident: incident_assign(id, assignee)\\n  2. Update status to investigating: incident_update_status(id, 'investigating')\\n  3. Add updates as you investigate: incident_add_note(id, note)\"}, \"isError\": false}}\n[2026-02-20 21:58:41] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:41,832 - mcp-manager - INFO - [openagentic_incident] RESPONSE: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_0135p94uXgfg1KZKPoYpfRJJ\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"=== Incident Created ===\\n\\n\\ud83d\\udfe0 SEV2 | \\ud83d\\udccb OPEN\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\\n\\nNext steps:\\n  1. Assign the incident: incident_assign(id, assignee)\\n  2. Update status to investigating: incident_update_status(id, 'investigating')\\n  3. Add updates as you investigate: incident_add_note(id, note)\"}], \"structuredContent\": {\"result\": \"=== Incident Created ===\\n\\n\\ud83d\\udfe0 SEV2 | \\ud83d\\udccb OPEN\\nID: INC-20260220-0001\\nTitle: API Response Degradation - Elevated Latency\\nService: openagentic-api\\nCreated: 2026-02-20T21:58:41.828448Z\\n\\nNext steps:\\n  1. Assign the incident: incident_assign(id, assignee)\\n  2. Update status to investigating: incident_update_status(id, 'investigating')\\n  3. Add updates as you investigate: incident_add_note(id, note)\"}, \"isError\": false}}\n[2026-02-20 21:58:52] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:52,318 - mcp-proxy - INFO - Result: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"HTTP error querying Loki: Client error '400 Bad Request' for url 'http://loki.monitoring-stack:3100/loki/api/v1/query_range?query=%7Bnamespace%3D%22agentic-dev%22%7D+%7C%3D+%22slow%22+or+%7C%3D+%22timeout%22&limit=50&direction=backward&start=1771622932297719040'\\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400\"}], \"structuredContent\": {\"result\": \"HTTP error querying Loki: Client error '400 Bad Request' for url 'http://loki.monitoring-stack:3100/loki/api/v1/query_range?query=%7Bnamespace%3D%22agentic-dev%22%7D+%7C%3D+%22slow%22+or+%7C%3D+%22timeout%22&limit=50&direction=backward&start=1771622932297719040'\\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400\"}, \"isError\": false}}\n[2026-02-20 21:58:52] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:52,318 - mcp-manager - INFO - [openagentic_loki] RESPONSE: {\"jsonrpc\": \"2.0\", \"id\": \"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw\", \"result\": {\"content\": [{\"type\": \"text\", \"text\": \"HTTP error querying Loki: Client error '400 Bad Request' for url 'http://loki.monitoring-stack:3100/loki/api/v1/query_range?query=%7Bnamespace%3D%22agentic-dev%22%7D+%7C%3D+%22slow%22+or+%7C%3D+%22timeout%22&limit=50&direction=backward&start=1771622932297719040'\\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400\"}], \"structuredContent\": {\"result\": \"HTTP error querying Loki: Client error '400 Bad Request' for url 'http://loki.monitoring-stack:3100/loki/api/v1/query_range?query=%7Bnamespace%3D%22agentic-dev%22%7D+%7C%3D+%22slow%22+or+%7C%3D+%22timeout%22&limit=50&direction=backward&start=1771622932297719040'\\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400\"}, \"isError\": false}}\n[2026-02-20 21:58:33] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:33,348 - mcp-proxy - ERROR - Embeddings generation error: ConnectTimeout: ConnectTimeout('')\n[2026-02-20 21:58:33] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:33,346 - mcp-proxy - ERROR - Embeddings generation error: ConnectTimeout: ConnectTimeout('')\n[2026-02-20 21:58:33] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:33,329 - mcp-proxy - ERROR - Embeddings generation error: ConnectTimeout: ConnectTimeout('')\n[2026-02-20 21:58:32] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:32,444 - mcp-proxy - ERROR - Embeddings generation error: ConnectTimeout: ConnectTimeout('')\n[2026-02-20 21:58:32] [agentic-dev/openagentic-mcp-proxy-6d9bd579cb-hpccl] 2026-02-20 21:58:32,433 - mcp-proxy - ERROR - Embeddings generation error: ConnectTimeout: ConnectTimeout('')\n[2026-02-20 21:58:51] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624731727,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"toolCallId\":\"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u\",\"toolName\":\"prometheus_alerts\",\"targetServer\":\"openagentic_prometheus\",\"statusCode\":200,\"hasResult\":true,\"executionTime\":46,\"resultPreview\":\"{\\\"content\\\":[{\\\"type\\\":\\\"text\\\",\\\"text\\\":\\\"No active alerts\\\"}],\\\"structuredContent\\\":{\\\"result\\\":\\\"No active alerts\\\"},\\\"isError\\\":false}\",\"msg\":\"[TOOL-EXEC] Tool execution completed via MCP Proxy\"}\n[2026-02-20 21:58:51] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624731260,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"toolCallId\":\"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE\",\"toolName\":\"incident_list\",\"targetServer\":\"openagentic_incident\",\"statusCode\":200,\"hasResult\":true,\"executionTime\":13,\"resultPreview\":\"{\\\"content\\\":[{\\\"type\\\":\\\"text\\\",\\\"text\\\":\\\"No incidents found matching criteria\\\"}],\\\"structuredContent\\\":{\\\"result\\\":\\\"No incidents found matching criteria\\\"},\\\"isError\\\":false}\",\"msg\":\"[TOOL-EXEC] Tool execution completed via MCP Proxy\"}\n[2026-02-20 21:54:58] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:54:58.124Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":507,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\"\\\\n| **Error\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:58:52] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":50,\"time\":1771624732326,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"error\":{\"code\":\"P2003\",\"meta\":{\"modelName\":\"UserQueryAudit\",\"constraint\":\"user_query_audit_message_id_fkey\"},\"clientVersion\":\"6.19.2\",\"name\":\"PrismaClientKnownRequestError\"},\"auditData\":{\"userId\":\"4d570723-e099-47ac-8aad-dedc48ce2a55\",\"userName\":\"System Administrator\",\"userEmail\":\"admin@openagentic.io\",\"sessionId\":\"session_1771624651857_6i2nd3940\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"toolCallId\":\"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw\",\"toolName\":\"loki_query\",\"resolvedToolName\":\"loki_query\",\"mcpServer\":\"openagentic_loki\",\"mcpProxyHost\":\"mcp-proxy\",\"requestPayload\":\"[TRUNCATED]\",\"responsePayload\":\"[TRUNCATED]\",\"executionTimeMs\":34,\"requestSizeBytes\":191,\"responseSizeBytes\":1055,\"success\":true,\"userToken\":true,\"modelUsed\":\"us.anthropic.claude-opus-4-6-v1\",\"modelProvider\":\"bedrock\"},\"msg\":\"[MCP-AUDIT] Failed to log MCP call audit data\"}\n[2026-02-20 21:58:52] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] prisma:error \n[2026-02-20 21:58:52] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624732319,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"toolCallId\":\"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw\",\"toolName\":\"loki_query\",\"targetServer\":\"openagentic_loki\",\"statusCode\":200,\"hasResult\":true,\"executionTime\":34,\"resultPreview\":\"{\\\"content\\\":[{\\\"type\\\":\\\"text\\\",\\\"text\\\":\\\"HTTP error querying Loki: Client error '400 Bad Request' for url 'http://loki.monitoring-stack:3100/loki/api/v1/query_range?query=%7Bnamespace%3D%22agentic-dev%22%7D\",\"msg\":\"[TOOL-EXEC] Tool execution completed via MCP Proxy\"}\n[2026-02-20 21:58:51] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":50,\"time\":1771624731736,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"error\":{\"code\":\"P2003\",\"meta\":{\"modelName\":\"UserQueryAudit\",\"constraint\":\"user_query_audit_message_id_fkey\"},\"clientVersion\":\"6.19.2\",\"name\":\"PrismaClientKnownRequestError\"},\"auditData\":{\"userId\":\"4d570723-e099-47ac-8aad-dedc48ce2a55\",\"userName\":\"System Administrator\",\"userEmail\":\"admin@openagentic.io\",\"sessionId\":\"session_1771624651857_6i2nd3940\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"toolCallId\":\"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u\",\"toolName\":\"prometheus_alerts\",\"resolvedToolName\":\"prometheus_alerts\",\"mcpServer\":\"openagentic_prometheus\",\"mcpProxyHost\":\"mcp-proxy\",\"requestPayload\":\"[TRUNCATED]\",\"responsePayload\":\"[TRUNCATED]\",\"executionTimeMs\":46,\"requestSizeBytes\":112,\"responseSizeBytes\":291,\"success\":true,\"userToken\":true,\"modelUsed\":\"us.anthropic.claude-opus-4-6-v1\",\"modelProvider\":\"bedrock\"},\"msg\":\"[MCP-AUDIT] Failed to log MCP call audit data\"}\n[2026-02-20 21:58:51] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] prisma:error \n[2026-02-20 21:58:51] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":50,\"time\":1771624731267,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"error\":{\"code\":\"P2003\",\"meta\":{\"modelName\":\"UserQueryAudit\",\"constraint\":\"user_query_audit_message_id_fkey\"},\"clientVersion\":\"6.19.2\",\"name\":\"PrismaClientKnownRequestError\"},\"auditData\":{\"userId\":\"4d570723-e099-47ac-8aad-dedc48ce2a55\",\"userName\":\"System Administrator\",\"userEmail\":\"admin@openagentic.io\",\"sessionId\":\"session_1771624651857_6i2nd3940\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"toolCallId\":\"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE\",\"toolName\":\"incident_list\",\"resolvedToolName\":\"incident_list\",\"mcpServer\":\"openagentic_incident\",\"mcpProxyHost\":\"mcp-proxy\",\"requestPayload\":\"[TRUNCATED]\",\"responsePayload\":\"[TRUNCATED]\",\"executionTimeMs\":13,\"requestSizeBytes\":121,\"responseSizeBytes\":431,\"success\":true,\"userToken\":true,\"modelUsed\":\"us.anthropic.claude-opus-4-6-v1\",\"modelProvider\":\"bedrock\"},\"msg\":\"[MCP-AUDIT] Failed to log MCP call audit data\"}\n[2026-02-20 21:58:51] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] prisma:error \n[2026-02-20 21:58:50] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":50,\"time\":1771624730677,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"error\":{\"code\":\"P2003\",\"meta\":{\"modelName\":\"UserQueryAudit\",\"constraint\":\"user_query_audit_message_id_fkey\"},\"clientVersion\":\"6.19.2\",\"name\":\"PrismaClientKnownRequestError\"},\"auditData\":{\"userId\":\"4d570723-e099-47ac-8aad-dedc48ce2a55\",\"userName\":\"System Administrator\",\"userEmail\":\"admin@openagentic.io\",\"sessionId\":\"session_1771624651857_6i2nd3940\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"toolCallId\":\"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk\",\"toolName\":\"incident_update_status\",\"resolvedToolName\":\"incident_update_status\",\"mcpServer\":\"openagentic_incident\",\"mcpProxyHost\":\"mcp-proxy\",\"requestPayload\":\"[TRUNCATED]\",\"responsePayload\":\"[TRUNCATED]\",\"executionTimeMs\":25,\"requestSizeBytes\":288,\"responseSizeBytes\":765,\"success\":true,\"userToken\":true,\"modelUsed\":\"us.anthropic.claude-opus-4-6-v1\",\"modelProvider\":\"bedrock\"},\"msg\":\"[MCP-AUDIT] Failed to log MCP call audit data\"}\n[2026-02-20 21:58:50] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] prisma:error \n[2026-02-20 21:58:50] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624730431,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"toolCallCount\":8,\"toolNames\":[\"incident_update_status\",\"incident_list\",\"prometheus_alerts\",\"loki_query\",\"loki_search_errors\",\"k8s_cluster_health\",\"runbook_quick_diagnostics\",\"get_framework_status\"],\"hasUserToken\":true,\"hasIdToken\":false,\"hasAwsTools\":false,\"idTokenLength\":0,\"userTokenLength\":68,\"msg\":\"[TOOL-EXEC] Executing tool calls via MCP Proxy\"}\n[2026-02-20 21:58:50] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624730431,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"toolCallRound\":2,\"toolCount\":8,\"tools\":[{\"id\":\"toolu_bdrk_0152Y2hpYjzDK3Zt862YcyJk\",\"name\":\"incident_update_status\",\"arguments\":\"{\\\"id\\\":\\\"INC-20260220-0001\\\",\\\"status\\\":\\\"investigating\\\",\\\"note\\\":\\\"Beginning systematic investigation: Prometheus metrics, Loki logs, Kubernetes pod health, and service diagnostics.\\\"}\"},{\"id\":\"toolu_bdrk_019zzwFtpZDpUvpw9M3ebknE\",\"name\":\"incident_list\",\"arguments\":\"{\\\"status\\\":\\\"open\\\"}\"},{\"id\":\"toolu_bdrk_01N7eTS85ghEEie62QWuKj8u\",\"name\":\"prometheus_alerts\",\"arguments\":\"{}\"},{\"id\":\"toolu_bdrk_01HzarKhXutjHgt3E9hRHnRw\",\"name\":\"loki_query\",\"arguments\":\"{\\\"query\\\":\\\"{namespace=\\\\\\\"agentic-dev\\\\\\\"} |= \\\\\\\"slow\\\\\\\" or |= \\\\\\\"timeout\\\\\\\"\\\",\\\"start\\\":\\\"30m\\\",\\\"limit\\\":50}\"},{\"id\":\"toolu_bdrk_01TGMYi875wbwTWu8BSvr4eK\",\"name\":\"loki_search_errors\",\"arguments\":\"{\\\"namespace\\\":\\\"agentic-dev\\\",\\\"time_range\\\":\\\"30m\\\"}\"},{\"id\":\"toolu_bdrk_01CwRJ3B86sSSj8kfZJYY3Ce\",\"name\":\"k8s_cluster_health\",\"arguments\":\"{}\"},{\"id\":\"toolu_bdrk_01NeLmEo6LbyPi8tU7CCMxMK\",\"name\":\"runbook_quick_diagnostics\",\"arguments\":\"{\\\"service\\\":\\\"openagentic-api\\\",\\\"namespace\\\":\\\"openagentic\\\"}\"},{\"id\":\"toolu_bdrk_01LofiwCx2RAnsFkBK8mY1dP\",\"name\":\"get_framework_status\",\"arguments\":\"{}\"}],\"msg\":\"Requesting user approval for tool execution\"}\n[2026-02-20 21:58:50] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624730415,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"toolCallCount\":8,\"toolNames\":[\"incident_update_status\",\"incident_list\",\"prometheus_alerts\",\"loki_query\",\"loki_search_errors\",\"k8s_cluster_health\",\"runbook_quick_diagnostics\",\"get_framework_status\"],\"msg\":\"[COMPLETION] 🔧 Emitted mcp_calls_data for immediate UI badge display\"}\n[2026-02-20 21:58:50] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624730414,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"toolCallCount\":8,\"toolNames\":[\"incident_update_status\",\"incident_list\",\"prometheus_alerts\",\"loki_query\",\"loki_search_errors\",\"k8s_cluster_health\",\"runbook_quick_diagnostics\",\"get_framework_status\"],\"msg\":\"[COMPLETION] Tool calls detected\"}\n[2026-02-20 21:58:50] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624730413,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"index\":5,\"toolId\":\"toolu_bdrk_01TGMYi875wbwTWu8BSvr4eK\",\"toolName\":\"loki_search_errors\",\"argsLength\":49,\"msg\":\"[ANTHROPIC-TOOLCALL] ✅ Converted content_block tool_use to toolCall\"}\n[2026-02-20 21:58:47] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624727789,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"messageId\":\"msg_1771624652155_ii94o6t0l\",\"index\":5,\"blockType\":\"tool_use\",\"toolName\":\"loki_search_errors\",\"msg\":\"[INTERLEAVED] 📦 content_block_start - emitting to SSE\"}\n[2026-02-20 21:58:47] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:58:47.789Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":68,\"rawChunkType\":\"content_block_start\",\"rawChunkKeys\":[\"type\",\"index\",\"content_block\"],\"hasContent\":false,\"hasContentBlock\":true,\"hasDelta\":false,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_start\\\",\\\"index\\\":5,\\\"content_block\\\":{\\\"type\\\":\\\"tool_use\\\",\\\"id\\\":\\\"toolu_bdrk_01TGMYi875wbwTWu8BSvr4eK\\\",\\\"name\\\":\\\"loki_search_errors\\\",\\\"input\\\":{}}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:58:42] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:58:42.048Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"toolCount\":54,\"toolNames\":[\"web_search\",\"web_news_search\",\"k8s_cluster_health\",\"k8s_rollout_status\",\"k8s_get_events\",\"k8s_rollout_history\",\"k8s_explain_resource\",\"admin_system_infrastructure_health_check\",\"admin_full_system_test\",\"runbook_quick_diagnostics\",\"flowise_get_workflow_analytics\",\"incident_create\",\"loki_search_errors\",\"incident_resolve\",\"admin_system_redis_health_check\",\"admin_system_postgres_health_check\",\"incident_link_runbook\",\"admin_audit_get_error_analysis\",\"incident_escalate\",\"prometheus_alerts\",\"loki_log_rate\",\"admin_system_milvus_health_check\",\"incident_assign\",\"get_framework_status\",\"loki_streams\",\"incident_list\",\"incident_get\",\"flowise_add_agentic_mcp_tools\",\"flowise_test_chatflow\",\"incident_update_status\",\"flowise_create_chatflow_advanced\",\"flowise_validate_and_fix_flow\",\"incident_summary\",\"incident_close\",\"loki_query\",\"runbook_quick_scale\",\"admin_system_postgres_raw_query\",\"incident_add_note\",\"flowise_get_feedback\",\"flowise_create_chatflow\",\"azure_app_gateway_backend_health\",\"prometheus_rules\",\"admin_system_users_list_all\",\"prometheus_query_range\",\"flowise_create_agentflow\",\"admin_system_postgres_list_tables\",\"flowise_get_creation_guide\",\"admin_audit_get_user_chats\",\"flowise_update_chatflow\",\"runbook_quick_restart\",\"flowise_create_from_template\",\"get_tool_examples\",\"synth_synthesize\",\"spawn_parallel_agents\"],\"firstToolSchema\":{\"name\":\"web_search\",\"hasInputSchema\":true,\"inputSchemaType\":\"object\"},\"msg\":\"[AWSBedrockProvider] 🔧 Tools configured for request\"}\n  ... and 87 more\n\nPANIC (1):\n----------------------------------------\n[2026-02-20 21:54:59] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:54:59.141Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":526,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\"panic\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n\nFAILED (54):\n----------------------------------------\n[2026-02-20 21:58:50] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:50.857 +00:00] [WARN] [proxy/impl.go:2670] [\"Failed to execute insert task in task scheduler: length of varchar field result_summary exceeds max length, row number: 0, length: 520, max length: 512: invalid parameter\"] [traceID=09319a680dad47fd2fe81282fcbe04cf] [role=proxy] [db=default] [collection=tool_success_tracking] [partition=] [len(FieldsData)=14] [len(HashKeys)=0] [NumRows=1]\n[2026-02-20 21:58:50] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:50.857 +00:00] [WARN] [proxy/task_scheduler.go:508] [\"Failed to pre-execute task: length of varchar field result_summary exceeds max length, row number: 0, length: 520, max length: 512: invalid parameter\"] [traceID=09319a680dad47fd2fe81282fcbe04cf]\n[2026-02-20 21:58:42] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:42.000 +00:00] [WARN] [proxy/impl.go:2670] [\"Failed to execute insert task in task scheduler: length of varchar field result_summary exceeds max length, row number: 0, length: 518, max length: 512: invalid parameter\"] [traceID=932a94e4eea799644760b07a276aa4db] [role=proxy] [db=default] [collection=tool_success_tracking] [partition=] [len(FieldsData)=14] [len(HashKeys)=0] [NumRows=1]\n[2026-02-20 21:58:42] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:42.000 +00:00] [WARN] [proxy/task_scheduler.go:508] [\"Failed to pre-execute task: length of varchar field result_summary exceeds max length, row number: 0, length: 518, max length: 512: invalid parameter\"] [traceID=932a94e4eea799644760b07a276aa4db]\n[2026-02-20 21:58:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_7_464399067589254901v0]\n[2026-02-20 21:58:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_2_464399067589054779v0]\n[2026-02-20 21:58:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_8_464399067589259038v0]\n[2026-02-20 21:58:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_6_464399067589254880v0]\n[2026-02-20 21:58:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_4_464399067589054824v0]\n[2026-02-20 21:58:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_5_464399067589254855v0]\n[2026-02-20 21:58:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:18.427 +00:00] [INFO] [importv2/util.go:273] [\"import task stats\"] [type=ImportTask] [pending=0] [inProgress=0] [completed=0] [failed=0]\n[2026-02-20 21:58:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:18.427 +00:00] [INFO] [importv2/util.go:273] [\"import task stats\"] [type=PreImportTask] [pending=0] [inProgress=0] [completed=0] [failed=0]\n[2026-02-20 21:58:17] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:17.932 +00:00] [INFO] [datacoord/import_checker.go:137] [\"import task stats\"] [type=ImportTask] [pending=0] [inProgress=0] [completed=0] [failed=0]\n[2026-02-20 21:58:17] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:58:17.932 +00:00] [INFO] [datacoord/import_checker.go:137] [\"import task stats\"] [type=PreImportTask] [pending=0] [inProgress=0] [completed=0] [failed=0]\n[2026-02-20 21:57:58] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:58.432 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_10_464399067590266433v0]\n[2026-02-20 21:57:33] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:33.118 +00:00] [WARN] [proxy/impl.go:2670] [\"Failed to execute insert task in task scheduler: the length(1024) of float data should divide the dim(1536)\"] [traceID=8f7874ff37de205a9b4e95931aa48053] [role=proxy] [db=default] [collection=chat_conversations_v2] [partition=] [len(FieldsData)=7] [len(HashKeys)=0] [NumRows=1]\n[2026-02-20 21:57:33] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:33.118 +00:00] [WARN] [proxy/task_scheduler.go:508] [\"Failed to pre-execute task: the length(1024) of float data should divide the dim(1536)\"] [traceID=8f7874ff37de205a9b4e95931aa48053]\n[2026-02-20 21:57:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_5_464399067589254855v0]\n[2026-02-20 21:57:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_4_464399067589054824v0]\n[2026-02-20 21:57:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_2_464399067589054779v0]\n[2026-02-20 21:57:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_7_464399067589254901v0]\n[2026-02-20 21:57:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_8_464399067589259038v0]\n[2026-02-20 21:57:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:57:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_6_464399067589254880v0]\n[2026-02-20 21:56:58] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:58.432 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_10_464399067590266433v0]\n[2026-02-20 21:56:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_7_464399067589254901v0]\n[2026-02-20 21:56:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_4_464399067589054824v0]\n[2026-02-20 21:56:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_8_464399067589259038v0]\n[2026-02-20 21:56:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_6_464399067589254880v0]\n[2026-02-20 21:56:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_2_464399067589054779v0]\n[2026-02-20 21:56:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:18.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_5_464399067589254855v0]\n[2026-02-20 21:56:17] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:17.932 +00:00] [INFO] [datacoord/import_checker.go:137] [\"import task stats\"] [type=ImportTask] [pending=0] [inProgress=0] [completed=0] [failed=0]\n[2026-02-20 21:56:17] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:56:17.932 +00:00] [INFO] [datacoord/import_checker.go:137] [\"import task stats\"] [type=PreImportTask] [pending=0] [inProgress=0] [completed=0] [failed=0]\n[2026-02-20 21:55:58] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:55:58.434 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_10_464399067590266433v0]\n[2026-02-20 21:55:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:55:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_5_464399067589254855v0]\n[2026-02-20 21:55:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:55:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_2_464399067589054779v0]\n[2026-02-20 21:55:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:55:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_8_464399067589259038v0]\n[2026-02-20 21:55:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:55:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_6_464399067589254880v0]\n[2026-02-20 21:55:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:55:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_7_464399067589254901v0]\n[2026-02-20 21:55:18] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:55:18.433 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_4_464399067589054824v0]\n[2026-02-20 21:54:58] [agentic-dev/openagentic-milvus-standalone-6c4c97bfdc-j56zn] [2026/02/20 21:54:58.431 +00:00] [INFO] [datacoord/segment_manager.go:573] [\"try remove empty sealed segment after channel cp updated failed to get channel\"] [channel=by-dev-rootcoord-dml_10_464399067590266433v0]\n[2026-02-20 21:55:55] [agentic-dev/openagentic-ollama-7c6f67474c-75nwb] time=2026-02-20T21:55:55.821Z level=INFO source=images.go:848 msg=\"request failed: Get \\\"https://registry.ollama.ai/v2/library/us.anthropic.claude-opus-4-6-v1/manifests/latest\\\": net/http: TLS handshake timeout\"\n[2026-02-20 21:55:14] [agentic-dev/openagentic-ollama-7c6f67474c-75nwb] time=2026-02-20T21:55:14.921Z level=INFO source=images.go:848 msg=\"request failed: Get \\\"https://registry.ollama.ai/v2/library/anthropic.claude-haiku-4-5-20251001-v1/manifests/0\\\": net/http: TLS handshake timeout\"\n[2026-02-20 21:55:04] [agentic-dev/openagentic-ollama-7c6f67474c-75nwb] time=2026-02-20T21:55:04.617Z level=INFO source=images.go:848 msg=\"request failed: Get \\\"https://registry.ollama.ai/v2/library/us.anthropic.claude-sonnet-4-6/manifests/latest\\\": net/http: TLS handshake timeout\"\n[2026-02-20 21:55:03] [agentic-dev/openagentic-ollama-7c6f67474c-75nwb] time=2026-02-20T21:55:03.733Z level=INFO source=images.go:848 msg=\"request failed: Get \\\"https://registry.ollama.ai/v2/library/anthropic.claude-haiku-4-5-20251001-v1/manifests/0\\\": net/http: TLS handshake timeout\"\n[2026-02-20 21:58:42] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624722022,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"totalToolCalls\":1,\"successfulCalls\":1,\"failedCalls\":0,\"hasCodeExecutionContext\":false,\"msg\":\"[TOOL-EXEC] Tool execution batch completed\"}\n[2026-02-20 21:57:40] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":40,\"time\":1771624660509,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"messageId\":\"msg_1771624466613_4c3hf7nd2\",\"issues\":[\"Repetition detected: -------------------------..., \\\"❌ mcp proxy\\\" (5x), \\\"mcp proxy down\\\" (5x)\"],\"hadNonEnglish\":false,\"hadRepetition\":true,\"truncated\":false,\"originalLength\":19207,\"cleanedLength\":18878,\"msg\":\"[CONTENT-SAFETY] ⚠️ Content validation failed - applying fixes\"}\n[2026-02-20 21:56:10] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:56:10.517Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":222,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\" Synthesis failed |\\\\n| `spawn_\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:56:08] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:56:08.288Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":183,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\" failed\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:55:56] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":1771624556258,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"totalToolCalls\":1,\"successfulCalls\":1,\"failedCalls\":0,\"hasCodeExecutionContext\":false,\"msg\":\"[TOOL-EXEC] Tool execution batch completed\"}\n[2026-02-20 21:55:35] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":40,\"time\":1771624535034,\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"component\":\"ChatPipeline\",\"messageId\":\"msg_1771624237101_1ktuncv6w\",\"issues\":[\"Repetition detected: ──────────────────────────────..., ──────────────────────────────..., ──────────────────────────────...\"],\"hadNonEnglish\":false,\"hadRepetition\":true,\"truncated\":false,\"originalLength\":12552,\"cleanedLength\":12348,\"msg\":\"[CONTENT-SAFETY] ⚠️ Content validation failed - applying fixes\"}\n  ... and 4 more\n\nCRASH (8):\n----------------------------------------\n[2026-02-20 21:55:33] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:55:33.461Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":1153,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\"p_admin MCP crash\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:55:31] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:55:31.518Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":1116,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\" crashed (3\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:55:26] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:55:26.973Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":1035,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\"-restart crashed\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:55:26] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:55:26.068Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":1018,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\" single pod crash casc\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:55:17] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:55:17.548Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":861,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\"p_admin crash\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:55:15] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:55:15.978Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":831,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\"p_admin crash\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:54:57] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:54:57.434Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":494,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\"admin-mcp` crash\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}\n[2026-02-20 21:54:56] [agentic-dev/openagentic-api-6ffdf956b5-6gztf] {\"level\":30,\"time\":\"2026-02-20T21:54:56.313Z\",\"service\":\"openagentic-api\",\"pid\":1,\"hostname\":\"openagentic-api-6ffdf956b5-6gztf\",\"name\":\"openagentic-api\",\"component\":\"services\",\"chunkNum\":473,\"rawChunkType\":\"content_block_delta\",\"rawChunkKeys\":[\"type\",\"index\",\"delta\"],\"hasContent\":false,\"hasContentBlock\":false,\"hasDelta\":true,\"rawChunk\":\"{\\\"type\\\":\\\"content_block_delta\\\",\\\"index\\\":0,\\\"delta\\\":{\\\"type\\\":\\\"text_delta\\\",\\\"text\\\":\\\" Crashed\\\"}}\",\"msg\":\"[BEDROCK-RAW] 📡 Raw chunk from InvokeModelWithResponseStream\"}"},"isError":false},"toolCallId":"toolu_bdrk_01TGMYi875wbwTWu8BSvr4eK","executionTimeMs":829,"targetServer":"openagentic_loki","timestamp":"2026-02-20T21:58:53.588Z"}
+
+event: tool_executing
+data: {"name":"k8s_cluster_health","arguments":{},"toolCallId":"toolu_bdrk_01CwRJ3B86sSSj8kfZJYY3Ce","targetServer":"openagentic_kubernetes","timestamp":"2026-02-20T21:58:53.956Z"}
+
+event: tool_result
+data: {"name":"k8s_cluster_health","result":{"content":[{"type":"text","text":"{\n  \"success\": false,\n  \"error\": \"Kubernetes client initialization failed: Invalid kube-config file. No configuration found.\"\n}"}],"structuredContent":{"result":{"success":false,"error":"Kubernetes client initialization failed: Invalid kube-config file. No configuration found."}},"isError":false},"toolCallId":"toolu_bdrk_01CwRJ3B86sSSj8kfZJYY3Ce","executionTimeMs":312,"targetServer":"openagentic_kubernetes","timestamp":"2026-02-20T21:58:54.278Z"}
+
+event: tool_executing
+data: {"name":"runbook_quick_diagnostics","arguments":{"service":"openagentic-api","namespace":"openagentic"},"toolCallId":"toolu_bdrk_01NeLmEo6LbyPi8tU7CCMxMK","targetServer":"openagentic_runbook","timestamp":"2026-02-20T21:58:54.708Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:56.161Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:58:59.161Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:02.161Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:05.161Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:08.162Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:11.162Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:14.163Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:17.163Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:20.163Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:23.163Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:26.163Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:29.162Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:32.163Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:35.163Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:38.164Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:41.164Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:44.163Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:47.165Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:50.165Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:53.165Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:56.166Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T21:59:59.167Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T22:00:02.167Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T22:00:05.167Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T22:00:08.167Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T22:00:11.167Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T22:00:14.169Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T22:00:17.169Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T22:00:20.169Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T22:00:23.170Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T22:00:26.170Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T22:00:29.171Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T22:00:32.171Z"}
+
+event: ping
+data: {"timestamp":"2026-02-20T22:00:35.171Z"}
+
+event: tool_error
+data: {"name":"runbook_quick_diagnostics","error":"socket hang up","toolCallId":"toolu_bdrk_01NeLmEo6LbyPi8tU7CCMxMK","targetServer":"openagentic_runbook","timestamp":"2026-02-20T22:00:37.247Z"}
+

@@ -62,6 +62,34 @@ export function extractFoundationIdFromProfile(
 }
 
 /**
+ * Decide whether a Bedrock foundation summary should appear in the
+ * add-to-registry catalog.
+ *
+ * Eligibility is invocability-driven:
+ *   - MUST support ON_DEMAND inference (admins can invoke without a
+ *     provisioned-throughput commitment).
+ *   - MUST emit a usable output modality (TEXT, EMBEDDING, or IMAGE).
+ *
+ * NOTE: we do NOT exclude `modelLifecycle.status === 'LEGACY'`. AWS tags
+ * many fully-usable, on-demand image models LEGACY (e.g.
+ * `amazon.nova-canvas-v1:0`, `amazon.titan-image-generator-v2:0`). A blanket
+ * LEGACY exclusion hid them from the Add-Model catalog even though they are
+ * invocable today. Lifecycle is surfaced for display, never used to filter.
+ */
+export function isFoundationModelEligibleForDiscovery(
+  m: BedrockFoundationSummary,
+): boolean {
+  const inferenceTypes = m.inferenceTypesSupported ?? [];
+  if (!inferenceTypes.includes('ON_DEMAND')) return false;
+  const outputModalities = m.outputModalities ?? [];
+  return (
+    outputModalities.includes('TEXT') ||
+    outputModalities.includes('EMBEDDING') ||
+    outputModalities.includes('IMAGE')
+  );
+}
+
+/**
  * Derive a DiscoveredModel from a Bedrock foundation summary.
  * Capability inference is 100% API-driven:
  *   - chat  ← outputModalities includes TEXT
@@ -88,8 +116,12 @@ export function bedrockSummaryToDiscoveredModel(
   const hasVision = inputModalities.includes('IMAGE');
   const hasChat = outputModalities.includes('TEXT');
   const hasEmbeddings = outputModalities.includes('EMBEDDING');
-  const hasImageGen =
-    outputModalities.includes('IMAGE') && !inputModalities.includes('TEXT');
+  // A model whose OUTPUT modality is IMAGE generates images — regardless of
+  // whether it also accepts a TEXT prompt (text-to-image: Nova Canvas, Titan
+  // Image, Stable Diffusion) or a source IMAGE (edit/upscale models). The
+  // earlier `&& !inputModalities.includes('TEXT')` clause wrongly excluded
+  // every text-to-image generator, since a prompt is TEXT input.
+  const hasImageGen = outputModalities.includes('IMAGE');
   const hasStreaming = m.responseStreamingSupported !== false;
 
   return {
@@ -139,8 +171,8 @@ export function bedrockInferenceProfileToDiscoveredModel(
     ? true // default assumption: SYSTEM_DEFINED profiles are invocable chat targets
     : outputModalities.includes('TEXT');
   const hasEmbeddings = outputModalities.includes('EMBEDDING');
-  const hasImageGen =
-    outputModalities.includes('IMAGE') && !inputModalities.includes('TEXT');
+  // Output modality IMAGE ⇒ image generation (see bedrockSummaryToDiscoveredModel).
+  const hasImageGen = outputModalities.includes('IMAGE');
   const hasStreaming =
     underlying?.responseStreamingSupported === undefined
       ? true

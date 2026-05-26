@@ -3,7 +3,7 @@
  * Azure access_token (via AzureTokenService.getOrRefreshToken), NOT
  * the inbound bearer from ctx.user.accessToken.
  *
- * LIVE failure observed 2026-05-11 (dev):
+ * LIVE failure observed 2026-05-11 (chat-dev):
  *   - User invokes azure_list_subscriptions via chat
  *   - api forwards user's inbound bearer as `Authorization: Bearer ...` to mcp-proxy
  *   - mcp-proxy attempts OBO exchange: POST login.microsoftonline.com/{tenant}/oauth2/v2.0/token

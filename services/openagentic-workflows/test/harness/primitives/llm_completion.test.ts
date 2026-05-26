@@ -8,7 +8,7 @@
  *     unwrapped into `{ content, model, usage }` on the node output.
  *
  * Real-data discipline (feedback_no_synthetic_chunks_only_real_provider_captures):
- * We probe host.docker.internal:11434 at the top of the file. When the Ollama server is
+ * We probe hal:11434 at the top of the file. When the Ollama server is
  * reachable we DO NOT bypass MSW — the executor still talks to the
  * platform's OpenAI shim, not directly to Ollama — but we note hal as
  * available so a follow-up test (Phase E) can exercise the full
@@ -24,11 +24,11 @@ import { harnessServer } from '../mocks/msw-setup.js';
 import { mockChatCompletions } from '../mocks/handlers/chatCompletions.js';
 
 async function halReachable(): Promise<boolean> {
-  // Register a passthrough on host.docker.internal:11434 so MSW does not log an
+  // Register a passthrough on hal:11434 so MSW does not log an
   // "unhandled request" warning while we exercise the documentary probe.
-  harnessServer.use(http.get('http://host.docker.internal:11434/api/tags', () => passthrough()));
+  harnessServer.use(http.get('http://hal:11434/api/tags', () => passthrough()));
   try {
-    const r = await fetch('http://host.docker.internal:11434/api/tags', {
+    const r = await fetch('http://hal:11434/api/tags', {
       signal: AbortSignal.timeout(2_000),
     });
     return r.ok;
@@ -43,7 +43,7 @@ describe('llm_completion node — primitive contract', () => {
     if (!hal) {
       // eslint-disable-next-line no-console
       console.warn(
-        '[llm_completion] host.docker.internal:11434 unreachable — mocked-only run. ' +
+        '[llm_completion] hal:11434 unreachable — mocked-only run. ' +
           'Re-run from a host with cluster DNS for real-Ollama coverage.',
       );
     }

@@ -1,7 +1,7 @@
 /**
  * Phase G3 — live evidence capture. This is NOT a regular test — it's a
  * one-shot evidence generator that boots an InMemorySpanExporter against
- * a real `llm_completion` executor call to host.docker.internal:11434/gpt-oss:20b and dumps
+ * a real `llm_completion` executor call to hal:11434/gpt-oss:20b and dumps
  * the resulting span + metric data points to disk.
  *
  * Skipped by default (env-gated). Run with:
@@ -62,7 +62,7 @@ describe.skipIf(!LIVE)('Phase G3 — live OTel evidence capture', () => {
     // OTel signal — what we need is the SHAPE of the data points so an
     // operator can confirm a Tempo/Honeycomb/Datadog ingest will parse them
     // without dropped attrs. Use the same input shape the live llm_completion
-    // executor produces when calling host.docker.internal:11434/gpt-oss:20b: model='auto' on
+    // executor produces when calling hal:11434/gpt-oss:20b: model='auto' on
     // request (Smart Router), responseModel='gpt-oss:20b' on response.
     await withGenAISpan(
       {

@@ -1810,18 +1810,44 @@ export class ProviderManager {
       await this.enforceCostCap(request.model);
     }
 
-    // Find providers that support image generation
-    // Check provider config models for imageGeneration capability flag
+    // Registry-SoT short-circuit: when the caller passed `request.model` (the
+    // chat `generate_image` tool always does — it resolves the tenant's
+    // `imageGen` default from default_models), look the model up in
+    // `modelToProviderMap` (built from `admin.model_role_assignments`, the
+    // post-#911-#915 SoT). If its provider implements `generateImage()`, use
+    // it directly. This bypasses the legacy `providerConfig.config.models[]`
+    // scan, which only sees models the bootstrap-helm seeder wrote — registry
+    // models added via the admin UI (e.g. amazon.nova-canvas-v1:0) live in
+    // model_role_assignments and were filtered out by the legacy check.
     const imageProviders: Array<[string, ILLMProvider]> = [];
-    for (const [name, provider] of this.providers.entries()) {
-      if (typeof provider.generateImage !== 'function') continue;
-      const providerConfig = this.config.providers.find(pc => pc.name === name);
-      const models = providerConfig?.config?.models || [];
-      const hasImageModel = models.some((m: any) => m.capabilities?.imageGeneration);
-      if (hasImageModel) {
-        imageProviders.push([name, provider]);
+    if (request.model) {
+      const mappedProviderName = this.modelToProviderMap.get(request.model);
+      if (mappedProviderName) {
+        const mappedProvider = this.providers.get(mappedProviderName);
+        if (mappedProvider && typeof mappedProvider.generateImage === 'function') {
+          imageProviders.push([mappedProviderName, mappedProvider]);
+          this.logger.debug(
+            { provider: mappedProviderName, model: request.model, source: 'modelToProviderMap' },
+            '[ProviderManager] Image gen provider resolved via registry SoT',
+          );
+        }
       }
-      this.logger.debug({ provider: name, modelsCount: models.length, hasImageModel }, '[ProviderManager] Image gen provider check');
+    }
+
+    // Fallback for no-model-set callers: capability scan of legacy provider
+    // config + provider.generateImage signature. Preserves failover for the
+    // path where no specific model is requested.
+    if (imageProviders.length === 0) {
+      for (const [name, provider] of this.providers.entries()) {
+        if (typeof provider.generateImage !== 'function') continue;
+        const providerConfig = this.config.providers.find(pc => pc.name === name);
+        const models = providerConfig?.config?.models || [];
+        const hasImageModel = models.some((m: any) => m.capabilities?.imageGeneration);
+        if (hasImageModel) {
+          imageProviders.push([name, provider]);
+        }
+        this.logger.debug({ provider: name, modelsCount: models.length, hasImageModel }, '[ProviderManager] Image gen provider check (legacy fallback)');
+      }
     }
 
     if (imageProviders.length === 0) {

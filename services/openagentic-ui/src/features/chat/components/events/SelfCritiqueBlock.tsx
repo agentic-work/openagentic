@@ -76,9 +76,9 @@ const SelfCritiqueBlockComponent: React.FC<SelfCritiqueBlockProps> = ({
       data-status={status || undefined}
       data-contradictions={contradictions ?? undefined}
       style={{
-        border: '1px solid rgba(139,92,246,0.24)',
+        border: '1px solid color-mix(in srgb, var(--cm-accent) 24%, transparent)',
         borderRadius: 8,
-        background: 'rgba(139,92,246,0.04)',
+        background: 'color-mix(in srgb, var(--cm-accent) 4%, transparent)',
         margin: '6px 0',
         fontSize: 12,
       }}
@@ -96,16 +96,16 @@ const SelfCritiqueBlockComponent: React.FC<SelfCritiqueBlockProps> = ({
           padding: '8px 10px',
           background: 'none',
           border: 0,
-          color: '#d4d4d8',
+          color: 'var(--cm-text-secondary)',
           cursor: 'pointer',
           textAlign: 'left',
         }}
       >
-        <span style={{ color: '#a78bfa', display: 'inline-flex' }}>
+        <span style={{ color: 'var(--cm-accent)', display: 'inline-flex' }}>
           <BrainIcon />
         </span>
-        <span style={{ fontWeight: 600, color: '#f8fafc' }}>Self-critique</span>
-        <span style={{ color: '#71717a' }}>
+        <span style={{ fontWeight: 600, color: 'var(--cm-text)' }}>Self-critique</span>
+        <span style={{ color: 'var(--cm-text-muted)' }}>
           · {countLabel}
           {confidenceLabel}
         </span>
@@ -115,16 +115,16 @@ const SelfCritiqueBlockComponent: React.FC<SelfCritiqueBlockProps> = ({
               marginLeft: 4,
               padding: '1px 6px',
               borderRadius: 4,
-              background: status === 'revising' ? 'rgba(245,158,11,0.08)' : 'rgba(34,197,94,0.08)',
-              border: `1px solid ${status === 'revising' ? 'rgba(245,158,11,0.28)' : 'rgba(34,197,94,0.28)'}`,
-              color: status === 'revising' ? '#fcd34d' : '#86efac',
+              background: status === 'revising' ? 'color-mix(in srgb, var(--cm-warning) 8%, transparent)' : 'color-mix(in srgb, var(--cm-success) 8%, transparent)',
+              border: `1px solid ${status === 'revising' ? 'color-mix(in srgb, var(--cm-warning) 28%, transparent)' : 'color-mix(in srgb, var(--cm-success) 28%, transparent)'}`,
+              color: status === 'revising' ? 'var(--cm-warning)' : 'var(--cm-success)',
               fontSize: 10,
             }}
           >
             {statusLabel}
           </span>
         )}
-        <span style={{ marginLeft: 'auto', color: '#71717a' }}>
+        <span style={{ marginLeft: 'auto', color: 'var(--cm-text-muted)' }}>
           <ChevronIcon expanded={expanded} />
         </span>
       </button>
@@ -134,7 +134,7 @@ const SelfCritiqueBlockComponent: React.FC<SelfCritiqueBlockProps> = ({
           data-testid="self-critique-body"
           style={{
             padding: '0 12px 10px 30px',
-            color: '#a1a1aa',
+            color: 'var(--cm-text-muted)',
             fontSize: 12,
             lineHeight: 1.5,
             whiteSpace: 'pre-wrap',

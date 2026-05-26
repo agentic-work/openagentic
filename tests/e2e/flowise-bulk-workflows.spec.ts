@@ -9,10 +9,10 @@
 
 import { test, expect, Page } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:8080';
-const FLOWISE_URL = process.env.FLOWISE_URL || 'http://localhost:8080/flowise';
+const BASE_URL = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
+const FLOWISE_URL = process.env.FLOWISE_URL || 'https://chat-dev.openagentic.io/flowise';
 const TEST_EMAIL = process.env.TEST_EMAIL || 'admin@openagentic.io';
-const TEST_PASSWORD = process.env.TEST_PASSWORD || '';
+const TEST_PASSWORD = process.env.TEST_PASSWORD || '6py8Q~XNcKAJ~.SIrZAIBy__l7oDoPteWp2Habm3';
 
 // Workflow templates for chatflows
 const CHATFLOW_TEMPLATES = [

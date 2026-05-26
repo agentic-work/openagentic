@@ -6,7 +6,7 @@
  * chatLoop sees a clean end_turn, the UI renders an empty bubble, and
  * the operator has no visibility that a SAFETY filter tripped.
  *
- * For your environment FedRAMP-Hi audit compliance: a content_filter trip is a
+ * For CDC FedRAMP-Hi audit compliance: a content_filter trip is a
  * COMPLIANCE EVENT that must surface to the operator (and the audit
  * log) — never silent.
  *

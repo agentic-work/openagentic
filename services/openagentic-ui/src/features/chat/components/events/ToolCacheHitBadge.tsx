@@ -47,10 +47,10 @@ const ToolCacheHitBadgeComponent: React.FC<ToolCacheHitBadgeProps> = ({ similari
         gap: 5,
         padding: '2px 7px',
         borderRadius: 99,
-        background: 'rgba(34,197,94,0.08)',
-        border: '1px solid rgba(34,197,94,0.28)',
+        background: 'color-mix(in srgb, var(--cm-success) 8%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--cm-success) 28%, transparent)',
         fontSize: 10,
-        color: '#86efac',
+        color: 'var(--cm-success)',
         fontFamily: 'JetBrains Mono, monospace',
         lineHeight: 1,
       }}

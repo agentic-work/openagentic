@@ -30,19 +30,19 @@ const LEVEL_STYLES: Record<WarningLevel, {
   border: string;
 }> = {
   info: {
-    color: '#7dd3fc',
-    bg: 'rgba(56,189,248,0.08)',
-    border: 'rgba(56,189,248,0.28)',
+    color: 'var(--cm-info)',
+    bg: 'color-mix(in srgb, var(--cm-info) 8%, transparent)',
+    border: 'color-mix(in srgb, var(--cm-info) 28%, transparent)',
   },
   warn: {
-    color: '#fcd34d',
-    bg: 'rgba(245,158,11,0.08)',
-    border: 'rgba(245,158,11,0.28)',
+    color: 'var(--cm-warning)',
+    bg: 'color-mix(in srgb, var(--cm-warning) 8%, transparent)',
+    border: 'color-mix(in srgb, var(--cm-warning) 28%, transparent)',
   },
   error: {
-    color: '#f87171',
-    bg: 'rgba(239,68,68,0.08)',
-    border: 'rgba(239,68,68,0.28)',
+    color: 'var(--cm-error)',
+    bg: 'color-mix(in srgb, var(--cm-error) 8%, transparent)',
+    border: 'color-mix(in srgb, var(--cm-error) 28%, transparent)',
   },
 };
 
@@ -115,7 +115,7 @@ const WarningPillComponent: React.FC<WarningPillProps> = ({
           {source}
         </span>
       )}
-      <span style={{ color: '#d4d4d8' }}>{message}</span>
+      <span style={{ color: 'var(--cm-text-secondary)' }}>{message}</span>
       {actionable && (
         <span
           style={{

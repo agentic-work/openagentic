@@ -70,7 +70,7 @@ const StageStripComponent: React.FC<StageStripProps> = ({ currentStage, timings 
                 gap: 6,
                 padding: '4px 10px',
                 fontSize: 11,
-                color: isActive ? '#8b5cf6' : isDone ? '#a1a1aa' : '#71717a',
+                color: isActive ? 'var(--cm-accent)' : isDone ? 'var(--cm-text-secondary)' : 'var(--cm-text-muted)',
                 fontWeight: isActive ? 600 : 400,
               }}
             >
@@ -80,14 +80,14 @@ const StageStripComponent: React.FC<StageStripProps> = ({ currentStage, timings 
                   height: 7,
                   borderRadius: '50%',
                   background: isDone
-                    ? '#22c55e'
+                    ? 'var(--cm-success)'
                     : isActive
-                      ? '#8b5cf6'
-                      : '#1c1f24',
+                      ? 'var(--cm-accent)'
+                      : 'var(--cm-bg-tertiary)',
                   border: `1px solid ${
-                    isDone ? '#22c55e' : isActive ? '#8b5cf6' : 'rgba(255,255,255,0.16)'
+                    isDone ? 'var(--cm-success)' : isActive ? 'var(--cm-accent)' : 'var(--cm-border)'
                   }`,
-                  boxShadow: isActive ? '0 0 0 3px rgba(139,92,246,0.22)' : undefined,
+                  boxShadow: isActive ? '0 0 0 3px color-mix(in srgb, var(--cm-accent) 22%, transparent)' : undefined,
                   animation: isActive ? 'stageStripPulse 1.6s ease-in-out infinite' : undefined,
                   flexShrink: 0,
                 }}
@@ -105,7 +105,7 @@ const StageStripComponent: React.FC<StageStripProps> = ({ currentStage, timings 
                   backgroundSize: '6px 1px',
                   margin: '0 2px',
                   opacity: 0.35,
-                  color: '#71717a',
+                  color: 'var(--cm-text-muted)',
                 }}
               />
             )}

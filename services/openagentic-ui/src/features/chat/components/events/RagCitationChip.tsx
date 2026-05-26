@@ -68,10 +68,10 @@ const RagCitationChipComponent: React.FC<RagCitationChipProps> = ({
     gap: 6,
     padding: '3px 8px',
     borderRadius: 99,
-    background: 'rgba(56,189,248,0.08)',
-    border: '1px solid rgba(56,189,248,0.28)',
+    background: 'color-mix(in srgb, var(--cm-info) 8%, transparent)',
+    border: '1px solid color-mix(in srgb, var(--cm-info) 28%, transparent)',
     fontSize: 11,
-    color: '#7dd3fc',
+    color: 'var(--cm-info)',
     fontFamily: 'JetBrains Mono, monospace',
     lineHeight: 1,
     textDecoration: 'none',
@@ -81,8 +81,8 @@ const RagCitationChipComponent: React.FC<RagCitationChipProps> = ({
   const content = (
     <>
       <DocIcon />
-      <span style={{ color: '#e0f2fe', fontWeight: 500 }}>{displaySource}</span>
-      {scoreLabel && <span style={{ color: '#7dd3fc', opacity: 0.7 }}>{scoreLabel}</span>}
+      <span style={{ color: 'var(--cm-text)', fontWeight: 500 }}>{displaySource}</span>
+      {scoreLabel && <span style={{ color: 'var(--cm-info)', opacity: 0.7 }}>{scoreLabel}</span>}
     </>
   );
 

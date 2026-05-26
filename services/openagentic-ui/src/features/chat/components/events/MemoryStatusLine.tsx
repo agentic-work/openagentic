@@ -83,16 +83,16 @@ const MemoryStatusLineComponent: React.FC<MemoryStatusLineProps> = ({
         gap: 8,
         padding: '4px 0',
         fontSize: 12,
-        color: done ? '#a1a1aa' : '#fcd34d',
+        color: done ? 'var(--cm-text-secondary)' : 'var(--cm-warning)',
         fontFamily: 'Inter, sans-serif',
       }}
     >
-      <span style={{ color: done ? '#a78bfa' : '#fcd34d', display: 'inline-flex' }}>
+      <span style={{ color: done ? 'var(--cm-accent)' : 'var(--cm-warning)', display: 'inline-flex' }}>
         <BrainIcon spinning={!done} />
       </span>
       <span>{label}</span>
       {extra && (
-        <span style={{ color: '#71717a', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>
+        <span style={{ color: 'var(--cm-text-muted)', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>
           · {extra}
         </span>
       )}

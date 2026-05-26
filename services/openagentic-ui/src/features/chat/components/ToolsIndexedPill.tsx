@@ -104,9 +104,9 @@ export const ToolsIndexedPill: React.FC = () => {
         onClick={() => setOpen(true)}
         className="flex items-center gap-1.5 px-2.5 py-1.5 transition-colors text-sm hover:bg-theme-bg-secondary"
         style={{
-          color: inSyncBad ? 'var(--color-warn, #f0b54a)' : 'var(--text-secondary)',
+          color: inSyncBad ? 'var(--color-warn, var(--cm-warning))' : 'var(--text-secondary)',
           backgroundColor: 'var(--color-surfaceSecondary)',
-          border: '1px solid ' + (inSyncBad ? 'var(--color-warn, #f0b54a)' : 'var(--color-border)'),
+          border: '1px solid ' + (inSyncBad ? 'var(--color-warn, var(--cm-warning))' : 'var(--color-border)'),
           borderRadius: 9999,
           transform: 'translateZ(0)',
           fontFamily: 'ui-monospace, SFMono-Regular, monospace',
@@ -132,7 +132,7 @@ export const ToolsIndexedPill: React.FC = () => {
           onClick={() => setOpen(false)}
           style={{
             position: 'fixed', inset: 0, zIndex: 1000,
-            background: 'rgba(0,0,0,0.55)',
+            background: 'color-mix(in srgb, var(--cm-text) 55%, transparent)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
@@ -147,7 +147,7 @@ export const ToolsIndexedPill: React.FC = () => {
               padding: 18,
               fontFamily: 'system-ui, sans-serif',
               color: 'var(--color-text)',
-              boxShadow: '0 18px 64px rgba(0,0,0,0.45)',
+              boxShadow: '0 18px 64px color-mix(in srgb, var(--cm-text) 45%, transparent)',
               display: 'flex', flexDirection: 'column', gap: 14,
             }}
           >
@@ -240,7 +240,7 @@ export const ToolsIndexedPill: React.FC = () => {
 const Row: React.FC<{ label: string; value: string; bad?: boolean }> = ({ label, value, bad }) => (
   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
     <span style={{ color: 'var(--color-textMuted)' }}>{label}</span>
-    <span style={{ color: bad ? 'var(--color-warn, #f0b54a)' : 'var(--color-text)' }}>{value}</span>
+    <span style={{ color: bad ? 'var(--color-warn, var(--cm-warning))' : 'var(--color-text)' }}>{value}</span>
   </div>
 );
 

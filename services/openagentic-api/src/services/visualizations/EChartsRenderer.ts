@@ -70,15 +70,45 @@ export interface RenderedSvg {
 
 const DIMS = { width: 800, height: 420 };
 
+/**
+ * CLAUDE.md Rule 8(b) — every color value emitted into the SVG must
+ * resolve through the iframe parent's `--cm-*` tokens at render time.
+ * ECharts accepts CSS color strings verbatim and writes them into
+ * `fill="..."` / `stroke="..."` attributes; `var(--cm-accent, #hex)`
+ * is a valid CSS color string with a documented hex fallback for
+ * contexts where the iframe preamble didn't run.
+ *
+ * The TOKEN_* constants below are SVG-CSS expressions, NOT bare hex
+ * literals. They're stored as `var(--cm-*, #fallback)` so the arch
+ * cage `no-hardcoded-colors-in-compose.source-regression` accepts them.
+ */
+const TOKEN_ACCENT = 'var(--cm-accent, #8b5cf6)';
+const TOKEN_SUCCESS = 'var(--cm-success, #10b981)';
+const TOKEN_WARN = 'var(--cm-warn, #f59e0b)';
+const TOKEN_INFO = 'var(--cm-info, #3b82f6)';
+const TOKEN_ERROR = 'var(--cm-error, #ef4444)';
+const TOKEN_INFO_2 = 'var(--cm-info, #06b6d4)';
+const TOKEN_ACCENT_2 = 'var(--cm-accent-2, #ec4899)';
+const TOKEN_SUCCESS_2 = 'var(--cm-success, #84cc16)';
+
+const TOKEN_FG_0 = 'var(--cm-fg-0, #f8fafc)';
+const TOKEN_FG_1 = 'var(--cm-fg-1, #d4d4d8)';
+const TOKEN_FG_2 = 'var(--cm-fg-2, #a1a1aa)';
+const TOKEN_FG_3 = 'var(--cm-fg-3, #71717a)';
+const TOKEN_BG_1 = 'var(--cm-bg-1, #0f1012)';
+const TOKEN_BG_3 = 'var(--cm-bg-3, #1c1f24)';
+const TOKEN_BORDER = 'var(--cm-border, #3f3f46)';
+const TOKEN_SHADOW = 'color-mix(in srgb, var(--cm-accent, #8b5cf6) 50%, transparent)';
+
 const DARK_PALETTE = [
-  '#8b5cf6',
-  '#10b981',
-  '#f59e0b',
-  '#3b82f6',
-  '#ef4444',
-  '#06b6d4',
-  '#ec4899',
-  '#84cc16',
+  TOKEN_ACCENT,
+  TOKEN_SUCCESS,
+  TOKEN_WARN,
+  TOKEN_INFO,
+  TOKEN_ERROR,
+  TOKEN_INFO_2,
+  TOKEN_ACCENT_2,
+  TOKEN_SUCCESS_2,
 ];
 
 function isFiniteNumber(n: unknown): n is number {
@@ -93,18 +123,29 @@ function buildSankeyOption(data: any): unknown {
     if (typeof f?.from !== 'string' || typeof f?.to !== 'string') {
       throw new Error(`flow ${i}: from and to must be strings`);
     }
-    if (!isFiniteNumber(f.value) || f.value <= 0) {
+    // Reject negative and non-finite values (kept strict — those are data
+    // bugs). Zero is allowed at validation time and filtered out below
+    // (#1106: cost-breakdown sankeys legitimately contain $0.00 line items).
+    if (!isFiniteNumber(f.value) || f.value < 0) {
       throw new Error(`flow ${i}: value must be a positive number`);
     }
   });
 
+  // #1106 — drop zero-value rows. Cost-breakdown sankeys often include
+  // $0.00 line items (Bandwidth, idle services). Rejecting the whole render
+  // because one row is zero is hostile UX. Filter zeros, render the rest.
+  const positiveFlows = data.flows.filter((f: any) => f.value > 0);
+  if (positiveFlows.length === 0) {
+    throw new Error('sankey: no positive-value flows after filtering zeros');
+  }
+
   const nodeNames = new Set<string>();
-  for (const f of data.flows) {
+  for (const f of positiveFlows) {
     nodeNames.add(f.from);
     nodeNames.add(f.to);
   }
   const nodes = Array.from(nodeNames).map((name) => ({ name }));
-  const links = data.flows.map((f: any) => ({ source: f.from, target: f.to, value: f.value }));
+  const links = positiveFlows.map((f: any) => ({ source: f.from, target: f.to, value: f.value }));
 
   return {
     backgroundColor: 'transparent',
@@ -114,8 +155,8 @@ function buildSankeyOption(data: any): unknown {
       links,
       emphasis: { focus: 'adjacency' },
       lineStyle: { color: 'gradient', curveness: 0.5 },
-      label: { color: '#f8fafc', fontFamily: 'Inter, system-ui', fontSize: 12 },
-      itemStyle: { color: '#8b5cf6', borderColor: '#8b5cf6' },
+      label: { color: TOKEN_FG_0, fontFamily: 'Inter, system-ui', fontSize: 12 },
+      itemStyle: { color: TOKEN_ACCENT, borderColor: TOKEN_ACCENT },
     }],
   };
 }
@@ -155,8 +196,8 @@ function buildChordOption(data: any): unknown {
       data: nodes,
       links,
       lineStyle: { color: 'source', curveness: 0.3, opacity: 0.6 },
-      label: { show: true, color: '#f8fafc', fontFamily: 'Inter, system-ui' },
-      itemStyle: { color: '#8b5cf6' },
+      label: { show: true, color: TOKEN_FG_0, fontFamily: 'Inter, system-ui' },
+      itemStyle: { color: TOKEN_ACCENT },
       emphasis: { focus: 'adjacency' },
     }],
   };
@@ -170,9 +211,9 @@ function buildSunburstOption(data: any): unknown {
       type: 'sunburst',
       data: [data.root],
       radius: [0, '90%'],
-      label: { color: '#f8fafc', fontFamily: 'Inter, system-ui' },
-      itemStyle: { borderColor: '#0f1012', borderWidth: 1 },
-      levels: [{}, { itemStyle: { color: '#8b5cf6' } }, { itemStyle: { color: '#10b981' } }],
+      label: { color: TOKEN_FG_0, fontFamily: 'Inter, system-ui' },
+      itemStyle: { borderColor: TOKEN_BG_1, borderWidth: 1 },
+      levels: [{}, { itemStyle: { color: TOKEN_ACCENT } }, { itemStyle: { color: TOKEN_SUCCESS } }],
     }],
   };
 }
@@ -188,9 +229,9 @@ function buildRadialTreeOption(data: any): unknown {
       symbol: 'circle',
       symbolSize: 8,
       initialTreeDepth: -1,
-      lineStyle: { color: '#3f3f46', curveness: 0.5 },
-      label: { color: '#d4d4d8', fontFamily: 'Inter, system-ui', fontSize: 11 },
-      itemStyle: { color: '#8b5cf6' },
+      lineStyle: { color: TOKEN_BORDER, curveness: 0.5 },
+      label: { color: TOKEN_FG_1, fontFamily: 'Inter, system-ui', fontSize: 11 },
+      itemStyle: { color: TOKEN_ACCENT },
     }],
   };
 }
@@ -205,11 +246,11 @@ function buildTreemapOption(data: any): unknown {
       breadcrumb: { show: false },
       roam: false,
       nodeClick: false,
-      label: { color: '#f8fafc', fontFamily: 'Inter, system-ui' },
-      itemStyle: { borderColor: '#0f1012', borderWidth: 2, gapWidth: 2 },
+      label: { color: TOKEN_FG_0, fontFamily: 'Inter, system-ui' },
+      itemStyle: { borderColor: TOKEN_BG_1, borderWidth: 2, gapWidth: 2 },
       levels: [
-        { itemStyle: { color: '#8b5cf6' } },
-        { itemStyle: { color: '#10b981' } },
+        { itemStyle: { color: TOKEN_ACCENT } },
+        { itemStyle: { color: TOKEN_SUCCESS } },
       ],
     }],
   };
@@ -229,9 +270,9 @@ function buildParallelCoordsOption(data: any): unknown {
     parallelAxis: data.dims.map((dim: string, idx: number) => ({
       dim: idx,
       name: dim,
-      nameTextStyle: { color: '#a1a1aa', fontFamily: 'Inter, system-ui' },
-      axisLabel: { color: '#71717a' },
-      axisLine: { lineStyle: { color: '#3f3f46' } },
+      nameTextStyle: { color: TOKEN_FG_2, fontFamily: 'Inter, system-ui' },
+      axisLabel: { color: TOKEN_FG_3 },
+      axisLine: { lineStyle: { color: TOKEN_BORDER } },
     })),
     parallel: {
       left: '5%',
@@ -258,22 +299,22 @@ function buildHeatmapOption(data: any): unknown {
   return {
     backgroundColor: 'transparent',
     grid: { left: 50, right: 30, top: 30, bottom: 50 },
-    xAxis: { type: 'category', data: data.x, axisLabel: { color: '#a1a1aa' }, axisLine: { lineStyle: { color: '#3f3f46' } } },
-    yAxis: { type: 'category', data: data.y, axisLabel: { color: '#a1a1aa' }, axisLine: { lineStyle: { color: '#3f3f46' } } },
+    xAxis: { type: 'category', data: data.x, axisLabel: { color: TOKEN_FG_2 }, axisLine: { lineStyle: { color: TOKEN_BORDER } } },
+    yAxis: { type: 'category', data: data.y, axisLabel: { color: TOKEN_FG_2 }, axisLine: { lineStyle: { color: TOKEN_BORDER } } },
     visualMap: {
       min: 0,
       max: Math.max(1, ...data.cells.map((c: any[]) => Number(c[2]) || 0)),
       orient: 'horizontal',
       left: 'center',
       bottom: 0,
-      textStyle: { color: '#a1a1aa' },
-      inRange: { color: ['#1c1f24', '#8b5cf6'] },
+      textStyle: { color: TOKEN_FG_2 },
+      inRange: { color: [TOKEN_BG_3, TOKEN_ACCENT] },
     },
     series: [{
       type: 'heatmap',
       data: data.cells,
-      label: { show: true, color: '#f8fafc' },
-      emphasis: { itemStyle: { shadowBlur: 8, shadowColor: 'rgba(139,92,246,0.5)' } },
+      label: { show: true, color: TOKEN_FG_0 },
+      emphasis: { itemStyle: { shadowBlur: 8, shadowColor: TOKEN_SHADOW } },
     }],
   };
 }

@@ -232,9 +232,9 @@ const EnhancedMessageContent: React.FC<EnhancedMessageContentProps> = ({
             <span
               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
               style={{
-                background: 'rgba(34, 197, 94, 0.1)',
-                color: 'rgb(34, 197, 94)',
-                border: '1px solid rgba(34, 197, 94, 0.2)',
+                background: 'color-mix(in srgb, var(--cm-success) 10%, transparent)',
+                color: 'var(--cm-success)',
+                border: '1px solid color-mix(in srgb, var(--cm-success) 20%, transparent)',
                 fontSize: '11px'
               }}
             >

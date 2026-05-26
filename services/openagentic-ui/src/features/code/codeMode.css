@@ -1,0 +1,673 @@
+/*
+ * CodeMode z-index hierarchy
+ *
+ * One file. One source of truth. Use these custom-property values
+ * (or their direct numeric equivalents in Tailwind: z-0, z-20, z-40,
+ * z-50) instead of inventing new z-index values inside components.
+ *
+ * Why this exists:
+ *   Before this file, the CodeMode panel had z-index values scattered
+ *   across components ranging from z-30 (theme dropdown) to z-[10000]
+ *   (input toolbar folder picker). The z-[10000] value put inline
+ *   dropdowns above modals — a stacking-order regression that broke
+ *   modal accessibility (modals should always shadow background UI).
+ *
+ *   Tailwind's default scale (z-0, z-10, z-20, z-30, z-40, z-50, z-auto)
+ *   is more than enough for any panel UI. Anything higher than z-50
+ *   indicates a layering bug elsewhere; fix the bug instead of bumping
+ *   the value.
+ *
+ * The layers, lowest to highest:
+ *
+ *   z-0   — terminal/canvas content (xterm.js, editors, viewports)
+ *   z-10  — inline overlays anchored to canvas (cursors, selection lassos)
+ *   z-20  — floating widgets that sit ON TOP of the canvas but BELOW the
+ *           input toolbar (active task chips, in-flight tool indicators,
+ *           thinking spinners, status overlays). Animate in/out.
+ *   z-30  — fixed panel chrome (header bars, sidebars, status bar). Anchored
+ *           to layout, never floats. Should rarely appear over content
+ *           because it's flex-laid-out, but a few badge popups need it.
+ *   z-40  — dropdowns and popovers anchored to chrome (theme selector,
+ *           folder picker, model picker). These appear above the
+ *           terminal AND above floating widgets, but BELOW modals so
+ *           that any modal opened mid-interaction supersedes them.
+ *   z-50  — modals, dialogs, and full-viewport overlays. The HIGHEST
+ *           layer in CodeMode. If you find yourself wanting to layer
+ *           anything above this, you're likely opening a modal from
+ *           inside another modal — use a single modal that conditionally
+ *           swaps content instead.
+ *
+ * No values above z-50 are permitted in CodeMode.
+ *
+ * Tooltips (which globally need to be above modals) live OUTSIDE the
+ * CodeMode panel and use a portal anchored to <body>; they're not part
+ * of this hierarchy. Use the global tooltip layer in `src/index.css`.
+ */
+
+:root {
+  --cm-z-canvas: 0;
+  --cm-z-canvas-overlay: 10;
+  --cm-z-floating: 20;
+  --cm-z-chrome: 30;
+  --cm-z-dropdown: 40;
+  --cm-z-modal: 50;
+}
+
+/*
+ * CodeModeRunningHeader — pixel [OPENAGENTIC] banner animation.
+ *
+ * The keyframes + the animation-applying selector live here (global)
+ * instead of inside the component's inline <style> tag. Rationale:
+ * when the component <style> rode the component lifecycle, the
+ * animation rule could be re-evaluated on every 1Hz elapsed-tick
+ * re-render, and the imperatively-appended <rect>s occasionally
+ * committed to DOM before the scoped <style> had been parsed — the
+ * rects landed stuck at opacity:0 / scale(0.5) (the base rule) and
+ * the banner looked "not animated". Making this rule global parses
+ * it once at app boot, so by the time useLayoutEffect appends the
+ * rects the keyframes + initial state are already resolved.
+ *
+ * Paired with CodeModeRunningHeader.tsx — do not change the selector
+ * or keyframe names without updating both files.
+ */
+@keyframes cmPxlIn {
+  0%   { opacity: 0;    transform: scale(0.5) translateY(-2px); }
+  60%  { opacity: 1;    transform: scale(1.2) translateY(0);    }
+  100% { opacity: 0.95; transform: scale(1.0) translateY(0);    }
+}
+@keyframes cmPulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+.cm-pty svg.logo rect {
+  shape-rendering: crispEdges;
+  transform-origin: center;
+  transform: scale(0.5) translateY(-2px);
+  opacity: 0;
+  animation: cmPxlIn 0.45s cubic-bezier(.2, .7, .3, 1) forwards;
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * C.2 — Mock-parity styling for the codemode chat column.
+ *
+ * Source of truth: mocks/codemode-mockup.html
+ *
+ * The DOM hooks (cm-tool-block, cm-msg-user, cm-msg-thinking, cm-diff-block,
+ * cm-bash-output, etc.) are emitted by Part.tsx + MessageTree.tsx.
+ * Inline styles in those components carry colour/typography fallbacks;
+ * the rules below promote them to mock-faithful boxed cards.
+ * ───────────────────────────────────────────────────────────────────── */
+
+/* ─────────────────────────────────────────────────────────────────────
+ * Typography scale bump (2026-05-06). User feedback: "I think the
+ * typography does need to be a little bigger for the whole codemode
+ * app- its a bit too small rn". The scattered inline sizes (11px /
+ * 12px / 13px / 14px) are too tight for sustained reading. Bumping
+ * the body/prose baselines via descendant selectors so we don't have
+ * to chase every inline-style site at once. Tool blocks + pickers are
+ * unaffected (they use their own scoped sizes). Inline heartbeats
+ * keep their compact 11.5px since they're status chrome.
+ * ───────────────────────────────────────────────────────────────────── */
+.cm-pty {
+  font-size: 15px;
+}
+.cm-markdown,
+.cm-markdown p,
+.cm-markdown li,
+.cm-markdown td,
+.cm-markdown th {
+  /* Match chat-mode body size (chatmode renders prose at 15-16px).
+   * 2026-05-07 user feedback: "still too dissimilair for chatmodes". */
+  font-size: 15.5px;
+  line-height: 1.65;
+}
+.cm-markdown h1 { font-size: 1.6em; }
+.cm-markdown h2 { font-size: 1.4em; }
+.cm-markdown h3 { font-size: 1.2em; }
+.cm-markdown code,
+.cm-markdown pre,
+.cm-markdown pre code {
+  font-size: 14px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * Cognitive-scan polish (2026-05-08).
+ *
+ * User feedback: "the outputs from codemode are still pretty generic
+ * and not really formed/presented in a unified structure with certain
+ * highlights — doesnt need to be a lot but just to be cognitively
+ * scannable and easy to understand any response".
+ *
+ * Goal: reward existing markdown structure (headings, bullets, inline
+ * code, fences, bold, blockquotes) with enough visual hierarchy that
+ * a reply reads as a structured doc instead of a wall of prose. No
+ * new components, no model-prompt changes — just CSS.
+ *
+ * Each rule uses the codemode token system so light/dark themes flip
+ * correctly: --cm-accent for highlights, --fg-0 for emphasized text,
+ * rgba accents for backgrounds.
+ * ───────────────────────────────────────────────────────────────────── */
+
+/* Headings: accent color + small left rule. The 2px violet bar gives
+ * the eye an anchor when scrolling — mirrors how IDE outline panes
+ * render section dividers. */
+.cm-markdown h1,
+.cm-markdown h2,
+.cm-markdown h3 {
+  color: var(--cm-accent, #58a6ff);
+  font-weight: 600;
+  margin-top: 1.2em;
+  margin-bottom: 0.4em;
+  border-left: 2px solid var(--cm-accent, #58a6ff);
+  padding-left: 0.55em;
+  line-height: 1.3;
+}
+/* h4-h6 keep body color but stay bold so they distinguish from prose. */
+.cm-markdown h4,
+.cm-markdown h5,
+.cm-markdown h6 {
+  color: var(--fg-0, var(--cm-text, #e6edf3));
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 0.3em;
+}
+
+/* Inline code: subtle violet-tinted pill. Reads as "this is a literal"
+ * (function name, file path, flag) at a glance. Restricted to inline
+ * code (NOT inside <pre>) so fenced blocks keep their own treatment. */
+.cm-markdown :not(pre) > code {
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--cm-accent, #b25cff);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.92em;
+  border: 1px solid rgba(139, 92, 246, 0.18);
+}
+
+/* Code fences: dark surface + 2px violet left rule (matches the rest
+ * of the codemode chrome). Padding bumped so the text isn't cramped
+ * against the border. */
+.cm-markdown pre {
+  background: var(--cm-bg-tertiary, rgba(0, 0, 0, 0.20));
+  border-left: 2px solid var(--cm-accent, #b25cff);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 0.7em 0;
+  overflow-x: auto;
+}
+.cm-markdown pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--fg-0, var(--cm-text, #e6edf3));
+}
+
+/* Lists: accent-colored markers. Uses ::marker for ordered lists, a
+ * pseudo-glyph for unordered (because list-style markers can't be
+ * recolored independently of the text in all browsers). */
+.cm-markdown ul {
+  padding-left: 1.4em;
+  margin: 0.4em 0;
+  list-style: none;
+}
+.cm-markdown ul > li {
+  position: relative;
+  margin: 0.2em 0;
+}
+.cm-markdown ul > li::before {
+  content: '▸';
+  position: absolute;
+  left: -1.1em;
+  color: var(--cm-accent, #b25cff);
+  font-size: 0.9em;
+  top: 0.05em;
+}
+.cm-markdown ol {
+  padding-left: 1.4em;
+  margin: 0.4em 0;
+}
+.cm-markdown ol > li::marker {
+  color: var(--cm-accent, #b25cff);
+  font-weight: 600;
+}
+
+/* Bold: bumped to brightest fg so emphasis reads as emphasis, not just
+ * "slightly heavier same-color text". */
+.cm-markdown strong,
+.cm-markdown b {
+  color: var(--fg-0, var(--cm-text, #ffffff));
+  font-weight: 700;
+}
+
+/* Blockquotes: accent left rule + faint tint. Maps cleanly to "callout"
+ * when the model uses ` > ` to mark something important. */
+.cm-markdown blockquote {
+  border-left: 3px solid var(--cm-accent, #b25cff);
+  background: rgba(139, 92, 246, 0.06);
+  padding: 0.4em 0.9em;
+  margin: 0.7em 0;
+  border-radius: 0 4px 4px 0;
+  color: var(--cm-text-secondary, #a6adc8);
+  font-style: normal;
+}
+
+/* Tables: subtle border + zebra rows so multi-column data is scannable. */
+.cm-markdown table {
+  border-collapse: collapse;
+  margin: 0.7em 0;
+  font-size: 0.95em;
+  width: 100%;
+}
+.cm-markdown th,
+.cm-markdown td {
+  border: 1px solid var(--cm-border, rgba(0, 0, 0, 0.12));
+  padding: 6px 10px;
+  text-align: left;
+}
+.cm-markdown th {
+  background: rgba(139, 92, 246, 0.08);
+  color: var(--cm-accent, #b25cff);
+  font-weight: 600;
+}
+.cm-markdown tr:nth-child(even) td {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+/* Horizontal rule: thin accent line — reads as a section break. */
+.cm-markdown hr {
+  border: none;
+  border-top: 1px solid var(--cm-border, rgba(0, 0, 0, 0.12));
+  margin: 1.4em 0;
+}
+.cm-msg-thinking,
+.cm-thinking-body {
+  font-size: 13.5px;
+}
+/* Bump user-prompt monospace size to match prose-ish weight */
+.cm-msg-user {
+  font-size: 14.5px !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * Per-role visual fingerprints — semantic styling so the eye classifies
+ * a row in <100ms without parsing the text. User feedback 2026-05-06:
+ * "lots of red text lines… how can we add more differentiation".
+ *
+ * Hue palette is intentionally tight — 4 colors + neutral:
+ *   blue   → user                (--cm-role-user)
+ *   green  → assistant prose     (--cm-role-assistant — same as success)
+ *   orange → tool call           (--cm-role-tool — same as cm-prompt)
+ *   purple → reasoning/thinking  (--cm-role-thinking)
+ *   red    → error               (--cm-error)
+ *   muted  → system meta         (--cm-text-muted)
+ *
+ * Each role gets:
+ *   - left-accent strip (3px) in its hue
+ *   - faint background tint (rgba(...,0.04))
+ *   - small left padding so content doesn't touch the strip
+ * Inline glyphs are owned by the React components, NOT here.
+ * ───────────────────────────────────────────────────────────────────── */
+:root {
+  --cm-role-user: var(--cm-accent, #58a6ff);
+  --cm-role-assistant: var(--cm-success, #3fb950);
+  --cm-role-tool: var(--cm-prompt, #d77757);
+  --cm-role-thinking: #a371f7;
+}
+
+.cm-msg-row {
+  position: relative;
+  border-left: 3px solid transparent;
+  padding: 6px 0 6px 12px;
+  margin: 4px 0;
+  border-radius: 0 4px 4px 0;
+  transition: background-color 120ms ease;
+}
+
+/* User prompt — terminal/Matrix-native treatment: keep the `❯`
+ * glyph in --cm-prompt color as the role marker, drop the heavy
+ * left-strip + bg tint. The user's typed text renders WHITE for
+ * openagentic/Claude Code TUI parity (user feedback 2026-05-07:
+ * 'make the users input/requests WHITE like they are in
+ * openagentic/claude code'). Theme palettes that reassign --cm-text
+ * to green/etc. won't apply to user prompts — we hard-pin the
+ * prompt body to white via .cm-prompt-content rule below. */
+.cm-msg-user {
+  font-family: var(--cm-mono-font, JetBrains Mono, monospace);
+  font-size: 13px;
+  border-left-color: transparent;
+  background: transparent;
+  padding-left: 0;
+  margin: 10px 0 6px 0;
+}
+.cm-msg-user .cm-prompt-marker {
+  color: var(--cm-prompt, #d77757);
+  font-weight: 700;
+  margin-right: 6px;
+}
+/* User-prompt body color follows the GLOBAL theme via --fg-0:
+ *   light theme → #09090b (near-black)
+ *   dark theme  → near-white
+ * Previous hard-pin to #ffffff !important left the prompt invisible
+ * on a light global theme (user feedback 2026-05-08:
+ * 'when theme is dark the users requests should be WHITE if theme is
+ * light- users responses must be black').
+ *
+ * The `❯` glyph keeps its accent color via .cm-prompt-marker (orange).
+ * Only the typed content of the prompt switches between black/white.
+ */
+.cm-msg-user .cm-prompt-content {
+  color: var(--fg-0, #e6edf3);
+}
+
+/* Assistant prose row — INTENTIONALLY chromeless. The dominant content
+ * type in the transcript should be the visual baseline, not flagged
+ * with an accent strip. User feedback 2026-05-06: "the green bar on
+ * the left in codemode is distracting". Claude Code TUI parity: the
+ * model's prose is just typography on the default background; only
+ * non-default roles (user / tool / error / thinking) carry chrome. */
+.cm-msg-assistant {
+  border-left-color: transparent;
+  background: transparent;
+  /* Reset the cm-msg-row defaults so it's truly invisible chrome. */
+  padding-left: 0;
+}
+
+/* System meta — chromeless, italic, dim. The ◆ glyph + italic
+ * already differentiate it from prose; no strip or bg needed. */
+.cm-msg-system {
+  border-left-color: transparent;
+  background: transparent;
+  padding-left: 0;
+  color: var(--cm-text-muted, #8b949e);
+  font-style: italic;
+  font-size: 12px;
+}
+.cm-msg-system .cm-msg-glyph {
+  color: var(--cm-text-muted, #8b949e);
+  margin-right: 6px;
+}
+
+/* Error — terminal-style: red glyph + red text, no rounded bubble
+ * or heavy bg. Errors should pop without breaking the green/black
+ * aesthetic. Optional thin red strip ONLY if the row has lots of
+ * text and needs an extra visual anchor. */
+.cm-msg-error {
+  border-left-color: var(--cm-error, #f85149);
+  background: transparent;
+  padding-left: 12px;
+  color: var(--cm-error, #f85149);
+}
+.cm-msg-error .cm-msg-glyph {
+  color: var(--cm-error, #f85149);
+  font-weight: 700;
+  margin-right: 8px;
+}
+
+/* Thinking block — chromeless dimmed italic, claude.ai/code style.
+ * The italic + low-contrast color + smaller size already classify
+ * this as reasoning content; an accent strip here is loud relative
+ * to the calm CoT it wraps. The cm-thinking-symbol (∴) carries the
+ * role glyph; the existing crop+fade primitive caps tall blocks. */
+.cm-msg-thinking {
+  margin: 4px 0;
+  padding: 4px 0 4px 16px;
+  border-left: none;
+  background: transparent;
+  color: var(--cm-text-muted, #484f58);
+  font-style: italic;
+  font-size: 12px;
+}
+.cm-msg-thinking .cm-thinking-symbol {
+  color: var(--cm-prompt, #d77757);
+  font-style: normal;
+  margin-right: 6px;
+}
+
+/* Tool block (mock .tool-block) — rounded bordered card */
+.cm-tool-block {
+  margin: 6px 0;
+  background: var(--cm-bg, #0d1117);
+  border: 1px solid var(--cm-border, #30363d);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.cm-tool-block .cm-tool-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--cm-bg-secondary, #161b22);
+  border-bottom: 1px solid var(--cm-border, #30363d);
+  font-size: 12px;
+}
+.cm-tool-block .cm-tool-icon {
+  color: var(--cm-prompt, #d77757);
+  flex-shrink: 0;
+}
+.cm-tool-block .cm-tool-name {
+  color: var(--cm-accent, #58a6ff);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.cm-tool-block .cm-tool-path {
+  color: var(--cm-text-muted, #8b949e);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cm-tool-block .cm-tool-status {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.cm-tool-block .cm-tool-status-success { color: var(--cm-success, #3fb950); }
+.cm-tool-block .cm-tool-status-error   { color: var(--cm-error, #f85149); }
+.cm-tool-block .cm-tool-status-running { color: var(--cm-prompt, #d77757); }
+/* claude.ai/code parity: clamp tall tool bodies with a hard cut + bottom
+ * gradient fade instead of a nested scrollbar. Page scroll stays the
+ * single source of truth — no more "scroll inside scroll" double boxes.
+ * `.cm-tool-body.expanded` (set by the per-block Show More toggle in
+ * MessageTree.tsx) lifts the cap and hides the fade. */
+.cm-tool-block .cm-tool-body {
+  position: relative;
+  padding: 8px 10px;
+  font-size: 12px;
+  max-height: 280px;
+  overflow: hidden;
+  color: var(--cm-text-muted, #8b949e);
+  transition: max-height 220ms cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+.cm-tool-block .cm-tool-body.cm-cropped::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 80px;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(13, 17, 23, 0)   0%,
+    rgba(13, 17, 23, 0.55) 55%,
+    rgba(13, 17, 23, 0.92) 100%
+  );
+  transition: opacity 180ms linear;
+}
+.cm-tool-block .cm-tool-body.expanded {
+  max-height: 2400px;
+}
+.cm-tool-block .cm-tool-body.expanded.cm-cropped::after {
+  opacity: 0;
+}
+.cm-tool-block .cm-tool-body-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px 6px;
+  font-size: 11px;
+  border-top: 1px solid var(--cm-border, #30363d);
+  background: var(--cm-bg-secondary, #161b22);
+  color: var(--cm-text-muted, #8b949e);
+}
+.cm-tool-block .cm-tool-body-toggle button {
+  background: transparent;
+  border: 1px solid var(--cm-border, #30363d);
+  color: var(--cm-text, #e6edf3);
+  font: inherit;
+  padding: 2px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.cm-tool-block .cm-tool-body-toggle button:hover {
+  background: var(--cm-bg, #0d1117);
+}
+
+/* Inline thinking-block crop+fade — mirrors .cm-tool-body so chain-of-
+ * thought walls clip at the same 280px threshold instead of dumping a
+ * whole-screen monologue inline. Same gradient-to-cm-bg fade, same
+ * Show More / Show Less toggle, same expand transition. The thinking
+ * body has a different host (a <details> child inside .cm-msg-thinking),
+ * so the toggle row gets its own class to avoid leaking tool-block
+ * scoping. Otherwise the contract is identical. */
+.cm-thinking-body {
+  position: relative;
+  max-height: 280px;
+  overflow: hidden;
+  transition: max-height 220ms cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+.cm-thinking-body.cm-cropped::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 80px;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(13, 17, 23, 0)   0%,
+    rgba(13, 17, 23, 0.55) 55%,
+    rgba(13, 17, 23, 0.92) 100%
+  );
+  transition: opacity 180ms linear;
+}
+.cm-thinking-body.expanded {
+  max-height: 2400px;
+}
+.cm-thinking-body.expanded.cm-cropped::after {
+  opacity: 0;
+}
+.cm-thinking-body-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px 6px 14px;  /* matches the thinking border-left indent */
+  font-size: 11px;
+  margin-top: 2px;
+  margin-left: 14px;
+  border-top: 1px solid var(--cm-border, #30363d);
+  background: transparent;
+  color: var(--cm-text-muted, #8b949e);
+}
+.cm-thinking-body-toggle button {
+  background: transparent;
+  border: 1px solid var(--cm-border, #30363d);
+  color: var(--cm-text, #e6edf3);
+  font: inherit;
+  padding: 2px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.cm-thinking-body-toggle button:hover {
+  background: var(--cm-bg, #0d1117);
+}
+
+/* Active spinner (mock .spinner with pulse) */
+.cm-tool-spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cm-prompt, #d77757);
+}
+.cm-tool-spinner-dot {
+  font-size: 14px;
+  animation: cmPulse 1.5s ease-in-out infinite;
+}
+
+/* Diff block (mock .diff-block) — overrides legacy inline border for the
+ * boxed look. Rows already have inline backgrounds for added/removed. */
+.cm-diff-block {
+  margin: 6px 0;
+  background: var(--cm-bg, #0d1117);
+  border: 1px solid var(--cm-border, #30363d);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.cm-diff-block .cm-diff-block-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--cm-bg-secondary, #161b22);
+  border-bottom: 1px solid var(--cm-border, #30363d);
+  font-size: 12px;
+}
+.cm-diff-block .cm-diff-filename {
+  color: var(--cm-text, #e6edf3);
+  font-weight: 600;
+}
+.cm-diff-block .cm-diff-line { padding: 1px 10px; font-family: var(--cm-mono-font, monospace); }
+.cm-diff-block .cm-diff-line.cm-diff-line-added   { background: rgba(46,160,67,0.15); color: #69db7c; }
+.cm-diff-block .cm-diff-line.cm-diff-line-removed { background: rgba(248,81,73,0.10); color: #ffa8b4; }
+.cm-diff-block .cm-diff-line.cm-diff-line-context { color: var(--cm-text-muted, #8b949e); }
+.cm-diff-block .cm-diff-line .cm-diff-ln {
+  display: inline-block;
+  width: 28px;
+  text-align: right;
+  margin-right: 8px;
+  color: var(--cm-text-muted, #484f58);
+  user-select: none;
+}
+
+/* Bash output (mock .bash-output) */
+.cm-bash-output {
+  background: var(--cm-bg, #0d1117);
+  border: 1px solid var(--cm-border, #30363d);
+  border-radius: 6px;
+  margin: 4px 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--cm-text-muted, #8b949e);
+  /* No inner scroll — outer .cm-tool-body's crop+fade is the single cut.
+   * Past values (max-height: 220px; overflow-y: auto) created nested
+   * scrollboxes that fought page scroll; killed in 2026-05-06 fade pass. */
+}
+.cm-bash-stdout { color: #c9d1d9; }
+.cm-bash-stderr { color: var(--cm-error, #f85149); }
+.cm-bash-flat { color: var(--cm-text-muted, #c9d1d9); }
+
+/* Read tool body line-numbered display (mock .tool-body content) */
+.cm-tool-result {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  font-family: var(--cm-mono-font, monospace);
+}
+
+/* B.2 — inline tool error emphasis. Surfaces a red gutter on any
+   result wrapper (.cm-tool-result, .cm-bash-output) flagged with
+   .cm-tool-result-error so users can scan for failures at a glance. */
+.cm-tool-result-error {
+  border-left: 3px solid var(--cm-error, #f85149);
+  padding-left: 8px;
+}
+
+/* Drag-drop drop zone outline on the workspace tree */
+.fp-left-drag-over {
+  outline: 2px dashed var(--cm-accent, #58a6ff);
+  outline-offset: -4px;
+  background: color-mix(in srgb, var(--cm-accent, #58a6ff) 8%, transparent);
+}

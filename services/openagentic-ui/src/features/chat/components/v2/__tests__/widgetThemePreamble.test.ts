@@ -41,3 +41,52 @@ describe('buildPreambleCSS — accent override', () => {
   });
 });
 
+/**
+ * CLAUDE.md Rule 8(b) — iframe-rendered compose_visual artifacts MUST
+ * resolve `var(--cm-*)` tokens. The preamble defines the canonical
+ * `--cm-*` family in addition to the legacy `--accent` / `--bg-*` /
+ * `--fg-*` aliases so ComposeVisualTool's emitted SVG/HTML
+ * (`fill="var(--cm-accent)"`, etc.) tracks the parent theme.
+ */
+describe('buildPreambleCSS — canonical --cm-* tokens (Rule 8(b))', () => {
+  const css = buildPreambleCSS('dark', { accent: '#ffb547' });
+  const requiredTokens = [
+    '--cm-accent',
+    '--cm-bg',
+    '--cm-bg-0',
+    '--cm-bg-1',
+    '--cm-bg-2',
+    '--cm-bg-3',
+    '--cm-fg',
+    '--cm-fg-0',
+    '--cm-fg-1',
+    '--cm-fg-2',
+    '--cm-fg-3',
+    '--cm-border',
+    '--cm-success',
+    '--cm-warn',
+    '--cm-error',
+    '--cm-info',
+  ];
+  for (const token of requiredTokens) {
+    it(`defines ${token}`, () => {
+      const re = new RegExp(`${token}\\s*:`);
+      expect(css).toMatch(re);
+    });
+  }
+
+  it('aliases --cm-accent to the user-selected accent (not the violet default)', () => {
+    // The alias chain is --cm-accent: var(--accent); --accent: #ffb547.
+    // Either form is acceptable as proof the chain is wired.
+    expect(css).toMatch(/--cm-accent:\s*var\(--accent\)|--cm-accent:\s*#ffb547/);
+    expect(css).toContain('#ffb547');
+  });
+
+  it('also defines --mw-* aliases so legacy table/kpi_grid HTML resolves correctly', () => {
+    expect(css).toMatch(/--mw-bg-1\s*:/);
+    expect(css).toMatch(/--mw-fg-1\s*:/);
+    expect(css).toMatch(/--mw-line-1\s*:/);
+    expect(css).toMatch(/--mw-accent\s*:/);
+  });
+});
+

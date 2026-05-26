@@ -1,5 +1,5 @@
 /**
- * #650 U9 — Live discovery contract on the dev environment.
+ * #650 U9 — Live discovery contract on chat-dev.
  *
  * Drives 4 providers through the Add-Model + Refresh-from-provider
  * surface and asserts the Registry row's discovered fields match
@@ -8,7 +8,7 @@
  * Auth: re-uses `.auth/user.json` from saveAuthState helper. Regen on
  * JWT expiry per release-readiness.spec.ts top-of-file recipe.
  *
- * Pre-conditions (the fixture state on the dev environment):
+ * Pre-conditions (the fixture state on chat-dev):
  * - Bedrock provider exists with credentials configured
  * - Vertex provider exists with credentials configured
  * - Azure AI Foundry provider exists with `awf-aif-20902` deployment
@@ -25,7 +25,7 @@ import { test, expect, APIRequestContext } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const BASE = process.env.BASE_URL || 'http://localhost:8080';
+const BASE = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
 const AUTH_FILE = path.join(__dirname, '../../.auth/user.json');
 
 test.use({

@@ -58,40 +58,14 @@ function repairOnce(raw: string): string {
   });
 }
 
-/**
- * #1025 (2026-05-22) — Ollama wraps the parser failure inside a JSON body,
- * so the errorText that reaches this function may have backslash-escaped
- * quotes inside the `raw='...'` clause:
- *   {"error":"...raw='{\"k=5\",\"query\":\"x\"}',..."}
- *
- * The `KEY_EQUALS_VALUE_RE` regex requires an unescaped `{"` or `,"` —
- * `{\"` doesn't match. Unescape JSON-style `\"` → `"`, `\\` → `\`,
- * `\/` → `/` so the repair regex can do its job. Backslash-escaped escape
- * sequences (`\n`, `\t`, `\r`, `\u00XX`) are left alone; the input is a
- * malformed JSON object whose keys/values are ASCII identifiers + ints +
- * short strings — none of those need newline / unicode unescape.
- */
-function unescapeJsonEscapes(s: string): string {
-  return s
-    .replace(/\\"/g, '"')
-    .replace(/\\\\/g, '\\')
-    .replace(/\\\//g, '/');
-}
-
 export function repairOllamaToolCallJson(
   errorText: string,
 ): RepairOllamaToolCallJsonResult | null {
   if (!errorText || typeof errorText !== 'string') return null;
   const match = errorText.match(RAW_RE);
   if (!match) return null;
-  const rawExtracted = match[1];
-  if (!rawExtracted) return null;
-
-  // #1025 — if the extracted fragment has backslash-escaped quotes, the
-  // outer error body was JSON-encoded. Unescape so repair sees plain JSON.
-  const raw = rawExtracted.includes('\\"')
-    ? unescapeJsonEscapes(rawExtracted)
-    : rawExtracted;
+  const raw = match[1];
+  if (!raw) return null;
 
   // First try the raw as-is — sometimes Ollama reports a parse error
   // for some other reason and the fragment IS valid JSON.

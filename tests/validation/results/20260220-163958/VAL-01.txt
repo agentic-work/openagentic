@@ -1,0 +1,1 @@
+Starting the full infrastructure health audit now. Launching all independent checks in parallel.All initial probes are back. The `openagentic_admin` MCP is down — let me attempt fallback diagnostics via infrastructure health check, Loki direct query, and framework status to squeeze out any additional data.

@@ -36,16 +36,16 @@ const BASE_STYLE: React.CSSProperties = {
 
 const DONE_STYLE: React.CSSProperties = {
   ...BASE_STYLE,
-  background: 'var(--bg-3, #1c1f24)',
-  color: 'var(--fg-2, #a1a1aa)',
-  border: '1px solid var(--line-2, rgba(255,255,255,0.10))',
+  background: 'var(--cm-bg-tertiary)',
+  color: 'var(--cm-text-secondary)',
+  border: '1px solid var(--cm-border)',
 };
 
 const RUNNING_STYLE: React.CSSProperties = {
   ...BASE_STYLE,
-  background: 'rgba(139,92,246,0.14)',
-  color: '#8b5cf6',
-  border: '1px solid rgba(139,92,246,0.32)',
+  background: 'color-mix(in srgb, var(--cm-accent) 14%, transparent)',
+  color: 'var(--cm-accent)',
+  border: '1px solid color-mix(in srgb, var(--cm-accent) 32%, transparent)',
 };
 
 export function CostPill({

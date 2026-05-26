@@ -23,6 +23,8 @@ import { RouterTuningService, RouterTuning, ROUTER_TUNING_DEFAULTS } from './Rou
 // routes purely on FCA scoring + structural analysis (vision, tools,
 // prompt length). The `trivialIntent` cheapest-chat shortcut is gone.
 import { getModelCapabilityRegistry } from './ModelCapabilityRegistry.js';
+import { classifyModelCost } from './model-routing/classifyModelCost.js';
+import { resolveContextWindow } from './resolveContextWindow.js';
 // 2026-04-19 — SliderConfig import removed (task #144, slider rip).
 import {
   routerDecisionCounter,
@@ -154,6 +156,15 @@ export interface RoutingDecision {
   reason: string;
   alternativeModels: ModelProfile[];
   analysisResults: RequestAnalysis;
+  /**
+   * True when the router escalated above the chat pool because a structural
+   * capability gate fired (T3 capability gate or agentic capability profile).
+   * Default-first (2026-05-24): resolveChatModel uses the router's pick ONLY
+   * when this is true; otherwise the configured DB default wins.
+   */
+  escalated?: boolean;
+  /** Routing path label: cost_quality_score | chat_pool_floor | tool_floor | t3_capability_gate | capability_profile. */
+  resolvedBy?: string;
   /**
    * True when the router overrode the normal candidate pool because the
    * prompt contained destructive verbs (delete / terminate / drop / ...)
@@ -522,7 +533,7 @@ export class SmartModelRouter {
     // #911 (2026-05-20): registry-row capabilities indexed by model id so the
     // profile builder can read them as the SoT. createProfileFromDiscovery
     // now REQUIRES the capabilities JSON — name-substring inference is gone.
-    const registryRowsByModel = new Map<string, { capabilities: Record<string, any>; contextWindowTokens?: number }>();
+    const registryRowsByModel = new Map<string, { capabilities: Record<string, any>; contextWindowTokens?: number; functionCallingAccuracy?: number | null }>();
     try {
       const { prisma } = await import('../utils/prisma.js');
       const { listRegistryCandidatePool } = await import('./model-routing/RegistryCandidatePool.js');
@@ -536,12 +547,14 @@ export class SmartModelRouter {
           const caps = (entry.capabilities ?? {}) as Record<string, any>;
           registryRowsByModel.set(entry.model, {
             capabilities: caps,
-            contextWindowTokens:
-              typeof caps.contextWindowTokens === 'number'
-                ? caps.contextWindowTokens
-                : typeof caps.maxContextTokens === 'number'
-                  ? caps.maxContextTokens
-                  : undefined,
+            // #1091 L1: canonicalize all 3 legacy key names
+            // (contextWindowTokens / contextWindow / maxContextTokens).
+            // Sonnet 4.5 seeded form uses `contextWindow` — old code
+            // only checked `contextWindowTokens`/`maxContextTokens`,
+            // silently falling through to 8192 default → T3 gate
+            // (≥200000) rejected every model. See [[resolveContextWindow]].
+            contextWindowTokens: resolveContextWindow(caps),
+            functionCallingAccuracy: entry.functionCallingAccuracy ?? null,
           });
         }
       }
@@ -655,7 +668,16 @@ export class SmartModelRouter {
   private createProfileFromDiscovery(
     model: { id: string; name: string; provider: string },
     providerName: string,
-    registryRow?: { capabilities: Record<string, any> | null; contextWindowTokens?: number },
+    registryRow?: {
+      capabilities: Record<string, any> | null;
+      contextWindowTokens?: number;
+      /**
+       * First-class per-model FCA column (model_role_assignments.function_calling_accuracy).
+       * SoT for routing capability score. Falls back to capabilities JSON for
+       * legacy rows that predate the column, then 0.
+       */
+      functionCallingAccuracy?: number | null;
+    },
   ): ModelProfile {
     if (!registryRow || !registryRow.capabilities || typeof registryRow.capabilities !== 'object') {
       throw new Error(
@@ -674,8 +696,14 @@ export class SmartModelRouter {
     const capabilities: ModelProfile['capabilities'] = {
       chat: regCaps.chat === true,
       functionCalling: regCaps.functionCalling === true,
+      // Column-first: the first-class function_calling_accuracy column is the
+      // SoT. Fall back to the capabilities JSON for legacy rows, then 0.
       functionCallingAccuracy:
-        typeof regCaps.functionCallingAccuracy === 'number' ? regCaps.functionCallingAccuracy : 0,
+        typeof registryRow.functionCallingAccuracy === 'number'
+          ? registryRow.functionCallingAccuracy
+          : typeof regCaps.functionCallingAccuracy === 'number'
+            ? regCaps.functionCallingAccuracy
+            : 0,
       vision: regCaps.vision === true,
       imageGeneration: regCaps.imageGeneration === true,
       embeddings: regCaps.embeddings === true,
@@ -688,14 +716,15 @@ export class SmartModelRouter {
       supportsSyntheticThinking: regCaps.supportsSyntheticThinking === true,
     };
 
+    // #1091 L1: row-level contextWindowTokens (populated via
+    // resolveContextWindow at registry-load time) is SoT. Fall back to
+    // scanning regCaps via the same canonicalizer so any registry row
+    // that bypassed the loader's normalization (e.g. test fixtures,
+    // direct DB inserts) still surfaces. Final fallback 8192.
     const maxContextTokens =
-      typeof registryRow.contextWindowTokens === 'number'
+      (typeof registryRow.contextWindowTokens === 'number'
         ? registryRow.contextWindowTokens
-        : typeof regCaps.contextWindowTokens === 'number'
-          ? regCaps.contextWindowTokens
-          : typeof regCaps.maxContextTokens === 'number'
-            ? regCaps.maxContextTokens
-            : 8192;
+        : resolveContextWindow(regCaps)) ?? 8192;
     const maxOutputTokens =
       typeof regCaps.maxOutputTokens === 'number' ? regCaps.maxOutputTokens : 8192;
 
@@ -723,23 +752,24 @@ export class SmartModelRouter {
         tokensPerSecond: 100,
       },
       cost: (() => {
-        // Pricing stays sourced from ModelCapabilityRegistry — that is the
-        // documented carve-out for pricing literals (see no-hardcoded-models.md).
-        // Capability inference is gone; pricing seed remains.
-        // Null-safe: MCR may be uninitialized in test contexts; we still need
-        // a profile for routing decisions even when pricing isn't seeded.
+        // Pricing stays sourced from ModelCapabilityRegistry — the documented
+        // carve-out for pricing literals (see no-hardcoded-models.md). Capability
+        // inference is gone; pricing seed remains. classifyModelCost gives the
+        // SAME resolution the registry endpoint uses (MCR → local-free → a
+        // conservative per-provider cloud estimate) so the Live Scoring Lab and
+        // the router never disagree on a model's cost (#1082). The router has no
+        // registry cost column in scope here, so registry* stay null and MCR /
+        // estimate carry it. Null-safe: MCR may be uninitialized in tests.
         const mcr = getModelCapabilityRegistry();
         const mcrCaps = mcr ? mcr.getCapabilities(model.id) : undefined;
-        const isLocalProvider = providerName.toLowerCase().includes('ollama');
-        const inputCost = mcrCaps && mcrCaps.inputCostPer1k != null
-          ? mcrCaps.inputCostPer1k
-          : (isLocalProvider ? 0 : 0.001);
-        const outputCost = mcrCaps && mcrCaps.outputCostPer1k != null
-          ? mcrCaps.outputCostPer1k
-          : (isLocalProvider ? 0 : 0.002);
+        const cost = classifyModelCost({
+          providerName,
+          mcrInputPer1k: mcrCaps?.inputCostPer1k ?? null,
+          mcrOutputPer1k: mcrCaps?.outputCostPer1k ?? null,
+        });
         return {
-          inputPer1kTokens: inputCost,
-          outputPer1kTokens: outputCost,
+          inputPer1kTokens: cost.inputPer1k,
+          outputPer1kTokens: cost.outputPer1k,
           currency: 'USD',
         };
       })(),
@@ -1334,9 +1364,56 @@ export class SmartModelRouter {
       routerRouteRequestDurationMs.observe(Date.now() - __t0);
     } catch { /* metrics error — non-fatal */ }
 
+    // Persist the decision so admin Router Health pane + escalation triggers
+    // pane have real history to render. Fire-and-forget; a DB write failure
+    // must never kill a routing call. context blob carries everything the
+    // admin/v3-extras /router/decisions reader expects. 2026-05-25 audit
+    // — pane was permanently empty because nothing wrote this table.
+    (async () => {
+      try {
+        const { prisma } = await import('../utils/prisma.js');
+        const sessionId = (request as any).sessionId ?? userId ?? 'unknown';
+        const previousModel = (analysis as any).previousModel ?? selected.modelId;
+        const alternates = (alternatives ?? []).slice(0, 5).map((a: any) => a?.modelId ?? a?.id ?? String(a));
+        const firstMsg = Array.isArray((request as any)?.messages) ? (request as any).messages[0] : undefined;
+        await prisma.modelRoutingDecision.create({
+          data: {
+            session_id: String(sessionId),
+            model_from: String(previousModel),
+            model_to: String(selected.modelId),
+            reason: String(reason),
+            context: {
+              intent: (analysis as any)?.intent,
+              prompt: typeof firstMsg?.content === 'string'
+                ? String(firstMsg.content).slice(0, 500)
+                : undefined,
+              score: (selected as any)?.score,
+              fca: selected.capabilities.functionCallingAccuracy,
+              tier,
+              resolvedBy,
+              alternates,
+              latencyMs: Date.now() - __t0,
+              inputCostPer1k: (selected as any)?.capabilities?.inputCostPer1k,
+              outputCostPer1k: (selected as any)?.capabilities?.outputCostPer1k,
+            },
+          },
+        });
+      } catch (err: any) {
+        this.logger.debug({ err: err?.message }, 'modelRoutingDecision write skipped (non-fatal)');
+      }
+    })();
+
     return {
       selectedModel: selected,
       reason,
+      // DEFAULT-FIRST (2026-05-24): resolveChatModel uses the router's pick
+      // ONLY when it escalated above the chat pool. `escalated` is true when
+      // a structural capability gate fired (T3 gate / agentic capability
+      // profile). For ordinary prompts (cost_quality_score / chat_pool_floor
+      // / tool_floor) escalated=false → the configured DB default wins, so a
+      // cheap model is never silently substituted for the operator's default.
+      escalated: resolvedBy === 't3_capability_gate' || resolvedBy === 'capability_profile',
+      resolvedBy,
       alternativeModels: alternatives,
       analysisResults: analysis,
       // Phase E.1 (2026-05-10) — `route_escalated_destructive` always

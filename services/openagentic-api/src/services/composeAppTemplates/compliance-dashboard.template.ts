@@ -33,7 +33,7 @@ type Params = z.infer<typeof ParamsSchema>;
 const exampleParams: Params = {
   title: 'FedRAMP-High readiness',
   framework: 'FedRAMP-High Rev 5',
-  subtitle: 'your-deployment-prod tenant · scan 2026-05-13',
+  subtitle: 'omhs-prod tenant · scan 2026-05-13',
   families: [
     {
       family: 'AC — Access Control',

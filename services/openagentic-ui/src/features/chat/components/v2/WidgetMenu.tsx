@@ -160,7 +160,7 @@ function MenuItem({ label, icon, onClick }: MenuItemProps) {
         padding: '8px 12px',
         border: 0,
         background: 'transparent',
-        color: 'var(--fg-1, #d4d4d8)',
+        color: 'var(--cm-text)',
         fontSize: 12,
         cursor: 'pointer',
         textAlign: 'left',
@@ -168,7 +168,7 @@ function MenuItem({ label, icon, onClick }: MenuItemProps) {
       }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLButtonElement).style.background =
-          'var(--accent-soft, rgba(139,92,246,0.14))';
+          'color-mix(in srgb, var(--cm-accent) 14%, transparent)';
       }}
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
@@ -278,9 +278,9 @@ export function WidgetMenu({
           display: 'inline-grid',
           placeItems: 'center',
           borderRadius: 6,
-          border: '1px solid var(--line-2, rgba(255,255,255,0.10))',
-          background: 'rgba(15,16,18,0.78)',
-          color: 'var(--fg-1, #d4d4d8)',
+          border: '1px solid var(--cm-border)',
+          background: 'color-mix(in srgb, var(--cm-bg) 78%, transparent)',
+          color: 'var(--cm-text)',
           cursor: 'pointer',
           backdropFilter: 'blur(6px)',
           padding: 0,
@@ -299,10 +299,10 @@ export function WidgetMenu({
             right: 0,
             minWidth: 180,
             padding: '4px 0',
-            border: '1px solid var(--line-2, rgba(255,255,255,0.10))',
+            border: '1px solid var(--cm-border)',
             borderRadius: 8,
-            background: 'rgba(15,16,18,0.95)',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            background: 'color-mix(in srgb, var(--cm-bg) 95%, transparent)',
+            boxShadow: '0 10px 30px color-mix(in srgb, var(--cm-bg) 50%, transparent)',
             backdropFilter: 'blur(8px)',
             zIndex: 2,
           }}

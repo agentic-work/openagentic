@@ -430,85 +430,60 @@ const EnhancedShikiCodeBlock: React.FC<EnhancedShikiCodeBlockProps> = ({
       data-streaming={isStreaming ? 'true' : 'false'}
       data-language={language}
     >
-      {/* eslint-disable-next-line no-restricted-syntax -- Code block styling intentionally uses GitHub-inspired colors */}
       <style>{`
         .enhanced-code-block {
           border-radius: 8px;
           overflow: hidden;
           margin: 16px 0;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          background: var(--cm-bg);
+          border: 1px solid var(--cm-border);
         }
-        
-        .dark-theme {
-          background: #0d1117;
-          border: 1px solid #30363d;
-        }
-        
-        .light-theme {
-          background: #ffffff;
-          border: 1px solid #d0d7de;
-        }
-        
+
         .code-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
           padding: 8px 16px;
-          border-bottom: 1px solid;
+          border-bottom: 1px solid var(--cm-border);
+          background: var(--cm-bg-secondary);
         }
-        
-        .dark-theme .code-header {
-          background: #161b22;
-          border-bottom-color: #30363d;
-        }
-        
-        .light-theme .code-header {
-          background: #f6f8fa;
-          border-bottom-color: #d0d7de;
-        }
-        
+
         .code-content {
           position: relative;
           overflow-x: auto;
         }
-        
+
         .code-content pre {
           margin: 0;
           padding: 16px;
           font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
           font-size: 14px;
           line-height: 1.45;
+          background: transparent;
         }
-        
+
         .code-line {
           display: flex;
           position: relative;
         }
-        
+
         .line-number {
           user-select: none;
           padding-right: 16px;
           text-align: right;
           min-width: 40px;
+          color: var(--cm-text-muted);
         }
 
-        .dark-theme .line-number {
-          color: #6e7681;
-        }
-
-        .light-theme .line-number {
-          color: #57606a;
-        }
-        
         .highlighted-line {
-          background: rgba(255, 197, 61, 0.1);
+          background: color-mix(in srgb, var(--cm-warning) 12%, transparent);
         }
-        
+
         .error-line {
-          background: rgba(255, 0, 0, 0.1);
+          background: color-mix(in srgb, var(--cm-error) 12%, transparent);
           position: relative;
         }
-        
+
         .error-line::after {
           content: '';
           position: absolute;
@@ -516,33 +491,33 @@ const EnhancedShikiCodeBlock: React.FC<EnhancedShikiCodeBlockProps> = ({
           left: 0;
           right: 0;
           height: 2px;
-          background: #FF453A;
+          background: var(--cm-error);
           opacity: 0.5;
         }
-        
+
         .diff-add {
-          background: rgba(0, 255, 0, 0.1);
+          background: color-mix(in srgb, var(--cm-success) 12%, transparent);
         }
-        
+
         .diff-add::before {
           content: '+';
           position: absolute;
           left: -20px;
-          color: #22C55E;
+          color: var(--cm-success);
         }
-        
+
         .diff-remove {
-          background: rgba(255, 0, 0, 0.1);
+          background: color-mix(in srgb, var(--cm-error) 12%, transparent);
         }
-        
+
         .diff-remove::before {
           content: '-';
           position: absolute;
           left: -20px;
-          color: #f85149;
+          color: var(--cm-error);
         }
       `}</style>
-      
+
       {/* Header */}
       <div className="code-header">
         <div className="flex items-center gap-2">

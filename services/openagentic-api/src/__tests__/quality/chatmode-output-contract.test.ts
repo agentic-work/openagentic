@@ -24,7 +24,7 @@
  * Legacy contract.json files may still reference them; we accept the
  * frame type in the schema but no longer require its presence.
  *
- * Layer 2 (live-model battery against the roster of decent models on the dev environment)
+ * Layer 2 (live-model battery against the roster of decent models on chat-dev)
  * is a separate plan after this lands.
  */
 import { describe, it, expect } from 'vitest';

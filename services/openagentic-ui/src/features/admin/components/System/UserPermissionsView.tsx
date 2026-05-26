@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 // Basic UI icons from lucide
 import {
   Users, Edit, Save, X, Search, Image, Code, Globe, Upload, Brain,
-  Unlock, SlidersHorizontal, Sparkles, FileText, Calendar, Terminal, Trash2,
+  Unlock, Sparkles, FileText, Calendar, Terminal, Trash2,
   MessageSquare, Zap, Settings, Workflow
 } from '@/shared/icons';
 // Custom badass OpenAgentic icons
@@ -19,6 +19,7 @@ import {
   SlideInPanelSection,
   SlideInPanelField,
 } from '@/shared/components/SlideInPanel';
+import { PageHeader } from '../../primitives-v2';
 
 // API returns permissions in camelCase format
 interface ApiPermissions {
@@ -93,8 +94,6 @@ interface UserPermission {
   // Custom permissions flag
   hasCustomPermissions: boolean;
   permissionSource: 'user' | 'group' | 'default';
-  // Intelligence slider (0-100, null = use global)
-  intelligence_slider: number | null;
   // Scope enforcement / lockout
   is_locked: boolean;
   scope_warning_count: number;
@@ -105,12 +104,6 @@ interface UserPermission {
   prompt_template_name: string | null;
   created_at: string;
   updated_at: string;
-}
-
-interface SliderInfo {
-  value: number | null;
-  source: 'user' | 'global' | 'default';
-  globalValue?: number;
 }
 
 interface AvailableLLM {
@@ -125,13 +118,7 @@ interface AvailableMCP {
   description?: string;
 }
 
-interface PromptTemplate {
-  id: string;
-  name: string;
-  description?: string;
-  category: string;
-  is_default: boolean;
-}
+// PromptTemplate interface removed (Phase W 2026-05-19) — /api/admin/prompts/templates 404.
 
 interface UserBudget {
   budgetDollars: number | null;
@@ -172,7 +159,6 @@ function mapApiUserToPermission(apiUser: ApiUser): UserPermission {
     },
     hasCustomPermissions: apiUser.hasCustomPermissions,
     permissionSource: perms?.source || 'default',
-    intelligence_slider: null, // Loaded separately
     is_locked: apiUser.is_locked ?? false,
     scope_warning_count: apiUser.scope_warning_count ?? 0,
     locked_at: apiUser.locked_at ?? null,
@@ -190,18 +176,14 @@ const UserPermissionsView: React.FC = () => {
   const [users, setUsers] = useState<UserPermission[]>([]);
   const [availableLLMs, setAvailableLLMs] = useState<AvailableLLM[]>([]);
   const [availableMCPs, setAvailableMCPs] = useState<AvailableMCP[]>([]);
-  const [promptTemplates, setPromptTemplates] = useState<PromptTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserPermission | null>(null);
   const [editingPermissions, setEditingPermissions] = useState<Partial<UserPermission> | null>(null);
-  const [editingPromptTemplateId, setEditingPromptTemplateId] = useState<string | null>(null);
+  // editingPromptTemplateId removed (Phase W 2026-05-19) — dead endpoint.
   const [showEditModal, setShowEditModal] = useState(false);
-  const [sliderInfo, setSliderInfo] = useState<SliderInfo | null>(null);
-  const [editingSlider, setEditingSlider] = useState<number | null>(null);
-  const [useGlobalSlider, setUseGlobalSlider] = useState(true);
-  const [globalSliderValue, setGlobalSliderValue] = useState<number>(50);
+  // 2026-04-20 — all slider state purged (task #144 final pass).
   // Budget state
   const [userBudget, setUserBudget] = useState<UserBudget | null>(null);
   const [editingBudget, setEditingBudget] = useState<{
@@ -229,11 +211,12 @@ const UserPermissionsView: React.FC = () => {
     setError(null);
     try {
       const headers = getAuthHeaders();
-      const [usersData, llmsData, mcpsData, promptsData] = await Promise.all([
+      // Phase W (2026-05-19): /admin/prompts/templates removed from parallel fetch —
+      // endpoint returns 404 (PromptTemplate Prisma model dropped).
+      const [usersData, llmsData, mcpsData] = await Promise.all([
         apiRequest('/admin/user-management', { headers }).then(r => r.json()),
         apiRequest('/admin/permissions/available-llms', { headers }).then(r => r.json()),
         apiRequest('/admin/permissions/available-mcps', { headers }).then(r => r.json()),
-        apiRequest('/admin/prompts/templates', { headers }).then(r => r.json()).catch(() => ({ templates: [] }))
       ]);
 
       // Map API users to normalized UI format
@@ -243,14 +226,12 @@ const UserPermissionsView: React.FC = () => {
       setUsers(mappedUsers);
       setAvailableLLMs(Array.isArray(llmsData) ? llmsData : llmsData.providers || []);
       setAvailableMCPs(Array.isArray(mcpsData) ? mcpsData : mcpsData.servers || []);
-      setPromptTemplates(Array.isArray(promptsData) ? promptsData : promptsData.templates || []);
     } catch (err) {
       console.error('Failed to fetch user permissions data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load data');
       setUsers([]);
       setAvailableLLMs([]);
       setAvailableMCPs([]);
-      setPromptTemplates([]);
     } finally {
       setLoading(false);
     }
@@ -260,25 +241,15 @@ const UserPermissionsView: React.FC = () => {
     try {
       const headers = getAuthHeaders();
 
-      // Fetch permissions, slider info, budget, and prompt assignment in parallel
-      const [permissionsResponse, sliderResponse, globalSliderResponse, budgetResponse, promptAssignmentResponse] = await Promise.all([
+      // 2026-04-20 (task #144 tail cleanup) — slider fully gone from admin.
+      // Phase W (2026-05-19): /admin/prompts/users/:id/templates removed — dead endpoint.
+      const [permissionsResponse, budgetResponse] = await Promise.all([
         apiRequest(`/admin/user-management/${user.user_id}/permissions`, { headers }),
-        apiRequest(`/admin/users/${user.user_id}/slider`, { headers }),
-        apiRequest(`/admin/settings/slider`, { headers }),
         apiRequest(`/admin/user-permissions/${user.user_id}/budget`, { headers }).catch(() => ({ json: async () => null })),
-        apiRequest(`/admin/prompts/users/${user.user_id}/templates`, { headers }).catch(() => ({ json: async () => ({ templates: [] }) }))
       ]);
 
       const permissions = await permissionsResponse.json();
-      const sliderData = await sliderResponse.json();
-      const globalData = await globalSliderResponse.json();
       const budgetData = budgetResponse?.json ? await budgetResponse.json() : null;
-      const promptData = promptAssignmentResponse?.json ? await promptAssignmentResponse.json() : { templates: [] };
-      // Get the first assigned template (if any)
-      const userTemplates = promptData.templates || promptData || [];
-      const currentPromptTemplateId = Array.isArray(userTemplates) && userTemplates.length > 0
-        ? String(userTemplates[0].id)
-        : user.prompt_template_id;
 
       // API returns permissions in camelCase format
       const apiPerms = permissions.permissions || permissions;
@@ -330,22 +301,6 @@ const UserPermissionsView: React.FC = () => {
       setEditingMonthlyRequestLimit(apiPerms.monthlyRequestLimit ?? null);
       setActiveTab('access');
 
-      // Set prompt template
-      setEditingPromptTemplateId(currentPromptTemplateId || null);
-
-      // Set slider state
-      setSliderInfo(sliderData);
-      setGlobalSliderValue(globalData.value ?? 50);
-
-      // If user has a custom slider, use it; otherwise use global
-      if (sliderData.source === 'user' && sliderData.value !== null) {
-        setUseGlobalSlider(false);
-        setEditingSlider(sliderData.value);
-      } else {
-        setUseGlobalSlider(true);
-        setEditingSlider(globalData.value ?? 50);
-      }
-
       // Set budget state
       if (budgetData && !budgetData.error) {
         setUserBudget(budgetData);
@@ -387,6 +342,7 @@ const UserPermissionsView: React.FC = () => {
         deniedLlmProviders: editingPermissions.denied_llms || [],
         allowedMcpServers: editingPermissions.allowed_mcps || [],
         deniedMcpServers: editingPermissions.denied_mcps || [],
+        workflowsEnabled: editingWorkflowsEnabled,
         dailyTokenLimit: editingPermissions.daily_token_limit,
         monthlyTokenLimit: editingPermissions.monthly_token_limit,
         dailyRequestLimit: editingDailyRequestLimit,
@@ -408,46 +364,8 @@ const UserPermissionsView: React.FC = () => {
         body: JSON.stringify(apiPermissions)
       });
 
-      // Save slider setting
-      if (useGlobalSlider) {
-        // Clear user slider (use global)
-        await apiRequest(`/admin/users/${selectedUser.user_id}/slider`, {
-          method: 'DELETE',
-          headers
-        });
-      } else if (editingSlider !== null) {
-        // Set user-specific slider
-        await apiRequest(`/admin/users/${selectedUser.user_id}/slider`, {
-          method: 'PATCH',
-          headers,
-          body: JSON.stringify({ value: editingSlider })
-        });
-      }
-
-      // Save prompt template assignment
-      // First, get current assignment to see if we need to remove old one
-      const currentAssignment = selectedUser.prompt_template_id;
-      if (editingPromptTemplateId !== currentAssignment) {
-        // Remove old assignment if it exists
-        if (currentAssignment) {
-          try {
-            await apiRequest(`/admin/prompts/templates/${currentAssignment}/assign/${selectedUser.user_id}`, {
-              method: 'DELETE',
-              headers
-            });
-          } catch (e) {
-            // Ignore if no assignment exists
-          }
-        }
-        // Add new assignment if provided
-        if (editingPromptTemplateId) {
-          await apiRequest(`/admin/prompts/templates/${editingPromptTemplateId}/assign`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ user_id: selectedUser.user_id })
-          });
-        }
-      }
+      // 2026-04-19 — slider save block removed (task #144, slider rip).
+      // Phase W (2026-05-19): prompt template assignment block removed — dead endpoint.
 
       // Save budget settings inline
       if (editingBudget) {
@@ -476,10 +394,6 @@ const UserPermissionsView: React.FC = () => {
     setShowEditModal(false);
     setSelectedUser(null);
     setEditingPermissions(null);
-    setEditingPromptTemplateId(null);
-    setSliderInfo(null);
-    setEditingSlider(null);
-    setUseGlobalSlider(true);
     setUserBudget(null);
     setEditingBudget(null);
     setEditingCodeModeCli(null);
@@ -668,14 +582,14 @@ const UserPermissionsView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold mb-2 text-text-primary">
-          User Permissions Management
-        </h2>
-        <p className="text-text-secondary">
-          Manage user-level permissions for LLM providers, MCP servers, and features
-        </p>
-      </div>
+      <PageHeader
+        crumbs={['Admin', 'Security', 'Permissions']}
+        title="User Permissions"
+        explainer="Manage user-level permissions for LLM providers, MCP servers, and features."
+        actions={[
+          { label: 'Refresh', onClick: fetchData },
+        ]}
+      />
 
       {error && (
         <div className="glass-card border-error/50 bg-error-500/10 p-4 rounded-lg">
@@ -910,7 +824,7 @@ const UserPermissionsView: React.FC = () => {
               <span className="text-xs" style={{ color: 'var(--color-textMuted)' }}>Source:</span>
               <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{
                 backgroundColor: selectedUser.permissionSource === 'user' ? 'rgba(var(--ap-success-rgb, 34, 197, 94), 0.15)' : 'rgba(var(--ap-info-rgb, 59, 130, 246), 0.15)',
-                color: selectedUser.permissionSource === 'user' ? 'var(--ap-success, #00D26A)' : 'var(--ap-info, #3b82f6)',
+                color: selectedUser.permissionSource === 'user' ? 'var(--ap-success)' : 'var(--ap-info)',
               }}>
                 {selectedUser.permissionSource === 'user' ? 'Custom (User)' : selectedUser.permissionSource === 'group' ? 'Group' : 'Default'}
               </span>
@@ -1056,12 +970,12 @@ const UserPermissionsView: React.FC = () => {
                   <div className="grid grid-cols-2 gap-2">
                     {([
                       { key: 'image_generation', label: 'Image Generation', icon: <Image size={16} />, color: 'var(--color-primary)' },
-                      { key: 'code_execution', label: 'Code Execution', icon: <Code size={16} />, color: 'var(--ap-success, #00D26A)' },
-                      { key: 'web_search', label: 'Web Search', icon: <Globe size={16} />, color: 'var(--ap-info, #3b82f6)' },
-                      { key: 'file_upload', label: 'File Upload', icon: <Upload size={16} />, color: 'var(--ap-warning, #f59e0b)' },
-                      { key: 'memory', label: 'Memory', icon: <Brain size={16} />, color: 'var(--ap-info, #3b82f6)' },
+                      { key: 'code_execution', label: 'Code Execution', icon: <Code size={16} />, color: 'var(--ap-success)' },
+                      { key: 'web_search', label: 'Web Search', icon: <Globe size={16} />, color: 'var(--ap-info)' },
+                      { key: 'file_upload', label: 'File Upload', icon: <Upload size={16} />, color: 'var(--ap-warning)' },
+                      { key: 'memory', label: 'Memory', icon: <Brain size={16} />, color: 'var(--ap-info)' },
                       { key: 'rag', label: 'RAG / Knowledge', icon: <Database size={16} />, color: 'var(--color-primary)' },
-                      { key: 'awcode', label: 'Openagentic', icon: <Terminal size={16} />, color: 'var(--ap-success, #00D26A)' },
+                      { key: 'awcode', label: 'Openagentic', icon: <Terminal size={16} />, color: 'var(--ap-success)' },
                     ] as const).map(feature => (
                       <label
                         key={feature.key}
@@ -1089,58 +1003,12 @@ const UserPermissionsView: React.FC = () => {
                   </div>
                 </SlideInPanelSection>
 
-                <SlideInPanelSection title="Intelligence Slider" description="Controls cost/quality tradeoff for AI model selection.">
-                  <label className="flex items-center gap-2 cursor-pointer mb-4 p-2 rounded-lg" style={{ border: '1px solid var(--color-border)' }}>
-                    <input
-                      type="checkbox"
-                      checked={useGlobalSlider}
-                      onChange={(e) => {
-                        setUseGlobalSlider(e.target.checked);
-                        if (e.target.checked) setEditingSlider(globalSliderValue);
-                      }}
-                    />
-                    <span className="text-sm" style={{ color: 'var(--color-text)' }}>Use global default</span>
-                    <span className="text-xs ml-auto" style={{ color: 'var(--color-textMuted)' }}>Global: {globalSliderValue}%</span>
-                  </label>
-
-                  <div className={`transition-opacity ${useGlobalSlider ? 'opacity-40 pointer-events-none' : ''}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium" style={{ color: 'var(--ap-success, #00D26A)' }}>Cost</span>
-                      <span className="text-lg font-bold" style={{ color: 'var(--color-primary)' }}>{editingSlider ?? 50}%</span>
-                      <span className="text-xs font-medium" style={{ color: 'var(--ap-info, #3b82f6)' }}>Quality</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={editingSlider ?? 50}
-                      onChange={(e) => setEditingSlider(parseInt(e.target.value))}
-                      className="w-full h-2 rounded-lg appearance-none cursor-pointer"
-                      style={{ background: 'linear-gradient(to right, var(--ap-success, #00D26A), var(--ap-warning, #f59e0b), var(--color-primary))' }}
-                    />
-                    <div className="flex justify-between mt-1 text-xs" style={{ color: 'var(--color-textMuted)' }}>
-                      <span>Economical</span>
-                      <span>Balanced</span>
-                      <span>Premium</span>
-                    </div>
-                  </div>
-                </SlideInPanelSection>
-
-                <SlideInPanelSection title="Prompt Template" description="Controls AI behavior, scope, and personality.">
-                  <select
-                    value={editingPromptTemplateId || ''}
-                    onChange={(e) => setEditingPromptTemplateId(e.target.value || null)}
-                    className="w-full px-3 py-2 rounded-lg text-sm"
-                    style={{ border: '1px solid var(--color-border)', backgroundColor: 'var(--color-background)', color: 'var(--color-text)' }}
-                  >
-                    <option value="">Default (based on role)</option>
-                    {promptTemplates.map(template => (
-                      <option key={template.id} value={template.id}>
-                        {template.name} {template.is_default ? '(Default)' : ''} — {template.category || 'general'}
-                      </option>
-                    ))}
-                  </select>
-                </SlideInPanelSection>
+                {/* 2026-04-19 — Intelligence Slider section removed (task
+                    #144). Per-user × per-model spend caps live on the
+                    Budget tab (UserModelBudgetService). */}
+                {/* 2026-05-19 — Prompt Template section removed (Phase W).
+                    /api/admin/prompts/templates returns 404 (model dropped).
+                    RBAC role prompts are now edited via Admin → Prompts → RBAC Templates. */}
               </div>
             )}
 
@@ -1277,7 +1145,7 @@ const UserPermissionsView: React.FC = () => {
                       )}
                       <div className="flex justify-end mt-2">
                         <button
-                          onClick={handleResetBudget}
+                          onClick={() => { void handleResetBudget(); }}
                           disabled={budgetLoading}
                           className="text-xs px-2 py-1 rounded transition-colors"
                           style={{ color: 'var(--color-textMuted)' }}
@@ -1320,18 +1188,10 @@ const UserPermissionsView: React.FC = () => {
                     </SlideInPanelField>
                   </div>
 
+                  {/* 2026-04-19 — Auto-adjust slider checkbox removed
+                      (task #144, slider rip). Per-user × per-model caps
+                      handle budget enforcement at dispatch time. */}
                   <div className="space-y-2 mt-4">
-                    <label className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors" style={{ border: '1px solid var(--color-border)' }}>
-                      <input
-                        type="checkbox"
-                        checked={editingBudget?.autoAdjust ?? false}
-                        onChange={(e) => setEditingBudget({ ...editingBudget!, autoAdjust: e.target.checked })}
-                      />
-                      <div className="flex-1">
-                        <span className="text-sm block" style={{ color: 'var(--color-text)' }}>Auto-adjust slider</span>
-                        <span className="text-xs" style={{ color: 'var(--color-textMuted)' }}>Automatically lower quality when approaching budget</span>
-                      </div>
-                    </label>
                     <label className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors" style={{ border: '1px solid var(--color-border)' }}>
                       <input
                         type="checkbox"
@@ -1401,7 +1261,7 @@ const UserPermissionsView: React.FC = () => {
                     </div>
                     <div className="flex items-center justify-between p-2 rounded" style={{ backgroundColor: 'var(--color-surfaceSecondary)' }}>
                       <span className="text-xs" style={{ color: 'var(--color-textMuted)' }}>Account Locked</span>
-                      <span className="text-xs font-medium" style={{ color: selectedUser.is_locked ? 'rgb(239, 68, 68)' : 'var(--ap-success, #00D26A)' }}>
+                      <span className="text-xs font-medium" style={{ color: selectedUser.is_locked ? 'rgb(239, 68, 68)' : 'var(--ap-success)' }}>
                         {selectedUser.is_locked ? `Yes (${selectedUser.locked_reason || 'Scope violations'})` : 'No'}
                       </span>
                     </div>

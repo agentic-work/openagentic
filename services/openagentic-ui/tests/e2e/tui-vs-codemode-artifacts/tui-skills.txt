@@ -1,0 +1,50 @@
+   [openagentic]
+   v0.7.0 • nemotron3:33b
+   /tmp
+
+   /? help  •  ctrl+c cancel  •  /exit quit
+
+   ────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Skills
+  22 skills
+
+  User skills (~/.openagentic/skills)
+  synth · ~173 description tokens
+
+  Plugin skills (plugin)
+  ai-firstify · ai-firstify · ~106 description tokens
+  api-gateway · aws-serverless · ~117 description tokens
+  aws-lambda · aws-serverless · ~91 description tokens
+  aws-lambda-durable-functions · aws-serverless · ~153 description tokens
+  aws-serverless-deployment · aws-serverless · ~94 description tokens
+  brainstorming · superpowers · ~56 description tokens
+  dispatching-parallel-agents · superpowers · ~37 description tokens
+  executing-plans · superpowers · ~33 description tokens
+  finishing-a-development-branch · superpowers · ~61 description tokens
+  frontend-design · frontend-design · ~67 description tokens
+  receiving-code-review · superpowers · ~67 description tokens
+  requesting-code-review · superpowers · ~36 description tokens
+  skill-creator · skill-creator · ~87 description tokens
+  subagent-driven-development · superpowers · ~31 description tokens
+  systematic-debugging · superpowers · ~31 description tokens
+  test-driven-development · superpowers · ~29 description tokens
+  using-git-worktrees · superpowers · ~59 description tokens
+  using-superpowers · superpowers · ~47 description tokens
+  verification-before-completion · superpowers · ~67 description tokens
+  writing-plans · superpowers · ~28 description tokens
+  writing-skills · superpowers · ~31 description tokens
+
+  Esc to close

@@ -2,7 +2,7 @@
  * Sev-1 #922 — HITL approval cards MUST render INLINE with the matching
  * tool_use, not in a per-message footer strip.
  *
- * Background (dev live drive 2026-05-17, image 0.7.1-87b85a9b): when
+ * Background (chat-dev live drive 2026-05-17, image 0.7.1-87b85a9b): when
  * the model fired two parallel `azure_create_resource_group` tool_use
  * blocks, the HITL approval cards rendered at the bottom of the message
  * (rectTop 796/894/992) while the corresponding tool cards rendered near
@@ -27,7 +27,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 import { AgenticActivityStream } from '../AgenticActivityStream';
@@ -230,6 +230,61 @@ describe('Sev-1 #922 — HITL approval cards render INLINE with matching tool_us
       '[data-testid="tool-card"][data-tool-name="azure_create_resource_group"]',
     );
     expect(toolCards.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows optimistic "Approving…" feedback immediately on click + disables both buttons (Sev-1 UX)', async () => {
+    // Live regression on chat-dev 2026-05-24: user clicked Approve, "nothing
+    // feels like it happens", then ~15s later the image rendered. The click
+    // DID fire (next turn ran with status:approved) but the button had zero
+    // visual feedback — no spinner, no disable, no "Approving…" text. The
+    // status flip from pending→approved only lands when the next NDJSON
+    // frame arrives after the model's next turn completes (10-20s).
+    //
+    // Fix: optimistic local state. Click → buttons disable + Approve text
+    // changes to "Approving…" so the user knows the click was received.
+    const onApproveHitl = vi.fn();
+    const t1 = completedTool('t1', 'generate_image', 1_000);
+    const approvals: HitlEntry[] = [
+      pendingApproval('req-img', 'generate_image', 'image-gen approval'),
+    ];
+
+    render(
+      <AgenticActivityStream
+        isStreaming={false}
+        streamingState="complete"
+        contentBlocks={[t1.block]}
+        toolCalls={[t1.toolCall]}
+        theme="dark"
+        hitlApprovals={approvals}
+        onApproveHitl={onApproveHitl}
+        onDenyHitl={vi.fn()}
+      />,
+    );
+
+    const approveBtn = screen.getByTestId('hitl-approve-btn') as HTMLButtonElement;
+    const denyBtn = screen.getByTestId('hitl-deny-btn') as HTMLButtonElement;
+
+    // Pre-click: enabled, says "Approve".
+    expect(approveBtn.disabled).toBe(false);
+    expect(approveBtn.textContent).toBe('Approve');
+    expect(denyBtn.disabled).toBe(false);
+
+    // Fire the click via fireEvent so React's batched state update flushes
+    // synchronously (raw HTMLElement.click() bypasses the act() wrapper).
+    fireEvent.click(approveBtn);
+
+    // The callback must have fired with the requestId.
+    expect(onApproveHitl).toHaveBeenCalledWith('req-img');
+
+    // Immediately after the click, the button must show optimistic feedback
+    // (text changed to "Approving…", both buttons disabled to prevent
+    // double-clicks). This is the user-facing acknowledgement that the
+    // click was received — without it, users think the click was lost.
+    const updatedApprove = screen.getByTestId('hitl-approve-btn') as HTMLButtonElement;
+    const updatedDeny = screen.getByTestId('hitl-deny-btn') as HTMLButtonElement;
+    expect(updatedApprove.disabled).toBe(true);
+    expect(updatedApprove.textContent).toMatch(/approving/i);
+    expect(updatedDeny.disabled).toBe(true);
   });
 
   it('falls back to end-of-stream render when no tool_use matches the toolName', () => {

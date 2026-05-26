@@ -201,19 +201,20 @@ const ShikiCodeBlock: React.FC<ShikiCodeBlockProps> = ({
   // Single line styling with glass morphism
   if (singleLine || code.split('\n').length === 1) {
     return (
-      <div 
+      <div
         data-testid="code-block-container"
-        className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg font-mono text-sm glass-dark border border-blue-500/20 shadow-lg hover:shadow-blue-500/20 transition-all duration-150 ${className}`}
+        className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg font-mono text-sm glass-dark border shadow-lg transition-all duration-150 ${className}`}
+        style={{ borderColor: 'color-mix(in srgb, var(--cm-accent) 20%, transparent)' }}
       >
         <code>{code}</code>
         <button
           onClick={handleCopy}
-          
-          className="p-1.5 rounded-lg transition-all duration-150 hover:bg-white/10 hover:text-white hover:shadow-lg"
-          style={{ color: 'var(--color-textMuted)' }}
+
+          className="p-1.5 rounded-lg transition-all duration-150 hover:bg-white/10 hover:shadow-lg"
+          style={{ color: 'var(--cm-text-muted)' }}
           aria-label="Copy code"
         >
-          {(localCopied || copied) ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+          {(localCopied || copied) ? <Check size={14} style={{ color: 'var(--cm-success)' }} /> : <Copy size={14} />}
         </button>
       </div>
     );
@@ -224,7 +225,7 @@ const ShikiCodeBlock: React.FC<ShikiCodeBlockProps> = ({
     <div
       data-testid="code-block-container"
       className={`group relative syntax-highlighted-code rounded-xl overflow-hidden transition-shadow ${className}`}
-      style={{ background: '#1e1e2e', border: 'none' }}
+      style={{ background: 'var(--cm-bg-secondary)', border: 'none' }}
     >
       {/* Floating toolbar - language label + actions overlaid on code */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-2">
@@ -329,7 +330,7 @@ const ShikiCodeBlock: React.FC<ShikiCodeBlockProps> = ({
               left: showLineNumbers ? '3.5rem' : '1rem',
               width: '2px',
               height: '1em',
-              backgroundColor: 'var(--color-primary, #6366f1)',
+              backgroundColor: 'var(--cm-accent)',
             }}
           />
         )}

@@ -32,6 +32,12 @@ export interface RegistryCandidate {
   priority: number;
   /** Capability flags stamped by provider.discoverModels() */
   capabilities: Record<string, any>;
+  /**
+   * First-class per-model function-calling-accuracy column. SoT for the
+   * router's FCA scoring (capabilities JSON is a legacy fallback). Null until
+   * seeded/admin-set.
+   */
+  functionCallingAccuracy: number | null;
 }
 
 export interface RegistryCandidatePoolPrismaLike {
@@ -52,6 +58,7 @@ export interface RegistryCandidatePoolPrismaLike {
       role: string;
       priority: number;
       capabilities: unknown;
+      function_calling_accuracy?: number | null;
     }>>;
   };
 }
@@ -94,5 +101,7 @@ export async function listRegistryCandidatePool(
     role: r.role,
     priority: r.priority,
     capabilities: (r.capabilities as Record<string, any>) ?? {},
+    functionCallingAccuracy:
+      typeof r.function_calling_accuracy === 'number' ? r.function_calling_accuracy : null,
   }));
 }

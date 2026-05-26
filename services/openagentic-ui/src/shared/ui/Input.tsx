@@ -1,4 +1,4 @@
-import React, { useId } from 'react';
+import React from 'react';
 
 /**
  * Shared Input — M3 Expressive (task #160).
@@ -18,15 +18,8 @@ export const Input: React.FC<InputProps> = ({
   label,
   error,
   className = '',
-  id,
   ...props
 }) => {
-  // Generate a stable id when the caller didn't supply one, so the
-  // <label htmlFor> ↔ <input id> association exists. Screen readers,
-  // get_by_label() in playwright, and "click the label to focus the
-  // input" UX all depend on it.
-  const auto = useId();
-  const inputId = id ?? auto;
   const baseStyles = [
     'block w-full rounded-input-sm px-4 py-2.5 text-sm',
     'bg-surface-1 text-text-primary placeholder:text-text-muted',
@@ -42,12 +35,11 @@ export const Input: React.FC<InputProps> = ({
   return (
     <div className="space-y-1">
       {label && (
-        <label htmlFor={inputId} className="block text-sm font-medium text-text-primary">
+        <label className="block text-sm font-medium text-text-primary">
           {label}
         </label>
       )}
       <input
-        id={inputId}
         className={`${baseStyles} ${errorStyles} ${className}`}
         {...props}
       />

@@ -1,0 +1,225 @@
+/**
+ * Admin AWCode Routes
+ * API endpoints for AWCode session management and monitoring
+ */
+
+import express from 'express';
+import { awcodeStorageService } from '../services/AWCodeStorageService.js';
+import { requireAdmin } from '../middleware/requireAdmin.js';
+
+const router = express.Router();
+
+/**
+ * GET /api/admin/awcode/sessions
+ * Get all AWCode sessions with optional filters
+ */
+router.get('/sessions', requireAdmin, async (req, res) => {
+  try {
+    const { status, userId, limit = '50' } = req.query;
+
+    let sessions;
+
+    if (status === 'running') {
+      sessions = await awcodeStorageService.getActiveSessions();
+    } else if (userId) {
+      sessions = await awcodeStorageService.getUserSessions(
+        userId as string,
+        parseInt(limit as string)
+      );
+    } else {
+      // Get all sessions with user info
+      const { PrismaClient } = await import('@prisma/client');
+      const prisma = new PrismaClient();
+
+      sessions = await prisma.aWCodeSession.findMany({
+        orderBy: { started_at: 'desc' },
+        take: parseInt(limit as string),
+        include: {
+          user: { select: { id: true, email: true, name: true } },
+          _count: { select: { messages: true } },
+        },
+      });
+
+      await prisma.$disconnect();
+    }
+
+    res.json({ sessions });
+  } catch (error) {
+    console.error('[AdminAWCode] Failed to get sessions:', error);
+    res.status(500).json({ error: 'Failed to get sessions' });
+  }
+});
+
+/**
+ * GET /api/admin/awcode/sessions/:sessionId
+ * Get a specific session with messages
+ */
+router.get('/sessions/:sessionId', requireAdmin, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const session = await awcodeStorageService.getSession(sessionId);
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    res.json({ session });
+  } catch (error) {
+    console.error('[AdminAWCode] Failed to get session:', error);
+    res.status(500).json({ error: 'Failed to get session' });
+  }
+});
+
+/**
+ * GET /api/admin/awcode/sessions/:sessionId/messages
+ * Get messages for a session
+ */
+router.get('/sessions/:sessionId/messages', requireAdmin, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { limit = '100' } = req.query;
+
+    const messages = await awcodeStorageService.getSessionMessages(
+      sessionId,
+      parseInt(limit as string)
+    );
+
+    res.json({ messages });
+  } catch (error) {
+    console.error('[AdminAWCode] Failed to get messages:', error);
+    res.status(500).json({ error: 'Failed to get messages' });
+  }
+});
+
+/**
+ * GET /api/admin/awcode/stats
+ * Get AWCode usage statistics
+ */
+router.get('/stats', requireAdmin, async (req, res) => {
+  try {
+    const [sessionStats, knowledgeStats] = await Promise.all([
+      awcodeStorageService.getSessionStats(),
+      awcodeStorageService.getKnowledgeStats(),
+    ]);
+
+    res.json({
+      ...sessionStats,
+      knowledge: knowledgeStats,
+    });
+  } catch (error) {
+    console.error('[AdminAWCode] Failed to get stats:', error);
+    res.status(500).json({ error: 'Failed to get stats' });
+  }
+});
+
+/**
+ * GET /api/admin/awcode/knowledge/stats
+ * Get knowledge base statistics (Milvus collections)
+ */
+router.get('/knowledge/stats', requireAdmin, async (req, res) => {
+  try {
+    const stats = await awcodeStorageService.getKnowledgeStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('[AdminAWCode] Failed to get knowledge stats:', error);
+    res.status(500).json({ error: 'Failed to get knowledge stats' });
+  }
+});
+
+/**
+ * POST /api/admin/awcode/knowledge/search
+ * Admin search across all users' knowledge
+ */
+router.post('/knowledge/search', requireAdmin, async (req, res) => {
+  try {
+    const { query, contentTypes, limit = 20, threshold = 0.4 } = req.body;
+
+    if (!query) {
+      return res.status(400).json({ error: 'query is required' });
+    }
+
+    // Admin can search across all users (no userId filter)
+    const results = await awcodeStorageService.searchKnowledge(query, {
+      contentTypes,
+      limit,
+      threshold,
+    });
+
+    res.json({ results, count: results.length });
+  } catch (error) {
+    console.error('[AdminAWCode] Knowledge search failed:', error);
+    res.status(500).json({ error: 'Knowledge search failed' });
+  }
+});
+
+/**
+ * POST /api/admin/awcode/solutions/search
+ * Admin search shared solutions
+ */
+router.post('/solutions/search', requireAdmin, async (req, res) => {
+  try {
+    const { query, category, limit = 20, threshold = 0.4 } = req.body;
+
+    if (!query) {
+      return res.status(400).json({ error: 'query is required' });
+    }
+
+    const results = await awcodeStorageService.searchSharedSolutions(query, {
+      category,
+      limit,
+      threshold,
+    });
+
+    res.json({ results, count: results.length });
+  } catch (error) {
+    console.error('[AdminAWCode] Solutions search failed:', error);
+    res.status(500).json({ error: 'Solutions search failed' });
+  }
+});
+
+/**
+ * POST /api/admin/awcode/sessions/:sessionId/reindex
+ * Force re-index a session to Milvus
+ */
+router.post('/sessions/:sessionId/reindex', requireAdmin, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    const { awcodeSessionIndexer } = await import('../services/AWCodeSessionIndexer.js');
+    const success = await awcodeSessionIndexer.indexSession(sessionId);
+
+    res.json({ success, sessionId, message: success ? 'Session re-indexed successfully' : 'Indexing failed' });
+  } catch (error) {
+    console.error('[AdminAWCode] Re-index failed:', error);
+    res.status(500).json({ error: 'Re-indexing failed' });
+  }
+});
+
+/**
+ * DELETE /api/admin/awcode/sessions/:sessionId
+ * Force stop a session (admin only)
+ */
+router.delete('/sessions/:sessionId', requireAdmin, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    await awcodeStorageService.stopSession(sessionId);
+
+    // Also notify the awcode-manager to kill the PTY
+    try {
+      const managerUrl = process.env.AWCODE_MANAGER_URL || 'http://awcode-manager:3050';
+      const axios = (await import('axios')).default;
+      await axios.delete(`${managerUrl}/sessions/${sessionId}`);
+    } catch (managerError) {
+      console.warn('[AdminAWCode] Failed to notify manager:', managerError);
+      // Continue - session is marked as stopped in DB
+    }
+
+    res.json({ success: true, message: 'Session stopped' });
+  } catch (error) {
+    console.error('[AdminAWCode] Failed to stop session:', error);
+    res.status(500).json({ error: 'Failed to stop session' });
+  }
+});
+
+export default router;

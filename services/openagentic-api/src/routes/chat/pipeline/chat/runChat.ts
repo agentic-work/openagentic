@@ -84,6 +84,13 @@ import { buildUserMessageContent } from './buildUserMessageContent.js';
 import { executeRenderArtifact } from '../../../../services/RenderArtifactTool.js';
 import { executeComposeVisual } from '../../../../services/ComposeVisualTool.js';
 import { executeComposeApp } from '../../../../services/ComposeAppTool.js';
+import {
+  executeGenerateImage as executeGenerateImagePure,
+  type GenerateImageInput,
+  type GeneratedImageResult,
+} from '../../../../services/GenerateImageTool.js';
+import { getProviderManager } from '../../../../services/llm-providers/ProviderManager.js';
+import { getDefaults as getDefaultModels } from '../../../../services/model-routing/defaultModelsAdmin.js';
 import { executeTask, buildTaskToolDescription } from '../../../../services/TaskTool.js';
 import { executeRequestClarification } from '../../../../services/RequestClarificationTool.js';
 import { executeBrowserSandbox as defaultExecuteBrowserSandbox } from '../../../../services/BrowserSandboxExecTool.js';
@@ -740,10 +747,86 @@ export async function runChat(
     parentCtx?: any,
   ) => Promise<SubagentRunResult> = makeOpenAgenticProxyRunSubagent(ctx);
 
+  // 6a. Production-bound generate_image dep. The pure handler
+  // (GenerateImageTool.executeGenerateImage) takes an injected
+  // `generateImage(prompt, opts)` dependency so it stays unit-testable; the
+  // production closure wires:
+  //   resolve imageGen default model (registry/default_models — NO literal)
+  //   → ProviderManager.generateImage (provider-failover + capability check)
+  //   → ImageStorageService.storeImage (base64 PNG → blob + Milvus metadata)
+  //   → same-origin /api/images/:id url (NEVER an external host).
+  const boundExecuteGenerateImage = async (
+    genCtx: any,
+    genInput: GenerateImageInput,
+  ) => {
+    return executeGenerateImagePure(genCtx, genInput, {
+      generateImage: async (
+        prompt: string,
+        genOpts: { size?: GenerateImageInput['size']; style?: GenerateImageInput['style'] },
+      ): Promise<GeneratedImageResult> => {
+        const providerManager = getProviderManager();
+        if (!providerManager) {
+          throw new Error('ProviderManager is not initialized');
+        }
+
+        // Resolve the tenant imageGen default model id from the registry SoT
+        // (default_models). Passed as request.model so cost-cap tracking keys
+        // by the real model — never a hardcoded literal. Best-effort: when the
+        // default is unset, ProviderManager.generateImage still picks an
+        // image-capable provider by capability flag.
+        let imageModelId: string | undefined;
+        try {
+          if (deps.prismaLike) {
+            const defaults = await getDefaultModels(deps.prismaLike as any);
+            imageModelId = defaults.imageGen ?? undefined;
+          }
+        } catch (err) {
+          ctx.logger.warn(
+            { err: (err as Error).message },
+            '[generate_image] failed to resolve imageGen default model — falling back to capability-based provider pick',
+          );
+        }
+
+        const resp = await providerManager.generateImage({
+          prompt,
+          ...(imageModelId ? { model: imageModelId } : {}),
+          ...(genOpts.size ? { size: genOpts.size } : {}),
+          ...(genOpts.style ? { style: genOpts.style } : {}),
+          n: 1,
+        });
+
+        // Persist the base64 PNG so the UI loads /api/images/:id instead of a
+        // multi-MB inline data URL. Mirrors routes/chat/index.ts generate-image.
+        const { ImageStorageService } = await import('../../../../services/ImageStorageService.js');
+        const storage = new ImageStorageService(ctx.logger as any);
+        await storage.connect();
+        const effectiveUserId =
+          (genCtx?.userId ?? genCtx?.user?.id ?? ctx?.userId ?? 'system') as string;
+        const storedId = await storage.storeImage(resp.imageBase64, prompt, effectiveUserId, {
+          model: resp.model,
+          format: resp.format ?? 'png',
+          revisedPrompt: resp.revisedPrompt,
+        });
+        const cleanId = storedId.replace(/\.[^.]+$/, '');
+        const format = (resp.format ?? 'png') as GeneratedImageResult['format'];
+
+        return {
+          image_url: `/api/images/${cleanId}.${format}`,
+          artifact_id: cleanId,
+          model: resp.model,
+          provider: resp.provider,
+          format,
+          revisedPrompt: resp.revisedPrompt,
+        };
+      },
+    });
+  };
+
   // 6. ChatPipelineDeps for dispatchChatToolCall (the V2 surface V3 reuses).
   const v2Deps: ChatPipelineDeps = {
     executeComposeVisual,
     executeComposeApp,
+    executeGenerateImage: boundExecuteGenerateImage,
     executeRenderArtifact,
     executeTask: executeTask as any,
     executeRequestClarification,

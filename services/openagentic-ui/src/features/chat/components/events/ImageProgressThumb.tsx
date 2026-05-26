@@ -54,8 +54,8 @@ const ImageProgressThumbComponent: React.FC<ImageProgressThumbProps> = ({
         borderRadius: 12,
         overflow: 'hidden',
         background:
-          'linear-gradient(135deg, rgba(139,92,246,0.10), rgba(14,165,233,0.10))',
-        border: '1px solid rgba(139,92,246,0.28)',
+          'linear-gradient(135deg, color-mix(in srgb, var(--cm-accent) 10%, transparent), color-mix(in srgb, var(--cm-info) 10%, transparent))',
+        border: '1px solid color-mix(in srgb, var(--cm-accent) 28%, transparent)',
       }}
     >
       {partialUrl ? (
@@ -78,7 +78,7 @@ const ImageProgressThumbComponent: React.FC<ImageProgressThumbProps> = ({
             position: 'absolute',
             inset: 0,
             backgroundImage:
-              'linear-gradient(90deg, rgba(139,92,246,0.08) 0%, rgba(139,92,246,0.24) 50%, rgba(139,92,246,0.08) 100%)',
+              'linear-gradient(90deg, color-mix(in srgb, var(--cm-accent) 8%, transparent) 0%, color-mix(in srgb, var(--cm-accent) 24%, transparent) 50%, color-mix(in srgb, var(--cm-accent) 8%, transparent) 100%)',
             backgroundSize: '200% 100%',
           }}
         />
@@ -95,18 +95,18 @@ const ImageProgressThumbComponent: React.FC<ImageProgressThumbProps> = ({
           gap: 8,
           padding: '4px 8px',
           borderRadius: 8,
-          background: 'rgba(0,0,0,0.55)',
-          color: '#d4d4d8',
+          background: 'color-mix(in srgb, var(--cm-bg) 55%, transparent)',
+          color: 'var(--cm-text-secondary)',
           fontSize: 11,
           fontFamily: 'JetBrains Mono, monospace',
           lineHeight: 1.2,
         }}
       >
-        <span data-testid="image-progress-pct" style={{ fontWeight: 600, color: '#a78bfa' }}>
+        <span data-testid="image-progress-pct" style={{ fontWeight: 600, color: 'var(--cm-accent)' }}>
           {pctLabel}
         </span>
         {etaLabel && (
-          <span data-testid="image-progress-eta" style={{ color: '#a1a1aa' }}>
+          <span data-testid="image-progress-eta" style={{ color: 'var(--cm-text-secondary)' }}>
             · {etaLabel}
           </span>
         )}

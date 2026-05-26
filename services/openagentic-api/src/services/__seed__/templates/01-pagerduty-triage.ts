@@ -29,7 +29,7 @@ export const nodes: WorkflowNode[] = [
       routingKey: '{{secret:PAGERDUTY_ROUTING_KEY}}',
       dedupKey: '{{trigger.messages[0].incident.id}}',
       summary: 'Auto-acknowledged by OpenAgentic triage workflow',
-      source: 'openagentic-your-deployment-triage',
+      source: 'openagentic-omhs-triage',
     },
     position: { x: 250, y: 0 },
   },

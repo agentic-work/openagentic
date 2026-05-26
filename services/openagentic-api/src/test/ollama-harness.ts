@@ -9,7 +9,7 @@
  *   npx tsx src/test/ollama-harness.ts
  *
  *   # Run against hal server
- *   TEST_OLLAMA_BASE_URL=http://host.docker.internal:11434 npx tsx src/test/ollama-harness.ts
+ *   TEST_OLLAMA_BASE_URL=http://hal:11434 npx tsx src/test/ollama-harness.ts
  *
  *   # Run specific test suites
  *   npx tsx src/test/ollama-harness.ts --suite=basic,tools

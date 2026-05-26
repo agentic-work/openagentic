@@ -78,10 +78,18 @@ describe('INIT_TOOL_CACHE step', () => {
     await INIT_TOOL_CACHE.run(stubDeps(ctx));
     expect(ctx.toolSemanticCache).toBeDefined();
     expect(ctx.toolSemanticCacheInitialized).toBe(true);
+    // Background indexing promise fires verifyToolSearch on its .then chain —
+    // let it settle so it doesn't leak into the next test's beforeEach reset.
+    await new Promise((r) => setTimeout(r, 20));
   });
 
-  it('THROWS (rejects) when ToolSemanticCacheService.initialize fails on all retries — orchestrator calls process.exit(1) for critical steps', async () => {
-    // Make all 10 retry attempts fail instantly (stub setTimeout to no-op)
+  it('#1059: step 08 must NOT throw when Milvus connect fails on all retries — api boots on pgvector', async () => {
+    // CLAUDE.md user direction 2026-05-22: "api starting up perfectly every time
+    // is PRETTY fucking important". Step 07 (mcp-index) populates the PostgreSQL
+    // pgvector source-of-truth before this step runs. If Milvus is unreachable,
+    // the api MUST still come Ready and serve tool search via pgvector. The
+    // throw at the end of the retry loop was the smoke gun for CrashLoopBackOff
+    // on cold helm-install — fail-closed on a fallback service is wrong.
     const origSetTimeout = globalThis.setTimeout;
     (globalThis as any).setTimeout = (fn: () => void, _delay: number) => {
       fn();
@@ -89,14 +97,41 @@ describe('INIT_TOOL_CACHE step', () => {
     };
     mockToolCacheInitialize.mockRejectedValue(new Error('cache unavailable'));
     const ctx = makeCtx();
-    await expect(INIT_TOOL_CACHE.run(stubDeps(ctx))).rejects.toThrow('Cannot connect to Milvus after 10 attempts');
+    await expect(INIT_TOOL_CACHE.run(stubDeps(ctx))).resolves.toBeUndefined();
+    expect(ctx.toolSemanticCacheInitialized).toBe(false);
     (globalThis as any).setTimeout = origSetTimeout;
   }, 15000);
 
-  it('THROWS (rejects) when autoIndexToolsWhenReady fails — orchestrator calls process.exit(1) for critical steps', async () => {
+  it('#1058: autoIndexToolsWhenReady runs in BACKGROUND — step.run() resolves even when indexing never finishes', async () => {
+    // The actual hang on cold install: Milvus reports 0 rows post-insert and the indexer
+    // re-enters auto-index forever. api stays 0/1 Ready until the runtime k8s probe
+    // budget is exhausted. Step 08 must NEVER block on indexing.
+    let resolveIndex: (() => void) | undefined;
+    const neverResolves = new Promise<void>((resolve) => { resolveIndex = resolve; });
+    mockAutoIndexToolsWhenReady.mockReturnValue(neverResolves);
+
+    const ctx = makeCtx();
+    // If step still awaits indexing, this test hits the 2s timeout below and fails.
+    await INIT_TOOL_CACHE.run(stubDeps(ctx));
+
+    expect(ctx.toolSemanticCache).toBeDefined();
+    expect(ctx.toolSemanticCacheInitialized).toBe(true);
+    // Indexing IS invoked — just not awaited.
+    expect(mockAutoIndexToolsWhenReady).toHaveBeenCalled();
+
+    // Release the hanging promise so the test process exits cleanly.
+    resolveIndex?.();
+  }, 2000);
+
+  it('#1058: background-indexing rejection must NOT propagate — step.run() resolves cleanly', async () => {
+    // If indexing rejects (Milvus unhealthy, MCP-proxy down, etc) the api still
+    // becomes Ready. Tool search falls back to ToolPgvectorSearchService (pgvector).
     mockAutoIndexToolsWhenReady.mockRejectedValue(new Error('indexing failed'));
     const ctx = makeCtx();
-    await expect(INIT_TOOL_CACHE.run(stubDeps(ctx))).rejects.toThrow('indexing failed');
+    await expect(INIT_TOOL_CACHE.run(stubDeps(ctx))).resolves.toBeUndefined();
+    expect(ctx.toolSemanticCacheInitialized).toBe(true);
+    // Give the background promise a tick to settle so unhandled-rejection warning doesn't leak.
+    await new Promise((r) => setTimeout(r, 10));
   });
 
   describe('BLOCKER-2: TOOL_INDEX_VERIFY_REQUIRED=true must THROW, not process.exit(1)', () => {
@@ -113,10 +148,13 @@ describe('INIT_TOOL_CACHE step', () => {
       delete process.env.TOOL_INDEX_VERIFY_REQUIRED;
     });
 
-    it('rejects with an Error (not via process.exit) when verification fails and TOOL_INDEX_VERIFY_REQUIRED=true', async () => {
+    it('#1058: with TOOL_INDEX_VERIFY_REQUIRED=true, verification failure logs but does NOT block startup', async () => {
+      // Verification runs in the SAME background promise chain as indexing. Step 08
+      // must return immediately. A hard-fail mode for verification is no longer
+      // appropriate now that indexing is background — the api MUST come up so the
+      // operator can investigate via the live system instead of crash-looping.
       process.env.TOOL_INDEX_VERIFY_REQUIRED = 'true';
 
-      // Override the verifyToolSearch mock to return failed verification
       const { verifyToolSearch } = await import('../../services/startup-helpers/verifyToolSearch.js');
       (verifyToolSearch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ok: false,
@@ -125,13 +163,10 @@ describe('INIT_TOOL_CACHE step', () => {
       });
 
       const ctx = makeCtx();
-      // Must reject via thrown Error, not via process.exit
-      await expect(INIT_TOOL_CACHE.run(stubDeps(ctx))).rejects.toThrow(
-        'Post-indexing verification did not pass'
-      );
-
-      // process.exit must NOT have been called (would have thrown a different error)
+      await expect(INIT_TOOL_CACHE.run(stubDeps(ctx))).resolves.toBeUndefined();
       expect(exitSpy).not.toHaveBeenCalled();
+      // Let the background promise settle so its log lands before vi.clearAllMocks.
+      await new Promise((r) => setTimeout(r, 10));
     });
   });
 });

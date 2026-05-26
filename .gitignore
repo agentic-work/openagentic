@@ -379,3 +379,13 @@ playwright-report/
 .a2a-queue/
 .auth/
 .e2e-logs/
+
+# Playwright snapshot scratch (created by browser_snapshot in dev)
+/*-state.yml
+/addmodel-step1.yml
+/browse-bedrock*.yml
+/modal-state.yml
+/models-page.yml
+/models-reload.yml
+/router-tuning-state.md
+releases

@@ -685,7 +685,13 @@ const adminAnalyticsRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       const metric = String(request.query.metric ?? '');
       const window = String(request.query.window ?? '30d');
-      const bucket = String(request.query.bucket ?? '1d');
+      // For sub-day windows (1h/6h/12h/24h) default the bucket to '1h' so the
+      // admin Dashboard's "01 · primary metrics over time" panel renders
+      // meaningfully (a single 1d bucket for a 24h window collapses to a
+      // single bar). Day-and-up windows still default to '1d'.
+      const HOUR_WINDOWS = ['1h', '6h', '12h', '24h'];
+      const bucketDefault = HOUR_WINDOWS.includes(window) ? '1h' : '1d';
+      const bucket = String(request.query.bucket ?? bucketDefault);
 
       if (!['tokens', 'ttft', 'tools'].includes(metric)) {
         return reply.code(400).send({
@@ -693,10 +699,11 @@ const adminAnalyticsRoutes: FastifyPluginAsync = async (fastify) => {
           error: `Invalid metric '${metric}'. Must be one of: tokens, ttft, tools.`,
         });
       }
-      if (!['7d', '30d', '90d'].includes(window)) {
+      const VALID_WINDOWS = ['1h', '6h', '12h', '24h', '7d', '30d', '90d'];
+      if (!VALID_WINDOWS.includes(window)) {
         return reply.code(400).send({
           success: false,
-          error: `Invalid window '${window}'. Must be one of: 7d, 30d, 90d.`,
+          error: `Invalid window '${window}'. Must be one of: ${VALID_WINDOWS.join(', ')}.`,
         });
       }
       if (!['1h', '1d'].includes(bucket)) {
@@ -706,9 +713,19 @@ const adminAnalyticsRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      const daysMap: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90 };
-      const since = new Date(Date.now() - daysMap[window] * 24 * 60 * 60 * 1000);
-      const bucketMs = bucket === '1h' ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+      const HOUR_MS = 60 * 60 * 1000;
+      const DAY_MS = 24 * HOUR_MS;
+      const millisMap: Record<string, number> = {
+        '1h':   1 * HOUR_MS,
+        '6h':   6 * HOUR_MS,
+        '12h': 12 * HOUR_MS,
+        '24h': 24 * HOUR_MS,
+        '7d':   7 * DAY_MS,
+        '30d': 30 * DAY_MS,
+        '90d': 90 * DAY_MS,
+      };
+      const since = new Date(Date.now() - millisMap[window]);
+      const bucketMs = bucket === '1h' ? HOUR_MS : DAY_MS;
 
       // Round a timestamp down to the bucket boundary. For 1d buckets we
       // normalize to UTC midnight; for 1h we floor to the hour.

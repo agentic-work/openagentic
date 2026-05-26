@@ -36,13 +36,13 @@ export interface MiniAppProps {
 }
 
 const COLORS = {
-  ink: '#0a0a0a',
-  graphite: '#52525b',
-  rule: 'rgba(0,0,0,0.08)',
-  accent: '#4f46e5',
-  paper: '#fafafa',
-  paper2: '#f4f4f5',
-  err: '#dc2626',
+  ink: 'var(--cm-text)',
+  graphite: 'var(--cm-text-muted)',
+  rule: 'var(--cm-border)',
+  accent: 'var(--cm-accent)',
+  paper: 'var(--cm-bg)',
+  paper2: 'var(--cm-bg-secondary)',
+  err: 'var(--cm-error)',
 };
 
 const FONT_SANS =
@@ -86,7 +86,7 @@ export const MiniApp: React.FC<MiniAppProps> = ({
             padding: '24px 20px',
             border: `1px solid ${COLORS.err}`,
             borderLeft: `4px solid ${COLORS.err}`,
-            background: 'rgba(220, 38, 38, 0.04)',
+            background: 'color-mix(in srgb, var(--cm-error) 4%, transparent)',
             fontSize: 13,
             color: COLORS.err,
             lineHeight: 1.5,

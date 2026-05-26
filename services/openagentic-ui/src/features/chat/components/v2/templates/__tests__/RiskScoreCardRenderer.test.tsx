@@ -5,7 +5,7 @@ import '@testing-library/jest-dom';
 import { RiskScoreCardRenderer } from '../RiskScoreCardRenderer';
 
 const example = {
-  title: 'your-deployment risk',
+  title: 'omhs risk',
   score: 42,
   categories: [
     { name: 'IAM', score: 28 },

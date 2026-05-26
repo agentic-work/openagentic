@@ -44,6 +44,34 @@ describe('EChartsRenderer — server-side ECharts SVG renderer', () => {
         renderEChart('sankey', { flows: [{ from: 'A', to: 'B', value: -1 }] }),
       ).toThrow(/positive number/i);
     });
+
+    // #1106 — silently filter zero-value flow rows instead of throwing.
+    // Cost-breakdown style sankeys often include $0.00 line items
+    // (e.g. Bandwidth with no usage); rejecting the whole render because
+    // one row is zero is hostile UX. Filter zeros, render the rest.
+    it('drops zero-value flow rows but renders remaining positive flows (#1106)', () => {
+      const out = renderEChart('sankey', {
+        flows: [
+          { from: 'Azure', to: 'Foundry Models', value: 35.52 },
+          { from: 'Azure', to: 'Storage', value: 0 },
+          { from: 'Azure', to: 'Bandwidth', value: 0 },
+          { from: 'Azure', to: 'Virtual Network', value: 2.06 },
+        ],
+      });
+      expect(out.kind).toBe('svg');
+      expect(out.content).toMatch(/^<svg/);
+    });
+
+    it('throws when every flow row has value <= 0 (#1106 — preserve no-positive guard)', () => {
+      expect(() =>
+        renderEChart('sankey', {
+          flows: [
+            { from: 'A', to: 'B', value: 0 },
+            { from: 'A', to: 'C', value: 0 },
+          ],
+        }),
+      ).toThrow(/no positive-value flows|at least one flow/i);
+    });
   });
 
   describe('chord — relationship arcs around a circle', () => {

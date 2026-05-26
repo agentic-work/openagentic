@@ -1,0 +1,1 @@
+Executing all forensic queries in parallel across all three data stores.All admin tools are blocked — the `openagentic_admin` MCP server is down (status: **failed**). This is the **same persistent failure** from the last 3 audits. Let me attempt alternative diagnostic paths.

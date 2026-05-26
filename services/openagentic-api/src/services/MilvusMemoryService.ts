@@ -20,6 +20,7 @@ import { RankedMemory, Memory } from '../memory/types/Memory.js';
 import { createHash } from 'crypto';
 import { getModelCapabilityDiscoveryService } from './ModelCapabilityDiscoveryService.js';
 import { dynamicModelManager } from './DynamicModelManager.js';
+import { UniversalEmbeddingService } from './UniversalEmbeddingService.js';
 
 interface MemorySearchQuery {
   text?: string;
@@ -32,9 +33,14 @@ interface MemorySearchQuery {
 export class MilvusMemoryService {
   private milvusClient: MilvusClient;
   private logger: any;
-  
+  private universalEmbedder?: UniversalEmbeddingService;
+
   constructor(logger: any) {
-    this.logger = logger.child({ service: 'MilvusMemory' }) as Logger;
+    // Defensive: some call sites pass a minimal logger without `.child()`
+    // (e.g. chat dispatchTool ctx.logger). Same regression class as #753/#756.
+    this.logger = typeof logger?.child === 'function'
+      ? (logger.child({ service: 'MilvusMemory' }) as Logger)
+      : (logger as Logger);
     
     if (!process.env.MILVUS_HOST || !process.env.MILVUS_PORT) {
       throw new Error('MILVUS_HOST and MILVUS_PORT must be configured');
@@ -218,80 +224,126 @@ export class MilvusMemoryService {
   }
 
   /**
-   * Generate embedding for text using current LLM provider
+   * Lazy-initialize the in-process UniversalEmbeddingService.
+   *
+   * Previously this service did an HTTP fetch to `${MCP_PROXY_URL}/v1/embeddings`
+   * which mcp-proxy proxied BACK to api's own `/api/embeddings` — a circular
+   * hop that surfaced as `"API embeddings error: 400 - input is required"` in
+   * mcp-proxy logs, breaking ALL semantic memory recall (memory_search
+   * returned [] for every query). Calling UniversalEmbeddingService directly
+   * in-process eliminates the network hop and the auth-header trip wire.
+   */
+  private getUniversalEmbedder(): UniversalEmbeddingService {
+    if (!this.universalEmbedder) {
+      this.universalEmbedder = new UniversalEmbeddingService(this.logger);
+    }
+    return this.universalEmbedder;
+  }
+
+  /**
+   * Generate embedding for text in-process via UniversalEmbeddingService.
+   * Same pod, same service, no network, no auth round-trip.
    */
   private async generateEmbedding(text: string): Promise<number[]> {
     try {
-      // Use MCP Proxy for embeddings (which routes to the active LLM provider)
-      const mcpProxyEndpoint = process.env.MCP_PROXY_URL || 'http://mcp-proxy:3100';
-
-      if (!mcpProxyEndpoint) {
-        throw new Error('MCP_PROXY_URL configuration required');
+      const result = await this.getUniversalEmbedder().generateEmbedding(text);
+      if (!result?.embedding || !Array.isArray(result.embedding)) {
+        throw new Error('UniversalEmbeddingService returned invalid result');
       }
-
-      const embeddingModel = await this.getEmbeddingModel();
-
-      const response = await fetch(`${mcpProxyEndpoint}/embeddings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.MCP_PROXY_API_KEY || ''}`
-        },
-        body: JSON.stringify({
-          model: embeddingModel,
-          input: text.substring(0, 8192),
-          encoding_format: 'float'
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Embedding API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json() as any;
-
-      if (!data.data || !data.data[0] || !data.data[0].embedding) {
-        throw new Error('Invalid embedding response from provider');
-      }
-
-      return data.data[0].embedding;
+      return result.embedding;
     } catch (error) {
-      this.logger.error({ error, text: text.substring(0, 100) }, 'Failed to generate embedding');
-
-      // Retry once with exponential backoff
-      try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        const mcpProxyEndpoint = process.env.MCP_PROXY_URL || 'http://mcp-proxy:3100';
-        const embeddingModelRetry = await this.getEmbeddingModel();
-
-        const retryResponse = await fetch(`${mcpProxyEndpoint}/embeddings`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.MCP_PROXY_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: embeddingModelRetry,
-            input: text.substring(0, 8192),
-            encoding_format: 'float'
-          })
-        });
-
-        if (retryResponse.ok) {
-          const retryData = await retryResponse.json() as any;
-          if (retryData.data && retryData.data[0] && retryData.data[0].embedding) {
-            this.logger.info('Successfully generated embedding on retry');
-            return retryData.data[0].embedding;
-          }
-        }
-      } catch (retryError) {
-        this.logger.error({ retryError }, 'Retry failed for embedding generation');
-      }
-
-      // If all retries fail, throw error instead of using fake embedding
-      throw new Error(`Failed to generate embedding: ${error.message}`);
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.error({ error: msg, textLen: text?.length ?? 0 }, '[MilvusMemory] in-process embedding failed');
+      throw new Error(`Embedding failed: ${msg}`);
     }
+  }
+
+  /**
+   * Write side of the per-user RAG memory contract (#1085).
+   *
+   * Sidecar emits from ConversationCompactionWorker (session_summary),
+   * GenerateImageTool (generated_image), and LargeResultStorageService
+   * (large_tool_result) all funnel through here. The collection is created
+   * lazily — first write for a user provisions the collection so the existing
+   * `searchUserMemories` read path finds it. `kind` rides on `entity_type`,
+   * `title` on `entity_name`, and `artifactUrl` is prefixed onto `observations`
+   * so downstream search results carry the URL without a schema migration.
+   *
+   * User-scope is enforced at the collection-name boundary: every write
+   * targets `user_${sanitized}_memory`, NEVER a shared collection.
+   */
+  async upsertUserMemory(
+    userId: string,
+    entry: {
+      kind: 'session_summary' | 'generated_image' | 'large_tool_result' | 'entity_fact';
+      title: string;
+      content: string;
+      artifactUrl?: string;
+    },
+  ): Promise<void> {
+    if (!userId || typeof userId !== 'string') {
+      throw new Error('userId is required for upsertUserMemory (cross-user write guard)');
+    }
+    const collectionName = `user_${userId.replace(/[^a-zA-Z0-9]/g, '_')}_memory`;
+
+    // Lazy create the collection on first write. Schema mirrors what
+    // searchUserMemories reads from (entity_id, entity_name, entity_type,
+    // observations, created_at) plus the embedding vector.
+    const hasCollection = await this.milvusClient.hasCollection({ collection_name: collectionName });
+    if (!hasCollection.value) {
+      // Import DataType lazily so the prod codepath still tree-shakes if Milvus
+      // is unreachable. The Milvus mock in tests provides numeric stubs.
+      const { DataType } = await import('@zilliz/milvus2-sdk-node');
+      await this.milvusClient.createCollection({
+        collection_name: collectionName,
+        fields: [
+          { name: 'entity_id', data_type: DataType.VarChar, is_primary_key: true, max_length: 64 },
+          { name: 'entity_name', data_type: DataType.VarChar, max_length: 512 },
+          { name: 'entity_type', data_type: DataType.VarChar, max_length: 64 },
+          { name: 'observations', data_type: DataType.VarChar, max_length: 8192 },
+          { name: 'created_at', data_type: DataType.Int64 },
+          { name: 'observations_embedding', data_type: DataType.FloatVector, dim: 768 },
+        ],
+      });
+      await this.milvusClient.createIndex({
+        collection_name: collectionName,
+        field_name: 'observations_embedding',
+        index_type: 'HNSW',
+        metric_type: 'COSINE',
+        params: { M: 16, efConstruction: 200 },
+      });
+      await this.milvusClient.loadCollection({ collection_name: collectionName });
+    }
+
+    // Encode artifactUrl into observations so it survives through searchUserMemories
+    // without a schema extension. The model can parse `[url: /api/images/...]`
+    // out of the returned observations text.
+    const observations = entry.artifactUrl
+      ? `[url: ${entry.artifactUrl}] ${entry.content}`
+      : entry.content;
+    const embedding = await this.generateEmbedding(observations);
+
+    const result = await this.milvusClient.insert({
+      collection_name: collectionName,
+      data: [{
+        entity_id: createHash('sha256').update(`${userId}:${entry.kind}:${entry.title}:${Date.now()}`).digest('hex').slice(0, 32),
+        entity_name: entry.title.slice(0, 512),
+        entity_type: entry.kind,
+        observations: observations.slice(0, 8192),
+        created_at: Date.now(),
+        observations_embedding: embedding,
+      }],
+    });
+
+    if (result.status && result.status.error_code !== 'Success') {
+      throw new Error(`Milvus insert failed: ${result.status.reason || result.status.error_code}`);
+    }
+    await this.milvusClient.flushSync({ collection_names: [collectionName] });
+
+    this.logger.info(
+      { userId, kind: entry.kind, collection: collectionName },
+      '[MilvusMemory] upserted user memory',
+    );
   }
 
   /**

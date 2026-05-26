@@ -17,6 +17,14 @@ export interface ChatModelRouter {
     opts?: { priorClassification?: string },
   ): Promise<{
     selectedModel?: { modelId: string };
+    /**
+     * True when the router escalated above the chat-pool because the prompt
+     * structurally requires it (T3 capability gate / agentic capability
+     * profile). Under the default-first contract this is the ONLY signal
+     * that lets the router's pick override the configured DB chat default.
+     */
+    escalated?: boolean;
+    resolvedBy?: string;
     [k: string]: any;
   }>;
 }
@@ -25,13 +33,23 @@ export interface ChatModelRouter {
  * Precedence (DB is SoT — never reads process.env):
  *   1. explicitModel    — caller specified it (request body, stream handler)
  *   2. sessionModel     — persisted on the session row
- *   3. SmartModelRouter — when `smartRouter` dep is supplied AND no
- *                         explicit/session, consult it. routeRequest()
- *                         runs structural analysis + FCA-floor cost+quality
- *                         scoring across enabled models. Post Phase E.1
- *                         (2026-05-10): no pre-LLM intent classifier.
- *                         Spec §50: model decides.
+ *   3. SmartModelRouter — FCA-FLOOR ROUTING (2026-05-24, user direction):
+ *                         when `smartRouter` is supplied AND no explicit/
+ *                         session, consult it and HONOR ITS PICK IN BOTH
+ *                         DIRECTIONS. The router only returns a candidate that
+ *                         passes the RouterTuning FCA floor for the prompt's
+ *                         complexity, so its pick is authoritative — DOWN to a
+ *                         cheap model (gpt-oss:20b) for trivial prompts and
+ *                         trivial follow-ups, UP for hard prompts. This makes
+ *                         "what is 2+2" actually use gpt-oss:20b instead of
+ *                         burning the (Sonnet) default. The DB default in
+ *                         step 4 is the FALLBACK (router produced no valid
+ *                         pick / errored / absent), not an override.
+ *                         A deliberate capability REFUSAL the router throws
+ *                         (NO_T3_MODEL_IN_REGISTRY / No models available) is
+ *                         propagated — never downgraded to the cheap default.
  *   4. ModelConfigurationService.getDefaultChatModel() — DB-backed default
+ *                         (fallback when the router yields no valid pick)
  *   5. 'default'        — emergency sentinel if all the above fail
  */
 export async function resolveChatModel(params: {
@@ -56,9 +74,10 @@ export async function resolveChatModel(params: {
   const session = params.sessionModel?.trim();
   if (session) return session;
 
-  // Step 3: consult SmartModelRouter when available. This is best-effort —
-  // any failure (router throws, malformed return) falls through to the
-  // DB-backed default below so chat never crashes.
+  // Step 3: consult SmartModelRouter when available — DEFAULT-FIRST. The
+  // router runs the structural classifier + capability gates; we use its
+  // pick ONLY when it escalated. A non-escalated pick (the cheap cost-score
+  // winner) is intentionally discarded so the DB default in step 4 wins.
   if (params.smartRouter) {
     try {
       const decision = await params.smartRouter.routeRequest(
@@ -70,11 +89,28 @@ export async function resolveChatModel(params: {
         params.priorClassification ? { priorClassification: params.priorClassification } : undefined,
       );
       const routed = decision?.selectedModel?.modelId;
+      // FCA-floor routing (2026-05-24, user direction): honor the router's
+      // pick in BOTH directions. The SmartModelRouter only returns a candidate
+      // that passes the RouterTuning FCA floor for the prompt's complexity, so
+      // its pick is authoritative — DOWN to a cheap model (gpt-oss:20b) for
+      // trivial prompts / trivial follow-ups ("thanks"), UP for hard prompts.
+      // The DB default below is the FALLBACK (router produced no valid pick),
+      // not an override that discards a floor-passing cheaper model. Reverses
+      // the prior escalate-only-up gate now that per-model FCA is populated.
       if (routed && typeof routed === 'string' && routed.trim()) {
         return routed.trim();
       }
-    } catch {
-      // fall through to DB default
+    } catch (err) {
+      // A deliberate capability REFUSAL must propagate — never downgrade to
+      // the cheap default the router just excluded (#1046 lineage: the catch
+      // used to swallow this and re-admit the very gpt-oss:20b the T3 gate
+      // refused, then the turn died on a doomed cheap-model dispatch).
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/NO_T3_MODEL_IN_REGISTRY|No models available for routing/i.test(msg)) {
+        throw err;
+      }
+      // Transient failure (timeout / Milvus blip / unexpected throw) — fall
+      // through to the DB default below so chat never crashes.
     }
   }
 

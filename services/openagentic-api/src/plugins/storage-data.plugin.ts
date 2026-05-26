@@ -8,7 +8,7 @@
  *                             prefix: '' (absolute paths: /api/storage/*)
  *  2. imageRoutes          — Milvus-backed image storage with semantic search
  *                             prefix: '' (absolute paths: /api/images/*)
- *  3. faviconRoutes        — your environment-airgap-safe favicon proxy with Redis cache
+ *  3. faviconRoutes        — CDC-airgap-safe favicon proxy with Redis cache
  *                             prefix: '' (absolute path: /api/favicon)
  *  4. fileAttachmentPlugin — file upload + processing endpoints
  *                             prefix: /api/files
@@ -79,9 +79,9 @@ const storageDataRoutesPluginImpl: FastifyPluginAsync<StorageDataRoutesPluginOpt
   }
 
   // ── 3. Favicon proxy route ───────────────────────────────────────────────
-  // your environment-airgap-safe favicon fetcher with Redis caching (24h TTL).
+  // CDC-airgap-safe favicon fetcher with Redis caching (24h TTL).
   // Route defined internally at /api/favicon — no prefix needed.
-  // See openagentic-your-deployment#330 (Tier 3).
+  // See openagentic-omhs#330 (Tier 3).
   try {
     await fastify.register(faviconRoutes, { prefix: '' });
     loggers.routes.info('Favicon proxy registered at /api/favicon (Redis-cached, airgap-safe)');

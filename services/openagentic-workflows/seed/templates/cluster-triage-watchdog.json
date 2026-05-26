@@ -32,7 +32,7 @@
     "namespace": "agentic-dev",
     "min_severity": "warning",
     "api_base": "http://openagentic-api:3000",
-    "ui_base": "http://localhost:8080",
+    "ui_base": "https://chat-dev.openagentic.io",
     "notification_email_to": ""
   },
   "definition": {

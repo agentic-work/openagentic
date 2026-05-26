@@ -90,11 +90,11 @@ export type ToolCallStatus =
 
 /**
  * Favicon URL — points at our server-side proxy (/api/favicon) so the
- * fetch goes through same-origin. In your environment airgap the Palo Alto TLS-decrypt
+ * fetch goes through same-origin. In CDC airgap the Palo Alto TLS-decrypt
  * would silently break a direct call to www.google.com/s2/favicons; the
  * proxy also avoids leaking every URL the user visits through tools out
  * to Google. Proxy caches in Redis with 24h TTL and returns a placeholder
- * SVG when the upstream fetch fails. See openagentic-your-deployment#330 Tier 3.
+ * SVG when the upstream fetch fails. See openagentic-omhs#330 Tier 3.
  */
 function getFaviconUrl(url: string): string {
   try {
@@ -585,7 +585,7 @@ const SUMMARIZERS: Record<string, Summarizer> = {
 
   // ── Delegation ────────────────────────────────────────────────────────────
   // execute-sync returns `{ results: [{ role, output, status }], total_cost_cents,
-  // total_tokens, total_duration_ms }`. Tier 4 of openagentic-your-deployment#330: surface
+  // total_tokens, total_duration_ms }`. Tier 4 of openagentic-omhs#330: surface
   // each sub-agent's first line of output instead of just status ticks, so
   // users see what each agent actually concluded without hunting JSON.
   delegate_to_agents: (args, r) => {

@@ -1,0 +1,32 @@
+   [openagentic]
+   v0.7.0 • nemotron3:33b
+   /tmp
+
+   /? help  •  ctrl+c cancel  •  /exit quit
+
+   ────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Status   Config   Usage
+
+  Version: 0.7.0
+  Session name: /rename to add a name
+  Session ID: b2eccb9a-32fd-42f2-9956-d4edfb02b40f
+  cwd: /tmp
+  Auth token: none
+  OpenAgentic base URL: http://hal:11434
+  Additional CA cert(s): /etc/ssl/certs/ca-certificates.crt
+
+  Model: nemotron3:33b
+  MCP servers: 2 connected · /mcp
+  Setting sources: User settings
+  Esc to cancel

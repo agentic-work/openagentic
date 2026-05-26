@@ -9,7 +9,7 @@
  *   "(staticBody + dynamic).length / 4 ≤ 5000 tokens — pinned by an
  *    arch test that fails the build."
  *
- * RED state (live evidence on the dev environment 2026-05-10 post-deploy):
+ * RED state (live evidence on chat-dev 2026-05-10 post-deploy):
  *   `[chat] RBAC system prompt composed (rev-2 Layer-1) role:admin
  *    promptChars:35072 promptTokensEst:8768`
  *   → 8768 tokens, 75 % over the 5,000-token cap.

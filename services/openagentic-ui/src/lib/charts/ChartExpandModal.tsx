@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useThemeTokens } from './hooks/useThemeTokens';
 
 export type TimeRange = '1h' | '6h' | '24h' | '7d' | '30d' | '90d' | 'custom';
@@ -64,8 +65,15 @@ export function ChartExpandModal({
   }, [open, onClose]);
 
   if (!open) return null;
+  // SSR / no-DOM guard: nothing to portal into.
+  if (typeof document === 'undefined') return null;
 
-  return (
+  // Portal to <body> so the position:fixed overlay escapes any transformed /
+  // overflow-clipped ancestor in the chat stream (AgenticActivityStream applies
+  // `transform`, which would otherwise become the containing block for
+  // position:fixed and clip the modal to the message bubble — the "Expand does
+  // nothing" bug). Mirrors WidgetRenderer's own modal, which already portals.
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -199,6 +207,7 @@ export function ChartExpandModal({
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

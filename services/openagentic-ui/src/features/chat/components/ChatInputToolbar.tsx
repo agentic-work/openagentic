@@ -12,11 +12,14 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ChevronDown, ChevronRight, X, PuzzleIcon, Layers, Code2, Sparkles, Search, CheckCircle, FileText, Smile } from '@/shared/icons';
+import { Plus, ChevronDown, ChevronRight, X, PuzzleIcon, Layers, Sparkles, Search, CheckCircle, FileText, Smile, SearchCheck } from '@/shared/icons';
+import { useGroundingStore } from '@/stores/useGroundingStore';
+import { useFollowupChipsStore } from '@/stores/useFollowupChipsStore';
+import { ExtendedThinkingToggleButton } from './ExtendedThinkingToggleButton';
 // SynthIndicator removed - HITM enforced, no YOLO mode
-// ThinkingIcon removed - thinking is auto-enabled for supported models
 import FileAttachmentThumbnails, { AttachmentFile } from './FileAttachmentThumbnails';
 import { ModelSelectorDropdown as NewModelSelectorDropdown } from './ModelSelectorDropdown';
+// RIPPED ToolsIndexedPill import (no longer rendered).
 // Skills UI removed from chat toolbar - now admin-only in Pipeline Settings
 import clsx from 'clsx';
 
@@ -46,7 +49,7 @@ const DeepResearchModal: React.FC<{
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[10001] flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(6px)' }}
+          style={{ backgroundColor: 'color-mix(in srgb, var(--cm-text) 70%, transparent)', backdropFilter: 'blur(6px)' }}
           onClick={onClose}
         >
           <motion.div
@@ -58,7 +61,7 @@ const DeepResearchModal: React.FC<{
             style={{
               backgroundColor: 'var(--color-surface)',
               border: '1px solid var(--color-border)',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+              boxShadow: '0 25px 50px -12px color-mix(in srgb, var(--cm-text) 50%, transparent)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -91,7 +94,7 @@ const DeepResearchModal: React.FC<{
                 <div
                   className="relative p-3 rounded-xl"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(255,0,128,0.15), color-mix(in srgb, var(--color-primary) 15%, transparent), rgba(0,191,255,0.15))',
+                    background: 'linear-gradient(135deg, color-mix(in srgb, var(--cm-accent) 15%, transparent), color-mix(in srgb, var(--color-primary) 15%, transparent), color-mix(in srgb, var(--cm-info) 15%, transparent))',
                     boxShadow: `0 0 30px color-mix(in srgb, var(--color-primary) 20%, transparent)`
                   }}
                 >
@@ -134,8 +137,8 @@ const DeepResearchModal: React.FC<{
                     <span
                       className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
                       style={{
-                        background: 'rgba(251,191,36,0.2)',
-                        color: '#fbbf24'
+                        background: 'color-mix(in srgb, var(--cm-warning) 20%, transparent)',
+                        color: 'var(--cm-warning)'
                       }}
                     >
                       Coming Soon
@@ -163,14 +166,14 @@ const DeepResearchModal: React.FC<{
                 {/* eslint-disable no-restricted-syntax */}
                 <div className="flex items-center justify-between gap-1 mb-4 overflow-x-auto pb-2">
                   {[
-                    { name: 'Plan', icon: '🎯', color: '#8b5cf6' },
-                    { name: 'Search', icon: '🔍', color: '#3b82f6' },
-                    { name: 'Retrieve', icon: '📥', color: '#06b6d4' },
-                    { name: 'Extract', icon: '⚙️', color: '#10b981' },
-                    { name: 'Validate', icon: '✓', color: '#00D26A' },
-                    { name: 'Synthesize', icon: '🧠', color: '#f59e0b' },
-                    { name: 'Report', icon: '📄', color: '#ec4899' },
-                    { name: 'Cache', icon: '💾', color: '#8b5cf6' },
+                    { name: 'Plan', icon: '🎯', color: 'var(--cm-accent)' },
+                    { name: 'Search', icon: '🔍', color: 'var(--cm-info)' },
+                    { name: 'Retrieve', icon: '📥', color: 'var(--cm-info)' },
+                    { name: 'Extract', icon: '⚙️', color: 'var(--cm-success)' },
+                    { name: 'Validate', icon: '✓', color: 'var(--cm-success)' },
+                    { name: 'Synthesize', icon: '🧠', color: 'var(--cm-warning)' },
+                    { name: 'Report', icon: '📄', color: 'var(--cm-accent)' },
+                    { name: 'Cache', icon: '💾', color: 'var(--cm-accent)' },
                   ].map((phase, i) => (
                     <motion.div
                       key={phase.name}
@@ -182,8 +185,8 @@ const DeepResearchModal: React.FC<{
                       <div
                         className="w-10 h-10 rounded-lg flex items-center justify-center text-lg mb-1"
                         style={{
-                          backgroundColor: `${phase.color}20`,
-                          border: `1px solid ${phase.color}40`
+                          backgroundColor: `color-mix(in srgb, ${phase.color} 12%, transparent)`,
+                          border: `1px solid color-mix(in srgb, ${phase.color} 25%, transparent)`
                         }}
                       >
                         {phase.icon}
@@ -207,11 +210,11 @@ const DeepResearchModal: React.FC<{
 
                 {/* Validation Stack */}
                 <div className="grid grid-cols-4 gap-2 mt-3">
-                  <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
+                  <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'color-mix(in srgb, var(--cm-success) 10%, transparent)' }}>
                     <div className="text-sm">🔺</div>
                     <div className="text-[9px] mt-1" style={{ color: 'var(--color-textMuted)' }}>Triangulate</div>
                   </div>
-                  <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)' }}>
+                  <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'color-mix(in srgb, var(--cm-info) 10%, transparent)' }}>
                     <div className="text-sm">🤝</div>
                     <div className="text-[9px] mt-1" style={{ color: 'var(--color-textMuted)' }}>Consensus</div>
                   </div>
@@ -219,7 +222,7 @@ const DeepResearchModal: React.FC<{
                     <div className="text-sm">📊</div>
                     <div className="text-[9px] mt-1" style={{ color: 'var(--color-textMuted)' }}>Statistics</div>
                   </div>
-                  <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)' }}>
+                  <div className="text-center p-2 rounded-lg" style={{ backgroundColor: 'color-mix(in srgb, var(--cm-warning) 10%, transparent)' }}>
                     <div className="text-sm">🏛️</div>
                     <div className="text-[9px] mt-1" style={{ color: 'var(--color-textMuted)' }}>Authority</div>
                   </div>
@@ -229,7 +232,7 @@ const DeepResearchModal: React.FC<{
               {/* Key Features - Compact */}
               <div className="grid grid-cols-2 gap-3 mb-5">
                 <div className="flex items-center gap-2 p-2.5 rounded-lg" style={{ backgroundColor: 'var(--color-surfaceSecondary)' }}>
-                  <Search size={14} style={{ color: '#00bfff' }} />
+                  <Search size={14} style={{ color: 'var(--cm-info)' }} />
                   <span className="text-xs" style={{ color: 'var(--color-text)' }}>
                     5-10 parallel search angles
                   </span>
@@ -247,7 +250,7 @@ const DeepResearchModal: React.FC<{
                   </span>
                 </div>
                 <div className="flex items-center gap-2 p-2.5 rounded-lg" style={{ backgroundColor: 'var(--color-surfaceSecondary)' }}>
-                  <FileText size={14} style={{ color: '#ec4899' }} />
+                  <FileText size={14} style={{ color: 'var(--cm-accent)' }} />
                   <span className="text-xs" style={{ color: 'var(--color-text)' }}>
                     Export: MD, DOCX, PDF
                   </span>
@@ -259,8 +262,8 @@ const DeepResearchModal: React.FC<{
                 <div
                   className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg"
                   style={{
-                    background: 'linear-gradient(90deg, rgba(34,197,94,0.1), color-mix(in srgb, var(--color-primary) 10%, transparent))',
-                    border: '1px solid rgba(34,197,94,0.2)'
+                    background: 'linear-gradient(90deg, color-mix(in srgb, var(--cm-success) 10%, transparent), color-mix(in srgb, var(--color-primary) 10%, transparent))',
+                    border: '1px solid color-mix(in srgb, var(--cm-success) 20%, transparent)'
                   }}
                 >
                   <Sparkles size={14} style={{ color: 'var(--color-success)' }} />
@@ -272,8 +275,8 @@ const DeepResearchModal: React.FC<{
                   onClick={onClose}
                   className="px-5 py-2 rounded-xl text-sm font-medium transition-all hover:opacity-90"
                   style={{
-                    background: 'linear-gradient(90deg, var(--color-primary), #00bfff)',
-                    color: 'white'
+                    background: 'linear-gradient(90deg, var(--color-primary), var(--cm-info))',
+                    color: 'var(--cm-bg)'
                   }}
                 >
                   Got it
@@ -416,17 +419,17 @@ const MCPServersDropdown: React.FC<{
   // Category colors matching the activity stream badges
   const getCatColor = (serverName: string): string => {
     const s = serverName.toLowerCase();
-    if (s.includes('web')) return 'rgba(59, 130, 246, 0.15)';
-    if (s.includes('azure')) return 'rgba(0, 120, 212, 0.15)';
-    if (s.includes('aws')) return 'rgba(255, 153, 0, 0.15)';
-    if (s.includes('gcp') || s.includes('google')) return 'rgba(66, 133, 244, 0.15)';
-    if (s.includes('k8s') || s.includes('kubernetes')) return 'rgba(50, 108, 229, 0.15)';
-    if (s.includes('github')) return 'rgba(139, 148, 158, 0.15)';
-    if (s.includes('prometheus') || s.includes('loki')) return 'rgba(230, 100, 50, 0.15)';
-    if (s.includes('admin')) return 'rgba(168, 85, 247, 0.15)';
-    if (s.includes('diagram')) return 'rgba(34, 197, 94, 0.15)';
-    if (s.includes('memory')) return 'rgba(236, 72, 153, 0.15)';
-    return 'rgba(107, 114, 128, 0.12)';
+    if (s.includes('web')) return 'color-mix(in srgb, var(--cm-info) 15%, transparent)';
+    if (s.includes('azure')) return 'color-mix(in srgb, var(--cm-accent) 15%, transparent)';
+    if (s.includes('aws')) return 'color-mix(in srgb, var(--cm-warning) 15%, transparent)';
+    if (s.includes('gcp') || s.includes('google')) return 'color-mix(in srgb, var(--cm-info) 15%, transparent)';
+    if (s.includes('k8s') || s.includes('kubernetes')) return 'color-mix(in srgb, var(--cm-accent) 15%, transparent)';
+    if (s.includes('github')) return 'color-mix(in srgb, var(--cm-text-muted) 15%, transparent)';
+    if (s.includes('prometheus') || s.includes('loki')) return 'color-mix(in srgb, var(--cm-warning) 15%, transparent)';
+    if (s.includes('admin')) return 'color-mix(in srgb, var(--cm-accent) 15%, transparent)';
+    if (s.includes('diagram')) return 'color-mix(in srgb, var(--cm-success) 15%, transparent)';
+    if (s.includes('memory')) return 'color-mix(in srgb, var(--cm-accent) 15%, transparent)';
+    return 'color-mix(in srgb, var(--cm-text-muted) 12%, transparent)';
   };
 
   return (
@@ -489,7 +492,7 @@ const MCPServersDropdown: React.FC<{
               <div className="flex items-center gap-2 mb-1.5">
                 <span style={{
                   width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                  background: connected ? '#2ea043' : '#da3633',
+                  background: connected ? 'var(--cm-success)' : 'var(--cm-error)',
                 }} />
                 <span className="text-xs font-semibold" style={{ color: 'var(--color-textSecondary)' }}>
                   {serverName}
@@ -575,6 +578,107 @@ interface ChatInputToolbarProps {
   onToggleToolInspector?: () => void;
   showToolInspector?: boolean;
 }
+
+/**
+ * GroundingToggleButton — magnifying-glass+check glyph toggle that flips
+ * the global useGroundingStore.enabled flag. ON = bright accent outline +
+ * filled tint, OFF = muted secondary text token. Persists via localStorage
+ * (zustand persist middleware). Theme tokens only — no hex literals
+ * (CLAUDE.md rule 8b).
+ */
+const GroundingToggleButton: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
+  const enabled = useGroundingStore((s) => s.enabled);
+  const toggle = useGroundingStore((s) => s.toggle);
+  return (
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={toggle}
+      disabled={disabled}
+      role="switch"
+      aria-checked={enabled}
+      aria-label={
+        enabled
+          ? 'Web grounding on — answers verified against web sources'
+          : 'Web grounding off — toggle on to fact-check responses'
+      }
+      data-testid="chat-grounding-toggle"
+      data-grounding-enabled={enabled ? 'true' : 'false'}
+      className={clsx(
+        'p-2 rounded-lg transition-colors',
+        disabled && 'opacity-50 cursor-not-allowed',
+        'hover:bg-theme-bg-secondary',
+      )}
+      style={{
+        color: enabled ? 'var(--cm-accent, var(--accent, var(--text-primary)))' : 'var(--text-secondary)',
+        border: enabled
+          ? '1px solid var(--cm-accent, var(--accent, var(--color-border)))'
+          : '1px solid transparent',
+        backgroundColor: enabled
+          ? 'color-mix(in srgb, var(--cm-accent, var(--accent, var(--text-primary))) 12%, transparent)'
+          : 'transparent',
+      }}
+      title={
+        enabled
+          ? 'Web grounding on — turning off skips the post-stream web_search verify pass'
+          : 'Web grounding off — turn on to verify the next answer against web sources'
+      }
+    >
+      <SearchCheck size={18} aria-hidden="true" />
+    </motion.button>
+  );
+};
+
+/**
+ * FollowupChipsToggleButton — Sparkles glyph toggle that flips the global
+ * useFollowupChipsStore.enabled flag. ON = bright accent outline + filled tint
+ * (chips visible), OFF = muted secondary text token (chips suppressed).
+ * Persists via localStorage (zustand persist middleware). Theme tokens only —
+ * no hex literals (CLAUDE.md rule 8b). Initial state: ENABLED (user: "they
+ * DO fucking rock"). Exported for test isolation.
+ */
+export const FollowupChipsToggleButton: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
+  const enabled = useFollowupChipsStore((s) => s.enabled);
+  const toggle = useFollowupChipsStore((s) => s.toggle);
+  return (
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={toggle}
+      disabled={disabled}
+      role="switch"
+      aria-checked={enabled}
+      aria-label={
+        enabled
+          ? 'Follow-up suggestions on — assistant will suggest next prompts'
+          : 'Follow-up suggestions off — assistant won\'t show follow-up chips'
+      }
+      data-testid="chat-followup-chips-toggle"
+      data-enabled={enabled ? 'true' : 'false'}
+      className={clsx(
+        'p-2 rounded-lg transition-colors',
+        disabled && 'opacity-50 cursor-not-allowed',
+        'hover:bg-theme-bg-secondary',
+      )}
+      style={{
+        color: enabled ? 'var(--cm-accent, var(--accent, var(--text-primary)))' : 'var(--text-secondary)',
+        border: enabled
+          ? '1px solid var(--cm-accent, var(--accent, var(--color-border)))'
+          : '1px solid transparent',
+        backgroundColor: enabled
+          ? 'color-mix(in srgb, var(--cm-accent, var(--accent, var(--text-primary))) 12%, transparent)'
+          : 'transparent',
+      }}
+      title={
+        enabled
+          ? 'Follow-up suggestions on — click to hide follow-up chips'
+          : 'Follow-up suggestions off — click to show follow-up chips after answers'
+      }
+    >
+      <Sparkles size={18} aria-hidden="true" />
+    </motion.button>
+  );
+};
 
 // Main Toolbar Component - Gemini Style
 const ChatInputToolbar: React.FC<ChatInputToolbarProps> = ({
@@ -662,23 +766,47 @@ const ChatInputToolbar: React.FC<ChatInputToolbarProps> = ({
       <div className="flex items-center justify-between">
         {/* Left side - Tools and utilities */}
         <div className="flex items-center gap-3">
-          {/* Plus/Attachment Button */}
+          {/* Attach Button — claude.ai-style circular `+` glyph at the LEFT
+              edge of the composer toolbar. Post-#940 reverted Plus from
+              AttachDropTray; #941 (2026-05-20) restores the CIRCULAR pill
+              container (`rounded-full`) to match claude.ai's affordance —
+              previous `rounded-lg` produced 8px square-ish corners. Drag-drop
+              on the textarea is preserved by ChatInputBar (#683/#687) and is
+              orthogonal to this trigger. */}
           <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled}
-          aria-label="Add files or images"
+          aria-label="Attach files"
+          data-testid="chat-attach-button"
           className={clsx(
-            'p-2 rounded-lg transition-colors',
+            'p-2 rounded-full transition-colors',
             disabled && 'opacity-50 cursor-not-allowed',
             'hover:bg-theme-bg-secondary'
           )}
-          style={{ color: 'rgb(var(--text-secondary))' }}
-          title="Add files or images"
+          style={{ color: 'var(--text-secondary)' }}
+          title="Attach files"
         >
           <Plus size={18} aria-hidden="true" />
         </motion.button>
+
+        {/* Grounding Toggle — magnifying-glass + check glyph. When ON, post-stream
+            the platform appends a `grounding_check` invocation that web_searches
+            authoritative sources and renders a verdict chip below the answer.
+            User feedback 2026-05-18: "we also need a grounding t1 that checks
+            the prompts responses by looking what the model recommended on the
+            internet using web_search tool". State persists via useGroundingStore.
+            All colors resolved via var(--cm-*)/var(--text-secondary) per
+            CLAUDE.md rule 8(b). */}
+        <GroundingToggleButton disabled={disabled} />
+
+        {/* Follow-up chips toggle — Sparkles glyph. ON = chips render below
+            assistant messages, OFF = ChipsRow returns null. User direction
+            2026-05-19: "we also need a button... to enable/disable recommended
+            followup pills (which DO fucking rock)". State persists via
+            useFollowupChipsStore. Colors via var(--cm-*) per CLAUDE.md 8(b). */}
+        <FollowupChipsToggleButton disabled={disabled} />
 
         {/* MCP Servers puzzle button removed — MCP tools are auto-discovered by the pipeline */}
 
@@ -686,69 +814,66 @@ const ChatInputToolbar: React.FC<ChatInputToolbarProps> = ({
 
         {/* OpenAgenticCode button removed - use sidebar mode toggle instead (Ctrl+Shift+C) */}
 
-        {/* Extended Thinking is auto-enabled for models that support it - no UI toggle needed */}
-
         {/* Skills configuration moved to Admin Portal > Pipeline Settings */}
 
       </div>
 
       {/* Right side - Model selector (Admin only) */}
       <div className="flex items-center gap-2">
-        {/* Model Selector - Only visible to admins */}
+        {/* Model Selector - Only visible to admins. Dropped the scale-on-hover
+            framer transform because 1.02/0.98 against a 1px border produced
+            subpixel shimmer that read as "jagged" on the pill edge.
+            borderRadius pinned to 9999px explicitly (not rounded-full class)
+            so Tailwind's purge can't strip it, transform:translateZ(0) forces
+            the browser to rasterize on a pixel grid. */}
+        {/* RIPPED: Tools-indexed sanity pill (per user direction —
+            cluttered the composer + the data is admin-only ops noise
+            that doesn't belong in the chat input bar). */}
+
         {isAdmin && availableModels && availableModels.length > 0 && onModelChange && (
           <div className="relative">
-            <motion.button
+            <button
               ref={modelSelectorButtonRef}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              type="button"
               onClick={() => setShowModelSelector(!showModelSelector)}
-              aria-label={`Select Model: ${selectedModel ? availableModels.find(m => m.id === selectedModel)?.name : 'Smart Router'}`}
+              aria-label={`Select Model: ${selectedModel ? availableModels.find(m => m.id === selectedModel)?.name : 'Auto-Routing'}`}
               aria-haspopup="listbox"
               aria-expanded={showModelSelector}
-              className={clsx(
-                'model-selector-button flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors text-sm',
-                'hover:bg-theme-bg-secondary',
-                'border border-theme-border-primary'
-              )}
+              className="model-selector-button flex items-center gap-2 px-3 py-1.5 transition-colors text-sm hover:bg-theme-bg-secondary"
               style={{
-                color: 'rgb(var(--text-secondary))',
-                backgroundColor: 'var(--color-surfaceSecondary)'
+                color: 'var(--text-secondary)',
+                backgroundColor: 'var(--color-surfaceSecondary)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 9999,
+                transform: 'translateZ(0)',
+                WebkitFontSmoothing: 'antialiased',
+                MozOsxFontSmoothing: 'grayscale',
               }}
-              title={`Select Model: ${selectedModel ? availableModels.find(m => m.id === selectedModel)?.name : 'Smart Router'}`}
+              title={`Select Model: ${selectedModel ? availableModels.find(m => m.id === selectedModel)?.name : 'Auto-Routing'}`}
             >
               <span className="font-medium">
                 {selectedModel
                   ? availableModels.find(m => m.id === selectedModel)?.name
-                  : 'Smart Router'}
+                  : 'Auto-Routing'}
               </span>
               <ChevronDown size={14} />
-            </motion.button>
+            </button>
           </div>
         )}
 
-        {/* Admin Tool Inspector Button */}
-        {isAdmin && onToggleToolInspector && (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onToggleToolInspector}
-            aria-label="Toggle Tool Call Inspector"
-            title="Inspect tool call request/response JSON"
-            className={clsx(
-              'flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-colors text-xs font-medium',
-              'border',
-              showToolInspector
-                ? 'border-blue-500/50 bg-blue-500/10'
-                : 'border-theme-border-primary hover:bg-theme-bg-secondary'
-            )}
-            style={{
-              color: showToolInspector ? 'var(--color-primary)' : 'rgb(var(--text-secondary))',
-            }}
-          >
-            <Code2 size={14} />
-            <span>JSON</span>
-          </motion.button>
-        )}
+        {/* Extended Thinking toggle — Brain glyph. Visible ONLY when the
+            selected model supports extended thinking (capabilities.thinking
+            from the Registry row — no hardcoded model names, CLAUDE.md Rule 7).
+            ON by default. Reads from useModelStore.selectedModel +
+            availableModels directly — no prop drilling needed. State persists
+            via useExtendedThinkingStore (localStorage). Colors via var(--cm-*)
+            per CLAUDE.md rule 8(b). */}
+        <ExtendedThinkingToggleButton disabled={disabled} />
+
+        {/* JSON admin tool-inspector button — removed 2026-04-20 per user
+            feedback (dead weight on the composer). Its source is still in
+            ChatContainer via onToggleToolInspector prop; that prop is now
+            unused and can be dropped on the next pass. */}
       </div>
 
       {/* Model Selector Dropdown - Provider-grouped with search, capabilities, cost */}

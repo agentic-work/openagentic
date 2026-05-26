@@ -50,6 +50,7 @@ interface EditState {
   role: string
   maxTokens: number | null
   temperature: number | null
+  fca: number | null
   inputCostPer1k: number | null
   outputCostPer1k: number | null
   capChat: boolean
@@ -80,6 +81,7 @@ const fromEditRow = (row: ModelRow): EditState => ({
   role: row.role || 'chat',
   maxTokens: row.maxTokens,
   temperature: typeof (row.raw as any).temperature === 'number' ? (row.raw as any).temperature : null,
+  fca: typeof row.fca === 'number' ? row.fca : null,
   inputCostPer1k: row.inputCostPer1k,
   outputCostPer1k: row.outputCostPer1k,
   capChat: row.caps.chat,
@@ -134,6 +136,8 @@ export const ModelModal: React.FC<ModelModalProps> = ({ open, onClose, editing, 
       }
       if (editForm.inputCostPer1k != null) body.inputCostPer1k = editForm.inputCostPer1k
       if (editForm.outputCostPer1k != null) body.outputCostPer1k = editForm.outputCostPer1k
+      // First-class per-model FCA → drives RouterTuning floor scoring. null clears it.
+      body.functionCallingAccuracy = editForm.fca
 
       const res = await apiRequest(`/api/admin/llm-providers/registry/${editing.id}`, {
         method: 'PATCH',
@@ -280,6 +284,18 @@ export const ModelModal: React.FC<ModelModalProps> = ({ open, onClose, editing, 
           </FormGrid>
 
           <FormGrid>
+            <FormRow name="Function-calling accuracy" desc="0–1 benchmark FCA — drives Router Tuning floor scoring" configKey="registry.functionCallingAccuracy">
+              <input
+                type="number"
+                step={0.01}
+                min={0}
+                max={1}
+                value={editForm.fca ?? ''}
+                onChange={(e) => setEdit('fca', e.target.value ? Number(e.target.value) : null)}
+                style={inputStyle}
+                placeholder="e.g. 0.87"
+              />
+            </FormRow>
             <FormRow name="Pricing override" desc="USD per 1k input tokens (overrides catalog)" configKey="registry.inputCostPer1k">
               <input
                 type="number"

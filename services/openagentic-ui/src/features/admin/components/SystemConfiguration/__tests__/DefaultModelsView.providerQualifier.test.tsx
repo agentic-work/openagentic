@@ -39,7 +39,7 @@ vi.mock('../../../hooks/useAdminQuery', () => ({
 import DefaultModelsView from '../DefaultModelsView';
 
 // Live-shape fixtures matching what /admin/llm-providers/registry returns
-// (captured from the dev environment 2026-05-01).
+// (captured from chat-dev 2026-05-01).
 const REGISTRY_WITH_DUPLICATE_NOMIC = [
   {
     id: 'b3d993a3-813f-4221-80ce-eda397f99662',

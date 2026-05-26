@@ -15,8 +15,8 @@ This test simulates real-world usage by running 100 concurrent chat sessions, ea
 - **Total Sessions:** 100 concurrent sessions
 - **Messages per Session:** 20 messages
 - **Total Messages:** 2,000 messages
-- **API Key:** `awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79`
-- **Test User:** admin@openagentic.local
+- **API Key:** `awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79`
+- **Test User:** phatoldsun@gmail.com
 - **API URL:** http://localhost:8000
 - **Default Model:** gemini-2.0-flash-001
 
@@ -136,7 +136,7 @@ node concurrent-chat-sessions.test.js
 #### Environment Variables
 
 - `API_URL` - API endpoint (default: http://localhost:8000)
-- `API_KEY` - Authentication key (default: awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79)
+- `API_KEY` - Authentication key (default: awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79)
 - `NUM_SESSIONS` - Number of concurrent sessions (default: 100)
 - `MESSAGES_PER_SESSION` - Messages per session (default: 20)
 - `DEFAULT_MODEL` - LLM model to use (default: gemini-2.0-flash-001)
@@ -390,8 +390,8 @@ This comprehensive load test creates 100 Flowise workflows (50 chatflows + 50 ag
 ### Test Configuration
 
 - **Total Workflows:** 100 (50 chatflows + 50 agentflows)
-- **API Key:** `awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79`
-- **Test User:** admin@openagentic.local
+- **API Key:** `awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79`
+- **Test User:** phatoldsun@gmail.com
 - **Method:** Creates workflows via chat API using MCP tools
 
 ### Workflow Types
@@ -429,13 +429,13 @@ This comprehensive load test creates 100 Flowise workflows (50 chatflows + 50 ag
 
 #### Standalone Execution
 ```bash
-cd /mnt/synology/Code/company/your-env/agentic/tests/load
+cd /mnt/synology/Code/company/cdc/agentic/tests/load
 node flowise-workflow-tests.test.js
 ```
 
 #### With Test Runner
 ```bash
-cd /mnt/synology/Code/company/your-env/agentic/tests
+cd /mnt/synology/Code/company/cdc/agentic/tests
 node run-all.js
 ```
 
@@ -444,7 +444,7 @@ node run-all.js
 ```bash
 # Optional overrides
 export API_URL=http://localhost:8000
-export API_KEY=awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79
+export API_KEY=awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79
 export DEFAULT_MODEL=gemini-2.0-flash-001
 ```
 
@@ -459,7 +459,7 @@ tests/test-results/flowise-workflow-load-test.json
 ```json
 {
   "testSuite": "Test Suite #7B - 100 Flowise Workflows",
-  "testUser": "admin@openagentic.local",
+  "testUser": "phatoldsun@gmail.com",
   "timestamp": "2025-12-05T12:00:00.000Z",
   "metrics": {
     "total": 100,
@@ -509,7 +509,7 @@ tests/test-results/flowise-workflow-load-test.json
 #### Common Issues
 
 1. **Authentication Errors**
-   - Verify API key is valid: `awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79`
+   - Verify API key is valid: `awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79`
    - Check user permissions in the system
 
 2. **Rate Limiting**
@@ -565,7 +565,7 @@ This test suite collects comprehensive performance metrics during concurrent loa
 
 ### Test Configuration
 
-- **API Key:** `awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79`
+- **API Key:** `awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79`
 - **Sampling Interval:** 1 second (1000ms)
 - **Default Test Duration:** 30 seconds (configurable)
 - **Output Files:**
@@ -723,7 +723,7 @@ Collection Details:
 {
   "config": {
     "apiUrl": "http://localhost:8000",
-    "apiKey": "awc_test_openagentic-test_...",
+    "apiKey": "awc_test_phatoldsun_...",
     "samplingInterval": 1000
   },
   "startTime": 1733404800000,
@@ -837,7 +837,7 @@ Collection Details:
 ### Environment Variables
 
 - `API_URL` - API endpoint (default: http://localhost:8000)
-- `API_KEY` - Authentication key (default: awc_test_openagentic-test_16bdbaf284042b28dc724bec24b4ff79)
+- `API_KEY` - Authentication key (default: awc_test_phatoldsun_16bdbaf284042b28dc724bec24b4ff79)
 - `TEST_DURATION` - Test duration in milliseconds (default: 30000)
 - `SAMPLING_INTERVAL` - Sampling interval in milliseconds (default: 1000)
 

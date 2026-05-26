@@ -3,7 +3,7 @@
  * must render through SharedMarkdownRenderer so `**bold**`, `# heading`,
  * fenced code, lists, links, and tables come out semantic.
  *
- * Smoking gun (dev Playwright probe, 2026-05-17): cloud_operations
+ * Smoking gun (chat-dev Playwright probe, 2026-05-17): cloud_operations
  * sub-agent's body arrived in the dark-green return strip as literal
  * markdown text — `**bold**` showed two-asterisk pairs, fenced code
  * showed triple-backticks, headings showed `#`. The text was being

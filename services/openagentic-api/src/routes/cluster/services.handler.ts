@@ -136,17 +136,21 @@ function tagOf(image: string): string {
 export async function clusterServicesHandler(
   request: FastifyRequest,
   reply: FastifyReply,
-): Promise<void> {
+): Promise<FastifyReply> {
+  // #1107: every send-site MUST `return reply.send(...)`. An async handler
+  // that resolves to undefined while reply.sent is true causes Fastify to
+  // treat the resolved-undefined as a SECOND payload, re-firing the onSend
+  // chain → ERR_HTTP_HEADERS_SENT on every request. Live evidence: 31
+  // unhandled rejections in 24h before this fix, ~30s cadence from polling.
   const apis = getApis();
   const release = loadReleaseInfo();
   if (!apis) {
-    reply.status(503).send({
+    return reply.status(503).send({
       error: 'k8s_unavailable',
       message: 'Could not load in-cluster kubeconfig — endpoint requires running inside the cluster.',
       release,
       namespace: NAMESPACE,
     });
-    return;
   }
 
   try {
@@ -219,7 +223,7 @@ export async function clusterServicesHandler(
 
     rows.sort((a, b) => a.name.localeCompare(b.name));
 
-    reply.send({
+    return reply.send({
       release,
       namespace: NAMESPACE,
       scrapedAt: new Date().toISOString(),
@@ -228,7 +232,7 @@ export async function clusterServicesHandler(
   } catch (err: any) {
     const status = err?.statusCode ?? err?.code ?? 500;
     loggers.routes.error({ err, status }, 'cluster.services: k8s API error');
-    reply.status(status === 403 ? 403 : 500).send({
+    return reply.status(status === 403 ? 403 : 500).send({
       error: status === 403 ? 'rbac_denied' : 'k8s_error',
       message: status === 403
         ? 'API ServiceAccount lacks pods/deployments list — check openagentic-api-network-admin Role.'

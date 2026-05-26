@@ -9,7 +9,7 @@
  *    up in ONLY SOT thats show in admin console llm/providers/model
  *    registry- OR if admins ADD them AFTER deploy."
  *
- * This is NOT a mock test. It hits the running api at dev with an
+ * This is NOT a mock test. It hits the running api at chat-dev with an
  * admin API key and exercises the live admin endpoints. It then asserts
  * end-to-end behavior — including via `/api/chat/stream`, which is the
  * load-bearing routing decision path.
@@ -49,7 +49,7 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 
-const HOST = process.env.OPENAGENTIC_HOST || 'http://localhost:8080';
+const HOST = process.env.OPENAGENTIC_HOST || 'https://chat-dev.openagentic.io';
 const KEY = process.env.OPENAGENTIC_TEST_KEY || '';
 const TIMEOUT = 180_000;
 

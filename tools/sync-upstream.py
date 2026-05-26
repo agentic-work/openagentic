@@ -27,8 +27,8 @@ RENAMES = [
     ('services/agenticwork-workflows',     'services/openagentic-workflows'),
     ('services/agenticwork-mcp-proxy',     'services/openagentic-mcp-proxy'),
     ('services/agenticwork-ollama',        'services/openagentic-ollama'),
-    ('services/agenticode-exec',           None),                        # Code Mode is OSS-out
-    ('services/agenticode-manager',        None),                        # Code Mode is OSS-out
+    ('services/agenticode-exec',           'services/openagentic-exec'),
+    ('services/agenticode-manager',        'services/openagentic-manager'),
     ('services/agenticode-server',         'services/openagentic-server'),
     ('services/agent-proxy',               'services/openagentic-proxy'),
     ('services/oat-executor',              'services/openagentic-synth'),
@@ -91,28 +91,10 @@ SKIP_PREFIXES = (
     '.git/', '.playwright-mcp/', 'playwright-report/',
     # Internal deploy scripts (keep scripts/ dir but not these)
     'scripts/buildx/', 'scripts/e2e-test-suite/', 'scripts/load-tests/',
-    # Code Mode is OSS-out — service, UI, API, helm, tests, mcp bridge
-    'services/openagentic-exec/', 'services/agenticode-exec/',
-    'services/agenticode-manager/',
-    'services/openagentic-api/src/routes/code-mode/',
-    'services/openagentic-api/src/routes/admin/codemode',
-    'services/openagentic-api/src/routes/admin/code-mode-config',
-    'services/openagentic-api/src/routes/admin/coding-adapters',
-    'services/openagentic-api/src/services/coding-adapters/',
-    'services/openagentic-api/src/tests/codemode/',
-    'services/openagentic-ui/src/features/code/',
-    'services/openagentic-ui/src/features/admin/components/CodeMode/',
-    'services/openagentic-ui/src/features/admin/components/Code/',
-    'services/mcps/awp-agenticode-mcp/', 'services/mcps/oap-code-mcp/',
-    'helm/openagentic/templates/code-manager/',
-    'helm/agenticwork/templates/code-manager/',
     # Agenticwork-branded helm chart copy (we ship helm/openagentic only)
     'helm/agenticwork/',
     # Upstream session notes / dev-only audit dumps
     'services/audit/',
-    # Code Mode e2e specs and load scenarios
-    'tests/e2e/ui/codemode', 'tests/e2e/codemode',
-    'tests/load/scenarios/codemode/',
     # Playwright reports (generated artifacts)
     'services/openagentic-ui/playwright-report/',
     'services/openagentic-ui/tests/e2e/playwright-report-tests-e2e/',
@@ -318,28 +300,20 @@ SKIP_NAMES = {
     'chat_api_stress_test.py',
     'playwright.config.deployed.ts',
     'COMPREHENSIVE_CODEBASE_SECURITY_v0.4.0.md',
-    # Code Mode bundle (filename-level bans for the parts not covered by prefix)
-    'CodeModeProvisioningService.ts', 'CodeModeSyncService.ts', 'CodeModeMilvusService.ts',
-    'code-mode-provisioning.ts', 'code-plugins.ts', 'admin-code.ts',
-    'CodeModeMetricsDashboard.tsx', 'useCodeModeStore.ts',
-    'CodeModePage.tsx', 'AdminCodeModePage.tsx',
-    'CodeSessionsPanel.tsx', 'code-mode.gen.ts',
-    'agenticwork-code-mode.json', 'openagentic-code-mode.json',
-    'CodingCli.tsx',
+    # (Code Mode is included now — bans removed.)
+    # The 'agenticwork-code-mode.json' upstream filename is still stale brand;
+    # the openagentic-code-mode.json equivalent is what ships.
+    'agenticwork-code-mode.json',
 }
 
 # Extension-level bans (screenshots, archives, ad-hoc mockups)
 SKIP_EXTS = {'.png','.jpg','.jpeg','.webp','.gif','.pdf','.tgz','.tar','.zip','.bak','.mp4','.mov','.avi','.mkv'}
 SKIP_SUFFIX = ('-mockup.html', '-mockup.js', '.bak', '.bak.1', '.bak.2')
 
-# Agenticode-specific patterns — user won't ship these
 SKIP_CONTENT_HINTS = (
-    'awcode', 'AWCode', 'AgenticCodeService', 'AgenticCodeSession',
+    # Internal companion CLIs we never ship
     'agenticode-cli', 'managedSettings.json', 'managed-mcp.json',
-    # Upstream ghostpilot bits — we removed all of these
     'GhostPilot', 'ghostpilot', 'GHOSTPILOT',
-    # Code Mode markers — drop any file dominated by them
-    'CodeModeProvisioning', 'CodeModeSession', 'useCodeModeWebSocket',
 )
 
 # Stale filename patterns left behind by past renames — filter by path, not content.
@@ -348,7 +322,6 @@ SKIP_PATH_HINTS = (
     'doc-generators/oat-executor.gen.ts',
     'doc-generators/oat-synth.gen.ts',
     'doc-generators/oat-framework.gen.ts',
-    'doc-generators/code-mode.gen.ts',
     # Internal phase regression tests — these only assert "we ripped X out"
     'architecture/phase-',
     # UAT / showcase / stress / customer e2e patterns anywhere in tree
@@ -356,13 +329,6 @@ SKIP_PATH_HINTS = (
     '/stress-', '-stress-',
     # Pre-chainguard build artifacts
     '.pre-chainguard',
-    # Any path with a code-mode marker is OSS-out at sync time —
-    # OSS ships only a stub entry point in the UI that links to the
-    # hosted edition's purchase page. Catches codemode-*.spec.ts,
-    # codemode.plugin.ts, codemode-*-config.ts etc. that exact-name
-    # SKIP_NAMES can't enumerate.
-    '/codemode-', '/code-mode-', '/codemode.', '/code-mode.',
-    'codemode.plugin', 'codemode.test', 'codemode-test', 'code-mode-test',
 )
 
 # ─── Preserve: our local fixes (never overwrite) ─────────────────────────────

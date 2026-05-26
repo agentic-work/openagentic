@@ -17,7 +17,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const BASE = process.env.BASE_URL || 'http://localhost:8080';
+const BASE = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
 
 const NAV_LABELS = [
   'Home', 'Flows', 'Agents', 'Tools & Data', 'Runs',

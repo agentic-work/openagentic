@@ -7,7 +7,7 @@
  * code-audit) and asserts a sub-agent card renders in the DOM with a
  * concrete `data-subagent-type` attribute.
  *
- * Default model at dev is gpt-oss:20b. Smart Router escalates as
+ * Default model at chat-dev is gpt-oss:20b. Smart Router escalates as
  * needed. The spec doesn't pin a specific sub-agent; any concrete
  * variant counts as success (cloud_operations, artifact_creation,
  * code_audit, data_query, etc.).
@@ -17,7 +17,7 @@ import { test, expect, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const BASE = process.env.BASE_URL || 'http://localhost:8080';
+const BASE = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
 const AUTH_FILE = path.join(__dirname, '../../.auth/user.json');
 
 test.use({

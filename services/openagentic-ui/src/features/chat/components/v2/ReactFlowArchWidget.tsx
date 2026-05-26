@@ -64,8 +64,8 @@ export function ReactFlowArchWidget({ template, content, title, className }: Rea
           alignItems: 'center',
           gap: 8,
           padding: '10px 12px',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          background: 'rgba(255,255,255,0.02)',
+          borderBottom: '1px solid color-mix(in srgb, var(--cm-border) 60%, transparent)',
+          background: 'color-mix(in srgb, var(--cm-bg-secondary) 50%, transparent)',
         }}
       >
         <div
@@ -74,16 +74,16 @@ export function ReactFlowArchWidget({ template, content, title, className }: Rea
             width: 22,
             height: 22,
             borderRadius: 6,
-            background: 'rgba(139,92,246,0.14)',
+            background: 'color-mix(in srgb, var(--cm-accent) 14%, transparent)',
             display: 'grid',
             placeItems: 'center',
-            color: '#8b5cf6',
+            color: 'var(--cm-accent)',
             fontSize: 13,
           }}
         >
           🗺️
         </div>
-        <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: '#f8fafc' }}>
+        <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 12, color: 'var(--cm-text)' }}>
           compose_visual
         </span>
         <span
@@ -91,16 +91,16 @@ export function ReactFlowArchWidget({ template, content, title, className }: Rea
             fontSize: 10,
             padding: '2px 6px',
             borderRadius: 4,
-            background: 'rgba(139,92,246,0.14)',
-            color: '#8b5cf6',
-            border: '1px solid rgba(139,92,246,0.32)',
+            background: 'color-mix(in srgb, var(--cm-accent) 14%, transparent)',
+            color: 'var(--cm-accent)',
+            border: '1px solid color-mix(in srgb, var(--cm-accent) 32%, transparent)',
             marginLeft: 4,
             fontFamily: '"JetBrains Mono", monospace',
           }}
         >
           {template}
         </span>
-        <span style={{ marginLeft: 'auto', fontFamily: '"JetBrains Mono", monospace', fontSize: 11, color: '#71717a' }}>
+        <span style={{ marginLeft: 'auto', fontFamily: '"JetBrains Mono", monospace', fontSize: 11, color: 'var(--cm-text-muted)' }}>
           {parsed.ok ? `${parsed.data.nodes.length} nodes · ${parsed.data.edges.length} edges` : 'render failed'}
         </span>
       </div>
@@ -125,11 +125,11 @@ export function ReactFlowArchWidget({ template, content, title, className }: Rea
           role="alert"
           style={{
             padding: 16,
-            color: 'var(--err, #ef4444)',
+            color: 'var(--cm-error)',
             fontFamily: '"JetBrains Mono", monospace',
             fontSize: 12,
-            background: 'rgba(239,68,68,0.06)',
-            border: '1px solid rgba(239,68,68,0.18)',
+            background: 'color-mix(in srgb, var(--cm-error) 6%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--cm-error) 18%, transparent)',
             borderRadius: 6,
             margin: 12,
           }}

@@ -41,6 +41,11 @@ import {
   type ComposeAppResult,
 } from '../../../../services/ComposeAppTool.js';
 import {
+  isGenerateImageTool,
+  type GenerateImageInput,
+  type GenerateImageResult,
+} from '../../../../services/GenerateImageTool.js';
+import {
   isTaskTool,
   executeTask,
   type TaskInput,
@@ -114,6 +119,19 @@ export interface ChatPipelineDeps {
   executeComposeVisual: typeof executeComposeVisual;
   /** ComposeAppTool handler — interactive HTML app composer (DI for tests). */
   executeComposeApp: typeof executeComposeApp;
+  /**
+   * GenerateImageTool handler — real image generation (DI for tests).
+   *
+   * The production binding (buildChatV2Deps / runChat) closes over the
+   * resolve-imageGen-default-model → provider.generateImage →
+   * ImageStorageService.store pipeline, so the dispatcher only passes
+   * `(ctx, input)`. Tests inject a stub. NEVER fabricates an external
+   * `<img>` URL — on provider error it returns `{ ok:false }`.
+   */
+  executeGenerateImage: (
+    ctx: any,
+    input: GenerateImageInput,
+  ) => Promise<GenerateImageResult>;
   /** RenderArtifactTool handler — back-compat alias (DI for tests). */
   executeRenderArtifact: typeof executeRenderArtifact;
   /** TaskTool handler (DI for tests). */
@@ -188,6 +206,7 @@ export interface ChatToolCall {
 export type ChatToolResult =
   | ComposeVisualResult
   | ComposeAppResult
+  | GenerateImageResult
   | RenderArtifactResult
   | TaskResult
   | RequestClarificationResult
@@ -220,6 +239,10 @@ export async function dispatchChatToolCall(
 
   if (isComposeAppTool(name)) {
     return deps.executeComposeApp(ctx, input as ComposeAppInput);
+  }
+
+  if (isGenerateImageTool(name)) {
+    return deps.executeGenerateImage(ctx, input as GenerateImageInput);
   }
 
   if (isRenderArtifactTool(name)) {

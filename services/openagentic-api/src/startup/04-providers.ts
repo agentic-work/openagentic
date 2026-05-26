@@ -218,6 +218,46 @@ export const INIT_PROVIDERS: BootstrapStep = {
         loggers.services.warn({ error: err?.message }, 'CodeRoleBackfillService failed — /model picker may be empty');
       }
 
+      // 2026-05-24 — seed the first-class function_calling_accuracy column from
+      // the ModelCapabilityRegistry benchmark table for any registry row that
+      // still has it NULL. Without this every model scores FCA=0, fails every
+      // RouterTuning floor, and the router can't select on capability or route
+      // DOWN to a cheap model. Idempotent — only NULL rows are touched.
+      try {
+        const { ModelFcaBackfillService } = await import('../services/model-routing/ModelFcaBackfillService.js');
+        const { getModelCapabilityRegistry } = await import('../services/ModelCapabilityRegistry.js');
+        const { prisma: p } = await import('../utils/prisma.js');
+        const mcr = getModelCapabilityRegistry();
+        const fcaLookup = (modelId: string): number | null => {
+          try {
+            const caps = mcr?.getCapabilities(modelId);
+            return typeof caps?.functionCallingAccuracy === 'number' ? caps.functionCallingAccuracy : null;
+          } catch {
+            return null;
+          }
+        };
+        const fcaBackfiller = new ModelFcaBackfillService(p as any, loggers.services, fcaLookup);
+        const fcaResult = await fcaBackfiller.backfill();
+        loggers.services.info(fcaResult, '[ModelFcaBackfill] boot-time FCA seed complete');
+
+        // CRITICAL ORDERING: SmartModelRouter.initialize() (above) built its
+        // in-memory profiles BEFORE this backfill seeded the FCA column, so
+        // those profiles carry FCA=0. Rebuild them now so the live router
+        // scores on the seeded FCA — otherwise the column is correct in the DB
+        // but the running router still filters every model at FCA=0 until the
+        // next provider-add or pod restart.
+        if (fcaResult.updated > 0 && ctx.smartModelRouter) {
+          try {
+            await ctx.smartModelRouter.reload();
+            loggers.services.info('[ModelFcaBackfill] SmartModelRouter reloaded — profiles now carry seeded FCA');
+          } catch (reloadErr: any) {
+            loggers.services.warn({ error: reloadErr?.message }, '[ModelFcaBackfill] router reload after FCA seed failed — restart pod to pick up FCA');
+          }
+        }
+      } catch (err: any) {
+        loggers.services.warn({ error: err?.message }, 'ModelFcaBackfillService failed — router FCA scoring may stay at 0 until admin sets values');
+      }
+
       // V3 Phase 5 — EnrichedTool registry seeder. Lands ~14 default T1
       // tool metadata rows (outputTemplate + truncate_summary template +
       // schemas) on first boot. Idempotent: subsequent boots refresh

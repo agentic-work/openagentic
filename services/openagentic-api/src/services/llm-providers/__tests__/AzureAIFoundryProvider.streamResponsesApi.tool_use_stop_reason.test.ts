@@ -2,7 +2,7 @@
  * RED → GREEN: AIF Responses API streaming must emit `stop_reason='tool_use'`
  * (not `'end_turn'`) when the model's output contains a `function_call` item.
  *
- * Smoking gun: 2026-05-10 Playwright wire capture against dev gpt-5.4 —
+ * Smoking gun: 2026-05-10 Playwright wire capture against chat-dev gpt-5.4 —
  * model emitted a `tool_search` call (16 frames of opcode "2" in wire NDJSON)
  * but the canonical event stream yielded `message_delta:{stop_reason:'end_turn'}`.
  * chatLoop sees `end_turn` and exits the turn WITHOUT dispatching the tool,

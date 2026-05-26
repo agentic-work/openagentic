@@ -4,12 +4,12 @@
  * These tests validate that the observability stack is properly deployed
  * and functioning in the K8s environment.
  *
- * Run: BASE_URL=http://localhost:8080 npx vitest tests/observability/
+ * Run: BASE_URL=https://chat-dev.openagentic.io npx vitest tests/observability/
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:8080';
+const BASE_URL = process.env.BASE_URL || 'https://chat-dev.openagentic.io';
 const PROMETHEUS_URL = process.env.PROMETHEUS_URL || 'http://prometheus:9090';
 const GRAFANA_URL = process.env.GRAFANA_URL || 'http://grafana:3000';
 const LOKI_URL = process.env.LOKI_URL || 'http://loki:3100';
