@@ -10,6 +10,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { prisma } from '../utils/prisma.js';
 import type { Logger } from 'pino';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 // Predefined system roles (based on is_admin flag in users table)
 interface SystemRole {
@@ -45,6 +46,9 @@ const SYSTEM_ROLES: SystemRole[] = [
 ];
 
 const adminRolesRoutes: FastifyPluginAsync = async (fastify) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   const logger = fastify.log.child({ plugin: 'admin-roles' }) as Logger;
 
   // Middleware to ensure admin access

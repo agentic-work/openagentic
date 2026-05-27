@@ -6,9 +6,13 @@
  */
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../../utils/prisma.js';
+import { enterpriseOnly } from '../../middleware/enterpriseOnly.js';
 
 export default async function agentMetricsRoutes(fastify: FastifyInstance) {
 
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   // GET /admin/agents/metrics/timeseries
   fastify.get<{ Querystring: { days?: string; agentId?: string } }>(
     '/agents/metrics/timeseries',

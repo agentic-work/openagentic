@@ -16,6 +16,7 @@ import { FastifyInstance, FastifyPluginAsync, FastifyRequest, FastifyReply } fro
 import { loggers } from '../utils/logger.js';
 import { mcpAccessControlService } from '../services/MCPAccessControlService.js';
 import { prisma } from '../utils/prisma.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 const logger = loggers.routes;
 
@@ -41,6 +42,9 @@ interface TestAccessBody {
 
 export const adminMCPToolAccessRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   /**
    * GET /api/admin/mcp-access/tools — list all tool-level policies
    */

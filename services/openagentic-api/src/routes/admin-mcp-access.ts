@@ -7,10 +7,14 @@ import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import { adminMiddleware } from '../middleware/unifiedAuth.js';
 import { loggers } from '../utils/logger.js';
 import { prisma } from '../utils/prisma.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 const logger = loggers.routes.child({ component: 'AdminMCPAccess' });
 
 const adminMCPAccessRoutes: FastifyPluginAsync = async (fastify) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   /**
    * Get all MCP access policies
    */

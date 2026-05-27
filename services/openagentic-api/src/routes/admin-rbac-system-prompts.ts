@@ -14,6 +14,7 @@
  */
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import type { RbacSystemPromptService, UserRole } from '../services/prompt/RbacSystemPromptService.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 const ROLE_KEYS: ReadonlyArray<UserRole> = ['admin', 'member'];
 const MAX_BODY_BYTES = 64 * 1024; // 64 KB cap — prompts longer than this are smelly
@@ -35,6 +36,9 @@ function getActorUserId(req: FastifyRequest): string | null {
 }
 
 export const adminRbacSystemPromptsRoutes: FastifyPluginAsync = async (fastify) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   /** List active rows for both roles + audit count summary. */
   fastify.get('/', async (request, reply) => {
     const svc = getService(request);

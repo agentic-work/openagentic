@@ -31,6 +31,7 @@
  * Sprint W Phase P2.1 — 2026-05-19
  */
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 const LOOKBACK_DAYS = 30;
 
@@ -39,6 +40,9 @@ function getPrisma(req: FastifyRequest): any | null {
 }
 
 export const adminPromptAnalyticsRoutes: FastifyPluginAsync = async (fastify) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   /** GET /api/admin/prompts/effectiveness */
   fastify.get('/', async (request, reply) => {
     const prisma = getPrisma(request);

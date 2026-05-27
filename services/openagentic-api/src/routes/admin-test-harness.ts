@@ -24,6 +24,7 @@ import {
   probeRbacMatrix,
 } from './admin-test-harness-helpers.js';
 import { mintInterServiceSystemToken } from '../services/llm-providers/util/mintInterServiceSystemToken.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 interface TestResult {
   category: string;
@@ -46,6 +47,9 @@ let lastTestRunTime: string | null = null;
 
 const adminTestHarnessRoutes: FastifyPluginAsync = async (fastify) => {
 
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   // Admin-only access — but ALSO allow a static API key for programmatic
   // access. The static key is matched against TEST_HARNESS_API_KEY env
   // (timing-safe equality). When matched, we bypass the admin gate and

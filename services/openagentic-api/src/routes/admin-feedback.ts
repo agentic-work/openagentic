@@ -10,6 +10,7 @@
 
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { loggers } from '../utils/logger.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 interface FeedbackQueryParams {
   limit?: number;
@@ -21,6 +22,9 @@ interface FeedbackQueryParams {
 }
 
 export const adminFeedbackRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   const logger = loggers.routes.child({ module: 'admin-feedback' });
   const prisma = fastify.prisma;
 

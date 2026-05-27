@@ -45,6 +45,7 @@ import { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { prisma } from '../utils/prisma.js';
 import { loggers } from '../utils/logger.js';
 import { ndjsonHeaders, writeNDJSON } from '../infra/ndjson.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 const logger = loggers.routes;
 
@@ -138,6 +139,9 @@ async function pickBestModel(): Promise<{ model: string; provider: string } | nu
 }
 
 const adminTestHarnessRunE2eRoutes: FastifyPluginAsync = async (fastify) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   // Mirror the existing /run handler's auth contract: admin JWT OR
   // a static TEST_HARNESS_API_KEY. The admin.plugin already attaches
   // adminMiddleware at the /api/admin/test-harness prefix; this hook

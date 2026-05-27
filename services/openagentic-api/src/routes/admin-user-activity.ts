@@ -13,6 +13,7 @@ import { loggers } from '../utils/logger.js';
 import { prisma } from '../utils/prisma.js';
 import { getCachedMetrics, setCachedMetrics } from '../services/AdminMetricsCache.js';
 import { ndjsonHeaders, writeNDJSON } from '../infra/ndjson.js';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 // ==========================================
 // TYPE DEFINITIONS
@@ -43,6 +44,9 @@ const presenceSSEClients = new Map<string, { reply: FastifyReply; userId: string
 // ==========================================
 
 export const adminUserActivityRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   const logger = loggers.routes;
 
   /**

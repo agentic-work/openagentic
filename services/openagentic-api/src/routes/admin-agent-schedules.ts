@@ -2,6 +2,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { authMiddleware, adminMiddleware } from '../middleware/unifiedAuth.js';
 import { loggers } from '../utils/logger.js';
 import { randomUUID } from 'crypto';
+import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 interface AgentSchedule {
   id: string;
@@ -23,6 +24,9 @@ interface AgentSchedule {
 const schedules: AgentSchedule[] = [];
 
 export const adminAgentScheduleRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   const logger = loggers.routes || loggers;
 
   fastify.addHook('preHandler', authMiddleware);

@@ -20,6 +20,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { register } from 'prom-client';
 import { requireAdminFastify } from '../../middleware/adminGuard.js';
 import {
+import { enterpriseOnly } from '../../middleware/enterpriseOnly.js';
   getSLOService,
   type SLODefinition,
 } from '../../services/SLOService.js';
@@ -126,6 +127,9 @@ function isValidSLOPayload(body: any): body is SLODefinition {
 }
 
 export const sloRoutes: FastifyPluginAsync = async (fastify) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   fastify.get('/', { preHandler: [requireAdminFastify] }, async (_request, reply) => {
     const svc = getSLOService();
     return reply.send({ slos: svc.listSLOs() });

@@ -13,6 +13,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Tier 1 + 2 + 3 admin routes. Paths relative to repo root.
 ROUTES = [
+    # ─── Original gated set (governance + compliance core) ────────────
     'services/openagentic-api/src/routes/admin-chargeback.ts',
     'services/openagentic-api/src/routes/admin/dlp.ts',
     'services/openagentic-api/src/routes/admin-metrics.ts',
@@ -27,6 +28,33 @@ ROUTES = [
     'services/openagentic-api/src/routes/admin-webhook-security.ts',
     'services/openagentic-api/src/routes/admin-tiered-fc.ts',
     'services/openagentic-api/src/routes/admin-slider.ts',
+    # ─── 2026-05-26 expansion — multi-tenant / governance / analytics ───
+    # Per-user observability (multi-tenant fleet view).
+    'services/openagentic-api/src/routes/admin-user-activity.ts',
+    'services/openagentic-api/src/routes/admin-usage-analytics.ts',
+    # Feedback governance (user feedback collection + advisories).
+    'services/openagentic-api/src/routes/admin-feedback.ts',
+    'services/openagentic-api/src/routes/admin/feedback-advisories.ts',
+    # Prompt governance (analytics + RBAC system prompts).
+    'services/openagentic-api/src/routes/admin-prompt-analytics.ts',
+    'services/openagentic-api/src/routes/admin-rbac-system-prompts.ts',
+    # Tenant / role / access-control (multi-tenant identity stack).
+    'services/openagentic-api/src/routes/admin-roles.ts',
+    'services/openagentic-api/src/routes/admin-mcp-access.ts',
+    'services/openagentic-api/src/routes/admin-mcp-tool-access.ts',
+    # Flow governance (per-flow audit + change tracking).
+    'services/openagentic-api/src/routes/admin-flow-audit.ts',
+    # Agent governance — scheduled / cron-driven agent runs.
+    'services/openagentic-api/src/routes/admin-agent-schedules.ts',
+    # SRE / SLO governance — multi-tenant uptime tracking.
+    'services/openagentic-api/src/routes/admin/slo.ts',
+    'services/openagentic-api/src/routes/admin/agent-metrics.ts',
+    # Admin test harness — internal QA tooling (not part of OSS surface).
+    # `admin-test-harness-helpers.ts` is excluded — it's a pure helper module
+    # invoked by admin-test-harness.ts, not a Fastify plugin. The gate on the
+    # route file covers it transitively.
+    'services/openagentic-api/src/routes/admin-test-harness.ts',
+    'services/openagentic-api/src/routes/admin-test-harness-run-e2e.ts',
 ]
 
 HOOK_BLOCK = (

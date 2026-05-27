@@ -110,6 +110,12 @@ SKIP_PREFIXES = (
     'services/openagentic-ui/src/features/code/',
     'services/openagentic-ui/src/features/admin/components/CodeMode/',
     'services/openagentic-ui/src/features/admin/components/Code/',
+    # New CodeMode leak paths upstream introduced post-#218 (CCR architecture).
+    # Added 2026-05-26 after a sync re-leaked these into the OSS tree contra
+    # commit 111ca5e (Strip CodeMode source policy).
+    'services/openagentic-api/src/routes/code-ws/',
+    'services/openagentic-ui/src/codemode/',
+    'services/openagentic-ui/src/features/admin/pages-v3/code-mode/',
     'services/mcps/awp-agenticode-mcp/', 'services/mcps/oap-code-mcp/',
     'helm/openagentic/templates/code-manager/',
     'tests/e2e/ui/codemode', 'tests/e2e/codemode',
@@ -330,6 +336,7 @@ SKIP_NAMES = {
     'CodeSessionsPanel.tsx', 'code-mode.gen.ts',
     'agenticwork-code-mode.json', 'openagentic-code-mode.json',
     'CodingCli.tsx',
+    'ChatSidebar.codeMode.test.tsx',
 }
 
 # Extension-level bans (screenshots, archives, ad-hoc mockups)

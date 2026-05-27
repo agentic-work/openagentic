@@ -19,6 +19,7 @@ import {
 } from '../../services/FeedbackLearningService.js';
 import { FeedbackService } from '../../services/FeedbackService.js';
 import { loggers } from '../../utils/logger.js';
+import { enterpriseOnly } from '../../middleware/enterpriseOnly.js';
 
 const VALID_WINDOWS: AdvisoryWindow[] = ['24h', '7d', '30d'];
 
@@ -28,6 +29,9 @@ interface ListQuery {
 }
 
 export const feedbackAdvisoryRoutes: FastifyPluginAsync = async (fastify) => {
+
+  // OSS gate — all routes in this plugin return 402 with upgrade_url.
+  fastify.addHook('preHandler', enterpriseOnly);
   const logger = loggers.routes.child({ module: 'feedback-advisories' });
   const prisma = (fastify as any).prisma;
 
