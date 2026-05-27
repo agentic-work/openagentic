@@ -6,12 +6,12 @@
 # SBOM attached, cosign-signed. Node.js handles PID 1 signals natively since
 # v10, so the dumb-init wrapper from the old Dockerfile is unnecessary.
 
-ARG NODE_TAG=22
+ARG NODE_TAG=latest
 
 # =============================================================================
 # Stage 1: builder — has shell + npm for TypeScript compile
 # =============================================================================
-FROM node:22-slim AS builder
+FROM cgr.dev/chainguard/node:${NODE_TAG}-dev AS builder
 
 WORKDIR /app
 
@@ -26,7 +26,7 @@ RUN npm run build \
 # =============================================================================
 # Stage 2: runtime — distroless node, non-root, no shell
 # =============================================================================
-FROM node:22-slim
+FROM cgr.dev/chainguard/node:${NODE_TAG}
 
 LABEL org.opencontainers.image.title="openagentic-proxy"
 LABEL org.opencontainers.image.description="OpenAgentic agent orchestration service"

@@ -77,7 +77,6 @@ import { adminObservabilityRoutesPlugin } from './admin-observability.plugin.js'
 // OSS stub — admin-misc plugin not yet ported
 const adminMiscRoutesPlugin: any = undefined;
 
-
 // ---------------------------------------------------------------------------
 // Plugin options (lesson 3: strongly typed, lesson 6: exported)
 // ---------------------------------------------------------------------------

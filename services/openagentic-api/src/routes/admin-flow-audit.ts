@@ -37,9 +37,9 @@ const adminFlowAuditRoutes: FastifyPluginAsync = async (fastify) => {
       where.target_type = query.target_type;
     }
     if (query.from || query.to) {
-      where.created_at = {};
-      if (query.from) where.created_at.gte = new Date(query.from as string);
-      if (query.to)   where.created_at.lte = new Date(query.to as string);
+      where.ts = {};
+      if (query.from) where.ts.gte = new Date(query.from as string);
+      if (query.to)   where.ts.lte = new Date(query.to as string);
     }
 
     return where;
@@ -61,7 +61,7 @@ const adminFlowAuditRoutes: FastifyPluginAsync = async (fastify) => {
         const [rows, total] = await Promise.all([
           prisma.flowAuditLog.findMany({
             where,
-            orderBy: { created_at: 'desc' },
+            orderBy: { ts: 'desc' },
             take: limit,
             skip: offset,
           }),
@@ -96,13 +96,13 @@ const adminFlowAuditRoutes: FastifyPluginAsync = async (fastify) => {
       try {
         const rows = await prisma.flowAuditLog.findMany({
           where,
-          orderBy: { created_at: 'desc' },
+          orderBy: { ts: 'desc' },
           take: limit,
         });
 
         const csvHeader = 'ts,action,target_type,target_id,outcome,actor_user_id,actor_user_email,actor_ip,metadata';
         const csvRows = rows.map((r) => [
-          r.created_at.toISOString(),
+          r.ts.toISOString(),
           r.action,
           r.target_type,
           r.target_id ?? '',
