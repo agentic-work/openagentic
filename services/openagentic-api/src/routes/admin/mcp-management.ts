@@ -50,7 +50,7 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
   await mcpSync.startSync();
   
   // List all registered MCP servers
-  fastify.get('/admin/mcp/servers', {
+  fastify.get('/api/admin/mcp/servers', {
     onRequest: adminMiddleware,
     schema: {
       tags: ['MCP'],
@@ -278,7 +278,7 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
   });
 
   // Register a new MCP server
-  fastify.post('/admin/mcp/servers', { onRequest: adminMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/api/admin/mcp/servers', { onRequest: adminMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const body = RegisterMCPSchema.parse(request.body);
       
@@ -382,7 +382,7 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
   });
   
   // Update an MCP server
-  fastify.patch('/admin/mcp/servers/:serverId', { onRequest: adminMiddleware }, async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
+  fastify.patch('/api/admin/mcp/servers/:serverId', { onRequest: adminMiddleware }, async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
     try {
       const { serverId } = request.params;
       const body = UpdateMCPSchema.parse(request.body);
@@ -426,7 +426,7 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
   });
   
   // Delete an MCP server
-  fastify.delete('/admin/mcp/servers/:serverId', { onRequest: adminMiddleware }, async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
+  fastify.delete('/api/admin/mcp/servers/:serverId', { onRequest: adminMiddleware }, async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
     try {
       const { serverId } = request.params;
       
@@ -488,7 +488,7 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
   });
   
   // Force sync all servers
-  fastify.post('/admin/mcp/sync', { onRequest: adminMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/api/admin/mcp/sync', { onRequest: adminMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       await mcpSync.syncMCPServers();
 
@@ -508,7 +508,7 @@ export default async function mcpManagementRoutes(fastify: FastifyInstance) {
   });
   
   // Test an MCP server connection
-  fastify.post('/admin/mcp/servers/:serverId/test', { onRequest: adminMiddleware }, async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
+  fastify.post('/api/admin/mcp/servers/:serverId/test', { onRequest: adminMiddleware }, async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
     try {
       const { serverId } = request.params;
       

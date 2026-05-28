@@ -370,6 +370,13 @@ export function enterpriseLockFor(id: string): React.ReactNode | null {
   return <LockScreen feature={meta.feature} description={meta.description} capabilities={meta.capabilities} />;
 }
 
+// Sidebar-side check — the V3 sidebar uses this to render a dimmed leaf
+// row with a PRO badge for enterprise-only routes. Clicking still works
+// and the route then resolves to the lock screen.
+export function isEnterpriseLeaf(id: string): boolean {
+  return id in ENTERPRISE_LEAVES;
+}
+
 // ---------------------------------------------------------------------------
 // Core dispatch — mirrors AdminPortal.renderMainContent() switch statement
 // ---------------------------------------------------------------------------

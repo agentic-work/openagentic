@@ -47,7 +47,7 @@ import {
   useRouterEscalationTriggers,
   useMcpLogsHistogram,
   usePromHealth,
-  useOpenagenticApiKeys,
+  useAgenticodeApiKeys,
   type DashboardMetricsState,
   type TimeSeriesPoint,
   type ModelUsageRow,
@@ -2590,7 +2590,7 @@ const OpenagenticPane = ({ metrics }: PaneProps) => {
   const costPerSession = summary && summary.totalCodeSessions > 0
     ? summary.totalCodeCost / summary.totalCodeSessions
     : undefined
-  const apiKeys = useOpenagenticApiKeys()
+  const apiKeys = useAgenticodeApiKeys()
 
   return (
     <>

@@ -20,10 +20,10 @@ import type { FastifyPluginAsync } from 'fastify';
 import { register } from 'prom-client';
 import { requireAdminFastify } from '../../middleware/adminGuard.js';
 import {
-import { enterpriseOnly } from '../../middleware/enterpriseOnly.js';
   getSLOService,
   type SLODefinition,
 } from '../../services/SLOService.js';
+import { enterpriseOnly } from '../../middleware/enterpriseOnly.js';
 
 /**
  * Compute a live evaluation of an SLO against the default prom-client

@@ -14,7 +14,7 @@ const logger = loggers.utils;
  * Get the Vault service instance
  */
 function getVaultServiceInstance(): VaultInitService | null {
-  const vault = getVaultServiceInstance();
+  const vault = getVaultService();
   if (vault && vault.isInitialized()) {
     return vault;
   }

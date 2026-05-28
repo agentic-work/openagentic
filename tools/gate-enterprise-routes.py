@@ -40,7 +40,9 @@ ROUTES = [
     'services/openagentic-api/src/routes/admin-rbac-system-prompts.ts',
     # Tenant / role / access-control (multi-tenant identity stack).
     'services/openagentic-api/src/routes/admin-roles.ts',
-    'services/openagentic-api/src/routes/admin-mcp-access.ts',
+    # admin-mcp-access.ts is gated PER-ROUTE — its GET /servers handler
+    # serves the free MCP fleet listing. Adding a plugin-wide hook here
+    # would 402-block Tools Management → Server Management for OSS users.
     'services/openagentic-api/src/routes/admin-mcp-tool-access.ts',
     # Flow governance (per-flow audit + change tracking).
     'services/openagentic-api/src/routes/admin-flow-audit.ts',

@@ -97,28 +97,65 @@ export class MCPSyncService {
   }
 
   /**
-   * Registers a single MCP server with MCP Proxy
+   * Registers a single MCP server with MCP Proxy by POSTing to its
+   * /servers endpoint. Accepts the flat format the proxy expects:
+   *   { name, command, args, env, transport }
+   * The proxy spawns the subprocess and reports it under GET /servers.
    */
   async registerMCPServerWithProxy(server: any): Promise<void> {
+    const url = process.env.MCP_PROXY_URL || 'http://mcp-proxy:8080';
+    const meta = server.metadata || {};
+    const transport = meta.transport || (server.command ? 'stdio' : 'http');
+    const payload: any = {
+      name: server.id || server.name,
+      transport,
+    };
+    if (transport === 'stdio') {
+      payload.command = server.command;
+      payload.args = server.args || [];
+      if (server.env && Object.keys(server.env).length) payload.env = server.env;
+    } else {
+      payload.url = meta.server_url;
+      if (meta.headers && Object.keys(meta.headers).length) payload.headers = meta.headers;
+    }
     try {
-      this.logger.info({ serverId: server.id, serverName: server.name }, 'Registering MCP server with MCP Proxy');
-      // Stub implementation - would register with MCP Proxy
+      this.logger.info({ serverId: server.id, serverName: server.name, transport }, 'Registering MCP server with MCP Proxy');
+      const r = await fetch(`${url}/servers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!r.ok) {
+        const body = await r.text();
+        this.logger.error({ status: r.status, body, serverId: server.id }, 'mcp-proxy POST /servers failed');
+        throw new Error(`mcp-proxy returned ${r.status}: ${body}`);
+      }
+      this.logger.info({ serverId: server.id }, 'MCP server registered with mcp-proxy');
     } catch (error) {
-      this.logger.error({ error, serverId: server.id }, 'Failed to register MCP server with MCP Proxy');
+      this.logger.error({ error: (error as Error)?.message, serverId: server.id }, 'Failed to register MCP server with MCP Proxy');
       throw error;
     }
   }
 
   /**
-   * Unregisters an MCP server from MCP Proxy
+   * Unregisters an MCP server from MCP Proxy by stopping it.
    */
   async unregisterMCPServer(serverId: string): Promise<void> {
+    const url = process.env.MCP_PROXY_URL || 'http://mcp-proxy:8080';
     try {
-      this.logger.info({ serverId }, 'Unregistering MCP server from MCP Proxy');
-      // Stub implementation - would unregister from MCP Proxy
+      this.logger.info({ serverId }, 'Stopping MCP server in MCP Proxy');
+      const r = await fetch(`${url}/servers/${encodeURIComponent(serverId)}/stop`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!r.ok && r.status !== 404) {
+        const body = await r.text();
+        this.logger.warn({ status: r.status, body, serverId }, 'mcp-proxy stop returned non-OK');
+      }
     } catch (error) {
-      this.logger.error({ error, serverId }, 'Failed to unregister MCP server from MCP Proxy');
-      throw error;
+      this.logger.error({ error: (error as Error)?.message, serverId }, 'Failed to stop MCP server in MCP Proxy');
+      // Don't throw — unregister is best-effort.
     }
   }
 }

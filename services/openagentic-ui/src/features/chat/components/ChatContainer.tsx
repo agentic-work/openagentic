@@ -58,8 +58,10 @@ import SSEErrorBoundary from '@/shared/components/SSEErrorBoundary';
 import MetricsPanel from './MetricsPanel';
 // StaticSidebar removed - using ChatSidebar only
 import ImageAnalysis from './ImageAnalysis';
-// Lazy load AdminPortal for better initial load performance - only loaded when admin opens portal
-const AdminPortal = lazy(() => import('@/features/admin/components/Shell/AdminPortal'));
+// Lazy load AdminPortal for better initial load performance - only loaded when admin opens portal.
+// Route through AdminPortalHost so the V3 admin shell (TopBar + CommandPalette + NotificationsBell)
+// is rendered. Importing AdminPortal.tsx directly bypasses the V3 router and falls back to v2.
+const AdminPortal = lazy(() => import('@/features/admin/components/Shell/AdminPortalHost'));
 // ScrollToBottomButton removed - auto-scroll handles this now
 import BackgroundJobsPanel from './BackgroundJobsPanel';
 // ExportButton removed - not working

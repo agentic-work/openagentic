@@ -10,9 +10,21 @@
  */
 
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
+import { Agent } from 'undici';
 import { loggers } from '../utils/logger.js';
 
-const MCP_PROXY_URL = process.env.MCP_PROXY_URL || 'http://openagentic-mcp-proxy:3100';
+const MCP_PROXY_URL = process.env.MCP_PROXY_URL || 'http://mcp-proxy:8080';
+
+// Shared dispatcher for mcp-proxy fetches — avoids the global pool getting
+// starved by concurrent ollama/embedding calls (which caused /mcp/health
+// to time out at 5s even though mcp-proxy answers in ~30ms).
+const mcpProxyAgent = new Agent({
+  connections: 32,
+  connect: { timeout: 5_000 },
+  keepAliveTimeout: 30_000,
+  keepAliveMaxTimeout: 60_000,
+  pipelining: 1,
+});
 
 export const adminMissingRoutes: FastifyPluginAsync = async (fastify) => {
 
@@ -23,11 +35,12 @@ export const adminMissingRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/mcp/health', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
+      const timeout = setTimeout(() => controller.abort(), 15000);
 
       const response = await fetch(`${MCP_PROXY_URL}/health`, {
-        signal: controller.signal
-      });
+        signal: controller.signal,
+        dispatcher: mcpProxyAgent as any,
+      } as any);
       clearTimeout(timeout);
 
       if (response.ok) {
@@ -108,6 +121,29 @@ export const adminMissingRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
   });
+
+  // ──────────────────────────────────────────────────────────────────────
+  // OSS enterprise stubs — these routes exist in the hosted edition but
+  // are not part of OSS. Returning 402 (not 404) lets the UI render the
+  // enterprise lock screen instead of a generic "endpoint missing" error.
+  // ──────────────────────────────────────────────────────────────────────
+  const enterpriseStub = async (_req: FastifyRequest, reply: FastifyReply) => {
+    return reply.code(402).send({
+      error: 'PaymentRequired',
+      edition: 'oss',
+      message: 'This feature requires the hosted edition.',
+      upgrade_url: 'https://agenticwork.io/purchase',
+    });
+  };
+  // Prometheus query proxy — Dashboard charts (enterprise observability).
+  fastify.post('/prom/query', enterpriseStub);
+  fastify.post('/prom/query_range', enterpriseStub);
+  fastify.get('/prom/health', enterpriseStub);
+  // Cluster fleet — multi-node coordination (enterprise infra).
+  // NOTE: /cluster/health is owned by admin/v3-extras-misc.ts already.
+  fastify.get('/cluster/services', enterpriseStub);
+  // Code Mode API keys — codemode stripped from OSS entirely.
+  fastify.get('/agenticode/api-keys', enterpriseStub);
 };
 
 /**
@@ -251,6 +287,7 @@ export const capabilitiesRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
   });
+
 };
 
 export default adminMissingRoutes;
