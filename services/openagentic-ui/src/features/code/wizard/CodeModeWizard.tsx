@@ -387,7 +387,8 @@ export function CodeModeWizard({ onLaunched, onClose, startStep = 'welcome' }: W
         throw new Error(`HTTP ${res.status}`);
       }
       const data = await res.json();
-      setModels(Array.isArray(data) ? data : []);
+      // /api/chat/models returns { models: [...] }; also tolerate a bare array.
+      setModels(Array.isArray(data) ? data : (data?.models ?? []));
     } catch (e) {
       setModelsError(e instanceof Error ? e.message : 'Unknown error');
       setModels([]);

@@ -13,10 +13,13 @@ import { apiRequest } from '../../../utils/api';
 
 const mockApiRequest = apiRequest as ReturnType<typeof vi.fn>;
 
-const MODELS_RESPONSE = [
-  { id: 'claude-opus-4-5', name: 'Claude Opus 4.5', provider: 'anthropic' },
-  { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai' },
-];
+// Mirror the real /api/chat/models shape: { models: [...] } (NOT a bare array).
+const MODELS_RESPONSE = {
+  models: [
+    { id: 'claude-opus-4-5', name: 'Claude Opus 4.5', provider: 'anthropic' },
+    { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai' },
+  ],
+};
 
 const SESSION_RESPONSE = { id: 'sess-001', sessionId: 'sess-001', workspacePath: '/workspace' };
 
@@ -55,7 +58,7 @@ describe('CodeModeWizard', () => {
   });
 
   it('shows "no models" message when models list is empty', async () => {
-    mockApiRequest.mockResolvedValue(makeJsonResponse([]));
+    mockApiRequest.mockResolvedValue(makeJsonResponse({ models: [] }));
     render(<CodeModeWizard onLaunched={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: /next/i }));
