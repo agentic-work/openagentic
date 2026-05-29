@@ -4,12 +4,13 @@ export async function writeClaudeSettings(home: string, opts: { model?: string }
   await fs.mkdir(dir, { recursive: true });
   const settings: Record<string, unknown> = {
     $schema: 'https://json.schemastore.org/claude-code-settings.json',
-    // bypassPermissions as the DEFAULT mode skips all permission checks AND
-    // suppresses the first-run "Bypass Permissions mode" acceptance dialog +
-    // the trust-this-folder prompt (vs the --dangerously-skip-permissions flag,
-    // which enters the same mode but shows a blocking one-time acceptance).
-    // Safe: exec runs non-root in an isolated container on the user's own workspace.
-    permissions: { defaultMode: 'bypassPermissions' },
+    // acceptEdits: auto-accept file edits without prompting. We deliberately do
+    // NOT use bypassPermissions — it triggers a blocking "accept bypass mode"
+    // dialog that can't be reliably auto-dismissed. In acceptEdits the only
+    // startup gate is the trust-folder dialog (auto-accepted by PtyManager), and
+    // claude asks in-terminal for non-edit tools, which is fine for an
+    // interactive terminal the user drives.
+    permissions: { defaultMode: 'acceptEdits' },
     feedbackSurveyRate: 0,
   };
   if (opts.model) settings.model = opts.model;
