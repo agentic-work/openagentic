@@ -11,11 +11,15 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^22.0.0",
+    "@types/ws": "^8.18.1",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"
   },
   "dependencies": {
-    "node-pty": "^1.1.0"
+    "express": "^5.2.1",
+    "node-pty": "^1.1.0",
+    "ws": "^8.21.0"
   }
 }
