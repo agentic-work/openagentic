@@ -16,4 +16,11 @@ describe('writeClaudeSettings', () => {
     const raw = JSON.parse(await fs.readFile(join(home, '.claude', 'settings.json'), 'utf8'));
     expect('model' in raw).toBe(false);
   });
+  it('writes <home>/.claude.json with onboarding pre-completed so the TUI skips the theme picker', async () => {
+    const home = await fs.mkdtemp(join(tmpdir(), 'cs-'));
+    await writeClaudeSettings(home, {});
+    const cfg = JSON.parse(await fs.readFile(join(home, '.claude.json'), 'utf8'));
+    expect(cfg.hasCompletedOnboarding).toBe(true);
+    expect(typeof cfg.theme).toBe('string');
+  });
 });
