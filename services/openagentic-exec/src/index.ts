@@ -331,7 +331,10 @@ export async function startServer(): Promise<{ port: number; stop: () => Promise
 
   // ─── Listen ───────────────────────────────────────────────────────────────
   await new Promise<void>((resolvePromise, reject) => {
-    httpServer.listen(config.port, '127.0.0.1', () => resolvePromise());
+    // Bind 0.0.0.0 so the api/ui containers on the compose network can reach us.
+    // Safe: the service is published via `expose` only (no host port mapping),
+    // so it's reachable on the internal network, not from the host/external.
+    httpServer.listen(config.port, '0.0.0.0', () => resolvePromise());
     httpServer.on('error', reject);
   });
 
