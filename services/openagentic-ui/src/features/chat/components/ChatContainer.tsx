@@ -66,6 +66,7 @@ const AdminPortal = lazy(() => import('@/features/admin/components/Shell/AdminPo
 import BackgroundJobsPanel from './BackgroundJobsPanel';
 // ExportButton removed - not working
 import { WorkflowsPage } from '@/features/workflows';
+import { CodeModePanel } from '@/features/code/CodeModePanel';
 import ErrorBoundary from '@/shared/components/ErrorBoundary';
 import { OnboardingTour } from './OnboardingTour';
 import HITLPanel, { type HITLMode, type HITLLogEntry } from './HITLPanel';
@@ -73,8 +74,8 @@ import ToolApprovalDialog from '@/shared/components/Dialogs/ToolApprovalDialog';
 import AdminToolInspector from './AdminToolInspector';
 import type { McpApprovalRequest } from '../hooks/useSSEChat';
 
-// App mode type — Code Mode was removed in the OSS edition.
-type AppMode = 'chat' | 'flows';
+// App mode type — includes Code Mode.
+type AppMode = 'chat' | 'flows' | 'code';
 
 // Personality type for AI response styling
 interface Personality {
@@ -380,15 +381,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   // App Mode state - Chat vs Code mode
   const [appMode, setAppMode] = useState<AppMode>('chat');
 
-  // Code Mode is part of the hosted edition in OSS — show a lock-screen
-  // modal instead of switching the mode. Same pattern as the admin
-  // enterprise leaves.
-  const [showCodeModeLock, setShowCodeModeLock] = useState(false);
   const handleAppModeChange = useCallback((next: AppMode) => {
-    if (next === 'code') {
-      setShowCodeModeLock(true);
-      return;
-    }
     setAppMode(next);
   }, []);
 
@@ -2084,8 +2077,13 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
         }}
       >
         <div className="flex flex-col h-full w-full">
-          {/* Conditional rendering: Chat Mode vs Flows Mode */}
-          {appMode === 'flows' ? (
+          {/* Conditional rendering: Chat Mode vs Code Mode vs Flows Mode */}
+          {appMode === 'code' ? (
+            /* Code Mode - AI coding assistant with terminal */
+            <ErrorBoundary>
+              <CodeModePanel />
+            </ErrorBoundary>
+          ) : appMode === 'flows' ? (
             /* Flows Mode - OpenAgenticflow Builder (embedded=true: sidebar managed by ChatSidebar) */
             <ErrorBoundary>
               <WorkflowsPage embedded onWorkflowStateChange={(ws) => { currentWorkflowRef.current = ws; }} />
@@ -2489,13 +2487,6 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
         isOpen={showBackgroundJobs}
         onClose={() => closeUI('showBackgroundJobs')}
       />
-
-      {/* Code Mode upsell modal — OSS shows the entry point in the
-          sidebar but routes the click here. The actual sandboxed
-          coding workspace lives in the hosted edition. */}
-      {showCodeModeLock && (
-        <CodeModeUpsellModal onClose={() => setShowCodeModeLock(false)} />
-      )}
 
       {/* Activity Orb replaced by UnifiedAgentActivity component with integrated ThinkingSphere */}
 
