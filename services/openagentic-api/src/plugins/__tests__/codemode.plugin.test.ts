@@ -1,261 +1,146 @@
 /**
- * Phase 3.8 — codemode routes plugin smoke tests.
+ * codemode.plugin.test.ts — Task 2.5 TDD
  *
- * Spins up an isolated Fastify instance, decorates a stubbed AppContext via
- * decorateApp(), registers codemodeRoutesPlugin, then asserts that each
- * sub-route is mounted at the correct prefix.
+ * Spin up an isolated Fastify instance, register codemodeRoutesPlugin, and assert:
  *
- * HIGH-RISK characteristics (per Phase 3.8 spec):
- *  - 4 inline WebSocket handlers: resolve, terminal, progress, events.
- *  - Runtime dual-mount based on CODEMODE_USE_CCR_RELAY env var.
- *  - WS handlers need access to prisma, providerManager, UserPermissionsService,
- *    validateAnyToken — all stubbed here.
+ * (A) POST /api/code/sessions is mounted (NOT 404).
+ *     Without a valid token it returns 401 (auth), NOT 402 (enterprise gate).
+ *     This proves the feature is free (no enterpriseOnly applied).
  *
- * Smoke-test honesty:
- *  - Auth-protected routes return 404 in Bun test runtime due to the
- *    raw.writableEnded quirk (lesson 9). Those are marked it.todo.
- *  - Logger inoculation mock includes .child() on each category (lesson 13).
- *  - No `as any` in production interfaces (lesson 10).
- *  - Independent try/catch per register in each sub-plugin (lesson 4).
+ * (B) Source-level pin: the plugin source does NOT contain the string
+ *     "enterpriseOnly" — regression guard for the free-gate decision.
  *
- * Bun-compatibility rules (lessons 2, 3, 9, 10, 12, 13):
- *  - Dynamic import inside beforeAll so stubs are in place first.
- *  - Logger inoculation mock declared BEFORE any dynamic import.
- *  - vi.fn() factories captured BEFORE any dynamic import.
- *  - Strongly typed options (lessons 3, 6).
+ * Bun/vitest-compat notes (from the original Phase 3.8 stub):
+ *  - Logger inoculation mock MUST be declared before any dynamic import.
+ *  - Dynamic import of codemodeRoutesPlugin happens inside beforeAll AFTER
+ *    stubs are in place.
+ *  - @fastify/websocket must be registered before the plugin (the plugin
+ *    registers a WS route).
+ *  - WS routes: inject() returns 404 in test runtime due to the Bun
+ *    raw.writableEnded quirk; WS proxy logic is tested in terminal-ws.route.test.ts.
  */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
-import { AppContext, decorateApp } from '../../context/AppContext.js';
+import websocketPlugin from '@fastify/websocket';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { createLoggerMock } from '../../test/mocks/logger.js';
 
 // ---------------------------------------------------------------------------
-// Logger stub — MUST be declared before any dynamic import (lessons 12, 13).
-// Each category MUST have .child() — UserPermissionsService calls logger.child()
-// at construction; missing it throws at plugin register time.
+// Logger stub — MUST be declared before any dynamic import (lessons 12, 13)
 // ---------------------------------------------------------------------------
 
 vi.mock('../../utils/logger.js', () => createLoggerMock());
 
 // ---------------------------------------------------------------------------
-// Stub deps — minimum surface to satisfy plugin instantiation (lesson 3)
+// Stub deps to satisfy plugin instantiation without real services
 // ---------------------------------------------------------------------------
 
-const stubPrisma = {
-  user: {
-    findUnique: vi.fn().mockResolvedValue(null),
-    findFirst: vi.fn().mockResolvedValue(null),
-  },
-  codeSession: {
-    findFirst: vi.fn().mockResolvedValue(null),
-  },
-  systemConfiguration: {
-    findMany: vi.fn().mockResolvedValue([]),
-    findUnique: vi.fn().mockResolvedValue(null),
-  },
-  $queryRaw: vi.fn().mockResolvedValue([]),
-  _stub: true,
-} as any;
+const stubExecClient = {
+  createSession: vi.fn().mockResolvedValue({
+    sessionId: 'stub-session',
+    status: 'running',
+    workspacePath: '/workspaces/stub',
+    pid: 1,
+    createdAt: Date.now(),
+  }),
+  getSession: vi.fn().mockResolvedValue({ sessionId: 'stub-session', status: 'running' }),
+  stopSession: vi.fn().mockResolvedValue(undefined),
+  resize: vi.fn().mockResolvedValue(undefined),
+};
 
-const stubProviderManager = {
-  getProviders: vi.fn().mockResolvedValue([]),
-} as any;
+const stubCodeModeSettings = {
+  getCodeModeSettings: vi.fn().mockResolvedValue({}),
+  setCodeModeSettings: vi.fn().mockResolvedValue(undefined),
+};
 
-const stubLogger = {
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-  debug: vi.fn(),
-  child: function () { return this; },
-} as any;
+// validateToken stub — always invalid so auth tests work without a real JWT
+const stubValidateToken = vi.fn().mockResolvedValue({ ok: false, user: null });
+
+// connectExec stub — returns a dead WS object so the plugin registers but no
+// real connection is made during tests
+function stubConnectExec(_url: string, _headers: Record<string, string>): any {
+  const { EventEmitter } = require('events');
+  const sock = new EventEmitter() as any;
+  sock.readyState = 3; // CLOSED
+  sock.send = vi.fn();
+  sock.close = vi.fn();
+  return sock;
+}
 
 // ---------------------------------------------------------------------------
-// it.todo blocks — auth-protected + WS routes hit the Bun quirk (lesson 9)
-// Auth-protected routes return 404 instead of 401 in Bun test runtime.
-// Memory: reference_fastify_v5_unawaited_send_bug.md
+// Suite
 // ---------------------------------------------------------------------------
 
-describe('codemodeRoutesPlugin — Phase 3.8 smoke tests', () => {
-  it.todo(
-    '/api/code/ws/terminal (websocket: true) — protected by validateAnyToken in handler. ' +
-    'WS upgrade returns 404 instead of 401 in Bun test runtime due to raw.writableEnded quirk. ' +
-    'Memory: reference_fastify_v5_unawaited_send_bug.md. ' +
-    'Follow-up: integration test with real auth context.'
-  );
-
-  it.todo(
-    '/api/code/ws/progress (websocket: true) — protected by validateAnyToken in handler. ' +
-    'WS upgrade returns 404 instead of 401 in Bun test runtime due to raw.writableEnded quirk. ' +
-    'Memory: reference_fastify_v5_unawaited_send_bug.md. ' +
-    'Follow-up: integration test with real auth context.'
-  );
-
-  it.todo(
-    '/api/code/ws/events (websocket: true) — protected by validateAnyToken in handler. ' +
-    'WS upgrade returns 404 instead of 401 in Bun test runtime due to raw.writableEnded quirk. ' +
-    'Memory: reference_fastify_v5_unawaited_send_bug.md. ' +
-    'Follow-up: integration test with real auth context.'
-  );
-
-  it.todo(
-    '/api/code/ws/chat (websocket: true) — 4410 legacy gate. ' +
-    'WS upgrade returns 404 instead of 401 in Bun test runtime due to raw.writableEnded quirk. ' +
-    'Memory: reference_fastify_v5_unawaited_send_bug.md. ' +
-    'Follow-up: integration test with real auth context.'
-  );
-
-  it.todo(
-    '/api/code/ws/resolve — protected by validateAnyToken preHandler. ' +
-    'Returns 404 instead of 401 in Bun test runtime due to raw.writableEnded quirk. ' +
-    'Memory: reference_fastify_v5_unawaited_send_bug.md. ' +
-    'Follow-up: integration test with real auth context.'
-  );
-
-  it.todo(
-    '/api/code/* routes with authMiddleware preHandler — returns 404 in Bun test runtime. ' +
-    'Memory: reference_fastify_v5_unawaited_send_bug.md.'
-  );
-
-  it.todo(
-    '/api/admin/code/* routes with adminMiddleware preHandler — returns 404 in Bun test runtime. ' +
-    'Memory: reference_fastify_v5_unawaited_send_bug.md.'
-  );
-
-  it.todo(
-    '/api/admin/codemode/* routes with adminMiddleware preHandler — returns 404 in Bun test runtime. ' +
-    'Memory: reference_fastify_v5_unawaited_send_bug.md.'
-  );
-
-  // ---------------------------------------------------------------------------
-  // Active assertions — non-auth-gated routes accessible without tokens
-  // ---------------------------------------------------------------------------
-
-  let serverDefault: FastifyInstance;
-  let serverCCR: FastifyInstance;
+describe('codemodeRoutesPlugin — Task 2.5 smoke tests', () => {
+  let app: FastifyInstance;
   const savedEnv: Record<string, string | undefined> = {};
 
   beforeAll(async () => {
+    // Save env
     savedEnv.JWT_SECRET = process.env.JWT_SECRET;
-    savedEnv.DATABASE_URL = process.env.DATABASE_URL;
-    savedEnv.OLLAMA_ENABLED = process.env.OLLAMA_ENABLED;
-    savedEnv.OLLAMA_EMBEDDING_MODEL = process.env.OLLAMA_EMBEDDING_MODEL;
-    savedEnv.EMBEDDING_MODEL = process.env.EMBEDDING_MODEL;
-    savedEnv.CODEMODE_USE_CCR_RELAY = process.env.CODEMODE_USE_CCR_RELAY;
-    savedEnv.CODE_MANAGER_URL = process.env.CODE_MANAGER_URL;
+    process.env.JWT_SECRET = 'test-jwt-secret-codemode-plugin-task25';
 
-    process.env.JWT_SECRET = 'test-jwt-secret-phase38-plugin';
-    process.env.DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://stub:stub@localhost:5432/stub';
-    if (!process.env.OLLAMA_ENABLED) process.env.OLLAMA_ENABLED = 'true';
-    if (!process.env.OLLAMA_EMBEDDING_MODEL && !process.env.EMBEDDING_MODEL) {
-      process.env.OLLAMA_EMBEDDING_MODEL = 'stub-embedding-model';
-    }
-    process.env.CODE_MANAGER_URL = 'http://stub-manager:3050';
+    // Build Fastify with WS support
+    app = Fastify({ logger: false });
+    await app.register(websocketPlugin);
 
-    // ── Server 1: default path (CODEMODE_USE_CCR_RELAY unset / off) ───────────
-    delete process.env.CODEMODE_USE_CCR_RELAY;
-
-    serverDefault = Fastify({ logger: false });
-    const ctx1 = new AppContext({ prisma: stubPrisma, logger: stubLogger });
-    (ctx1 as any).providerManager = stubProviderManager;
-    decorateApp(serverDefault, ctx1);
-
-    // Import the plugin AFTER stubs are in place (lesson 2).
+    // Dynamic import AFTER stubs are in place (lesson 2)
     const { codemodeRoutesPlugin } = await import('../codemode.plugin.js');
 
-    await serverDefault.register(codemodeRoutesPlugin, {
-      providerManager: stubProviderManager,
+    await app.register(codemodeRoutesPlugin, {
+      execClient: stubExecClient,
+      codeModeSettings: stubCodeModeSettings,
+      validateToken: stubValidateToken,
+      connectExec: stubConnectExec,
+      codeExecWsUrl: 'ws://stub-exec:3060',
+      codeExecInternalKey: 'stub-key',
     });
-    await serverDefault.ready();
 
-    // ── Server 2: CCR relay path (CODEMODE_USE_CCR_RELAY=1) ─────────────────
-    process.env.CODEMODE_USE_CCR_RELAY = '1';
-
-    serverCCR = Fastify({ logger: false });
-    const ctx2 = new AppContext({ prisma: stubPrisma, logger: stubLogger });
-    (ctx2 as any).providerManager = stubProviderManager;
-    decorateApp(serverCCR, ctx2);
-
-    await serverCCR.register(codemodeRoutesPlugin, {
-      providerManager: stubProviderManager,
-    });
-    await serverCCR.ready();
+    await app.ready();
   });
 
   afterAll(async () => {
-    await serverDefault.close();
-    await serverCCR.close();
+    await app.close();
     // Restore env
-    const restore = (key: string) => {
-      if (savedEnv[key] === undefined) delete process.env[key];
-      else process.env[key] = savedEnv[key];
-    };
-    for (const k of Object.keys(savedEnv)) restore(k);
+    if (savedEnv.JWT_SECRET === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = savedEnv.JWT_SECRET;
   });
 
-  // ── Health endpoint — no auth required ──────────────────────────────────
+  // ── (A) Route mount + 401 (not 402) ─────────────────────────────────────
 
-  it('/api/code/health is mounted (returns 503 when code-manager unreachable, not 404)', async () => {
-    const resp = await serverDefault.inject({
-      method: 'GET',
-      url: '/api/code/health',
-    });
-    // code-manager is stubbed as http://stub-manager:3050 which won't respond.
-    // We expect 503 (unhealthy), NOT 404 (route not mounted).
+  it('POST /api/code/sessions is mounted (not 404)', async () => {
+    const resp = await app.inject({ method: 'POST', url: '/api/code/sessions', payload: {} });
     expect(resp.statusCode).not.toBe(404);
   });
 
-  it.todo(
-    '/api/admin/codemode/config-bundle-internal is mounted (no auth — exec daemon calls this). ' +
-    'Passes in isolation (returns 500 with stub DB, not 404) but fails in full suite due to ' +
-    'cross-test prisma pollution — real prisma module leaks in, route returns 404. ' +
-    'Follow-up: add prisma module mock to this test file.'
-  );
-
-  // ── inject()-based mount assertions (B4 fix — replaces printRoutes() substring checks)
-  // A non-404 response proves the route is mounted regardless of radix-tree internals.
-
-  it('codemodeRoutesPlugin mounts routes under /api/code (default mode)', async () => {
-    const resp = await serverDefault.inject({ method: 'GET', url: '/api/code/health' });
-    expect(resp.statusCode).not.toBe(404);
+  it('POST /api/code/sessions returns 401 (auth required), NOT 402 (no enterprise gate)', async () => {
+    const resp = await app.inject({ method: 'POST', url: '/api/code/sessions', payload: {} });
+    // Must be 401 (no auth token) — never 402 (enterprise paywall)
+    expect(resp.statusCode).toBe(401);
+    expect(resp.statusCode).not.toBe(402);
   });
 
-  it.todo(
-    'codemodeRoutesPlugin mounts /api/code/ws/* routes (default mode) — ' +
-    'inject /api/code/ws/resolve returns non-404. ' +
-    'Bun raw.writableEnded quirk: auth check returns 404 instead of 401 in test runtime. ' +
-    'Memory: reference_fastify_v5_unawaited_send_bug.md'
-  );
+  // ── (B) Source-level regression guard ───────────────────────────────────
 
-  it.todo(
-    'codemodeRoutesPlugin mounts admin/codemode routes (default mode) — ' +
-    'inject /api/admin/codemode/config-bundle-internal returns non-404. ' +
-    'Passes in isolation but fails in full suite due to cross-test prisma module leakage. ' +
-    'Follow-up: add prisma module mock to this test file.'
-  );
-
-  // ── Dual-mount verification — CCR branch ──────────────────────────────
-
-  it('CCR mode: codemodeRoutesPlugin also mounts routes under /api/code (CCR mode)', async () => {
-    const resp = await serverCCR.inject({ method: 'GET', url: '/api/code/health' });
-    expect(resp.statusCode).not.toBe(404);
+  it('codemode.plugin.ts source does NOT contain "enterpriseOnly"', () => {
+    const pluginPath = resolve(__dirname, '../codemode.plugin.ts');
+    let src: string;
+    try {
+      src = readFileSync(pluginPath, 'utf-8');
+    } catch {
+      // If .ts isn't readable (compiled only), try the .js
+      const jsPath = resolve(__dirname, '../../plugins/codemode.plugin.js');
+      src = readFileSync(jsPath, 'utf-8');
+    }
+    expect(src).not.toContain('enterpriseOnly');
   });
 
+  // ── WS routes: behaviour tested in terminal-ws.route.test.ts ─────────────
+
   it.todo(
-    'CCR mode: /api/code/ws/* routes present (inject returns non-404). ' +
-    'Bun raw.writableEnded quirk: auth check returns 404 instead of 401 in test runtime. ' +
-    'Memory: reference_fastify_v5_unawaited_send_bug.md'
+    'GET /api/code/ws/terminal — WS upgrade behaviour tested in terminal-ws.route.test.ts. ' +
+    'inject() cannot upgrade to WS in vitest runner (raw.writableEnded quirk).',
   );
-
-  // ── /api/code/access-check — internal, no user auth ─────────────────────
-
-  it('/api/code/access-check is mounted (returns 400 for missing userId, not 404)', async () => {
-    const resp = await serverDefault.inject({
-      method: 'GET',
-      url: '/api/code/access-check',
-    });
-    // Without INTERNAL_SERVICE_SECRET env var, no auth check fires.
-    // Missing userId → 400 BAD REQUEST, not 404 NOT FOUND.
-    expect(resp.statusCode).not.toBe(404);
-  });
 });
