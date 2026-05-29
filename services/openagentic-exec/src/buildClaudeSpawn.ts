@@ -7,6 +7,9 @@ export function buildClaudeSpawn(i: ClaudeSpawnInput): ClaudeSpawn {
   const env: Record<string,string> = {
     ...process.env as Record<string,string>,
     HOME: i.home,
+    // Ensure claude's native install dir (~/.local/bin) is on PATH so it can
+    // resolve itself for the agent loop instead of warning "not in your PATH".
+    PATH: `${i.home}/.local/bin:${(process.env.PATH || '/usr/local/bin:/usr/bin:/bin')}`,
     ANTHROPIC_BASE_URL: i.apiEndpoint,
     ANTHROPIC_AUTH_TOKEN: i.authToken,
   };

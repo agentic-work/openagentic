@@ -18,6 +18,7 @@ describe('buildClaudeSpawn', () => {
     expect(env.ANTHROPIC_AUTH_TOKEN).toBe('jwt-abc');
     expect(env.ANTHROPIC_MODEL).toBe('reg-model-1');
     expect(env.HOME).toBe('/workspaces/u1');
+    expect(env.PATH).toContain('/workspaces/u1/.local/bin');
   });
   it('omits ANTHROPIC_MODEL when model empty (smart router)', () => {
     const { env } = buildClaudeSpawn({ ...base, model: '' });

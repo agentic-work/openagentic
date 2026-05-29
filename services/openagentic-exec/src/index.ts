@@ -113,14 +113,16 @@ export async function startServer(): Promise<{ port: number; stop: () => Promise
 
     try {
       await fs.mkdir(resolvedWorkspace, { recursive: true });
-      await writeClaudeSettings(resolvedWorkspace, { model: model || undefined });
+      // Write claude config into claude's HOME (not the workspace) so ~/.local/bin
+      // resolves and onboarding/permission settings apply.
+      await writeClaudeSettings(config.claudeHome, { model: model || undefined });
 
       const s = await ptyManager.createSession({
         sessionId,
         userId,
         userEmail: userEmail || undefined,
         workspacePath: resolvedWorkspace,
-        home: resolvedWorkspace,
+        home: config.claudeHome,
         model: model || '',
         apiEndpoint: apiEndpoint || config.apiEndpoint,
         authToken: authToken || apiKey || '',
