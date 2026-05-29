@@ -8,9 +8,9 @@ describe('buildClaudeSpawn', () => {
     expect(s.command).toBe('/usr/local/bin/claude');
     expect(s.cwd).toBe('/workspaces/u1/ws');
   });
-  it('passes --dangerously-skip-permissions so the PTY does not block on trust/permission prompts', () => {
+  it('passes no CLI flags (permission bypass + onboarding are handled via config files)', () => {
     const s = buildClaudeSpawn(base);
-    expect(s.args).toContain('--dangerously-skip-permissions');
+    expect(s.args).toEqual([]);
   });
   it('sets ANTHROPIC routing env', () => {
     const { env } = buildClaudeSpawn(base);

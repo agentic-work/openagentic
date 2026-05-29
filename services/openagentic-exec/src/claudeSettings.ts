@@ -4,7 +4,12 @@ export async function writeClaudeSettings(home: string, opts: { model?: string }
   await fs.mkdir(dir, { recursive: true });
   const settings: Record<string, unknown> = {
     $schema: 'https://json.schemastore.org/claude-code-settings.json',
-    permissions: { defaultMode: 'acceptEdits' },
+    // bypassPermissions as the DEFAULT mode skips all permission checks AND
+    // suppresses the first-run "Bypass Permissions mode" acceptance dialog +
+    // the trust-this-folder prompt (vs the --dangerously-skip-permissions flag,
+    // which enters the same mode but shows a blocking one-time acceptance).
+    // Safe: exec runs non-root in an isolated container on the user's own workspace.
+    permissions: { defaultMode: 'bypassPermissions' },
     feedbackSurveyRate: 0,
   };
   if (opts.model) settings.model = opts.model;

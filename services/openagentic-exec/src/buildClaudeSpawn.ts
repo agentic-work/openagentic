@@ -11,9 +11,11 @@ export function buildClaudeSpawn(i: ClaudeSpawnInput): ClaudeSpawn {
     ANTHROPIC_AUTH_TOKEN: i.authToken,
   };
   if (i.model) env.ANTHROPIC_MODEL = i.model;
-  // --dangerously-skip-permissions: bypass the first-run "trust this folder"
-  // dialog and per-tool permission prompts so the PTY never blocks waiting for
-  // interactive confirmation. Safe here: the exec runs as a non-root user in an
-  // isolated container, operating only on the user's own per-session workspace.
-  return { command: i.claudePath, args: ['--dangerously-skip-permissions'], cwd: i.workspacePath, env };
+  // No CLI flags: permission bypass + onboarding skip are handled via config
+  // (settings.json `permissions.defaultMode: bypassPermissions` + ~/.claude.json
+  // `hasCompletedOnboarding`), which the writeClaudeSettings step writes into the
+  // session HOME. The --dangerously-skip-permissions FLAG is intentionally NOT
+  // used: it shows a blocking one-time "accept bypass mode" dialog, whereas
+  // bypassPermissions-as-default suppresses that dialog entirely.
+  return { command: i.claudePath, args: [], cwd: i.workspacePath, env };
 }

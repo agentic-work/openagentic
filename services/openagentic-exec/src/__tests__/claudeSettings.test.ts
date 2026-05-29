@@ -6,7 +6,7 @@ describe('writeClaudeSettings', () => {
     const home = await fs.mkdtemp(join(tmpdir(), 'cs-'));
     await writeClaudeSettings(home, { model: 'reg-model-1' });
     const raw = JSON.parse(await fs.readFile(join(home, '.claude', 'settings.json'), 'utf8'));
-    expect(raw.permissions.defaultMode).toBe('acceptEdits');
+    expect(raw.permissions.defaultMode).toBe('bypassPermissions');
     expect(raw.feedbackSurveyRate).toBe(0);
     expect(raw.model).toBe('reg-model-1');
   });
