@@ -24,15 +24,19 @@ RUN curl -fsSL https://claude.ai/install.sh | bash && \
     /usr/local/bin/claude --version
 
 # ── Application ─────────────────────────────────────────────────────────────
+# SRC_PATH defaults to the service dir (standalone build).
+# When built via docker compose from repo root, compose passes SRC_PATH.
+ARG SRC_PATH=services/openagentic-exec
+
 WORKDIR /app
 
-COPY package*.json ./
+COPY ${SRC_PATH}/package*.json ./
 
 # npm ci builds node-pty natively using the python3 + build-essential above
 RUN npm ci
 
-COPY tsconfig.json ./
-COPY src ./src
+COPY ${SRC_PATH}/tsconfig.json ./
+COPY ${SRC_PATH}/src ./src
 
 RUN npm run build
 
