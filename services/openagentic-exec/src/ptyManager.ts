@@ -60,8 +60,12 @@ export class PtyManager {
       setTimeout(() => { try { internal.pty.write('\r'); } catch { /* gone */ } }, 350);
     }
     if (!internal.onboarding.bypass && /Bypass Permissions mode/i.test(text)) {
-      internal.onboarding.bypass = true; // move to "Yes, I accept" (down) → Enter
-      setTimeout(() => { try { internal.pty.write('\x1b[B\r'); } catch { /* gone */ } }, 500);
+      internal.onboarding.bypass = true;
+      // The dialog renders before its key handler is interactive, and the menu
+      // needs the arrow and Enter as SEPARATE keystrokes. Wait for it to settle,
+      // press Down (highlight "2. Yes, I accept"), then Enter.
+      setTimeout(() => { try { internal.pty.write('\x1b[B'); } catch { /* gone */ } }, 1500);
+      setTimeout(() => { try { internal.pty.write('\r'); } catch { /* gone */ } }, 1900);
     }
   }
 
