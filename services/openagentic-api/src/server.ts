@@ -1080,6 +1080,26 @@ async function registerAllRoutes() {
     loggers.routes.error({ err: error }, 'Failed to register OpenAI-compatible routes');
   }
 
+  // Register Anthropic Messages API — POST /v1/messages
+  // The Claude Code CLI speaks the Anthropic Messages API exclusively.
+  // This routes ${ANTHROPIC_BASE_URL}/v1/messages calls through the platform's
+  // ProviderManager with Anthropic-to-internal translation and canonical SSE output.
+  try {
+    const { anthropicMessagesRoute } = await import('./routes/anthropic/messages.route.js');
+    await server.register(async (instance) => {
+      instance.addHook('preHandler', async (request, reply) => {
+        return authMiddleware(request, reply);
+      });
+      await instance.register(anthropicMessagesRoute, {
+        providerManager: providerManager as any,
+        logger: loggers.routes,
+      });
+    }, { prefix: '/v1' });
+    loggers.routes.info('Anthropic Messages API registered at POST /v1/messages');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register Anthropic Messages routes');
+  }
+
   // NOTE: Most Admin routes are now registered via adminPlugin above (HIGH-001 refactoring)
   // Keeping some here temporarily until full migration is complete
 
