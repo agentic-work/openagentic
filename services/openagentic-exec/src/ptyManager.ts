@@ -61,11 +61,18 @@ export class PtyManager {
     }
     if (!internal.onboarding.bypass && /Bypass Permissions mode/i.test(text)) {
       internal.onboarding.bypass = true;
-      // The dialog renders before its key handler is interactive, and the menu
-      // needs the arrow and Enter as SEPARATE keystrokes. Wait for it to settle,
-      // press Down (highlight "2. Yes, I accept"), then Enter.
-      setTimeout(() => { try { internal.pty.write('\x1b[B'); } catch { /* gone */ } }, 1500);
-      setTimeout(() => { try { internal.pty.write('\r'); } catch { /* gone */ } }, 1900);
+      // Move selection to "2. Yes, I accept" then Enter. claude's Ink TUI uses
+      // application-cursor-key mode (DECCKM) where Down is ESC O B, so try that
+      // first; retry with the normal ESC [ B encoding if the dialog persists.
+      const accept = (down: string) => {
+        try { internal.pty.write(down); } catch { /* gone */ }
+        setTimeout(() => { try { internal.pty.write('\r'); } catch { /* gone */ } }, 250);
+      };
+      setTimeout(() => accept('\x1bOB'), 1200);
+      setTimeout(() => {
+        const recent = stripAnsi(internal.outputBuffer).slice(-400);
+        if (/2\.\s*Yes, I accept/i.test(recent) && /No, exit/i.test(recent)) accept('\x1b[B');
+      }, 3600);
     }
   }
 
