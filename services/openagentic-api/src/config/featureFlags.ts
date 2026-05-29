@@ -88,6 +88,21 @@ export const featureFlags = {
    */
   codeManagerInternalKey: process.env.CODE_MANAGER_INTERNAL_KEY,
 
+  /** HTTP base URL of the openagentic-exec service (port 3060). */
+  codeExecUrl: process.env.CODE_EXEC_URL || 'http://openagentic-exec:3060',
+
+  /** WebSocket base URL of the openagentic-exec service (port 3060). */
+  codeExecWsUrl: process.env.CODE_EXEC_WS_URL || 'ws://openagentic-exec:3060',
+
+  /**
+   * Internal API key for api → openagentic-exec requests.
+   * Sent as `x-internal-api-key` header. Empty string = disabled (dev-only).
+   */
+  codeExecInternalKey: process.env.CODE_EXEC_INTERNAL_KEY || '',
+
+  /** Code Mode feature gate (CODEMODE_ENABLED, default true). */
+  codemodeEnabled: bool('CODEMODE_ENABLED', true),
+
   /**
    * Kubernetes namespace for exec-pod address construction + cluster
    * queries. Helm sets this from `{{ .Release.Namespace }}` (api) or
