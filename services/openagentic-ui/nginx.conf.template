@@ -318,21 +318,9 @@ server {
         proxy_send_timeout 86400s;
     }
 
-    # AWCode session management REST API
-    # ^~ prefix with longer match takes priority over ^~ /api/ (nginx longest prefix wins)
-    # rewrite strips /api/code/ before proxying to code manager
-    location ^~ /api/code/sessions {
-        set $awcode_sessions_upstream "http://${EXEC_HOST}:${EXEC_PORT}";
-        rewrite ^/api/code/(.*)$ /$1 break;
-        proxy_pass $awcode_sessions_upstream;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Authorization $http_authorization;
-        proxy_set_header X-OpenAgentic-Frontend "${FRONTEND_SECRET}";
-    }
+    # /api/code/sessions is served by the API (mints the session token, calls the
+    # exec client), NOT the exec directly — it falls through to `location ^~ /api/`.
+    # (The legacy direct-to-exec sessions proxy was removed for the Claude Code rebuild.)
 
     # ===========================================
     # CODE-SERVER - VS Code Web IDE
