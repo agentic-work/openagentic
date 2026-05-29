@@ -28,14 +28,41 @@ interface InternalSession {
   meta: Session;
   listeners: Array<(data: string) => void>;
   outputBuffer: string;
+  onboarding: { trust: boolean; bypass: boolean };
+}
+
+// Strip ANSI/control sequences so we can pattern-match the dialog prompts.
+function stripAnsi(s: string): string {
+  return s.replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '').replace(/\x1b[()][AB0-2]/g, '').replace(/\x00/g, '');
 }
 
 export class PtyManager {
   private claudePath: string;
+  private autoDismiss: boolean;
   private sessions: Map<string, InternalSession> = new Map();
 
-  constructor(opts: { claudePath: string }) {
+  constructor(opts: { claudePath: string; autoDismissOnboarding?: boolean }) {
     this.claudePath = opts.claudePath;
+    this.autoDismiss = opts.autoDismissOnboarding !== false;
+  }
+
+  // Each session gets a FRESH workspace, so claude deterministically shows its
+  // first-run dialogs (trust-this-folder, then the Bypass-Permissions-mode
+  // acceptance). These block the TUI waiting for input. We watch the output and
+  // "press the button" once each dialog appears so the user lands at a ready
+  // prompt. Driven by output content (not fixed timers) to be robust to startup
+  // latency. claude's config can't pre-accept these in a pre-seedable way.
+  private maybeAutoAccept(internal: InternalSession): void {
+    if (!this.autoDismiss) return;
+    const text = stripAnsi(internal.outputBuffer);
+    if (!internal.onboarding.trust && /(trust this folder|Is this a project you)/i.test(text)) {
+      internal.onboarding.trust = true; // default selection is "Yes, I trust" → Enter
+      setTimeout(() => { try { internal.pty.write('\r'); } catch { /* gone */ } }, 350);
+    }
+    if (!internal.onboarding.bypass && /Bypass Permissions mode/i.test(text)) {
+      internal.onboarding.bypass = true; // move to "Yes, I accept" (down) → Enter
+      setTimeout(() => { try { internal.pty.write('\x1b[B\r'); } catch { /* gone */ } }, 500);
+    }
   }
 
   async createSession(input: CreateSessionInput): Promise<Session> {
@@ -80,6 +107,7 @@ export class PtyManager {
       meta,
       listeners: [],
       outputBuffer: '',
+      onboarding: { trust: false, bypass: false },
     };
 
     this.sessions.set(input.sessionId, internal);
@@ -90,6 +118,7 @@ export class PtyManager {
       internal.outputBuffer = combined.length > OUTPUT_BUFFER_MAX
         ? combined.slice(-OUTPUT_BUFFER_MAX)
         : combined;
+      this.maybeAutoAccept(internal);
       for (const cb of internal.listeners) {
         cb(data);
       }
