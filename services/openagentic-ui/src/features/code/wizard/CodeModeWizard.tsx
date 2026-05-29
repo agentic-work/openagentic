@@ -26,6 +26,8 @@ interface ModelOption {
 interface WizardProps {
   onLaunched: (session: any) => void;
   onClose?: () => void;
+  /** Which step to start on. Defaults to 'welcome'. */
+  startStep?: Phase;
 }
 
 // ---------------------------------------------------------------------------
@@ -349,8 +351,8 @@ function LaunchStep({
 // Main Wizard
 // ---------------------------------------------------------------------------
 
-export function CodeModeWizard({ onLaunched, onClose }: WizardProps) {
-  const [phase, setPhase] = useState<Phase>('welcome');
+export function CodeModeWizard({ onLaunched, onClose, startStep = 'welcome' }: WizardProps) {
+  const [phase, setPhase] = useState<Phase>(startStep);
 
   // Prereq state
   const [modelsLoading, setModelsLoading] = useState(false);

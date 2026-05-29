@@ -130,6 +130,7 @@ export const Terminal: React.FC<TerminalProps> = ({ sessionId }) => {
   return (
     <div
       ref={containerRef}
+      data-testid="code-terminal"
       style={{
         width: '100%',
         height: '100%',
