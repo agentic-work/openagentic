@@ -267,6 +267,16 @@ export async function startServer(): Promise<{ port: number; stop: () => Promise
       return;
     }
 
+    // Replay buffered output so late-connecting WS clients see prior output.
+    // Use a short setTimeout (vs setImmediate) to let the client's 'message'
+    // listener be registered after the 'open' event resolves its await.
+    setTimeout(() => {
+      const buffered = ptyManager.getOutputBuffer(sessionId);
+      if (buffered && socket.readyState === socket.OPEN) {
+        socket.send(buffered);
+      }
+    }, 20);
+
     ptyManager.onData(sessionId, (data: string) => {
       if (socket.readyState === socket.OPEN) {
         socket.send(data);
@@ -294,7 +304,12 @@ export async function startServer(): Promise<{ port: number; stop: () => Promise
       const stopPromises = sessions.map(s => ptyManager.stopSession(s.sessionId));
 
       Promise.allSettled(stopPromises).then(() => {
+        // Terminate all open WS clients so wss.close() doesn't hang
+        for (const client of wss.clients) {
+          try { client.terminate(); } catch { /* ignore */ }
+        }
         wss.close(() => {
+          httpServer.closeAllConnections?.();
           httpServer.close(() => resolveStop());
         });
       });

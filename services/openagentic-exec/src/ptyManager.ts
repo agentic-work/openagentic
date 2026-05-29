@@ -21,10 +21,13 @@ export interface Session {
   createdAt: number;
 }
 
+const OUTPUT_BUFFER_MAX = 64 * 1024;
+
 interface InternalSession {
   pty: pty.IPty;
   meta: Session;
   listeners: Array<(data: string) => void>;
+  outputBuffer: string;
 }
 
 export class PtyManager {
@@ -70,11 +73,17 @@ export class PtyManager {
       pty: p,
       meta,
       listeners: [],
+      outputBuffer: '',
     };
 
     this.sessions.set(input.sessionId, internal);
 
     p.onData((data: string) => {
+      // Maintain rolling output buffer for WS replay on late connects
+      const combined = internal.outputBuffer + data;
+      internal.outputBuffer = combined.length > OUTPUT_BUFFER_MAX
+        ? combined.slice(-OUTPUT_BUFFER_MAX)
+        : combined;
       for (const cb of internal.listeners) {
         cb(data);
       }
@@ -129,6 +138,10 @@ export class PtyManager {
     }
 
     session.meta.status = 'stopped';
+  }
+
+  getOutputBuffer(sessionId: string): string {
+    return this.sessions.get(sessionId)?.outputBuffer ?? '';
   }
 
   getStatus(sessionId: string): 'running' | 'stopped' | 'unknown' {
