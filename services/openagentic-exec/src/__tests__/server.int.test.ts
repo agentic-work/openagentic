@@ -7,6 +7,7 @@ beforeAll(async () => {
   await fs.writeFile(fake, '#!/bin/sh\necho READY\ncat\n'); await fs.chmod(fake, 0o755);
   process.env.PORT = '0'; process.env.INTERNAL_API_KEY = 'k1';
   process.env.WORKSPACES_PATH = ws; process.env.CLAUDE_PATH = fake;
+  process.env.CLAUDE_HOME = join(ws, 'claudehome'); // writable home for claude config on the host
   const { startServer } = await import('../index.js');
   const srv = await startServer(); base = `http://127.0.0.1:${srv.port}`; stop = srv.stop;
 });

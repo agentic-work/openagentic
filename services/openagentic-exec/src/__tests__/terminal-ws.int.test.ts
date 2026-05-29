@@ -7,6 +7,7 @@ beforeAll(async () => {
   const fake = join(root, 'fakeclaude.sh');
   await fs.writeFile(fake, '#!/bin/sh\necho READY\ncat\n'); await fs.chmod(fake, 0o755);
   process.env.PORT='0'; process.env.INTERNAL_API_KEY='k1'; process.env.WORKSPACES_PATH=root; process.env.CLAUDE_PATH=fake;
+  process.env.CLAUDE_HOME = join(root, 'claudehome'); // writable home for claude config on the host
   const { startServer } = await import('../index.js');
   const srv = await startServer(); base=`http://127.0.0.1:${srv.port}`; wsBase=`ws://127.0.0.1:${srv.port}`; stop=srv.stop;
   await fetch(`${base}/sessions`, { method:'POST', headers:{'content-type':'application/json','x-internal-api-key':'k1'},
