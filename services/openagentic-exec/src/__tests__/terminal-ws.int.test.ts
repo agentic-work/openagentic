@@ -13,11 +13,29 @@ beforeAll(async () => {
     body: JSON.stringify({ sessionId:'w1', userId:'u1', workspacePath: join(root,'u1'), authToken:'t', apiEndpoint:'http://api:8000', model:'' }) });
 });
 afterAll(async () => { await stop(); });
-it('streams pty output and accepts input over /ws/terminal/:id', async () => {
+
+// C1: WS upgrade must enforce internal-key auth
+it('rejects WS connection without internal key', async () => {
   const client = new WebSocket(`${wsBase}/ws/terminal/w1`);
+  // The server should reject with 401 — ws client emits 'error' or 'close' without opening
+  const result = await new Promise<'error' | 'close' | 'open'>((resolve) => {
+    client.on('error', () => resolve('error'));
+    client.on('close', () => resolve('close'));
+    client.on('open', () => resolve('open'));
+  });
+  expect(result).not.toBe('open');
+  try { client.terminate(); } catch { /* already closed */ }
+});
+
+// C1: WS upgrade must accept valid internal key
+// I2: attach message listener BEFORE awaiting open so buffered bytes aren't missed
+it('streams pty output and accepts input over /ws/terminal/:id', async () => {
+  const client = new WebSocket(`${wsBase}/ws/terminal/w1`, { headers: { 'x-internal-api-key': 'k1' } });
   const chunks: string[] = [];
-  await new Promise<void>((res, rej) => { client.on('open', () => res()); client.on('error', rej); });
+  // Attach message listener synchronously (before the open event fires) so we
+  // don't miss any buffered output the server flushes on connection.
   client.on('message', d => chunks.push(d.toString()));
+  await new Promise<void>((res, rej) => { client.on('open', () => res()); client.on('error', rej); });
   await new Promise(r => setTimeout(r, 400));
   expect(chunks.join('')).toContain('READY');
   client.send('echo hi\n');

@@ -28,3 +28,24 @@ it('creates a session with internal key', async () => {
   expect(r.status).toBe(200);
   const b = await r.json(); expect(b.sessionId).toBe('s2'); expect(b.pid).toBeGreaterThan(0);
 });
+
+// I3: resize must reject invalid cols/rows with 400
+it('rejects resize with zero cols/rows', async () => {
+  // First create a session to resize
+  await fetch(`${base}/sessions`, { method:'POST',
+    headers:{'content-type':'application/json','x-internal-api-key':'k1'},
+    body: JSON.stringify({ sessionId:'resize-test', userId:'u1', workspacePath: join(ws,'u1'),
+      authToken:'t', apiEndpoint:'http://api:8000', model:'' }) });
+
+  const r = await fetch(`${base}/sessions/resize-test/resize`, { method:'POST',
+    headers:{'content-type':'application/json','x-internal-api-key':'k1'},
+    body: JSON.stringify({ cols: 0, rows: 0 }) });
+  expect(r.status).toBe(400);
+});
+
+it('rejects resize with NaN cols/rows', async () => {
+  const r = await fetch(`${base}/sessions/resize-test/resize`, { method:'POST',
+    headers:{'content-type':'application/json','x-internal-api-key':'k1'},
+    body: JSON.stringify({ cols: 'abc', rows: 'xyz' }) });
+  expect(r.status).toBe(400);
+});

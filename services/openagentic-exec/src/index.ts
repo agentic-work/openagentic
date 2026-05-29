@@ -17,6 +17,40 @@ export async function startServer(): Promise<{ port: number; stop: () => Promise
   const app = express();
   app.use(express.json());
 
+  // ─── Shared internal-key check (used by HTTP middleware AND WS upgrade) ──
+  // C1: extract into a shared helper so both HTTP and WS paths use identical logic.
+  const checkInternalKey = (
+    headers: Record<string, string | string[] | undefined>,
+    queryKey: string | null,
+  ): boolean => {
+    if (!config.internalApiKey) return false;
+
+    const internalKeyHeader = headers['x-internal-api-key'];
+    const authHeader = headers['authorization'];
+
+    let provided: string | undefined;
+    if (internalKeyHeader) {
+      provided = Array.isArray(internalKeyHeader) ? internalKeyHeader[0] : internalKeyHeader;
+    } else if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      provided = authHeader.slice(7);
+    } else if (typeof authHeader === 'string' && authHeader.startsWith('Internal ')) {
+      provided = authHeader.slice(9);
+    } else if (queryKey) {
+      provided = queryKey;
+    }
+
+    if (!provided) return false;
+
+    // timing-safe compare when lengths match; length mismatch → reject
+    const expected = config.internalApiKey;
+    if (provided.length !== expected.length) return false;
+    try {
+      return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+    } catch {
+      return false;
+    }
+  };
+
   // ─── Internal-key middleware (all routes except GET /health) ────────────
   const validateAuth = (
     req: express.Request,
@@ -33,33 +67,10 @@ export async function startServer(): Promise<{ port: number; stop: () => Promise
       return;
     }
 
-    const internalKeyHeader = req.headers['x-internal-api-key'];
-    const authHeader = req.headers['authorization'];
-
-    let provided: string | undefined;
-    if (internalKeyHeader) {
-      provided = Array.isArray(internalKeyHeader) ? internalKeyHeader[0] : internalKeyHeader;
-    } else if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
-      provided = authHeader.slice(7);
-    } else if (typeof authHeader === 'string' && authHeader.startsWith('Internal ')) {
-      provided = authHeader.slice(9);
-    }
-
-    if (!provided) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-
-    // timing-safe compare when lengths match; length mismatch → reject
-    const expected = config.internalApiKey;
-    let ok = false;
-    if (provided.length === expected.length) {
-      try {
-        ok = crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
-      } catch {
-        ok = false;
-      }
-    }
+    const ok = checkInternalKey(
+      req.headers as Record<string, string | string[] | undefined>,
+      null,
+    );
 
     if (!ok) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -154,7 +165,14 @@ export async function startServer(): Promise<{ port: number; stop: () => Promise
   // ─── POST /sessions/:id/resize ────────────────────────────────────────────
   app.post('/sessions/:id/resize', (req, res) => {
     const { cols, rows } = req.body || {};
-    ptyManager.resize(req.params.id, Number(cols), Number(rows));
+    const c = Number(cols);
+    const r = Number(rows);
+    // I3: validate that cols and rows are positive integers before passing to pty
+    if (!Number.isInteger(c) || c <= 0 || !Number.isInteger(r) || r <= 0) {
+      res.status(400).json({ error: 'cols and rows must be positive integers' });
+      return;
+    }
+    ptyManager.resize(req.params.id, c, r);
     res.json({ ok: true });
   });
 
@@ -247,11 +265,27 @@ export async function startServer(): Promise<{ port: number; stop: () => Promise
 
   httpServer.on('upgrade', (req, socket, head) => {
     const url = req.url || '';
-    const match = url.match(/^\/ws\/terminal\/([^/?]+)$/);
+    const match = url.match(/^\/ws\/terminal\/([^/?]+)/);
     if (!match) {
       socket.destroy();
       return;
     }
+
+    // C1: Authenticate the internal key on the WS upgrade path — the Express
+    // validateAuth middleware only runs for HTTP requests, not upgrades.
+    // Primary: x-internal-api-key header; fallback: internalKey query param.
+    const parsedUrl = new URL(url, 'http://x');
+    const queryKey = parsedUrl.searchParams.get('internalKey');
+    const ok = checkInternalKey(
+      req.headers as Record<string, string | string[] | undefined>,
+      queryKey,
+    );
+    if (!ok) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit('connection', ws, req);
     });
@@ -259,7 +293,7 @@ export async function startServer(): Promise<{ port: number; stop: () => Promise
 
   wss.on('connection', (socket, req) => {
     const url = req.url || '';
-    const match = url.match(/^\/ws\/terminal\/([^/?]+)$/);
+    const match = url.match(/^\/ws\/terminal\/([^/?]+)/);
     const sessionId = match ? match[1] : null;
 
     if (!sessionId || ptyManager.getStatus(sessionId) === 'unknown') {
@@ -267,20 +301,27 @@ export async function startServer(): Promise<{ port: number; stop: () => Promise
       return;
     }
 
-    // Replay buffered output so late-connecting WS clients see prior output.
-    // Use a short setTimeout (vs setImmediate) to let the client's 'message'
-    // listener be registered after the 'open' event resolves its await.
-    setTimeout(() => {
-      const buffered = ptyManager.getOutputBuffer(sessionId);
-      if (buffered && socket.readyState === socket.OPEN) {
-        socket.send(buffered);
-      }
-    }, 20);
-
-    ptyManager.onData(sessionId, (data: string) => {
+    // I2: Register the live listener first, then flush the snapshot taken
+    // BEFORE registration. Because PTY data only arrives on future event-loop
+    // ticks, doing register-then-flush in a single synchronous block guarantees:
+    //   - no gap (live data received after register is delivered in order)
+    //   - no duplication (snapshot was captured before any new data could arrive)
+    // No setTimeout is needed or used.
+    const snap = ptyManager.getOutputBuffer(sessionId);
+    const cb = (data: string) => {
       if (socket.readyState === socket.OPEN) {
         socket.send(data);
       }
+    };
+    ptyManager.onData(sessionId, cb);
+    if (snap && socket.readyState === socket.OPEN) {
+      socket.send(snap);
+    }
+
+    // C2: Remove the listener when the socket closes to prevent leaks and
+    // cross-talk on reconnect.
+    socket.on('close', () => {
+      ptyManager.removeListener(sessionId, cb);
     });
 
     socket.on('message', (msg) => {

@@ -39,8 +39,14 @@ export class PtyManager {
   }
 
   async createSession(input: CreateSessionInput): Promise<Session> {
-    if (this.sessions.has(input.sessionId)) {
-      return this.sessions.get(input.sessionId)!.meta;
+    const existing = this.sessions.get(input.sessionId);
+    if (existing) {
+      // I1: If session is still running, return it (idempotent).
+      // If stopped, delete and fall through to create a fresh one.
+      if (existing.meta.status === 'running') {
+        return existing.meta;
+      }
+      this.sessions.delete(input.sessionId);
     }
 
     const spawn = buildClaudeSpawn({
@@ -91,6 +97,9 @@ export class PtyManager {
 
     p.onExit(() => {
       meta.status = 'stopped';
+      // I1: free heavy memory on process exit
+      internal.listeners = [];
+      internal.outputBuffer = '';
     });
 
     return meta;
@@ -100,6 +109,14 @@ export class PtyManager {
     const session = this.sessions.get(sessionId);
     if (session) {
       session.listeners.push(cb);
+    }
+  }
+
+  // C2: Remove a specific data listener to prevent leaks and cross-talk.
+  removeListener(sessionId: string, cb: (data: string) => void): void {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.listeners = session.listeners.filter(l => l !== cb);
     }
   }
 
@@ -113,7 +130,11 @@ export class PtyManager {
   resize(sessionId: string, cols: number, rows: number): void {
     const session = this.sessions.get(sessionId);
     if (session && session.meta.status === 'running') {
-      session.pty.resize(cols, rows);
+      try {
+        session.pty.resize(cols, rows);
+      } catch {
+        // pty may have exited between the status check and this call
+      }
     }
   }
 
@@ -138,6 +159,9 @@ export class PtyManager {
     }
 
     session.meta.status = 'stopped';
+    // I1: free heavy memory; keep the entry so getStatus still returns 'stopped'
+    session.listeners = [];
+    session.outputBuffer = '';
   }
 
   getOutputBuffer(sessionId: string): string {
