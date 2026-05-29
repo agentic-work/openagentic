@@ -11,5 +11,9 @@ export function buildClaudeSpawn(i: ClaudeSpawnInput): ClaudeSpawn {
     ANTHROPIC_AUTH_TOKEN: i.authToken,
   };
   if (i.model) env.ANTHROPIC_MODEL = i.model;
-  return { command: i.claudePath, args: [], cwd: i.workspacePath, env };
+  // --dangerously-skip-permissions: bypass the first-run "trust this folder"
+  // dialog and per-tool permission prompts so the PTY never blocks waiting for
+  // interactive confirmation. Safe here: the exec runs as a non-root user in an
+  // isolated container, operating only on the user's own per-session workspace.
+  return { command: i.claudePath, args: ['--dangerously-skip-permissions'], cwd: i.workspacePath, env };
 }
