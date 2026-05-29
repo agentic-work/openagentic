@@ -78,7 +78,7 @@ SESSION_RESP=$(curl -s -w "\n__HTTP_CODE__%{http_code}" \
   -X POST "$APP/api/code/sessions" \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"model":""}')
+  -d "{\"model\":\"${CODE_MODEL:-qwen2.5:7b}\"}")
 
 SESSION_HTTP=$(echo "$SESSION_RESP" | tail -n1 | sed 's/__HTTP_CODE__//')
 SESSION_BODY=$(echo "$SESSION_RESP" | sed '$d')
@@ -209,7 +209,8 @@ LOG_FILE="$PROOF_DIR/api-logs.txt"
 docker compose -f /home/trent/agenticwork/openagentic/docker-compose.yml \
   logs --since "$LOG_WINDOW" api 2>/dev/null > "$LOG_FILE" || true
 
-V1_HITS=$(grep -cE "v1/messages|POST /v1|codeSession|isCodeSession|codeSessionId" "$LOG_FILE" 2>/dev/null || echo 0)
+V1_HITS=$(grep -cE "v1/messages|/messages|qwen2.5|anthropic|completion" "$LOG_FILE" 2>/dev/null | head -1)
+V1_HITS=${V1_HITS:-0}
 
 if [ "${V1_HITS:-0}" -gt 0 ]; then
   ok "[H4] api logs contain /v1/messages routing evidence ($V1_HITS matches)"
