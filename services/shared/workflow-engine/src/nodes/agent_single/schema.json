@@ -1,0 +1,135 @@
+{
+  "type": "agent_single",
+  "category": "ai",
+  "label": "Single Agent",
+  "description": "Run one agent through openagentic-proxy with orchestration='parallel'. Returns the unwrapped output plus the per-agent results array.",
+  "icon": "robot",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "content": "string",
+          "status": "string",
+          "agents": "array"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "prompt",
+      "label": "Prompt / task",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "Summarize {{trigger.body.text}}",
+      "description": "The user task. One of prompt, task, or agentId is required."
+    },
+    {
+      "name": "task",
+      "label": "Task (alias)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true
+    },
+    {
+      "name": "agentId",
+      "label": "Agent ID",
+      "type": "string",
+      "required": false,
+      "description": "DB agent id to dispatch to."
+    },
+    {
+      "name": "role",
+      "label": "Role",
+      "type": "string",
+      "required": false,
+      "default": "custom"
+    },
+    {
+      "name": "model",
+      "label": "Model",
+      "type": "string",
+      "required": false,
+      "default": "auto"
+    },
+    {
+      "name": "tools",
+      "label": "Tools",
+      "type": "json",
+      "required": false,
+      "default": []
+    },
+    {
+      "name": "systemPrompt",
+      "label": "System prompt",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true
+    },
+    {
+      "name": "maxTurns",
+      "label": "Max turns",
+      "type": "number",
+      "required": false,
+      "default": 5,
+      "min": 1,
+      "max": 50
+    },
+    {
+      "name": "costBudget",
+      "label": "Cost budget (cents)",
+      "type": "number",
+      "required": false,
+      "default": 50
+    },
+    {
+      "name": "totalBudget",
+      "label": "Total budget (cents)",
+      "type": "number",
+      "required": false,
+      "default": 200
+    },
+    {
+      "name": "timeout",
+      "label": "Timeout (ms)",
+      "type": "number",
+      "required": false,
+      "default": 60000
+    },
+    {
+      "name": "aggregation",
+      "label": "Aggregation",
+      "type": "string",
+      "required": false,
+      "default": "merge"
+    }
+  ],
+  "ai": {
+    "shortDescription": "Run one DB-backed agent via openagentic-proxy.",
+    "whenToUse": "When the workflow has one specific agent it wants to run (by id or role) — different from agent_spawn which uses high-level role hints.",
+    "examplePrompt": "run the 'data-analyst' agent on the trigger payload",
+    "promptHints": "Reference the result with {{steps.<id>.content}}."
+  },
+  "outputAssertions": [
+    {
+      "name": "agent_returned_content",
+      "expression": "result && typeof result.content === 'string' && result.content.length > 0",
+      "errorMessage": "Single agent did not return any content."
+    },
+    {
+      "name": "agent_completed_status",
+      "expression": "result && (result.status === 'completed' || result.status === 'success')",
+      "errorMessage": "Single agent did not complete successfully."
+    },
+    {
+      "name": "agent_substantive_output",
+      "expression": "!result || !result.content || !result.content.match(/^\\s*(I (could not|couldn't|cannot|can't|do not have|don't have|am unable|wasn't able|was not able)|Sorry,? (I|but)|I'?m sorry,?|I apologize,?|Unfortunately,? (I|no)|No (information|data|results|content) (available|found))/i)",
+      "errorMessage": "Single agent returned a refusal or 'no info' response."
+    }
+  ]
+}

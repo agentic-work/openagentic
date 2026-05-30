@@ -1,0 +1,61 @@
+{
+  "type": "code",
+  "category": "action",
+  "label": "Code (JavaScript)",
+  "description": "Run user-supplied JavaScript inside a V8 isolate sandbox. Returns the evaluated value to downstream nodes.",
+  "icon": "code",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [{ "name": "result", "type": "any", "required": false }]
+  },
+  "settings": [
+    {
+      "name": "code",
+      "label": "Code",
+      "type": "code",
+      "required": true,
+      "description": "JavaScript expression / statements with the upstream output bound as `input`. The last expression's value (or an explicit `return`) is the node output.",
+      "placeholder": "return input.value * 2;"
+    },
+    {
+      "name": "language",
+      "label": "Language",
+      "type": "enum",
+      "required": false,
+      "default": "javascript",
+      "values": ["javascript"],
+      "description": "Currently only `javascript` is supported in-process. Use the openagentic node for python."
+    },
+    {
+      "name": "timeoutMs",
+      "label": "Timeout (ms)",
+      "type": "number",
+      "required": false,
+      "default": 5000,
+      "min": 100,
+      "max": 60000,
+      "description": "Max wall time for sandboxed execution before forced termination."
+    },
+    {
+      "name": "expectsOutput",
+      "label": "Expects output?",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "When true, the node fails if the code returns undefined (catches typos like a missing `return`)."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Run a JavaScript snippet against the upstream input.",
+    "whenToUse": "When the workflow needs a small in-process transformation that doesn't fit the transform node's map/filter/reduce/extract verbs.",
+    "examplePrompt": "add a code step that returns input.users.filter(u => u.active).length",
+    "promptHints": "The variable `input` holds the upstream output. Use `return X;` to set the node output. Heavy work (HTTP, file I/O) does NOT belong here — use http_request or k8s_sandbox_run."
+  },
+  "outputAssertions": [
+    {
+      "name": "code_did_not_error",
+      "expression": "!result || typeof result !== 'object' || !('error' in result) || !result.error",
+      "errorMessage": "Code node returned an `error` field — execution failed inside the sandbox."
+    }
+  ]
+}

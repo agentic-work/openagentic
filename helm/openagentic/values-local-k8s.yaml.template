@@ -1,0 +1,371 @@
+# Docker Desktop / Local K8s Development Values TEMPLATE
+# Copy this file to values-local-k8s.yaml and fill in your values
+# DO NOT commit values-local-k8s.yaml to git - it contains secrets!
+#
+# Usage:
+#   cp values-local-k8s.yaml.template values-local-k8s.yaml
+#   # Edit values-local-k8s.yaml with your actual values
+#   helm install openagentic . -f values-local-k8s.yaml -n openagentic
+
+global:
+  environment: development
+  imagePullPolicy: Never  # Use local images - Never for Docker Desktop K8s
+
+# ===========================================
+# API SERVICE
+# ===========================================
+api:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: agentic-openagentic-api
+    tag: latest
+    pullPolicy: Never
+  service:
+    type: ClusterIP
+    port: 3001
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+# ===========================================
+# UI SERVICE
+# ===========================================
+ui:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: agentic-openagentic-ui
+    tag: latest
+    pullPolicy: Never
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# ===========================================
+# MCP PROXY
+# ===========================================
+mcpProxy:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: agentic-mcp-proxy
+    tag: latest
+    pullPolicy: Never
+  service:
+    type: ClusterIP
+    port: 8080
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  env:
+    ENABLE_AUTH: "false"
+    AZURE_TENANT_ID: "<YOUR_AZURE_TENANT_ID>"
+    AZURE_CLIENT_ID: "<YOUR_AZURE_CLIENT_ID>"
+    LOG_LEVEL: "debug"
+    API_BASE_URL: "http://openagentic-api:8000"
+    MILVUS_HOST: "openagentic-milvus"
+    # GCP MCP
+    OpenAgentic_GCP_MCP_DISABLED: "false"
+    GCP_PROJECT_ID: "<YOUR_GCP_PROJECT_ID>"
+    GCP_REGION: "us-central1"
+    # AWS MCP
+    AWS_MCP_DISABLED: "false"
+    AWS_KNOWLEDGE_MCP_DISABLED: "false"
+    # Prometheus MCP
+    PROMETHEUS_MCP_DISABLED: "false"
+    PROMETHEUS_URL: "http://openagentic-prometheus:9090"
+    # Other MCPs
+    VMWARE_MCP_DISABLED: "true"
+    ADMIN_MCP_DISABLED: "false"
+    MEMORY_MCP_DISABLED: "false"
+    FETCH_MCP_DISABLED: "false"
+
+# ===========================================
+# OLLAMA (Local LLM)
+# ===========================================
+ollama:
+  enabled: true
+  image:
+    repository: ollama/ollama
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 11434
+  persistence:
+    enabled: true
+    size: 50Gi
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 4Gi
+    limits:
+      cpu: 4000m
+      memory: 16Gi
+
+# ===========================================
+# CODE MANAGER
+# ===========================================
+codeManager:
+  enabled: true
+  image:
+    repository: agentic-openagenticcode-manager
+    tag: latest
+    pullPolicy: Never
+  runnerImage:
+    repository: agentic-code-runner
+    tag: latest
+
+# ===========================================
+# POSTGRESQL (Bitnami chart)
+# ===========================================
+postgresql:
+  enabled: true
+  auth:
+    username: openagentic
+    password: "<YOUR_POSTGRES_PASSWORD>"
+    database: openagentic
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+# ===========================================
+# REDIS (Bitnami chart)
+# ===========================================
+redis:
+  enabled: true
+  architecture: replication
+  auth:
+    enabled: false
+    password: ""
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+# ===========================================
+# MILVUS (Vector DB) - Standalone mode with rocksmq
+# ===========================================
+milvus:
+  enabled: true
+  auth:
+    username: "root"
+  cluster:
+    enabled: false
+  standalone:
+    replicas: 1
+    messageQueue: rocksmq
+    persistence:
+      enabled: true
+      persistentVolumeClaim:
+        size: 10Gi
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 2000m
+        memory: 8Gi
+  image:
+    all:
+      repository: milvusdb/milvus
+      tag: v2.5.0
+      pullPolicy: IfNotPresent
+  pulsar:
+    enabled: false
+  kafka:
+    enabled: false
+  etcd:
+    enabled: true
+    replicaCount: 1
+    persistence:
+      enabled: true
+      size: 2Gi
+  minio:
+    enabled: true
+    mode: standalone
+    persistence:
+      enabled: true
+      size: 10Gi
+
+milvusCustom:
+  enabled: false
+
+# ===========================================
+# INGRESS (Disabled - using Gateway API)
+# ===========================================
+ingress:
+  enabled: false
+
+# ===========================================
+# GATEWAY API (Kong Gateway)
+# ===========================================
+gateway:
+  enabled: true
+  useExternalGateway: true
+  gatewayClassName: kong
+  controllerName: konghq.com/kic-gateway-controller
+  hostname: localhost
+  kong:
+    enabled: true
+    proxyServiceRef: "kong/kong-kong-proxy"
+    routeAnnotations: {}
+  externalGateway:
+    name: kong-gateway
+    namespace: kong
+  tls:
+    enabled: false
+  allowedRoutes: All
+  timeouts:
+    api: 3600s
+    mcp: 300s
+
+# ===========================================
+# SECURITY
+# ===========================================
+security:
+  frontendSecret: "<YOUR_FRONTEND_SECRET>"
+
+# ===========================================
+# LLM PROVIDER CONFIGURATION
+# ===========================================
+env:
+  DEFAULT_LLM_PROVIDER: "vertex-ai"
+  DEFAULT_MODEL: "gemini-2.0-flash-001"
+  LLM_ENABLE_FAILOVER: "true"
+  LLM_FAILOVER_TIMEOUT: "30000"
+  LLM_ENABLE_LOAD_BALANCING: "false"
+  LLM_LOAD_BALANCING_STRATEGY: "priority"
+  OLLAMA_ENABLED: "true"
+  OLLAMA_BASE_URL: "http://openagentic-ollama:11434"
+  OLLAMA_MODEL: "gpt-oss"
+  OLLAMA_VISION_MODEL: "qwen3-vl"
+  OLLAMA_EMBEDDING_MODEL: "embeddinggemma"
+  AZURE_SUBSCRIPTION_ID: "<YOUR_AZURE_SUBSCRIPTION_ID>"
+  AWS_MCP_DISABLED: "false"
+  AWS_KNOWLEDGE_MCP_DISABLED: "false"
+  AWS_REGION: "us-east-1"
+  OpenAgentic_GCP_MCP_DISABLED: "false"
+  GCP_PROJECT_ID: "<YOUR_GCP_PROJECT_ID>"
+  GCP_REGION: "us-central1"
+
+# Vertex AI Configuration
+ai:
+  google:
+    vertex:
+      enabled: true
+      priority: 1
+      projectId: "<YOUR_GCP_PROJECT_ID>"
+      location: "us-central1"
+      model: "gemini-2.0-flash-001"
+
+# ===========================================
+# EMBEDDING CONFIGURATION
+# ===========================================
+embedding:
+  enabled: true
+  provider: "ollama"
+  model: "embeddinggemma"
+  dimensions: 768
+  ollama:
+    model: "embeddinggemma"
+
+# ===========================================
+# AUTHENTICATION
+# ===========================================
+auth:
+  azure:
+    clientId: "<YOUR_AZURE_CLIENT_ID>"
+    tenantId: "<YOUR_AZURE_TENANT_ID>"
+    authority: "https://login.microsoftonline.com/<YOUR_AZURE_TENANT_ID>"
+    redirectUri: "http://localhost/auth/callback"
+    adminGroup: ""
+    authorizedUserGroups: ""
+    authorizedAdminGroups: ""
+  admin:
+    aadAssociation: ""
+    aadUuid: ""
+    requirePasswordReset: "false"
+  testMode:
+    enabled: "true"
+    apiKey: "<YOUR_DEV_API_KEY>"
+
+# ===========================================
+# SECRETS (FILL IN YOUR VALUES)
+# ===========================================
+secrets:
+  jwtSecret: "<YOUR_JWT_SECRET_MIN_32_CHARS>"
+  apiKey: "<YOUR_API_KEY>"
+  apiSecretKey: "<YOUR_API_SECRET_KEY>"
+  signingSecret: "<YOUR_SIGNING_SECRET_MIN_32_CHARS>"
+  internalMcpApiKey: "<YOUR_INTERNAL_MCP_KEY>"
+  litellmMasterKey: "<YOUR_LITELLM_KEY>"
+  adminUserPassword: "<YOUR_ADMIN_PASSWORD>"
+  vaultToken: "<YOUR_VAULT_TOKEN>"
+  milvusPassword: "<YOUR_MILVUS_PASSWORD>"
+  minioAccessKey: "minioadmin"
+  minioRootPassword: "<YOUR_MINIO_PASSWORD>"
+  azureClientSecret: "<YOUR_AZURE_CLIENT_SECRET>"
+  azureOpenaiApiKey: "<YOUR_AZURE_OPENAI_KEY>"
+  viteApiKey: "<YOUR_VITE_API_KEY>"
+  viteFrontendSecret: "<YOUR_VITE_FRONTEND_SECRET>"
+  frontendSecret: "<YOUR_FRONTEND_SECRET>"
+  gcpServiceAccountJson: ""
+  awsAccessKeyId: "<YOUR_AWS_ACCESS_KEY>"
+  awsSecretAccessKey: "<YOUR_AWS_SECRET_KEY>"
+
+# ===========================================
+# OPTIONAL SERVICES
+# ===========================================
+pgadmin:
+  enabled: true
+  image:
+    repository: dpage/pgadmin4
+    tag: "9.10"
+
+redisCommander:
+  enabled: true
+  image:
+    repository: rediscommander/redis-commander
+    tag: latest
+
+attu:
+  enabled: true
+  image:
+    repository: zilliz/attu
+    tag: latest
+
+prometheus:
+  enabled: true
+  image:
+    repository: prom/prometheus
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    port: 9090
+  persistence:
+    enabled: true
+    size: 5Gi
+
+minio:
+  enabled: false
+
+aws:
+  defaultRegion: "us-east-1"

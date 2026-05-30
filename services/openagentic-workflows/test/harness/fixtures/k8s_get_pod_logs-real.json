@@ -1,0 +1,22 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_kubernetes.k8s_get_pod_logs as captured live 2026-05-13 from chat-dev. Unlike k8s_list_pods (which returns a native python dict through 3-layer unwrap with no content[] wrapping), k8s_get_pod_logs is wrapped by FastMCP as content[0].text containing the JSON-stringified result dict. The mcp_tool executor's normalize step joins all content[].text values into a `content` field on the returned object. So downstream nodes see { content: '<JSON string>', isError, structuredContent }. The JSON content contains the success/namespace/pod/logs/tail_lines dict. Sample logs mimic a real CrashLoopBackOff scenario: Node.js Prisma client crashing on a missing-column migration drift error (P2022) — operationally common and matches the spec's 'diagnose root cause from logs' use case.",
+  "result": {
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\n  \"success\": true,\n  \"namespace\": \"agentic-dev\",\n  \"pod\": \"openagentic-workflows-5c4e8a9b3f-q7n6w\",\n  \"container\": null,\n  \"logs\": \"2026-05-13T13:42:08.341Z [info] starting openagentic-workflows@0.7.1\\n2026-05-13T13:42:08.512Z [info] connecting to postgresql://postgres@postgresql.agentic-dev.svc.cluster.local:5432/openagentic\\n2026-05-13T13:42:08.918Z [error] PrismaClientKnownRequestError: \\nInvalid `prisma.workflow.findMany()` invocation:\\n\\nThe column `Workflow.last_compiled_at` does not exist in the current database.\\n    at cb (/app/node_modules/@prisma/client/runtime/library.js:171:71)\\n    at /app/dist/services/WorkflowService.js:84:24\\n2026-05-13T13:42:08.920Z [error] migration drift detected — schema in /app/prisma/schema.prisma references Workflow.last_compiled_at but DB head migration 20260512_add_last_compiled_at_to_workflow has NOT been applied.\\n2026-05-13T13:42:08.921Z [error] hint: run `prisma migrate deploy` against postgresql://postgres@postgresql.agentic-dev.svc.cluster.local:5432/openagentic to bring the DB to the application's schema version.\\n2026-05-13T13:42:08.925Z [fatal] uncaughtException: PrismaClientKnownRequestError P2022 — exiting with code 1\\n2026-05-13T13:42:08.927Z [info] process exited code=1 signal=null\",\n  \"tail_lines\": 100\n}"
+        }
+      ],
+      "isError": false,
+      "structuredContent": {
+        "success": true,
+        "namespace": "agentic-dev",
+        "pod": "openagentic-workflows-5c4e8a9b3f-q7n6w",
+        "container": null,
+        "logs": "2026-05-13T13:42:08.341Z [info] starting openagentic-workflows@0.7.1\n2026-05-13T13:42:08.918Z [error] PrismaClientKnownRequestError: Invalid `prisma.workflow.findMany()` invocation: The column `Workflow.last_compiled_at` does not exist in the current database.\n2026-05-13T13:42:08.920Z [error] migration drift detected\n2026-05-13T13:42:08.925Z [fatal] uncaughtException: PrismaClientKnownRequestError P2022 — exiting with code 1",
+        "tail_lines": 100
+      }
+    }
+  }
+}

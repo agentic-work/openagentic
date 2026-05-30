@@ -1,0 +1,45 @@
+{
+  "include": ["src"],
+  "exclude": [
+    "src/helpers/zod.ts",
+    "src/helpers/beta/zod.ts",
+    "src/helpers/index.ts",
+    "src/**/__tests__/**/*",
+    "src/**/*.test.ts"
+  ],
+  "compilerOptions": {
+    "target": "es2020",
+    "lib": ["es2020"],
+    "module": "es2022",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "paths": {
+      "@agentic-work/llm-sdk/*": ["./src/*"],
+      "@agentic-work/llm-sdk": ["./src/index.ts"]
+    },
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "pretty": true,
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "noImplicitReturns": true,
+    "alwaysStrict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "isolatedModules": false,
+    "skipLibCheck": true
+  }
+}

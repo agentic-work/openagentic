@@ -1,0 +1,14 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_prometheus.prometheus_alerts when the cluster has ZERO active alerts. Captured live 2026-05-13 from chat-dev (k3s prod, monitoring-stack/prometheus-55b9bd979c-fxkw8 returns {'status':'success','data':{'alerts':[]}}). The python tool short-circuits to 'No active alerts' and FastMCP wraps it as content[0].text. The mcp_tool node joiner collapses to a single `content` string equal to 'No active alerts'. This is the OPERATIONAL DEFAULT for healthy clusters and the template MUST render a sensible 'No active alerts' HTML report (not a blank page) when the upstream text matches this shape.",
+  "result": {
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "No active alerts"
+        }
+      ],
+      "isError": false
+    }
+  }
+}

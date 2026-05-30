@@ -1,0 +1,289 @@
+import React, { useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X } from '@/shared/icons';
+
+// Modal configuration constants
+export const MODAL_CONFIG = {
+  zIndex: {
+    backdrop: 100,
+    modal: 101,
+  },
+  sizes: {
+    sm: 'max-w-md',      // 448px
+    md: 'max-w-lg',      // 512px
+    lg: 'max-w-2xl',     // 672px
+    xl: 'max-w-4xl',     // 896px
+    full: 'max-w-[90vw]', // 90% viewport width
+  },
+} as const;
+
+export type ModalSize = keyof typeof MODAL_CONFIG.sizes;
+
+export interface BaseModalProps {
+  /** Whether the modal is open */
+  isOpen: boolean;
+  /** Callback when modal should close */
+  onClose: () => void;
+  /** Modal title (optional - if provided, shows header) */
+  title?: string;
+  /** Modal content */
+  children: React.ReactNode;
+  /** Size variant */
+  size?: ModalSize;
+  /** Whether clicking backdrop closes modal (default: true) */
+  closeOnBackdropClick?: boolean;
+  /** Whether pressing Escape closes modal (default: true) */
+  closeOnEscape?: boolean;
+  /** Show close button in header (default: true when title provided) */
+  showCloseButton?: boolean;
+  /** Additional class names for modal container */
+  className?: string;
+  /** Footer content (optional) */
+  footer?: React.ReactNode;
+  /** Whether to show the default header border (default: true) */
+  showHeaderBorder?: boolean;
+  /** Custom header content (overrides title) */
+  customHeader?: React.ReactNode;
+}
+
+export const BaseModal: React.FC<BaseModalProps> = ({
+  isOpen,
+  onClose,
+  title,
+  children,
+  size = 'md',
+  closeOnBackdropClick = true,
+  closeOnEscape = true,
+  showCloseButton,
+  className = '',
+  footer,
+  showHeaderBorder = true,
+  customHeader,
+}) => {
+  // Determine if close button should be shown
+  const shouldShowCloseButton = showCloseButton ?? (!!title || !!customHeader);
+
+  // Handle escape key
+  const handleEscape = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && closeOnEscape) {
+        onClose();
+      }
+    },
+    [onClose, closeOnEscape]
+  );
+
+  // Add/remove escape listener
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, handleEscape]);
+
+  // Handle backdrop click
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget && closeOnBackdropClick) {
+      onClose();
+    }
+  };
+
+  const modalContent = (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0"
+            style={{
+              zIndex: MODAL_CONFIG.zIndex.backdrop,
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              backdropFilter: 'blur(8px)',
+            }}
+            onClick={handleBackdropClick}
+            aria-hidden="true"
+          />
+
+          {/* Modal Container */}
+          <div
+            className="fixed inset-0 flex items-center justify-center p-4"
+            style={{ zIndex: MODAL_CONFIG.zIndex.modal }}
+            onClick={handleBackdropClick}
+          >
+            {/* Modal — M3 Expressive: 24px panel radius, surface-2 bg,
+                soft-lg shadow, fade+scale enter (0.96→1, 200ms). */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{
+                duration: 0.2,
+                ease: [0.2, 0, 0, 1], // --ease-emphasized
+              }}
+              className={`
+                w-full ${MODAL_CONFIG.sizes[size]} rounded-panel overflow-hidden
+                ${className}
+              `}
+              style={{
+                backgroundColor: 'var(--surface-2)',
+                boxShadow: 'var(--shadow-soft-lg)',
+              }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={title ? 'modal-title' : undefined}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              {(title || customHeader || shouldShowCloseButton) && (
+                <div
+                  className="relative px-6 py-4 flex items-center justify-between"
+                  style={{
+                    borderBottom: showHeaderBorder
+                      ? '1px solid var(--color-border)'
+                      : undefined,
+                  }}
+                >
+                  {customHeader ? (
+                    customHeader
+                  ) : title ? (
+                    <h2
+                      id="modal-title"
+                      className="text-lg font-semibold"
+                      style={{ color: 'var(--color-text)' }}
+                    >
+                      {title}
+                    </h2>
+                  ) : (
+                    <div />
+                  )}
+
+                  {shouldShowCloseButton && (
+                    <button
+                      onClick={onClose}
+                      className="h-10 w-10 rounded-btn flex items-center justify-center transition-[background,color,transform] duration-200 ease-emphasized active:scale-[0.98] hover:bg-[var(--surface-3)]"
+                      style={{ color: 'var(--color-textMuted)' }}
+                      aria-label="Close modal"
+                    >
+                      <X size={18} />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Content */}
+              <div
+                className="px-6 py-4 overflow-y-auto"
+                style={{
+                  maxHeight: 'calc(85vh - 120px)',
+                }}
+              >
+                {children}
+              </div>
+
+              {/* Footer */}
+              {footer && (
+                <div
+                  className="px-6 py-4"
+                  style={{
+                    borderTop: '1px solid var(--color-border)',
+                    backgroundColor: 'var(--color-surfaceSecondary)',
+                  }}
+                >
+                  {footer}
+                </div>
+              )}
+            </motion.div>
+          </div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+
+  // Portal to body
+  return createPortal(modalContent, document.body);
+};
+
+/**
+ * Confirmation Modal - A specialized modal for confirm/cancel dialogs
+ */
+export interface ConfirmModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string | React.ReactNode;
+  confirmText?: string;
+  cancelText?: string;
+  confirmVariant?: 'primary' | 'danger';
+  isLoading?: boolean;
+}
+
+export const ConfirmModal: React.FC<ConfirmModalProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
+  confirmVariant = 'primary',
+  isLoading = false,
+}) => {
+  const confirmButtonStyle =
+    confirmVariant === 'danger'
+      ? {
+          backgroundColor: 'rgb(239, 68, 68)',
+          color: 'white',
+        }
+      : {
+          backgroundColor: 'var(--color-primary)',
+          color: 'white',
+        };
+
+  return (
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      size="sm"
+      footer={
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            disabled={isLoading}
+            className="px-6 py-2 rounded-pill text-sm font-medium transition-[background,color,transform] duration-200 ease-emphasized active:scale-[0.98] hover:bg-[var(--surface-3)]"
+            style={{ color: 'var(--color-textMuted)' }}
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="px-6 py-2 rounded-pill text-sm font-medium transition-[background,opacity,transform] duration-200 ease-emphasized active:scale-[0.98]"
+            style={{
+              ...confirmButtonStyle,
+              opacity: isLoading ? 0.7 : 1,
+            }}
+          >
+            {isLoading ? 'Loading...' : confirmText}
+          </button>
+        </div>
+      }
+    >
+      <div style={{ color: 'var(--color-textSecondary)' }}>{message}</div>
+    </BaseModal>
+  );
+};
+
+export default BaseModal;

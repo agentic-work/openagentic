@@ -1,0 +1,47 @@
+{
+  "type": "guardrails",
+  "category": "ai",
+  "label": "Guardrails",
+  "description": "Validate content against safety rules (PII, toxicity, prompt-injection). Calls the platform's DLP scanner API; falls back to local regex on failure.",
+  "icon": "shield",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": true }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "passed": "boolean",
+          "findings": "array",
+          "action": "string",
+          "content": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "checks",
+      "label": "Checks to run",
+      "type": "json",
+      "required": true,
+      "default": ["pii", "toxicity", "injection"],
+      "description": "Array of check names. Built-ins: pii, toxicity, injection."
+    },
+    {
+      "name": "action",
+      "label": "Action on violation",
+      "type": "enum",
+      "values": ["block", "redact", "warn"],
+      "default": "block",
+      "required": false
+    }
+  ],
+  "ai": {
+    "shortDescription": "DLP / safety scan with regex fallback.",
+    "whenToUse": "Before sending generated content downstream — to catch PII, toxic output, or prompt-injection attempts.",
+    "examplePrompt": "guardrail-check the LLM output for PII before posting it to Slack",
+    "promptHints": "Reference {{steps.<id>.passed}} and {{steps.<id>.findings}}. action='redact' replaces content with [REDACTED] on violation."
+  }
+}

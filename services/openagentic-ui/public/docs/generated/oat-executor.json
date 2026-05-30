@@ -1,0 +1,331 @@
+{
+  "domain": "openagentic-synth",
+  "title": "OAT Executor",
+  "description": "Open Agent Tool executor with 22 documented components across 6 source files.",
+  "icon": "tool",
+  "category": "tools",
+  "generatedAt": "2026-04-06T02:45:19.428Z",
+  "sourceFiles": [
+    "services/openagentic-synth/src/openagentic_synth/__init__.py",
+    "services/openagentic-synth/src/openagentic_synth/__main__.py",
+    "services/openagentic-synth/src/openagentic_synth/executor.py",
+    "services/openagentic-synth/src/openagentic_synth/logging_config.py",
+    "services/openagentic-synth/src/openagentic_synth/server.py",
+    "services/openagentic-synth/src/openagentic_synth/telemetry.py"
+  ],
+  "sections": [
+    {
+      "id": "api-endpoints",
+      "title": "API Endpoints",
+      "description": "4 FastAPI endpoints for OAT tool synthesis and execution.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oat-route-get-health_check",
+          "name": "GET /health",
+          "description": "Health check endpoint for K8s probes.",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/health",
+            "handler": "health_check"
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/server.py",
+          "sourceLine": 185
+        },
+        {
+          "id": "oat-route-get-readiness_check",
+          "name": "GET /ready",
+          "description": "Readiness check - are we ready to accept executions?",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/ready",
+            "handler": "readiness_check"
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/server.py",
+          "sourceLine": 197
+        },
+        {
+          "id": "oat-route-post-execute_code",
+          "name": "POST /execute",
+          "description": "Execute synthesized Python code securely.",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/execute",
+            "handler": "execute_code"
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/server.py",
+          "sourceLine": 209
+        },
+        {
+          "id": "oat-route-get-get_metrics",
+          "name": "GET /metrics",
+          "description": "Prometheus metrics endpoint for scraping.",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/metrics",
+            "handler": "get_metrics"
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/server.py",
+          "sourceLine": 414
+        }
+      ]
+    },
+    {
+      "id": "tool-synthesis-classes",
+      "title": "Tool Synthesis Classes",
+      "description": "4 classes for OAT tool generation and synthesis.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oat-synth-executionresult",
+          "name": "ExecutionResult",
+          "description": "Result of code execution.",
+          "type": "python-class",
+          "properties": {
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/executor.py",
+          "sourceLine": 166
+        },
+        {
+          "id": "oat-synth-secureexecutor",
+          "name": "SecureExecutor",
+          "description": "Executes Python code in isolated subprocesses.",
+          "type": "python-class",
+          "properties": {
+            "methods": [
+              "__init__",
+              "active_count",
+              "execute",
+              "shutdown"
+            ],
+            "methodCount": 4
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/executor.py",
+          "sourceLine": 282
+        },
+        {
+          "id": "oat-synth-executionrequest",
+          "name": "ExecutionRequest",
+          "description": "Request to execute synthesized Python code.",
+          "type": "python-class",
+          "properties": {
+            "bases": "BaseModel",
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/server.py",
+          "sourceLine": 66
+        },
+        {
+          "id": "oat-synth-executionresponse",
+          "name": "ExecutionResponse",
+          "description": "Response from code execution.",
+          "type": "python-class",
+          "properties": {
+            "bases": "BaseModel",
+            "methods": [],
+            "methodCount": 0
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/server.py",
+          "sourceLine": 104
+        }
+      ]
+    },
+    {
+      "id": "support-classes",
+      "title": "Supporting Classes",
+      "description": "2 supporting classes in the OAT executor.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oat-cls-codevalidator",
+          "name": "CodeValidator",
+          "description": "Validates Python code for security issues before execution.",
+          "type": "python-class",
+          "properties": {
+            "methods": [
+              "__init__",
+              "validate"
+            ],
+            "methodCount": 2
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/executor.py",
+          "sourceLine": 91
+        },
+        {
+          "id": "oat-cls-healthresponse",
+          "name": "HealthResponse",
+          "description": "Health check response.",
+          "type": "python-class",
+          "properties": {
+            "bases": "BaseModel",
+            "methods": [
+              "send_callback"
+            ],
+            "methodCount": 1
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/server.py",
+          "sourceLine": 124
+        }
+      ]
+    },
+    {
+      "id": "utility-functions",
+      "title": "Utility Functions",
+      "description": "12 utility and helper functions.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "oat-fn-set_limits",
+          "name": "set_limits",
+          "description": "set limits",
+          "type": "function",
+          "properties": {
+            "params": "max_memory_mb, max_cpu_seconds",
+            "async": false
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/executor.py",
+          "sourceLine": 191
+        },
+        {
+          "id": "oat-fn-timeout_handler",
+          "name": "timeout_handler",
+          "description": "timeout handler",
+          "type": "function",
+          "properties": {
+            "params": "signum, frame",
+            "async": false
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/executor.py",
+          "sourceLine": 209
+        },
+        {
+          "id": "oat-fn-add_trace_context",
+          "name": "add_trace_context",
+          "description": "Add OpenTelemetry trace context to log entries.",
+          "type": "function",
+          "properties": {
+            "params": "logger, method_name, event_dict",
+            "async": false
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/logging_config.py",
+          "sourceLine": 14
+        },
+        {
+          "id": "oat-fn-setup_logging",
+          "name": "setup_logging",
+          "description": "Configure structured logging with JSON output.",
+          "type": "function",
+          "properties": {
+            "params": "",
+            "async": false
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/logging_config.py",
+          "sourceLine": 24
+        },
+        {
+          "id": "oat-fn-get_logger",
+          "name": "get_logger",
+          "description": "Get a structured logger instance.",
+          "type": "function",
+          "properties": {
+            "params": "name: str = None",
+            "async": false
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/logging_config.py",
+          "sourceLine": 61
+        },
+        {
+          "id": "oat-fn-lifespan",
+          "name": "lifespan",
+          "description": "Application lifespan manager.",
+          "type": "function",
+          "properties": {
+            "params": "app: FastAPI",
+            "async": true
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/server.py",
+          "sourceLine": 144
+        },
+        {
+          "id": "oat-fn-health_check",
+          "name": "health_check",
+          "description": "Health check endpoint for K8s probes.",
+          "type": "function",
+          "properties": {
+            "params": "",
+            "async": true
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/server.py",
+          "sourceLine": 186
+        },
+        {
+          "id": "oat-fn-readiness_check",
+          "name": "readiness_check",
+          "description": "Readiness check - are we ready to accept executions?",
+          "type": "function",
+          "properties": {
+            "params": "",
+            "async": true
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/server.py",
+          "sourceLine": 198
+        },
+        {
+          "id": "oat-fn-execute_code",
+          "name": "execute_code",
+          "description": "Execute synthesized Python code securely.",
+          "type": "function",
+          "properties": {
+            "params": "request: ExecutionRequest,\n    background_tasks: BackgroundTasks,",
+            "async": true
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/server.py",
+          "sourceLine": 210
+        },
+        {
+          "id": "oat-fn-get_metrics",
+          "name": "get_metrics",
+          "description": "Prometheus metrics endpoint for scraping.",
+          "type": "function",
+          "properties": {
+            "params": "",
+            "async": true
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/server.py",
+          "sourceLine": 415
+        },
+        {
+          "id": "oat-fn-send_callback",
+          "name": "send_callback",
+          "description": "Send execution result to callback URL.",
+          "type": "function",
+          "properties": {
+            "params": "url: str, data: dict",
+            "async": true
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/server.py",
+          "sourceLine": 427
+        },
+        {
+          "id": "oat-fn-setup_telemetry",
+          "name": "setup_telemetry",
+          "description": "Initialize OpenTelemetry with OTLP exporters.",
+          "type": "function",
+          "properties": {
+            "params": "",
+            "async": false
+          },
+          "sourceFile": "services/openagentic-synth/src/openagentic_synth/telemetry.py",
+          "sourceLine": 22
+        }
+      ]
+    }
+  ]
+}

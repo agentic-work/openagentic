@@ -1,0 +1,109 @@
+{
+  "type": "pagerduty_incident",
+  "category": "integration",
+  "label": "PagerDuty Incident",
+  "description": "Trigger / acknowledge / resolve a PagerDuty incident via Events API v2. Supports dedupKey, severity, custom_details, and client/client_url fields.",
+  "icon": "alert",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "status": "number",
+          "sent": "boolean",
+          "dedupKey": "string",
+          "action": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "action",
+      "label": "Event action",
+      "type": "enum",
+      "values": ["trigger", "acknowledge", "resolve"],
+      "default": "trigger",
+      "required": true
+    },
+    {
+      "name": "routingKey",
+      "label": "Routing key",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "PagerDuty integration routing key. Falls back to PAGERDUTY_ROUTING_KEY env when unset."
+    },
+    {
+      "name": "summary",
+      "label": "Summary",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "Service {{trigger.svc}} unhealthy"
+    },
+    {
+      "name": "severity",
+      "label": "Severity",
+      "type": "enum",
+      "values": ["info", "warning", "error", "critical"],
+      "default": "error",
+      "required": false
+    },
+    {
+      "name": "source",
+      "label": "Source",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "default": "openagentic"
+    },
+    {
+      "name": "dedupKey",
+      "label": "Dedup key",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Stable key for the incident — required for acknowledge/resolve to target an existing incident."
+    },
+    {
+      "name": "customDetails",
+      "label": "Custom details",
+      "type": "object",
+      "required": false,
+      "description": "Free-form JSON object passed through as payload.custom_details on trigger events."
+    },
+    {
+      "name": "client",
+      "label": "Client name",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Name of the client posting the event (e.g. 'OpenAgentic Workflows')."
+    },
+    {
+      "name": "clientUrl",
+      "label": "Client URL",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "URL the client name links to in PagerDuty (deep-link back to the workflow run)."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Trigger, acknowledge, or resolve a PagerDuty incident via Events API v2.",
+    "whenToUse": "When you need to page on-call about a workflow failure, ack an incident from a known-fixed signal, or auto-resolve when health restores.",
+    "examplePrompt": "page on-call when a deployment fails, including the build URL as the client_url",
+    "promptHints": "Set dedupKey to a stable identifier so retries collapse into the same incident. Use action=acknowledge or resolve to update an existing incident."
+  },
+  "outputAssertions": [
+    {
+      "name": "status_202",
+      "expression": "result && result.status === 202",
+      "errorMessage": "PagerDuty Events API returned non-202 status (the API replies 202 Accepted on success)."
+    }
+  ]
+}

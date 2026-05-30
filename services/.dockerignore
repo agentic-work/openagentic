@@ -1,0 +1,13 @@
+*/node_modules
+*/dist
+*/build
+*/.next
+*/.cache
+*/.git
+litellm
+*.log
+.env*
+
+# Include openagentic-cli pre-built files for openagentic-manager build
+!openagentic-cli/dist
+!openagentic-cli/node_modules

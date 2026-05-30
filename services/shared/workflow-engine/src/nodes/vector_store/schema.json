@@ -1,0 +1,61 @@
+{
+  "type": "vector_store",
+  "category": "data",
+  "label": "Vector Store",
+  "description": "Upsert or delete vectors in a Milvus collection via the platform's /api/v1/vector/store endpoint. Falls back to /api/files/embed when the primary endpoint fails.",
+  "icon": "database",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": true }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "collection": "string",
+          "operation": "string",
+          "stored": "number"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "operation",
+      "label": "Operation",
+      "type": "enum",
+      "values": ["upsert", "delete"],
+      "default": "upsert",
+      "required": false
+    },
+    {
+      "name": "collection",
+      "label": "Collection",
+      "type": "string",
+      "required": false,
+      "default": "default",
+      "supportsTemplating": true
+    },
+    {
+      "name": "createIfMissing",
+      "label": "Create collection if missing",
+      "type": "boolean",
+      "required": false,
+      "default": true
+    },
+    {
+      "name": "metadata",
+      "label": "Metadata",
+      "type": "object",
+      "required": false,
+      "description": "Free-form metadata attached to all stored items. Takes precedence over input.metadata."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Write vectors to a Milvus collection.",
+    "whenToUse": "After the embedding node — persist vectors so the rag_query node can later search them.",
+    "examplePrompt": "store the embeddings in the 'support-docs' collection, creating it if missing",
+    "promptHints": "Input must include { vectors, texts } (typically from the embedding node). Reference stored count via {{steps.<id>.result.stored}}."
+  },
+  "outputAssertions": []
+}

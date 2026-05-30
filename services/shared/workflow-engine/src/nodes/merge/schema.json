@@ -1,0 +1,38 @@
+{
+  "type": "merge",
+  "category": "control",
+  "label": "Merge",
+  "description": "Combine results from multiple incoming branches into a single output using array, object, or concat strategy.",
+  "icon": "merge",
+  "ports": {
+    "inputs": [
+      { "name": "input_1", "type": "any", "required": false },
+      { "name": "input_2", "type": "any", "required": false }
+    ],
+    "outputs": [{ "name": "result", "type": "any", "required": true }]
+  },
+  "settings": [
+    {
+      "name": "mergeStrategy",
+      "label": "Strategy",
+      "type": "enum",
+      "values": ["object", "array", "concat"],
+      "default": "object",
+      "required": false,
+      "description": "How to combine incoming values. object=labeled by source node, array=indexed list, concat=flatten arrays."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Combine results from multiple parallel branches.",
+    "whenToUse": "After a condition or parallel node fans out to multiple branches — merge gathers all results back into a single value before continuing.",
+    "examplePrompt": "merge the results from both enrichment branches",
+    "promptHints": "Use strategy=object to get { branch1: ..., branch2: ... } (safest for differently-shaped inputs). Use strategy=array for uniform inputs. Use strategy=concat only when all inputs are arrays."
+  },
+  "outputAssertions": [
+    {
+      "name": "merged_not_null",
+      "expression": "result !== null && result !== undefined",
+      "errorMessage": "Merge node returned null — check that at least one upstream branch produced output."
+    }
+  ]
+}

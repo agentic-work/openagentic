@@ -1,0 +1,144 @@
+
+
+{{- if .Values.workflows.enabled }}
+# ===================================================================================================
+# OPENAGENTIC-WORKFLOWS DEPLOYMENT
+# ===================================================================================================
+# Standalone workflow execution service. Offloads heavy workflow processing from the main API.
+# Scales independently based on workflow execution load.
+# ===================================================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openagentic.fullname" . }}-workflows
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workflows
+spec:
+  replicas: {{ .Values.workflows.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: workflows
+  template:
+    metadata:
+      labels:
+        {{- include "openagentic.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: workflows
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.workflows.service.port | default 3400 }}"
+        prometheus.io/path: "/metrics"
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "openagentic.serviceAccountName" . }}
+      # Reduce ndots to prevent wildcard search domain hijacking of external hostnames
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+      containers:
+        - name: workflows
+          image: "{{ .Values.workflows.image.repository }}:{{ .Values.workflows.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.workflows.image.pullPolicy | default "Always" }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.workflows.service.port | default 3400 }}
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "{{ .Values.workflows.service.port | default 3400 }}"
+            - name: NODE_ENV
+              value: {{ .Values.env.NODE_ENV | default "production" | quote }}
+            - name: NODE_OPTIONS
+              value: {{ .Values.workflows.env.NODE_OPTIONS | default "--max-old-space-size=2048" | quote }}
+            # Database — same secret as main API
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openagentic.fullname" . }}-db-secrets
+                  key: DATABASE_URL
+            # Redis
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-redis
+                  key: redis-password
+            - name: REDIS_URL
+              value: "redis://:$(REDIS_PASSWORD)@{{ include "openagentic.redis.serviceName" . }}:6379"
+            # Service URLs — workflow engine calls API for LLM and MCP proxy for tools
+            - name: API_URL
+              value: {{ .Values.workflows.env.API_URL | default (printf "http://%s-api:%s" (include "openagentic.fullname" .) (toString (.Values.api.service.port | default 8000))) | quote }}
+            - name: MCP_PROXY_URL
+              value: {{ .Values.workflows.env.MCP_PROXY_URL | default (printf "http://%s-mcp-proxy:%s" (include "openagentic.fullname" .) (toString (.Values.mcpProxy.service.port | default 5001))) | quote }}
+            # Model configuration
+            - name: DEFAULT_MODEL
+              value: {{ .Values.workflows.env.DEFAULT_MODEL | default .Values.env.DEFAULT_MODEL | default "auto" | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.workflows.env.LOG_LEVEL | default "info" | quote }}
+            # Use system CA bundle for external HTTPS requests
+            - name: NODE_EXTRA_CA_CERTS
+              value: "/etc/ssl/certs/ca-certificates.crt"
+            # Internal service auth for self-calls (LLM endpoint, agent routes)
+            - name: INTERNAL_SERVICE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openagentic.fullname" . }}-api-secrets
+                  key: INTERNAL_SERVICE_SECRET
+                  optional: true
+            # Agent proxy for agent_spawn nodes
+            - name: OPENAGENTIC_PROXY_URL
+              value: {{ .Values.workflows.env.OPENAGENTIC_PROXY_URL | default (printf "http://%s-openagentic-proxy:%s" (include "openagentic.fullname" .) "3300") | quote }}
+            - name: OPENAGENTIC_PROXY_INTERNAL_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openagentic.fullname" . }}-api-secrets
+                  key: OPENAGENTIC_PROXY_INTERNAL_KEY
+                  optional: true
+            # Workflow secret encryption key
+            - name: WORKFLOW_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openagentic.fullname" . }}-secrets
+                  key: WORKFLOW_SECRET_KEY
+                  optional: true
+            {{- with .Values.workflows.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+          resources:
+            {{- toYaml (.Values.workflows.resources | default (dict "requests" (dict "cpu" "250m" "memory" "512Mi") "limits" (dict "memory" "2Gi"))) | nindent 12 }}
+      {{- with .Values.workflows.nodeSelector | default .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.workflows.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,341 @@
+{
+  "domain": "release-notes",
+  "title": "Release Notes",
+  "description": "Platform release notes",
+  "icon": "doc",
+  "category": "core",
+  "generatedAt": "2026-05-13T20:48:20.622Z",
+  "sourceFiles": [
+    "docs/releases/v0.5.0.md",
+    "docs/releases/v0.6.2.md",
+    "docs/releases/v0.6.3.md",
+    "docs/releases/v0.6.5.md",
+    "docs/releases/v0.6.6.md",
+    "docs/releases/v0.6.7.md",
+    "docs/releases/v0.7.1.md"
+  ],
+  "sections": [
+    {
+      "id": "v0.5.0",
+      "title": "v0.5.0",
+      "description": "**Release Date:** February 2026\n**Codename:** Platform Hardening\n**Previous Version:** v0.3.0",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "v0.5.0--0",
+          "name": "Executive Summary",
+          "description": "v0.5.0 is a comprehensive platform hardening release that transforms OpenAgentic from a prototype into a production-grade enterprise AI platform. This release addresses critical security gaps, adds architectural resilience, replaces the Flowise workflow engine with native Agentic",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.5.0.md"
+        },
+        {
+          "id": "v0.5.0--1",
+          "name": "Breaking Changes",
+          "description": "### Flowise Removed The Flowise workflow engine has been completely removed from the platform. All workflow functionality is now handled by the native **OpenAgentic Flows** engine. ",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.5.0.md"
+        },
+        {
+          "id": "v0.5.0--2",
+          "name": "New Features",
+          "description": "### 1. OpenAgentic Flows — Native Workflow Engine  A fully native visual workflow builder replacing Flowise, with execution engine and 21 node types across 7 categories.",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.5.0.md"
+        },
+        {
+          "id": "v0.5.0--3",
+          "name": "Infrastructure & Operations",
+          "description": "### Multi-Environment Deployment  | Environment | URL | Cluster | Pods |",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.5.0.md"
+        },
+        {
+          "id": "v0.5.0--4",
+          "name": "Admin Console Enhancements",
+          "description": "### New Admin Sections | Section | Description | |---------|-------------|",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.5.0.md"
+        },
+        {
+          "id": "v0.5.0--5",
+          "name": "Security Summary",
+          "description": "| Feature | v0.3.0 | v0.5.0 | |---------|--------|--------| | DLP Scanner | None | 50+ rules, real-time scan/redact/block |",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.5.0.md"
+        },
+        {
+          "id": "v0.5.0--6",
+          "name": "API Changes",
+          "description": "### New Endpoints | Endpoint | Method | Description | |----------|--------|-------------|",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.5.0.md"
+        },
+        {
+          "id": "v0.5.0--7",
+          "name": "Database Changes",
+          "description": "### New Models | Model | Table | Purpose | |-------|-------|---------|",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.5.0.md"
+        },
+        {
+          "id": "v0.5.0--8",
+          "name": "Known Issues",
+          "description": "1. **PostgreSQL bottleneck**: Single primary shared by all API pods. Under high HPA scaling (10 pods), connection pooling may be needed. 2. **ARM64 QEMU builds**: Multi-arch builds take 5-7 min due to ARM64 emulation. Native ARM64 builder would improve this. 3. **Milvus cold star",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.5.0.md"
+        },
+        {
+          "id": "v0.5.0--9",
+          "name": "Upgrade Guide",
+          "description": "### From v0.3.0  1. **Rebuild all images:**",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.5.0.md"
+        },
+        {
+          "id": "v0.5.0--10",
+          "name": "Contributors",
+          "description": "Built by the OpenAgentic engineering team  ---",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.5.0.md"
+        }
+      ]
+    },
+    {
+      "id": "v0.6.2",
+      "title": "v0.6.2",
+      "description": "**Release Date:** 2026-04-08\n**Codename:** Lockstep\n**Previous Version:** v0.6.0\n**Skipped:** v0.6.1 (rolled into v0.6.2 after the stabilization snapshot)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "v0.6.2--0",
+          "name": "OpenAgentic v0.6.2",
+          "description": "**Release Date:** 2026-04-08 **Codename:** Lockstep **Previous Version:** v0.6.0",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.2.md"
+        }
+      ]
+    },
+    {
+      "id": "v0.6.3",
+      "title": "v0.6.3",
+      "description": "**Release Date:** 2026-04-10\n**Codename:** Light It Up\n**Previous Version:** v0.6.2",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "v0.6.3--0",
+          "name": "OpenAgentic v0.6.3",
+          "description": "**Release Date:** 2026-04-10 **Codename:** Light It Up **Previous Version:** v0.6.2",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.3.md"
+        }
+      ]
+    },
+    {
+      "id": "v0.6.5",
+      "title": "v0.6.5",
+      "description": "**Release Date:** 2026-04-17\n**Codename:** Lock Step\n**Previous Version:** v0.6.3 (v0.6.4 skipped — internal-only codemode validation builds)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "v0.6.5--0",
+          "name": "OpenAgentic v0.6.5",
+          "description": "**Release Date:** 2026-04-17 **Codename:** Lock Step **Previous Version:** v0.6.3 (v0.6.4 skipped — internal-only codemode validation builds)",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.5.md"
+        }
+      ]
+    },
+    {
+      "id": "v0.6.6",
+      "title": "v0.6.6",
+      "description": "**Release date:** 2026-04-18.\n**Theme:** Close every HITL escape hatch; ship the platform with no un-reviewable security bypasses.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "v0.6.6--0",
+          "name": "Breaking changes",
+          "description": "- **`DISABLE_HITL_GATE` environment variable is a no-op.** The backdoor that let HIGH-risk tool calls (azure_delete_*, aws_terminate_*, etc.) auto-approve when the env var was set has been deleted from `ToolApprovalGate.evaluate()`. Dev/CI auto-approval now has to go through the ",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.6.md"
+        },
+        {
+          "id": "v0.6.6--1",
+          "name": "What shipped, by UC blocker",
+          "description": "### UC-A14 — HITL gate for destructive Azure delete - `ToolApprovalGate`: backdoor env-var check removed. `DEFAULT_HIGH_RISK_PATTERNS` widened to cover `terminate|stop|shutdown|deallocate` for AWS/GCP/Azure/K8s tool families. - `submitApproval()` now writes an `approval_decision`",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.6.md"
+        },
+        {
+          "id": "v0.6.6--2",
+          "name": "P5 — FedRAMP/HIPAA tenant isolation",
+          "description": "- `docs/ac/data-isolation-p0.md` extended with a v0.6.6 P5 Expansion section covering the threat model, the data-class inventory (~20 tables + Milvus + MinIO), and acceptance criteria. - Prisma migration `20260418_rls_expansion`:   - Enables Postgres RLS + FORCE on `user_memory`,",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.6.md"
+        },
+        {
+          "id": "v0.6.6--3",
+          "name": "P6 — AWS MCP parity",
+          "description": "`services/mcps/oap-aws-mcp/server.py`: 8 → 31 typed tools. All read-only; destructive ops tracked for 0.6.7. New tools delegate to `_execute_aws_command` for OBO consistency.  | Family | Tools |",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.6.md"
+        },
+        {
+          "id": "v0.6.6--4",
+          "name": "P7 — GCP MCP parity",
+          "description": "`services/mcps/oap-gcp-mcp/src/server.py`: 28 → 46 typed tools. All read-only.  | Family | Tools |",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.6.md"
+        },
+        {
+          "id": "v0.6.6--5",
+          "name": "P8 — Background-job state machine",
+          "description": "- Prisma migration `20260418_background_job_state_machine`: adds `checkpoint_data JSONB`, `resume_at TIMESTAMP(3)`, `state_transitions JSONB` to `background_jobs`, plus a partial index on `(status, resume_at) WHERE resume_at IS NOT NULL` for the poller query. - `BackgroundJobStat",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.6.md"
+        },
+        {
+          "id": "v0.6.6--6",
+          "name": "P9 — Admin Test Harness wiring",
+          "description": "Already landed pre-release (`TestHarnessView` lazy import + sidebar entry in `AdminPortal.tsx` + `switch`-case). Verified this release: Monitoring & Logs → Test Harness is reachable.",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.6.md"
+        },
+        {
+          "id": "v0.6.6--7",
+          "name": "Infrastructure",
+          "description": "- **All openagentic pods on amd64** (hal/dalek). Fixed Bitnami Redis + Postgres subchart values to set `kubernetes.io/arch: amd64` nodeSelectors. ARM Pi nodes were causing RDB/AOF format crashloops on pod reschedule and cross-node CNI hangs to hal. - **SonarQube plumbing**:   - `",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.6.md"
+        },
+        {
+          "id": "v0.6.6--8",
+          "name": "Test counts",
+          "description": "| Suite | Cases | Status | |---|---|---| | ToolApprovalGate | 8 | pass |",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.6.md"
+        },
+        {
+          "id": "v0.6.6--9",
+          "name": "Live verification evidence",
+          "description": "- `docs/releases/0.6.6-evidence/uc/UC-A13/` — DLP pre-LLM block on AWS key (NDJSON + assertions). - `docs/releases/0.6.6-evidence/uc/UC-A14/` — HITL gate on destructive Azure delete (NDJSON + assertions). - `docs/releases/0.6.6-evidence/uc/UC-A17/` — synth_execute exposed + sandb",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.6.md"
+        },
+        {
+          "id": "v0.6.6--10",
+          "name": "Known gaps / tracked for 0.6.7",
+          "description": "- BackgroundJobPoller interval worker + `ctx.checkpoint` agent-runtime API + ParkedJobs UI sidebar. - Destructive AWS/GCP MCP tool wrappers (`aws_delete_*`, `aws_terminate_*`, `gcp_delete_*`, `gcp_stop_*`) — will auto-route through ToolApprovalGate HIGH via the widened pattern. -",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.6.md"
+        }
+      ]
+    },
+    {
+      "id": "v0.6.7",
+      "title": "v0.6.7",
+      "description": "**Target date:** 2026-04-20\n**Status:** 🔴 **NOT READY TO SHIP**\n**Predecessor:** [v0.6.6 \"No Backdoor\"](v0.6.6.md) — 2026-04-18",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "v0.6.7--0",
+          "name": "Theme",
+          "description": "v0.6.7 was scoped to complete the SSE → NDJSON migration, adopt the Anthropic Messages canonical stream event union, ship the Phase F/G/H/I inline event families, rewrite the cloud MCP auth flows as direct-passthrough / OIDC federation, and bring the chat UX to Claude.ai / Gemini",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.7.md"
+        },
+        {
+          "id": "v0.6.7--1",
+          "name": "What actually shipped",
+          "description": "### Streaming wire (✅ shipped)  | Phase | Commits | Landed |",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.7.md"
+        },
+        {
+          "id": "v0.6.7--2",
+          "name": "What's BROKEN / MISSING — reasons NOT to ship",
+          "description": "### 🔴 Critical — block release  1. **Chat UX visual parity** (task #166, in progress). Live chat-dev.openagentic.io does NOT visually match `docs/release-plans/v0.6.7-ux-mockups/01-cloud-ops.html`. The shipped components have the correct behavior but pre-mockup className strings",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.7.md"
+        },
+        {
+          "id": "v0.6.7--3",
+          "name": "Contract matrix snapshot",
+          "description": "``` Pre-v0.6.7: ~50 event types Post-v0.6.7: 150 shipped + 3 pending + 19 dead (emit sites w/o UI consumer) = 172 total",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.7.md"
+        },
+        {
+          "id": "v0.6.7--4",
+          "name": "Breaking changes",
+          "description": "- `DISABLE_HITL_GATE` is still a no-op (from v0.6.6). - `ENABLE_AUTH` env var on mcp-proxy is now a no-op (gate removed in source; helm values still set it for compatibility). - `NormalizedStreamEvent` → `AgenticStreamEvent` (old name preserved as `@deprecated` alias for one rele",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.7.md"
+        },
+        {
+          "id": "v0.6.7--5",
+          "name": "Upgrade path from v0.6.6",
+          "description": "1. Helm upgrade with `values-k3s-local.yaml` + `values-local-registry.yaml` (chart version 0.6.4+ still covers v0.6.7 services). 2. First boot re-ingests all docs (~30-60s — see bug #165). 3. Verify AAD login still works (AAD app reg client ID `71f4ffd5-…` unchanged).",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.7.md"
+        },
+        {
+          "id": "v0.6.7--6",
+          "name": "Decision",
+          "description": "**Do not ship until at minimum:** - [ ] Chat UX visually matches mockup 01-cloud-ops.html (task #166) - [ ] Codemode renders in the new UX (not yet verified)",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.7.md"
+        },
+        {
+          "id": "v0.6.7--7",
+          "name": "Commits included (as of 2026-04-20)",
+          "description": "``` 54db9d81 fix(pipeline): Phase G emit sites — narrow-type field access via any-cast 3b683c1e test(stream): durable streams (task #154 c)",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.7.md"
+        },
+        {
+          "id": "v0.6.7--8",
+          "name": "Sources",
+          "description": "- Plan: `<internal-plan>` (\"Kill SSE Everywhere + Inline-Feature Roadmap\") - Mockups: `docs/release-plans/v0.6.7-ux-mockups/{01-cloud-ops,02-kubernetes-health-report,03-secure-api-build,index}.html` - Plans: `docs/release-plans/v0.6.7-qc-s",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.6.7.md"
+        }
+      ]
+    },
+    {
+      "id": "v0.7.1",
+      "title": "v0.7.1",
+      "description": "![AGENTICHAT — v0.7.1](/agentichat.png)",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "v0.7.1--0",
+          "name": "Summary",
+          "description": "- **Enterprise chatmode (Claude-Code-grade)** — single `chatmode` pipeline, 12 T1 primitives, per-T1 description builders, full SDK canonical events. - **Glob-based permissions UI** — Claude-Code allow/deny/ask rules replace the legacy regex-tier ToolApprovalGate. - **Inline tool",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.7.1.md"
+        },
+        {
+          "id": "v0.7.1--1",
+          "name": "What's new",
+          "description": "### Enterprise chatmode (Claude-Code-grade)  Single `chatmode` pipeline. 12 T1 primitives — `tool_search`, `agent_search`, `Task`, `agent_send`, `agent_list`, `agent_stop`, `read_large_result`, `web_search`, `web_fetch`, `synth`, `pattern_save`, `pattern_recall`. Per-T1 descripti",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.7.1.md"
+        },
+        {
+          "id": "v0.7.1--2",
+          "name": "Breaking changes",
+          "description": "- The legacy regex-tier ToolApprovalGate is deprecated in favor of the glob-based permission rules at `/admin#tool-permissions`. Existing approval policies are migrated forward on boot; admins should review the new rule set after upgrade. - `chatmode` is now the only chat pipelin",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.7.1.md"
+        },
+        {
+          "id": "v0.7.1--3",
+          "name": "Predecessor",
+          "description": "- [v0.7.0 \"Atlas Donzo\"](v0.7.0.md) — universal admin chrome, theme audit + sweep, AIF non-stream Responses API path, animated `[openagentic]` wordmark.",
+          "type": "markdown-section",
+          "sourceFile": "docs/releases/v0.7.1.md"
+        }
+      ]
+    }
+  ]
+}

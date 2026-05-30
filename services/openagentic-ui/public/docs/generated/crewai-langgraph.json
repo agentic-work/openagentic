@@ -1,0 +1,833 @@
+{
+  "domain": "agent-frameworks",
+  "title": "Agent Frameworks (CrewAI & LangGraph)",
+  "description": "Agent orchestration frameworks with 78 documented components across 15 CrewAI and 14 LangGraph source files.",
+  "icon": "agent",
+  "category": "agents",
+  "generatedAt": "2026-04-06T02:45:19.555Z",
+  "sourceFiles": [
+    "services/openagentic-crewai/src/__init__.py",
+    "services/openagentic-crewai/src/agents/__init__.py",
+    "services/openagentic-crewai/src/config.py",
+    "services/openagentic-crewai/src/config_manager.py",
+    "services/openagentic-crewai/src/crews/__init__.py",
+    "services/openagentic-crewai/src/crews/aiops_crew.py",
+    "services/openagentic-crewai/src/crews/research_crew.py",
+    "services/openagentic-crewai/src/main.py",
+    "services/openagentic-crewai/src/routes/__init__.py",
+    "services/openagentic-crewai/src/routes/config.py",
+    "services/openagentic-crewai/src/routes/crews.py",
+    "services/openagentic-crewai/src/routes/health.py",
+    "services/openagentic-crewai/src/routes/metrics.py",
+    "services/openagentic-crewai/src/tools/__init__.py",
+    "services/openagentic-crewai/src/tools/mcp_bridge.py",
+    "services/openagentic-langgraph/src/config/index.ts",
+    "services/openagentic-langgraph/src/index.ts",
+    "services/openagentic-langgraph/src/routes/config.route.ts",
+    "services/openagentic-langgraph/src/routes/health.route.ts",
+    "services/openagentic-langgraph/src/routes/metrics.route.ts",
+    "services/openagentic-langgraph/src/routes/workflows.route.ts",
+    "services/openagentic-langgraph/src/server.ts",
+    "services/openagentic-langgraph/src/services/config-manager.ts",
+    "services/openagentic-langgraph/src/services/llm.service.ts",
+    "services/openagentic-langgraph/src/workflows/aiops.workflow.ts",
+    "services/openagentic-langgraph/src/workflows/dynamic-builder.ts",
+    "services/openagentic-langgraph/src/workflows/grounding.workflow.ts",
+    "services/openagentic-langgraph/src/workflows/index.ts",
+    "services/openagentic-langgraph/src/workflows/research.workflow.ts"
+  ],
+  "sections": [
+    {
+      "id": "crewai-agents",
+      "title": "CrewAI Agents & Crews",
+      "description": "8 CrewAI agent, crew, and task definitions.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "crewai-agentfactory",
+          "name": "AgentFactory",
+          "description": "Factory for creating agents with shared context.",
+          "type": "crewai-class",
+          "properties": {},
+          "sourceFile": "services/openagentic-crewai/src/agents/__init__.py",
+          "sourceLine": 9
+        },
+        {
+          "id": "crewai-crewregistry",
+          "name": "CrewRegistry",
+          "description": "Registry for managing available crews.",
+          "type": "crewai-class",
+          "properties": {},
+          "sourceFile": "services/openagentic-crewai/src/crews/__init__.py",
+          "sourceLine": 10
+        },
+        {
+          "id": "crewai-crewinput",
+          "name": "CrewInput",
+          "description": "Input for crew invocation.",
+          "type": "crewai-class",
+          "properties": {
+            "bases": "BaseModel"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/crews.py",
+          "sourceLine": 17
+        },
+        {
+          "id": "crewai-crewoptions",
+          "name": "CrewOptions",
+          "description": "Options for crew execution.",
+          "type": "crewai-class",
+          "properties": {
+            "bases": "BaseModel"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/crews.py",
+          "sourceLine": 24
+        },
+        {
+          "id": "crewai-invokecrewrequest",
+          "name": "InvokeCrewRequest",
+          "description": "Request body for invoking a crew.",
+          "type": "crewai-class",
+          "properties": {
+            "bases": "BaseModel"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/crews.py",
+          "sourceLine": 31
+        },
+        {
+          "id": "crewai-crewresponse",
+          "name": "CrewResponse",
+          "description": "Response from crew invocation.",
+          "type": "crewai-class",
+          "properties": {
+            "bases": "BaseModel"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/crews.py",
+          "sourceLine": 38
+        },
+        {
+          "id": "crewai-createcrewrequest",
+          "name": "CreateCrewRequest",
+          "description": "Request to create a dynamic crew.",
+          "type": "crewai-class",
+          "properties": {
+            "bases": "BaseModel"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/crews.py",
+          "sourceLine": 132
+        },
+        {
+          "id": "crewai-mcptool",
+          "name": "MCPTool",
+          "description": "A CrewAI tool that bridges to MCP tools via the MCP Proxy.",
+          "type": "crewai-class",
+          "properties": {
+            "bases": "BaseTool"
+          },
+          "sourceFile": "services/openagentic-crewai/src/tools/mcp_bridge.py",
+          "sourceLine": 20
+        }
+      ]
+    },
+    {
+      "id": "crewai-classes",
+      "title": "CrewAI Service Classes",
+      "description": "15 supporting Python classes in the CrewAI service.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "crewai-cls-settings",
+          "name": "Settings",
+          "description": "Application settings loaded from environment variables.",
+          "type": "python-class",
+          "properties": {
+            "bases": "BaseSettings"
+          },
+          "sourceFile": "services/openagentic-crewai/src/config.py",
+          "sourceLine": 8
+        },
+        {
+          "id": "crewai-cls-llmconfig",
+          "name": "LLMConfig",
+          "description": "LLM configuration settings.",
+          "type": "python-class",
+          "properties": {},
+          "sourceFile": "services/openagentic-crewai/src/config_manager.py",
+          "sourceLine": 20
+        },
+        {
+          "id": "crewai-cls-frameworkconfig",
+          "name": "FrameworkConfig",
+          "description": "CrewAI-specific framework configuration.",
+          "type": "python-class",
+          "properties": {},
+          "sourceFile": "services/openagentic-crewai/src/config_manager.py",
+          "sourceLine": 35
+        },
+        {
+          "id": "crewai-cls-runtimeconfig",
+          "name": "RuntimeConfig",
+          "description": "Complete runtime configuration.",
+          "type": "python-class",
+          "properties": {},
+          "sourceFile": "services/openagentic-crewai/src/config_manager.py",
+          "sourceLine": 45
+        },
+        {
+          "id": "crewai-cls-configmanager",
+          "name": "ConfigManager",
+          "description": "Manages runtime configuration for the CrewAI service.",
+          "type": "python-class",
+          "properties": {},
+          "sourceFile": "services/openagentic-crewai/src/config_manager.py",
+          "sourceLine": 56
+        },
+        {
+          "id": "crewai-cls-llmconfigupdate",
+          "name": "LLMConfigUpdate",
+          "description": "LLM configuration update schema.",
+          "type": "python-class",
+          "properties": {
+            "bases": "BaseModel"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/config.py",
+          "sourceLine": 23
+        },
+        {
+          "id": "crewai-cls-frameworkconfigupdate",
+          "name": "FrameworkConfigUpdate",
+          "description": "Framework configuration update schema.",
+          "type": "python-class",
+          "properties": {
+            "bases": "BaseModel"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/config.py",
+          "sourceLine": 31
+        },
+        {
+          "id": "crewai-cls-reloadconfigrequest",
+          "name": "ReloadConfigRequest",
+          "description": "Configuration reload request schema.",
+          "type": "python-class",
+          "properties": {
+            "bases": "BaseModel"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/config.py",
+          "sourceLine": 40
+        },
+        {
+          "id": "crewai-cls-configresponse",
+          "name": "ConfigResponse",
+          "description": "Configuration response schema.",
+          "type": "python-class",
+          "properties": {
+            "bases": "BaseModel"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/config.py",
+          "sourceLine": 48
+        },
+        {
+          "id": "crewai-cls-reloadresponse",
+          "name": "ReloadResponse",
+          "description": "Reload response schema.",
+          "type": "python-class",
+          "properties": {
+            "bases": "BaseModel"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/config.py",
+          "sourceLine": 59
+        },
+        {
+          "id": "crewai-cls-readyresponse",
+          "name": "ReadyResponse",
+          "description": "Ready response schema.",
+          "type": "python-class",
+          "properties": {
+            "bases": "BaseModel"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/config.py",
+          "sourceLine": 66
+        },
+        {
+          "id": "crewai-cls-metrics",
+          "name": "Metrics",
+          "description": "Python class",
+          "type": "python-class",
+          "properties": {},
+          "sourceFile": "services/openagentic-crewai/src/routes/metrics.py",
+          "sourceLine": 15
+        },
+        {
+          "id": "crewai-cls-configreloadrequest",
+          "name": "ConfigReloadRequest",
+          "description": "Extends BaseModel",
+          "type": "python-class",
+          "properties": {
+            "bases": "BaseModel"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/metrics.py",
+          "sourceLine": 164
+        },
+        {
+          "id": "crewai-cls-mcptoolinput",
+          "name": "MCPToolInput",
+          "description": "Input schema for MCP tool calls.",
+          "type": "python-class",
+          "properties": {
+            "bases": "BaseModel"
+          },
+          "sourceFile": "services/openagentic-crewai/src/tools/mcp_bridge.py",
+          "sourceLine": 14
+        },
+        {
+          "id": "crewai-cls-mcptoolfactory",
+          "name": "MCPToolFactory",
+          "description": "Factory for creating MCP tools with shared context.",
+          "type": "python-class",
+          "properties": {},
+          "sourceFile": "services/openagentic-crewai/src/tools/mcp_bridge.py",
+          "sourceLine": 103
+        }
+      ]
+    },
+    {
+      "id": "crewai-routes",
+      "title": "CrewAI API Routes",
+      "description": "15 FastAPI endpoints in the CrewAI service.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "crewai-route-get-root",
+          "name": "GET /",
+          "description": "Root endpoint.",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/",
+            "handler": "root"
+          },
+          "sourceFile": "services/openagentic-crewai/src/main.py",
+          "sourceLine": 78
+        },
+        {
+          "id": "crewai-route-get-get_config",
+          "name": "GET /config",
+          "description": "Get current runtime configuration.",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/config",
+            "handler": "get_config"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/config.py",
+          "sourceLine": 77
+        },
+        {
+          "id": "crewai-route-post-reload_config",
+          "name": "POST /config/reload",
+          "description": "Reload configuration from the OpenAgentic API or apply provided config.",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/config/reload",
+            "handler": "reload_config"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/config.py",
+          "sourceLine": 106
+        },
+        {
+          "id": "crewai-route-get-ready_check",
+          "name": "GET /ready",
+          "description": "Readiness check - returns ready status based on config availability.",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/ready",
+            "handler": "ready_check"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/config.py",
+          "sourceLine": 175
+        },
+        {
+          "id": "crewai-route-get-get_capabilities",
+          "name": "GET /config/capabilities",
+          "description": "Returns the capabilities of the current configuration.",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/config/capabilities",
+            "handler": "get_capabilities"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/config.py",
+          "sourceLine": 203
+        },
+        {
+          "id": "crewai-route-get-list_crews",
+          "name": "GET /",
+          "description": "List all available crews.",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/",
+            "handler": "list_crews"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/crews.py",
+          "sourceLine": 48
+        },
+        {
+          "id": "crewai-route-get-get_crew",
+          "name": "GET /{crew_id}",
+          "description": "Get details of a specific crew.",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/{crew_id}",
+            "handler": "get_crew"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/crews.py",
+          "sourceLine": 58
+        },
+        {
+          "id": "crewai-route-post-invoke_crew",
+          "name": "POST /{crew_id}/invoke",
+          "description": "Invoke a crew to execute a task.",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/{crew_id}/invoke",
+            "handler": "invoke_crew"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/crews.py",
+          "sourceLine": 71
+        },
+        {
+          "id": "crewai-route-post-create_crew",
+          "name": "POST /create",
+          "description": "Create a new dynamic crew.",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/create",
+            "handler": "create_crew"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/crews.py",
+          "sourceLine": 142
+        },
+        {
+          "id": "crewai-route-get-health_check",
+          "name": "GET /health",
+          "description": "Basic health check endpoint.",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/health",
+            "handler": "health_check"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/health.py",
+          "sourceLine": 16
+        },
+        {
+          "id": "crewai-route-get-detailed_health_check",
+          "name": "GET /health/detailed",
+          "description": "Detailed health check with dependency status.",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/health/detailed",
+            "handler": "detailed_health_check"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/health.py",
+          "sourceLine": 27
+        },
+        {
+          "id": "crewai-route-get-readiness_check",
+          "name": "GET /ready",
+          "description": "Readiness check for Kubernetes.",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/ready",
+            "handler": "readiness_check"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/health.py",
+          "sourceLine": 79
+        },
+        {
+          "id": "crewai-route-get-get_prometheus_metrics",
+          "name": "GET /metrics",
+          "description": "GET /metrics",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/metrics",
+            "handler": "get_prometheus_metrics"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/metrics.py",
+          "sourceLine": 65
+        },
+        {
+          "id": "crewai-route-get-get_json_metrics",
+          "name": "GET /metrics/json",
+          "description": "GET /metrics/json",
+          "type": "api-route",
+          "properties": {
+            "method": "GET",
+            "path": "/metrics/json",
+            "handler": "get_json_metrics"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/metrics.py",
+          "sourceLine": 118
+        },
+        {
+          "id": "crewai-route-post-reload_config",
+          "name": "POST /config/reload",
+          "description": "POST /config/reload",
+          "type": "api-route",
+          "properties": {
+            "method": "POST",
+            "path": "/config/reload",
+            "handler": "reload_config"
+          },
+          "sourceFile": "services/openagentic-crewai/src/routes/metrics.py",
+          "sourceLine": 171
+        }
+      ]
+    },
+    {
+      "id": "langgraph-nodes",
+      "title": "LangGraph Nodes & Functions",
+      "description": "14 exported graph nodes and functions in the LangGraph service.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "lg-function-loadconfig",
+          "name": "loadConfig",
+          "description": "function export",
+          "type": "langgraph-function",
+          "sourceFile": "services/openagentic-langgraph/src/config/index.ts",
+          "sourceLine": 43
+        },
+        {
+          "id": "lg-function-trackrequest",
+          "name": "trackRequest",
+          "description": "Export metrics tracking functions for use in other modules",
+          "type": "langgraph-function",
+          "sourceFile": "services/openagentic-langgraph/src/routes/metrics.route.ts",
+          "sourceLine": 39
+        },
+        {
+          "id": "lg-function-trackworkflow",
+          "name": "trackWorkflow",
+          "description": "function export",
+          "type": "langgraph-function",
+          "sourceFile": "services/openagentic-langgraph/src/routes/metrics.route.ts",
+          "sourceLine": 50
+        },
+        {
+          "id": "lg-function-trackllmcall",
+          "name": "trackLLMCall",
+          "description": "function export",
+          "type": "langgraph-function",
+          "sourceFile": "services/openagentic-langgraph/src/routes/metrics.route.ts",
+          "sourceLine": 62
+        },
+        {
+          "id": "lg-function-getmetrics",
+          "name": "getMetrics",
+          "description": "function export",
+          "type": "langgraph-function",
+          "sourceFile": "services/openagentic-langgraph/src/routes/metrics.route.ts",
+          "sourceLine": 67
+        },
+        {
+          "id": "lg-function-createserver",
+          "name": "createServer",
+          "description": "function export",
+          "type": "langgraph-function",
+          "sourceFile": "services/openagentic-langgraph/src/server.ts",
+          "sourceLine": 11
+        },
+        {
+          "id": "lg-function-getconfigmanager",
+          "name": "getConfigManager",
+          "description": "function export",
+          "type": "langgraph-function",
+          "sourceFile": "services/openagentic-langgraph/src/services/config-manager.ts",
+          "sourceLine": 192
+        },
+        {
+          "id": "lg-function-chatcompletion",
+          "name": "chatCompletion",
+          "description": "LLM Service for LangGraph  Routes all LLM calls through the OpenAgentic API for unified: - Authentication and authorization - Model routing and intelligence slider support - Cost tracking and token counting - Metrics and logging  The OpenAgentic API provides an OpenAI-compatible endpoint at /api/v1/chat/completions",
+          "type": "langgraph-function",
+          "sourceFile": "services/openagentic-langgraph/src/services/llm.service.ts",
+          "sourceLine": 66
+        },
+        {
+          "id": "lg-function-complete",
+          "name": "complete",
+          "description": "LLM Service for LangGraph  Routes all LLM calls through the OpenAgentic API for unified: - Authentication and authorization - Model routing and intelligence slider support - Cost tracking and token counting - Metrics and logging  The OpenAgentic API provides an OpenAI-compatible endpoint at /api/v1/chat/completions",
+          "type": "langgraph-function",
+          "sourceFile": "services/openagentic-langgraph/src/services/llm.service.ts",
+          "sourceLine": 98
+        },
+        {
+          "id": "lg-function-analyze",
+          "name": "analyze",
+          "description": "LLM Service for LangGraph  Routes all LLM calls through the OpenAgentic API for unified: - Authentication and authorization - Model routing and intelligence slider support - Cost tracking and token counting - Metrics and logging  The OpenAgentic API provides an OpenAI-compatible endpoint at /api/v1/chat/completions",
+          "type": "langgraph-function",
+          "sourceFile": "services/openagentic-langgraph/src/services/llm.service.ts",
+          "sourceLine": 116
+        },
+        {
+          "id": "lg-function-synthesize",
+          "name": "synthesize",
+          "description": "LLM Service for LangGraph  Routes all LLM calls through the OpenAgentic API for unified: - Authentication and authorization - Model routing and intelligence slider support - Cost tracking and token counting - Metrics and logging  The OpenAgentic API provides an OpenAI-compatible endpoint at /api/v1/chat/completions",
+          "type": "langgraph-function",
+          "sourceFile": "services/openagentic-langgraph/src/services/llm.service.ts",
+          "sourceLine": 139
+        },
+        {
+          "id": "lg-function-builddynamicworkflow",
+          "name": "buildDynamicWorkflow",
+          "description": "function export",
+          "type": "langgraph-function",
+          "sourceFile": "services/openagentic-langgraph/src/workflows/dynamic-builder.ts",
+          "sourceLine": 737
+        },
+        {
+          "id": "lg-interface-uiworkflownode",
+          "name": "UIWorkflowNode",
+          "description": "interface export",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/workflows/dynamic-builder.ts",
+          "sourceLine": 18
+        },
+        {
+          "id": "lg-interface-uiworkflowedge",
+          "name": "UIWorkflowEdge",
+          "description": "interface export",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/workflows/dynamic-builder.ts",
+          "sourceLine": 25
+        }
+      ]
+    },
+    {
+      "id": "langgraph-types",
+      "title": "LangGraph Types & Constants",
+      "description": "26 exported types, interfaces, and constants.",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "lg-const-config",
+          "name": "config",
+          "description": "const export",
+          "type": "langgraph-const",
+          "sourceFile": "services/openagentic-langgraph/src/config/index.ts",
+          "sourceLine": 54
+        },
+        {
+          "id": "lg-interface-config",
+          "name": "Config",
+          "description": "interface export",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/config/index.ts",
+          "sourceLine": 41
+        },
+        {
+          "id": "lg-const-configroutes",
+          "name": "configRoutes",
+          "description": "const export",
+          "type": "langgraph-const",
+          "sourceFile": "services/openagentic-langgraph/src/routes/config.route.ts",
+          "sourceLine": 19
+        },
+        {
+          "id": "lg-const-healthroutes",
+          "name": "healthRoutes",
+          "description": "const export",
+          "type": "langgraph-const",
+          "sourceFile": "services/openagentic-langgraph/src/routes/health.route.ts",
+          "sourceLine": 4
+        },
+        {
+          "id": "lg-const-metricsroutes",
+          "name": "metricsRoutes",
+          "description": "const export",
+          "type": "langgraph-const",
+          "sourceFile": "services/openagentic-langgraph/src/routes/metrics.route.ts",
+          "sourceLine": 71
+        },
+        {
+          "id": "lg-const-workflowroutes",
+          "name": "workflowRoutes",
+          "description": "const export",
+          "type": "langgraph-const",
+          "sourceFile": "services/openagentic-langgraph/src/routes/workflows.route.ts",
+          "sourceLine": 53
+        },
+        {
+          "id": "lg-const-configmanager",
+          "name": "configManager",
+          "description": "Singleton instance",
+          "type": "langgraph-const",
+          "sourceFile": "services/openagentic-langgraph/src/services/config-manager.ts",
+          "sourceLine": 190
+        },
+        {
+          "id": "lg-interface-llmconfig",
+          "name": "LLMConfig",
+          "description": "interface export",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/services/config-manager.ts",
+          "sourceLine": 10
+        },
+        {
+          "id": "lg-interface-frameworkconfig",
+          "name": "FrameworkConfig",
+          "description": "interface export",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/services/config-manager.ts",
+          "sourceLine": 21
+        },
+        {
+          "id": "lg-interface-runtimeconfig",
+          "name": "RuntimeConfig",
+          "description": "interface export",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/services/config-manager.ts",
+          "sourceLine": 28
+        },
+        {
+          "id": "lg-interface-chatmessage",
+          "name": "ChatMessage",
+          "description": "interface export",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/services/llm.service.ts",
+          "sourceLine": 15
+        },
+        {
+          "id": "lg-interface-chatcompletionrequest",
+          "name": "ChatCompletionRequest",
+          "description": "interface export",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/services/llm.service.ts",
+          "sourceLine": 20
+        },
+        {
+          "id": "lg-interface-chatcompletionresponse",
+          "name": "ChatCompletionResponse",
+          "description": "interface export",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/services/llm.service.ts",
+          "sourceLine": 28
+        },
+        {
+          "id": "lg-const-aiopsworkflow",
+          "name": "aiopsWorkflow",
+          "description": "Export the registered workflow",
+          "type": "langgraph-const",
+          "sourceFile": "services/openagentic-langgraph/src/workflows/aiops.workflow.ts",
+          "sourceLine": 348
+        },
+        {
+          "id": "lg-interface-uiworkflowdefinition",
+          "name": "UIWorkflowDefinition",
+          "description": "interface export",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/workflows/dynamic-builder.ts",
+          "sourceLine": 34
+        },
+        {
+          "id": "lg-const-groundingworkflow",
+          "name": "groundingWorkflow",
+          "description": "const export",
+          "type": "langgraph-const",
+          "sourceFile": "services/openagentic-langgraph/src/workflows/grounding.workflow.ts",
+          "sourceLine": 512
+        },
+        {
+          "id": "lg-const-workflowregistry",
+          "name": "workflowRegistry",
+          "description": "Export singleton instance",
+          "type": "langgraph-const",
+          "sourceFile": "services/openagentic-langgraph/src/workflows/index.ts",
+          "sourceLine": 187
+        },
+        {
+          "id": "lg-interface-workflowinput",
+          "name": "WorkflowInput",
+          "description": "Workflow input interface",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/workflows/index.ts",
+          "sourceLine": 9
+        },
+        {
+          "id": "lg-interface-workflowoptions",
+          "name": "WorkflowOptions",
+          "description": "Workflow execution options",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/workflows/index.ts",
+          "sourceLine": 17
+        },
+        {
+          "id": "lg-interface-workflowresult",
+          "name": "WorkflowResult",
+          "description": "Workflow result interface",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/workflows/index.ts",
+          "sourceLine": 23
+        },
+        {
+          "id": "lg-interface-workflowmetadata",
+          "name": "WorkflowMetadata",
+          "description": "Workflow metadata",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/workflows/index.ts",
+          "sourceLine": 34
+        },
+        {
+          "id": "lg-interface-registeredworkflow",
+          "name": "RegisteredWorkflow",
+          "description": "Registered workflow interface",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/workflows/index.ts",
+          "sourceLine": 43
+        },
+        {
+          "id": "lg-interface-workflowevent",
+          "name": "WorkflowEvent",
+          "description": "Workflow event types",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/workflows/index.ts",
+          "sourceLine": 51
+        },
+        {
+          "id": "lg-interface-workflowhistoryentry",
+          "name": "WorkflowHistoryEntry",
+          "description": "History entry",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/workflows/index.ts",
+          "sourceLine": 62
+        },
+        {
+          "id": "lg-interface-dynamicworkflowconfig",
+          "name": "DynamicWorkflowConfig",
+          "description": "Dynamic workflow creation config",
+          "type": "langgraph-interface",
+          "sourceFile": "services/openagentic-langgraph/src/workflows/index.ts",
+          "sourceLine": 71
+        },
+        {
+          "id": "lg-const-researchworkflow",
+          "name": "researchWorkflow",
+          "description": "Export the registered workflow",
+          "type": "langgraph-const",
+          "sourceFile": "services/openagentic-langgraph/src/workflows/research.workflow.ts",
+          "sourceLine": 227
+        }
+      ]
+    }
+  ]
+}

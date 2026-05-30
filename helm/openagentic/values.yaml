@@ -1,0 +1,182 @@
+# =============================================================================
+# Default values for the openagentic Helm chart (public OSS)
+# =============================================================================
+#
+# Override in your own values file. Images are pulled from
+# harbor.agenticwork.io/openagentic/* — overlay your own registry if you
+# self-host (see values-local-registry.yaml for an example).
+#
+# Usage:
+#   helm install openagentic ./helm/openagentic -n openagentic --create-namespace
+#
+# With a custom values file:
+#   helm install openagentic ./helm/openagentic -f my-values.yaml -n openagentic
+# =============================================================================
+
+global:
+  environment: production
+  imagePullPolicy: IfNotPresent
+  # Override per-chart by setting a registry on each service.image.repository.
+  imageRegistry: "harbor.agenticwork.io/openagentic/"
+
+# ─── Core services ──────────────────────────────────────────────────────────
+api:
+  enabled: true
+  image:
+    repository: harbor.agenticwork.io/openagentic/openagentic-api
+    tag: latest
+
+ui:
+  enabled: true
+  image:
+    repository: harbor.agenticwork.io/openagentic/openagentic-ui
+    tag: latest
+
+workflows:
+  enabled: true
+  image:
+    repository: harbor.agenticwork.io/openagentic/openagentic-workflows
+    tag: latest
+
+mcpProxy:
+  enabled: true
+  image:
+    repository: harbor.agenticwork.io/openagentic/openagentic-mcp-proxy
+    tag: latest
+
+openagenticProxy:
+  enabled: true
+  image:
+    repository: harbor.agenticwork.io/openagentic/openagentic-proxy
+    tag: latest
+
+synth:
+  enabled: false
+  image:
+    repository: harbor.agenticwork.io/openagentic/openagentic-synth
+    tag: latest
+
+# ─── Bundled MCPs (all disabled by default; enable in your overlay) ─────────
+awpAdminMcp:
+  enabled: false
+  image:
+    repository: harbor.agenticwork.io/openagentic/oap-admin-mcp
+    tag: latest
+
+awpAwsMcp:
+  enabled: false
+  image:
+    repository: harbor.agenticwork.io/openagentic/oap-aws-mcp
+    tag: latest
+
+awpAzureMcp:
+  enabled: false
+  image:
+    repository: harbor.agenticwork.io/openagentic/oap-azure-mcp
+    tag: latest
+
+awpGcpMcp:
+  enabled: false
+  image:
+    repository: harbor.agenticwork.io/openagentic/oap-gcp-mcp
+    tag: latest
+
+awpKubernetesMcp:
+  enabled: false
+  image:
+    repository: harbor.agenticwork.io/openagentic/oap-kubernetes-mcp
+    tag: latest
+
+awpPrometheusMcp:
+  enabled: false
+  image:
+    repository: harbor.agenticwork.io/openagentic/oap-prometheus-mcp
+    tag: latest
+
+awpLokiMcp:
+  enabled: false
+  image:
+    repository: harbor.agenticwork.io/openagentic/oap-loki-mcp
+    tag: latest
+
+awpAlertmanagerMcp:
+  enabled: false
+  image:
+    repository: harbor.agenticwork.io/openagentic/oap-alertmanager-mcp
+    tag: latest
+
+awpWebMcp:
+  enabled: true
+  image:
+    repository: harbor.agenticwork.io/openagentic/oap-web-mcp
+    tag: latest
+
+awpGithubMcp:
+  enabled: false
+  image:
+    repository: harbor.agenticwork.io/openagentic/oap-github-mcp
+    tag: latest
+
+awpKnowledgeMcp:
+  enabled: true
+  image:
+    repository: harbor.agenticwork.io/openagentic/oap-knowledge-mcp
+    tag: latest
+
+awpIncidentMcp:
+  enabled: false
+  image:
+    repository: harbor.agenticwork.io/openagentic/oap-incident-mcp
+    tag: latest
+
+awpRunbookMcp:
+  enabled: false
+  image:
+    repository: harbor.agenticwork.io/openagentic/oap-runbook-mcp
+    tag: latest
+
+awpAgentArchitectMcp:
+  enabled: false
+  image:
+    repository: harbor.agenticwork.io/openagentic/oap-agent-architect-mcp
+    tag: latest
+
+awpAzureCostMcp:
+  enabled: false
+  image:
+    repository: harbor.agenticwork.io/openagentic/oap-azure-cost-mcp
+    tag: latest
+
+# ─── Third-party (off-cluster registries) ───────────────────────────────────
+postgresql:
+  image:
+    repository: pgvector/pgvector
+    tag: pg16
+
+redis:
+  image:
+    repository: redis
+    tag: 7-alpine
+
+milvus:
+  image:
+    repository: milvusdb/milvus
+    tag: v2.4.15
+
+ollama:
+  enabled: false
+  image:
+    repository: ollama/ollama
+    tag: latest
+
+# ─── Misc ───────────────────────────────────────────────────────────────────
+ingress:
+  enabled: false
+
+# An image-pull secret for harbor.agenticwork.io. Create with:
+#   kubectl create secret docker-registry harbor-secret \
+#     --docker-server=harbor.agenticwork.io \
+#     --docker-username=<user> --docker-password=<token> \
+#     -n openagentic
+imagePullSecrets:
+  - name: harbor-secret

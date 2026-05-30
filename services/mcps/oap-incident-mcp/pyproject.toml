@@ -1,0 +1,22 @@
+[project]
+name = "oap-incident-mcp"
+version = "1.0.0"
+description = "MCP server for incident lifecycle management"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.0.0",
+    "httpx>=0.25.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "structlog>=24.1.0",
+]
+
+[project.scripts]
+oap-incident-mcp = "incident_mcp_server.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/incident_mcp_server"]

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<!--
+ Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
+
+-->
+
+<html>
+<head>
+    <title>Auth Debug</title>
+</head>
+<body>
+    <h1>Authentication Debug</h1>
+    <div id="debug-info"></div>
+    <script>
+        // Show current URL and expected redirect URI
+        const debugInfo = document.getElementById('debug-info');
+        debugInfo.innerHTML = `
+            <p><strong>Current URL:</strong> ${window.location.href}</p>
+            <p><strong>Origin:</strong> ${window.location.origin}</p>
+            <p><strong>Hostname:</strong> ${window.location.hostname}</p>
+            <p><strong>Expected Redirect URI:</strong> Should be https://chat-dev.openagentic.io</p>
+        `;
+    </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+
+
+{{- if and .Values.awpAdminMcp.enabled (or (.Values.awpAdminMcp.podDisruptionBudget).enabled (.Values.awpAdminMcp.autoscaling).enabled) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "openagentic.fullname" . }}-oap-admin-mcp
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: oap-admin-mcp
+spec:
+  {{- if and (.Values.awpAdminMcp.podDisruptionBudget).minAvailable }}
+  minAvailable: {{ .Values.awpAdminMcp.podDisruptionBudget.minAvailable }}
+  {{- else if and (.Values.awpAdminMcp.podDisruptionBudget).maxUnavailable }}
+  maxUnavailable: {{ .Values.awpAdminMcp.podDisruptionBudget.maxUnavailable }}
+  {{- else }}
+  maxUnavailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: oap-admin-mcp
+{{- end }}

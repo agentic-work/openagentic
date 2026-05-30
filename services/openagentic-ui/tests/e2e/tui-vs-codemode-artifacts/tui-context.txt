@@ -1,0 +1,50 @@
+   /tmp.0 • nemotron3:33b
+   /? help  •  ctrl+c cancel  •  /exit quit
+   ────────────────────────────────────────────────────────────────────────────
+
+  ⎿  Context Usage
+     ⛁ ⛁ ⛁ ⛁ ⛀ ⛀ ⛀ ⛁ ⛁ ⛶   nemotron3:33b · 12.9k/200k tokens (6%)
+
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   Estimated usage by category
+                           ⛁ System prompt: 9.1k tokens (4.5%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Custom agents: 480 tokens (0.2%)
+                           ⛁ Memory files: 19 tokens (0.0%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Skills: 1.8k tokens (0.9%)
+                           ⛁ Messages: 1.5k tokens (0.7%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛶ Free space: 154.1k (77.1%)
+                           ⛝ Autocompact buffer: 33k tokens (16.5%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶
+
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶
+
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶
+
+     ⛶ ⛶ ⛶ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝
+
+     ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝
+
+     MCP tools · /mcp
+     └ mcp__plugin_aws-serverless_aws-serverless-mcp__configure_domain: 0 tokens
+     └ mcp__plugin_aws-serverless_aws-serverless-mcp__deploy_serverless_app_h0 tokens
+     lp:
+     └ mcp__plugin_aws-serverless_aws-serverless-mcp__deploy_webapp: 0 tokens
+     └ mcp__plugin_aws-serverless_aws-serverless-mcp__describe_schema: 0 tokens
+     └ mcp__plugin_aws-serverless_aws-serverless-mcp__esm_guidance: 0 tokens
+     └ mcp__plugin_aws-serverless_aws-serverless-mcp__esm_kafka_troubleshoot:0 tokens
+
+     └ mcp__plugin_aws-serverless_aws-serverless-mcp__esm_optimize: 0 tokens
+     └ mcp__plugin_aws-serverless_aws-serverless-mcp__get_iac_guidance: 0 tokens
+     └                                                                       0 tokens
+     mcp__plugin_aws-serverless_aws-serverless-mcp__get_lambda_event_schemas:
+
+     └ mcp__plugin_aws-serverless_aws-serverless-mcp__get_lambda_guidance: 0 tokens
+     └ mcp__plugin_aws-serverless_aws-serverless-mcp__get_metrics: 0 tokens
+     └                                                                       0 tokens
+     mcp__plugin_aws-serverless_aws-serverless-mcp__get_serverless_templates:
+
+     └ mcp__plugin_aws-serverless_aws-serverless-mcp__list_registries: 0 tokens
+     └ mcp__plugin_aws-serverless_aws-serverless-mcp__sam_build: 0 tokens
+     └ mcp__plugin_aws-serverless_aws-serverless-mcp__sam_deploy: 0 tokens
+     └ mcp__plugin_aws-serverless_aws-serverless-mcp__sam_init: 0 tokens
+     └ mcp__plugin_aws-serverless_aws-serverless-mcp__sam_local_invoke: 0 tokens                                                               ● high · /effort
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

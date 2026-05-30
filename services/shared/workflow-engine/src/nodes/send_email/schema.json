@@ -1,0 +1,109 @@
+{
+  "type": "send_email",
+  "category": "integration",
+  "label": "Send Email (SMTP)",
+  "description": "Send email via SMTP. Requires explicit per-node credentials — either literal values or {{secret:NAME}} workflow-secret references. No env-var fallback (2026-05-15 hardening: every flow that sends mail must carry its own credentials).",
+  "icon": "mail",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "sent": "boolean",
+          "messageId": "string",
+          "to": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "to",
+      "label": "To",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "user@example.com"
+    },
+    {
+      "name": "cc",
+      "label": "CC",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true
+    },
+    {
+      "name": "subject",
+      "label": "Subject",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true
+    },
+    {
+      "name": "body",
+      "label": "Body",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true
+    },
+    {
+      "name": "isHtml",
+      "label": "Send as HTML",
+      "type": "boolean",
+      "required": false,
+      "default": true
+    },
+    {
+      "name": "smtpHost",
+      "label": "SMTP host",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "{{secret:SMTP_HOST}}",
+      "description": "SMTP server hostname. Literal value or {{secret:NAME}} reference to a workflow secret."
+    },
+    {
+      "name": "smtpPort",
+      "label": "SMTP port",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "587",
+      "description": "SMTP port (default 587). Use 465 for implicit TLS. Accepts literal numeric strings or {{secret:SMTP_PORT}}."
+    },
+    {
+      "name": "smtpUser",
+      "label": "SMTP username",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "{{secret:SMTP_USER}}",
+      "description": "SMTP authentication username. Doubles as the `From:` address on the outbound message."
+    },
+    {
+      "name": "smtpPasswordRef",
+      "label": "SMTP password",
+      "type": "secret_ref",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "{{secret:SMTP_PASS}}",
+      "description": "SMTP password — reference a workflow secret via {{secret:NAME}}. Literal passwords accepted but strongly discouraged."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Send email via SMTP. Credentials are REQUIRED on the node (no env fallback).",
+    "whenToUse": "When you need to send email. Configure SMTP via workflow secrets named SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS (or any names you prefer) and reference them via {{secret:NAME}} on each field.",
+    "examplePrompt": "send a daily summary email to ops@example.com using the SendGrid relay",
+    "promptHints": "Use isHtml=false for plaintext bodies. Always reference passwords via {{secret:NAME}} — never put a literal password in the flow definition. Reference output via {{steps.<id>.result.sent}} and {{steps.<id>.result.messageId}}."
+  },
+  "outputAssertions": [
+    {
+      "name": "sent_ok",
+      "expression": "result && result.sent === true",
+      "errorMessage": "Email send failed."
+    }
+  ]
+}

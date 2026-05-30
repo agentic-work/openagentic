@@ -1,0 +1,18 @@
+{
+  "domain": "helm-templates",
+  "title": "Helm Templates",
+  "description": "Kubernetes resource manifests",
+  "icon": "infra",
+  "category": "infrastructure",
+  "generatedAt": "2026-05-13T20:48:20.626Z",
+  "sourceFiles": [],
+  "sections": [
+    {
+      "id": "templates",
+      "title": "Templates",
+      "description": "All Helm chart templates",
+      "adminOnly": false,
+      "items": []
+    }
+  ]
+}

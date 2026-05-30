@@ -1,0 +1,79 @@
+
+
+{{- if .Values.pgadmin.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openagentic.fullname" . }}-pgadmin
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pgadmin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: pgadmin
+  template:
+    metadata:
+      labels:
+        {{- include "openagentic.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: pgadmin
+    spec:
+      serviceAccountName: {{ include "openagentic.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.pgadmin.podSecurityContext | nindent 8 }}
+      containers:
+      - name: pgadmin
+        image: "{{ .Values.pgadmin.image.repository }}:{{ .Values.pgadmin.image.tag }}"
+        imagePullPolicy: {{ .Values.pgadmin.image.pullPolicy }}
+        env:
+        - name: PGADMIN_DEFAULT_EMAIL
+          value: {{ .Values.pgadmin.defaultEmail | quote }}
+        - name: PGADMIN_DEFAULT_PASSWORD
+          value: {{ .Values.pgadmin.defaultPassword | quote }}
+        - name: PGADMIN_CONFIG_SERVER_MODE
+          value: "True"
+        - name: PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED
+          value: "False"
+        - name: PGADMIN_CONFIG_UPGRADE_CHECK_ENABLED
+          value: "False"
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        volumeMounts:
+        - name: pgadmin-config
+          mountPath: /pgadmin4/servers.json
+          subPath: servers.json
+          readOnly: true
+        {{- if .Values.pgadmin.persistence.enabled }}
+        - name: pgadmin-storage
+          mountPath: /var/lib/pgadmin
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /misc/ping
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 60
+          timeoutSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /misc/ping
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 15
+        resources:
+          {{- toYaml .Values.pgadmin.resources | nindent 10 }}
+      volumes:
+      - name: pgadmin-config
+        configMap:
+          name: {{ include "openagentic.fullname" . }}-pgadmin-config
+      {{- if .Values.pgadmin.persistence.enabled }}
+      - name: pgadmin-storage
+        persistentVolumeClaim:
+          claimName: {{ include "openagentic.fullname" . }}-pgadmin
+      {{- end }}
+{{- end }}

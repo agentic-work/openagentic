@@ -1,0 +1,72 @@
+{
+  "type": "servicenow_ticket",
+  "category": "integration",
+  "label": "ServiceNow Ticket",
+  "description": "Create a ServiceNow record via the REST Table API. Defaults to creating an incident; supports any configurable table (change_request, problem, etc).",
+  "icon": "ticket",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "status": "number",
+          "created": "boolean",
+          "sysId": "string",
+          "number": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "action",
+      "label": "Action",
+      "type": "enum",
+      "values": ["create_incident", "create_record"],
+      "default": "create_incident",
+      "required": false
+    },
+    {
+      "name": "instanceUrl",
+      "label": "Instance URL",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "https://yourcompany.service-now.com",
+      "description": "ServiceNow instance base URL. Falls back to SERVICENOW_INSTANCE_URL env when unset."
+    },
+    {
+      "name": "table",
+      "label": "Table",
+      "type": "string",
+      "required": false,
+      "default": "incident",
+      "description": "ServiceNow table name (incident, change_request, problem, etc)."
+    },
+    {
+      "name": "fields",
+      "label": "Fields",
+      "type": "object",
+      "required": false,
+      "default": {},
+      "supportsTemplating": true,
+      "description": "Object of field-name → value pairs. String values are templated against the workflow input."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Create a ServiceNow record via REST Table API.",
+    "whenToUse": "When workflow output should land in ServiceNow as an incident, change request, or other table record.",
+    "examplePrompt": "open a ServiceNow incident with short_description from the alert summary",
+    "promptHints": "Auth uses SERVICENOW_AUTH_TOKEN (Bearer/Basic) or SERVICENOW_USERNAME + SERVICENOW_PASSWORD env vars. Reference output via {{steps.<id>.result.sysId}} and {{steps.<id>.result.number}}."
+  },
+  "outputAssertions": [
+    {
+      "name": "created_ok",
+      "expression": "result && result.status === 201",
+      "errorMessage": "ServiceNow API did not return 201 Created."
+    }
+  ]
+}

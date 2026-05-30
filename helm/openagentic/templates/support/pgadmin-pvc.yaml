@@ -1,0 +1,20 @@
+
+
+{{- if and .Values.pgadmin.enabled .Values.pgadmin.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "openagentic.fullname" . }}-pgadmin
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pgadmin
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.pgadmin.persistence.size }}
+  {{- if .Values.pgadmin.persistence.storageClass }}
+  storageClassName: {{ .Values.pgadmin.persistence.storageClass }}
+  {{- end }}
+{{- end }}

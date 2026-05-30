@@ -1,0 +1,25 @@
+{
+  "name": "openagentic-exec",
+  "version": "0.1.0",
+  "description": "Exec service: spawns Claude Code CLI inside a PTY for browser terminal sessions",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "node-pty": "^1.1.0",
+    "ws": "^8.21.0"
+  }
+}

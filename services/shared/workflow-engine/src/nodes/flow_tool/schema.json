@@ -1,0 +1,89 @@
+{
+  "type": "flow_tool",
+  "category": "control",
+  "label": "Flow as Tool",
+  "description": "Wrap a saved Flow as a callable tool. Maps caller args to the wrapped flow's trigger input via inputMapping, runs the flow as a sub-execution, and extracts a value at outputExtract from the result. V1: callable from a parent flow; agent dynamic-tool integration is V1.1.",
+  "icon": "git-fork",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "value": "any",
+          "extracted": "string",
+          "flowId": "string",
+          "toolName": "string",
+          "raw": "any"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "flowId",
+      "label": "Flow ID",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "wf-analyze-logs",
+      "description": "ID of the saved Flow to invoke as a sub-execution. Must belong to the same tenant as the parent flow."
+    },
+    {
+      "name": "toolName",
+      "label": "Tool name",
+      "type": "string",
+      "required": false,
+      "placeholder": "analyze_logs",
+      "description": "Friendly name for this tool — echoed back in output for downstream introspection. Used by V1.1 agent integration to expose the tool in agent catalogs."
+    },
+    {
+      "name": "toolDescription",
+      "label": "Tool description",
+      "type": "string",
+      "required": false,
+      "description": "Plain-language description of what the wrapped flow does. Surfaces to agents in V1.1."
+    },
+    {
+      "name": "inputMapping",
+      "label": "Input mapping",
+      "type": "object",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Map of trigger-input key → value (or {{args.X}} template). Each value runs through the engine interpolation layer. Empty mapping passes the input through verbatim."
+    },
+    {
+      "name": "outputExtract",
+      "label": "Output extract (dot path)",
+      "type": "string",
+      "required": false,
+      "placeholder": "webhook_response.body.summary",
+      "description": "Dot/bracket path into the sub-flow's final output. Empty = return the full output."
+    },
+    {
+      "name": "maxDepth",
+      "label": "Max recursion depth",
+      "type": "number",
+      "required": false,
+      "default": 3,
+      "min": 1,
+      "max": 10,
+      "description": "Hard cap on sub-flow nesting depth. Prevents infinite recursion when a flow accidentally wraps itself."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Run another saved Flow as a sub-execution and pull a value out of its output.",
+    "whenToUse": "When you want to compose flows from smaller reusable building blocks — same pattern as sub_workflow, plus arg-mapping and output-extraction so the wrapped flow looks like a 'tool' the parent calls.",
+    "examplePrompt": "invoke the 'analyze_logs' flow with the trigger.body.window argument and pull .summary from the response",
+    "promptHints": "Output: {{steps.X.value}} for the extracted value; {{steps.X.raw}} for the full sub-flow output. Use sub_workflow instead when you don't need arg-mapping or output-extraction."
+  },
+  "outputAssertions": [
+    {
+      "name": "has_envelope",
+      "expression": "result && typeof result.flowId === 'string'",
+      "errorMessage": "flow_tool output is missing required envelope keys (flowId)."
+    }
+  ]
+}

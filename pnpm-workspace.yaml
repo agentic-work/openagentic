@@ -1,0 +1,26 @@
+# openagentic — pnpm workspace
+# (Apache-2.0 licensed; see LICENSE.)
+
+packages:
+  - services/openagentic-ui
+  - services/openagentic-api
+  - services/shared/workflow-engine
+  - services/shared/llm-sdk
+
+ignoredBuiltDependencies:
+  - '@parcel/watcher'
+  - '@prisma/client'
+  - '@prisma/engines'
+  - bcrypt
+  - canvas
+  - core-js
+  - core-js-pure
+  - cpu-features
+  - esbuild
+  - msgpackr-extract
+  - prisma
+  - protobufjs
+  - puppeteer
+  - sharp
+  - ssh2
+  - unrs-resolver

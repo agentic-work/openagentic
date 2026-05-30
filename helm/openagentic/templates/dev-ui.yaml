@@ -1,0 +1,72 @@
+
+
+{{- if .Values.devUI.enabled }}
+# ===========================================
+# DEV UI - Hot Reload Development Server
+# ===========================================
+# Routes dev.openagentic.io to Vite dev server on dalek
+
+# Endpoints - points to the host running Vite dev server
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: {{ include "openagentic.fullname" . }}-dev-ui
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+subsets:
+  - addresses:
+      - ip: {{ .Values.devUI.hostIP }}
+    ports:
+      - port: {{ .Values.devUI.hostPort }}
+        protocol: TCP
+
+---
+# Service - headless service that uses the endpoints above
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openagentic.fullname" . }}-dev-ui
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  ports:
+    - port: 80
+      targetPort: {{ .Values.devUI.hostPort }}
+      protocol: TCP
+  # No selector - uses the Endpoints above
+
+---
+# Ingress for dev.openagentic.io
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "openagentic.fullname" . }}-dev
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+  annotations:
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    # WebSocket support for HMR
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: "{{ include "openagentic.fullname" . }}-dev-ui"
+spec:
+  ingressClassName: {{ .Values.ingress.ingressClassName }}
+  tls:
+    - secretName: openagentic-wildcard-tls
+      hosts:
+        - {{ .Values.devUI.host }}
+  rules:
+    - host: {{ .Values.devUI.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "openagentic.fullname" . }}-dev-ui
+                port:
+                  number: 80
+{{- end }}

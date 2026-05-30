@@ -1,0 +1,12 @@
+{
+  "domain": "workflow-scheduling",
+  "title": "Workflow Scheduling",
+  "description": "WorkflowScheduler types",
+  "icon": "flow",
+  "category": "workflows",
+  "generatedAt": "2026-05-13T20:48:20.637Z",
+  "sourceFiles": [
+    "services/openagentic-workflows/src/services/WorkflowScheduler.ts"
+  ],
+  "sections": []
+}

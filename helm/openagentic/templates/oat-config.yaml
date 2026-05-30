@@ -1,0 +1,141 @@
+
+
+{{- if .Values.oat.enabled }}
+# OAT (On-demand Agent Tooling) Configuration
+#
+# CRITICAL SECURITY DESIGN:
+# - NO hardcoded service accounts or credentials
+# - ALL tool executions run AS the authenticated user
+# - OAuth flows are session-based (user must authenticate per-session)
+# - Cloud credentials come from user's SSO (Azure AD, Google, AWS SSO)
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openagentic.fullname" . }}-oat-config
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: oat
+data:
+  # OAT Global Settings
+  OAT_ENABLED: {{ .Values.oat.enabled | quote }}
+  OAT_LLM_PROVIDER: {{ .Values.oat.llmProvider | default "bedrock" | quote }}
+  OAT_LLM_MODEL: {{ .Values.oat.llmModel | default "us.anthropic.claude-opus-4-6-v1" | quote }}
+  OAT_MAX_TIMEOUT_SECONDS: {{ .Values.oat.maxTimeoutSeconds | default 60 | quote }}
+  OAT_MAX_CONCURRENT_EXECUTIONS: {{ .Values.oat.maxConcurrentExecutions | default 10 | quote }}
+  OAT_MAX_DAILY_SYNTHESES: {{ .Values.oat.maxDailySyntheses | default 1000 | quote }}
+
+  # Approval Settings
+  OAT_AUTO_APPROVE_LOW_RISK: {{ .Values.oat.autoApproveLowRisk | default true | quote }}
+  OAT_APPROVAL_TIMEOUT_SECONDS: {{ .Values.oat.approvalTimeoutSeconds | default 3600 | quote }}
+  OAT_APPROVAL_TIMEOUT_ACTION: {{ .Values.oat.approvalTimeoutAction | default "reject" | quote }}
+
+  # CRITICAL: Authentication Mode
+  # "user_only" = NEVER use service accounts, ALWAYS run as authenticated user
+  # This cannot be changed to any other value in production
+  OAT_AUTH_MODE: "user_only"
+
+  # CRITICAL: Credential Source
+  # "sso_only" = Only use credentials from user's SSO provider
+  # "linked_accounts" = Also allow linked OAuth accounts (GitHub, Slack)
+  # "none" = No cloud credentials (HTTP-only)
+  OAT_CREDENTIAL_SOURCE: {{ .Values.oat.credentialSource | default "sso_only" | quote }}
+
+  # CRITICAL: Session-Based OAuth
+  # When true, users must re-authenticate with OAuth providers each session
+  # No credentials are stored beyond the session
+  OAT_SESSION_BASED_OAUTH: {{ .Values.oat.sessionBasedOAuth | default true | quote }}
+
+  # Allowed Capabilities (empty = all based on user permissions)
+  # These are the capabilities that CAN be used, but actual access depends on user's SSO
+  OAT_ALLOWED_CAPABILITIES: {{ .Values.oat.allowedCapabilities | join "," | quote }}
+
+  # Blocked Capabilities (always blocked regardless of permissions)
+  OAT_BLOCKED_CAPABILITIES: {{ .Values.oat.blockedCapabilities | join "," | quote }}
+
+  # Admin-Only Capabilities (require oat:admin:* permission)
+  OAT_ADMIN_ONLY_CAPABILITIES: {{ .Values.oat.adminOnlyCapabilities | default "shell,filesystem" | quote }}
+
+  # Cost Control
+  OAT_DEFAULT_USER_DAILY_BUDGET_USD: {{ .Values.oat.defaultUserDailyBudget | default "10.00" | quote }}
+  OAT_DEFAULT_GROUP_DAILY_BUDGET_USD: {{ .Values.oat.defaultGroupDailyBudget | default "100.00" | quote }}
+
+  # Executor Configuration
+  {{- if .Values.oat.executor.enabled }}
+  OAT_EXECUTOR_ENABLED: "true"
+  OAT_EXECUTOR_URL: "http://{{ include "openagentic.fullname" . }}-openagentic-synth:{{ .Values.oat.executor.config.port | default 8090 }}"
+  OAT_EXECUTOR_MAX_EXECUTION_TIME: {{ .Values.oat.executor.config.maxExecutionTime | default 30 | quote }}
+  OAT_EXECUTOR_MAX_MEMORY_MB: {{ .Values.oat.executor.config.maxMemoryMb | default 256 | quote }}
+  OAT_EXECUTOR_MAX_CONCURRENT: {{ .Values.oat.executor.config.maxConcurrent | default 5 | quote }}
+  {{- else }}
+  OAT_EXECUTOR_ENABLED: "false"
+  {{- end }}
+
+---
+# OAT Security Policy
+# This policy ensures OAT only runs as the authenticated user
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openagentic.fullname" . }}-oat-security-policy
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: oat
+data:
+  policy.json: |
+    {
+      "version": "1.0",
+      "name": "oat-user-only-policy",
+      "description": "Ensures OAT tools ONLY run as the authenticated user",
+      "rules": [
+        {
+          "name": "no-service-accounts",
+          "description": "Reject any execution with service account credentials",
+          "condition": {
+            "any": [
+              { "field": "credential_type", "operator": "equals", "value": "service_account" },
+              { "field": "credential_type", "operator": "equals", "value": "managed_identity" },
+              { "field": "credential_type", "operator": "equals", "value": "workload_identity" }
+            ]
+          },
+          "action": "deny",
+          "audit": true
+        },
+        {
+          "name": "require-user-identity",
+          "description": "Every execution must have a verified user identity",
+          "condition": {
+            "all": [
+              { "field": "user_id", "operator": "exists" },
+              { "field": "user_email", "operator": "exists" },
+              { "field": "sso_provider", "operator": "exists" }
+            ]
+          },
+          "action": "allow"
+        },
+        {
+          "name": "sso-capability-match",
+          "description": "Cloud capabilities must match user's SSO provider",
+          "condition": {
+            "mapping": {
+              "azure_ad": ["azure:*"],
+              "google": ["gcp:*"],
+              "aws_sso": ["aws:*"],
+              "github": ["github:*"],
+              "local": ["http:*", "json", "datetime"]
+            }
+          },
+          "action": "enforce"
+        },
+        {
+          "name": "admin-only-capabilities",
+          "description": "Certain capabilities require admin permissions",
+          "capabilities": ["shell", "filesystem", "local_system"],
+          "requiredPermission": "oat:admin:local_system",
+          "action": "enforce"
+        }
+      ],
+      "defaultAction": "deny",
+      "auditAll": true
+    }
+{{- end }}

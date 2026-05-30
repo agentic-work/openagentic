@@ -1,0 +1,133 @@
+{
+  "type": "data_source_query",
+  "category": "data",
+  "label": "Data Source Query",
+  "description": "Run a query against a configured DataSource. Supports raw SQL/REST queries (mode='raw') and natural-language questions that the platform translates to SQL (mode='nl'). Distinct from data_query which performs vector search.",
+  "icon": "database",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "rows": "array",
+          "columns": "array",
+          "rowCount": "number",
+          "executionTimeMs": "number",
+          "generatedQuery": "string",
+          "content": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "dataSourceId",
+      "label": "Connected data source",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "ds_xxxx",
+      "description": "Id of a configured DataSource (Postgres, MySQL, REST). Use this OR the inline endpoint pair below — not both."
+    },
+    {
+      "name": "dataSourceType",
+      "label": "Inline endpoint type",
+      "type": "enum",
+      "required": false,
+      "values": ["prometheus", "loki", "splunk", "elasticsearch", "rest"],
+      "description": "Use this + URL when querying observability endpoints directly without a configured DataSource record."
+    },
+    {
+      "name": "dataSourceUrl",
+      "label": "Inline endpoint URL",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "{{secret:PROMETHEUS_URL}}",
+      "description": "Base URL for the inline endpoint. Use {{secret:NAME}} — never paste literal URLs with credentials."
+    },
+    {
+      "name": "mode",
+      "label": "Query mode",
+      "type": "enum",
+      "required": false,
+      "values": ["raw", "nl", "range", "instant"],
+      "default": "raw",
+      "description": "raw = use the `query` verbatim. nl = natural-language → SQL. range = range query (Prom/Loki). instant = instant query (Prom)."
+    },
+    {
+      "name": "query",
+      "label": "Query / PromQL / LogQL",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "SELECT id FROM users WHERE tenant_id = '{{tenantId}}'   ·   sum(rate(http_5xx[5m]))",
+      "description": "Raw SQL, PromQL, LogQL, or REST query template. Required when mode is raw / range / instant."
+    },
+    {
+      "name": "question",
+      "label": "Question (NL mode)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "How many users signed up last week?",
+      "description": "Natural-language question. Required when mode='nl'. Falls back to {{input.message}} when blank."
+    },
+    {
+      "name": "startTime",
+      "label": "Start time (range mode)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "now-5m",
+      "description": "Range query start. Accepts relative (now-5m, now-1h) or absolute RFC3339."
+    },
+    {
+      "name": "endTime",
+      "label": "End time (range mode)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "now",
+      "description": "Range query end. Accepts relative or absolute timestamps."
+    },
+    {
+      "name": "step",
+      "label": "Step (range mode)",
+      "type": "string",
+      "required": false,
+      "placeholder": "30s",
+      "description": "Range step (Prometheus only). e.g. 15s, 1m, 5m."
+    },
+    {
+      "name": "limit",
+      "label": "Result limit",
+      "type": "number",
+      "required": false,
+      "min": 1,
+      "max": 10000,
+      "description": "Max rows / log lines returned. Loki / Splunk default is 100."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Query a configured DataSource (SQL / REST / NL → SQL).",
+    "whenToUse": "When a workflow needs structured data from a customer-configured database or REST endpoint — e.g. enrich a lead from Postgres, look up an order in the orders DB.",
+    "examplePrompt": "look up the user's profile in the customers DB by email",
+    "promptHints": "Reference the rows via {{steps.<id>.rows}} and the row count via {{steps.<id>.rowCount}}. Use mode='nl' for analyst-style questions and mode='raw' for known queries."
+  },
+  "outputAssertions": [
+    {
+      "name": "query_returned_rows",
+      "expression": "result && (Array.isArray(result.rows) || Array.isArray(result.data) || Array.isArray(result.values))",
+      "errorMessage": "Data Source Query did not return a rows / data / values array — the upstream endpoint produced an unexpected payload shape. Investigate the DataSource configuration."
+    },
+    {
+      "name": "no_query_error",
+      "expression": "result && (result.error === undefined || result.error === null)",
+      "errorMessage": "Data Source Query returned an error from the underlying endpoint. Check the DataSource credentials and the query syntax."
+    }
+  ]
+}

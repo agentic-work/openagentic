@@ -1,0 +1,75 @@
+{
+  "type": "anomaly_detect",
+  "category": "data",
+  "label": "Anomaly Detect",
+  "description": "Statistical anomaly detection over a time-series window. Flags outliers and exposes a top-level hasAnomaly verdict for downstream branch nodes (policy_guard, runbook_executor, etc.).",
+  "icon": "activity",
+  "ports": {
+    "inputs": [{ "name": "series", "type": "array", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "hasAnomaly": "boolean",
+          "anomalies": "array",
+          "stats": "object",
+          "threshold": "number",
+          "method": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "method",
+      "label": "Detection method",
+      "type": "enum",
+      "values": ["zscore"],
+      "default": "zscore",
+      "required": false,
+      "description": "Statistical method used to score each point. v1 supports z-score (mean + stddev)."
+    },
+    {
+      "name": "threshold",
+      "label": "Threshold (sigma)",
+      "type": "number",
+      "default": 3,
+      "min": 0.1,
+      "max": 10,
+      "required": false,
+      "description": "Points whose absolute z-score exceeds this threshold are flagged. Common defaults: 2 (loose), 3 (standard), 4 (strict)."
+    },
+    {
+      "name": "field",
+      "label": "Numeric field",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": false,
+      "placeholder": "value",
+      "description": "When the input series is an array of objects, name the numeric field to score (e.g. 'cpu', 'latency_ms'). Omit for arrays of plain numbers."
+    },
+    {
+      "name": "series",
+      "label": "Series (literal fallback)",
+      "type": "json",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Optional inline series — used when no input is connected. Typical AIOps flows pull series from prior data_query / metric_forecast / mcp_tool steps."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Detect outliers in a numeric time-series.",
+    "whenToUse": "When you have a window of metric values and need to branch on whether any point is abnormal — alerting, auto-remediation, runbook gating.",
+    "examplePrompt": "detect anomalies in the last 60 minutes of CPU samples and notify Slack when hasAnomaly is true",
+    "promptHints": "Output exposes {{steps.X.output.hasAnomaly}} for downstream condition nodes and {{steps.X.output.anomalies}} (array of {index,value,zscore,record?}) for further inspection."
+  },
+  "outputAssertions": [
+    {
+      "name": "shape_complete",
+      "expression": "result && typeof result.hasAnomaly === 'boolean' && Array.isArray(result.anomalies) && result.stats",
+      "errorMessage": "anomaly_detect output is missing required keys (hasAnomaly, anomalies, stats)."
+    }
+  ]
+}

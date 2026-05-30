@@ -1,0 +1,60 @@
+
+
+{{- if and .Values.api.enabled (default false .Values.api.dbMigrate) }}
+# ===================================================================================================
+# DATABASE MIGRATION HOOK
+# ===================================================================================================
+# Runs Prisma migrations before install/upgrade to ensure the database schema is current.
+# Uses the API image which contains the Prisma client and migration files.
+# ===================================================================================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "openagentic.fullname" . }}-db-migrate
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: db-migrate
+  annotations:
+    "helm.sh/hook": pre-upgrade,pre-install
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        {{- include "openagentic.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: db-migrate
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "openagentic.serviceAccountName" . }}
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: "{{ .Values.global.imageRegistry }}{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          command: ["npx", "prisma", "migrate", "deploy"]
+          workingDir: /app
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openagentic.fullname" . }}-db-secrets
+                  key: DATABASE_URL
+                  optional: true
+            {{- if .Values.postgres.enabled }}
+            - name: DATABASE_URL
+              value: "postgresql://{{ include "openagentic.postgresql.username" . }}:{{ include "openagentic.postgresql.password" . }}@{{ include "openagentic.postgresql.serviceName" . }}:{{ include "openagentic.postgresql.port" . }}/{{ include "openagentic.postgresql.database" . }}?sslmode=disable"
+            {{- end }}
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+  backoffLimit: 3
+{{- end }}

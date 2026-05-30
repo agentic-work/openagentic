@@ -1,0 +1,223 @@
+
+
+{{- if and .Values.mcpProxy.enabled .Values.mcpProxy.kubernetes.enabled }}
+---
+# ServiceAccount for MCP Proxy - enables in-cluster Kubernetes access
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "openagentic.fullname" . }}-mcp-proxy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mcp-proxy
+---
+# =============================================================================
+# ClusterRole for Kubernetes MCP - Full cluster access with safety restrictions
+# =============================================================================
+#
+# PERMISSIONS MODEL:
+#   - READ: Full access to all resources (get, list, watch)
+#   - CREATE: Can create any resource
+#   - UPDATE: Can modify any resource (update, patch)
+#   - DELETE: NOT ALLOWED (prevents destructive operations)
+#   - RBAC: Read-only (prevents privilege escalation)
+#
+# This allows the AI to observe, create, and modify but not destroy.
+# =============================================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "openagentic.fullname" . }}-k8s-mcp-admin
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: k8s-mcp
+rules:
+# =============================================================================
+# CORE API - Namespaced Resources
+# =============================================================================
+- apiGroups: [""]
+  resources:
+    - pods
+    - services
+    - endpoints
+    - configmaps
+    - secrets
+    - serviceaccounts
+    - persistentvolumeclaims
+    - replicationcontrollers
+    - resourcequotas
+    - limitranges
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# Pod subresources - logs and exec for debugging
+- apiGroups: [""]
+  resources: ["pods/log", "pods/status"]
+  verbs: ["get", "list", "watch"]
+
+# Pod exec - allows debugging into running containers
+- apiGroups: [""]
+  resources: ["pods/exec", "pods/attach", "pods/portforward"]
+  verbs: ["get", "create"]
+
+# =============================================================================
+# CORE API - Cluster-scoped Resources
+# =============================================================================
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+- apiGroups: [""]
+  resources: ["nodes", "nodes/status", "nodes/proxy"]
+  verbs: ["get", "list", "watch"]
+
+- apiGroups: [""]
+  resources: ["persistentvolumes"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# Events - read-only (informational)
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["get", "list", "watch"]
+
+# =============================================================================
+# APPS API - Workload Resources
+# =============================================================================
+- apiGroups: ["apps"]
+  resources:
+    - deployments
+    - deployments/scale
+    - deployments/status
+    - replicasets
+    - replicasets/scale
+    - statefulsets
+    - statefulsets/scale
+    - daemonsets
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# =============================================================================
+# BATCH API - Jobs and CronJobs
+# =============================================================================
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# =============================================================================
+# NETWORKING API
+# =============================================================================
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses", "ingresses/status", "ingressclasses", "networkpolicies"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# =============================================================================
+# AUTOSCALING API
+# =============================================================================
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+- apiGroups: ["autoscaling.k8s.io"]
+  resources: ["verticalpodautoscalers"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# =============================================================================
+# POLICY API
+# =============================================================================
+- apiGroups: ["policy"]
+  resources: ["poddisruptionbudgets", "podsecuritypolicies"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# =============================================================================
+# STORAGE API
+# =============================================================================
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses", "volumeattachments", "csidrivers", "csinodes"]
+  verbs: ["get", "list", "watch"]
+
+# =============================================================================
+# RBAC API - READ ONLY (Security: prevents privilege escalation)
+# =============================================================================
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources:
+    - roles
+    - rolebindings
+    - clusterroles
+    - clusterrolebindings
+  verbs: ["get", "list", "watch"]
+  # NOTE: No create/update/patch/delete - prevents privilege escalation
+
+# =============================================================================
+# COORDINATION API - Leader election, etc.
+# =============================================================================
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# =============================================================================
+# CERTIFICATES API
+# =============================================================================
+- apiGroups: ["certificates.k8s.io"]
+  resources: ["certificatesigningrequests", "certificatesigningrequests/status"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# =============================================================================
+# DISCOVERY & METRICS
+# =============================================================================
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["get", "list", "watch"]
+
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["nodes", "pods"]
+  verbs: ["get", "list"]
+
+# =============================================================================
+# CUSTOM RESOURCES - Common CRDs
+# =============================================================================
+# Cert-manager
+- apiGroups: ["cert-manager.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# External Secrets
+- apiGroups: ["external-secrets.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# Prometheus/monitoring
+- apiGroups: ["monitoring.coreos.com"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# Gateway API
+- apiGroups: ["gateway.networking.k8s.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# Istio (if present)
+- apiGroups: ["networking.istio.io", "security.istio.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# Argo (if present)
+- apiGroups: ["argoproj.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+---
+# ClusterRoleBinding to grant MCP Proxy the admin role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "openagentic.fullname" . }}-k8s-mcp-admin
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "openagentic.fullname" . }}-k8s-mcp-admin
+subjects:
+- kind: ServiceAccount
+  name: {{ include "openagentic.fullname" . }}-mcp-proxy
+  namespace: {{ .Release.Namespace }}
+{{- end }}

@@ -1,0 +1,396 @@
+# Copyright 2026 Gnomus.ai
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Synology NAS metadata
+@eaDir/
+
+# NOTE: helm/, oat/, sdk/, openagentic/ ARE tracked (synced from upstream for deployment)
+
+# Docs — internal working notes; track only curated OSS docs.
+# Git won't descend into an ignored directory, so we use the /docs/*
+# pattern (ignore direct children) + a !/docs/enterprise-setup/ negation
+# to re-include the enterprise-setup subtree.
+/docs/*
+!/docs/enterprise-setup/
+
+# Screenshots (test artifacts)
+screenshots/
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+
+# Production builds
+dist/
+build/
+*.tsbuildinfo
+
+# Build artifacts copied by build script (for Docker builds)
+/openagentic-cli/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment variables and secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+!.env.example
+!.env.template
+!.env.*.template
+.env.production
+.env.test
+.env.development
+.env.staging
+.env copy
+.env.mcf
+.env.dev
+
+# Google OAuth credentials
+docs/google/*.json
+docs/google/client_secret_*.json
+
+# Helm values with secrets (root-level)
+helm/values-*.yaml
+**/values-tst.yaml
+**/values-prod.yaml
+**/litellm-config.yaml
+helm/litellm-config.yaml
+services/litellm/litellm-config.yaml
+
+# IDE and OS files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+*.code-workspace
+*.claude
+.claude/
+
+# Debug
+.vscode/launch.json
+.vscode/settings.json
+
+# Package manager files
+.npm
+.eslintcache
+.node_repl_history
+.yarn-integrity
+.cache
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
+tmp/
+temp/
+
+# Docker volumes and generated files
+data/
+volumes/
+*.pid
+
+# Test files
+test-files-temp/
+*.test.js.map
+*.spec.js.map
+test-results/
+e2e/*.png
+screenshots/failure-*.png
+
+# Build artifacts
+*.map
+*.d.ts.map
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Certificates and keys
+*.pem
+*.key
+*.csr
+*.p12
+*.pfx
+*.cer
+*.der
+*.keystore
+*.jks
+privkey*.pem
+fullchain*.pem
+chain*.pem
+cert*.pem
+dhparam.pem
+!helm/openagentic/files/*.crt
+
+# Let's Encrypt
+letsencrypt/
+!letsencrypt/.gitkeep
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.backup
+*.bak
+*.old
+*~
+
+# Lock files (keep these in git for reproducible builds)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# MCP specific
+mcp-servers/
+!services/mcp-orchestrator/
+config/mcp-servers.json
+
+# Monitoring and metrics
+prometheus_data/
+grafana_data/
+
+# Generated documentation
+docs/api/
+
+# Local development overrides
+docker-compose.override.yml
+.env.development
+
+# Azure specific
+*.PublishSettings
+*.azureauth
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Helm secrets
+helm/openagenticchat-v3/values-*.yaml
+helm-secrets.txt
+*-secret.yaml
+*-secrets.yaml
+values.secret.yaml
+values-secret.yaml
+values-production*.yaml
+values-*-real*.yaml
+values-dev.yaml
+values-test.yaml  
+values-aks-complete.yaml
+values-aks-dev.yaml
+secrets/
+!helm/**/templates/secret*.yaml
+!helm/**/templates/*secret*.yaml
+!helm/**/values.example.yaml
+
+# Misc
+.history/
+.cache/
+.parcel-cache/
+.next/
+out/
+.nuxt/
+.vuepress/dist/
+.serverless/
+.fusebox/
+.dynamodb/
+.tern-port
+.turbo
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
+*.png
+debug-*.png
+test-*.png
+Caddyfile
+ 
+# Certificates - entire directory
+cert/
+certs/
+.cert/
+certs-*/
+
+# AKS environment values
+values-omcp-*.yaml
+values-dgw-*.yaml
+*-secret*.yaml
+
+# Additional sensitive patterns
+*.crt
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Buildkit files
+.env.buildkit
+
+# Helm sensitive values
+helm/*/values-*.yaml
+!helm/*/values-example.yaml
+!helm/*/values.yaml
+!helm/values/values-aks-dev.yaml
+!helm/values/values-aks-stg.yaml
+
+# Env-specific values (not tracked in OSS)
+helm/openagentic/envs/
+helm/openagentic/SECRETS-BACKUP.md
+helm/manifests.yaml
+helm/todo.md
+
+# NPM registry tokens
+services/.npmrc.docker
+# SSL Certificates - DO NOT COMMIT
+certs/*.pem
+certs/*.key
+certs/*.crt
+
+# GCP CA Certificates
+certs/gcp-ca/*.pem
+certs/gcp-ca/*.key
+certs/gcp-ca/cert-config.yaml
+vertex-ai-sa-key.json
+vertex-ai-sa-key-base64.txt
+
+# Docs
+docs/docker/secrets/gcp-service-account.json
+.env.zerossl
+
+# Playwright auth state (contains MFA session tokens)
+.auth/user.json
+test-results/
+playwright-report/
+\!helm/openagentic/values-aks-prod.yaml
+
+# =========================================================================
+# Vendor companion source — staged transiently into companions/<name> by
+# CI before the openagentic-ui image builds its docs manifests. The
+# companion source MUST NEVER be committed to this downstream repo —
+# and the JSON docs manifests derived from them.
+#
+# The empty companions/ directory is kept with a .gitkeep placeholder
+# so the Dockerfile's `COPY companions /companions` always has a source.
+# =========================================================================
+companions/*
+!companions/.gitkeep
+
+# superpowers:brainstorming session artifacts
+.superpowers/
+
+# Setup wizard deps (installed on first run by install.sh)
+tools/setup/node_modules/
+
+# Sync workspace (local cache for tools/sync-upstream.py — never tracked)
+tools/.sync-cache/
+!tools/.sync-cache/.gitkeep
+
+# Local tsc scratch install — shouldn't be in tree
+services/*/.pnpm-store/
+
+# Playwright MCP test artifacts
+.playwright-mcp/
+test-results/
+playwright-report/
+
+# Runtime artifacts that should never be committed
+.uc-harness-token
+.a2a-queue/
+.auth/
+.e2e-logs/
+
+# Playwright snapshot scratch (created by browser_snapshot in dev)
+/*-state.yml
+/addmodel-step1.yml
+/browse-bedrock*.yml
+/modal-state.yml
+/models-page.yml
+/models-reload.yml
+/router-tuning-state.md
+releases
+
+# Playwright demo recording scratch
+tests/demos-pw/node_modules/
+tests/demos-pw/videos/
+tests/demos-pw/package-lock.json
