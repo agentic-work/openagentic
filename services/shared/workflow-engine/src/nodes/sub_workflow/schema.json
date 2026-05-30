@@ -1,0 +1,53 @@
+{
+  "type": "sub_workflow",
+  "category": "control",
+  "label": "Sub-workflow",
+  "description": "Invoke another saved workflow by id and inline its output. Lets you compose flows the way you compose functions.",
+  "icon": "git-branch",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [{ "name": "output", "type": "any", "required": true }]
+  },
+  "settings": [
+    {
+      "name": "workflowId",
+      "label": "Workflow",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true,
+      "placeholder": "wf_xxxx",
+      "description": "Id of the saved workflow to invoke. Templating is supported so the target can be data-driven."
+    },
+    {
+      "name": "passInput",
+      "label": "Pass input to sub-workflow",
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "When true (default), the sub-workflow receives the current input. When false it starts with {}."
+    },
+    {
+      "name": "timeout",
+      "label": "Timeout (ms)",
+      "type": "number",
+      "required": false,
+      "default": 120000,
+      "min": 1000,
+      "max": 1800000,
+      "description": "Hard cap on the sub-workflow's runtime."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Invokes another saved workflow by id and returns its output.",
+    "whenToUse": "When you want to reuse an existing flow — e.g. the same enrichment + summarisation pipeline from multiple parents.",
+    "examplePrompt": "run the 'lead-enrichment' workflow on the trigger payload and use its output downstream",
+    "promptHints": "Reference the sub-workflow's output via {{steps.<id>}}. Set passInput=false if the child should start fresh."
+  },
+  "outputAssertions": [
+    {
+      "name": "subworkflow_completed_successfully",
+      "expression": "result !== null && result !== undefined",
+      "errorMessage": "Sub-workflow returned no output — the child either short-circuited or its terminal node produced nothing. Treat this as a real failure rather than a successful invocation."
+    }
+  ]
+}

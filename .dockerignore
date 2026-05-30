@@ -1,0 +1,103 @@
+# Node modules - Force rebuild all images
+node_modules
+**/node_modules
+.pnpm-store
+**/.pnpm-store
+
+# Build artifacts
+**/dist
+**/build
+**/.next
+**/.vite
+**/.turbo
+
+# Exception: Pre-built CLI artifacts (must come after general ignore patterns above)
+!services/openagentic-cli/dist
+!services/openagentic-cli/dist/**
+!services/openagentic-cli/node_modules
+!services/openagentic-cli/node_modules/**
+!services/openagentic-cli/package.json
+
+# Exception: SDK and CLI at repo root (copied by build script for openagentic-manager)
+!sdk
+!sdk/**
+!openagentic-cli
+!openagentic-cli/**
+!openagentic-cli/dist
+!openagentic-cli/dist/**
+!openagentic-cli/node_modules
+!openagentic-cli/node_modules/**
+!openagentic-cli/package.json
+
+# Exception: openagentic-openagentic-sdk vendored at repo root for UI's
+# `file:../../../openagentic-openagentic-sdk` dep. Without this re-include,
+# `**/dist` above would strip its dist/ output and pnpm install would
+# silently land a package without compiled entrypoints (vite then fails
+# on `@agentic-work/openagentic-sdk/constants`).
+!openagentic-openagentic-sdk
+!openagentic-openagentic-sdk/**
+
+# Exception: openagentic-sdk vendored at repo root by build.sh
+# (`./scripts/build.sh` rsync ~line 507). The canonical path renamed
+# from `./sdk` → `./openagentic-sdk` pre-2026-05-14 (build.sh comment
+# 497-500) but the dockerignore re-include kept the legacy `!sdk` only.
+# Without this re-include, `**/dist` strips the vendored dist/ and the
+# workflows / api Dockerfile COPY of `openagentic-sdk/dist` fails with
+# "not found" — which forces `SKIP_NPM=false` and a slow in-script
+# `npm install` rebuild every build. Adding `!openagentic-sdk/**` makes
+# `SKIP_NPM=true` viable, cutting builds from ~8 min to ~30s.
+!openagentic-sdk
+!openagentic-sdk/**
+
+# Development files - NEVER include .env in Docker builds
+# Prisma reads .env during 'prisma generate' and bakes values as defaults
+.env
+**/.env
+**/.env.local
+**/.env.development
+**/.env.test
+
+# Testing
+**/coverage
+**/.nyc_output
+
+# IDE
+**/.vscode
+**/.idea
+
+# OS files
+**/.DS_Store
+**/Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Logs
+**/*.log
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+
+# Temporary files
+**/tmp
+**/temp
+**/.tmp
+**/.temp
+
+# Docker - Don't ignore Dockerfiles themselves!
+# **/Dockerfile*
+# **/.dockerignore
+
+# Docs and reports
+*.md
+*.pdf
+docs/
+
+# Exception: release notes are scraped by the UI's unified docs generator
+# (scripts/docs/extractors/markdownDoc.ts → release-notes domain). Without
+# these, the build's release-notes:requireMinCount(2) invariant fails.
+!docs
+!docs/releases
+!docs/releases/*.md

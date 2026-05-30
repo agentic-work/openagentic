@@ -1,0 +1,550 @@
+/* ============================================================
+   Shell grid — topbar + ribbon + (sidebar | main)
+   ============================================================ */
+.aw-shell {
+  display: grid;
+  grid-template-rows: var(--v3-topbar-h, 44px) var(--v3-ribbon-h, 28px) 1fr;
+  grid-template-columns: var(--v3-sidebar-w, 220px) 1fr;
+  grid-template-areas:
+    'topbar topbar'
+    'ribbon ribbon'
+    'side   main';
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg-0);
+}
+/* B'-9: Ribbon row removed. Reclaim the row entirely so the page
+   content starts directly under the topbar. The ribbon grid-area
+   remains in the template above (legacy) but is collapsed to 0px
+   so any old CSS targeting .aw-ribbon doesn't reserve space. */
+.aw-shell--no-ribbon {
+  grid-template-rows: var(--v3-topbar-h, 44px) 0px 1fr;
+}
+
+/* B'-5: Sidebar group icons — small inline-SVG glyphs to the left
+   of the group title so navigation reads visually, not text-only.
+   Hand-rolled stroke icons (NOT lucide-react). */
+.aw-sidebar__group-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  opacity: 0.85;
+}
+.aw-sidebar__group-title {
+  display: flex;
+  align-items: center;
+}
+
+/* B'-18: Sidebar groups are collapsible. The group title becomes a
+   button with chevron at the end. Click toggles, default state is
+   collapsed except the active leaf's group. The chevron rotates from
+   ▸ (collapsed) → ▾ (expanded) automatically via the glyph swap in
+   the component; this CSS just gives the button a clean affordance. */
+.aw-sidebar__group-title--toggle {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  background: none;
+  font: inherit;
+  color: inherit;
+  /* keep the same visual treatment as the existing static title */
+}
+.aw-sidebar__group-title--toggle:hover {
+  background: var(--bg-2);
+}
+.aw-sidebar__group-chev {
+  margin-left: 4px;
+  font-family: var(--font-v3-mono);
+  font-size: 9px;
+  color: var(--fg-3);
+  width: 10px;
+  text-align: center;
+  display: inline-block;
+}
+.aw-sidebar__group[data-collapsed="true"] .aw-sidebar__group-num {
+  /* the leaf-count chip becomes more prominent when the group is
+     collapsed since it's the only state hint visible — no leaves
+     showing means no other count cues */
+  color: var(--fg-2);
+}
+.aw-shell[data-sidebar="collapsed"] {
+  grid-template-columns: var(--v3-sidebar-w-collapsed, 52px) 1fr;
+}
+
+/* ============================================================
+   TopBar
+   ============================================================ */
+.aw-topbar {
+  grid-area: topbar;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--line-1);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 16px;
+  position: relative;
+  z-index: 50;
+}
+/* Subtle accent gradient on the topbar bottom edge — pull-the-eye
+   horizon mark cohesive with all the other accent rails. */
+.aw-topbar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    color-mix(in srgb, var(--accent) 35%, transparent) 25%,
+    transparent 65%
+  );
+  pointer-events: none;
+}
+.aw-topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 208px;
+  flex-shrink: 0;
+  font-family: var(--font-v3-tele);
+  font-size: var(--v3-t-meta);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-0);
+}
+.aw-topbar__brand-mark {
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--accent);
+  position: relative;
+}
+.aw-topbar__brand-mark::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid var(--accent);
+  opacity: 0.55;
+}
+.aw-topbar__brand-name { font-weight: 600; letter-spacing: 0.18em; }
+.aw-topbar__crumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-v3-mono);
+  font-size: var(--v3-t-meta);
+  color: var(--fg-2);
+  flex: 1;
+  min-width: 0;
+}
+.aw-topbar__crumb { text-transform: lowercase; }
+.aw-topbar__crumb--head { color: var(--fg-0); font-weight: 500; }
+.aw-topbar__crumb-sep { color: var(--fg-3); }
+.aw-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.aw-topbar__chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-1);
+  font-family: var(--font-v3-mono);
+  font-size: var(--v3-t-meta);
+  color: var(--fg-1);
+  cursor: pointer;
+}
+.aw-topbar__chip:hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line-2));
+  background: color-mix(in srgb, var(--accent) 4%, var(--bg-3));
+}
+.aw-topbar__chip-label {
+  color: var(--fg-3);
+  font-size: var(--v3-t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.aw-topbar__icon-btn {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-2);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.aw-topbar__icon-btn:hover { color: var(--fg-0); background: var(--bg-2); }
+.aw-topbar__density {
+  display: flex;
+  height: 26px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-1);
+}
+.aw-topbar__density button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0 8px;
+  font-family: var(--font-v3-mono);
+  font-size: var(--v3-t-micro);
+  color: var(--fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.aw-topbar__density button:hover { color: var(--fg-1); }
+.aw-topbar__density button[aria-selected="true"] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-3));
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.aw-topbar__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-1);
+  font-family: var(--font-v3-mono);
+  font-size: var(--v3-t-meta);
+  color: var(--fg-3);
+  width: 280px;
+  cursor: pointer;
+}
+.aw-topbar__search:hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line-2));
+  color: var(--fg-2);
+}
+.aw-topbar__search kbd {
+  margin-left: auto;
+  font-family: var(--font-v3-mono);
+  font-size: 9px;
+  background: var(--bg-3);
+  border: 1px solid var(--line-2);
+  padding: 1px 5px;
+  color: var(--fg-2);
+}
+.aw-topbar__user {
+  width: 26px;
+  height: 26px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-v3-mono);
+  font-size: var(--v3-t-meta);
+  color: var(--fg-1);
+}
+/* Close-admin button — sits at the right edge of the topbar.
+   Visually distinct from the icon-btn cluster: paired X glyph + label
+   so users see "close" even at a glance. Marked --err on hover so it
+   reads as the exit, not a chrome control. */
+.aw-topbar__close {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  cursor: pointer;
+  color: var(--fg-2);
+  font-family: var(--font-v3-mono);
+  font-size: var(--v3-t-meta);
+  text-transform: lowercase;
+  border-radius: 0;
+  margin-left: 8px;
+}
+.aw-topbar__close:hover {
+  color: var(--err);
+  border-color: var(--err);
+  background: color-mix(in srgb, var(--err) 8%, var(--bg-2));
+}
+.aw-topbar__close-label {
+  letter-spacing: 0.04em;
+}
+.aw-topbar__agent {
+  height: 26px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-1);
+  font-size: var(--v3-t-meta);
+  /* Sev-1 #932 — pill is now a clickable button. Override UA button
+     defaults so it still reads as a pill (and reset the focus ring
+     to use the platform accent instead of the browser default). */
+  color: var(--fg-1);
+  font-family: inherit;
+  cursor: pointer;
+}
+.aw-topbar__agent:hover {
+  border-color: var(--accent);
+}
+.aw-topbar__agent:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+.aw-topbar__agent-led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 5px var(--ok);
+}
+.aw-topbar__agent-name { font-family: var(--font-v3-mono); color: var(--fg-1); }
+
+/* ============================================================
+   Ribbon — live data strip with scanning sweep
+   ============================================================ */
+.aw-ribbon {
+  grid-area: ribbon;
+  background: linear-gradient(180deg, var(--bg-1), var(--bg-0));
+  border-bottom: 1px solid var(--line-1);
+  display: flex;
+  align-items: center;
+  font-family: var(--font-v3-mono);
+  font-size: var(--v3-t-meta);
+  color: var(--fg-2);
+  padding: 0 14px;
+  gap: 18px;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+  z-index: 40;
+}
+.aw-ribbon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--accent-dim), transparent);
+  width: 140px;
+  animation: awSweep 9s linear infinite;
+  pointer-events: none;
+}
+@keyframes awSweep {
+  0%   { transform: translateX(-200%); }
+  100% { transform: translateX(2000%); }
+}
+.aw-ribbon__mark {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.aw-ribbon__mark-led {
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
+  animation: awPulse 1.5s ease-in-out infinite;
+}
+@keyframes awPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+.aw-ribbon__cell {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.aw-ribbon__lab {
+  color: var(--fg-3);
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+.aw-ribbon__val {
+  color: var(--fg-0);
+  font-feature-settings: 'tnum';
+}
+.aw-ribbon__val--ok { color: var(--ok); }
+.aw-ribbon__val--warn { color: var(--warn); }
+.aw-ribbon__val--err { color: var(--err); }
+.aw-ribbon__div {
+  color: var(--fg-3);
+  font-weight: 300;
+}
+.aw-ribbon__clock {
+  margin-left: auto;
+  color: var(--fg-1);
+  letter-spacing: 0.06em;
+  font-feature-settings: 'tnum';
+}
+
+/* ============================================================
+   Sidebar
+   ============================================================ */
+.aw-sidebar {
+  grid-area: side;
+  background: var(--bg-1);
+  border-right: 1px solid var(--line-1);
+  overflow: hidden;
+  padding: 8px 0;
+  font-size: var(--v3-t-meta);
+  display: flex;
+  flex-direction: column;
+}
+.aw-shell[data-sidebar="collapsed"] .aw-sidebar__group-title,
+.aw-shell[data-sidebar="collapsed"] .aw-sidebar__leaf-name,
+.aw-shell[data-sidebar="collapsed"] .aw-sidebar__leaf-meta {
+  display: none;
+}
+.aw-shell[data-sidebar="collapsed"] .aw-sidebar__leaf {
+  justify-content: center;
+}
+.aw-sidebar__group { margin-bottom: 4px; }
+.aw-sidebar__group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px 4px;
+  font-family: var(--font-v3-tele);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--fg-3);
+}
+.aw-sidebar__group-num {
+  color: var(--fg-3);
+  font-family: var(--font-v3-mono);
+  font-size: 9px;
+  letter-spacing: 0;
+}
+.aw-sidebar__leaf {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 22px;
+  color: var(--fg-1);
+  cursor: pointer;
+  position: relative;
+  background: none;
+  border: 0;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 12px;
+}
+.aw-sidebar__leaf:hover { background: var(--bg-2); color: var(--fg-0); }
+.aw-sidebar__leaf:hover .aw-sidebar__leaf-pin { opacity: 0.65 !important; }
+.aw-sidebar__leaf-pin {
+  font-size: 11px;
+  color: var(--fg-3);
+  transition: opacity 100ms ease;
+  user-select: none;
+}
+.aw-sidebar__leaf-pin:hover { color: var(--accent); opacity: 1 !important; }
+.aw-sidebar__leaf[aria-current="page"] {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 14%, var(--bg-3)) 0%,
+    var(--bg-3) 60%
+  );
+  color: var(--fg-0);
+}
+.aw-sidebar__leaf[aria-current="page"]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.aw-sidebar__leaf-key {
+  font-family: var(--font-v3-mono);
+  font-size: 9px;
+  color: var(--fg-3);
+  background: var(--bg-2);
+  border: 1px solid var(--line-1);
+  padding: 1px 4px;
+  min-width: 24px;
+  text-align: center;
+  letter-spacing: 0.04em;
+  /* 2026-05-13 audit: vim mnemonics shown unconditionally accounted for
+     ~30% of sidebar visual weight and confused non-power users. Hide by
+     default; surface on leaf hover/focus, or on sidebar hover so power
+     users still get them at a glance when reaching for the rail. */
+  opacity: 0;
+  transition: opacity 0.14s ease;
+}
+.aw-sidebar:hover .aw-sidebar__leaf-key,
+.aw-sidebar__leaf:hover .aw-sidebar__leaf-key,
+.aw-sidebar__leaf:focus-within .aw-sidebar__leaf-key,
+.aw-sidebar__leaf[aria-current="page"] .aw-sidebar__leaf-key {
+  opacity: 1;
+}
+.aw-sidebar__leaf[aria-current="page"] .aw-sidebar__leaf-key {
+  color: var(--accent);
+  border-color: var(--accent-line);
+}
+.aw-sidebar__leaf-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.aw-sidebar__leaf-meta {
+  font-family: var(--font-v3-mono);
+  font-size: 9px;
+  color: var(--fg-3);
+}
+.aw-sidebar__leaf-meta--live { color: var(--ok); }
+
+/* Enterprise-only leaves: dimmed row + PRO badge. Clicking still opens
+   the lock screen (the page itself is the upsell), so the leaf stays
+   interactive — we just visually mark it as not-included-in-OSS. */
+.aw-sidebar__leaf--locked .aw-sidebar__leaf-name,
+.aw-sidebar__leaf--locked .aw-sidebar__leaf-key {
+  color: var(--fg-3);
+  opacity: 0.75;
+}
+.aw-sidebar__leaf--locked:hover .aw-sidebar__leaf-name,
+.aw-sidebar__leaf--locked:hover .aw-sidebar__leaf-key {
+  opacity: 1;
+}
+.aw-sidebar__leaf-pro {
+  margin-left: auto;
+  font-family: var(--font-v3-mono);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.14);
+  border: 1px solid rgba(139, 92, 246, 0.32);
+  text-transform: uppercase;
+}
+
+/* ============================================================
+   Main content area
+   ============================================================ */
+.aw-main {
+  grid-area: main;
+  background: var(--bg-0);
+  overflow-y: auto;
+  position: relative;
+  color: var(--fg-1);
+}

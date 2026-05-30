@@ -1,0 +1,23 @@
+
+
+{{- if and .Values.minio.enabled (or (.Values.minio.podDisruptionBudget).enabled) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "openagentic.fullname" . }}-minio
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+spec:
+  {{- if and (.Values.minio.podDisruptionBudget).minAvailable }}
+  minAvailable: {{ .Values.minio.podDisruptionBudget.minAvailable }}
+  {{- else if and (.Values.minio.podDisruptionBudget).maxUnavailable }}
+  maxUnavailable: {{ .Values.minio.podDisruptionBudget.maxUnavailable }}
+  {{- else }}
+  maxUnavailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: minio
+{{- end }}

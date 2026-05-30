@@ -1,0 +1,27 @@
+
+
+{{- if and .Values.synth.enabled .Values.synth.executor.enabled }}
+# ===================================================================================================
+# SYNTH EXECUTOR SERVICE
+# ===================================================================================================
+# ClusterIP service for Synth Executor - only accessible within the cluster
+# Only openagentic-api should be calling this service
+# ===================================================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openagentic.fullname" . }}-synth-executor
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: synth-executor
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.synth.executor.config.port | default 8090 }}
+      targetPort: {{ .Values.synth.executor.config.port | default 8090 }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openagentic.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: synth-executor
+{{- end }}

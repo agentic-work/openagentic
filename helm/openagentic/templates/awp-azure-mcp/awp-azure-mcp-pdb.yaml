@@ -1,0 +1,23 @@
+
+
+{{- if and .Values.awpAzureMcp.enabled (or (.Values.awpAzureMcp.podDisruptionBudget).enabled (.Values.awpAzureMcp.autoscaling).enabled) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "openagentic.fullname" . }}-oap-azure-mcp
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: oap-azure-mcp
+spec:
+  {{- if and (.Values.awpAzureMcp.podDisruptionBudget).minAvailable }}
+  minAvailable: {{ .Values.awpAzureMcp.podDisruptionBudget.minAvailable }}
+  {{- else if and (.Values.awpAzureMcp.podDisruptionBudget).maxUnavailable }}
+  maxUnavailable: {{ .Values.awpAzureMcp.podDisruptionBudget.maxUnavailable }}
+  {{- else }}
+  maxUnavailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: oap-azure-mcp
+{{- end }}

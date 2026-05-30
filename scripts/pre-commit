@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# pre-commit hook: run architecture source-regression tests
+#
+# Gates commits on the fast architecture invariant suite
+# (src/__tests__/architecture/). Catches re-introduction of the
+# module-state, orphan-route, and type-safety violations locked in
+# across Phases 0-5 and Waves A-C.
+#
+# CLAUDE.md Rule 6 (2026-05-23): the SKIP_ARCH_TESTS bypass is RIPPED.
+# Every commit runs the arch suite. If it fails, fix the violation (or
+# fix the test if it's wrong) — do not bypass. Same discipline applies
+# to the real-model harness gate in scripts/build.sh (Rule 7c).
+#
+# Setup (opt-in):
+#   git config core.hooksPath scripts/
+#   chmod +x scripts/pre-commit.sh
+
+set -euo pipefail
+
+ARCH_DIR="services/openagentic-api/src/__tests__/architecture"
+
+if [ ! -d "${ARCH_DIR}" ]; then
+  echo "[pre-commit] FAILED: arch test directory missing: ${ARCH_DIR}"
+  echo "[pre-commit] CLAUDE.md Rule 6 requires the arch suite. Restore it."
+  exit 1
+fi
+
+echo "[pre-commit] Running architecture source-regression tests..."
+
+REPO_ROOT="$(pwd)"
+
+cd services/openagentic-api
+
+if bun test src/__tests__/architecture/ --bail 2>&1 | tail -5; then
+  echo "[pre-commit] Architecture tests PASSED"
+else
+  echo ""
+  echo "[pre-commit] FAILED: architecture source-regression tests detected a violation."
+  echo "[pre-commit] Run: cd services/openagentic-api && bun test src/__tests__/architecture/"
+  echo "[pre-commit] Fix the violation (or fix the test if it's wrong), then re-commit."
+  echo "[pre-commit] CLAUDE.md Rule 6: no bypass. Period."
+  exit 1
+fi
+
+cd "${REPO_ROOT}"
+
+# Gitleaks scan on the staged diff — catches secrets BEFORE they reach
+# the wire. CI also runs gitleaks (`.github/workflows/gitleaks.yml`) but
+# direct push to main bypasses PR-diff scan; this hook closes that gap.
+# Local-only scan: only the files staged for THIS commit, not full
+# working tree (the audit found 257 historical hits — those are tracked
+# separately in audit-fix-plan §B1 for rotation + filter-repo).
+#
+# CLAUDE.md Rule 6 (2026-05-23): SKIP_GITLEAKS also RIPPED. Secrets
+# in committed code is a Sev-0 — no bypass. False-positive? Add a
+# baseline entry under .gitleaks.toml (committed) or fix the value.
+if command -v gitleaks >/dev/null 2>&1; then
+  STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || true)
+  if [ -n "${STAGED_FILES}" ]; then
+    echo "[pre-commit] Running gitleaks on staged diff..."
+    if gitleaks protect --staged --redact --exit-code 1 --no-banner 2>&1 | tail -20; then
+      echo "[pre-commit] gitleaks PASSED"
+    else
+      echo ""
+      echo "[pre-commit] FAILED: gitleaks detected secrets in the staged diff."
+      echo "[pre-commit] Either remove the secret, or — if the match is a"
+      echo "[pre-commit] genuine false-positive — add a baseline entry under"
+      echo "[pre-commit] .gitleaks.toml (committed). CLAUDE.md Rule 6: no bypass."
+      exit 1
+    fi
+  fi
+else
+  echo "[pre-commit] FAILED: gitleaks not on PATH. Install it before committing."
+  echo "[pre-commit] CLAUDE.md Rule 6: the secret-scan gate is mandatory."
+  exit 1
+fi
+
+# Helm-template smoke check — if the helm chart repo is staged, render
+# it once locally to catch yaml errors / missing values / template
+# typos before they ship. Skips when no chart files are staged.
+HELM_REPO="${HOME}/openagentic-helm"
+if command -v helm >/dev/null 2>&1 && [ -d "${HELM_REPO}" ]; then
+  STAGED_CHART_FILES=$(git diff --cached --name-only -- 'helm/*' 'charts/*' 2>/dev/null || true)
+  CHART_DIRTY=$( cd "${HELM_REPO}" && git diff --quiet 2>/dev/null; echo $? )
+  # Always run the smoke when chart repo has any local changes — catches
+  # bad templates regardless of which repo's commit triggered the hook.
+  if [ -n "${STAGED_CHART_FILES}" ] || [ "${CHART_DIRTY}" = "1" ]; then
+    echo "[pre-commit] Rendering helm chart for smoke check..."
+    if ( cd "${HELM_REPO}" && helm template smoke . \
+            -f values-k3s-clean-deploy.yaml -f values-local-registry.yaml \
+            > /dev/null 2>/tmp/openagentic-helm-smoke.err ); then
+      echo "[pre-commit] Helm template render PASSED"
+    else
+      echo ""
+      echo "[pre-commit] FAILED: helm template render error:"
+      cat /tmp/openagentic-helm-smoke.err >&2 || true
+      echo "[pre-commit] Fix the chart, then re-commit. CLAUDE.md Rule 6: no bypass."
+      exit 1
+    fi
+  fi
+fi
+
+exit 0

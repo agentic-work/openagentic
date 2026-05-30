@@ -1,0 +1,92 @@
+
+
+{{- if and .Values.synth.enabled .Values.synth.executor.enabled .Values.synth.executor.networkPolicy.enabled }}
+# ===================================================================================================
+# SYNTH EXECUTOR NETWORK POLICY
+# ===================================================================================================
+# Restricts network access for security:
+# - Ingress: Only from openagentic-api pods
+# - Egress: DNS, OTEL collector, and external HTTPS (no internal network)
+# ===================================================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "openagentic.fullname" . }}-synth-executor-network
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: synth-executor
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: synth-executor
+  policyTypes:
+    - Ingress
+    - Egress
+
+  ingress:
+    # Only allow traffic from openagentic-api
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: api
+      ports:
+        - protocol: TCP
+          port: {{ .Values.synth.executor.config.port | default 8090 }}
+    {{- if .Values.grafana.enabled }}
+    # Allow Prometheus to scrape /metrics
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.grafana.namespace }}
+          podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 8090
+    {{- end }}
+
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+    {{- if .Values.synth.executor.networkPolicy.allowExternalHttps }}
+    # Allow HTTPS to external APIs (for http capability)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            {{- if .Values.synth.executor.networkPolicy.blockInternalNetworks }}
+            except:
+              - 10.0.0.0/8      # Block internal
+              - 172.16.0.0/12   # Block internal
+              - 192.168.0.0/16  # Block internal
+            {{- end }}
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80
+    {{- end }}
+
+    {{- if .Values.synth.executor.otel.enabled }}
+    # Allow OTEL collector
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 4317
+    {{- end }}
+{{- end }}

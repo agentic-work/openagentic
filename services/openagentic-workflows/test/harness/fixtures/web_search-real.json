@@ -1,0 +1,14 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_web.web_search, captured 2026-05-13 against the in-cluster SearXNG (openagentic-searxng:8080). The oap-web-mcp _do_web_search helper (server.py lines 487-570) returns a python dict { success: bool, query: string, num_results: int, results: [{title, url, snippet, source?}], source: 'searxng', attempted_backends: [...], tip: string }. FastMCP wraps the dict as content[{type:'text', text: JSON.stringify(dict)}]. The mcp-proxy passes through 2 layers of result unwrap then surfaces { content: [{type:'text', text: <json-string>}], isError: false }. The mcp_tool node's content-block joiner collapses to content=<json-string>; downstream JSON.parse pulls the structured results out. The query reflects a realistic AIOps research query for the postgres relation-missing error pattern that dominates the captured loki fixture.",
+  "result": {
+    "result": {
+      "isError": false,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"success\":true,\"query\":\"postgresql ERROR relation does not exist Prisma P2021 migration\",\"num_results\":4,\"source\":\"searxng\",\"attempted_backends\":[\"searxng\"],\"results\":[{\"title\":\"P2021 The table does not exist in the current database. - Prisma Docs\",\"url\":\"https://www.prisma.io/docs/orm/reference/error-reference#p2021\",\"snippet\":\"The table does not exist in the current database. This error means Prisma Client was asked to run a query against a table that has not been created. Most commonly caused by a missing prisma migrate deploy step on the target database.\"},{\"title\":\"Prisma migrate deploy not applying migrations - GitHub\",\"url\":\"https://github.com/prisma/prisma/issues/14817\",\"snippet\":\"Issues with prisma migrate deploy when DATABASE_URL points to a Postgres instance where the schema search_path differs from the public schema the migrations target.\"},{\"title\":\"Postgres ERROR: relation does not exist - Stack Overflow\",\"url\":\"https://stackoverflow.com/questions/695289/postgresql-error-relation-does-not-exist\",\"snippet\":\"Common causes: (1) schema not in search_path; (2) case-sensitive identifier quoting mismatch; (3) migration not applied to target database; (4) wrong DATABASE_URL pointing at a different DB.\"},{\"title\":\"Resolving P2021 with Prisma — Migration troubleshooting guide\",\"url\":\"https://www.prisma.io/dataguide/postgresql/troubleshooting-postgresql\",\"snippet\":\"Run prisma migrate status to compare local and deployed schema states; apply pending migrations with prisma migrate deploy; verify the connection string targets the expected database and schema.\"}],\"tip\":\"Use web_fetch to read the full content of any interesting result\"}"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,151 @@
+
+
+name: 🔒 Security Issue
+description: Report a security vulnerability or concern
+title: "[SECURITY]: "
+labels: ["security", "critical", "needs-review"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        🔒 **Security Issue Report**
+
+        **⚠️ IMPORTANT**: For critical security vulnerabilities, please email security@[domain] instead of creating a public issue.
+
+        This template is for general security improvements, dependency alerts, and non-critical security concerns.
+
+  - type: checkboxes
+    id: severity-acknowledgment
+    attributes:
+      label: Security Issue Type
+      description: Please confirm the type of security issue
+      options:
+        - label: This is NOT a critical security vulnerability that could lead to immediate exploitation
+          required: true
+        - label: I understand that critical vulnerabilities should be reported privately
+          required: true
+
+  - type: dropdown
+    id: security-type
+    attributes:
+      label: Security Issue Category
+      description: What type of security issue is this?
+      options:
+        - Dependabot Alert
+        - Package Vulnerability
+        - Configuration Security
+        - Authentication/Authorization
+        - Data Protection
+        - Network Security
+        - Code Quality/Security
+        - Compliance Issue
+        - Security Best Practice
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity Level
+      description: How severe is this security issue?
+      options:
+        - High (significant security risk)
+        - Medium (moderate security concern)
+        - Low (security improvement)
+        - Informational (best practice)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Security Issue Description
+      description: Detailed description of the security issue or concern
+      placeholder: |
+        Describe the security issue, including:
+        - What the vulnerability or concern is
+        - Which components are affected
+        - Potential impact or risk
+    validations:
+      required: true
+
+  - type: textarea
+    id: affected-components
+    attributes:
+      label: Affected Components
+      description: Which parts of the system are affected?
+      placeholder: |
+        - API endpoints: /api/auth/*, /api/admin/*
+        - UI components: Login, Admin Panel
+        - Dependencies: package-name@version
+        - Configuration: Docker, Kubernetes, Environment variables
+    validations:
+      required: true
+
+  - type: textarea
+    id: risk-assessment
+    attributes:
+      label: Risk Assessment
+      description: What are the potential risks or impacts?
+      placeholder: |
+        - Data exposure risk
+        - Authentication bypass
+        - Unauthorized access
+        - Service disruption
+        - Compliance violations
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence/References
+      description: Supporting evidence, CVE numbers, or references
+      placeholder: |
+        - CVE-2024-XXXX
+        - Package advisory: https://github.com/advisories/GHSA-xxxx
+        - Security scan results
+        - External security reports
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce (if applicable)
+      description: If this is a reproducible security issue, provide steps
+      placeholder: |
+        1. Configure the system with...
+        2. Access endpoint...
+        3. Observe security concern...
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: Suggested fixes or mitigations
+      placeholder: |
+        - Update package X to version Y
+        - Implement additional validation
+        - Add security headers
+        - Configure proper access controls
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Information
+      description: Environment where the security issue was identified
+      placeholder: |
+        - Environment: Development/Staging/Production
+        - Version: v1.2.3
+        - Deployment: Docker/Kubernetes/Local
+        - Network: Internal/External facing
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other relevant security information

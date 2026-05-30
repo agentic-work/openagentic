@@ -1,0 +1,14 @@
+{
+  "_comment": "REAL-shape mcp-proxy /call response for openagentic_admin.admin_system_postgres_health_check captured live 2026-05-13 from chat-dev (k3s prod, openagentic-admin remote-transport). Unlike standard FastMCP stdio servers that wrap dicts as content[{type:'text', text:<json>}], the openagentic-admin REMOTE transport surfaces the FastMCP tool's content list serialized as a python repr alongside a parallel result envelope at the SAME content-string level. The workflow engine's content-block joiner sees this as a single `content` field. The analyze transform must parse out the embedded `\"result\": {...}` block. This degraded-postgres response is the actual cluster state on 2026-05-13: the openagentic-admin pod cannot reach postgresql.agentic-dev.svc.cluster.local from its NetworkPolicy bucket.",
+  "result": {
+    "result": {
+      "isError": false,
+      "content": [
+        {
+          "type": "text",
+          "text": "[\n  [\n    \"type='text' text='{\\\\n  \\\"success\\\": false,\\\\n  \\\"healthy\\\": false,\\\\n  \\\"message\\\": \\\"PostgreSQL connection not available\\\"\\\\n}' annotations=None meta=None\"\n  ],\n  {\n    \"result\": {\n      \"success\": false,\n      \"healthy\": false,\n      \"message\": \"PostgreSQL connection not available\"\n    }\n  }\n]"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "_comment": "Real-shape mcp-proxy /call response for openagentic_admin.admin_system_milvus_health_check, healthy case. Captured 2026-05-13 from oap-admin-mcp source (services/mcps/oap-admin-mcp/src/admin_mcp_server/server.py lines 663-684). Python tool returns Dict[str, Any] with optional details.collection_count; FastMCP serializes as content[{type:'text', text: <json-string>}]. Cluster as of 2026-05-13: milvus-standalone + milvus-etcd + milvus-minio Running.",
+  "result": {
+    "result": {
+      "isError": false,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"success\": true, \"healthy\": true, \"message\": \"Milvus connection is healthy\", \"details\": {\"collection_count\": 12}}"
+        }
+      ]
+    }
+  }
+}

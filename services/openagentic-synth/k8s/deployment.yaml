@@ -1,0 +1,277 @@
+
+
+---
+# OAT Executor Deployment
+# Minimal secure Python execution environment with autoscaling
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openagentic-synth
+  labels:
+    app: openagentic-synth
+    component: oat
+spec:
+  replicas: 2  # Minimum replicas (HPA will scale)
+  selector:
+    matchLabels:
+      app: openagentic-synth
+  template:
+    metadata:
+      labels:
+        app: openagentic-synth
+        component: oat
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8090"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Security context - run as non-root
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+
+      # Don't mount service account token (not needed)
+      automountServiceAccountToken: false
+
+      containers:
+      - name: openagentic-synth
+        image: ghcr.io/agentic-work/openagentic-synth:latest
+        imagePullPolicy: Always
+
+        ports:
+        - name: http
+          containerPort: 8090
+          protocol: TCP
+
+        # Environment configuration
+        env:
+        - name: OAT_EXECUTOR_PORT
+          value: "8090"
+        - name: OAT_MAX_EXECUTION_TIME
+          value: "30"
+        - name: OAT_MAX_MEMORY_MB
+          value: "256"
+        - name: OAT_MAX_CONCURRENT
+          value: "5"
+        - name: OAT_LOG_LEVEL
+          value: "INFO"
+
+        # OTEL configuration
+        - name: OTEL_SERVICE_NAME
+          value: "openagentic-synth"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://otel-collector.monitoring:4317"
+        - name: ENVIRONMENT
+          value: "production"
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+
+        # Resource limits - tight for security
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"  # Needs headroom for subprocess
+            cpu: "1000m"
+
+        # Security context - minimal privileges
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 3
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+
+        # Volume mounts for temp execution
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /.cache
+
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 100Mi
+      - name: cache
+        emptyDir:
+          sizeLimit: 50Mi
+
+      # Spread across nodes for resilience
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: openagentic-synth
+
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: openagentic-synth
+  labels:
+    app: openagentic-synth
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8090
+    targetPort: 8090
+    protocol: TCP
+    name: http
+  selector:
+    app: openagentic-synth
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: openagentic-synth-hpa
+  labels:
+    app: openagentic-synth
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: openagentic-synth
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+  # Scale based on CPU
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+
+  # Scale based on memory
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Pods
+        value: 4
+        periodSeconds: 30
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+      selectPolicy: Min
+
+---
+# PodDisruptionBudget - ensure availability during updates
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: openagentic-synth-pdb
+  labels:
+    app: openagentic-synth
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: openagentic-synth
+
+---
+# NetworkPolicy - restrict what executor can access
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: openagentic-synth-network
+  labels:
+    app: openagentic-synth
+spec:
+  podSelector:
+    matchLabels:
+      app: openagentic-synth
+  policyTypes:
+  - Ingress
+  - Egress
+
+  ingress:
+  # Only allow traffic from openagentic-api
+  - from:
+    - podSelector:
+        matchLabels:
+          app: openagentic-api
+    ports:
+    - protocol: TCP
+      port: 8090
+
+  egress:
+  # Allow DNS
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+
+  # Allow HTTPS to external APIs (for http capability)
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+        except:
+        - 10.0.0.0/8      # Block internal
+        - 172.16.0.0/12   # Block internal
+        - 192.168.0.0/16  # Block internal
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+
+  # Allow OTEL collector
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 4317

@@ -1,0 +1,579 @@
+{
+  "domain": "agent-configuration",
+  "title": "Agent Configuration",
+  "description": "Sub-agent spawn + lifecycle (Task tool, Agent send/list/stop)",
+  "icon": "agent",
+  "category": "agents",
+  "generatedAt": "2026-05-13T20:48:20.631Z",
+  "sourceFiles": [
+    "services/openagentic-api/src/services/TaskTool.ts"
+  ],
+  "sections": [
+    {
+      "id": "AgentRegistryEntry",
+      "title": "AgentRegistryEntry",
+      "description": "Interface AgentRegistryEntry",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "AgentRegistryEntry.agent_type",
+          "name": "agent_type",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "AgentRegistryEntry.display_name",
+          "name": "display_name",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "AgentRegistryEntry.description",
+          "name": "description",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        }
+      ]
+    },
+    {
+      "id": "TaskInput",
+      "title": "TaskInput",
+      "description": "Interface TaskInput",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "TaskInput.description",
+          "name": "description",
+          "description": "Short (3-5 word) human description of the task.",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskInput.prompt",
+          "name": "prompt",
+          "description": "The full prompt the sub-agent will receive verbatim.",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskInput.subagent_type",
+          "name": "subagent_type",
+          "description": "Which built-in sub-agent to dispatch. Defaults to 'general-purpose'.",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskInput.model",
+          "name": "model",
+          "description": "Optional model override for the sub-agent's loop. Free-form string matching a deployed Registry model id. The Task tool does NOT bias the schema toward Anthropic family names — that historical bias trained the LLM to dispatch with `model: \"sonnet\"` even on clusters that only serv",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskInput.run_in_background",
+          "name": "run_in_background",
+          "description": "Run the sub-agent in the background (returns immediately).",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskInput.output_schema_name",
+          "name": "output_schema_name",
+          "description": "S3 — pre-registered output schema name. When set, executeTask validates the sub-agent's final assistant output as JSON against the named schema (from `taskOutputSchemas.ts`). On failure, the TaskResult carries `schema_violation` so the parent agent can decide whether to retry or ",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        }
+      ]
+    },
+    {
+      "id": "SubagentSpec",
+      "title": "SubagentSpec",
+      "description": "Interface SubagentSpec",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "SubagentSpec.role",
+          "name": "role",
+          "description": "Maps to AgentRegistry.agent_type.",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "SubagentSpec.prompt",
+          "name": "prompt",
+          "description": "Verbatim prompt for the sub-agent.",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "SubagentSpec.description",
+          "name": "description",
+          "description": "Short description used in NDJSON frames + UI cards.",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "SubagentSpec.model",
+          "name": "model",
+          "description": "Optional model override (any deployed Registry model id, or undefined).",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "SubagentSpec.background",
+          "name": "background",
+          "description": "Background flag forwarded to the orchestrator.",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "SubagentSpec.parentSessionId",
+          "name": "parentSessionId",
+          "description": "Inherited from the parent turn for audit + RLS.",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "SubagentSpec.parentUserId",
+          "name": "parentUserId",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        }
+      ]
+    },
+    {
+      "id": "SubagentRunResult",
+      "title": "SubagentRunResult",
+      "description": "Interface SubagentRunResult",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "SubagentRunResult.ok",
+          "name": "ok",
+          "description": "boolean",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "SubagentRunResult.output",
+          "name": "output",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "SubagentRunResult.error",
+          "name": "error",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "SubagentRunResult.turns",
+          "name": "turns",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "SubagentRunResult.tokens",
+          "name": "tokens",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "SubagentRunResult.durationMs",
+          "name": "durationMs",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "SubagentRunResult.toolsUsed",
+          "name": "toolsUsed",
+          "description": "string[]",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string[]"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        }
+      ]
+    },
+    {
+      "id": "TraceStore",
+      "title": "TraceStore",
+      "description": "Interface TraceStore",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "TraceStore.payload",
+          "name": "payload",
+          "description": "{",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "{"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TraceStore.sessionId",
+          "name": "sessionId",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TraceStore.userId",
+          "name": "userId",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TraceStore.role",
+          "name": "role",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TraceStore.prompt",
+          "name": "prompt",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TraceStore.output",
+          "name": "output",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TraceStore.stats",
+          "name": "stats",
+          "description": "{ turns: number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "{ turns: number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TraceStore.tokens",
+          "name": "tokens",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TraceStore.durationMs",
+          "name": "durationMs",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TraceStore.toolsUsed",
+          "name": "toolsUsed",
+          "description": "string[] }",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string[] }"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TraceStore.error",
+          "name": "error",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TraceStore.handle",
+          "name": "handle",
+          "description": "string }>",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string }>"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        }
+      ]
+    },
+    {
+      "id": "TaskDeps",
+      "title": "TaskDeps",
+      "description": "Interface TaskDeps",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "TaskDeps.listSubagentTypes",
+          "name": "listSubagentTypes",
+          "description": "Returns the canonical sub-agent registry (markdown built-ins + DB-managed entries via `listAgentsFromSOT`).",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "() => Promise<AgentRegistryEntry[]>"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskDeps.runSubagent",
+          "name": "runSubagent",
+          "description": "Wraps the legacy orchestrator's `runSubagentReActLoop` for a single sub-agent. Returns the structured result the model can read back. SEV-0 fix 2026-04-30 — `parentCtx` is the live v2 ctx of the parent turn. The chat-side runner uses it to build a ctx-aware `executeMcpTool` callb",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "("
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskDeps.spec",
+          "name": "spec",
+          "description": "SubagentSpec",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "SubagentSpec"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskDeps.parentCtx",
+          "name": "parentCtx",
+          "description": "any",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "any"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskDeps.traceStore",
+          "name": "traceStore",
+          "description": "A2 — optional trace store. See TraceStore JSDoc above.",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "TraceStore"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        }
+      ]
+    },
+    {
+      "id": "TaskResult",
+      "title": "TaskResult",
+      "description": "Interface TaskResult",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "TaskResult.ok",
+          "name": "ok",
+          "description": "boolean",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskResult.output",
+          "name": "output",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskResult.error",
+          "name": "error",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskResult.stats",
+          "name": "stats",
+          "description": "Stats forwarded from the sub-agent so the model can see what happened.",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "{"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskResult.turns",
+          "name": "turns",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskResult.tokens",
+          "name": "tokens",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskResult.durationMs",
+          "name": "durationMs",
+          "description": "number",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "number"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskResult.toolsUsed",
+          "name": "toolsUsed",
+          "description": "string[]",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string[]"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskResult.schema_violation",
+          "name": "schema_violation",
+          "description": "S3 — when input.output_schema_name was set and validation failed, carries the concatenated error string. Parent agent can choose to retry the dispatch with a clarifying prompt or surface to the user.",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskResult.data",
+          "name": "data",
+          "description": "S3 — when input.output_schema_name was set and validation passed, carries the parsed JSON object. Saves the parent agent from having to JSON.parse(output) itself.",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "unknown"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        },
+        {
+          "id": "TaskResult.trace_handle",
+          "name": "trace_handle",
+          "description": "A2 — opaque handle pointing to the persisted sub-agent transcript. Present when deps.traceStore is configured. Parent agent passes this to `read_subagent_trace(handle)` to retrieve the full transcript for debug / recovery / merging with sibling sub-agents.",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/services/TaskTool.ts"
+        }
+      ]
+    }
+  ]
+}

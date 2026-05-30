@@ -1,0 +1,174 @@
+
+
+{{- if and .Values.synth.enabled .Values.synth.executor.enabled }}
+# ===================================================================================================
+# SYNTH EXECUTOR DEPLOYMENT
+# ===================================================================================================
+# Secure Python execution environment for Synth-synthesized tools
+# (Synth is the LLM tool-synthesis system, formerly "OAT / On-demand Agent Tooling").
+#
+# SECURITY MODEL:
+#   - Runs as non-root user (65532)
+#   - Read-only root filesystem
+#   - No privilege escalation
+#   - Dropped all capabilities
+#   - Resource limits enforced
+#   - Network policy restricts egress
+# ===================================================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openagentic.fullname" . }}-synth-executor
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: synth-executor
+  annotations:
+    openagentic.io/synth-enabled: "true"
+spec:
+  replicas: {{ .Values.synth.executor.replicas | default 2 }}
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: synth-executor
+  template:
+    metadata:
+      labels:
+        {{- include "openagentic.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: synth-executor
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.synth.executor.config.port | default 8090 }}"
+        prometheus.io/path: "/metrics"
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "openagentic.serviceAccountName" . }}
+      automountServiceAccountToken: false
+
+      # DNS config — override default ndots:5 to ndots:1.
+      # The cluster's resolv.conf search list contains "example.local.com" which has
+      # a wildcard DNS record. With ndots:5, hostnames like "api.github.com" (2 dots)
+      # get the search domains tried first → resolves to the wildcard IP → TLS handshake
+      # fails because the server cert doesn't match. Setting ndots:1 forces hostnames
+      # with ≥1 dot to be treated as absolute, bypassing the wildcard hijack.
+      # The API pod already uses ndots:1 for the same reason.
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+
+      # Pod security context
+      securityContext:
+        runAsNonRoot: {{ .Values.synth.executor.securityContext.runAsNonRoot | default true }}
+        runAsUser: {{ .Values.synth.executor.securityContext.runAsUser | default 65532 }}
+        runAsGroup: {{ .Values.synth.executor.securityContext.runAsGroup | default 65532 }}
+        fsGroup: {{ .Values.synth.executor.securityContext.runAsGroup | default 65532 }}
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: synth-executor
+          image: "{{ .Values.synth.executor.image.repository }}:{{ .Values.synth.executor.image.tag }}"
+          imagePullPolicy: {{ .Values.synth.executor.image.pullPolicy | default "Always" }}
+
+          ports:
+            - name: http
+              containerPort: {{ .Values.synth.executor.config.port | default 8090 }}
+              protocol: TCP
+
+          env:
+            # Executor configuration
+            - name: SYNTH_EXECUTOR_PORT
+              value: {{ .Values.synth.executor.config.port | default 8090 | quote }}
+            - name: SYNTH_MAX_EXECUTION_TIME
+              value: {{ .Values.synth.executor.config.maxExecutionTime | default 30 | quote }}
+            - name: SYNTH_MAX_MEMORY_MB
+              value: {{ .Values.synth.executor.config.maxMemoryMb | default 256 | quote }}
+            - name: SYNTH_MAX_CONCURRENT
+              value: {{ .Values.synth.executor.config.maxConcurrent | default 5 | quote }}
+            - name: SYNTH_LOG_LEVEL
+              value: {{ .Values.synth.executor.config.logLevel | default "INFO" | quote }}
+
+            # OpenTelemetry configuration
+            {{- if .Values.synth.executor.otel.enabled }}
+            - name: OTEL_SERVICE_NAME
+              value: "synth-executor"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.synth.executor.otel.endpoint | default "http://otel-collector.monitoring:4317" | quote }}
+            - name: OTEL_PYTHON_LOG_CORRELATION
+              value: "true"
+            {{- else }}
+            # Override Dockerfile default to prevent OTEL export errors when no collector exists
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "disabled"
+            {{- end }}
+
+            # Environment info
+            - name: ENVIRONMENT
+              value: {{ .Values.global.environment | default "production" | quote }}
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+
+          # Resource limits
+          resources:
+            {{- toYaml .Values.synth.executor.resources | nindent 12 }}
+
+          # Container security context
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.synth.executor.securityContext.allowPrivilegeEscalation | default false }}
+            readOnlyRootFilesystem: {{ .Values.synth.executor.securityContext.readOnlyRootFilesystem | default true }}
+            capabilities:
+              drop:
+                - ALL
+
+          # Health checks
+          livenessProbe:
+            {{- toYaml .Values.synth.executor.livenessProbe | nindent 12 }}
+
+          readinessProbe:
+            {{- toYaml .Values.synth.executor.readinessProbe | nindent 12 }}
+
+          # Volume mounts for temp execution
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /.cache
+
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: cache
+          emptyDir:
+            sizeLimit: 50Mi
+
+      # Topology spread for resilience
+      {{- if .Values.synth.executor.topologySpreadConstraints.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: {{ .Values.synth.executor.topologySpreadConstraints.maxSkew | default 1 }}
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "openagentic.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: synth-executor
+      {{- end }}
+
+      {{- with .Values.synth.executor.nodeSelector | default .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.synth.executor.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.synth.executor.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

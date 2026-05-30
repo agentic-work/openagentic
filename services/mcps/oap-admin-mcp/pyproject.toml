@@ -1,0 +1,28 @@
+[project]
+name = "admin-mcp-server"
+version = "0.6.0"
+description = "Admin MCP Server with FastMCP - Full infrastructure control for admin users only"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp[cli]>=1.0.0",
+    "fastmcp>=0.1.0",
+    "psycopg2-binary>=2.9.0",
+    "redis>=5.0.0",
+    "pymilvus>=2.4.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.25.0",
+    "pydantic>=2.0.0",
+    "structlog>=24.1.0",
+]
+
+[project.scripts]
+admin-mcp-server = "admin_mcp_server.server:main"
+
+[tool.setuptools]
+packages = ["admin_mcp_server"]
+package-dir = {"" = "src"}
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

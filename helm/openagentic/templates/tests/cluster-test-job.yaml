@@ -1,0 +1,271 @@
+
+
+# ===================================================================================================
+# OPENAGENTIC CLUSTER TEST JOB
+# ===================================================================================================
+# A Kubernetes Job that validates all platform services are working correctly.
+# Can be invoked in private AKS clusters via: kubectl create job test-$(date +%s) --from=cronjob/openagentic-cluster-test
+# Or manually triggered by creating the job directly.
+#
+# Tests performed:
+# - API health check and authentication
+# - Database connectivity
+# - Redis connectivity
+# - Milvus vector DB connectivity
+# - MinIO storage connectivity
+# - Ollama LLM service (if enabled)
+# - MCP Proxy tool discovery
+# - Bedrock provider connectivity (if enabled)
+# ===================================================================================================
+{{- if .Values.tests.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "openagentic.fullname" . }}-cluster-test
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        {{- include "openagentic.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: test
+    spec:
+      restartPolicy: Never
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: test
+          image: curlimages/curl:8.5.0
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              PASS=0
+              FAIL=0
+
+              echo "=========================================="
+              echo "  OpenAgentic Cluster Validation Tests"
+              echo "=========================================="
+              echo ""
+
+              # Helper function
+              test_endpoint() {
+                local name="$1"
+                local url="$2"
+                local expected="$3"
+
+                echo -n "Testing $name... "
+                response=$(curl -s -o /tmp/response -w "%{http_code}" --connect-timeout 10 "$url" 2>/dev/null || echo "000")
+
+                if [ "$response" = "$expected" ]; then
+                  echo "✓ PASS (HTTP $response)"
+                  PASS=$((PASS + 1))
+                  return 0
+                else
+                  echo "✗ FAIL (HTTP $response, expected $expected)"
+                  cat /tmp/response 2>/dev/null | head -c 200 || true
+                  echo ""
+                  FAIL=$((FAIL + 1))
+                  return 1
+                fi
+              }
+
+              # Test JSON endpoint
+              test_json_endpoint() {
+                local name="$1"
+                local url="$2"
+                local jq_filter="$3"
+                local expected="$4"
+
+                echo -n "Testing $name... "
+                response=$(curl -s --connect-timeout 10 "$url" 2>/dev/null)
+
+                if echo "$response" | grep -q "$expected"; then
+                  echo "✓ PASS"
+                  PASS=$((PASS + 1))
+                  return 0
+                else
+                  echo "✗ FAIL"
+                  echo "  Response: $(echo "$response" | head -c 200)"
+                  FAIL=$((FAIL + 1))
+                  return 1
+                fi
+              }
+
+              echo "--- Infrastructure Services ---"
+
+              # 1. API Health
+              test_endpoint "API Health" "http://{{ include "openagentic.fullname" . }}-api:8000/health" "200"
+
+              # 2. Postgres (via API)
+              test_endpoint "Postgres (via API)" "http://{{ include "openagentic.fullname" . }}-api:8000/api/health" "200"
+
+              # 3. Redis Master
+              echo -n "Testing Redis... "
+              if nc -z {{ include "openagentic.fullname" . }}-redis-master 6379 2>/dev/null; then
+                echo "✓ PASS (port open)"
+                PASS=$((PASS + 1))
+              else
+                echo "✗ FAIL (port closed)"
+                FAIL=$((FAIL + 1))
+              fi
+
+              # 4. Milvus
+              test_endpoint "Milvus" "http://{{ include "openagentic.fullname" . }}-milvus:9091/healthz" "200"
+
+              # 5. MinIO (Workspace)
+              test_endpoint "MinIO" "http://{{ include "openagentic.fullname" . }}-minio:9000/minio/health/live" "200"
+
+              echo ""
+              echo "--- Application Services ---"
+
+              # 6. UI (port 80)
+              test_endpoint "UI" "http://{{ include "openagentic.fullname" . }}-ui:80/" "200"
+
+              # 7. MCP Proxy Health (port 8080)
+              test_endpoint "MCP Proxy Health" "http://{{ include "openagentic.fullname" . }}-mcp-proxy:8080/health" "200"
+
+              # 8. MCP Proxy Tools
+              test_json_endpoint "MCP Proxy Tools" "http://{{ include "openagentic.fullname" . }}-mcp-proxy:8080/tools" "tools" "tools"
+
+              # 9. Code Manager
+              test_endpoint "Code Manager" "http://{{ include "openagentic.fullname" . }}-code-manager:8080/health" "200"
+
+              {{- if .Values.ollama.enabled }}
+              echo ""
+              echo "--- LLM Services ---"
+
+              # 11. Ollama
+              test_endpoint "Ollama" "http://{{ include "openagentic.fullname" . }}-ollama:11434/api/tags" "200"
+              {{- end }}
+
+              echo ""
+              echo "--- LLM Provider Connectivity ---"
+
+              # 12. Test LLM Provider (simple completion)
+              echo -n "Testing LLM Provider... "
+              response=$(curl -s -X POST "http://{{ include "openagentic.fullname" . }}-api:8000/api/test/llm" \
+                -H "Content-Type: application/json" \
+                -d '{"prompt":"Say hello"}' \
+                --connect-timeout 30 2>/dev/null || echo "error")
+
+              if echo "$response" | grep -qi "hello\|hi\|greet"; then
+                echo "✓ PASS"
+                PASS=$((PASS + 1))
+              elif echo "$response" | grep -qi "error"; then
+                echo "✗ FAIL (LLM error)"
+                echo "  Response: $(echo "$response" | head -c 200)"
+                FAIL=$((FAIL + 1))
+              else
+                echo "⚠ SKIP (no test endpoint)"
+              fi
+
+              echo ""
+              echo "=========================================="
+              echo "  Test Results: $PASS passed, $FAIL failed"
+              echo "=========================================="
+
+              if [ "$FAIL" -gt 0 ]; then
+                echo ""
+                echo "Some tests failed. Check the logs above for details."
+                exit 1
+              else
+                echo ""
+                echo "All tests passed! Cluster is healthy."
+                exit 0
+              fi
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+---
+# CronJob to allow easy re-triggering of tests
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "openagentic.fullname" . }}-cluster-test
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+spec:
+  schedule: "0 0 31 2 *"  # Never runs automatically (Feb 31st doesn't exist)
+  suspend: true  # Suspended by default
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 300
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            {{- include "openagentic.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: test
+        spec:
+          restartPolicy: Never
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: test
+              image: curlimages/curl:8.5.0
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  # Same test script as above
+                  set -e
+                  echo "=========================================="
+                  echo "  OpenAgentic Cluster Validation Tests"
+                  echo "=========================================="
+
+                  PASS=0
+                  FAIL=0
+
+                  test_endpoint() {
+                    local name="$1"
+                    local url="$2"
+                    local expected="$3"
+
+                    echo -n "Testing $name... "
+                    response=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 "$url" 2>/dev/null || echo "000")
+
+                    if [ "$response" = "$expected" ]; then
+                      echo "✓ PASS"
+                      PASS=$((PASS + 1))
+                    else
+                      echo "✗ FAIL (HTTP $response)"
+                      FAIL=$((FAIL + 1))
+                    fi
+                  }
+
+                  test_endpoint "API Health" "http://{{ include "openagentic.fullname" . }}-api:8000/health" "200"
+                  test_endpoint "UI" "http://{{ include "openagentic.fullname" . }}-ui:80/" "200"
+                  test_endpoint "MCP Proxy" "http://{{ include "openagentic.fullname" . }}-mcp-proxy:8080/health" "200"
+                  test_endpoint "Code Manager" "http://{{ include "openagentic.fullname" . }}-code-manager:8080/health" "200"
+
+                  echo ""
+                  echo "Results: $PASS passed, $FAIL failed"
+                  [ "$FAIL" -eq 0 ] && exit 0 || exit 1
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "64Mi"
+                limits:
+                  cpu: "200m"
+                  memory: "128Mi"
+{{- end }}

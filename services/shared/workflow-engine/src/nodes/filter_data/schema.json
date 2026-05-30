@@ -1,0 +1,87 @@
+{
+  "type": "filter_data",
+  "category": "data",
+  "label": "Filter Array",
+  "description": "Filter an array by a typed field predicate. Replaces the JS-expression-only path through `transform` for the common 'keep rows where X' case.",
+  "icon": "filter",
+  "ports": {
+    "inputs": [{ "name": "items", "type": "array", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "filtered": "array",
+          "droppedCount": "number",
+          "totalCount": "number"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "items",
+      "label": "Items (template or upstream)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "{{trigger.pods}}",
+      "description": "Path-template to the array. Omit to use the upstream connection's input directly."
+    },
+    {
+      "name": "field",
+      "label": "Field (dot-path)",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": false,
+      "placeholder": "status.phase",
+      "description": "Dot-path on each item to read for the predicate (e.g. 'metadata.name', 'severity', 'status.phase')."
+    },
+    {
+      "name": "operator",
+      "label": "Operator",
+      "type": "enum",
+      "values": [
+        "eq",
+        "neq",
+        "gt",
+        "lt",
+        "gte",
+        "lte",
+        "contains",
+        "exists",
+        "starts_with",
+        "ends_with",
+        "in",
+        "not_in",
+        "matches_regex"
+      ],
+      "default": "eq",
+      "required": true,
+      "description": "Predicate operator. 'exists' ignores the value field. 'in'/'not_in' require the value to be an array. 'matches_regex' compiles value as a regex pattern."
+    },
+    {
+      "name": "value",
+      "label": "Value",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "Running",
+      "description": "Comparand for the operator. Omit for 'exists'. Use a JSON array literal for 'in'/'not_in'."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Filter an array by a field predicate (eq/neq/gt/contains/exists/etc.).",
+    "whenToUse": "When you need to keep only the rows of an upstream array that satisfy a single typed predicate — without writing JS in transform.",
+    "examplePrompt": "filter the pods to only those where status.phase != 'Running'",
+    "promptHints": "Output: {{steps.X.filtered}} (array), {{steps.X.droppedCount}}, {{steps.X.totalCount}}. Use 'contains' for substring match on strings or membership on arrays."
+  },
+  "outputAssertions": [
+    {
+      "name": "shape_complete",
+      "expression": "result && Array.isArray(result.filtered) && typeof result.droppedCount === 'number' && typeof result.totalCount === 'number'",
+      "errorMessage": "filter_data output is missing required keys (filtered, droppedCount, totalCount)."
+    }
+  ]
+}

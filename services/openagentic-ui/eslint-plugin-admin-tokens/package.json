@@ -1,0 +1,8 @@
+{
+  "name": "eslint-plugin-admin-tokens",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Local ESLint plugin: forbids hex color literals in admin source (use --ap-* CSS vars).",
+  "main": "index.cjs",
+  "license": "UNLICENSED"
+}

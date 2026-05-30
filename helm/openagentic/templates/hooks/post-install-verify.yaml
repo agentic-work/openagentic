@@ -1,0 +1,102 @@
+
+
+{{- if .Values.api.enabled }}
+# ===================================================================================================
+# POST-INSTALL VERIFICATION HOOK
+# ===================================================================================================
+# Verifies the deployment is healthy after install/upgrade by checking
+# health endpoints of core services. Uses wget (available in busybox/alpine).
+# ===================================================================================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "openagentic.fullname" . }}-verify
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: verify
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded,hook-failed
+spec:
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        {{- include "openagentic.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: verify
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "openagentic.serviceAccountName" . }}
+      restartPolicy: Never
+      containers:
+        - name: verify
+          image: {{ .Values.initContainer.image | default "busybox:latest" }}
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "=== OpenAgentic Post-Install Verification ==="
+              echo "Waiting 30s for services to stabilize..."
+              sleep 30
+
+              FAILURES=0
+
+              # Check API health (retry up to 10 times with 5s delay)
+              echo "Checking API health..."
+              RETRIES=0
+              while [ $RETRIES -lt 10 ]; do
+                if wget -q -O - --timeout=10 http://{{ include "openagentic.fullname" . }}-api:{{ .Values.api.service.port | default 8000 }}/health >/dev/null 2>&1; then
+                  echo " [PASS] API is healthy"
+                  break
+                fi
+                RETRIES=$((RETRIES + 1))
+                echo "  Attempt $RETRIES/10: API not ready, retrying in 5s..."
+                sleep 5
+              done
+              if [ $RETRIES -eq 10 ]; then
+                echo " [FAIL] API health check failed after 10 attempts"
+                FAILURES=$((FAILURES + 1))
+              fi
+
+              {{- if .Values.ui.enabled }}
+              # Check UI health
+              echo "Checking UI health..."
+              if wget -q -O - --timeout=10 http://{{ include "openagentic.fullname" . }}-ui:{{ .Values.ui.service.port | default 80 }}/healthz >/dev/null 2>&1; then
+                echo " [PASS] UI is healthy"
+              else
+                echo " [FAIL] UI health check failed"
+                FAILURES=$((FAILURES + 1))
+              fi
+              {{- end }}
+
+              {{- if .Values.mcpProxy.enabled }}
+              # Check MCP Proxy health
+              echo "Checking MCP Proxy health..."
+              if wget -q -O - --timeout=10 http://{{ include "openagentic.fullname" . }}-mcp-proxy:{{ .Values.mcpProxy.service.port | default 8080 }}/health >/dev/null 2>&1; then
+                echo " [PASS] MCP Proxy is healthy"
+              else
+                echo " [FAIL] MCP Proxy health check failed"
+                FAILURES=$((FAILURES + 1))
+              fi
+              {{- end }}
+
+              echo ""
+              if [ $FAILURES -eq 0 ]; then
+                echo "=== All health checks passed! ==="
+                exit 0
+              else
+                echo "=== $FAILURES health check(s) failed ==="
+                exit 1
+              fi
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+  backoffLimit: 3
+{{- end }}

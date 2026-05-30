@@ -1,0 +1,81 @@
+{
+  "domain": "authentication",
+  "title": "Authentication",
+  "description": "Token validation + auth flows",
+  "icon": "shield",
+  "category": "security",
+  "generatedAt": "2026-05-13T20:48:20.632Z",
+  "sourceFiles": [
+    "services/openagentic-api/src/auth/tokenValidator.ts"
+  ],
+  "sections": [
+    {
+      "id": "UnifiedTokenResult",
+      "title": "UnifiedTokenResult",
+      "description": "Interface UnifiedTokenResult",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "UnifiedTokenResult.isValid",
+          "name": "isValid",
+          "description": "boolean",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "boolean"
+          },
+          "sourceFile": "services/openagentic-api/src/auth/tokenValidator.ts"
+        },
+        {
+          "id": "UnifiedTokenResult.user",
+          "name": "user",
+          "description": "UserContext",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "UserContext"
+          },
+          "sourceFile": "services/openagentic-api/src/auth/tokenValidator.ts"
+        },
+        {
+          "id": "UnifiedTokenResult.error",
+          "name": "error",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/auth/tokenValidator.ts"
+        },
+        {
+          "id": "UnifiedTokenResult.tokenType",
+          "name": "tokenType",
+          "description": "'local' | 'azure-ad' | 'google' | 'api-key'",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "'local' | 'azure-ad' | 'google' | 'api-key'"
+          },
+          "sourceFile": "services/openagentic-api/src/auth/tokenValidator.ts"
+        },
+        {
+          "id": "UnifiedTokenResult.apiKeyId",
+          "name": "apiKeyId",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/auth/tokenValidator.ts"
+        },
+        {
+          "id": "UnifiedTokenResult.apiKeyName",
+          "name": "apiKeyName",
+          "description": "string",
+          "type": "ts-field",
+          "properties": {
+            "tsType": "string"
+          },
+          "sourceFile": "services/openagentic-api/src/auth/tokenValidator.ts"
+        }
+      ]
+    }
+  ]
+}

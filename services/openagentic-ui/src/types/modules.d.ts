@@ -1,0 +1,572 @@
+// Module declarations to fix type issues
+
+// Fix @azure/msal-browser types
+declare module '@azure/msal-browser' {
+  export class InteractionRequiredAuthError extends Error {
+    errorCode: string;
+    errorMessage: string;
+    subError: string;
+    constructor(errorCode?: string, errorMessage?: string, subError?: string);
+  }
+
+  export interface Configuration {
+    auth: {
+      clientId: string;
+      authority?: string;
+      redirectUri?: string;
+      postLogoutRedirectUri?: string;
+      navigateToLoginRequestUrl?: boolean;
+    };
+    cache?: {
+      cacheLocation?: 'localStorage' | 'sessionStorage';
+      storeAuthStateInCookie?: boolean;
+    };
+    system?: {
+      loggerOptions?: any;
+    };
+  }
+
+  export interface AccountInfo {
+    homeAccountId: string;
+    environment: string;
+    tenantId: string;
+    username: string;
+    localAccountId: string;
+    name?: string;
+    idTokenClaims?: any;
+  }
+
+  export interface AuthenticationResult {
+    authority: string;
+    uniqueId: string;
+    tenantId: string;
+    scopes: string[];
+    account: AccountInfo;
+    idToken: string;
+    idTokenClaims: any;
+    accessToken: string;
+    fromCache: boolean;
+    expiresOn: Date;
+    tokenType: string;
+    correlationId: string;
+  }
+
+  export interface SilentRequest {
+    scopes: string[];
+    account?: AccountInfo;
+    authority?: string;
+    correlationId?: string;
+    forceRefresh?: boolean;
+  }
+
+  export interface RedirectRequest {
+    scopes: string[];
+    authority?: string;
+    correlationId?: string;
+    redirectUri?: string;
+    extraScopesToConsent?: string[];
+    state?: string;
+    prompt?: string;
+    loginHint?: string;
+    domainHint?: string;
+    claims?: string;
+    nonce?: string;
+  }
+
+  export interface PopupRequest {
+    scopes: string[];
+    account?: AccountInfo;
+    authority?: string;
+    correlationId?: string;
+    redirectUri?: string;
+    extraScopesToConsent?: string[];
+    state?: string;
+    prompt?: string;
+    loginHint?: string;
+    domainHint?: string;
+    claims?: string;
+    nonce?: string;
+  }
+
+  export class PublicClientApplication {
+    constructor(config: Configuration);
+    initialize(): Promise<void>;
+    loginPopup(request?: PopupRequest): Promise<AuthenticationResult>;
+    loginRedirect(request?: RedirectRequest): Promise<void>;
+    handleRedirectPromise(): Promise<AuthenticationResult | null>;
+    acquireTokenSilent(request: SilentRequest): Promise<AuthenticationResult>;
+    acquireTokenPopup(request: PopupRequest): Promise<AuthenticationResult>;
+    acquireTokenRedirect(request: RedirectRequest): Promise<void>;
+    logout(request?: { account?: AccountInfo }): Promise<void>;
+    logoutPopup(request?: { account?: AccountInfo }): Promise<void>;
+    logoutRedirect(request?: { account?: AccountInfo }): Promise<void>;
+    getAllAccounts(): AccountInfo[];
+    getAccountByHomeId(homeAccountId: string): AccountInfo | null;
+    getAccountByLocalId(localId: string): AccountInfo | null;
+    getAccountByUsername(username: string): AccountInfo | null;
+    setActiveAccount(account: AccountInfo | null): void;
+    getActiveAccount(): AccountInfo | null;
+  }
+
+  export const InteractionStatus: {
+    Startup: string;
+    Login: string;
+    Logout: string;
+    AcquireToken: string;
+    SsoSilent: string;
+    HandleRedirect: string;
+    None: string;
+  };
+
+  export const BrowserCacheLocation: {
+    LocalStorage: 'localStorage';
+    SessionStorage: 'sessionStorage';
+  };
+
+  export const LogLevel: {
+    Error: number;
+    Warning: number;
+    Info: number;
+    Verbose: number;
+    Trace: number;
+  };
+}
+
+// Fix react-router-dom types (using v6 but getting v5 types from dependencies)
+declare module 'react-router-dom' {
+  export interface RouteProps {
+    path?: string;
+    element?: React.ReactNode;
+    children?: React.ReactNode;
+  }
+  
+  export const BrowserRouter: React.FC<{ children: React.ReactNode }>;
+  export const Router: React.FC<{ children: React.ReactNode }>;
+  export const Routes: React.FC<{ children: React.ReactNode }>;
+  export const Route: React.FC<RouteProps>;
+  export const Navigate: React.FC<{ to: string; replace?: boolean }>;
+  export const Link: React.FC<{ to: string; children: React.ReactNode; className?: string; title?: string; key?: string | number }>;
+  export const NavLink: React.FC<{ to: string; children: React.ReactNode; className?: string | ((props: { isActive: boolean }) => string) }>;
+  export const Outlet: React.FC;
+  
+  export function useNavigate(): {
+    (to: string, options?: { replace?: boolean; state?: any }): void;
+    (delta: number): void;
+  };
+  export function useLocation(): { pathname: string; search: string; hash: string; state: any };
+  export function useParams<T = Record<string, string>>(): T;
+  export function useSearchParams(): [URLSearchParams, (params: URLSearchParams) => void];
+  export function useMatch(pattern: string): any;
+}
+
+// Fix lucide-react icons that might be missing
+declare module 'lucide-react' {
+  export const Search: React.FC<any>;
+  export const Settings: React.FC<any>;
+  export const Sun: React.FC<any>;
+  export const Moon: React.FC<any>;
+  export const User: React.FC<any>;
+  export const ChevronRight: React.FC<any>;
+  export const ChevronDown: React.FC<any>;
+  export const Send: React.FC<any>;
+  export const Paperclip: React.FC<any>;
+  export const Plus: React.FC<any>;
+  export const X: React.FC<any>;
+  export const Check: React.FC<any>;
+  export const Copy: React.FC<any>;
+  export const Download: React.FC<any>;
+  export const Upload: React.FC<any>;
+  export const Trash2: React.FC<any>;
+  export const Edit: React.FC<any>;
+  export const Save: React.FC<any>;
+  export const FileText: React.FC<any>;
+  export const Folder: React.FC<any>;
+  export const Eye: React.FC<any>;
+  export const EyeOff: React.FC<any>;
+  export const AlertCircle: React.FC<any>;
+  export const Info: React.FC<any>;
+  export const CheckCircle: React.FC<any>;
+  export const XCircle: React.FC<any>;
+  export const Activity: React.FC<any>;
+  export const LogOut: React.FC<any>;
+  export const Terminal: React.FC<any>;
+  export const Code: React.FC<any>;
+  export const Database: React.FC<any>;
+  export const Server: React.FC<any>;
+  export const Play: React.FC<any>;
+  export const Pause: React.FC<any>;
+  export const RefreshCw: React.FC<any>;
+  export const Home: React.FC<any>;
+  export const MessageSquare: React.FC<any>;
+  export const Bot: React.FC<any>;
+  export const Brain: React.FC<any>;
+  export const Zap: React.FC<any>;
+  export const Shield: React.FC<any>;
+  export const Sparkles: React.FC<any>;
+  export const MoreVertical: React.FC<any>;
+  export const MoreHorizontal: React.FC<any>;
+  export const ChevronLeft: React.FC<any>;
+  export const ChevronUp: React.FC<any>;
+  export const Menu: React.FC<any>;
+  export const Loader2: React.FC<any>;
+  export const ArrowRight: React.FC<any>;
+  export const ArrowLeft: React.FC<any>;
+  export const FileCode: React.FC<any>;
+  export const Image: React.FC<any>;
+  export const Video: React.FC<any>;
+  export const File: React.FC<any>;
+  export const Package: React.FC<any>;
+  export const Cpu: React.FC<any>;
+  export const HardDrive: React.FC<any>;
+  export const Wifi: React.FC<any>;
+  export const WifiOff: React.FC<any>;
+  export const Clock: React.FC<any>;
+  export const Calendar: React.FC<any>;
+  export const Users: React.FC<any>;
+  export const UserPlus: React.FC<any>;
+  export const UserMinus: React.FC<any>;
+  export const Lock: React.FC<any>;
+  export const Unlock: React.FC<any>;
+  export const Key: React.FC<any>;
+  export const Bell: React.FC<any>;
+  export const BellOff: React.FC<any>;
+  export const Volume2: React.FC<any>;
+  export const VolumeX: React.FC<any>;
+  export const Mic: React.FC<any>;
+  export const MicOff: React.FC<any>;
+  export const Camera: React.FC<any>;
+  export const CameraOff: React.FC<any>;
+  export const Monitor: React.FC<any>;
+  export const Smartphone: React.FC<any>;
+  export const Tablet: React.FC<any>;
+  export const Laptop: React.FC<any>;
+  export const GitBranch: React.FC<any>;
+  export const GitCommit: React.FC<any>;
+  export const GitMerge: React.FC<any>;
+  export const GitPullRequest: React.FC<any>;
+  export const Github: React.FC<any>;
+  export const Gitlab: React.FC<any>;
+  export const Link: React.FC<any>;
+  export const Link2: React.FC<any>;
+  export const ExternalLink: React.FC<any>;
+  export const Globe: React.FC<any>;
+  export const MapPin: React.FC<any>;
+  export const Navigation: React.FC<any>;
+  export const Hash: React.FC<any>;
+  export const Tag: React.FC<any>;
+  export const Bookmark: React.FC<any>;
+  export const Star: React.FC<any>;
+  export const Heart: React.FC<any>;
+  export const ThumbsUp: React.FC<any>;
+  export const ThumbsDown: React.FC<any>;
+  export const Share2: React.FC<any>;
+  export const Reply: React.FC<any>;
+  export const Forward: React.FC<any>;
+  export const Repeat: React.FC<any>;
+  export const RotateCw: React.FC<any>;
+  export const RotateCcw: React.FC<any>;
+  export const Shuffle: React.FC<any>;
+  export const SkipBack: React.FC<any>;
+  export const SkipForward: React.FC<any>;
+  export const Rewind: React.FC<any>;
+  export const FastForward: React.FC<any>;
+  export const StopCircle: React.FC<any>;
+  export const PlayCircle: React.FC<any>;
+  export const PauseCircle: React.FC<any>;
+  export const Square: React.FC<any>;
+  export const Circle: React.FC<any>;
+  export const Triangle: React.FC<any>;
+  export const Hexagon: React.FC<any>;
+  export const Octagon: React.FC<any>;
+  export const TrendingUp: React.FC<any>;
+  export const TrendingDown: React.FC<any>;
+  export const BarChart: React.FC<any>;
+  export const BarChart2: React.FC<any>;
+  export const LineChart: React.FC<any>;
+  export const PieChart: React.FC<any>;
+  export const Percent: React.FC<any>;
+  export const DollarSign: React.FC<any>;
+  export const CreditCard: React.FC<any>;
+  export const ShoppingCart: React.FC<any>;
+  export const ShoppingBag: React.FC<any>;
+  export const Gift: React.FC<any>;
+  export const Award: React.FC<any>;
+  export const Trophy: React.FC<any>;
+  export const Target: React.FC<any>;
+  export const Flag: React.FC<any>;
+  export const MapPin: React.FC<any>;
+  export const CompassIcon: React.FC<any>;
+  export const Crosshair: React.FC<any>;
+  export const Layers: React.FC<any>;
+  export const Layout: React.FC<any>;
+  export const Grid: React.FC<any>;
+  export const List: React.FC<any>;
+  export const Maximize: React.FC<any>;
+  export const Maximize2: React.FC<any>;
+  export const Minimize: React.FC<any>;
+  export const Minimize2: React.FC<any>;
+  export const Move: React.FC<any>;
+  export const ZoomIn: React.FC<any>;
+  export const ZoomOut: React.FC<any>;
+  export const Filter: React.FC<any>;
+  export const Sliders: React.FC<any>;
+  export const SlidersHorizontal: React.FC<any>;
+  export const Command: React.FC<any>;
+  export const Cloud: React.FC<any>;
+  export const CloudDownload: React.FC<any>;
+  export const CloudUpload: React.FC<any>;
+  export const CloudOff: React.FC<any>;
+  export const CloudRain: React.FC<any>;
+  export const CloudSnow: React.FC<any>;
+  export const CloudLightning: React.FC<any>;
+  export const Droplet: React.FC<any>;
+  export const Thermometer: React.FC<any>;
+  export const Sunset: React.FC<any>;
+  export const Sunrise: React.FC<any>;
+  export const Wind: React.FC<any>;
+  export const Radio: React.FC<any>;
+  export const Tv: React.FC<any>;
+  export const Film: React.FC<any>;
+  export const Music: React.FC<any>;
+  export const Headphones: React.FC<any>;
+  export const Speaker: React.FC<any>;
+  export const Printer: React.FC<any>;
+  export const Scissors: React.FC<any>;
+  export const Clipboard: React.FC<any>;
+  export const ClipboardCheck: React.FC<any>;
+  export const ClipboardCopy: React.FC<any>;
+  export const ClipboardList: React.FC<any>;
+  export const ClipboardX: React.FC<any>;
+  export const Paperclip: React.FC<any>;
+  export const Archive: React.FC<any>;
+  export const Inbox: React.FC<any>;
+  export const AtSign: React.FC<any>;
+  export const Mail: React.FC<any>;
+  export const MailOpen: React.FC<any>;
+  export const MessageCircle: React.FC<any>;
+  export const MessagesSquare: React.FC<any>;
+  export const Phone: React.FC<any>;
+  export const PhoneCall: React.FC<any>;
+  export const PhoneOff: React.FC<any>;
+  export const PhoneIncoming: React.FC<any>;
+  export const PhoneOutgoing: React.FC<any>;
+  export const PhoneMissed: React.FC<any>;
+  export const PhoneForwarded: React.FC<any>;
+  export const Voicemail: React.FC<any>;
+  export const Feather: React.FC<any>;
+  export const Quote: React.FC<any>;
+  export const BookOpen: React.FC<any>;
+  export const Book: React.FC<any>;
+  export const BookMarked: React.FC<any>;
+  export const Briefcase: React.FC<any>;
+  export const Building: React.FC<any>;
+  export const Building2: React.FC<any>;
+  export const Cast: React.FC<any>;
+  export const Coffee: React.FC<any>;
+  export const Columns: React.FC<any>;
+  export const Cpu: React.FC<any>;
+  export const Crop: React.FC<any>;
+  export const Disc: React.FC<any>;
+  export const DivideCircle: React.FC<any>;
+  export const DivideSquare: React.FC<any>;
+  export const Divide: React.FC<any>;
+  export const Dribbble: React.FC<any>;
+  export const Droplets: React.FC<any>;
+  export const Edit2: React.FC<any>;
+  export const Edit3: React.FC<any>;
+  export const EyeIcon: React.FC<any>;
+  export const Facebook: React.FC<any>;
+  export const Figma: React.FC<any>;
+  export const FileMinus: React.FC<any>;
+  export const FilePlus: React.FC<any>;
+  export const Files: React.FC<any>;
+  export const FolderMinus: React.FC<any>;
+  export const FolderOpen: React.FC<any>;
+  export const FolderPlus: React.FC<any>;
+  export const Folders: React.FC<any>;
+  export const Framer: React.FC<any>;
+  export const Frown: React.FC<any>;
+  export const HelpCircle: React.FC<any>;
+  export const Italic: React.FC<any>;
+  export const MinusCircle: React.FC<any>;
+  export const MinusSquare: React.FC<any>;
+  export const Minus: React.FC<any>;
+  export const MousePointer: React.FC<any>;
+  export const Move3d: React.FC<any>;
+  export const Music2: React.FC<any>;
+  export const Music3: React.FC<any>;
+  export const Music4: React.FC<any>;
+  export const Navigation2: React.FC<any>;
+  export const Package2: React.FC<any>;
+  export const PenTool: React.FC<any>;
+  export const Pocket: React.FC<any>;
+  export const Power: React.FC<any>;
+  export const RefreshCcw: React.FC<any>;
+  export const Repeat2: React.FC<any>;
+  export const Rss: React.FC<any>;
+  export const ShieldCheck: React.FC<any>;
+  export const ShieldX: React.FC<any>;
+  export const Sidebar: React.FC<any>;
+  export const Slash: React.FC<any>;
+  export const Smile: React.FC<any>;
+  export const Sunset: React.FC<any>;
+  export const Tool: React.FC<any>;
+  export const Truck: React.FC<any>;
+  export const Tv2: React.FC<any>;
+  export const Twitter: React.FC<any>;
+  export const Type: React.FC<any>;
+  export const Umbrella: React.FC<any>;
+  export const Underline: React.FC<any>;
+  export const UserCheck: React.FC<any>;
+  export const UserX: React.FC<any>;
+  export const Watch: React.FC<any>;
+  export const Youtube: React.FC<any>;
+  export const ZapOff: React.FC<any>;
+  export const UserCircle: React.FC<any>;
+  export const Timer: React.FC<any>;
+  export const Gauge: React.FC<any>;
+  export const BarChartHorizontal: React.FC<any>;
+  export const Network: React.FC<any>;
+  export const Boxes: React.FC<any>;
+  export const FileSearch: React.FC<any>;
+  export const Wrench: React.FC<any>;
+  export const Palette: React.FC<any>;
+  export const GraduationCap: React.FC<any>;
+  export const Lightbulb: React.FC<any>;
+  export const Calculator: React.FC<any>;
+  export const BotMessageSquare: React.FC<any>;
+  export const Keyboard: React.FC<any>;
+  export const Airplay: React.FC<any>;
+  export const AlertTriangle: React.FC<any>;
+  export const Anchor: React.FC<any>;
+  export const Aperture: React.FC<any>;
+  export const ArrowDown: React.FC<any>;
+  export const ArrowDownCircle: React.FC<any>;
+  export const ArrowDownLeft: React.FC<any>;
+  export const ArrowDownRight: React.FC<any>;
+  export const ArrowLeftCircle: React.FC<any>;
+  export const ArrowRightCircle: React.FC<any>;
+  export const ArrowUp: React.FC<any>;
+  export const ArrowUpCircle: React.FC<any>;
+  export const ArrowUpLeft: React.FC<any>;
+  export const ArrowUpRight: React.FC<any>;
+  export const AudioLines: React.FC<any>;
+  export const AudioWaveform: React.FC<any>;
+  export const BadgeCheck: React.FC<any>;
+  export const Ban: React.FC<any>;
+  export const BanknoteIcon: React.FC<any>;
+  export const Battery: React.FC<any>;
+  export const BatteryCharging: React.FC<any>;
+  export const BatteryFull: React.FC<any>;
+  export const BatteryLow: React.FC<any>;
+  export const BatteryMedium: React.FC<any>;
+  export const BatteryWarning: React.FC<any>;
+  export const Beaker: React.FC<any>;
+  export const BedDouble: React.FC<any>;
+  export const BedSingle: React.FC<any>;
+  export const Beer: React.FC<any>;
+  export const BellDot: React.FC<any>;
+  export const BellMinus: React.FC<any>;
+  export const BellPlus: React.FC<any>;
+  export const BellRing: React.FC<any>;
+  export const Bike: React.FC<any>;
+  export const Binary: React.FC<any>;
+  export const Binoculars: React.FC<any>;
+  export const Bird: React.FC<any>;
+  export const Blend: React.FC<any>;
+  export const Blinds: React.FC<any>;
+  export const Blocks: React.FC<any>;
+  export const Bluetooth: React.FC<any>;
+  export const BluetoothConnected: React.FC<any>;
+  export const BluetoothOff: React.FC<any>;
+  export const BluetoothSearching: React.FC<any>;
+  export const Bold: React.FC<any>;
+  export const Bolt: React.FC<any>;
+  export const Bomb: React.FC<any>;
+  export const Bone: React.FC<any>;
+  export const BookCopy: React.FC<any>;
+  export const BookDown: React.FC<any>;
+  export const BookKey: React.FC<any>;
+  export const BookLock: React.FC<any>;
+  export const BookmarkMinus: React.FC<any>;
+  export const BookmarkPlus: React.FC<any>;
+  export const BookOpenCheck: React.FC<any>;
+  export const BookPlus: React.FC<any>;
+  export const BookTemplate: React.FC<any>;
+  export const BookUp: React.FC<any>;
+  export const BookUp2: React.FC<any>;
+  export const BookUser: React.FC<any>;
+  export const BookX: React.FC<any>;
+  export const BoomBox: React.FC<any>;
+  export const BotOff: React.FC<any>;
+  export const Box: React.FC<any>;
+  export const BoxIcon: React.FC<any>;
+  export const BoxSelect: React.FC<any>;
+  export const Braces: React.FC<any>;
+  export const Brackets: React.FC<any>;
+  export const BrainCircuit: React.FC<any>;
+  export const BrainCog: React.FC<any>;
+  export const BrickWall: React.FC<any>;
+  export const BriefcaseBusiness: React.FC<any>;
+  export const BriefcaseMedical: React.FC<any>;
+  export const BringToFront: React.FC<any>;
+  export const Brush: React.FC<any>;
+  export const Bug: React.FC<any>;
+  export const BugOff: React.FC<any>;
+  export const BugPlay: React.FC<any>;
+  export const Bus: React.FC<any>;
+  export const BusFront: React.FC<any>;
+  export const Cable: React.FC<any>;
+  export const CableCar: React.FC<any>;
+  export const Cake: React.FC<any>;
+  export const CakeSlice: React.FC<any>;
+  export const CalendarArrowDown: React.FC<any>;
+  export const CalendarArrowUp: React.FC<any>;
+  export const CalendarCheck: React.FC<any>;
+  export const CalendarCheck2: React.FC<any>;
+  export const CalendarClock: React.FC<any>;
+  export const CalendarCog: React.FC<any>;
+  export const CalendarDays: React.FC<any>;
+  export const CalendarFold: React.FC<any>;
+  export const CalendarHeart: React.FC<any>;
+  export const CalendarMinus: React.FC<any>;
+  export const CalendarMinus2: React.FC<any>;
+  export const CalendarOff: React.FC<any>;
+  export const CalendarPlus: React.FC<any>;
+  export const CalendarPlus2: React.FC<any>;
+  export const CalendarRange: React.FC<any>;
+  export const CalendarSearch: React.FC<any>;
+  export const CalendarSync: React.FC<any>;
+  export const CalendarX: React.FC<any>;
+  export const CalendarX2: React.FC<any>;
+}
+
+// react-doc-viewer types (package not installed, stub for compilation)
+declare module 'react-doc-viewer' {
+  import React from 'react';
+
+  export interface IDocument {
+    uri: string;
+    fileType?: string;
+    fileName?: string;
+  }
+
+  export interface DocViewerProps {
+    documents: IDocument[];
+    pluginRenderers?: any[];
+    config?: Record<string, any>;
+    style?: React.CSSProperties;
+    className?: string;
+    theme?: Record<string, any>;
+  }
+
+  export const DocViewerRenderers: any[];
+
+  const DocViewer: React.FC<DocViewerProps>;
+  export default DocViewer;
+}
+
+// Window augmentation for gtag
+interface Window {
+  gtag?: (...args: any[]) => void;
+}

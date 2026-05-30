@@ -1,0 +1,12 @@
+dependencies:
+- name: postgresql
+  repository: https://charts.bitnami.com/bitnami
+  version: 16.7.27
+- name: redis
+  repository: https://charts.bitnami.com/bitnami
+  version: 20.13.4
+- name: milvus
+  repository: https://zilliztech.github.io/milvus-helm/
+  version: 5.0.14
+digest: sha256:caecee75cedfa5c45b9795be67c191499b69682e9f21555debe2f6dd880737b2
+generated: "2026-02-16T15:35:43.081416791-05:00"

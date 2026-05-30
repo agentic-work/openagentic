@@ -1,0 +1,22 @@
+
+
+{{- if and .Values.oat.enabled .Values.oat.executor.enabled .Values.oat.executor.podDisruptionBudget.enabled }}
+# ===================================================================================================
+# OAT EXECUTOR POD DISRUPTION BUDGET
+# ===================================================================================================
+# Ensures availability during updates and node maintenance
+# ===================================================================================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "openagentic.fullname" . }}-openagentic-synth-pdb
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: openagentic-synth
+spec:
+  minAvailable: {{ .Values.oat.executor.podDisruptionBudget.minAvailable | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: openagentic-synth
+{{- end }}

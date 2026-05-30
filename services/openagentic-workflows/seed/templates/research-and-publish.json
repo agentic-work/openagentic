@@ -1,0 +1,148 @@
+{
+  "slug": "research-and-publish",
+  "name": "Research and Publish",
+  "description": "End-to-end data-layer proof: pulls real content from the web for a topic, ingests it into the platform knowledge base (Milvus shared_knowledge), RAGs it back against the user's question, and renders an interactive HTML report as an openable artifact in the artifact rail. Default topic is configurable. No mocks anywhere in the pipeline.",
+  "category": "research",
+  "template": true,
+  "meta": {
+    "purpose": "Prove the platform's data layer works end-to-end inside a single flow: web -> Milvus ingest -> RAG retrieve -> LLM synth -> openable HTML artifact.",
+    "how_it_works": [
+      "1. openagentic_web.web_search_and_read fans out a SearXNG-backed search + page fetch for the topic, returning up to 5 pages of real markdown content (capped at 15k chars per page).",
+      "2. A transform flattens the per-page content into one big payload + a flat URL list for citation.",
+      "3. knowledge_ingest writes the flattened payload to the shared_knowledge Milvus collection via /api/chat/knowledge/ingest, tagged with the run's execution id.",
+      "4. knowledge_search queries /api/chat/knowledge/search for the user's question (vector similarity over the same shared_knowledge collection).",
+      "5. llm_completion synthesizes a structured HTML report from the retrieved chunks (sections + cited URLs).",
+      "6. webhook_response renders the report and persists it as an HTML artifact via ctx.persistArtifact — opens in the artifact rail."
+    ],
+    "expected_output": "Interactive HTML artifact landing in the artifact rail with: topic header, LLM-synthesized answer with section breakdowns, source URL citations, retrieval metadata footer (chunks-retrieved + scores). Side-effect: shared_knowledge collection grows by chunksIngested chunks per run.",
+    "useful_when": "Any time you want a research-grade synthesis on a specific topic with live web evidence backing the answer. Demonstrates that knowledge_ingest + knowledge_search round-trip works end-to-end against real Milvus.",
+    "tools_used": [
+      "openagentic_web.web_search_and_read",
+      "transform",
+      "knowledge_ingest",
+      "knowledge_search",
+      "llm_completion",
+      "webhook_response"
+    ],
+    "version": "1.0",
+    "tags": ["research", "rag", "knowledge-base", "data-layer", "demo"]
+  },
+  "defaultInputs": {
+    "topic": "OpenAgentic Flows AI workflow engine",
+    "question": "What are the key features and architectural decisions behind OpenAgentic's Flows engine?"
+  },
+  "definition": {
+    "nodes": [
+      {
+        "id": "trigger",
+        "type": "trigger",
+        "position": { "x": 100, "y": 200 },
+        "data": {
+          "triggerType": "manual",
+          "label": "Research request",
+          "input_schema": {
+            "topic": "string",
+            "question": "string"
+          }
+        }
+      },
+      {
+        "id": "research",
+        "type": "mcp_tool",
+        "position": { "x": 380, "y": 200 },
+        "data": {
+          "label": "Web research (search + fetch)",
+          "toolServer": "openagentic_web",
+          "toolName": "web_search_and_read",
+          "arguments": {
+            "query": "{{trigger.topic}}",
+            "num_results": 5,
+            "max_content_per_page": 15000
+          }
+        }
+      },
+      {
+        "id": "flatten",
+        "type": "transform",
+        "position": { "x": 660, "y": 200 },
+        "data": {
+          "label": "Flatten pages",
+          "operations": [
+            {
+              "op": "set",
+              "target": "flattened_content",
+              "value": "{{ (() => { const r = (input && input.content && Array.isArray(input.content.results)) ? input.content.results : (Array.isArray(input?.results) ? input.results : []); if (!r.length) return ''; const parts = r.map((p, i) => { const title = (p && p.title) || ''; const url = (p && p.url) || ''; const body = (p && (p.content || p.markdown || p.text)) || ''; return `# [${i+1}] ${title}\\nSource: ${url}\\n\\n${body}\\n\\n---\\n`; }); return parts.join('\\n').slice(0, 180000); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "url_list",
+              "value": "{{ (() => { const r = (input && input.content && Array.isArray(input.content.results)) ? input.content.results : (Array.isArray(input?.results) ? input.results : []); return r.map(p => ({ title: (p && p.title) || '', url: (p && p.url) || '' })); })() }}"
+            },
+            {
+              "op": "set",
+              "target": "page_count",
+              "value": "{{ (() => { const r = (input && input.content && Array.isArray(input.content.results)) ? input.content.results : (Array.isArray(input?.results) ? input.results : []); return r.length; })() }}"
+            }
+          ]
+        }
+      },
+      {
+        "id": "ingest",
+        "type": "knowledge_ingest",
+        "position": { "x": 940, "y": 200 },
+        "data": {
+          "label": "Ingest into Milvus shared_knowledge",
+          "collection": "shared",
+          "source": "research-and-publish-{{execution.id}}",
+          "content": "{{steps.flatten.flattened_content}}"
+        }
+      },
+      {
+        "id": "search",
+        "type": "knowledge_search",
+        "position": { "x": 1220, "y": 200 },
+        "data": {
+          "label": "RAG retrieve",
+          "query": "{{trigger.question}} {{trigger.topic}}",
+          "topK": 10
+        }
+      },
+      {
+        "id": "synth",
+        "type": "llm_completion",
+        "position": { "x": 1500, "y": 200 },
+        "data": {
+          "label": "Synthesize HTML report",
+          "model": "auto",
+          "temperature": 0.3,
+          "maxTokens": 2500,
+          "system": "You are a research synthesis assistant. You will receive: a topic, a question, and an array of retrieved knowledge-base chunks (each with content + score + source).\n\nWrite a structured HTML report that ANSWERS the question USING ONLY the provided chunks. Do not invent facts. If the chunks don't support an answer, say so directly.\n\nOutput rules:\n- Use semantic HTML: <h2>, <h3>, <p>, <ul>/<li>, <strong>, <em>. No <html>/<head>/<body> wrappers — the response is embedded inside an outer report container.\n- Open with a 1-2 sentence executive summary in a <p>.\n- Break the answer into 2-4 sections with <h3> headers.\n- Quote short excerpts (<= 30 words) inline as <blockquote>; longer paraphrases as plain <p>.\n- Cite sources with [N] markers tying back to the URL list — do NOT invent URLs.\n- Close with a brief 'Method' note: how many chunks were retrieved, top-score, and whether the answer is well-supported (>=3 supporting chunks) or thin (<3).\n\nDo NOT include any preamble, chain-of-thought, or 'here is the report' wrapper — emit the HTML directly.",
+          "prompt": "Topic: {{trigger.topic}}\nQuestion: {{trigger.question}}\n\nRetrieved chunks ({{steps.search.result.resultCount}} total):\n{{steps.search.result.results}}\n\nSource URLs (in order they were ingested):\n{{steps.flatten.url_list}}\n\nWrite the HTML report now."
+        }
+      },
+      {
+        "id": "publish",
+        "type": "webhook_response",
+        "position": { "x": 1800, "y": 200 },
+        "data": {
+          "label": "Publish HTML artifact",
+          "statusCode": 200,
+          "contentType": "text/html",
+          "bodyTemplate": "<article class=\"research-report\" style=\"font-family:-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.6;max-width:880px;margin:0 auto;padding:24px;\">\n  <header style=\"border-bottom:1px solid #e5e7eb;padding-bottom:16px;margin-bottom:24px;\">\n    <h1 style=\"margin:0 0 8px 0;font-size:28px;\">Research Report: {{trigger.topic}}</h1>\n    <p style=\"margin:0;color:#6b7280;font-size:14px;\"><strong>Question:</strong> {{trigger.question}}</p>\n    <p style=\"margin:8px 0 0 0;color:#6b7280;font-size:13px;\">Source pages ingested: {{steps.flatten.page_count}} &middot; Chunks indexed: {{steps.ingest.chunksIngested}} &middot; Chunks retrieved: {{steps.search.result.resultCount}}</p>\n  </header>\n  <section class=\"answer\">\n    {{steps.synth.content}}\n  </section>\n  <footer style=\"margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:13px;\">\n    <h3 style=\"margin:0 0 8px 0;font-size:14px;color:#111827;\">Sources</h3>\n    <ol style=\"margin:0;padding-left:20px;\">{{ (() => { const list = (steps.flatten && steps.flatten.url_list) || []; return list.map(x => `<li><a href=\"${x.url}\" target=\"_blank\" rel=\"noopener\">${x.title || x.url}</a></li>`).join(''); })() }}</ol>\n    <p style=\"margin-top:12px;\">Generated by OpenAgentic Flows research-and-publish &middot; data-layer proof artifact.</p>\n  </footer>\n</article>",
+          "persistAsArtifact": true,
+          "artifactTitle": "Research: {{trigger.topic}}",
+          "artifactMimeType": "text/html",
+          "artifactTags": ["research", "rag", "data-layer-demo"]
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "trigger", "target": "research" },
+      { "id": "e2", "source": "research", "target": "flatten" },
+      { "id": "e3", "source": "flatten", "target": "ingest" },
+      { "id": "e4", "source": "ingest", "target": "search" },
+      { "id": "e5", "source": "search", "target": "synth" },
+      { "id": "e6", "source": "synth", "target": "publish" }
+    ]
+  }
+}

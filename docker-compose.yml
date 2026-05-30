@@ -1,0 +1,400 @@
+# OpenAgentic — single-user OSS stack
+#
+# Quick start:
+#   cp .env.example .env
+#   docker compose up -d
+#   open http://localhost:3000
+#
+# First boot pulls the embedding model into Ollama (~270MB) before the API
+# becomes healthy. Plan ~3–5 min on first start; <30s thereafter.
+
+x-defaults: &defaults
+  restart: unless-stopped
+  networks: [oap]
+  # Log rotation so container stdout/stderr never fills the WSL VHD.
+  # 3 files × 10MB = max 30MB per container. Tune per service if needed.
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+
+  # ─── Datastores ───────────────────────────────────────────────────────────
+
+  postgres:
+    <<: *defaults
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-openagentic}
+      POSTGRES_USER: ${POSTGRES_USER:-openagentic}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      # Runs on first-boot only; creates the pgvector extension so
+      # Prisma's halfvec columns can be created during db push.
+      - ./scripts/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-openagentic}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    <<: *defaults
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Milvus standalone (etcd + minio + milvus together)
+  # ─── Optional: Milvus + its deps (etcd + minio) ───────────────────────────
+  # Default install uses pgvector inside the postgres container for vector
+  # search — three fewer containers, ~1.5 GB less memory. Enable Milvus
+  # only if you specifically need it (large embeddings corpora, distributed
+  # search). Bring it up with:
+  #
+  #   docker compose --profile milvus up -d
+  #
+  # …and set MILVUS_HOST=milvus in your .env so the api picks it up.
+  etcd:
+    <<: *defaults
+    profiles: ["milvus"]
+    image: quay.io/coreos/etcd:v3.5.18
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    volumes:
+      - etcd-data:/etcd
+    command:
+      - etcd
+      - -advertise-client-urls=http://etcd:2379
+      - -listen-client-urls=http://0.0.0.0:2379
+      - --data-dir=/etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    <<: *defaults
+    profiles: ["milvus"]
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio-data:/data
+    command: minio server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  milvus:
+    <<: *defaults
+    profiles: ["milvus"]
+    image: milvusdb/milvus:v2.4.15
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    volumes:
+      - milvus-data:/var/lib/milvus
+    depends_on:
+      etcd: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ─── Local model runtime (REQUIRED for semantic tool indexing) ────────────
+
+  ollama:
+    <<: *defaults
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # One-shot: pull the embedding model on first boot, then exit.
+  ollama-init:
+    image: ollama/ollama:latest
+    networks: [oap]
+    depends_on:
+      ollama: { condition: service_healthy }
+    environment:
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo "Pulling embed model: $$OLLAMA_EMBED_MODEL"
+        ollama pull "$$OLLAMA_EMBED_MODEL"
+        if [ -n "$$OLLAMA_CHAT_MODEL" ]; then
+          echo "Pulling chat model: $$OLLAMA_CHAT_MODEL"
+          ollama pull "$$OLLAMA_CHAT_MODEL"
+        fi
+        echo "Ollama models ready."
+    restart: "no"
+
+  # ─── Application services ─────────────────────────────────────────────────
+
+  api:
+    <<: *defaults
+    image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-api:${OPENAGENTIC_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/openagentic-api/Dockerfile
+      args:
+        SRC_PATH: services/openagentic-api
+    extra_hosts:
+      - "ollama.local:127.0.0.1"
+      # host-gateway is the docker keyword that resolves to the host's
+      # gateway IP, which is how Linux containers reach a process running
+      # on the host (Mac/Windows Desktop sets this automatically).
+      - "host.docker.internal:host-gateway"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openagentic}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-openagentic}
+      REDIS_URL: redis://redis:6379
+      # Default install uses pgvector inside postgres for vector search;
+      # Milvus is only reachable when `docker compose --profile milvus up`
+      # is used. SKIP_TOOL_SEMANTIC_CACHE=true makes the api skip the
+      # Milvus boot path entirely when the profile is off.
+      MILVUS_HOST: ${MILVUS_HOST:-milvus}
+      MILVUS_PORT: "19530"
+      SKIP_TOOL_SEMANTIC_CACHE: ${SKIP_TOOL_SEMANTIC_CACHE:-true}
+      OLLAMA_ENABLED: "true"
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      OLLAMA_BASE_URL: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      EMBEDDING_PROVIDER: ollama
+      # Disable RAG retrieval on first boot — prevents pipeline stalls from
+      # embedding timeouts when Ollama is shared with chat/tools. Re-enable
+      # once a dedicated embedding endpoint or local embed model is set up.
+      DISABLE_RAG: ${DISABLE_RAG:-true}
+      EMBEDDING_OLLAMA_BASE_URL: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      EMBEDDING_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      API_HOST: api
+      API_PORT: "8000"
+      MCP_PROXY_HOST: mcp-proxy
+      MCP_PROXY_PORT: "8080"
+      WORKFLOWS_HOST: workflows
+      WORKFLOWS_PORT: "3400"
+      SYNTH_HOST: synth
+      SYNTH_PORT: "8090"
+      OPENAGENTIC_PROXY_URL: http://proxy:3300
+      # LLM provider keys (passed through if set)
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
+      # Auth
+      AUTH_PROVIDER: ${AUTH_PROVIDER:-local}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      AZURE_AD_TENANT_ID: ${AZURE_AD_TENANT_ID:-}
+      AZURE_AD_CLIENT_ID: ${AZURE_AD_CLIENT_ID:-}
+      AZURE_AD_CLIENT_SECRET: ${AZURE_AD_CLIENT_SECRET:-}
+      # JWT signing (generated-random fallback is ephemeral; set once for stable sessions)
+      JWT_SECRET: ${JWT_SECRET:-openagentic-dev-jwt-secret-change-me}
+      SIGNING_SECRET: ${SIGNING_SECRET:-openagentic-dev-signing-secret-change-me}
+      # Initial admin seed (written on first boot only)
+      ADMIN_USER_EMAIL: ${ADMIN_USER_EMAIL:-admin@openagentic.local}
+      ADMIN_SEED_PASSWORD: ${ADMIN_SEED_PASSWORD:-changeme-on-first-login}
+      LOCAL_ADMIN_USERNAME: ${LOCAL_ADMIN_USERNAME:-Admin}
+      # Shared key for any internal service-to-service auth.
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-openagentic-dev-internal-key-change-me}
+      # Code Mode / openagentic-exec wiring
+      CODE_EXEC_URL: http://openagentic-exec:3060
+      CODE_EXEC_WS_URL: ws://openagentic-exec:3060
+      CODE_EXEC_INTERNAL_KEY: ${CODE_EXEC_INTERNAL_KEY:?CODE_EXEC_INTERNAL_KEY must be set in .env}
+      CODEMODE_ENABLED: "true"
+      OPENAGENTIC_API_INTERNAL_URL: http://api:8000
+      # The user already picked their password via ADMIN_SEED_PASSWORD in .env
+      # before first boot, so don't force another change on first login.
+      ADMIN_REQUIRE_PASSWORD_RESET: ${ADMIN_REQUIRE_PASSWORD_RESET:-false}
+      # One-shot autologin token consumed by install.sh's browser-open.
+      # Empty in normal startups → /api/auth/magic always 401s.
+      MAGIC_BOOT_TOKEN: ${MAGIC_BOOT_TOKEN:-}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      ollama: { condition: service_healthy }
+
+  ui:
+    <<: *defaults
+    image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-ui:${OPENAGENTIC_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/openagentic-ui/Dockerfile
+      args:
+        SRC_PATH: services/openagentic-ui
+    environment:
+      API_HOST: api
+      API_PORT: "8000"
+      WORKFLOWS_HOST: workflows
+      WORKFLOWS_PORT: "3400"
+      MCP_PROXY_HOST: mcp-proxy
+      MCP_PROXY_PORT: "8080"
+      DNS_RESOLVER: 127.0.0.11
+      FRONTEND_SECRET: ${FRONTEND_SECRET:-dev-frontend-secret-change-in-prod}
+      # Only local login by default; Microsoft/Google require credentials.
+      AUTH_PROVIDER: ${AUTH_PROVIDER:-local}
+      LOCAL_LOGIN_ENABLED: ${LOCAL_LOGIN_ENABLED:-true}
+      MICROSOFT_LOGIN_ENABLED: ${MICROSOFT_LOGIN_ENABLED:-false}
+      GOOGLE_LOGIN_ENABLED: ${GOOGLE_LOGIN_ENABLED:-false}
+      # openagentic-exec (Code Mode terminal WebSocket passthrough)
+      EXEC_HOST: openagentic-exec
+      EXEC_PORT: "3060"
+    depends_on: [api]
+    ports:
+      - "${UI_HOST_PORT:-8080}:80"
+
+  workflows:
+    <<: *defaults
+    image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-workflows:${OPENAGENTIC_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/openagentic-workflows/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openagentic}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-openagentic}
+      REDIS_URL: redis://redis:6379
+      API_URL: http://api:8000
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  mcp-proxy:
+    <<: *defaults
+    image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-mcp-proxy:${OPENAGENTIC_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/openagentic-mcp-proxy/Dockerfile
+      args:
+        SRC_PATH: services/openagentic-mcp-proxy
+    # ── Cloud creds: prefer the user's existing host CLI configs ─────────
+    # ~/.azure, ~/.aws, ~/.config/gcloud are mounted read-only. The cloud
+    # MCPs (az / boto3 / google-auth) pick them up via their default
+    # credential chains — same auth the user already has on their box.
+    # Falls back to ~/.openagentic/cloud-secrets/*.env if the host dir is
+    # absent (install.sh creates empty stubs so the env_file mounts never
+    # fail). This is what makes "show me my Azure subs" work in 5 min.
+    env_file:
+      - ${HOME}/.openagentic/cloud-secrets/aws.env
+      - ${HOME}/.openagentic/cloud-secrets/azure.env
+      - ${HOME}/.openagentic/cloud-secrets/gcp.env
+    volumes:
+      - ${HOME}/.azure:/root/.azure:ro
+      - ${HOME}/.aws:/root/.aws:ro
+      - ${HOME}/.config/gcloud:/root/.config/gcloud:ro
+      - ${HOME}/.kube:/root/.kube:ro
+    environment:
+      API_HOST: api
+      API_PORT: "8000"
+      # Must match api's secrets so internal JWTs the api issues to reach
+      # the proxy validate. Defaults here mirror the api service above.
+      JWT_SECRET: ${JWT_SECRET:-openagentic-dev-jwt-secret-change-me}
+      SIGNING_SECRET: ${SIGNING_SECRET:-openagentic-dev-signing-secret-change-me}
+      # Cloud MCPs default to ENABLED — they'll auto-detect creds from the
+      # mounted host CLI configs above. If you don't have e.g. `az login`,
+      # the MCP just returns an "auth missing" error and the agent moves on.
+      MCPS_ENABLED: ${MCPS_ENABLED:-web,knowledge,admin,azure,aws,gcp,kubernetes}
+      OpenAgentic_WEB_MCP_DISABLED: ${OpenAgentic_WEB_MCP_DISABLED:-false}
+      OpenAgentic_KNOWLEDGE_MCP_DISABLED: ${OpenAgentic_KNOWLEDGE_MCP_DISABLED:-false}
+      OpenAgentic_ADMIN_MCP_DISABLED: ${OpenAgentic_ADMIN_MCP_DISABLED:-false}
+      SEQUENTIAL_THINKING_MCP_DISABLED: ${SEQUENTIAL_THINKING_MCP_DISABLED:-true}
+      OpenAgentic_AWS_MCP_DISABLED: ${OpenAgentic_AWS_MCP_DISABLED:-false}
+      OpenAgentic_AZURE_MCP_DISABLED: ${OpenAgentic_AZURE_MCP_DISABLED:-false}
+      OpenAgentic_GCP_MCP_DISABLED: ${OpenAgentic_GCP_MCP_DISABLED:-false}
+      OpenAgentic_KUBERNETES_MCP_DISABLED: ${OpenAgentic_KUBERNETES_MCP_DISABLED:-false}
+      OpenAgentic_GITHUB_MCP_DISABLED: ${OpenAgentic_GITHUB_MCP_DISABLED:-true}
+      OpenAgentic_PROMETHEUS_MCP_DISABLED: ${OpenAgentic_PROMETHEUS_MCP_DISABLED:-true}
+      OpenAgentic_LOKI_MCP_DISABLED: ${OpenAgentic_LOKI_MCP_DISABLED:-true}
+      OpenAgentic_ALERTMANAGER_MCP_DISABLED: ${OpenAgentic_ALERTMANAGER_MCP_DISABLED:-true}
+      # Inline creds (fields-type MCPs — envs go straight into .env from the wizard)
+      KUBECONFIG: ${KUBECONFIG:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      PROMETHEUS_URL: ${PROMETHEUS_URL:-}
+      PROMETHEUS_USERNAME: ${PROMETHEUS_USERNAME:-}
+      PROMETHEUS_PASSWORD: ${PROMETHEUS_PASSWORD:-}
+      LOKI_URL: ${LOKI_URL:-}
+      LOKI_USERNAME: ${LOKI_USERNAME:-}
+      LOKI_PASSWORD: ${LOKI_PASSWORD:-}
+      ALERTMANAGER_URL: ${ALERTMANAGER_URL:-}
+    depends_on: [api]
+
+  openagentic-exec:
+    <<: *defaults
+    build:
+      context: .
+      dockerfile: services/openagentic-exec/Dockerfile
+      args:
+        SRC_PATH: services/openagentic-exec
+    image: ghcr.io/agentic-work/openagentic-exec:latest
+    environment:
+      PORT: "3060"
+      WORKSPACES_PATH: /workspaces
+      INTERNAL_API_KEY: ${CODE_EXEC_INTERNAL_KEY:?CODE_EXEC_INTERNAL_KEY must be set in .env}
+      OPENAGENTIC_API_ENDPOINT: http://api:8000
+      SANDBOX_ENABLED: "false"
+    volumes:
+      - codemode-workspaces:/workspaces
+    expose:
+      - "3060"
+
+  proxy:
+    <<: *defaults
+    image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-proxy:${OPENAGENTIC_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/openagentic-proxy/Dockerfile
+    environment:
+      API_URL: http://api:8000
+      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+
+  synth:
+    <<: *defaults
+    image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-synth:${OPENAGENTIC_TAG:-latest}
+    build:
+      context: ./services/openagentic-synth
+    environment:
+      API_URL: http://api:8000
+
+networks:
+  oap:
+    driver: bridge
+
+volumes:
+  pg-data:
+  redis-data:
+  etcd-data:
+  minio-data:
+  milvus-data:
+  ollama-data:
+  codemode-workspaces:

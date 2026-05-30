@@ -1,0 +1,19 @@
+/* Terminal Green — code mode only
+   Retro CRT / Matrix aesthetic */
+.code-mode[data-cm-theme="terminal-green"] {
+  --cm-bg: #0a0a0a;
+  --cm-bg-secondary: #111111;
+  --cm-bg-tertiary: #050505;
+  --cm-surface: #1a1a1a;
+  --cm-text: #00ff41;
+  --cm-text-secondary: #00cc33;
+  --cm-text-muted: #007722;
+  --cm-accent: #00ff41;
+  --cm-success: #00ff41;
+  --cm-warning: #ffaa00;
+  --cm-error: #ff3333;
+  --cm-info: #00aaff;
+  --cm-muted: #007722;
+  --cm-border: #003311;
+  --cm-prompt: #00ff41;
+}

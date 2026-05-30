@@ -1,0 +1,150 @@
+# OpenAgentic Helm Chart
+
+Kubernetes deployment for the OpenAgentic platform (API, UI, workflow
+engine, MCP proxy, and the bundled MCP servers).
+
+> **Status:** templates-first. The chart renders the full platform, but
+> the supported, batteries-included install path today is the
+> Docker Compose stack at the repo root (`docker compose up -d`). Use
+> Helm if you already run Kubernetes and want to manage OpenAgentic the
+> same way you manage everything else. Env-specific values
+> (hostnames, storage classes, GPU node selectors) are yours to supply.
+
+## Prerequisites
+
+- Kubernetes 1.27+ (k3s, kind, EKS, AKS, GKE — all fine)
+- Helm 3.12+
+- A default `StorageClass` for PVCs (Postgres, Redis, Milvus, MinIO)
+- An Ollama endpoint reachable from the cluster (in-cluster or external),
+  with at least an embedding model (`nomic-embed-text`) and one chat model
+- Optional: a GPU node if you want to run Milvus GPU or in-cluster Ollama
+
+## Architecture
+
+OpenAgentic is a set of stateless services backed by four stateful
+dependencies:
+
+| Layer | Components |
+|---|---|
+| **App** | `api`, `ui`, `workflows`, `mcp-proxy`, `proxy`, `synth` |
+| **MCP servers** | aws, azure, gcp, kubernetes, prometheus, loki, alertmanager, github, admin, agent-architect, incident, knowledge, runbook, web |
+| **Data** | PostgreSQL (pgvector), Redis, Milvus, MinIO |
+| **Models** | Ollama (chat + embeddings), or external LLM providers |
+
+The stateful dependencies are **not** subcharts of this release — they're
+deployed separately so the rendered release stays under etcd's 1 MB object
+limit. Install them first (next section), then install this chart.
+
+## Install
+
+### 1. Namespace + secrets
+
+```bash
+kubectl create namespace openagentic
+
+# TLS (if terminating in-cluster with an existing cert)
+kubectl create secret tls openagentic-tls \
+  --cert=path/to/tls.crt --key=path/to/tls.key -n openagentic
+
+# Image pull secret — ONLY if pulling from a private registry.
+# Skip for public registries (default images: ghcr.io/agentic-work).
+kubectl create secret docker-registry registry-pull-secret \
+  --docker-server=<your-registry-host> \
+  --docker-username=<user> --docker-password=<token> \
+  -n openagentic
+```
+
+### 2. Stateful dependencies
+
+Deploy these in your cluster however you prefer. Reference commands using
+upstream charts:
+
+```bash
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo add zilliztech https://zilliztech.github.io/milvus-helm/
+helm repo update
+
+helm install postgresql bitnami/postgresql -n openagentic \
+  -f your-postgresql-values.yaml   # must enable the pgvector extension
+helm install redis      bitnami/redis      -n openagentic -f your-redis-values.yaml
+helm install milvus     zilliztech/milvus  -n openagentic -f your-milvus-values.yaml
+```
+
+MinIO ships as templates in this chart (used by Milvus + artifact
+storage); it comes up with the core install.
+
+> **pgvector:** OpenAgentic needs the `vector` extension. Use a Postgres
+> image that bundles pgvector, or run `CREATE EXTENSION IF NOT EXISTS
+> vector;` as an init step. The Compose stack does this automatically via
+> `scripts/postgres-init/`.
+
+### 3. Ollama / models
+
+Point the chart at your Ollama endpoint with `ollama.host` (or enable the
+in-cluster Ollama under `ollama.*` in `values.yaml`). Ensure the models
+you reference exist:
+
+```bash
+ollama pull nomic-embed-text     # embeddings (required)
+ollama pull <your-chat-model>    # e.g. a general chat model
+```
+
+### 4. Install OpenAgentic
+
+```bash
+helm install openagentic ./helm/openagentic -n openagentic \
+  -f your-values.yaml
+```
+
+Two starter values files are included:
+
+- `values-local-k8s.yaml.template` — single-node / k3s, external deps
+- `values-local-airgapped.yaml.template` — air-gapped / private registry
+
+Copy one, fill in the placeholders, and pass it with `-f`.
+
+### 5. Verify
+
+```bash
+kubectl get pods -n openagentic
+kubectl rollout status deploy/openagentic-api -n openagentic
+
+# API health (port-forward or via your ingress)
+kubectl port-forward -n openagentic svc/openagentic-api 8080:8000 &
+curl -s http://localhost:8080/api/health | jq .
+```
+
+## Configuration
+
+All knobs live in `values.yaml`. The most common ones:
+
+| Key | What it controls |
+|---|---|
+| `global.imageRegistry` / `global.imageTag` | Where images are pulled from |
+| `api.*`, `ui.*`, `workflows.*`, `mcpProxy.*` | Per-service replicas, resources, env |
+| `awp*Mcp.enabled` | Enable/disable each bundled MCP server |
+| `postgresql.*`, `redis.*`, `milvus.*`, `ollama.*` | Connection details for the external deps |
+| `ingress.*` | Ingress class, hosts, TLS |
+| `imagePullSecrets` | Private-registry pull secrets (empty by default) |
+
+GPU scheduling (for Milvus GPU or in-cluster Ollama) is done with standard
+`nodeSelector` / `tolerations` / `resources.limits['nvidia.com/gpu']`
+entries on the relevant service in your values file — there are no
+hardcoded node names in the chart.
+
+## Templates
+
+Under `templates/`, grouped by concern: `core/` (api, ui, workflows,
+postgres/redis/milvus wiring), `mcp-proxy/`, the per-MCP `awp-*-mcp/`
+groups, `synth-executor/`, `oat-executor/`, `agent-proxy/`, `searxng/`,
+`minio/`, `grafana/`, plus `hooks/` and `tests/` (Helm test hooks).
+
+## Uninstall
+
+```bash
+helm uninstall openagentic -n openagentic
+# then the separately-installed deps:
+helm uninstall postgresql redis milvus -n openagentic
+# PVCs are retained by default — delete them explicitly if you want the data gone:
+kubectl delete pvc -l app.kubernetes.io/instance=openagentic -n openagentic
+```

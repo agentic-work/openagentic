@@ -1,0 +1,35 @@
+
+
+{{- if and .Values.ui.autoscaling (eq (.Values.ui.autoscaling.enabled | toString) "true") }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "openagentic.fullname" . }}-ui
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ui
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "openagentic.fullname" . }}-ui
+  minReplicas: {{ .Values.ui.autoscaling.minReplicas | default 1 }}
+  maxReplicas: {{ .Values.ui.autoscaling.maxReplicas | default 5 }}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.ui.autoscaling.targetCPUUtilizationPercentage | default 70 }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Pods
+        value: 2
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+{{- end }}

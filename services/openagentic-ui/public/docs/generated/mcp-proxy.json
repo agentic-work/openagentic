@@ -1,0 +1,133 @@
+{
+  "domain": "mcp-proxy",
+  "title": "MCP Proxy",
+  "description": "openagentic-mcp-proxy types and configuration",
+  "icon": "tool",
+  "category": "tools",
+  "generatedAt": "2026-05-13T20:48:20.641Z",
+  "sourceFiles": [
+    "services/openagentic-mcp-proxy/README.md"
+  ],
+  "sections": [
+    {
+      "id": "README",
+      "title": "README",
+      "description": "**Centralized MCP Server Manager with User Session Isolation**",
+      "adminOnly": false,
+      "items": [
+        {
+          "id": "README--0",
+          "name": "Table of Contents",
+          "description": "- [Overview](#overview) - [Architecture](#architecture) - [Features](#features)",
+          "type": "markdown-section",
+          "sourceFile": "services/openagentic-mcp-proxy/README.md"
+        },
+        {
+          "id": "README--1",
+          "name": "Overview",
+          "description": "The MCP Proxy service acts as a centralized gateway for all MCP (Model Context Protocol) servers in the OpenAgentic platform. It provides:  - **Lifecycle Management**: Start, stop, restart, and monitor MCP servers",
+          "type": "markdown-section",
+          "sourceFile": "services/openagentic-mcp-proxy/README.md"
+        },
+        {
+          "id": "README--2",
+          "name": "Architecture",
+          "description": "``` ┌─────────────────────────────────────────────────────────────────┐ │                         MCP Proxy Service                        │",
+          "type": "markdown-section",
+          "sourceFile": "services/openagentic-mcp-proxy/README.md"
+        },
+        {
+          "id": "README--3",
+          "name": "Features",
+          "description": "### 1. User Session Isolation  Each user gets their own isolated MCP instances:",
+          "type": "markdown-section",
+          "sourceFile": "services/openagentic-mcp-proxy/README.md"
+        },
+        {
+          "id": "README--4",
+          "name": "Installation",
+          "description": "### Prerequisites  - Python 3.11+",
+          "type": "markdown-section",
+          "sourceFile": "services/openagentic-mcp-proxy/README.md"
+        },
+        {
+          "id": "README--5",
+          "name": "Configuration",
+          "description": "### Environment Variables  ```bash",
+          "type": "markdown-section",
+          "sourceFile": "services/openagentic-mcp-proxy/README.md"
+        },
+        {
+          "id": "README--6",
+          "name": "API Reference",
+          "description": "### Tool Execution  #### POST /tools/call",
+          "type": "markdown-section",
+          "sourceFile": "services/openagentic-mcp-proxy/README.md"
+        },
+        {
+          "id": "README--7",
+          "name": "User Session Management",
+          "description": "### Session Lifecycle  ```mermaid",
+          "type": "markdown-section",
+          "sourceFile": "services/openagentic-mcp-proxy/README.md"
+        },
+        {
+          "id": "README--8",
+          "name": "OAuth Integration",
+          "description": "### Azure AD OAuth Flow  ```python",
+          "type": "markdown-section",
+          "sourceFile": "services/openagentic-mcp-proxy/README.md"
+        },
+        {
+          "id": "README--9",
+          "name": "Development",
+          "description": "### Project Structure  ```",
+          "type": "markdown-section",
+          "sourceFile": "services/openagentic-mcp-proxy/README.md"
+        },
+        {
+          "id": "README--10",
+          "name": "Deployment",
+          "description": "### Docker Compose  ```yaml",
+          "type": "markdown-section",
+          "sourceFile": "services/openagentic-mcp-proxy/README.md"
+        },
+        {
+          "id": "README--11",
+          "name": "Monitoring",
+          "description": "### Grafana Dashboard  Import dashboard from `observability/dashboards/mcp-proxy-dashboard.json`:",
+          "type": "markdown-section",
+          "sourceFile": "services/openagentic-mcp-proxy/README.md"
+        },
+        {
+          "id": "README--12",
+          "name": "Troubleshooting",
+          "description": "### MCP Server Won't Start  **Symptoms:**",
+          "type": "markdown-section",
+          "sourceFile": "services/openagentic-mcp-proxy/README.md"
+        },
+        {
+          "id": "README--13",
+          "name": "Contributing",
+          "description": "### Development Workflow  1. Fork repository",
+          "type": "markdown-section",
+          "sourceFile": "services/openagentic-mcp-proxy/README.md"
+        },
+        {
+          "id": "README--14",
+          "name": "License",
+          "description": "MIT License - see [LICENSE](../../LICENSE)  ---",
+          "type": "markdown-section",
+          "sourceFile": "services/openagentic-mcp-proxy/README.md"
+        },
+        {
+          "id": "README--15",
+          "name": "Support",
+          "description": "- **Documentation**: https://docs.openagentic.io/mcp-proxy - **Issues**: https://github.com/your-org/openagentic/issues - **Slack**: #mcp-proxy-dev",
+          "type": "markdown-section",
+          "sourceFile": "services/openagentic-mcp-proxy/README.md"
+        }
+      ]
+    }
+  ]
+}

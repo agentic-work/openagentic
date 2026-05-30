@@ -1,0 +1,74 @@
+
+
+{{- if .Values.gateway.enabled -}}
+{{- if not .Values.gateway.useExternalGateway -}}
+# ===========================================
+# GatewayClass - defines the controller for this gateway
+# Only created if not using an external gateway
+# ===========================================
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: {{ .Values.gateway.gatewayClassName }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  controllerName: {{ .Values.gateway.controllerName }}
+---
+# ===========================================
+# Gateway resource - creates a new Gateway for this release
+# ===========================================
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ include "openagentic.fullname" . }}-gateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+  {{- with .Values.gateway.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  gatewayClassName: {{ .Values.gateway.gatewayClassName }}
+  listeners:
+    # HTTPS Listener
+    - name: https
+      protocol: HTTPS
+      port: 443
+      {{- if .Values.gateway.hostname }}
+      hostname: {{ .Values.gateway.hostname | quote }}
+      {{- end }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: {{ .Values.gateway.tls.secretName }}
+            {{- if .Values.gateway.tls.secretNamespace }}
+            namespace: {{ .Values.gateway.tls.secretNamespace }}
+            {{- end }}
+      allowedRoutes:
+        namespaces:
+          from: {{ .Values.gateway.allowedRoutes | default "Same" }}
+        kinds:
+          - group: gateway.networking.k8s.io
+            kind: HTTPRoute
+    # HTTP Listener (for redirect to HTTPS)
+    - name: http
+      protocol: HTTP
+      port: 80
+      {{- if .Values.gateway.hostname }}
+      hostname: {{ .Values.gateway.hostname | quote }}
+      {{- end }}
+      allowedRoutes:
+        namespaces:
+          from: {{ .Values.gateway.allowedRoutes | default "Same" }}
+        kinds:
+          - group: gateway.networking.k8s.io
+            kind: HTTPRoute
+  {{- with .Values.gateway.addresses }}
+  addresses:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}

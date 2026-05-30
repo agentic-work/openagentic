@@ -1,0 +1,23 @@
+
+
+{{- if and .Values.mcpProxy.enabled (or (.Values.mcpProxy.podDisruptionBudget).enabled (.Values.mcpProxy.autoscaling).enabled) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "openagentic.fullname" . }}-mcp-proxy
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mcp-proxy
+spec:
+  {{- if and (.Values.mcpProxy.podDisruptionBudget).minAvailable }}
+  minAvailable: {{ .Values.mcpProxy.podDisruptionBudget.minAvailable }}
+  {{- else if and (.Values.mcpProxy.podDisruptionBudget).maxUnavailable }}
+  maxUnavailable: {{ .Values.mcpProxy.podDisruptionBudget.maxUnavailable }}
+  {{- else }}
+  maxUnavailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: mcp-proxy
+{{- end }}

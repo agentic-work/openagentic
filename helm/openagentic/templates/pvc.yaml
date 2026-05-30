@@ -1,0 +1,21 @@
+
+
+{{- if and .Values.vault.enabled .Values.vault.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "openagentic.fullname" . }}-vault
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: vault
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.vault.persistence.size }}
+  {{- if .Values.vault.persistence.storageClass }}
+  storageClassName: {{ .Values.vault.persistence.storageClass }}
+  {{- end }}
+{{- end }}
+# NOTE: pgAdmin PVC is defined in templates/support/pgadmin-pvc.yaml, not here

@@ -1,0 +1,104 @@
+{
+  "type": "openagentic_chat",
+  "category": "ai",
+  "label": "OpenAgentic Chat",
+  "description": "Conversational LLM via the platform's Smart Router. Same shape as openagentic_llm — supports modelOverride, sliderPosition, and chain-of-thought thinking.",
+  "icon": "sparkles",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "content": "string",
+          "model": "string",
+          "usage": "object",
+          "provider": "string"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "prompt",
+      "label": "Prompt",
+      "type": "string",
+      "required": true,
+      "supportsTemplating": true
+    },
+    {
+      "name": "systemPrompt",
+      "label": "System prompt",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true
+    },
+    {
+      "name": "modelOverride",
+      "label": "Model override",
+      "type": "string",
+      "required": false,
+      "description": "Leave blank to use Smart Router (auto). Hard-coded model IDs are discouraged."
+    },
+    {
+      "name": "sliderOverride",
+      "label": "Quality slider override",
+      "type": "number",
+      "required": false,
+      "min": 0,
+      "max": 100
+    },
+    {
+      "name": "enableThinking",
+      "label": "Enable extended thinking",
+      "type": "boolean",
+      "required": false,
+      "default": false
+    },
+    {
+      "name": "thinkingBudget",
+      "label": "Thinking budget (tokens)",
+      "type": "number",
+      "required": false,
+      "default": 8000
+    },
+    {
+      "name": "temperature",
+      "label": "Temperature",
+      "type": "number",
+      "required": false,
+      "default": 0.7,
+      "min": 0,
+      "max": 2
+    },
+    {
+      "name": "maxTokens",
+      "label": "Max tokens",
+      "type": "number",
+      "required": false,
+      "default": 4096,
+      "min": 1,
+      "max": 200000
+    }
+  ],
+  "ai": {
+    "shortDescription": "Smart-Router LLM chat (same shape as openagentic_llm).",
+    "whenToUse": "When you need conversational LLM output and want the platform's Smart Router to pick the model.",
+    "examplePrompt": "have OpenAgentic Chat answer the user's last question with platform-routed inference",
+    "promptHints": "Reference the response with {{steps.<id>.content}}. Leave modelOverride blank so Smart Router picks."
+  },
+  "outputAssertions": [
+    {
+      "name": "non_empty_content",
+      "expression": "result && typeof result.content === 'string' && result.content.trim().length > 0",
+      "errorMessage": "OpenAgentic Chat returned an empty completion."
+    },
+    {
+      "name": "agent_substantive_output",
+      "expression": "!result || !result.content || !result.content.match(/^\\s*(I (could not|couldn't|cannot|can't|do not have|don't have|am unable|wasn't able|was not able)|Sorry,? (I|but)|I'?m sorry,?|I apologize,?|Unfortunately,? (I|no)|No (information|data|results|content) (available|found))/i)",
+      "errorMessage": "LLM returned a refusal or 'no info' response — likely upstream tool/search returned no results. Investigate the previous step rather than treating this as a successful completion."
+    }
+  ]
+}

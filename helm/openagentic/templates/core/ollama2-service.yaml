@@ -1,0 +1,21 @@
+
+
+{{- if .Values.ollama2.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openagentic.fullname" . }}-ollama2
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama2
+spec:
+  type: {{ .Values.ollama2.service.type | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.ollama2.service.port | default 11434 }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "openagentic.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama2
+{{- end }}

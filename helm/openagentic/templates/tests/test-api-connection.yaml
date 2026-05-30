@@ -1,0 +1,46 @@
+
+
+{{- if .Values.api.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "openagentic.fullname" . }}-test-api"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  containers:
+    - name: test-api
+      image: curlimages/curl:8.5.0
+      command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Testing API health endpoint..."
+          response=$(curl -sf -o /dev/null -w "%{http_code}" \
+            --connect-timeout 10 --max-time 30 \
+            "http://{{ include "openagentic.fullname" . }}-api:{{ .Values.api.service.port | default 8000 }}/health")
+          if [ "$response" = "200" ]; then
+            echo "PASS: API health check returned HTTP $response"
+            exit 0
+          else
+            echo "FAIL: API health check returned HTTP $response (expected 200)"
+            exit 1
+          fi
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "32Mi"
+        limits:
+          cpu: "100m"
+          memory: "64Mi"
+  restartPolicy: Never
+{{- end }}

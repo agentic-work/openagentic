@@ -1,0 +1,36 @@
+name: OSS Integrity Check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - main
+      - 'feat/**'
+      - 'fix/**'
+      - 'chore/**'
+
+jobs:
+  integrity:
+    name: Verify edition + upsell strings
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run integrity check
+        run: ./tools/verify-oss-integrity.sh
+
+      - name: Edition flag must be 'oss'
+        run: |
+          if ! grep -q "EDITION: 'oss' | 'enterprise' = 'oss'" services/openagentic-api/src/features.ts; then
+            echo "FATAL: EDITION flag in services/openagentic-api/src/features.ts has been modified."
+            echo "       The OSS edition flag must remain 'oss' in this repository."
+            echo "       The enterprise build sets EDITION='enterprise' in its own fork of this file."
+            exit 1
+          fi
+
+      - name: Required-strings file must exist
+        run: test -f .github/required-upsell-strings.tsv
+
+      - name: Integrity script must exist and be executable
+        run: test -x tools/verify-oss-integrity.sh

@@ -1,0 +1,45 @@
+{
+  "type": "parse_json",
+  "category": "data",
+  "label": "Parse JSON",
+  "description": "Parse a JSON string into a structured object. Replaces the JS-expression-only path through `transform` for the common 'LLM returned a JSON string' case.",
+  "icon": "code",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": { "parsed": "any", "parseError": "string" }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "input",
+      "label": "Input (template or upstream)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "placeholder": "{{steps.llm.content}}",
+      "description": "Path-template to the JSON string. Omit to use the upstream connection's input directly. If the input is already an object, it passes through unchanged."
+    },
+    {
+      "name": "onError",
+      "label": "On parse error",
+      "type": "enum",
+      "values": ["fail", "null", "empty_object"],
+      "default": "fail",
+      "required": false,
+      "description": "fail = throw and stop the run; null = return { parsed: null }; empty_object = return { parsed: {} }. The parseError string is always populated on failure for downstream branches."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Parse a JSON string into an object with explicit error handling.",
+    "whenToUse": "When an upstream node hands you a JSON string (LLM output, HTTP body, MCP tool content) and you need the structured value before downstream consumes it.",
+    "examplePrompt": "parse the LLM response body as JSON, fall back to empty object on error",
+    "promptHints": "Output: {{steps.X.parsed}} (object/array/scalar) + {{steps.X.parseError}} (null on success). Already-parsed inputs pass through unchanged."
+  },
+  "outputAssertions": []
+}

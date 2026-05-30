@@ -1,0 +1,95 @@
+{
+  "type": "webhook_response",
+  "category": "action",
+  "label": "Webhook Response",
+  "description": "Send a response back to the webhook caller. Sets the HTTP status code, headers, and body for the inbound webhook that triggered this workflow.",
+  "icon": "reply",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "statusCode": "number",
+          "body": "any",
+          "delivered": "boolean"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "statusCode",
+      "label": "Status Code",
+      "type": "number",
+      "required": false,
+      "default": 200,
+      "min": 100,
+      "max": 599,
+      "description": "HTTP status code to return to the caller."
+    },
+    {
+      "name": "bodyTemplate",
+      "label": "Body Template",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Response body. Supports {{template}} variables. If omitted, the upstream input is used as-is."
+    },
+    {
+      "name": "headers",
+      "label": "Headers",
+      "type": "json",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "JSON object of response headers. Values support {{template}} variables."
+    },
+    {
+      "name": "persistAsArtifact",
+      "label": "Save as artifact",
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "When true, write the rendered body to the Artifacts library so it appears alongside chat-produced artifacts. Off by default for backward compatibility."
+    },
+    {
+      "name": "artifactTitle",
+      "label": "Artifact title",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Title shown in the Artifacts library. Supports {{template}} variables. Defaults to 'Workflow output — <executionId>' when omitted. Ignored unless 'Save as artifact' is enabled."
+    },
+    {
+      "name": "artifactDescription",
+      "label": "Artifact description",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "Optional one-line description shown beneath the title. Supports {{template}} variables."
+    },
+    {
+      "name": "artifactTags",
+      "label": "Artifact tags",
+      "type": "json",
+      "required": false,
+      "description": "Array of tag strings (e.g. ['aiops', 'k8s']). Defaults to ['flow-output']. The 'kind' is appended automatically."
+    },
+    {
+      "name": "artifactKind",
+      "label": "Artifact kind",
+      "type": "string",
+      "required": false,
+      "description": "Logical kind (e.g. 'html_report', 'json_report'). Added to the tag list so the Artifacts UI can filter by kind."
+    }
+  ],
+  "ai": {
+    "shortDescription": "Return an HTTP response to the inbound webhook caller.",
+    "whenToUse": "When a workflow was triggered by an inbound webhook and you need to send a structured HTTP response back to the caller.",
+    "examplePrompt": "send a 200 response with { success: true } to the webhook caller",
+    "promptHints": "Only meaningful in webhook-triggered workflows. Use {{steps.X.field}} to include upstream data in the response body."
+  },
+  "outputAssertions": []
+}

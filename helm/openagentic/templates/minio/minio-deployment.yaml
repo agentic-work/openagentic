@@ -1,0 +1,98 @@
+
+
+{{- if .Values.minio.enabled }}
+# Unified MinIO - Single object storage for all platform needs
+# Buckets: openagentic-workspaces, openagentic-images, milvus-bucket
+# Bucket creation handled by code-manager init container
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openagentic.fullname" . }}-minio
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "openagentic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: minio
+  template:
+    metadata:
+      labels:
+        {{- include "openagentic.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: minio
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9000"
+        prometheus.io/path: "/minio/v2/metrics/cluster"
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: minio
+          image: "{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag }}"
+          imagePullPolicy: {{ .Values.minio.image.pullPolicy | default "IfNotPresent" }}
+          args:
+            - server
+            - /data
+            - --console-address
+            - ":9001"
+          ports:
+            - name: api
+              containerPort: 9000
+              protocol: TCP
+            - name: console
+              containerPort: 9001
+              protocol: TCP
+          env:
+            - name: MINIO_ROOT_USER
+              {{- if eq .Values.minio.auth.rootUser "minioadmin" }}
+              {{- fail "SECURITY: minio.auth.rootUser must not be the default 'minioadmin' - set a unique value" }}
+              {{- end }}
+              value: {{ required "minio.auth.rootUser is required" .Values.minio.auth.rootUser | quote }}
+            - name: MINIO_ROOT_PASSWORD
+              {{- if or (eq .Values.minio.auth.rootPassword "minioadmin") (eq .Values.minio.auth.rootPassword "minioadmin123") }}
+              {{- fail "SECURITY: minio.auth.rootPassword must not be a default value - set a strong unique password" }}
+              {{- end }}
+              value: {{ required "minio.auth.rootPassword is required" .Values.minio.auth.rootPassword | quote }}
+            {{- if .Values.grafana.enabled }}
+            - name: MINIO_PROMETHEUS_AUTH_TYPE
+              value: "public"
+            {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: api
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: api
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.minio.resources | nindent 12 }}
+      volumes:
+        - name: data
+          {{- if .Values.minio.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "openagentic.fullname" . }}-minio
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.minio.nodeSelector | default .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

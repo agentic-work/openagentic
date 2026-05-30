@@ -1,0 +1,129 @@
+
+
+{{- if .Values.gateway.enabled -}}
+{{- $gatewayName := ternary .Values.gateway.externalGateway.name (printf "%s-gateway" (include "openagentic.fullname" .)) .Values.gateway.useExternalGateway -}}
+{{- $gatewayNamespace := ternary .Values.gateway.externalGateway.namespace .Release.Namespace .Values.gateway.useExternalGateway -}}
+# ===========================================
+# HTTPRoute - Main application routes
+# ===========================================
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "openagentic.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+  {{- with .Values.gateway.routeAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  parentRefs:
+    - name: {{ $gatewayName }}
+      namespace: {{ $gatewayNamespace }}
+      {{- if .Values.gateway.tls.enabled }}
+      sectionName: https
+      {{- else }}
+      sectionName: http
+      {{- end }}
+  hostnames:
+    - {{ .Values.gateway.hostname | quote }}
+  rules:
+    # ===========================================
+    # API Routes (/api/*) - with frontend security header injection
+    # ===========================================
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-OpenAgentic-Frontend
+                value: {{ .Values.security.frontendSecret | quote }}
+      backendRefs:
+        - name: {{ include "openagentic.fullname" . }}-api
+          port: {{ .Values.api.service.port }}
+          weight: 100
+      {{- if .Values.gateway.timeouts.api }}
+      timeouts:
+        request: {{ .Values.gateway.timeouts.api }}
+      {{- end }}
+
+    # Note: /auth/* routes (like /auth/callback) are frontend React routes
+    # They should NOT be routed to the API - they fall through to the UI catch-all
+    # API auth routes use /api/auth/* prefix (handled by /api rule above)
+
+    # ===========================================
+    # MCP Proxy Routes (/mcp/*)
+    # ===========================================
+    {{- if .Values.mcpProxy.enabled }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /mcp
+      backendRefs:
+        - name: {{ include "openagentic.fullname" . }}-mcp-proxy
+          port: {{ .Values.mcpProxy.service.port }}
+          weight: 100
+      {{- if .Values.gateway.timeouts.mcp }}
+      timeouts:
+        request: {{ .Values.gateway.timeouts.mcp }}
+      {{- end }}
+    {{- end }}
+
+    # ===========================================
+    # PGAdmin Routes (/pgadmin/*) - if enabled
+    # ===========================================
+    {{- if .Values.pgadmin.enabled }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /pgadmin
+      backendRefs:
+        - name: {{ include "openagentic.fullname" . }}-pgadmin
+          port: 80
+          weight: 100
+    {{- end }}
+
+    # ===========================================
+    # UI Routes (/) - catch-all, must be last
+    # ===========================================
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: {{ include "openagentic.fullname" . }}-ui
+          port: 80
+          weight: 100
+
+{{- if .Values.gateway.tls.enabled }}
+---
+# ===========================================
+# HTTP to HTTPS Redirect Route (only when TLS is enabled)
+# ===========================================
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "openagentic.fullname" . }}-http-redirect
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ $gatewayName }}
+      namespace: {{ $gatewayNamespace }}
+      sectionName: http
+  hostnames:
+    - {{ .Values.gateway.hostname | quote }}
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            hostname: {{ .Values.gateway.hostname | quote }}
+            statusCode: 301
+{{- end }}
+{{- end }}

@@ -1,0 +1,8 @@
+services/openagentic-api/src/features.ts	EDITION: 'oss' | 'enterprise' = 'oss'
+services/openagentic-api/src/features.ts	https://agenticwork.io
+services/openagentic-api/src/features.ts	UPGRADE_URL
+services/openagentic-ui/src/features/admin/Upsell.tsx	https://agenticwork.io
+services/openagentic-ui/src/features/admin/Upsell.tsx	Enterprise edition
+tools/setup/src/steps/Providers.tsx	https://agenticwork.io
+tools/setup/src/ui/Upsell.tsx	https://agenticwork.io
+tools/setup/src/ui/Upsell.tsx	Enterprise edition

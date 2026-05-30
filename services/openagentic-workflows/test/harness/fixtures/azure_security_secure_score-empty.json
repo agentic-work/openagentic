@@ -1,0 +1,12 @@
+{
+  "_comment": "Empty-case fixture: subscription has no Defender-enrolled resource types (or Defender plan never activated). secure_scores[] empty. Same 3-layer mcp-proxy envelope.",
+  "result": {
+    "result": {
+      "success": true,
+      "subscription_id": "99999999-8888-7777-6666-555555555555",
+      "count": 0,
+      "secure_scores": [],
+      "executed_as": { "user": "mcp-tester@example.com" }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+
+
+{{- if .Values.vault.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openagentic.fullname" . }}-vault
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: vault
+spec:
+  type: {{ .Values.vault.service.type }}
+  ports:
+  - port: {{ .Values.vault.service.port }}
+    targetPort: 8200
+    protocol: TCP
+    name: vault
+  selector:
+    {{- include "openagentic.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: vault
+{{- end }}

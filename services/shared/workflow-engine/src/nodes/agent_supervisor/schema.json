@@ -1,0 +1,114 @@
+{
+  "type": "agent_supervisor",
+  "category": "ai",
+  "label": "Agent Supervisor",
+  "description": "Run a supervisor + worker pool through openagentic-proxy with orchestration='supervisor'. The supervisor delegates subtasks to workers.",
+  "icon": "robot",
+  "ports": {
+    "inputs": [{ "name": "input", "type": "any", "required": false }],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "json",
+        "required": true,
+        "shape": {
+          "content": "string",
+          "agents": "array"
+        }
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "supervisorPrompt",
+      "label": "Supervisor goal / prompt",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true,
+      "description": "The high-level goal the supervisor should accomplish."
+    },
+    {
+      "name": "goal",
+      "label": "Goal (alias)",
+      "type": "string",
+      "required": false,
+      "supportsTemplating": true
+    },
+    {
+      "name": "supervisorModel",
+      "label": "Supervisor model",
+      "type": "string",
+      "required": false,
+      "default": "auto"
+    },
+    {
+      "name": "agents",
+      "label": "Worker agents",
+      "type": "json",
+      "required": true,
+      "default": [],
+      "description": "Array of worker agent specs the supervisor can delegate to."
+    },
+    {
+      "name": "workers",
+      "label": "Workers (alias)",
+      "type": "json",
+      "required": false,
+      "default": [],
+      "description": "Legacy alias for agents."
+    },
+    {
+      "name": "maxTurns",
+      "label": "Supervisor max turns",
+      "type": "number",
+      "required": false,
+      "default": 10,
+      "min": 1,
+      "max": 50
+    },
+    {
+      "name": "concurrency",
+      "label": "Worker concurrency",
+      "type": "number",
+      "required": false,
+      "default": 5
+    },
+    {
+      "name": "totalBudget",
+      "label": "Total budget (cents)",
+      "type": "number",
+      "required": false,
+      "default": 200
+    },
+    {
+      "name": "timeout",
+      "label": "Timeout (ms)",
+      "type": "number",
+      "required": false,
+      "default": 120000
+    }
+  ],
+  "ai": {
+    "shortDescription": "Supervisor agent + worker pool via openagentic-proxy.",
+    "whenToUse": "When one agent should plan and delegate to several worker agents (e.g. researcher coordinating analyst + summarizer).",
+    "examplePrompt": "supervisor coordinates a researcher and a fact-checker on the trigger payload",
+    "promptHints": "Reference the merged supervisor output with {{steps.<id>.content}}."
+  },
+  "outputAssertions": [
+    {
+      "name": "multi_agent_count",
+      "expression": "result && Array.isArray(result.agents) && result.agents.length > 0",
+      "errorMessage": "Supervisor produced no agent results."
+    },
+    {
+      "name": "multi_agent_majority_succeeded",
+      "expression": "result && Array.isArray(result.agents) && result.agents.filter(a => a && (a.status === 'completed' || a.status === 'success')).length >= Math.ceil(result.agents.length / 2)",
+      "errorMessage": "Less than half of the supervisor's agents completed successfully."
+    },
+    {
+      "name": "multi_agent_substantive_output",
+      "expression": "!result || !result.content || (result.content.length > 0 && !result.content.match(/^\\s*(I (could not|couldn't|cannot|can't|do not have|don't have|am unable|wasn't able|was not able)|Sorry,? (I|but)|I'?m sorry,?|I apologize,?|Unfortunately,? (I|no)|No (information|data|results|content) (available|found))/i))",
+      "errorMessage": "Supervisor produced no substantive output (likely all workers refused / returned 'no info')."
+    }
+  ]
+}
