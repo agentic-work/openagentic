@@ -134,19 +134,6 @@ ollama:
   # Required models: gpt-oss, embeddinggemma, qwen3-vl
 
 # ===========================================
-# CODE MANAGER
-# ===========================================
-codeManager:
-  enabled: false  # Disable if not needed in air-gapped
-  image:
-    repository: agentic-openagenticcode-manager
-    tag: latest
-    pullPolicy: Never
-  runnerImage:
-    repository: agentic-code-runner
-    tag: latest
-
-# ===========================================
 # POSTGRESQL (Bitnami chart)
 # ===========================================
 postgresql:

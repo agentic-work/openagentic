@@ -60,10 +60,6 @@ spec:
               value: workflows
             - name: WORKFLOWS_PORT
               value: "3400"
-            - name: EXEC_HOST
-              value: openagentic-exec
-            - name: EXEC_PORT
-              value: "3060"
             - name: OPENAGENTIC_PROXY_HOST
               value: proxy
             - name: OPENAGENTIC_PROXY_PORT

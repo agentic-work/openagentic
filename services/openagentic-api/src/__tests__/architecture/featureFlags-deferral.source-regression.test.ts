@@ -2,7 +2,7 @@
  * Phase 5 source-regression test — featureFlags wired assertion.
  *
  * Phase 5 removed the deferral notice from featureFlags.ts and wired
- * consumers in admin, auth, chat, and codemode plugins. This test
+ * consumers in admin, auth, and chat plugins. This test
  * asserts that featureFlags.ts is actively consumed by those plugins.
  *
  * Run from any CWD; paths are resolved relative to this file's __dirname.
@@ -25,7 +25,6 @@ const featureFlagsTs = readFileSync(join(API_SRC, 'config/featureFlags.ts'), 'ut
 const adminPlugin = readFileSync(join(API_SRC, 'plugins/admin.plugin.ts'), 'utf-8');
 const authPlugin = readFileSync(join(API_SRC, 'plugins/auth.plugin.ts'), 'utf-8');
 const chatPlugin = readFileSync(join(API_SRC, 'plugins/chat.plugin.ts'), 'utf-8');
-const codemodePlugin = readFileSync(join(API_SRC, 'plugins/codemode.plugin.ts'), 'utf-8');
 
 describe('featureFlags — Phase 5 consumer wiring', () => {
   it('featureFlags.ts does not contain the deferral notice (Phase 5 has landed)', () => {
@@ -42,9 +41,5 @@ describe('featureFlags — Phase 5 consumer wiring', () => {
 
   it('chat.plugin.ts imports featureFlags', () => {
     expect(chatPlugin).toContain('featureFlags');
-  });
-
-  it('codemode.plugin.ts imports featureFlags', () => {
-    expect(codemodePlugin).toContain('featureFlags');
   });
 });

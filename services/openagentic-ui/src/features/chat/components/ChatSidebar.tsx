@@ -9,7 +9,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, Edit3, MoreHorizontal, Trash2, Settings, User, LogOut, HelpCircle, Shield, PanelLeft, PanelRight, Search, Sun, Moon, Terminal, MessageSquare, Workflow } from '@/shared/icons';
+import { Menu, Edit3, MoreHorizontal, Trash2, Settings, User, LogOut, HelpCircle, Shield, PanelLeft, PanelRight, Search, Sun, Moon, MessageSquare, Workflow } from '@/shared/icons';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/app/providers/AuthContext';
@@ -21,7 +21,6 @@ import { CompanyLogo } from '@/components/CompanyLogo';
 import { VersionBadge } from '@/components/VersionBadge';
 import { FlowsSidebar } from '@/features/workflows/components/FlowsSidebar';
 import type { WorkflowTemplateItem } from '@/features/workflows/utils/workflowTemplates';
-import { CodeSessionsPanel } from './CodeSessionsPanel';
 import type { AgentTreeNode } from './v2/AgentTree';
 
 /**
@@ -59,8 +58,8 @@ interface ChatSession {
   updatedAt?: string | Date;
 }
 
-// App mode type for Chat/Code/Flows switching
-type AppMode = 'chat' | 'code' | 'flows';
+// App mode type for Chat/Flows switching
+type AppMode = 'chat' | 'flows';
 
 interface ChatSidebarProps {
   currentTheme?: 'light' | 'dark';
@@ -82,17 +81,10 @@ interface ChatSidebarProps {
   onHelpClick?: () => void;
   onThemeChange?: (theme: 'light' | 'dark') => void;
   onThemeToggle?: () => void;
-  // App mode toggle (Chat/Code/Flows)
+  // App mode toggle (Chat/Flows)
   appMode?: AppMode;
   onAppModeChange?: (mode: AppMode) => void;
-  canUseCodeMode?: boolean;
   canUseFlows?: boolean;
-  // Code mode session ID for file browser
-  codeSessionId?: string | null;
-  // Code mode session select callback
-  onCodeSessionSelect?: (session: { id: string; model?: string | null; workspacePath?: string | null }) => void;
-  // Code mode new session callback
-  onCodeNewSession?: () => void;
   /** Pixels to push the sidebar in from the left edge — used when the
    *  Flows workspace nav rail is mounted to its left. */
   leftOffsetPx?: number;
@@ -126,13 +118,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   // App mode props
   appMode = 'chat',
   onAppModeChange,
-  canUseCodeMode = false,
   canUseFlows = false,
-  // Code mode session ID for file browser
-  codeSessionId,
-  // Code mode session callbacks
-  onCodeSessionSelect,
-  onCodeNewSession,
   leftOffsetPx = 0,
   agentTreeNodes,
 }) => {
@@ -312,11 +298,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           )}
         </AnimatePresence>
 
-        {/* Mode Toggle (Chat/Code/Flows) - Show if user can use code mode or flows */}
-        {(canUseCodeMode || canUseFlows) && onAppModeChange && (() => {
+        {/* Mode Toggle (Chat/Flows) - Show if user can use flows */}
+        {canUseFlows && onAppModeChange && (() => {
           // Calculate available modes for dynamic slider positioning
           const modes: AppMode[] = ['chat'];
-          if (canUseCodeMode) modes.push('code');
           if (canUseFlows) modes.push('flows');
           const modeCount = modes.length;
           const activeIndex = modes.indexOf(appMode);
@@ -367,25 +352,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   <MessageSquare size={isExpanded ? 14 : 16} />
                   {isExpanded && <span className="text-sm font-medium">Chat</span>}
                 </button>
-
-                {/* Code mode button - shown if canUseCodeMode */}
-                {canUseCodeMode && (
-                  <button
-                    onClick={() => onAppModeChange('code')}
-                    className={`
-                      relative z-10 flex items-center gap-1.5 rounded-md transition-colors duration-200
-                      ${isExpanded ? 'flex-1 px-3 py-1.5 justify-center' : 'p-2'}
-                      ${appMode === 'code'
-                        ? 'text-white'
-                        : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-                      }
-                    `}
-                    title="Code Mode"
-                  >
-                    <Terminal size={isExpanded ? 14 : 16} />
-                    {isExpanded && <span className="text-sm font-medium">Code</span>}
-                  </button>
-                )}
 
                 {/* Flows mode button - shown if canUseFlows */}
                 {canUseFlows && (

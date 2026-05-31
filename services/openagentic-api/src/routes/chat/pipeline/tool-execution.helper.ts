@@ -65,14 +65,6 @@ export interface ToolExecutionResult {
   isCrossUserHit?: boolean;         // If result was from another user's cache
 }
 
-// Invisible Agent: Code execution routing to openagentic-manager
-import {
-  isCodeTool,
-  executeCodeToolCall,
-  getOrCreateOpenagenticSession,
-  type CodeExecutionContext
-} from './code-execution.helper.js';
-
 // Synth (Tool Synthesis): Dynamic tool synthesis
 import {
   isSynthTool,
@@ -896,7 +888,7 @@ interface PreProcessedToolCall {
   targetServer: string | undefined;
   toolArgs: any;                  // Parsed arguments
   isLocal: boolean;               // true = sequential local tool, false = MCP proxy
-  localType?: 'data-layer' | 'memory' | 'synth' | 'code' | 'image-gen';  // Which local handler
+  localType?: 'data-layer' | 'memory' | 'synth' | 'image-gen';  // Which local handler
   isHallucinated?: boolean;       // true = tool name not in availableTools (LLM invented it)
   hallucinationHint?: string;     // Suggested correct path (e.g., "use delegate_to_agents")
 }
@@ -1006,9 +998,6 @@ function preProcessToolCall(
   } else if (isSynthTool(resolvedToolName)) {
     isLocal = true;
     localType = 'synth';
-  } else if (isCodeTool(resolvedToolName)) {
-    isLocal = true;
-    localType = 'code';
   } else if (isImageGenTool(resolvedToolName)) {
     isLocal = true;
     localType = 'image-gen';
@@ -1083,8 +1072,8 @@ function preProcessToolCall(
  * @param modelProvider - LLM provider (for audit logging)
  * @param userName - User's display name (for audit logging)
  * @param userEmail - User's email (for audit logging)
- * @param codeExecutionContext - Optional context for persisting openagentic sessions across tool calls
- * @returns Object with tool results and updated code execution context
+ * @param toolAuthContext - Optional auth/credential context (SSO provider, cloud credentials) for local tool execution
+ * @returns Object with tool results and the (pass-through) auth context
  */
 export async function executeToolCalls(
   toolCalls: ToolCall[],
@@ -1105,16 +1094,13 @@ export async function executeToolCalls(
   modelProvider?: string,
   userName?: string,
   userEmail?: string,
-  codeExecutionContext?: CodeExecutionContext,
+  toolAuthContext?: any,
   authMethod?: string  // 'api-key' | 'azure-ad' | 'local' — from middleware, controls MCP proxy auth strategy
-): Promise<{ results: ToolResult[]; codeExecutionContext?: CodeExecutionContext }> {
+): Promise<{ results: ToolResult[] }> {
   const mcpProxyUrl = process.env.MCP_PROXY_URL || 'http://mcp-proxy:8080';
 
   // Track effective user ID for caching and session management
   const effectiveUserId = userId || 'anonymous';
-
-  // Mutable context for openagentic sessions - will be updated if new session is created
-  let updatedCodeExecutionContext: CodeExecutionContext | undefined = codeExecutionContext;
 
   // Detect if any tools require AWS OBO
   const hasAwsTools = toolCalls.some(tc =>
@@ -1432,7 +1418,7 @@ export async function executeToolCalls(
 
         try {
           // Get user's SSO provider from their auth context
-          const ssoProvider = (codeExecutionContext as any)?.ssoProvider || 'local';
+          const ssoProvider = (toolAuthContext as any)?.ssoProvider || 'local';
 
           // OBO credential injection — exchange the user's Azure AD token for an
           // ARM-scoped access token so synthesized Python in the sandbox can call
@@ -1448,7 +1434,7 @@ export async function executeToolCalls(
           // OBO with AADSTS500131 if the assertion audience doesn't match the
           // app presenting it. The ID token is plumbed through tool-execution
           // for AWS Identity Center / Azure MCP — reuse it for synth too.
-          let synthCloudCredentials: any = (codeExecutionContext as any)?.cloudCredentials;
+          let synthCloudCredentials: any = (toolAuthContext as any)?.cloudCredentials;
           const oboAssertion = idToken || userToken; // prefer ID token
           logger.info({
             toolCallId: toolCall.id,
@@ -1564,103 +1550,6 @@ export async function executeToolCalls(
             });
           }
 
-          continue;
-        }
-      }
-
-      // =================================================================
-      // 🤖 INVISIBLE AGENT: CODE TOOL ROUTING TO OPENAGENTIC-MANAGER
-      // =================================================================
-      // Route code-related tools (write_file, execute_command, etc.) to
-      // openagentic-manager for execution instead of MCP Proxy.
-      // IMPORTANT: Reuses the same openagentic session for the user's chat session
-      // to maintain workspace state across multiple code tool calls.
-      if (isCodeTool(resolvedToolName)) {
-        logger.info({
-          toolCallId: toolCall.id,
-          toolName: resolvedToolName,
-          arguments: toolArgs,
-          existingSessionId: updatedCodeExecutionContext?.sessionId
-        }, '[TOOL-EXEC] 🤖 Routing code tool to openagentic-manager');
-
-        try {
-          // Get or create openagentic session - REUSE existing session if available
-          // This ensures workspace state persists across multiple tool calls
-          const openagenticSession = await getOrCreateOpenagenticSession(
-            effectiveUserId,
-            sessionId || 'standalone',
-            logger,
-            updatedCodeExecutionContext?.sessionId // Pass existing session ID if available
-          );
-
-          // Update the context with session info if it's a new session
-          if (!updatedCodeExecutionContext?.sessionId ||
-              updatedCodeExecutionContext.sessionId !== openagenticSession.sessionId) {
-            updatedCodeExecutionContext = {
-              sessionId: openagenticSession.sessionId,
-              workspacePath: openagenticSession.workspacePath,
-              executions: updatedCodeExecutionContext?.executions || [],
-              artifacts: updatedCodeExecutionContext?.artifacts || []
-            };
-            logger.info({
-              sessionId: openagenticSession.sessionId,
-              workspacePath: openagenticSession.workspacePath,
-              isNewSession: true
-            }, '[TOOL-EXEC] 📁 Created/updated openagentic session context');
-          }
-
-          // Execute the code tool
-          const codeResult = await executeCodeToolCall(
-            toolCall,
-            openagenticSession.sessionId,
-            logger,
-            emitEvent
-          );
-
-          // Track this execution in the context
-          if (updatedCodeExecutionContext) {
-            updatedCodeExecutionContext.executions.push({
-              toolCallId: toolCall.id,
-              toolName: resolvedToolName,
-              output: codeResult.result?.output || '',
-              exitCode: codeResult.result?.exitCode,
-              executionTimeMs: codeResult.executionTimeMs || 0,
-              timestamp: new Date()
-            });
-          }
-
-          resultsMap.set(pp.originalIndex, codeResult);
-
-          logger.info({
-            toolCallId: toolCall.id,
-            toolName: resolvedToolName,
-            openagenticSessionId: openagenticSession.sessionId,
-            success: !codeResult.error,
-            executionTimeMs: codeResult.executionTimeMs,
-            totalExecutions: updatedCodeExecutionContext?.executions.length
-          }, '[TOOL-EXEC] ✅ Code tool executed via openagentic-manager');
-
-          // Skip to next tool - code tool handled
-          continue;
-
-        } catch (codeError: any) {
-          logger.error({
-            toolCallId: toolCall.id,
-            toolName: resolvedToolName,
-            error: codeError.message
-          }, '[TOOL-EXEC] ❌ Code tool execution failed');
-
-          resultsMap.set(pp.originalIndex, {
-            toolCallId: toolCall.id,
-            toolName: resolvedToolName,
-            result: null,
-            error: `Code execution failed: ${codeError.message}`,
-            serverName: 'openagentic-manager',
-            executedOn: os.hostname(),
-            executionTimeMs: 0
-          });
-
-          // Skip to next tool
           continue;
         }
       }
@@ -1831,9 +1720,7 @@ export async function executeToolCalls(
   logger.info({
     totalToolCalls: toolCalls.length,
     successfulCalls: results.filter(r => !r.error).length,
-    failedCalls: results.filter(r => r.error).length,
-    hasCodeExecutionContext: !!updatedCodeExecutionContext,
-    openagenticSessionId: updatedCodeExecutionContext?.sessionId
+    failedCalls: results.filter(r => r.error).length
   }, '[TOOL-EXEC] Tool execution batch completed');
 
   // Fire-and-forget: ingest tool results into adaptive memory
@@ -1849,7 +1736,7 @@ export async function executeToolCalls(
     } catch { /* memory service not available */ }
   }
 
-  return { results, codeExecutionContext: updatedCodeExecutionContext };
+  return { results };
 }
 
 // =================================================================

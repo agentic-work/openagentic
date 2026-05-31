@@ -3,7 +3,7 @@
 # =============================================================================
 #
 # A self-contained single-replica deployment: postgres (pgvector), redis,
-# ollama, and the app services (api, ui, workflows, mcp-proxy, proxy, exec)
+# ollama, and the app services (api, ui, workflows, mcp-proxy, proxy)
 # plus searxng for web search. Vector search uses pgvector; Milvus is omitted.
 #
 #   helm install openagentic ./helm/openagentic -n openagentic --create-namespace
@@ -28,7 +28,6 @@ secrets:
   jwtSecret: openagentic-dev-jwt-secret-change-me
   signingSecret: openagentic-dev-signing-secret-change-me
   internalApiKey: openagentic-dev-internal-key-change-me
-  codeExecInternalKey: openagentic-dev-code-exec-key-change-me
   frontendSecret: dev-frontend-secret-change-me
   # First-boot admin seed (created once).
   adminEmail: admin@openagentic.local
@@ -85,19 +84,15 @@ resources:
   workflows:  { requests: { cpu: "100m", memory: "384Mi" }, limits: { memory: "1Gi" } }
   mcpProxy:   { requests: { cpu: "100m", memory: "256Mi" }, limits: { memory: "1Gi" } }
   proxy:      { requests: { cpu: "50m",  memory: "128Mi" }, limits: { memory: "512Mi" } }
-  exec:       { requests: { cpu: "50m",  memory: "128Mi" }, limits: { memory: "512Mi" } }
   ollama:     { requests: { cpu: "500m", memory: "2Gi" },   limits: { memory: "6Gi" } }
   postgres:   { requests: { cpu: "100m", memory: "256Mi" }, limits: { memory: "1Gi" } }
   redis:      { requests: { cpu: "50m",  memory: "64Mi" },  limits: { memory: "256Mi" } }
   searxng:    { requests: { cpu: "50m",  memory: "128Mi" }, limits: { memory: "512Mi" } }
   prometheus: { requests: { cpu: "100m", memory: "256Mi" }, limits: { memory: "1Gi" } }
 
-# Optional components. exec powers Code Mode; proxy is an egress shim for tool
-# calls. Both are off by default for a minimal install — the core (chat, flows,
-# MCPs) runs without them. Enable in your overlay if you need them.
-exec:
-  enabled: false
-
+# Optional components. proxy is an egress shim for tool calls. Off by default
+# for a minimal install — the core (chat, flows, MCPs) runs without it. Enable
+# in your overlay if you need it.
 proxy:
   enabled: false
 

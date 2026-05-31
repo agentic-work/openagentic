@@ -9,7 +9,6 @@
  *  - src/plugins/admin.plugin.ts     — ollamaEnabled
  *  - src/plugins/auth.plugin.ts      — authProvider
  *  - src/plugins/chat.plugin.ts      — enableCoT
- *  - src/plugins/codemode.plugin.ts  — codeManagerUrl
  *
  * Rules:
  *  - bool() returns true when the env var is exactly the string "true"
@@ -61,14 +60,6 @@ export const featureFlags = {
    */
   useRbacPrompt: bool('USE_RBAC_PROMPT', false),
 
-  /**
-   * When true (CODEMODE_USE_CCR_RELAY=1 or =true), the code-manager
-   * WebSocket handler uses the CCR relay path instead of the direct exec-pod
-   * connection.
-   * Accepts '1' as a legacy truthy sentinel in addition to 'true'.
-   */
-  codemodeUseCcrRelay: bool('CODEMODE_USE_CCR_RELAY', false, ['1']),
-
   /** Ollama local-model provider enabled (OLLAMA_ENABLED=true). */
   ollamaEnabled: bool('OLLAMA_ENABLED', false),
 
@@ -77,31 +68,6 @@ export const featureFlags = {
 
   /** MCP proxy sidecar enabled (MCP_PROXY_ENABLED=true, default on). */
   mcpProxyEnabled: bool('MCP_PROXY_ENABLED', true),
-
-  /** URL of the code-manager service (default: http://openagentic-manager:3050). */
-  codeManagerUrl: process.env.CODE_MANAGER_URL || 'http://openagentic-manager:3050',
-
-  /**
-   * Internal API key for code-manager requests.
-   * Canonical env var: CODE_MANAGER_INTERNAL_KEY (matches all consumer sites).
-   * Earlier draft used CODE_MANAGER_KEY — corrected in Phase 1 follow-up.
-   */
-  codeManagerInternalKey: process.env.CODE_MANAGER_INTERNAL_KEY,
-
-  /** HTTP base URL of the openagentic-exec service (port 3060). */
-  codeExecUrl: process.env.CODE_EXEC_URL || 'http://openagentic-exec:3060',
-
-  /** WebSocket base URL of the openagentic-exec service (port 3060). */
-  codeExecWsUrl: process.env.CODE_EXEC_WS_URL || 'ws://openagentic-exec:3060',
-
-  /**
-   * Internal API key for api → openagentic-exec requests.
-   * Sent as `x-internal-api-key` header. Empty string = disabled (dev-only).
-   */
-  codeExecInternalKey: process.env.CODE_EXEC_INTERNAL_KEY || '',
-
-  /** Code Mode feature gate (CODEMODE_ENABLED, default true). */
-  codemodeEnabled: bool('CODEMODE_ENABLED', true),
 
   /**
    * Kubernetes namespace for exec-pod address construction + cluster

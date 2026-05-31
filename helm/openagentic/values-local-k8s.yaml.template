@@ -120,19 +120,6 @@ ollama:
       memory: 16Gi
 
 # ===========================================
-# CODE MANAGER
-# ===========================================
-codeManager:
-  enabled: true
-  image:
-    repository: agentic-openagenticcode-manager
-    tag: latest
-    pullPolicy: Never
-  runnerImage:
-    repository: agentic-code-runner
-    tag: latest
-
-# ===========================================
 # POSTGRESQL (Bitnami chart)
 # ===========================================
 postgresql:

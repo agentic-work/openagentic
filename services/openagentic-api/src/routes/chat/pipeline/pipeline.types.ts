@@ -5,12 +5,9 @@
 import { ChatUser, ChatSession, ChatMessage, ChatRequest, StreamContext } from '../interfaces/chat.types.js';
 import { PromptEngineeringResult } from '../interfaces/prompt.types.js';
 import { MCPInstance, MCPToolCall } from '../interfaces/mcp.types.js';
-import type { CodeExecutionContext, CodeExecution, CodeArtifact } from './code-execution.helper.js';
 import type { SliderConfig } from '../../../services/SliderService.js';
 import type { PipelineConfiguration } from './pipeline-config.schema.js';
 
-// Re-export code execution types
-export type { CodeExecutionContext, CodeExecution, CodeArtifact };
 export type { SliderConfig };
 
 /**
@@ -79,10 +76,6 @@ export interface PipelineContext {
   // MCP Orchestrator connection
   mcpOrchestratorUrl?: string;
   mcpApiKey?: string;
-
-  // Invisible Agent: Code Execution Context
-  // Tracks openagentic session for transparent code execution
-  codeExecutionContext?: CodeExecutionContext;
 
   // Configuration
   config: PipelineConfig;

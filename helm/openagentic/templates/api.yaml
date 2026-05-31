@@ -145,17 +145,6 @@ spec:
               value: Admin
             - name: ADMIN_REQUIRE_PASSWORD_RESET
               value: "false"
-            {{- if .Values.exec.enabled }}
-            - name: CODEMODE_ENABLED
-              value: "true"
-            - name: CODE_EXEC_URL
-              value: http://openagentic-exec:3060
-            - name: CODE_EXEC_WS_URL
-              value: ws://openagentic-exec:3060
-            {{- else }}
-            - name: CODEMODE_ENABLED
-              value: "false"
-            {{- end }}
           startupProbe:
             httpGet:
               path: /api/health

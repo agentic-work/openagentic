@@ -67,15 +67,14 @@ const AdminPortal = lazy(() => import('@/features/admin/components/Shell/AdminPo
 import BackgroundJobsPanel from './BackgroundJobsPanel';
 // ExportButton removed - not working
 import { WorkflowsPage } from '@/features/workflows';
-import { CodeModePanel } from '@/features/code/CodeModePanel';
 import ErrorBoundary from '@/shared/components/ErrorBoundary';
 import HITLPanel, { type HITLMode, type HITLLogEntry } from './HITLPanel';
 import ToolApprovalDialog from '@/shared/components/Dialogs/ToolApprovalDialog';
 import AdminToolInspector from './AdminToolInspector';
 import type { McpApprovalRequest } from '../hooks/useSSEChat';
 
-// App mode type — includes Code Mode.
-type AppMode = 'chat' | 'flows' | 'code';
+// App mode type.
+type AppMode = 'chat' | 'flows';
 
 // Personality type for AI response styling
 interface Personality {
@@ -1931,12 +1930,6 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   //   setShowKeyboardHelp(true);
   // });
 
-  // App Mode keyboard shortcut - Ctrl+Shift+C toggles Chat / Code mode.
-  useHotkeys('ctrl+shift+c', (e) => {
-    e.preventDefault();
-    handleAppModeChange(appMode === 'chat' ? 'code' : 'chat');
-  }, [appMode, handleAppModeChange]);
-
   // Demo CoT message removed - replaced with sequential-thinking MCP
 
   return (
@@ -2039,10 +2032,9 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
           // Open documentation as overlay modal
           openUI('showDocsViewer');
         }}
-        // App Mode toggle (Chat / Code / Flows)
+        // App Mode toggle (Chat / Flows)
         appMode={appMode}
         onAppModeChange={handleAppModeChange}
-        canUseCodeMode={true}
         canUseFlows={true}
       />
       )}
@@ -2091,13 +2083,8 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
         }}
       >
         <div className="flex flex-col h-full w-full">
-          {/* Conditional rendering: Chat Mode vs Code Mode vs Flows Mode */}
-          {appMode === 'code' ? (
-            /* Code Mode - AI coding assistant with terminal */
-            <ErrorBoundary>
-              <CodeModePanel />
-            </ErrorBoundary>
-          ) : appMode === 'flows' ? (
+          {/* Conditional rendering: Chat Mode vs Flows Mode */}
+          {appMode === 'flows' ? (
             /* Flows Mode - OpenAgenticflow Builder (embedded=true: sidebar managed by ChatSidebar) */
             <ErrorBoundary>
               <WorkflowsPage embedded onWorkflowStateChange={(ws) => { currentWorkflowRef.current = ws; }} />

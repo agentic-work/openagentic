@@ -1,19 +1,18 @@
 /**
  * Transcript width parity guard.
  *
- * Chat-mode and code-mode MUST render the assistant/user transcript at the
- * same max-width so flipping between sidebar buttons does not produce a
- * visible width jump. The single source of truth is the
- * `--transcript-max-width` CSS custom property defined in
+ * The chat transcript MUST render the assistant/user messages at a single
+ * canonical max-width so the layout stays consistent. The single source of
+ * truth is the `--transcript-max-width` CSS custom property defined in
  * `src/styles/design-tokens.css`.
  *
  * This guard enforces three properties:
  *   1. The token is defined exactly once (in design-tokens.css) and at
  *      the value picked by the design — currently 902px (820 * 1.10).
- *   2. The four files that drive transcript width (3 in chat, 1 in code)
+ *   2. The files that drive transcript width (the 3 chat consumers below)
  *      consume the token via `var(--transcript-max-width)` rather than
  *      hardcoding a literal pixel value.
- *   3. No other source file in the chat or code feature trees sneaks in
+ *   3. No other source file in the chat feature tree sneaks in
  *      a competing `maxWidth: 820`-style literal on a transcript-bound
  *      container. (Self-contained cards like InlineBootStream's boot card
  *      are explicitly allowlisted — they are not the inline transcript.)
@@ -78,15 +77,14 @@ describe('transcript width parity (chat <-> code)', () => {
     });
   }
 
-  it('no other file in features/chat or features/code hardcodes the prior 820px transcript width', () => {
-    // Walk the two feature trees, skip the consumers (they're already
+  it('no other file in features/chat hardcodes the prior 820px transcript width', () => {
+    // Walk the chat feature tree, skip the consumers (they're already
     // covered above) and the explicit allowlist, and assert nobody else
     // is silently overriding the token with the legacy literal.
     const { readdirSync, statSync } = require('node:fs') as typeof import('node:fs');
 
     const roots = [
       join(UI_SRC, 'features/chat'),
-      join(UI_SRC, 'features/code'),
     ];
 
     const offenders: string[] = [];

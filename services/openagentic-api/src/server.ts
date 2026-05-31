@@ -62,8 +62,6 @@ import ModelCapabilityRegistry, { setModelCapabilityRegistry } from './services/
 // Auth and permissions for WebSocket handlers
 import { validateAnyToken } from './auth/tokenValidator.js';
 import { UserPermissionsService } from './services/UserPermissionsService.js';
-// Feature flags
-import { featureFlags } from './config/featureFlags.js';
 // Modular plugins (HIGH-001 refactoring)
 import authPlugin from './plugins/auth.plugin.js';
 import setupPlugin from './plugins/setup.plugin.js';
@@ -1422,18 +1420,6 @@ async function registerAllRoutes() {
     loggers.routes.info('Monitoring WebSocket routes registered at /api/monitoring/ws');
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register monitoring WebSocket routes');
-  }
-
-  // Register Code Mode routes (sessions CRUD + WS terminal proxy) — FREE feature
-  // Guarded only by featureFlags.codemodeEnabled (CODEMODE_ENABLED env var, default true).
-  if (featureFlags.codemodeEnabled) {
-    try {
-      const { codemodeRoutesPlugin } = await import('./plugins/codemode.plugin.js');
-      await server.register(codemodeRoutesPlugin);
-      loggers.routes.info('Code Mode routes registered at /api/code/* (free feature, codemodeEnabled=true)');
-    } catch (error) {
-      loggers.routes.error({ err: error }, 'Failed to register Code Mode routes');
-    }
   }
 
   // NOTE: User routes (/api/user/permissions, /api/user/available-tools) moved to user.plugin.ts (HIGH-001 refactoring)

@@ -245,11 +245,6 @@ services:
       LOCAL_ADMIN_USERNAME: ${LOCAL_ADMIN_USERNAME:-Admin}
       # Shared key for any internal service-to-service auth.
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-openagentic-dev-internal-key-change-me}
-      # Code Mode / openagentic-exec wiring
-      CODE_EXEC_URL: http://openagentic-exec:3060
-      CODE_EXEC_WS_URL: ws://openagentic-exec:3060
-      CODE_EXEC_INTERNAL_KEY: ${CODE_EXEC_INTERNAL_KEY:?CODE_EXEC_INTERNAL_KEY must be set in .env}
-      CODEMODE_ENABLED: "true"
       OPENAGENTIC_API_INTERNAL_URL: http://api:8000
       # The user already picked their password via ADMIN_SEED_PASSWORD in .env
       # before first boot, so don't force another change on first login.
@@ -284,9 +279,6 @@ services:
       LOCAL_LOGIN_ENABLED: ${LOCAL_LOGIN_ENABLED:-true}
       MICROSOFT_LOGIN_ENABLED: ${MICROSOFT_LOGIN_ENABLED:-false}
       GOOGLE_LOGIN_ENABLED: ${GOOGLE_LOGIN_ENABLED:-false}
-      # openagentic-exec (Code Mode terminal WebSocket passthrough)
-      EXEC_HOST: openagentic-exec
-      EXEC_PORT: "3060"
     depends_on: [api]
     ports:
       - "${UI_HOST_PORT:-8080}:80"
@@ -396,25 +388,6 @@ services:
       timeout: 5s
       retries: 5
 
-  openagentic-exec:
-    <<: *defaults
-    build:
-      context: .
-      dockerfile: services/openagentic-exec/Dockerfile
-      args:
-        SRC_PATH: services/openagentic-exec
-    image: ghcr.io/agentic-work/openagentic-exec:latest
-    environment:
-      PORT: "3060"
-      WORKSPACES_PATH: /workspaces
-      INTERNAL_API_KEY: ${CODE_EXEC_INTERNAL_KEY:?CODE_EXEC_INTERNAL_KEY must be set in .env}
-      OPENAGENTIC_API_ENDPOINT: http://api:8000
-      SANDBOX_ENABLED: "false"
-    volumes:
-      - codemode-workspaces:/workspaces
-    expose:
-      - "3060"
-
   proxy:
     <<: *defaults
     image: ${OPENAGENTIC_REGISTRY:-ghcr.io/agentic-work}/openagentic-proxy:${OPENAGENTIC_TAG:-latest}
@@ -446,4 +419,3 @@ volumes:
   minio-data:
   milvus-data:
   ollama-data:
-  codemode-workspaces:
