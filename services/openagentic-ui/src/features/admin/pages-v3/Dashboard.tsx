@@ -19,6 +19,14 @@ import {
   useProviderHealth,
   useScopedAuditLogs,
 } from '../hooks/useDashboardMetrics'
+import {
+  UsageCostPane,
+  LLMRouterPane,
+  FlowsAgentsPane,
+  MCPToolsPane,
+  InfraPerfPane,
+  OverviewAnalytics,
+} from './AnalyticsPanes'
 
 // 6 top-level tabs (down from 12 before 2026-05-13 audit). Each tab scroll-
 // jumps to its primary section; secondary sections live in the same
@@ -257,12 +265,12 @@ export const Dashboard = () => {
         </Banner>
       )}
 
-      <div id="section-overview"><OverviewPane counts={counts} providerHealth={providerHealth} /></div>
-      <div id="section-usage" style={{ marginTop: 24 }}><AnalyticsPlaceholder section="Usage & Cost" /></div>
-      <div id="section-llm-performance" style={{ marginTop: 24 }}><AnalyticsPlaceholder section="LLM & Router" /></div>
-      <div id="section-flows-agents" style={{ marginTop: 24 }}><AnalyticsPlaceholder section="Flows & Agents" /></div>
-      <div id="section-mcp-tools" style={{ marginTop: 24 }}><AnalyticsPlaceholder section="MCP & Tools" /></div>
-      <div id="section-api-limits" style={{ marginTop: 24 }}><AnalyticsPlaceholder section="Infra & Perf" /></div>
+      <div id="section-overview"><OverviewPane counts={counts} providerHealth={providerHealth} window={timeRange} /></div>
+      <div id="section-usage" style={{ marginTop: 24 }}><UsageCostPane window={timeRange} /></div>
+      <div id="section-llm-performance" style={{ marginTop: 24 }}><LLMRouterPane window={timeRange} /></div>
+      <div id="section-flows-agents" style={{ marginTop: 24 }}><FlowsAgentsPane window={timeRange} /></div>
+      <div id="section-mcp-tools" style={{ marginTop: 24 }}><MCPToolsPane window={timeRange} /></div>
+      <div id="section-api-limits" style={{ marginTop: 24 }}><InfraPerfPane window={timeRange} /></div>
 
       <SidePanel
         open={detail != null}
@@ -420,35 +428,17 @@ const DetailConfig: React.FC<{ detail: Detail }> = ({ detail }) => {
 
 type DrillFn = (d: Detail) => void
 
-// ============================================================
-// AnalyticsPlaceholder — neutral empty-state for analytics sections
-// whose detailed time-series endpoints aren't wired in this build.
-// ============================================================
-const AnalyticsPlaceholder = ({ section }: { section: string }) => (
-  <>
-    <SectionBar title="analytics" />
-    <Panel>
-      <div style={{ padding: '32px 24px', textAlign: 'center' }}>
-        <p style={{ color: 'var(--fg-2)', fontSize: 14, marginBottom: 6, fontWeight: 600 }}>
-          {section}
-        </p>
-        <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>
-          Detailed time-series analytics for this section aren&apos;t available yet.
-        </p>
-      </div>
-    </Panel>
-  </>
-)
-
 /* ============================================================
    1. OVERVIEW
    ============================================================ */
 const OverviewPane = ({
   counts,
   providerHealth,
+  window,
 }: {
   counts: ReturnType<typeof useDashboardCounts>
   providerHealth: ReturnType<typeof useProviderHealth>
+  window: TimeRange
 }) => {
   // /api/admin/llm-providers/health returns { overall, providers: [...], timestamp }
   // — derive total/healthy from the array. Fall back to legacy { total, healthy } shape.
@@ -550,7 +540,7 @@ const OverviewPane = ({
         />
       </KpiGrid>
 
-      <AnalyticsPlaceholder section="Overview" />
+      <OverviewAnalytics window={window} />
     </>
   )
 }

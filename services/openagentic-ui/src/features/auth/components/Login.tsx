@@ -115,7 +115,7 @@ const Login: React.FC = () => {
   const showDivider = authConfig.localEnabled && (authConfig.googleEnabled || authConfig.microsoftEnabled);
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{ background: '#18130C' }}>
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{ background: 'var(--color-background, #18130C)' }}>
       {/* openagentics.io "field-guide" warm glow — signal orange on warm-black */}
       <div className="absolute inset-0">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[120px] animate-pulse" style={{ background: 'rgba(255,87,34,0.12)' }} />
@@ -145,9 +145,9 @@ const Login: React.FC = () => {
             <div className="absolute -inset-5 rounded-2xl blur-xl" style={{ background: 'rgba(255,87,34,0.16)' }} />
             <span
               className="relative"
-              style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 34, letterSpacing: '-0.02em', color: '#F4EFE6' }}
+              style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 34, letterSpacing: '-0.02em', color: 'var(--color-text, #F4EFE6)' }}
             >
-              <span style={{ color: '#FF5722' }}>⌥ </span>openagentic
+              <span style={{ color: 'var(--user-accent-primary, #FF5722)' }}>⌥ </span>openagentic
             </span>
           </div>
         </motion.div>
@@ -162,7 +162,7 @@ const Login: React.FC = () => {
             {/* Card edge — warm hairline */}
             <div className="absolute -inset-[1px] rounded-2xl" style={{ background: 'rgba(255,184,126,0.18)' }} />
 
-            <div className="relative rounded-2xl border p-8" style={{ background: '#211A11', borderColor: 'rgba(244,239,230,0.10)' }}>
+            <div className="relative rounded-2xl border p-8" style={{ background: 'var(--color-surface, #211A11)', borderColor: 'var(--color-border, rgba(244,239,230,0.10))' }}>
               <AnimatePresence mode="wait">
                 {!showLocalForm ? (
                   <motion.div
@@ -173,7 +173,7 @@ const Login: React.FC = () => {
                     transition={{ duration: 0.2 }}
                   >
                     <div className="text-center mb-8">
-                      <h2 className="text-2xl mb-2" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.02em', color: '#F4EFE6' }}>
+                      <h2 className="text-2xl mb-2" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--color-text, #F4EFE6)' }}>
                         Welcome back
                       </h2>
                       <p className="text-sm" style={{ color: 'rgba(244,239,230,0.55)' }}>
@@ -272,7 +272,7 @@ const Login: React.FC = () => {
                     </button>
 
                     <div className="mb-6">
-                      <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: 'var(--font-display)', color: '#F4EFE6' }}>
+                      <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text, #F4EFE6)' }}>
                         Sign in with email
                       </h2>
                       <p className="text-sm" style={{ color: 'rgba(244,239,230,0.45)' }}>
@@ -301,7 +301,7 @@ const Login: React.FC = () => {
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           className="w-full px-4 py-3 rounded-xl outline-none transition-all focus:ring-2"
-                          style={{ background: 'rgba(244,239,230,0.05)', border: '1px solid rgba(244,239,230,0.12)', color: '#F4EFE6', fontFamily: 'var(--font-display)', ['--tw-ring-color' as any]: 'rgba(255,87,34,0.30)' }}
+                          style={{ background: 'var(--color-surface-elevated, rgba(244,239,230,0.05))', border: '1px solid var(--color-border, rgba(244,239,230,0.12))', color: 'var(--color-text, #F4EFE6)', fontFamily: 'var(--font-display)', ['--tw-ring-color' as any]: 'color-mix(in srgb, var(--user-accent-primary, #FF5722) 30%, transparent)' }}
                           placeholder="you@example.com"
                           required
                         />
@@ -315,7 +315,7 @@ const Login: React.FC = () => {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           className="w-full px-4 py-3 rounded-xl outline-none transition-all focus:ring-2"
-                          style={{ background: 'rgba(244,239,230,0.05)', border: '1px solid rgba(244,239,230,0.12)', color: '#F4EFE6', fontFamily: 'var(--font-display)', ['--tw-ring-color' as any]: 'rgba(255,87,34,0.30)' }}
+                          style={{ background: 'var(--color-surface-elevated, rgba(244,239,230,0.05))', border: '1px solid var(--color-border, rgba(244,239,230,0.12))', color: 'var(--color-text, #F4EFE6)', fontFamily: 'var(--font-display)', ['--tw-ring-color' as any]: 'color-mix(in srgb, var(--user-accent-primary, #FF5722) 30%, transparent)' }}
                           placeholder="Enter your password"
                           required
                         />
@@ -327,8 +327,8 @@ const Login: React.FC = () => {
                         whileTap={{ scale: 0.99 }}
                         className="w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 mt-6 transition-all disabled:opacity-60 disabled:cursor-not-allowed relative overflow-hidden group"
                         style={{
-                          background: 'linear-gradient(135deg, #FF5722 0%, #E64A19 55%, #B83A0E 100%)',
-                          color: '#18130C',
+                          background: 'linear-gradient(135deg, var(--user-accent-primary, #FF5722) 0%, var(--user-accent-secondary, #B83A0E) 100%)',
+                          color: 'var(--color-background, #18130C)',
                           fontFamily: 'var(--font-display)',
                           letterSpacing: '0.01em',
                         }}
