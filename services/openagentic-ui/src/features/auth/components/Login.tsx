@@ -198,7 +198,7 @@ const Login: React.FC = () => {
                         onClick={handleMicrosoftLogin}
                         whileHover={{ scale: 1.01, backgroundColor: 'rgba(255,255,255,0.08)' }}
                         whileTap={{ scale: 0.99 }}
-                        className="w-full py-3.5 px-4 rounded-xl font-medium text-white flex items-center justify-center gap-3 mb-3 transition-all duration-200 bg-white/5 border border-white/10 hover:border-white/20"
+                        className="w-full py-3.5 px-4 rounded-xl font-medium text-[#F4EFE6] flex items-center justify-center gap-3 mb-3 transition-all duration-200 bg-[#F4EFE6]/[0.06] border border-[#F4EFE6]/14 hover:border-[#F4EFE6]/22"
                       >
                         <svg className="w-5 h-5" viewBox="0 0 21 21" fill="none">
                           <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
@@ -216,7 +216,7 @@ const Login: React.FC = () => {
                         onClick={handleGoogleLogin}
                         whileHover={{ scale: 1.01, backgroundColor: 'rgba(255,255,255,0.08)' }}
                         whileTap={{ scale: 0.99 }}
-                        className={`w-full py-3.5 px-4 rounded-xl font-medium text-white flex items-center justify-center gap-3 transition-all duration-200 bg-white/5 border border-white/10 hover:border-white/20 ${enabledProviders === 1 ? '' : 'mb-4'}`}
+                        className={`w-full py-3.5 px-4 rounded-xl font-medium text-[#F4EFE6] flex items-center justify-center gap-3 transition-all duration-200 bg-[#F4EFE6]/[0.06] border border-[#F4EFE6]/14 hover:border-[#F4EFE6]/22 ${enabledProviders === 1 ? '' : 'mb-4'}`}
                       >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
                           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -231,9 +231,9 @@ const Login: React.FC = () => {
                     {/* Divider - only if local login is also enabled */}
                     {showDivider && (
                       <div className="flex items-center gap-4 my-6">
-                        <div className="flex-1 h-px bg-white/10" />
-                        <span className="text-xs text-white/30 uppercase tracking-wider">or</span>
-                        <div className="flex-1 h-px bg-white/10" />
+                        <div className="flex-1 h-px bg-[#F4EFE6]/10" />
+                        <span className="text-xs text-[#F4EFE6]/55 uppercase tracking-wider">or</span>
+                        <div className="flex-1 h-px bg-[#F4EFE6]/10" />
                       </div>
                     )}
 
@@ -243,7 +243,7 @@ const Login: React.FC = () => {
                         onClick={() => setShowLocalForm(true)}
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
-                        className="w-full py-3 px-4 rounded-xl font-medium text-white/70 flex items-center justify-center gap-3 transition-all duration-200 border border-dashed border-white/10 hover:border-white/20 hover:text-white hover:bg-white/[0.02]"
+                        className="w-full py-3 px-4 rounded-xl font-medium text-[#F4EFE6]/80 flex items-center justify-center gap-3 transition-all duration-200 border border-dashed border-[#F4EFE6]/14 hover:border-[#F4EFE6]/22 hover:text-[#F4EFE6] hover:bg-[#F4EFE6]/[0.04]"
                       >
                         <Mail className="w-4 h-4" />
                         <span>Continue with Email</span>
@@ -265,7 +265,7 @@ const Login: React.FC = () => {
                         setEmail('');
                         setPassword('');
                       }}
-                      className="flex items-center gap-2 text-white/50 hover:text-white transition-colors mb-6 text-sm"
+                      className="flex items-center gap-2 text-[#F4EFE6]/70 hover:text-[#F4EFE6] transition-colors mb-6 text-sm"
                     >
                       <ArrowLeft className="w-4 h-4" />
                       Back to options
@@ -293,7 +293,7 @@ const Login: React.FC = () => {
 
                     <form onSubmit={handleLocalLogin} className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-white/70 mb-2">
+                        <label className="block text-sm font-medium text-[#F4EFE6]/80 mb-2">
                           Email
                         </label>
                         <input
@@ -307,7 +307,7 @@ const Login: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-white/70 mb-2">
+                        <label className="block text-sm font-medium text-[#F4EFE6]/80 mb-2">
                           Password
                         </label>
                         <input
@@ -333,9 +333,9 @@ const Login: React.FC = () => {
                           letterSpacing: '0.01em',
                         }}
                       >
-                        <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute inset-0 bg-[#F4EFE6]/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                         {isLoading ? (
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <div className="w-5 h-5 border-2 border-[#F4EFE6]/30 border-t-[#F4EFE6] rounded-full animate-spin" />
                         ) : (
                           <>
                             <Sparkles className="w-4 h-4" />
@@ -357,7 +357,7 @@ const Login: React.FC = () => {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
           onClick={() => {}}
-          className="w-full mt-6 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-white/40 hover:text-white/70 hover:bg-white/5 transition-all text-sm"
+          className="w-full mt-6 py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-[#F4EFE6]/65 hover:text-[#F4EFE6]/85 hover:bg-[#F4EFE6]/[0.07] transition-all text-sm"
         >
           <HelpCircle className="w-4 h-4" />
           <span>Need help signing in?</span>
@@ -370,7 +370,7 @@ const Login: React.FC = () => {
           transition={{ delay: 0.4 }}
           className="mt-8 text-center"
         >
-          <p className="text-[11px] text-white/20">
+          <p className="text-[11px] text-[#F4EFE6]/45">
             © {new Date().getFullYear()} Agenticwork™ LLC
           </p>
         </motion.div>
