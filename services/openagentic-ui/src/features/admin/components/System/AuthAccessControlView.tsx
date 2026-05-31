@@ -486,7 +486,7 @@ export const AuthAccessControlView: React.FC = () => {
                         <td className="py-3">
                           <div className="flex items-center gap-2">
                             <Mail className="w-4 h-4 text-text-tertiary" />
-                            <span className="text-white">{user.email}</span>
+                            <span className="text-[var(--color-text)]">{user.email}</span>
                           </div>
                         </td>
                         <td className="py-3 text-text-secondary">{user.display_name || '-'}</td>
@@ -511,7 +511,7 @@ export const AuthAccessControlView: React.FC = () => {
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => setEditingUser(user)}
-                              className="p-1.5 text-text-secondary hover:text-white hover:bg-surface rounded"
+                              className="p-1.5 text-text-secondary hover:text-[var(--color-text)] hover:bg-surface rounded"
                             >
                               <Edit className="w-4 h-4" />
                             </button>
@@ -558,7 +558,7 @@ export const AuthAccessControlView: React.FC = () => {
                         <td className="py-3">
                           <div className="flex items-center gap-2">
                             <Globe className="w-4 h-4 text-text-tertiary" />
-                            <span className="text-white">@{domain.domain}</span>
+                            <span className="text-[var(--color-text)]">@{domain.domain}</span>
                           </div>
                         </td>
                         <td className="py-3">
@@ -624,7 +624,7 @@ export const AuthAccessControlView: React.FC = () => {
                         <td className="py-3">
                           <div className="flex items-center gap-2">
                             <Mail className="w-4 h-4 text-text-tertiary" />
-                            <span className="text-white">{request.email}</span>
+                            <span className="text-[var(--color-text)]">{request.email}</span>
                           </div>
                         </td>
                         <td className="py-3 text-text-secondary">{request.name || '-'}</td>
@@ -684,7 +684,7 @@ export const AuthAccessControlView: React.FC = () => {
       {showAddUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-background rounded-lg p-6 w-full max-w-md border border-border">
-            <h3 className="text-lg font-semibold text-white mb-4">Add Allowed User</h3>
+            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">Add Allowed User</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm text-text-secondary mb-1">Email *</label>
@@ -742,7 +742,7 @@ export const AuthAccessControlView: React.FC = () => {
       {showAddDomain && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-background rounded-lg p-6 w-full max-w-md border border-border">
-            <h3 className="text-lg font-semibold text-white mb-4">Add Allowed Domain</h3>
+            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">Add Allowed Domain</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm text-text-secondary mb-1">Domain *</label>
@@ -794,7 +794,7 @@ export const AuthAccessControlView: React.FC = () => {
       {editingUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-background rounded-lg p-6 w-full max-w-md border border-border">
-            <h3 className="text-lg font-semibold text-white mb-4">Edit User</h3>
+            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">Edit User</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm text-text-secondary mb-1">Email</label>

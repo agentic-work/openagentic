@@ -420,7 +420,7 @@ export const MultiModelConfigView: React.FC = () => {
 
         {/* Expanded Content */}
         {isExpanded && (
-          <div className="p-4 pt-0 space-y-4 border-t border-white/10">
+          <div className="p-4 pt-0 space-y-4 border-t border-[var(--color-border)]">
             <p className="text-xs text-text-secondary">
               {ROLE_DESCRIPTIONS[roleKey]}
             </p>
@@ -433,7 +433,7 @@ export const MultiModelConfigView: React.FC = () => {
               <select
                 value={roleConfig.primaryModel}
                 onChange={(e) => handleRoleChange(roleKey, 'primaryModel', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"
+                className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] text-sm"
               >
                 {availableModels.length === 0 ? (
                   <option value={roleConfig.primaryModel}>{roleConfig.primaryModel} (loading...)</option>
@@ -455,7 +455,7 @@ export const MultiModelConfigView: React.FC = () => {
               <select
                 value={roleConfig.fallbackModel || ''}
                 onChange={(e) => handleRoleChange(roleKey, 'fallbackModel', e.target.value || undefined)}
-                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"
+                className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)] text-sm"
               >
                 <option value="">None</option>
                 {availableModels.map(m => (
@@ -641,7 +641,7 @@ export const MultiModelConfigView: React.FC = () => {
         </div>
 
         {config?.enabled && (
-          <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-4 gap-4">
+          <div className="mt-4 pt-4 border-t border-[var(--color-border)] grid grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-text-primary">
                 {metrics?.totalOrchestrations || 0}
@@ -787,7 +787,7 @@ export const MultiModelConfigView: React.FC = () => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="glass-card max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-white/10">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg" style={{ background: 'var(--ap-accent-soft)' }}>
                   <Sparkles size={20} className="ap-text-info" />
@@ -827,7 +827,7 @@ export const MultiModelConfigView: React.FC = () => {
                     return (
                       <div
                         key={rec.role}
-                        className="flex items-start gap-3 p-3 rounded-lg bg-white/5 border border-white/10"
+                        className="flex items-start gap-3 p-3 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border)]"
                       >
                         <div className={`p-2 rounded-lg ${ROLE_COLORS[rec.role as keyof typeof ROLE_COLORS] || 'bg-surface-secondary/10 text-text-tertiary'}`}>
                           <Icon size={16} />
@@ -853,25 +853,25 @@ export const MultiModelConfigView: React.FC = () => {
               <div>
                 <h4 className="text-sm font-medium text-text-secondary mb-3">Routing Settings</h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="p-3 rounded-lg bg-white/5">
+                  <div className="p-3 rounded-lg bg-[var(--color-surface-2)]">
                     <span className="text-text-muted">Complexity Threshold</span>
                     <div className="text-text-primary font-medium">
                       {aiSuggestion.config.routing.complexityThreshold}
                     </div>
                   </div>
-                  <div className="p-3 rounded-lg bg-white/5">
+                  <div className="p-3 rounded-lg bg-[var(--color-surface-2)]">
                     <span className="text-text-muted">Max Handoffs</span>
                     <div className="text-text-primary font-medium">
                       {aiSuggestion.config.routing.maxHandoffs}
                     </div>
                   </div>
-                  <div className="p-3 rounded-lg bg-white/5">
+                  <div className="p-3 rounded-lg bg-[var(--color-surface-2)]">
                     <span className="text-text-muted">Slider Threshold</span>
                     <div className="text-text-primary font-medium">
                       {aiSuggestion.config.sliderOverrides.enableAbovePosition}%
                     </div>
                   </div>
-                  <div className="p-3 rounded-lg bg-white/5">
+                  <div className="p-3 rounded-lg bg-[var(--color-surface-2)]">
                     <span className="text-text-muted">Prefer Cheaper Tools</span>
                     <div className="text-text-primary font-medium">
                       {aiSuggestion.config.routing.preferCheaperToolModel ? 'Yes' : 'No'}
@@ -882,7 +882,7 @@ export const MultiModelConfigView: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 p-4 border-t border-white/10">
+            <div className="flex items-center justify-end gap-3 p-4 border-t border-[var(--color-border)]">
               <button
                 onClick={() => setShowAiModal(false)}
                 className="px-4 py-2 rounded-lg hover:bg-white/10 transition-colors text-sm"

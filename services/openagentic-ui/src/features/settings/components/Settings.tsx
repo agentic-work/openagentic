@@ -336,7 +336,7 @@ const Settings = () => {
                           : 'border-[var(--color-border)] hover:border-[var(--color-borderHover)]'
                       }`}
                     >
-                      <div className="w-full h-20 bg-white rounded-lg mb-2"></div>
+                      <div className="w-full h-20 bg-[#F4EFE6] rounded-lg mb-2"></div>
                       <span className="text-sm font-medium">Light</span>
                     </button>
 
@@ -348,7 +348,7 @@ const Settings = () => {
                           : 'border-[var(--color-border)] hover:border-[var(--color-borderHover)]'
                       }`}
                     >
-                      <div className="w-full h-20 bg-gray-900 rounded-lg mb-2"></div>
+                      <div className="w-full h-20 bg-[#18130C] rounded-lg mb-2"></div>
                       <span className="text-sm font-medium">Dark</span>
                     </button>
 

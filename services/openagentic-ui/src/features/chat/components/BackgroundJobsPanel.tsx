@@ -260,13 +260,13 @@ export const BackgroundJobsPanel: React.FC<BackgroundJobsPanelProps> = ({
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 bottom-0 z-50 w-full md:w-[480px] bg-white dark:bg-gray-900 shadow-2xl flex flex-col"
+            className="fixed top-0 right-0 bottom-0 z-50 w-full md:w-[480px] bg-[var(--color-surface)] shadow-2xl flex flex-col"
           >
             {/* Header */}
-            <div className="p-4 border-b flex items-center justify-between border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95">
+            <div className="p-4 border-b flex items-center justify-between border-[var(--color-border)] bg-[var(--color-surface)]">
               <div className="flex items-center gap-3">
                 <Loader2 size={20} className="text-blue-600 dark:text-blue-400" />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h2 className="text-lg font-semibold text-[var(--color-text)]">
                   Background Jobs
                 </h2>
                 {jobs.length > 0 && (
@@ -308,7 +308,7 @@ export const BackgroundJobsPanel: React.FC<BackgroundJobsPanelProps> = ({
                   return (
                     <div
                       key={job.jobId}
-                      className="rounded-lg border p-3 bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
+                      className="rounded-lg border p-3 bg-[var(--color-surface-2)] border-[var(--color-border)]"
                     >
                       {/* Job header */}
                       <div className="flex items-start gap-3">
@@ -318,7 +318,7 @@ export const BackgroundJobsPanel: React.FC<BackgroundJobsPanelProps> = ({
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-sm font-medium truncate text-gray-900 dark:text-white">
+                            <span className="text-sm font-medium truncate text-[var(--color-text)]">
                               {job.type.replace('_', ' ').toUpperCase()}
                             </span>
                             <span className="text-xs px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
@@ -387,7 +387,7 @@ export const BackgroundJobsPanel: React.FC<BackgroundJobsPanelProps> = ({
                             transition={{ duration: 0.15 }}
                             className="overflow-hidden"
                           >
-                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700/50 space-y-3">
+                            <div className="mt-3 pt-3 border-t border-[var(--color-border)] space-y-3">
                               {/* Todos */}
                               {job.todos && job.todos.length > 0 && (
                                 <div>
@@ -426,7 +426,7 @@ export const BackgroundJobsPanel: React.FC<BackgroundJobsPanelProps> = ({
                                       </span>
                                     )}
                                   </div>
-                                  <div className="text-xs font-mono space-y-0.5 p-2 rounded bg-gray-100 dark:bg-gray-900/50">
+                                  <div className="text-xs font-mono space-y-0.5 p-2 rounded bg-[var(--color-surface-2)]">
                                     {job.recentLogs.map((log, idx) => (
                                       <div key={idx} className="text-gray-600 dark:text-gray-400">
                                         {log}
@@ -450,11 +450,11 @@ export const BackgroundJobsPanel: React.FC<BackgroundJobsPanelProps> = ({
                             transition={{ duration: 0.15 }}
                             className="overflow-hidden"
                           >
-                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700/50">
+                            <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
                               <div className="text-xs font-semibold uppercase tracking-wider mb-2 text-gray-600 dark:text-gray-500">
                                 Result
                               </div>
-                              <div className="text-sm p-3 rounded max-h-96 overflow-y-auto bg-gray-100 dark:bg-gray-900/50 text-gray-800 dark:text-gray-300">
+                              <div className="text-sm p-3 rounded max-h-96 overflow-y-auto bg-[var(--color-surface-2)] text-gray-800 dark:text-gray-300">
                                 <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed">
                                   {job.result}
                                 </pre>

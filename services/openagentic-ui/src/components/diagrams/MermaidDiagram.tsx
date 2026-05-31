@@ -195,20 +195,20 @@ export const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
       style={{
         minHeight: height,
         borderRadius: '12px',
-        border: isDark ? '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)' : '1px solid #e5e7eb',
-        background: isDark ? 'rgba(30, 30, 46, 0.6)' : '#ffffff',
+        border: '1px solid var(--color-border)',
+        background: 'var(--color-surface)',
       }}
     >
       {title && (
         <div
           className="px-4 py-3 border-b flex items-center gap-3"
-          style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb' }}
+          style={{ borderColor: 'var(--color-border)' }}
         >
           <div
             className="w-2 h-2 rounded-full"
             style={{ backgroundColor: getAccentColor() }}
           />
-          <span className="text-sm font-semibold" style={{ color: isDark ? '#f8fafc' : '#1f2937' }}>
+          <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
             {title}
           </span>
         </div>

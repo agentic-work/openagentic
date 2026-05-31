@@ -27,10 +27,10 @@ const MetricsPanel: React.FC<MetricsPanelProps> = memo(({ tokenStats, onClose, o
       initial={{ width: 0, opacity: 0 }}
       animate={{ width: 400, opacity: 1 }}
       exit={{ width: 0, opacity: 0 }}
-      className="bg-gray-100 dark:bg-gray-800 border-l border-gray-300 dark:border-gray-700 flex flex-col"
+      className="bg-[var(--color-surface)] border-l border-[var(--color-border)] flex flex-col"
     >
       <div className="p-4 border-b border-gray-300 dark:border-gray-700 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <h3 className="text-lg font-semibold text-[var(--color-text)]">
           Token Usage Metrics
         </h3>
         <div className="flex items-center gap-2">
@@ -55,26 +55,26 @@ const MetricsPanel: React.FC<MetricsPanelProps> = memo(({ tokenStats, onClose, o
       <div className="flex-1 overflow-y-auto p-4">
         {/* Summary Stats */}
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="rounded-lg p-4 bg-white dark:bg-gray-700 shadow">
+          <div className="rounded-lg p-4 bg-[var(--color-surface-2)] shadow">
             <div className="flex items-center gap-2 mb-2">
               <Coins size={16} className="text-blue-600 dark:text-blue-400" />
               <span className="text-sm text-gray-600 dark:text-gray-400">
                 Prompt Tokens
               </span>
             </div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+            <div className="text-2xl font-bold text-[var(--color-text)]">
               {tokenStats.totalPromptTokens.toLocaleString()}
             </div>
           </div>
 
-          <div className="rounded-lg p-4 bg-white dark:bg-gray-700 shadow">
+          <div className="rounded-lg p-4 bg-[var(--color-surface-2)] shadow">
             <div className="flex items-center gap-2 mb-2">
               <Coins size={16} className="text-green-600 dark:text-green-400" />
               <span className="text-sm text-gray-600 dark:text-gray-400">
                 Completion Tokens
               </span>
             </div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+            <div className="text-2xl font-bold text-[var(--color-text)]">
               {tokenStats.totalCompletionTokens.toLocaleString()}
             </div>
           </div>
@@ -94,7 +94,7 @@ const MetricsPanel: React.FC<MetricsPanelProps> = memo(({ tokenStats, onClose, o
 
         {/* Chart - Pure Frontend: Display API-rendered chart */}
         {tokenStats.chartData.length > 0 && (
-          <div className="rounded-lg p-4 bg-white dark:bg-gray-700 shadow">
+          <div className="rounded-lg p-4 bg-[var(--color-surface-2)] shadow">
             <h4 className="text-sm font-medium mb-4 text-gray-700 dark:text-gray-300">
               Token Usage Over Time
             </h4>

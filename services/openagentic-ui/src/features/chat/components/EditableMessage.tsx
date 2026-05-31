@@ -90,7 +90,7 @@ const EditableMessage: React.FC<EditableMessageProps> = ({
 
   if (!isEditing) {
     return (
-      <div className="whitespace-pre-wrap break-words text-gray-900 dark:text-gray-200">
+      <div className="whitespace-pre-wrap break-words text-[var(--color-text)]">
         {message.content}
       </div>
     );
@@ -116,13 +116,13 @@ const EditableMessage: React.FC<EditableMessageProps> = ({
       </div>
 
       {/* Textarea */}
-      <div className="relative rounded-lg border transition-colors duration-150 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus-within:border-accent-primary">
+      <div className="relative rounded-lg border transition-colors duration-150 bg-[var(--color-surface)] border-[var(--color-border)] focus-within:border-accent-primary">
         <textarea
           ref={textareaRef}
           value={editContent}
           onChange={handleContentChange}
           onKeyDown={handleKeyDown}
-          className="w-full p-3 bg-transparent resize-none outline-none text-sm leading-relaxed text-gray-900 dark:text-gray-200 placeholder-gray-500"
+          className="w-full p-3 bg-transparent resize-none outline-none text-sm leading-relaxed text-[var(--color-text)] placeholder-gray-500"
           placeholder="Edit your message..."
           style={{
             minHeight: '48px',
@@ -154,7 +154,7 @@ const EditableMessage: React.FC<EditableMessageProps> = ({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleCancel}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors duration-150 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors duration-150 bg-[var(--color-surface-2)] hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
           >
             <X className="w-3.5 h-3.5" />
             Cancel

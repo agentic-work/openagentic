@@ -18,7 +18,7 @@ const GlassmorphismContainer: React.FC<GlassmorphismContainerProps> = ({
 }) => {
   return (
     <div
-      className={`backdrop-blur-md bg-white/10 border border-white/20 rounded-xl ${className}`}
+      className={`backdrop-blur-md bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl ${className}`}
       style={style}
     >
       {children}

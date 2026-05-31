@@ -153,7 +153,7 @@ export const TitleRegenerator: React.FC<TitleRegeneratorProps> = ({
       <button
         onClick={() => setIsOpen(true)}
         className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md
-          bg-gray-100 text-gray-600 hover:bg-gray-200 :bg-gray-700 transition-colors ${className}`}
+          bg-[var(--color-surface-2)] text-[var(--color-text-muted)] hover:bg-gray-200 :bg-gray-700 transition-colors ${className}`}
         title="Regenerate title with AI"
       >
         <Sparkles className="w-3 h-3" />
@@ -164,7 +164,7 @@ export const TitleRegenerator: React.FC<TitleRegeneratorProps> = ({
 
   return (
     <div className={`absolute top-full left-0 mt-2 z-50 w-80 p-4 rounded-lg shadow-xl
-      bg-white border border-gray-200 ${className}`}>
+      bg-[var(--color-surface)] border border-[var(--color-border)] ${className}`}>
       
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
@@ -217,7 +217,7 @@ export const TitleRegenerator: React.FC<TitleRegeneratorProps> = ({
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors
                 ${selectedStyle === style.value
                   ? 'bg-accent-primary/10 border-accent-primary/30 '
-                  : 'bg-gray-50 hover:bg-gray-100 :bg-gray-700'
+                  : 'bg-[var(--color-surface-2)] hover:bg-gray-100 :bg-gray-700'
                 } border`}
             >
               <span className={`${selectedStyle === style.value ? 'text-accent-primary' : 'text-gray-400'}`}>
@@ -285,8 +285,8 @@ export const TitleRegenerator: React.FC<TitleRegeneratorProps> = ({
                 key={index}
                 onClick={() => selectSuggestion(suggestion)}
                 className="w-full px-3 py-2 text-left text-sm rounded-md
-                  bg-gray-50 hover:bg-gray-100 :bg-gray-700
-                 text-gray-900 transition-colors"
+                  bg-[var(--color-surface-2)] hover:bg-gray-100 :bg-gray-700
+                 text-[var(--color-text)] transition-colors"
               >
                 {suggestion}
               </button>

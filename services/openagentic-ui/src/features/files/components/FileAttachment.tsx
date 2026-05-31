@@ -92,7 +92,7 @@ export const FileAttachment: React.FC<FileAttachmentProps> = ({
       <>
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className={`flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 :border-gray-600 transition-all cursor-pointer ${className}`}
+          className={`flex items-center gap-2 p-2 bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] hover:border-gray-300 :border-gray-600 transition-all cursor-pointer ${className}`}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           onClick={canPreview ? handlePreview : handleDownload}
@@ -173,7 +173,7 @@ export const FileAttachment: React.FC<FileAttachmentProps> = ({
     <>
       <motion.div
         whileHover={{ scale: 1.02 }}
-        className={`relative p-4 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-pointer group ${className}`}
+        className={`relative p-4 bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] shadow-sm hover:shadow-md transition-all cursor-pointer group ${className}`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={canPreview ? handlePreview : handleDownload}

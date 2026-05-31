@@ -176,8 +176,8 @@ export const MultiModelIndicator: React.FC<MultiModelIndicatorProps> = ({
                     key={role.role}
                     className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
                       role.status === 'active' 
-                        ? `bg-${config.color}-500/10 border-${config.color}-500/30` 
-                        : 'bg-white/5 border-white/10'
+                        ? `bg-${config.color}-500/10 border-${config.color}-500/30`
+                        : 'bg-[var(--color-surface-2)] border-[var(--color-border)]'
                     }`}
                   >
                     <div className="flex items-center gap-3">

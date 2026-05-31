@@ -178,7 +178,7 @@ export const VerboseMCPDisplay: React.FC<VerboseMCPDisplayProps> = ({
               {status.toUpperCase()}
             </span>
             {duration && (
-              <span className="text-xs px-2 py-1 rounded text-gray-500 bg-gray-100 dark:bg-gray-800">
+              <span className="text-xs px-2 py-1 rounded text-gray-500 bg-[var(--color-surface-2)]">
                 {formatDuration(duration)}
               </span>
             )}
@@ -229,7 +229,7 @@ export const VerboseMCPDisplay: React.FC<VerboseMCPDisplayProps> = ({
             transition={{ duration: 0.15 }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-4 space-y-4 border-t border-gray-200/50 dark:border-gray-700/50">
+            <div className="px-4 pb-4 space-y-4 border-t border-[var(--color-border)]">
 
               {/* Tool Call Information */}
               <div className="grid grid-cols-2 gap-4 text-sm pt-4">
@@ -291,7 +291,7 @@ export const VerboseMCPDisplay: React.FC<VerboseMCPDisplayProps> = ({
                   </div>
 
                   {isDiagramResult(result) ? (
-                    <div className="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <div className="rounded-lg overflow-hidden border border-[var(--color-border)]">
                       <ReactFlowDiagram
                         diagram={extractDiagramData(result)!}
                         height={450}
@@ -345,7 +345,7 @@ export const VerboseMCPDisplay: React.FC<VerboseMCPDisplayProps> = ({
                   <summary className="cursor-pointer text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">
                     Debug Metadata
                   </summary>
-                  <pre className="mt-2 p-2 rounded text-xs overflow-x-auto bg-gray-100 dark:bg-gray-800">
+                  <pre className="mt-2 p-2 rounded text-xs overflow-x-auto bg-[var(--color-surface-2)]">
                     {formatJson(toolCall.metadata)}
                   </pre>
                 </details>

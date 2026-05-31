@@ -121,10 +121,10 @@ export const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({ is
       />
 
       {/* Modal */}
-      <div className="relative max-w-3xl w-full max-h-[80vh] overflow-hidden rounded-2xl shadow-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+      <div className="relative max-w-3xl w-full max-h-[80vh] overflow-hidden rounded-2xl shadow-2xl bg-[var(--color-surface)] border border-[var(--color-border)]">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+        <div className="px-6 py-4 border-b border-[var(--color-border)]">
+          <h2 className="text-xl font-semibold text-[var(--color-text)]">
             Keyboard Shortcuts
           </h2>
         </div>
@@ -149,7 +149,7 @@ export const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({ is
                       {keys.split(', ').map((key, idx) => (
                         <kbd
                           key={idx}
-                          className="px-2 py-1 text-xs font-mono rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700"
+                          className="px-2 py-1 text-xs font-mono rounded bg-[var(--color-surface-2)] text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700"
                         >
                           {formatShortcutKey(key)}
                         </kbd>
@@ -163,10 +163,10 @@ export const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({ is
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-800">
+        <div className="px-6 py-3 border-t border-[var(--color-border)]">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 bg-[var(--color-surface-2)] hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
           >
             Close (Esc)
           </button>

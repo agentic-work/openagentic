@@ -173,7 +173,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
           flexDirection: 'column',
           width: '100%',
           height: '100%',
-          background: theme === 'dark' ? '#0d1117' : '#ffffff',
+          background: 'var(--color-surface)',
           borderLeft: '1px solid color-mix(in srgb, var(--user-accent-primary) 18%, transparent)',
           overflow: 'hidden',
         }}
@@ -282,7 +282,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
         flexDirection: 'column',
         width: '100%',
         height: '100%',
-        background: theme === 'dark' ? '#0d1117' : '#ffffff',
+        background: 'var(--color-surface)',
         borderLeft: '1px solid color-mix(in srgb, var(--user-accent-primary) 24%, transparent)',
         overflow: 'hidden',
       }}
@@ -317,7 +317,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
         <span
           data-testid="artifact-panel-title"
           style={{
-            color: theme === 'dark' ? '#e4e4e7' : '#18181b',
+            color: 'var(--color-text)',
             fontSize: 13,
             fontWeight: 500,
             fontFamily: "'JetBrains Mono', monospace",
@@ -455,7 +455,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
             gap: 1,
             padding: '0 10px',
             borderBottom: '1px solid color-mix(in srgb, var(--user-accent-primary) 14%, transparent)',
-            background: theme === 'dark' ? '#06080c' : '#f8fafc',
+            background: 'var(--color-surface-2)',
             overflowX: 'auto',
             flexShrink: 0,
           }}
@@ -480,14 +480,14 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
                 style={{
                   padding: '8px 11px',
                   background: selected
-                    ? (theme === 'dark' ? '#0d1117' : '#ffffff')
+                    ? 'var(--color-surface)'
                     : 'transparent',
                   border: 'none',
                   borderBottom: selected
                     ? '2px solid var(--user-accent-primary)'
                     : '2px solid transparent',
                   color: selected
-                    ? (theme === 'dark' ? '#e4e4e7' : '#18181b')
+                    ? 'var(--color-text)'
                     : '#71717a',
                   fontSize: 12,
                   fontFamily: "'JetBrains Mono', monospace",
@@ -528,7 +528,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
           flex: 1,
           minHeight: 0,
           overflow: 'auto',
-          background: theme === 'dark' ? '#06080c' : '#ffffff',
+          background: 'var(--color-surface)',
         }}
       >
         {activeFileData?.content ? (

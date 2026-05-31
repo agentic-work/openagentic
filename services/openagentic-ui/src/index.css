@@ -1354,8 +1354,8 @@ textarea::placeholder {
   position: relative;
   backdrop-filter: blur(10px) saturate(180%);
   -webkit-backdrop-filter: blur(10px) saturate(180%);
-  background: rgba(255, 255, 255, 0.03);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
 }
 
@@ -1364,8 +1364,8 @@ textarea::placeholder {
   position: relative;
   backdrop-filter: blur(10px) saturate(180%);
   -webkit-backdrop-filter: blur(10px) saturate(180%);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   color: var(--color-text);
   transition: all 0.3s ease;
@@ -1373,8 +1373,8 @@ textarea::placeholder {
 }
 
 .button-glass:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
   transform: translateY(-1px);
 }
 
@@ -1382,8 +1382,8 @@ textarea::placeholder {
 .input-glass {
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   color: var(--color-text);
 }
@@ -1399,16 +1399,16 @@ textarea::placeholder {
   position: relative;
   backdrop-filter: blur(10px) saturate(180%);
   -webkit-backdrop-filter: blur(10px) saturate(180%);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
   transition: all 0.3s ease;
 }
 
 .glass-surface:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.25);
 }
 
@@ -1417,8 +1417,8 @@ textarea::placeholder {
   position: relative;
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
-  background: rgba(255, 255, 255, 0.08) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
   border-radius: 16px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
   transition: all 0.3s ease;
@@ -1555,7 +1555,7 @@ textarea::placeholder {
   font-size: 0.875em;
   padding: 1px 6px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.06);  /* Barely visible — Gemini uses #282a2c on #131314 */
+  background: var(--color-surface-2);  /* Barely visible — Gemini uses #282a2c on #131314 */
   border: none;
   color: var(--text-secondary);
   font-weight: 400;
@@ -1761,11 +1761,11 @@ textarea::placeholder {
 }
 
 .prose-sm-tight tbody tr:nth-child(even) {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--color-surface-2);
 }
 
 .prose-sm-tight tbody tr:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--color-surface-2);
 }
 
 [data-theme="light"] .prose-sm-tight tbody tr:nth-child(even) {
@@ -1847,7 +1847,7 @@ textarea::placeholder {
 }
 
 .excel-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--color-surface-2);
 }
 
 /* Light mode */

@@ -529,7 +529,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
         <div className="p-3 border-b" style={{ borderColor: 'var(--color-border)' }}>
           <div className="flex items-center gap-2 mb-2">
             <Terminal className={`w-4 h-4 ${isDark ? 'text-text-secondary' : 'text-text-secondary'}`} />
-            <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-text-primary'}`}>
+            <h3 className={`font-semibold text-[var(--color-text)]`}>
               Available Tools
             </h3>
             <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-surface-hover text-text-secondary' : 'bg-surface-secondary text-text-secondary'}`}>
@@ -687,11 +687,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
                             <select
                               value={toolArgs[key] || ''}
                               onChange={(e) => setToolArgs({ ...toolArgs, [key]: e.target.value })}
-                              className={`w-full px-3 py-2 rounded-lg border text-sm ${
-                                isDark
-                                  ? 'bg-surface border-border-hover text-text-tertiary'
-                                  : 'bg-white border-border text-text-primary'
-                              }`}
+                              className="w-full px-3 py-2 rounded-lg border text-sm bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]"
                             >
                               <option value="">Select...</option>
                               {prop.enum.map((opt) => (
@@ -702,11 +698,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
                             <select
                               value={String(toolArgs[key] || false)}
                               onChange={(e) => setToolArgs({ ...toolArgs, [key]: e.target.value === 'true' })}
-                              className={`w-full px-3 py-2 rounded-lg border text-sm ${
-                                isDark
-                                  ? 'bg-surface border-border-hover text-text-tertiary'
-                                  : 'bg-white border-border text-text-primary'
-                              }`}
+                              className="w-full px-3 py-2 rounded-lg border text-sm bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]"
                             >
                               <option value="false">false</option>
                               <option value="true">true</option>
@@ -716,11 +708,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
                               type="number"
                               value={toolArgs[key] || 0}
                               onChange={(e) => setToolArgs({ ...toolArgs, [key]: Number(e.target.value) })}
-                              className={`w-full px-3 py-2 rounded-lg border text-sm ${
-                                isDark
-                                  ? 'bg-surface border-border-hover text-text-tertiary'
-                                  : 'bg-white border-border text-text-primary'
-                              }`}
+                              className="w-full px-3 py-2 rounded-lg border text-sm bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]"
                             />
                           ) : prop.type === 'object' || prop.type === 'array' ? (
                             <textarea
@@ -734,11 +722,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
                               }}
                               rows={3}
                               placeholder={prop.type === 'array' ? '[]' : '{}'}
-                              className={`w-full px-3 py-2 rounded-lg border text-sm font-mono ${
-                                isDark
-                                  ? 'bg-surface border-border-hover text-text-tertiary'
-                                  : 'bg-white border-border text-text-primary'
-                              }`}
+                              className="w-full px-3 py-2 rounded-lg border text-sm font-mono bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]"
                             />
                           ) : (
                             <input
@@ -746,11 +730,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
                               value={toolArgs[key] || ''}
                               onChange={(e) => setToolArgs({ ...toolArgs, [key]: e.target.value })}
                               placeholder={prop.default !== undefined ? String(prop.default) : ''}
-                              className={`w-full px-3 py-2 rounded-lg border text-sm ${
-                                isDark
-                                  ? 'bg-surface border-border-hover text-text-tertiary'
-                                  : 'bg-white border-border text-text-primary'
-                              }`}
+                              className="w-full px-3 py-2 rounded-lg border text-sm bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]"
                             />
                           )}
                         </div>
@@ -831,7 +811,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
         <div className="grid grid-cols-4 gap-4">
           <div className={`p-4 rounded-lg ${isDark ? 'bg-surface/50' : 'bg-surface-secondary'} border`} style={{ borderColor: 'var(--color-border)' }}>
             <p className={`text-sm ${isDark ? 'text-text-secondary' : 'text-text-secondary'}`}>Total MCPs</p>
-            <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-text-primary'}`}>
+            <p className={`text-2xl font-bold text-[var(--color-text)]`}>
               {serverEntries.length}
             </p>
           </div>
@@ -845,16 +825,16 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
           </div>
           <div className={`p-4 rounded-lg ${isDark ? 'bg-surface/50' : 'bg-surface-secondary'} border`} style={{ borderColor: 'var(--color-border)' }}>
             <p className={`text-sm ${isDark ? 'text-text-secondary' : 'text-text-secondary'}`}>Total Tools</p>
-            <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-text-primary'}`}>
+            <p className={`text-2xl font-bold text-[var(--color-text)]`}>
               {allTools.length}
             </p>
           </div>
         </div>
 
         {/* Server List with Enable/Disable Toggles */}
-        <div className={`rounded-lg border ${isDark ? 'bg-surface/30' : 'bg-white'} overflow-hidden`} style={{ borderColor: 'var(--color-border)' }}>
+        <div className="rounded-lg border bg-[var(--color-surface)] overflow-hidden" style={{ borderColor: 'var(--color-border)' }}>
           <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--color-border)' }}>
-            <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-text-primary'}`}>
+            <h3 className={`font-semibold text-[var(--color-text)]`}>
               Live MCP Servers
             </h3>
             <button
@@ -905,7 +885,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
 
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className={`font-medium ${isDark ? 'text-white' : 'text-text-primary'}`}>
+                          <p className={`font-medium text-[var(--color-text)]`}>
                             {serverName.replace(/_/g, ' ').replace(/awp /i, '')}
                           </p>
                           <code className={`text-xs px-1.5 py-0.5 rounded ${
@@ -1367,15 +1347,15 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
       {activeTab === 'health' && (
         <div className="space-y-4">
           {/* System Health Overview */}
-          <div className={`p-6 rounded-lg border ${isDark ? 'bg-surface/50 border-border-hover' : 'bg-white border-border'}`}>
-            <h3 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-text-primary'}`}>
+          <div className="p-6 rounded-lg border bg-[var(--color-surface)] border-[var(--color-border)]">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-[var(--color-text)]">
               <Activity className="w-5 h-5 text-primary-500" />
               System Health Overview
             </h3>
             <div className="grid grid-cols-4 gap-4">
               <div className={`p-4 rounded-lg ${isDark ? 'bg-surface/50' : 'bg-surface-secondary'}`}>
                 <p className={`text-sm ${isDark ? 'text-text-secondary' : 'text-text-secondary'}`}>Total Servers</p>
-                <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-text-primary'}`}>
+                <p className={`text-2xl font-bold text-[var(--color-text)]`}>
                   {servers.length}
                 </p>
               </div>
@@ -1393,7 +1373,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
               </div>
               <div className={`p-4 rounded-lg ${isDark ? 'bg-surface/50' : 'bg-surface-secondary'}`}>
                 <p className={`text-sm ${isDark ? 'text-text-secondary' : 'text-text-secondary'}`}>Total Tools</p>
-                <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-text-primary'}`}>
+                <p className={`text-2xl font-bold text-[var(--color-text)]`}>
                   {allTools.length}
                 </p>
               </div>
@@ -1401,9 +1381,9 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
           </div>
 
           {/* Per-Server Health */}
-          <div className={`rounded-lg border ${isDark ? 'bg-surface/50 border-border-hover' : 'bg-white border-border'} overflow-hidden`}>
+          <div className="rounded-lg border bg-[var(--color-surface)] border-[var(--color-border)] overflow-hidden">
             <div className="p-4 border-b border-border-hover">
-              <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-text-primary'}`}>
+              <h3 className="font-semibold text-[var(--color-text)]">
                 Server Health Status
               </h3>
             </div>
@@ -1422,7 +1402,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
                         server.status === 'error' ? 'bg-error-500' : 'bg-surface-secondary0'
                       }`} />
                       <div>
-                        <p className={`font-medium ${isDark ? 'text-white' : 'text-text-primary'}`}>
+                        <p className={`font-medium text-[var(--color-text)]`}>
                           {server.name}
                         </p>
                         <p className={`text-xs ${isDark ? 'text-text-secondary' : 'text-text-secondary'}`}>

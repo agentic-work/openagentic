@@ -237,7 +237,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className={`relative bg-white rounded-lg shadow-2xl overflow-hidden ${
+          className={`relative bg-[var(--color-surface)] rounded-lg shadow-2xl overflow-hidden ${
             isMaximized ? 'w-screen h-screen rounded-none' : 'w-11/12 h-5/6 max-w-6xl'
           }`}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}

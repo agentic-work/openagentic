@@ -1000,7 +1000,7 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
             // Markdown blocks - render as rich markdown inline (not as code block)
             if (language === 'markdown' || language === 'md') {
               return (
-                <div className="my-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                <div className="my-4 p-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
@@ -1008,7 +1008,7 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
                       code: ({ children, className: nestedClassName, ...nestedProps }) => {
                         const isNestedInline = !String(children).includes('\n');
                         if (isNestedInline) {
-                          return <code className="text-sm font-mono px-1 bg-gray-100 dark:bg-gray-700 rounded" {...nestedProps}>{children}</code>;
+                          return <code className="text-sm font-mono px-1 bg-[var(--color-surface-2)] rounded" {...nestedProps}>{children}</code>;
                         }
                         return <pre className="bg-gray-900 text-gray-100 p-3 rounded overflow-x-auto text-sm"><code {...nestedProps}>{children}</code></pre>;
                       }

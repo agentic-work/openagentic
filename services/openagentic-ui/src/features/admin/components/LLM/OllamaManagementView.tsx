@@ -301,8 +301,8 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
               onClick={() => setActiveHostId(host.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm transition-colors whitespace-nowrap ${
                 activeHostId === host.id
-                  ? 'bg-surface-hover text-white border-b-2'
-                  : 'text-text-secondary hover:text-white hover:bg-surface-hover/50'
+                  ? 'bg-surface-hover text-[var(--color-text)] border-b-2'
+                  : 'text-text-secondary hover:text-[var(--color-text)] hover:bg-surface-hover/50'
               }`}
               style={activeHostId === host.id ? { borderBottomColor: 'var(--ap-accent)' } : undefined}
             >
@@ -338,7 +338,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                 <AlertCircle className="w-5 h-5 text-red-400" />
               )}
               <div>
-                <span className="text-white text-sm font-medium">{activeHost.host}</span>
+                <span className="text-[var(--color-text)] text-sm font-medium">{activeHost.host}</span>
                 <span className="text-text-secondary text-xs ml-3">
                   Priority: {activeHost.priority} &middot; Chat model: <code style={{ color: 'var(--ap-accent)' }}>{activeHost.chatModel || 'auto'}</code>
                 </span>
@@ -346,11 +346,11 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
             </div>
             <div className="flex gap-6 text-center">
               <div>
-                <div className="text-lg font-bold text-white">{activeHost.modelCount}</div>
+                <div className="text-lg font-bold text-[var(--color-text)]">{activeHost.modelCount}</div>
                 <div className="text-xs text-text-secondary">Models</div>
               </div>
               <div>
-                <div className="text-lg font-bold text-white">{activeHost.runningCount}</div>
+                <div className="text-lg font-bold text-[var(--color-text)]">{activeHost.runningCount}</div>
                 <div className="text-xs text-text-secondary">Running</div>
               </div>
               <div>
@@ -368,8 +368,8 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                 onClick={() => setActiveTab(tab)}
                 className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
                   activeTab === tab
-                    ? 'bg-surface text-white'
-                    : 'text-text-secondary hover:text-white'
+                    ? 'bg-surface text-[var(--color-text)]'
+                    : 'text-text-secondary hover:text-[var(--color-text)]'
                 }`}
               >
                 {tab === 'models' ? 'Models' : 'Metrics & Sync'}
@@ -382,7 +382,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
             <div className="space-y-4">
               {/* Pull Model */}
               <div className="p-4 rounded-lg border bg-surface border-border-hover">
-                <h3 className="font-medium mb-2 text-white text-sm">Pull New Model</h3>
+                <h3 className="font-medium mb-2 text-[var(--color-text)] text-sm">Pull New Model</h3>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -391,7 +391,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                     onKeyDown={(e) => e.key === 'Enter' && handlePull()}
                     placeholder="e.g., llama3.2, codellama, mistral"
                     className="flex-1 px-3 py-2 rounded-lg border text-sm
-                      bg-surface-hover border-border-hover text-white placeholder-gray-500"
+                      bg-surface-hover border-border-hover text-[var(--color-text)] placeholder-gray-500"
                   />
                   <button
                     onClick={handlePull}
@@ -416,7 +416,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
               {/* Running Models */}
               {runningModels.length > 0 && (
                 <div className="p-4 rounded-lg border bg-surface border-border-hover">
-                  <h3 className="font-medium mb-2 flex items-center gap-2 text-white text-sm">
+                  <h3 className="font-medium mb-2 flex items-center gap-2 text-[var(--color-text)] text-sm">
                     <Cpu className="w-4 h-4 text-green-400" />
                     Running ({runningModels.length})
                   </h3>
@@ -424,7 +424,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                     {runningModels.map((m) => (
                       <div key={m.digest} className="flex items-center justify-between p-2.5 rounded bg-green-500/5 border border-green-500/20">
                         <div>
-                          <span className="font-medium text-white text-sm">{m.name}</span>
+                          <span className="font-medium text-[var(--color-text)] text-sm">{m.name}</span>
                           <span className="text-xs text-text-secondary ml-3">
                             VRAM: {formatBytes(m.sizeVram || 0)} &middot; Size: {formatBytes(m.size)}
                           </span>
@@ -440,7 +440,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
 
               {/* All Models */}
               <div className="p-4 rounded-lg border bg-surface border-border-hover">
-                <h3 className="font-medium mb-2 flex items-center gap-2 text-white text-sm">
+                <h3 className="font-medium mb-2 flex items-center gap-2 text-[var(--color-text)] text-sm">
                   <HardDrive className="w-4 h-4" />
                   Available Models ({models.length})
                 </h3>
@@ -460,7 +460,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                         <div key={m.digest} className="flex items-center justify-between p-2.5 rounded bg-surface-hover">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-white text-sm">{m.name}</span>
+                              <span className="font-medium text-[var(--color-text)] text-sm">{m.name}</span>
                               {isRunning && (
                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400">RUNNING</span>
                               )}
@@ -477,10 +477,10 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
-                            <button onClick={() => handleModelInfo(m.name)} className="p-1.5 rounded hover:bg-surface-secondary text-text-secondary hover:text-white" title="Info">
+                            <button onClick={() => handleModelInfo(m.name)} className="p-1.5 rounded hover:bg-surface-secondary text-text-secondary hover:text-[var(--color-text)]" title="Info">
                               <Info className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => handleTestGenerate(m.name)} disabled={testing} className="p-1.5 rounded hover:bg-surface-secondary text-text-secondary hover:text-white" title="Test">
+                            <button onClick={() => handleTestGenerate(m.name)} disabled={testing} className="p-1.5 rounded hover:bg-surface-secondary text-text-secondary hover:text-[var(--color-text)]" title="Test">
                               <MessageSquare className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => handleDelete(m.name)} className="p-1.5 rounded hover:bg-red-500/20 text-text-secondary hover:text-red-400" title="Delete">
@@ -501,7 +501,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
             <div className="space-y-4">
               {/* Sync Status */}
               <div className="p-4 rounded-lg border bg-surface border-border-hover">
-                <h3 className="font-medium mb-3 text-white text-sm">Sync Status</h3>
+                <h3 className="font-medium mb-3 text-[var(--color-text)] text-sm">Sync Status</h3>
                 {syncResults.length === 0 ? (
                   <p className="text-text-secondary text-sm">No sync results yet. Click "Sync Now" to trigger.</p>
                 ) : (
@@ -518,14 +518,14 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                             ) : (
                               <AlertCircle className="w-4 h-4 text-red-400" />
                             )}
-                            <span className="text-white text-sm font-medium">{r.providerName}</span>
+                            <span className="text-[var(--color-text)] text-sm font-medium">{r.providerName}</span>
                             <span className="text-text-secondary text-xs">{r.host}</span>
                           </div>
                           <span className="text-xs text-text-secondary">{formatTimeAgo(r.lastSync)}</span>
                         </div>
                         <div className="mt-2 flex gap-4 text-xs">
                           <span className="text-text-secondary">
-                            Models on host: <span className="text-white">{r.modelsOnHost?.length || 0}</span>
+                            Models on host: <span className="text-[var(--color-text)]">{r.modelsOnHost?.length || 0}</span>
                           </span>
                           {r.modelsAdded.length > 0 && (
                             <span className="text-green-400">+{r.modelsAdded.length} added: {r.modelsAdded.join(', ')}</span>
@@ -543,7 +543,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
 
               {/* VRAM / Running Details */}
               <div className="p-4 rounded-lg border bg-surface border-border-hover">
-                <h3 className="font-medium mb-3 text-white text-sm flex items-center gap-2">
+                <h3 className="font-medium mb-3 text-[var(--color-text)] text-sm flex items-center gap-2">
                   <Cpu className="w-4 h-4" />
                   GPU / Running Models
                 </h3>
@@ -556,7 +556,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                       return (
                         <div key={m.digest} className="p-3 rounded bg-surface-hover">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-white text-sm font-medium">{m.name}</span>
+                            <span className="text-[var(--color-text)] text-sm font-medium">{m.name}</span>
                             <span className="text-xs text-text-secondary">
                               {formatBytes(m.sizeVram || 0)} VRAM / {formatBytes(m.size)} total
                             </span>
@@ -581,13 +581,13 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
 
               {/* Host Models Summary */}
               <div className="p-4 rounded-lg border bg-surface border-border-hover">
-                <h3 className="font-medium mb-3 text-white text-sm">All Hosts Overview</h3>
+                <h3 className="font-medium mb-3 text-[var(--color-text)] text-sm">All Hosts Overview</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {hosts.map(h => (
                     <div key={h.id} className="p-3 rounded bg-surface-hover border border-border-hover">
                       <div className="flex items-center gap-2 mb-2">
                         <span className={`w-2 h-2 rounded-full ${h.status === 'connected' ? 'bg-green-400' : 'bg-red-400'}`} />
-                        <span className="text-white text-sm font-medium">{h.name}</span>
+                        <span className="text-[var(--color-text)] text-sm font-medium">{h.name}</span>
                       </div>
                       <div className="text-xs text-text-secondary space-y-0.5">
                         <div>Host: <code style={{ color: 'var(--ap-accent)' }}>{h.host}</code></div>
@@ -605,8 +605,8 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
           {selectedModelInfo && (
             <div className="p-4 rounded-lg border bg-surface border-border-hover">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-white text-sm font-medium">Model Info: {selectedModelInfo.name}</h3>
-                <button onClick={() => setSelectedModelInfo(null)} className="text-text-secondary hover:text-white text-sm">Close</button>
+                <h3 className="text-[var(--color-text)] text-sm font-medium">Model Info: {selectedModelInfo.name}</h3>
+                <button onClick={() => setSelectedModelInfo(null)} className="text-text-secondary hover:text-[var(--color-text)] text-sm">Close</button>
               </div>
               <pre className="text-xs p-3 rounded overflow-auto max-h-80 bg-background text-text-secondary">
                 {JSON.stringify(selectedModelInfo.info, null, 2)}
@@ -618,8 +618,8 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
           {testState && (
             <div className="p-4 rounded-lg border bg-surface border-border-hover">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-white text-sm font-medium">Test: {testState.model}</h3>
-                <button onClick={() => setTestState(null)} className="text-text-secondary hover:text-white text-sm">Close</button>
+                <h3 className="text-[var(--color-text)] text-sm font-medium">Test: {testState.model}</h3>
+                <button onClick={() => setTestState(null)} className="text-text-secondary hover:text-[var(--color-text)] text-sm">Close</button>
               </div>
               <div className="p-3 rounded bg-background text-text-secondary text-sm">{testState.response}</div>
             </div>

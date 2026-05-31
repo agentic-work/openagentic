@@ -376,7 +376,7 @@ export const PromptTechniquesRadialMenu: React.FC<PromptTechniquesRadialMenuProp
                         exit={{ opacity: 0, y: 10, scale: 0.9 }}
                         className={`
                           absolute z-30 w-64 p-4 rounded-lg shadow-2xl
-                          bg-white dark:bg-gray-900
+                          bg-[var(--color-surface)]
                           ${position === 'left' ? 'left-full ml-3' : 'right-full mr-3'}
                           ${index < activeTechniquesList.length / 2 ? 'top-0' : 'bottom-0'}
                         `}

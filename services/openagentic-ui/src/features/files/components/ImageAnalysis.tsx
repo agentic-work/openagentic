@@ -113,16 +113,14 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
       exit={{ opacity: 0, scale: 0.95 }}
       className={clsx(
         'rounded-lg border overflow-hidden',
-        theme === 'dark' 
-          ? 'bg-gray-800 border-gray-700' 
-          : 'bg-white border-gray-200',
+        'bg-[var(--color-surface)] border-[var(--color-border)]',
         className
       )}
     >
       {/* Header */}
       <div className={clsx(
         'flex items-center justify-between p-4 border-b',
-        theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+        'border-[var(--color-border)]'
       )}>
         <div className="flex items-center gap-2">
           <Image className="w-5 h-5" />
@@ -162,7 +160,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
       {analysisResult && (
         <div className={clsx(
           'flex border-b',
-          theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+          'border-[var(--color-border)]'
         )}>
           {(['preview', 'text', 'objects', 'metadata'] as const).map(tab => (
             <button
@@ -171,12 +169,8 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
               className={clsx(
                 'px-4 py-2 text-sm font-medium capitalize transition-colors',
                 activeTab === tab
-                  ? theme === 'dark'
-                    ? 'bg-gray-700 text-white'
-                    : 'bg-gray-100 text-gray-900'
-                  : theme === 'dark'
-                    ? 'text-gray-400 hover:text-gray-200'
-                    : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-[var(--color-surface-2)] text-[var(--color-text)]'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
               )}
             >
               {tab}
@@ -263,7 +257,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
         {analysisResult && activeTab === 'text' && (
           <div className={clsx(
             'p-4 rounded-lg',
-            theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
+            'bg-[var(--color-surface-2)]'
           )}>
             <h3 className="font-medium mb-2">Extracted Text</h3>
             <p className="text-sm opacity-80">
@@ -280,7 +274,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
                 key={idx}
                 className={clsx(
                   'flex items-center justify-between p-2 rounded',
-                  theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
+                  'bg-[var(--color-surface-2)]'
                 )}
               >
                 <span className="text-sm">{obj.name}</span>
@@ -297,7 +291,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
             <h3 className="font-medium mb-2">Image Metadata</h3>
             <div className={clsx(
               'p-3 rounded-lg space-y-1',
-              theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
+              'bg-[var(--color-surface-2)]'
             )}>
               <div className="flex justify-between text-sm">
                 <span className="opacity-60">Dimensions:</span>
