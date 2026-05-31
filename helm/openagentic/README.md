@@ -127,9 +127,14 @@ ollama:
   gpu: false                    # set true if your nodes have GPUs
 ```
 
-For **AWS Bedrock** (Claude Sonnet / Opus), add your AWS credentials. The chart
-seeds a Bedrock provider on first boot and the Smart Router uses it automatically
-(no model IDs in app config — the router picks per request):
+`ollama-local` is the **only auto-seeded bootstrap provider** (from `ollama.*`).
+Every other provider — including **AWS Bedrock** (Claude Sonnet / Opus) — is added
+once at runtime in **Admin → LLM → Provider Management** and persisted in the
+database.
+
+For Bedrock, put the AWS credentials in values so the cluster has them, then add
+the Bedrock provider in the Admin UI (it uses these creds; the Smart Router then
+picks Bedrock models per request — no model IDs in app config):
 
 ```yaml
 secrets:
@@ -141,10 +146,10 @@ secrets:
 > **Compose users:** you don't need any of this — the default local Ollama model
 > is enough to chat out of the box. Bedrock is a Kubernetes-deployment nicety.
 
-**Adding more** (Azure OpenAI, OpenAI, Google Vertex, additional models, per-role
-defaults) happens at runtime in **Admin → LLM → Provider Management**. Only the
-*bootstrap* provider comes from values; every other provider/model is managed in
-the Admin UI and persisted in the database.
+> **Note:** only the bootstrap (Ollama) provider is seeded from `values.yaml`
+> today. Auto-seeding a Bedrock provider directly from `secrets.aws*` is a
+> planned chart enhancement; until then, add it once in the Admin UI (it's
+> persisted, so it survives pod restarts — though not a full DB wipe).
 
 ## Configuration
 
