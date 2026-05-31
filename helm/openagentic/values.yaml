@@ -39,12 +39,21 @@ secrets:
   awsSecretAccessKey: ""
   awsRegion: us-east-1
 
-# Local model runtime. nomic-embed-text (embeddings) is always pulled; a chat
-# model is pulled so a bare install can chat with zero API keys.
+# Ollama. The in-cluster Ollama ALWAYS serves embeddings (nomic-embed-text is
+# light — runs fine CPU-only, GPU not required). The CHAT model is served by
+# `chatHost` — supporting BOTH local and remote Ollama:
+#   chatHost: ""                    chat uses the in-cluster Ollama (all-local,
+#                                   zero-config; chatModel is pulled in-cluster).
+#   chatHost: "http://HOST:11434"   chat uses a REMOTE Ollama (e.g. a GPU box)
+#                                   for big models; the in-cluster Ollama then
+#                                   pulls ONLY the embed model (no GPU needed).
+# Example remote GPU host: http://10.2.10.142:11434  (model e.g. gpt-oss:20b)
 ollama:
   embedModel: nomic-embed-text
   chatModel: llama3.2:3b
-  # GPU off by default for portability. CPU inference is fine for small models.
+  chatHost: ""          # remote chat Ollama endpoint; empty = use in-cluster
+  # GPU off by default (portable). Embeddings never need a GPU; set true only
+  # if you run a big chat model on the IN-CLUSTER Ollama (chatHost empty).
   gpu: false
 
 # Postgres datastore (pgvector). storage sizes are modest for a demo.

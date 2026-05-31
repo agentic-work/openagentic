@@ -114,8 +114,10 @@ spec:
               until ollama list >/dev/null 2>&1; do sleep 3; done
               echo "Pulling embed model: {{ .Values.ollama.embedModel }}"
               ollama pull "{{ .Values.ollama.embedModel }}"
-              {{- if .Values.ollama.chatModel }}
+              {{- if and .Values.ollama.chatModel (not .Values.ollama.chatHost) }}
               echo "Pulling chat model: {{ .Values.ollama.chatModel }}"
               ollama pull "{{ .Values.ollama.chatModel }}"
+              {{- else if .Values.ollama.chatHost }}
+              echo "Chat model served remotely at {{ .Values.ollama.chatHost }} — in-cluster Ollama serves embeddings only."
               {{- end }}
               echo "Models ready."

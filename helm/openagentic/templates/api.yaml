@@ -71,10 +71,13 @@ spec:
               value: "true"
             - name: OLLAMA_ENABLED
               value: "true"
+            # Chat host — a REMOTE Ollama (e.g. a GPU box) when ollama.chatHost
+            # is set; otherwise the in-cluster Ollama. Embeddings ALWAYS use the
+            # in-cluster Ollama (nomic-embed-text is light, runs fine CPU-only).
             - name: OLLAMA_HOST
-              value: http://ollama:11434
+              value: {{ .Values.ollama.chatHost | default "http://ollama:11434" | quote }}
             - name: OLLAMA_BASE_URL
-              value: http://ollama:11434
+              value: {{ .Values.ollama.chatHost | default "http://ollama:11434" | quote }}
             - name: EMBEDDING_OLLAMA_BASE_URL
               value: http://ollama:11434
             - name: EMBEDDING_PROVIDER
@@ -94,7 +97,7 @@ spec:
             - name: BOOTSTRAP_PROVIDER_TYPE
               value: ollama
             - name: BOOTSTRAP_PROVIDER_CONFIG
-              value: '{"endpoint":"http://ollama:11434"}'
+              value: '{"endpoint":"{{ .Values.ollama.chatHost | default "http://ollama:11434" }}"}'
             - name: BOOTSTRAP_PROVIDER_DEFAULTS
               value: '{"chat":"{{ .Values.ollama.chatModel }}","embedding":"{{ .Values.ollama.embedModel }}","embeddingDimension":768}'
             - name: API_HOST
