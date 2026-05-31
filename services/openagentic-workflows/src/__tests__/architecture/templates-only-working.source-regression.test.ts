@@ -224,51 +224,7 @@ const SEED_DIR = resolve(__dirname, '../../../seed/templates');
  *   3. Add the slug here and commit the evidence alongside the JSON.
  */
 const KEPT_SLUGS: ReadonlyArray<string> = [
-  'k8s-pod-health-summary',
-  'loki-error-log-research-report',
-  'k8s-crashloop-triage',
-  'prometheus-active-alerts-digest',
-  'k8s-deployment-rollout-status-report',
-  'prometheus-target-down-rca',
-  'platform-infra-health-digest',
-  'k8s-namespace-resource-survey',
-  'azure-advisor-savings-report',
-  'azure-security-posture-snapshot',
-  // Slug 11 (2026-05-14, output_parser split E2E close-out):
-  // `k8s-pod-health-typed` is the typed-chain variant of slug 1. Same audit,
-  // same final report, but uses filter_data + select_data instead of a
-  // JS-expression transform — opens authoring to non-engineers. The single
-  // remaining transform aggregates fan-out state for the LLM prompt (the
-  // one case where JS-in-sandbox is genuinely the right primitive).
-  // Per-node live-verified on chat-dev. Evidence:
-  //   reports/flows-output-parser-split-e2e/2026-05-14/
-  'k8s-pod-health-typed',
-  // Slug 12 (2026-05-14, P0 primitives + capstone close-out):
-  // `cluster-health-capstone` is the multi-agent + multi-MCP capstone — pulls
-  // k8s/prom/loki state in parallel, runs 3 analyst agents (cloud_operations
-  // + engineering_metrics + flows_expert), emits a synthesized JSON report
-  // (summary + findings + P0/P1/P2 recommendations + a remediation sub-flow
-  // definition), persists the rendered HTML to the Artifacts library, and
-  // routes the digest notification through a `switch` to slack_message /
-  // send_email / teams_message based on `notification_target` on the trigger.
-  // Live-verified on chat-dev: 12/13 nodes complete on each run, real cluster
-  // findings (CrashLoopBackOff + ImagePullBackOff + 14 Unknown pods) folded
-  // into recommendations, artifact appears in /api/artifacts library, Slack
-  // landing confirmed via conversations.history (channel C0AU3KHND0X).
-  // Open auth-mode gap (engine→api 401 on data_source_query) tracked
-  // separately — does not block the template's primary report+notify path.
-  'cluster-health-capstone',
-  // Slug 13 (2026-05-15, AIOps triage watchdog):
-  // `cluster-triage-watchdog` is the scheduled-cron AIOps flow — pulls k8s
-  // health + unhealthy pods + prometheus + loki state in parallel, runs
-  // llm_completion analysts, synthesizes a JSON triage report via
-  // structured_output, grounds the LLM's claims against real cluster
-  // state via grounding_check (closes the "model invented a Redis crash"
-  // failure mode), and fans out via webhook_response (HTML artifact) +
-  // http_request (auto-creates a remediation sub-flow) + slack_message
-  // (with deep links). Per-node live-verified on chat-dev across rounds.
-  'cluster-triage-watchdog',
-  // Slug 14 (2026-05-15, data-layer end-to-end proof):
+  // Slug 1 (2026-05-15, data-layer end-to-end proof):
   // `research-and-publish` is the headline data-layer demo — pulls real web
   // content via openagentic_web.web_search_and_read for a configurable topic, ingests
   // it into the shared_knowledge Milvus collection via knowledge_ingest,
@@ -280,6 +236,21 @@ const KEPT_SLUGS: ReadonlyArray<string> = [
   // collection — closes the "rag_query and knowledge_ingest hit disjoint
   // collections" wiring gap that previously made flow-internal RAG silent.
   'research-and-publish',
+  // Slugs 2-4 (2026-05-31, opinionated ops templates):
+  // Three ops-specific Flow templates, each fanning the trigger out to
+  // parallel built-in MCP calls → object-merge → correlate/analyze transform
+  // → llm_completion(model:"auto", Smart Router) → CoT strip → HTML artifact.
+  // ZERO hardcoded model id / provider name (validated by
+  // ops-templates.source-regression.test.ts):
+  //   - `incident-triage` — hero AIOps flow. prometheus_query + loki_search_errors
+  //     + k8s_list_pods in parallel → evidence-cited root-cause narrative.
+  //   - `cost-anomaly` — aws_cost_by_service + aws_cost_summary +
+  //     prometheus_query_range in parallel → anomaly + driver + recommendation.
+  //   - `failed-deploy-rca` — k8s_rollout_status + k8s_list_events +
+  //     loki_search_errors in parallel → why the deploy failed + suggested fix.
+  'incident-triage',
+  'cost-anomaly',
+  'failed-deploy-rca',
 ] as const;
 
 describe('templates gallery only contains live-verified templates', () => {
