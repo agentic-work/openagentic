@@ -82,12 +82,16 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: ollama-init
+  # Revision-suffixed: each `helm upgrade` creates a NEW Job instead of trying
+  # to patch the immutable pod template of the existing one (which fails the
+  # whole upgrade with "field is immutable"). TTL reaps finished Jobs.
+  name: ollama-init-{{ .Release.Revision }}
   labels:
     {{- include "openagentic.labels" . | nindent 4 }}
 spec:
   backoffLimit: 20
   activeDeadlineSeconds: 3600
+  ttlSecondsAfterFinished: 600
   template:
     metadata:
       labels:
