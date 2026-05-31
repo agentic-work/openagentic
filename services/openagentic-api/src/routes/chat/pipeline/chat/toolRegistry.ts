@@ -55,6 +55,15 @@ import { PATTERN_RECALL_TOOL } from '../../../../services/PatternRecallTool.js';
 // Live evidence: chat-dev 2026-05-24, mcp-tester user, model called
 // memory_search → offeredCount=17, short-circuit fired, model apologized.
 import { MEMORY_SEARCH_TOOL_DEF } from '../../../../services/MemorySearchTool.js';
+// 2026-05-31 — memorize (WRITE side) re-added to T1 for the SAME reason as
+// memory_search on 2026-05-24: the def was never imported here, so a model
+// that emits `memorize` on a plain turn (it never tool_searches first) hit
+// the #850 unknown-tool short-circuit and the write silently failed — the
+// model would apologize that "the memory-write primitive isn't loaded."
+// The dispatch arm (dispatchChatToolCall → executeMemorize →
+// AgentMemoryService.store + Milvus embed) was already wired; only this
+// catalog entry was missing. Verified live on open-dev 2026-05-31.
+import { MEMORIZE_TOOL } from '../../../../services/MemorizeTool.js';
 // 2026-05-12 — visualization + clarification meta-tools brought BACK into
 // T1 (was discovery-only, but tool_search wasn't reliably surfacing them
 // for smaller models like gpt-oss:20b — model would fall back to mermaid).
@@ -126,10 +135,12 @@ export function getAllBaseTools(
     WEB_FETCH_TOOL,
     PATTERN_SAVE_TOOL,
     PATTERN_RECALL_TOOL,
-    // #1085 — per-user RAG memory recall. Sibling of memorize (write side
-    // routes via discovery / memorize tool). Dispatch arm wires both
-    // AgentMemoryService.recall (Postgres substring) AND
-    // MilvusMemoryService.searchUserMemories (per-user semantic vector).
+    // #1085 — per-user RAG memory. BOTH sides ship in T1: the model emits
+    // memorize / memory_search directly on a plain turn (it does NOT
+    // tool_search first), so neither can be discovery-only without the #850
+    // guard killing it. Dispatch wires store (AgentMemoryService.store +
+    // Milvus embed) AND recall (Postgres substring + searchUserMemories).
+    MEMORIZE_TOOL,
     MEMORY_SEARCH_TOOL_DEF,
     // Always-available visualization + clarification meta-tools — the model
     // shouldn't need to discover these. Live capture 2026-05-12 with
