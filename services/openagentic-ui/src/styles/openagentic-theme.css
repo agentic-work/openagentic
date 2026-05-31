@@ -160,3 +160,17 @@ html.light,
   --font-v3-mono: var(--font-mono) !important;
   --cm-mono: var(--font-mono) !important;
 }
+
+/* ---------------------------------------------------------------------------
+   Markdown code fences keep the terminal-dark surface in BOTH light & dark.
+   The surface tokenization flipped the code-block wrapper to a light surface,
+   which washed out the shiki `github-dark` syntax palette (light-grey tokens
+   on light paper) in light mode. A dark code block on light paper is the
+   standard pattern and matches the field-guide terminal motif. We pin only
+   the fenced-code surface — inline `code` chips + tool widgets are untouched.
+   --------------------------------------------------------------------------- */
+.syntax-highlighted-code.rounded-xl,
+.prose pre.shiki,
+pre.shiki.github-dark {
+  background: var(--terminal-bg) !important;   /* #18130C warm near-black */
+}
