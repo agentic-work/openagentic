@@ -16,6 +16,7 @@ import {
   type DiscoveredModel,
   type NormalizerState,
 } from './ILLMProvider.js';
+import type { ModelDiscoveryRecord } from './discovery/ModelDiscoveryRecord.js';
 import { getRedisClient } from '../../utils/redis-client.js';
 import { ollamaAgent } from '../../utils/ollama-agent.js';
 import { NormalizedStreamEvent } from '../NormalizedStreamTypes.js';
@@ -181,6 +182,82 @@ export class OllamaProvider extends BaseLLMProvider {
     }, '[OllamaProvider] Listed locally loaded models');
 
     return models;
+  }
+
+  /**
+   * Live model-details discovery via Ollama's `/api/show` endpoint.
+   *
+   * Ollama is a local, zero-cost provider, so pricing is all-null with
+   * source 'zero-cost-local'. Capabilities + context window are read from
+   * the /api/show response: `capabilities[]` (newer ollama), `model_info`
+   * (`<arch>.context_length`) and `details.family`. Returns null when the
+   * model isn't pulled locally (404) so callers surface a clean "not found"
+   * rather than a hard error.
+   */
+  async discoverModelDetails(modelId: string): Promise<ModelDiscoveryRecord | null> {
+    if (!this.baseUrl) {
+      throw new Error('Ollama baseUrl is not configured');
+    }
+    const response = await fetch(`${this.baseUrl}/api/show`, {
+      method: 'POST',
+      headers: { ...this.getHeaders(), 'content-type': 'application/json' },
+      body: JSON.stringify({ name: modelId }),
+      dispatcher: ollamaAgent,
+      signal: AbortSignal.timeout(10_000),
+    } as any);
+
+    if (response.status === 404) {
+      this.logger.warn({ modelId }, '[OllamaProvider] discoverModelDetails: model not pulled locally');
+      return null;
+    }
+    if (!response.ok) {
+      throw new Error(`Ollama /api/show failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data: any = await response.json();
+    const caps: string[] = Array.isArray(data?.capabilities) ? data.capabilities : [];
+    const info: Record<string, any> = data?.model_info ?? {};
+    const ctxKey = Object.keys(info).find((k) => k.endsWith('.context_length'));
+    const contextWindow = ctxKey ? Number(info[ctxKey]) || null : null;
+    const family: string = data?.details?.family ?? info['general.architecture'] ?? 'ollama';
+    const has = (c: string) => caps.includes(c);
+
+    return {
+      modelId,
+      providerType: 'ollama',
+      displayName: modelId,
+      family,
+      capabilities: {
+        // Older ollama builds omit `capabilities[]`; a chat/completion model
+        // is the safe default when the list is empty.
+        chat: caps.length === 0 || has('completion') || has('chat'),
+        vision: has('vision'),
+        tools: has('tools'),
+        thinking: has('thinking'),
+        embeddings: has('embedding'),
+        imageGeneration: false,
+        streaming: true,
+        nativeToolCalling: has('tools'),
+      },
+      contextWindow,
+      maxOutputTokens: null,
+      thinkingBudget: null,
+      temperature: 0.7,
+      topP: 1,
+      topK: null,
+      pricing: {
+        inputTokenUsd: null,
+        outputTokenUsd: null,
+        cacheReadUsd: null,
+        cacheWriteUsd: null,
+        thinkingTokenUsd: null,
+        embeddingTokenUsd: null,
+        perRequestUsd: null,
+        source: 'zero-cost-local',
+        fetchedAt: new Date().toISOString(),
+        region: null,
+      },
+    };
   }
 
   /**
