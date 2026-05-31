@@ -7,14 +7,11 @@ import { join } from 'node:path'
 // assertion — no rendering needed.
 const ADMIN_ROOT = join(__dirname, '..')
 const FILES = [
-  'Security/WebhookSecurityView.tsx',
   'LLM/OllamaManagementView.tsx',
   'DataLayer/UnifiedDataLayerView.tsx',
   'Content/SharedKBView.tsx',
   'LLM/MultiModelConfigView.tsx',
   'LLM/ModelManagementView/constants.ts',
-  'Synth/SynthUsageStatsView.tsx',
-  'Synth/SynthManagementView.tsx',
   'LLM/LLMProviderManagement/CapabilityMatrix.tsx',
   'Content/PipelineSettingsView.tsx',
 ]

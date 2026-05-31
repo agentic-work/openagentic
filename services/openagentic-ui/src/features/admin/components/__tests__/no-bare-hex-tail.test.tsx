@@ -5,7 +5,6 @@ import { join } from 'node:path'
 const ADMIN_ROOT = join(__dirname, '..')
 const FILES = [
   'LLM/LLMProviderManagement/ProviderCard.tsx',
-  'Monitoring/AuditLogsView.tsx',
   'LLM/LLMProviderManagement/ProviderDetailPanel.tsx',
 ]
 
