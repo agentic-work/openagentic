@@ -115,6 +115,16 @@ spec:
               value: http://proxy:3300
             - name: OPENAGENTIC_API_INTERNAL_URL
               value: http://api:8000
+            {{- if .Values.prometheus.enabled }}
+            # Dashboard metrics: the Prom-first admin endpoints (cluster/health,
+            # api-requests/*, perf/*) + the /api/admin/prom proxy read these.
+            - name: PROMETHEUS_HOST
+              value: prometheus
+            - name: PROMETHEUS_PORT
+              value: "9090"
+            - name: PROM_URL
+              value: http://prometheus:9090
+            {{- end }}
             # tool_search self-call target (model-driven MCP discovery).
             - name: INTERNAL_API_URL
               value: http://api:8000

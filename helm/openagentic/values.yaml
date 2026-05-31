@@ -81,6 +81,7 @@ resources:
   postgres:   { requests: { cpu: "100m", memory: "256Mi" }, limits: { memory: "1Gi" } }
   redis:      { requests: { cpu: "50m",  memory: "64Mi" },  limits: { memory: "256Mi" } }
   searxng:    { requests: { cpu: "50m",  memory: "128Mi" }, limits: { memory: "512Mi" } }
+  prometheus: { requests: { cpu: "100m", memory: "256Mi" }, limits: { memory: "1Gi" } }
 
 # Optional components. exec powers Code Mode; proxy is an egress shim for tool
 # calls. Both are off by default for a minimal install — the core (chat, flows,
@@ -90,6 +91,15 @@ exec:
 
 proxy:
   enabled: false
+
+# Prometheus — scrapes api/mcp-proxy/proxy /metrics and backs the admin dashboard
+# metrics (request rate, latency, LLM TTFT/TPOT, token cost, MCP calls). When
+# enabled the api is auto-pointed at it via PROMETHEUS_HOST/PORT.
+prometheus:
+  enabled: false
+  retention: 7d
+  persistence: false   # set true (+ storageSize) for a durable TSDB PVC
+  storageSize: 8Gi
 
 # Node placement. Empty = schedule anywhere. Set kubernetes.io/arch when
 # your images are single-arch and the cluster is mixed amd64/arm64.
