@@ -1,5 +1,9 @@
 /**
- * OpenAgenticWordmark — animated brand wordmark contract.
+ * AgenticWorkWordmark — enterprise animated wordmark contract.
+ *
+ * (The openagentic OSS mark is the `⌥ openagentic` wordmark — see
+ * OpenAgenticWordmark.test.tsx. This sibling covers the enterprise
+ * AgenticWork variant, which keeps the multi-hue bracketed chord.)
  *
  * The wordmark renders the literal `[openagentic]` string with each
  * character of `openagentic` colored from an 11-hue brand palette. The
@@ -21,7 +25,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
-import { OpenAgenticWordmark } from '../OpenAgenticWordmark';
+import { OpenAgenticWordmark } from '../AgenticWorkWordmark';
 
 const BRAND_PALETTE = [
   '#ff5ea8',
