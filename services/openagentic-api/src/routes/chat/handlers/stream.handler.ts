@@ -866,6 +866,8 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
         'mcp_approval_required',
         'hitl_approval',
         'mcp_approval_resolved',
+        'approval_required', // mutating-gate ask (tool_call_audit_log pending)
+        'approval_resolved', // mutating-gate decision
       ]);
 
       const unsubscribeAgentProgress = getAgentEventStore().subscribe(turnId, (ev) => {

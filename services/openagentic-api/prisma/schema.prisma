@@ -1566,6 +1566,34 @@ model FlowAuditLog {
   @@schema("admin")
 }
 
+// Append-only audit of EVERY tool call (read + mutating) and the human-approval
+// decision for mutating calls. INSERT-only + a single guarded pending→decided
+// UPDATE. App code NEVER deletes or rewrites rows (enforced in app layer; see
+// AuditLog service + the audit-log-append-only source-regression test).
+model ToolCallAuditLog {
+  id             String    @id @default(uuid())
+  tool_name      String
+  server_name    String?
+  args           Json      @default("{}")
+  preview        String?   @db.Text
+  classification String // 'READ' | 'MUTATING'
+  decision       String    @default("pending") // 'auto' | 'pending' | 'approved' | 'denied' | 'timed_out'
+  decided_by     String?
+  decided_at     DateTime?
+  user_id        String?
+  session_id     String?
+  message_id     String?
+  origin         String    @default("chat") // 'chat' | 'subagent'
+  created_at     DateTime  @default(now())
+
+  @@index([decision])
+  @@index([user_id])
+  @@index([tool_name])
+  @@index([created_at])
+  @@map("tool_call_audit_log")
+  @@schema("admin")
+}
+
 // Cache of enriched (LLM-summarized) MCP tool descriptions, keyed by slug.
 model EnrichedTool {
   id               String   @id @default(uuid())

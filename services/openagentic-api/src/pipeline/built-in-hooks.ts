@@ -14,6 +14,10 @@ import { type HookRunner, type HookContext, type ModifyingHookFn, type VoidHookF
 import { getDLPScanner, type DLPScanContext } from '../services/DLPScannerService.js';
 import { getPermissionService, type ToolCallInfo } from '../services/PermissionService.js';
 import { EventSequencer } from '../infra/event-sequencer.js';
+import { classifyTool } from '../services/approval/classifyTool.js';
+import { resolveApprovalGatePolicy } from '../services/approval/approvalGatePolicy.js';
+import { insertAuditRow, decideAuditRow, makePreview } from '../services/approval/auditLog.js';
+import { getApprovalRegistry } from '../services/approval/ApprovalRegistry.js';
 
 // ---------------------------------------------------------------------------
 // Tool call types used by hooks
@@ -183,6 +187,100 @@ export function registerBuiltInHooks(runner: HookRunner, logger: Logger): void {
         };
       }
 
+      return data;
+    }) as ModifyingHookFn<ToolCallHookData>,
+  });
+
+  // =========================================================================
+  // 3b. Approval Gate + Immutable Audit (before_tool_call — modifying)
+  //
+  // Audits EVERY tool call to an append-only tool_call_audit_log row. READ
+  // calls → decision='auto', execute normally. MUTATING calls (gate ON) →
+  // decision='pending', emit 'approval_required', await the in-process
+  // ApprovalRegistry (timeout→deny), then UPDATE the row + block-on-deny.
+  // =========================================================================
+  runner.register({
+    id: 'builtin:approval-gate:before_tool_call',
+    point: 'before_tool_call',
+    priority: 11, // after permissions (10), before everything else
+    description: 'Immutable audit + human-approval gate on mutating tool calls',
+    fn: (async (data: ToolCallHookData, ctx: HookContext) => {
+      const emit = data.emit ?? (() => {});
+      const args = (data.arguments ?? {}) as Record<string, unknown>;
+      const classification = classifyTool(data.toolName, args);
+      const policy = await resolveApprovalGatePolicy();
+
+      // READ, or gate OFF → audit decision='auto', execute normally.
+      if (classification === 'READ' || !policy.gateMutating) {
+        try {
+          await insertAuditRow({
+            toolName: data.toolName,
+            serverName: data.serverName,
+            args,
+            classification,
+            decision: 'auto',
+            userId: ctx.userId,
+            sessionId: ctx.sessionId,
+            messageId: ctx.messageId,
+            origin: 'chat',
+          });
+        } catch (e) {
+          ctx.logger.warn({ err: e, tool: data.toolName }, '[APPROVAL] audit INSERT failed (auto)');
+        }
+        return data;
+      }
+
+      // MUTATING + gate ON → persist pending, emit, await.
+      let auditId: string;
+      try {
+        auditId = await insertAuditRow({
+          toolName: data.toolName,
+          serverName: data.serverName,
+          args,
+          classification,
+          decision: 'pending',
+          userId: ctx.userId,
+          sessionId: ctx.sessionId,
+          messageId: ctx.messageId,
+          origin: 'chat',
+        });
+      } catch (e) {
+        // Fail SAFE-but-audited: if we cannot even record the pending row we
+        // must NOT silently execute a mutating call — block it.
+        ctx.logger.error(
+          { err: e, tool: data.toolName },
+          '[APPROVAL] pending INSERT failed — blocking mutating call',
+        );
+        return { ...data, blocked: true, blockReason: 'Approval audit unavailable; mutating call blocked' };
+      }
+
+      const preview = makePreview(args);
+      // Emit the spec frame the chat stream surfaces as a top-level event.
+      emit('approval_required', {
+        auditId,
+        requestId: auditId,
+        toolName: data.toolName,
+        serverName: data.serverName,
+        args,
+        preview,
+        classification,
+        timeoutMs: policy.timeoutMs,
+      });
+
+      const outcome = await getApprovalRegistry().waitFor(auditId, policy.timeoutMs);
+      // On timeout the route never fired → record the terminal decision here.
+      if (outcome === 'timed_out') {
+        await decideAuditRow(auditId, 'timed_out', null).catch(() => {});
+      }
+      emit('approval_resolved', { auditId, requestId: auditId, outcome });
+
+      if (outcome !== 'approved') {
+        return {
+          ...data,
+          blocked: true,
+          blockReason: `Mutating tool '${data.toolName}' ${outcome === 'timed_out' ? 'timed out' : 'denied'} by approval gate`,
+        };
+      }
       return data;
     }) as ModifyingHookFn<ToolCallHookData>,
   });

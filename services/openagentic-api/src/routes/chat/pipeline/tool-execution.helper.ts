@@ -28,6 +28,10 @@ import { ToolResultValidationService } from '../../../services/ToolResultValidat
 // Security: DLP scanning, HITL gate, credential scoping
 import { getDLPScanner, type DLPScanContext } from '../../../services/DLPScannerService.js';
 import { getToolApprovalGate } from '../../../services/ToolApprovalGate.js';
+import { classifyTool } from '../../../services/approval/classifyTool.js';
+import { resolveApprovalGatePolicy } from '../../../services/approval/approvalGatePolicy.js';
+import { insertAuditRow, decideAuditRow, makePreview } from '../../../services/approval/auditLog.js';
+import { getApprovalRegistry } from '../../../services/approval/ApprovalRegistry.js';
 import { getCredentialScopeService } from '../../../services/CredentialScopeService.js';
 import { executeParallelSettled, type ParallelTask } from '../../../utils/parallel-executor.js';
 import { AzureOBOService } from '../../../services/AzureOBOService.js';
@@ -2146,6 +2150,67 @@ async function executeSingleMCPProxyCall(
         }
       } catch (hitlError) {
         logger.warn({ error: hitlError }, '[TOOL-EXEC] HITL gate error — allowing (fail-open)');
+      }
+
+      // ── Immutable audit + mutating approval gate (sub-agent path) ──────────
+      // Audits EVERY tool call; on a MUTATING call with the gate ON it persists
+      // a pending row, emits 'approval_required', and awaits the in-process
+      // ApprovalRegistry (timeout→deny). SINGLE-REPLICA caveat: the awaited
+      // Deferred resolves only if the approve POST lands on this same process.
+      try {
+        const classification = classifyTool(resolvedToolName, toolArgs as Record<string, unknown>);
+        const policy = await resolveApprovalGatePolicy();
+        if (classification === 'READ' || !policy.gateMutating) {
+          await insertAuditRow({
+            toolName: resolvedToolName,
+            serverName: targetServer,
+            args: toolArgs as Record<string, unknown>,
+            classification,
+            decision: 'auto',
+            userId: effectiveUserId,
+            sessionId,
+            messageId,
+            origin: 'subagent',
+          }).catch(() => {});
+        } else {
+          const auditId = await insertAuditRow({
+            toolName: resolvedToolName,
+            serverName: targetServer,
+            args: toolArgs as Record<string, unknown>,
+            classification,
+            decision: 'pending',
+            userId: effectiveUserId,
+            sessionId,
+            messageId,
+            origin: 'subagent',
+          });
+          (emitEvent || (() => {}))('approval_required', {
+            auditId,
+            requestId: auditId,
+            toolName: resolvedToolName,
+            serverName: targetServer,
+            args: toolArgs,
+            preview: makePreview(toolArgs as Record<string, unknown>),
+            classification,
+            timeoutMs: policy.timeoutMs,
+          });
+          const outcome = await getApprovalRegistry().waitFor(auditId, policy.timeoutMs);
+          if (outcome === 'timed_out') await decideAuditRow(auditId, 'timed_out', null).catch(() => {});
+          (emitEvent || (() => {}))('approval_resolved', { auditId, requestId: auditId, outcome });
+          if (outcome !== 'approved') {
+            return {
+              toolCallId: toolCall.id,
+              toolName: resolvedToolName,
+              result: null,
+              error: `Mutating tool call ${outcome === 'timed_out' ? 'timed out' : 'denied'} by approval gate`,
+              serverName: targetServer || 'unknown',
+              executedOn: os.hostname(),
+              executionTimeMs: 0,
+            };
+          }
+        }
+      } catch (auditErr) {
+        logger.warn({ err: auditErr }, '[TOOL-EXEC] approval-gate audit error');
       }
 
       // 2. DLP Scan: Check tool arguments for sensitive data

@@ -38,6 +38,16 @@ const adminAuditRoutesPluginImpl: FastifyPluginAsync<AdminAuditRoutesPluginOptio
     loggers.routes.error({ err: error }, 'Failed to register admin KPI routes');
   }
 
+  // ── Tool-call audit log (append-only) ─────────────────────────────────────
+  // GET /api/admin/audit-log — paged, filterable read of tool_call_audit_log.
+  try {
+    const { default: adminAuditLogRoutes } = await import('../routes/admin-audit-log.js');
+    await fastify.register(adminAuditLogRoutes, { prefix: '/api/admin' });
+    loggers.routes.info('Admin audit-log route registered at /api/admin/audit-log');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register admin audit-log route');
+  }
+
   loggers.routes.info('admin-audit routes sub-plugin registered successfully');
 };
 

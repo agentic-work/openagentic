@@ -70,6 +70,14 @@ export const featureFlags = {
   mcpProxyEnabled: bool('MCP_PROXY_ENABLED', true),
 
   /**
+   * Human-approval gate on MUTATING tool calls (APPROVAL_GATE_MUTATING=true).
+   * Default ON. The DB row system_configuration.key='approval_gate_policy'
+   * overrides this at runtime. Audit of EVERY tool call is ALWAYS on and is
+   * never behind a flag.
+   */
+  approvalGateMutating: bool('APPROVAL_GATE_MUTATING', true),
+
+  /**
    * Kubernetes namespace for exec-pod address construction + cluster
    * queries. Helm sets this from `{{ .Release.Namespace }}` (api) or
    * downward API `fieldRef: metadata.namespace` (code-manager) in every

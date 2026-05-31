@@ -1,0 +1,80 @@
+/**
+ * Source-regression: tool_call_audit_log is append-only + single guarded
+ * transition.
+ *
+ * The immutability invariant for the approval-gate audit trail is APP-ENFORCED
+ * (prisma db push runs no triggers). This cage pins that invariant in source:
+ *   1. NO toolCallAuditLog.delete / deleteMany anywhere under src/.
+ *   2. The ONLY toolCallAuditLog.update* callsite is the guarded updateMany in
+ *      services/approval/auditLog.ts, and it scopes WHERE decision: 'pending'.
+ *   3. auditLog.ts exports insertAuditRow + decideAuditRow and NO delete* path.
+ *
+ * Mirrors docker-entrypoint-runs-migrations.source-regression.test.ts (grep
+ * source for forbidden patterns).
+ */
+import { describe, it, expect } from 'vitest';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve, relative } from 'node:path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const SRC_ROOT = resolve(__dirname, '../..'); // .../src
+const AUDIT_LOG_FILE = resolve(SRC_ROOT, 'services/approval/auditLog.ts');
+
+function walk(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    if (entry === 'node_modules' || entry === 'dist') continue;
+    const full = resolve(dir, entry);
+    const st = statSync(full);
+    if (st.isDirectory()) out.push(...walk(full));
+    else if (/\.(ts|tsx)$/.test(entry) && !entry.endsWith('.d.ts')) out.push(full);
+  }
+  return out;
+}
+
+const ALL_TS = walk(SRC_ROOT);
+
+describe('arch: tool_call_audit_log is append-only', () => {
+  it('has NO toolCallAuditLog.delete / deleteMany anywhere under src/', () => {
+    const offenders: string[] = [];
+    for (const file of ALL_TS) {
+      // Skip this test file itself (it names the forbidden pattern).
+      if (file === __filename) continue;
+      const text = readFileSync(file, 'utf8');
+      if (/toolCallAuditLog\.delete(Many)?\b/.test(text)) {
+        offenders.push(relative(SRC_ROOT, file));
+      }
+    }
+    expect(offenders, `delete on tool_call_audit_log found in: ${offenders.join(', ')}`).toEqual([]);
+  });
+
+  it('the ONLY toolCallAuditLog.update* callsite is the guarded updateMany in auditLog.ts', () => {
+    const offenders: string[] = [];
+    for (const file of ALL_TS) {
+      if (file === __filename) continue;
+      const text = readFileSync(file, 'utf8');
+      if (/toolCallAuditLog\.update/.test(text) && file !== AUDIT_LOG_FILE) {
+        offenders.push(relative(SRC_ROOT, file));
+      }
+    }
+    expect(offenders, `unexpected toolCallAuditLog.update outside auditLog.ts: ${offenders.join(', ')}`).toEqual([]);
+  });
+
+  it('auditLog.ts uses updateMany guarded by WHERE decision pending', () => {
+    const text = readFileSync(AUDIT_LOG_FILE, 'utf8');
+    expect(text).toMatch(/toolCallAuditLog\.updateMany/);
+    // The guard must be present: decision: 'pending' in the where clause.
+    expect(text).toMatch(/decision:\s*['"]pending['"]/);
+    // No bare .update( (single-row, unguarded) on the model.
+    expect(text).not.toMatch(/toolCallAuditLog\.update\b(?!Many)/);
+  });
+
+  it('auditLog.ts exports insertAuditRow + decideAuditRow and NO delete* export', () => {
+    const text = readFileSync(AUDIT_LOG_FILE, 'utf8');
+    expect(text).toMatch(/export\s+(async\s+)?function\s+insertAuditRow/);
+    expect(text).toMatch(/export\s+(async\s+)?function\s+decideAuditRow/);
+    expect(text).not.toMatch(/export\s+(async\s+)?function\s+delete/i);
+  });
+});

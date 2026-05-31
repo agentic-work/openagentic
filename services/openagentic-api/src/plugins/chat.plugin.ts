@@ -34,6 +34,7 @@ import { getRedisClient } from '../utils/redis-client.js';
 import { featureFlags } from '../config/featureFlags.js';
 import { chatPlugin } from '../routes/chat/index.js';
 import { approvalsRoutes, permissionsApprovalsRoutes } from '../routes/chat/approvals.js';
+import { approvalGateRoutes } from '../routes/chat/approval-gate.routes.js';
 import { authMiddleware } from '../middleware/unifiedAuth.js';
 import { sandboxResultRoute } from '../routes/chat/sandbox-result.route.js';
 import type { ChatStorageService } from '../services/ChatStorageService.js';
@@ -143,6 +144,19 @@ const chatRoutesPlugin: FastifyPluginAsync<ChatRoutesPluginOptions> = async (
     loggers.routes.info('Permissions-approvals routes registered at /api/permissions/approvals/:id/{approve,deny} (authMiddleware)');
   } catch (error) {
     loggers.routes.error({ err: error }, 'Failed to register permissions-approvals routes');
+  }
+
+  // ── 2c. Mutating-tool approval gate (audit-log) approve/deny ───────────
+  // POST /api/approvals/:auditId/{approve,deny}. Resolves the in-process
+  // ApprovalRegistry Deferred + does the guarded pending→decided UPDATE.
+  try {
+    await fastify.register(async (instance) => {
+      instance.addHook('onRequest', authMiddleware);
+      await instance.register(approvalGateRoutes);
+    }, { prefix: '/api' });
+    loggers.routes.info('Approval-gate routes registered at /api/approvals/:auditId/{approve,deny} (authMiddleware)');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register approval-gate routes');
   }
 
   // ── 3. Browser-sandbox result receiver ─────────────────────────────────
