@@ -46,6 +46,11 @@ export function mintCodeSessionToken(input: MintCodeSessionTokenInput): string {
   const secret = resolveSecret();
   return jwt.sign(
     {
+      // tokenValidator classifies + extracts local tokens via `userId` (NOT `sub`)
+      // — see auth/tokenValidator.ts:113 (`hasUserId`) and :209. Without this the
+      // code-session token falls through to the Azure-AD branch → 401, which
+      // breaks BOTH terminal and chat codemode on any local-auth deployment.
+      userId,
       sub: userId,
       codeSessionId: sessionId,
       tokenType: 'local',
