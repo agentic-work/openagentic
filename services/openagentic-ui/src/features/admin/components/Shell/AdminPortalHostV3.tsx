@@ -14,22 +14,15 @@ import { DefaultModelsPage } from '../../pages-v3/DefaultModelsPage'
 import { ModelRegistryPage } from '../../pages-v3/ModelRegistryPage'
 import { WorkflowsPage } from '../../pages-v3/WorkflowsPage'
 import { AuditLogsPage } from '../../pages-v3/AuditLogsPage'
-import { SynthesisHubPage, type SynthesisTab } from '../../pages-v3/SynthesisHubPage'
 import { PromptsHubPage } from '../../pages-v3/PromptsHubPage'
-import { MonitoringHubPage, type MonitoringTab } from '../../pages-v3/MonitoringHubPage'
 import { AgentsHubPage } from '../../pages-v3/AgentsHubPage'
 import type { AgentsTabId } from '../../pages-v3/agents/types'
 import { ContentHubPage, type ContentHubTab } from '../../pages-v3/ContentHubPage'
-import { ChargebackPage } from '../../pages-v3/ChargebackPage'
 import { FlowsExtrasHubPage } from '../../pages-v3/FlowsExtrasHubPage'
 import type { FlowsExtrasTab } from '../../pages-v3/flows-extras/types'
-import { IntegrationsHubPage } from '../../pages-v3/IntegrationsHubPage'
 import { SystemSettingsHubPage } from '../../pages-v3/SystemSettingsHubPage'
 import { LLMExtrasHubPage } from '../../pages-v3/LLMExtrasHubPage'
 import { EnrichedToolsPage } from '../../pages-v3/EnrichedToolsPage'
-import { SloPage } from '../../pages-v3/SloPage'
-import { FeedbackAdvisoriesPage } from '../../pages-v3/FeedbackAdvisoriesPage'
-import type { IntegrationsHubTab } from '../../pages-v3/integrations/types'
 import { useAuth } from '../../../../app/providers/AuthContext'
 import { useUIVisibilityStore } from '@/stores/useUIVisibilityStore'
 import { AdminQueryProvider } from '../../hooks/useAdminQuery'
@@ -286,24 +279,6 @@ function fmtClock(): string {
   )}:${z(d.getUTCMinutes())}:${z(d.getUTCSeconds())} UTC`
 }
 
-/**
- * Monitoring hub leaf-id → sub-tab. EIGHT v2 leaves consolidate into a
- * single MonitoringHubPage; the leaf id picks the initial sub-tab.
- * `audit` (also under Monitoring) is intentionally NOT in this set —
- * it has its own native v3 page (AuditLogsPage) handled above so the
- * scope/resource chips behave as designed.
- */
-const MONITORING_LEAF_TO_TAB: Record<string, MonitoringTab> = {
-  'user-activity':  'activity',
-  'analytics':      'analytics',
-  'feedback':       'feedback',
-  'errors':         'errors',
-  'context-window': 'context',
-  'embeddings':     'embeddings',
-  'cluster-health': 'cluster',
-  'test-harness':   'tests',
-}
-
 function renderPage(leaf: AdminLeaf) {
   if (leaf.id === 'dashboard') {
     return (
@@ -346,27 +321,6 @@ function renderPage(leaf: AdminLeaf) {
     )
   }
 
-  // V3 Phase 12 — Service Level Objectives. Read-only table now;
-  // full edit form is a follow-up (operators tune via API in the
-  // meantime). Sidebar group: "monitoring".
-  if (leaf.id === 'slo') {
-    return (
-      <LeafErrorBoundary leafName={leaf.name}>
-        <SloPage />
-      </LeafErrorBoundary>
-    )
-  }
-
-  // V3 Phase 13 — Feedback advisory loop. Read-only this phase; Apply
-  // lands in a Sev-2 follow-up. Sidebar group: "monitoring".
-  if (leaf.id === 'feedback-advisories') {
-    return (
-      <LeafErrorBoundary leafName={leaf.name}>
-        <FeedbackAdvisoriesPage />
-      </LeafErrorBoundary>
-    )
-  }
-
   // `permissions` is the GLOBAL permission surface — hosts the Read-Only
   // Mode kill switch + the platform-wide tool permission rules editor
   // (allow/deny/ask). Per-user role / lockout management lives at the
@@ -396,10 +350,6 @@ function renderPage(leaf: AdminLeaf) {
     'user-lockouts':    'lockouts',
     'tokens':           'tokens',
     'system-settings':  'settings',
-    'rate-limits':      'rate-limits',
-    'network-security': 'network',
-    'webhook-security': 'webhooks',
-    'dlp-config':       'dlp',
   }
   if (leaf.id in SYSTEM_LEAF_TO_TAB) {
     return (
@@ -523,20 +473,6 @@ function renderPage(leaf: AdminLeaf) {
     )
   }
   
-  // Tool Synthesis — native v3, consolidates THREE v2 leaves
-  // (synth-management, synth-approvals, synth-stats) into a single
-  // hub with sub-tabs. Leaf id picks the initial sub-tab; the legacy
-  // "synth-management" id maps to the cleaner "config" sub-tab.
-  // Read-only; mutations route back through v2 (?v3=0) for now.
-  if (leaf.id.startsWith('synth-')) {
-    const initialTab = leaf.id.replace('synth-', '') as SynthesisTab
-    return (
-      <LeafErrorBoundary leafName={leaf.name}>
-        <SynthesisHubPage initialTab={initialTab} />
-      </LeafErrorBoundary>
-    )
-  }
-
   // Prompts — native v3, consolidates FOUR v2 leaves (prompt-modules,
   // pipeline-settings, prompt-effectiveness, prompt-metrics) into a
   // single Prompt Engineering hub. Leaf id picks the initial sub-tab.
@@ -553,20 +489,6 @@ function renderPage(leaf: AdminLeaf) {
     return (
       <LeafErrorBoundary leafName={leaf.name}>
         <PromptsHubPage initialTab={leaf.id} />
-      </LeafErrorBoundary>
-    )
-  }
-
-  // Monitoring — native v3, consolidates EIGHT v2 leaves (user-activity,
-  // analytics, feedback, errors, context-window, embeddings,
-  // cluster-health, test-harness) into a single Monitoring hub with
-  // sub-tabs. Leaf id picks the initial sub-tab. Read-only; the v2
-  // mutation surfaces (test-harness "Light It Up", debug actions in the
-  // legacy Monitoring view) stay in v2 — operators hop with `?v3=0`.
-  if (leaf.id in MONITORING_LEAF_TO_TAB) {
-    return (
-      <LeafErrorBoundary leafName={leaf.name}>
-        <MonitoringHubPage initialTab={MONITORING_LEAF_TO_TAB[leaf.id]} />
       </LeafErrorBoundary>
     )
   }
@@ -596,20 +518,6 @@ function renderPage(leaf: AdminLeaf) {
     )
   }
 
-  // Integrations — native v3, consolidates THREE v2-delegated leaves
-  // (`slack`, `ms-teams`, `integration-logs`) into a single
-  // IntegrationsHubPage with sub-tabs. Leaf id picks the initial sub-tab.
-  // Read-only; mutations route back through v2 (?v3=0) for now.
-  if (leaf.id === 'slack' || leaf.id === 'ms-teams' || leaf.id === 'integration-logs') {
-    const initialTab: IntegrationsHubTab =
-      leaf.id === 'ms-teams' ? 'ms-teams' : leaf.id === 'integration-logs' ? 'logs' : 'slack'
-    return (
-      <LeafErrorBoundary leafName={leaf.name}>
-        <IntegrationsHubPage initialTab={initialTab} />
-      </LeafErrorBoundary>
-    )
-  }
-
   // Content & Data — native v3, consolidates FOUR v2 leaves (templates,
   // shared-kb, data-layer, user-memory) into a single ContentHubPage with
   // sub-tabs. Leaf id picks the initial sub-tab. Read-only; mutations
@@ -624,18 +532,6 @@ function renderPage(leaf: AdminLeaf) {
     return (
       <LeafErrorBoundary leafName={leaf.name}>
         <ContentHubPage initialTab={initialTab} />
-      </LeafErrorBoundary>
-    )
-  }
-
-  // Cost Management — native v3, single leaf `chargeback`. Replaces
-  // the v2-delegated ChargebackView (which mapped to `chargeback-dashboard`
-  // in PageRouter). Read-only; budget/report mutations route back through
-  // v2 (?v3=0) for now.
-  if (leaf.id === 'chargeback') {
-    return (
-      <LeafErrorBoundary leafName={leaf.name}>
-        <ChargebackPage />
       </LeafErrorBoundary>
     )
   }

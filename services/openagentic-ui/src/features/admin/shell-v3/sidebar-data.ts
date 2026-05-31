@@ -25,10 +25,6 @@ export const ADMIN_NAV: AdminGroup[] = [
       { id: 'user-lockouts',     key: 'sl', name: 'User Lockouts' },
       { id: 'tokens',            key: 'st', name: 'API Tokens' },
       { id: 'system-settings',   key: 'ss', name: 'System Settings' },
-      { id: 'rate-limits',       key: 'sr', name: 'Rate Limits' },
-      { id: 'network-security',  key: 'sn', name: 'Network Security' },
-      { id: 'webhook-security',  key: 'sw', name: 'Webhook Security' },
-      { id: 'dlp-config',        key: 'sd', name: 'DLP Configuration' },
     ],
   },
   {
@@ -48,9 +44,6 @@ export const ADMIN_NAV: AdminGroup[] = [
     leaves: [
       { id: 'mcp-fleet',         key: 'tf', name: 'MCP Fleet' },
       { id: 'enriched-tools',    key: 'te', name: 'Enriched Tools' },
-      { id: 'synth-management',  key: 'tc', name: 'Synthesis Config' },
-      { id: 'synth-approvals',   key: 'ta', name: 'Synthesis Approvals' },
-      { id: 'synth-stats',       key: 'ty', name: 'Synthesis Stats' },
     ],
   },
   {
@@ -87,14 +80,6 @@ export const ADMIN_NAV: AdminGroup[] = [
     ],
   },
   {
-    title: 'integrations',
-    leaves: [
-      { id: 'slack',             key: 'is', name: 'Slack' },
-      { id: 'ms-teams',          key: 'it', name: 'Microsoft Teams' },
-      { id: 'integration-logs',  key: 'il', name: 'Integration Logs' },
-    ],
-  },
-  {
     title: 'prompts',
     leaves: [
       { id: 'prompt-modules',        key: 'pm', name: 'Modules' },
@@ -110,30 +95,6 @@ export const ADMIN_NAV: AdminGroup[] = [
       { id: 'shared-kb',     key: 'nk', name: 'Shared Knowledge Base' },
       { id: 'data-layer',    key: 'nd', name: 'Unified Data Layer' },
       { id: 'user-memory',   key: 'nm', name: 'User Memory' },
-    ],
-  },
-  {
-    title: 'chargeback',
-    leaves: [
-      { id: 'chargeback', key: 'bc', name: 'Cost Management' },
-    ],
-  },
-  {
-    title: 'monitoring',
-    leaves: [
-      { id: 'user-activity',   key: 'ma', name: 'User Activity' },
-      { id: 'analytics',       key: 'my', name: 'Usage Analytics' },
-      { id: 'feedback',        key: 'mf', name: 'Feedback' },
-      { id: 'audit',           key: 'md', name: 'Audit Logs' },
-      { id: 'errors',          key: 'me', name: 'Monitoring & Errors' },
-      { id: 'context-window',  key: 'mw', name: 'Context Window' },
-      { id: 'embeddings',      key: 'mb', name: 'Embeddings' },
-      { id: 'cluster-health',  key: 'mh', name: 'Cluster Health' },
-      { id: 'test-harness',    key: 'mt', name: 'Test Harness' },
-      // Phase 12 — V3 SLO panel (per-metric thresholds + live status)
-      { id: 'slo',             key: 'ms', name: 'SLOs' },
-      // Phase 13 — V3 Feedback advisory loop (aggregated thumbs feedback)
-      { id: 'feedback-advisories', key: 'mv', name: 'Feedback Advisories' },
     ],
   },
 ]

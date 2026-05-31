@@ -13,10 +13,6 @@ import { AuthPane } from './system/AuthPane'
 import { LockoutsPane } from './system/LockoutsPane'
 import { TokensPane } from './system/TokensPane'
 import { SettingsPane } from './system/SettingsPane'
-import { RateLimitsPane } from './system/RateLimitsPane'
-import { NetworkPane } from './system/NetworkPane'
-import { WebhooksPane } from './system/WebhooksPane'
-import { DlpPane } from './system/DlpPane'
 
 // ============================================================
 // Tab vocabulary
@@ -26,20 +22,12 @@ export type SystemHubTab =
   | 'lockouts'
   | 'tokens'
   | 'settings'
-  | 'rate-limits'
-  | 'network'
-  | 'webhooks'
-  | 'dlp'
 
 const TAB_ORDER: SystemHubTab[] = [
   'auth',
   'lockouts',
   'tokens',
   'settings',
-  'rate-limits',
-  'network',
-  'webhooks',
-  'dlp',
 ]
 
 const TABS = [
@@ -47,10 +35,6 @@ const TABS = [
   { id: 'lockouts',    label: 'Lockouts' },
   { id: 'tokens',      label: 'API Tokens' },
   { id: 'settings',    label: 'System Settings' },
-  { id: 'rate-limits', label: 'Rate Limits' },
-  { id: 'network',     label: 'Network Security' },
-  { id: 'webhooks',    label: 'Webhook Security' },
-  { id: 'dlp',         label: 'DLP Configuration' },
 ]
 
 // ============================================================
@@ -64,19 +48,6 @@ interface LockedUserShape {
 interface TokenRowShape {
   isActive?: boolean
   isExpired?: boolean
-}
-
-interface NetworkStatusShape {
-  available?: boolean
-  services?: Array<{ status?: string }>
-}
-
-interface WebhookStatsShape {
-  summary?: { totalRequests?: number; accepted?: number; rejected?: number }
-}
-
-interface DLPAuditEventShape {
-  action?: string
 }
 
 // ============================================================
@@ -129,21 +100,6 @@ export const SystemSettingsHubPage: React.FC<SystemSettingsHubPageProps> = ({
     '/api/admin/tokens',
     { staleTime: 60_000 },
   )
-  const webhookStatsQ = useAdminQuery<WebhookStatsShape>(
-    ['webhook-security', 'stats'],
-    '/api/admin/webhook-security/stats?hours=24',
-    { staleTime: 30_000, refetchInterval: 60_000 },
-  )
-  const dlpAuditQ = useAdminQuery<{ events?: DLPAuditEventShape[] }>(
-    ['dlp', 'audit-log'],
-    '/api/admin/dlp/audit-log?hours=24&limit=50',
-    { staleTime: 30_000, refetchInterval: 60_000 },
-  )
-  const networkStatusQ = useAdminQuery<NetworkStatusShape>(
-    ['network', 'status'],
-    '/api/admin/network/status',
-    { staleTime: 30_000 },
-  )
 
   // ============================================================
   // Derived KPI values
@@ -154,38 +110,20 @@ export const SystemSettingsHubPage: React.FC<SystemSettingsHubPageProps> = ({
   const allTokens = tokensQ.data?.tokens ?? []
   const tokensActive = allTokens.filter((t) => t.isActive && !t.isExpired).length
 
-  const summary = webhookStatsQ.data?.summary ?? {}
-  const totalRequests = summary.totalRequests ?? 0
-  const acceptedRequests = summary.accepted ?? 0
-  const deliveryRate = totalRequests > 0 ? (acceptedRequests / totalRequests) * 100 : null
-
-  const dlpEvents = dlpAuditQ.data?.events ?? []
-  const dlpRedactions24h = dlpEvents.filter((e) => e.action === 'redact').length
-  const dlpBlocks24h = dlpEvents.filter((e) => e.action === 'block').length
-
   // Health = OK if every page-level query succeeded with non-error.
-  // Network "available=false" downgrades to warn; an error from any
-  // query downgrades to err.
   const errorCount =
     (lockedQ.isError ? 1 : 0) +
-    (tokensQ.isError ? 1 : 0) +
-    (webhookStatsQ.isError ? 1 : 0) +
-    (dlpAuditQ.isError ? 1 : 0) +
-    (networkStatusQ.isError ? 1 : 0)
-  const networkAvailable = networkStatusQ.data?.available !== false
+    (tokensQ.isError ? 1 : 0)
   const isLoadingHealth =
     lockedQ.isLoading ||
-    tokensQ.isLoading ||
-    webhookStatsQ.isLoading ||
-    dlpAuditQ.isLoading ||
-    networkStatusQ.isLoading
+    tokensQ.isLoading
 
   const healthStatus: Status =
     isLoadingHealth
       ? 'idle'
       : errorCount > 0
         ? 'err'
-        : !networkAvailable || lockedActive > 0
+        : lockedActive > 0
           ? 'warn'
           : 'ok'
 
@@ -194,19 +132,14 @@ export const SystemSettingsHubPage: React.FC<SystemSettingsHubPageProps> = ({
       ? '…'
       : errorCount > 0
         ? `${errorCount} probe error${errorCount === 1 ? '' : 's'}`
-        : !networkAvailable
-          ? 'network degraded'
-          : lockedActive > 0
-            ? `${lockedActive} locked`
-            : 'healthy'
+        : lockedActive > 0
+          ? `${lockedActive} locked`
+          : 'healthy'
 
   const onRefresh = React.useCallback(() => {
     lockedQ.refetch?.()
     tokensQ.refetch?.()
-    webhookStatsQ.refetch?.()
-    dlpAuditQ.refetch?.()
-    networkStatusQ.refetch?.()
-  }, [lockedQ, tokensQ, webhookStatsQ, dlpAuditQ, networkStatusQ])
+  }, [lockedQ, tokensQ])
 
   // ============================================================
   // Meta line — env / region / admin-tools tag
@@ -244,7 +177,7 @@ export const SystemSettingsHubPage: React.FC<SystemSettingsHubPageProps> = ({
         onChange={(id) => setTab(id as SystemHubTab)}
       />
 
-      <KpiGrid cols={5}>
+      <KpiGrid cols={3}>
         <Kpi
           label="lockouts"
           value={lockedQ.isLoading ? '…' : String(lockedActive)}
@@ -257,36 +190,6 @@ export const SystemSettingsHubPage: React.FC<SystemSettingsHubPageProps> = ({
           sub={`active · ${allTokens.length} total`}
         />
         <Kpi
-          label="webhook delivery"
-          value={
-            webhookStatsQ.isLoading
-              ? '…'
-              : deliveryRate === null
-                ? '—'
-                : `${deliveryRate.toFixed(1)}%`
-          }
-          sub={
-            totalRequests > 0
-              ? `${acceptedRequests.toLocaleString()} / ${totalRequests.toLocaleString()} (24h)`
-              : 'no traffic (24h)'
-          }
-          tone={
-            deliveryRate === null
-              ? 'default'
-              : deliveryRate >= 95
-                ? 'ok'
-                : deliveryRate >= 80
-                  ? 'warn'
-                  : 'err'
-          }
-        />
-        <Kpi
-          label="dlp redactions"
-          value={dlpAuditQ.isLoading ? '…' : String(dlpRedactions24h)}
-          sub={`${dlpBlocks24h} blocks · 24h`}
-          tone={dlpBlocks24h > 0 ? 'err' : dlpRedactions24h > 0 ? 'warn' : 'default'}
-        />
-        <Kpi
           label="health"
           value={
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -297,9 +200,7 @@ export const SystemSettingsHubPage: React.FC<SystemSettingsHubPageProps> = ({
           sub={
             errorCount > 0
               ? 'one or more probes failed'
-              : !networkAvailable
-                ? 'network controller unreachable'
-                : 'all probes ok'
+              : 'all probes ok'
           }
           tone={healthStatus === 'err' ? 'err' : healthStatus === 'warn' ? 'warn' : 'default'}
         />
@@ -309,10 +210,6 @@ export const SystemSettingsHubPage: React.FC<SystemSettingsHubPageProps> = ({
       {tab === 'lockouts'    && <LockoutsPane />}
       {tab === 'tokens'      && <TokensPane />}
       {tab === 'settings'    && <SettingsPane />}
-      {tab === 'rate-limits' && <RateLimitsPane />}
-      {tab === 'network'     && <NetworkPane />}
-      {tab === 'webhooks'    && <WebhooksPane />}
-      {tab === 'dlp'         && <DlpPane />}
     </>
   )
 }

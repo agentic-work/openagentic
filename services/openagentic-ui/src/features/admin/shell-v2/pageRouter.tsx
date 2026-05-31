@@ -29,15 +29,6 @@ const MCPManagementView = lazy(() =>
 const MCPCallLogsView = lazy(() =>
   import('../components/MCP/MCPCallLogsView').then(m => ({ default: m.MCPCallLogsView })),
 )
-const SynthManagementView = lazy(() =>
-  import('../components/Synth').then(m => ({ default: m.SynthManagementView })),
-)
-const SynthApprovalsView = lazy(() =>
-  import('../components/Synth').then(m => ({ default: m.SynthApprovalsView })),
-)
-const SynthUsageStatsView = lazy(() =>
-  import('../components/Synth').then(m => ({ default: m.SynthUsageStatsView })),
-)
 const ToolExecutionModeView = lazy(() =>
   import('../components/MCP/ToolExecutionModeView').then(m => ({ default: m.ToolExecutionModeView })),
 )
@@ -83,11 +74,6 @@ const AgentOpsViewContainer = lazy(() =>
   import('../components/AgentOps/AgentOpsViewContainer').then(m => ({ default: m.AgentOpsViewContainer })),
 )
 
-// Integrations
-const IntegrationsView = lazy(() =>
-  import('../components/Integrations/IntegrationsView').then(m => ({ default: m.IntegrationsView })),
-)
-
 // Flows KPI + Audit Log
 const FlowsKpiDashboard = lazy(() =>
   import('../components/Flows/FlowsKpiDashboard').then(m => ({ default: m.FlowsKpiDashboard })),
@@ -124,28 +110,7 @@ const UserContextView = lazy(() =>
   import('../components/DataLayer/UserContextView').then(m => ({ default: m.UserContextView })),
 )
 
-// Chargeback
-const ChargebackView = lazy(() =>
-  import('../components/Chargeback').then(m => ({ default: m.ChargebackView })),
-)
-
 // Monitoring
-const UserActivityDashboard = lazy(() => import('../components/Monitoring/UserActivityDashboard'))
-const UsageAnalytics = lazy(() => import('../components/Monitoring/UsageAnalytics'))
-const FeedbackAnalyticsView = lazy(() =>
-  import('../components/Monitoring/FeedbackAnalyticsView').then(m => ({ default: m.FeedbackAnalyticsView })),
-)
-const AuditLogsView = lazy(() =>
-  import('../components/Monitoring/AuditLogsView').then(m => ({ default: m.AuditLogsView })),
-)
-const MonitoringView = lazy(() =>
-  import('../components/Monitoring/MonitoringView').then(m => ({ default: m.MonitoringView })),
-)
-const ContextWindowMetrics = lazy(() =>
-  import('../components/Monitoring/ContextWindowMetrics').then(m => ({ default: m.ContextWindowMetrics })),
-)
-const EmbeddingMetrics = lazy(() => import('../components/Monitoring/EmbeddingMetrics'))
-const ClusterHealthView = lazy(() => import('../components/Monitoring/ClusterHealthView'))
 const TestHarnessView = lazy(() => import('../components/Testing/TestHarnessView'))
 
 // Security & Access
@@ -157,10 +122,6 @@ const PermissionsPage = lazy(() =>
   import('../pages-v3/PermissionsPage').then(m => ({ default: m.PermissionsPage })),
 )
 const UserLockoutView = lazy(() => import('../components/System/UserLockoutView'))
-const NetworkSecurityView = lazy(() => import('../components/Security/NetworkSecurityView'))
-const WebhookSecurityView = lazy(() => import('../components/Security/WebhookSecurityView'))
-const DLPConfigView = lazy(() => import('../components/Security/DLPConfigView'))
-const RateLimitsView = lazy(() => import('../components/Security/RateLimitsView'))
 const TokenManagementView = lazy(() => import('../components/Security/TokenManagementView'))
 
 // System
@@ -237,12 +198,6 @@ function renderSection(id: string, theme: 'dark' | 'light'): React.ReactNode {
     case 'mcp-kubernetes':
     case 'tool-execution-mode':
       return <MCPFleet theme={theme} />
-    case 'synth-management':
-      return <SynthManagementView theme={theme} />
-    case 'synth-approvals':
-      return <SynthApprovalsView theme={theme} />
-    case 'synth-stats':
-      return <SynthUsageStatsView theme={theme} />
 
     // Workflows
     case 'native-workflow-list':
@@ -271,12 +226,6 @@ function renderSection(id: string, theme: 'dark' | 'light'): React.ReactNode {
     case 'agent-executions':
       return <AgentExecutionDashboard theme={theme} />
 
-    // Integrations — all three share IntegrationsView
-    case 'slack-integration':
-    case 'teams-integration':
-    case 'integration-logs':
-      return <IntegrationsView theme={theme} />
-
     // OpenAgentic Flows — KPI dashboard + Audit log viewer + Teams
     case 'flows-kpis':
       return <FlowsKpiDashboard theme={theme} />
@@ -303,30 +252,10 @@ function renderSection(id: string, theme: 'dark' | 'light'): React.ReactNode {
     case 'user-context':
       return <UserContextView theme={theme} />
 
-    // Chargeback
-    case 'chargeback-dashboard':
-      return <ChargebackView theme={theme} />
-
     // Monitoring
-    case 'user-activity':
-      return <UserActivityDashboard />
-    case 'analytics':
-      return <UsageAnalytics theme={theme} />
-    case 'feedback':
-      return <FeedbackAnalyticsView theme={theme} />
-    case 'audit':
-      return <AuditLogsView theme={theme} />
     case 'performance':
       // AdminPortal maps 'performance' → LLMPerformanceMetrics (same component as 'llm-performance')
       return <LLMPerformanceMetrics theme={theme} />
-    case 'errors':
-      return <MonitoringView theme={theme} />
-    case 'context-window':
-      return <ContextWindowMetrics />
-    case 'embeddings':
-      return <EmbeddingMetrics theme={theme} />
-    case 'cluster-health':
-      return <ClusterHealthView />
     case 'grafana':
       return <GrafanaLink />
     case 'test-harness':
@@ -345,18 +274,10 @@ function renderSection(id: string, theme: 'dark' | 'light'): React.ReactNode {
       return <UserLockoutView />
     case 'tokens':
       return <TokenManagementView />
-    case 'network':
-      return <NetworkSecurityView theme={theme} />
-    case 'webhook-security':
-      return <WebhookSecurityView theme={theme} />
-    case 'dlp-config':
-      return <DLPConfigView theme={theme} />
 
     // System
     case 'settings':
       return <SystemSettingsView theme={theme} />
-    case 'rate-limits':
-      return <RateLimitsView />
 
     default:
       return <V2PagePlaceholder sectionId={id} />

@@ -59,20 +59,8 @@ export {
   PromptMetrics
 } from './Content';
 
-// Monitoring - Analytics, logs, metrics
-export {
-  MonitoringView,
-  UsageAnalytics,
-  ContextWindowMetrics,
-  EmbeddingMetrics,
-  PerformanceMetrics,
-  FeedbackAnalyticsView,
-  AuditLogsView,
-  CodeModeMetricsDashboard
-} from './Monitoring';
-
-// Security - Rate limits, API tokens
-export { RateLimitsView, DeveloperAPIView } from './Security';
+// Security - API tokens
+export { DeveloperAPIView } from './Security';
 
 // Code - Code mode management (legacy)
 export { AWCodeSessionsView, AWCodeSettingsView } from './Code';

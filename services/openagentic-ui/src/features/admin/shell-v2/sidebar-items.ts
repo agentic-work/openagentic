@@ -29,10 +29,6 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { id: 'user-lockout',     label: 'User Lockouts' },
       { id: 'tokens',           label: 'API Token Management' },
       { id: 'settings',         label: 'System Settings' },
-      { id: 'rate-limits',      label: 'Rate Limits' },
-      { id: 'network',          label: 'Network Security' },
-      { id: 'webhook-security', label: 'Webhook Security' },
-      { id: 'dlp-config',       label: 'DLP Configuration' },
     ],
   },
   {
@@ -52,9 +48,6 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     id: 'tools', label: 'Tools Management', featureGate: 'mcp',
     children: [
       { id: 'mcp-fleet',           label: 'MCP Fleet' },
-      { id: 'synth-management',    label: 'Synthesis Config' },
-      { id: 'synth-approvals',     label: 'Synthesis Approvals' },
-      { id: 'synth-stats',         label: 'Synthesis Stats' },
       // Legacy leaves (mcp-management / mcp-logs / mcp-kubernetes /
       // tool-execution-mode) consolidated into MCP Fleet 2026-05-05.
       // Router still routes legacy ids to MCPFleet for bookmark
@@ -95,14 +88,6 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     ],
   },
   {
-    id: 'integrations', label: 'Integrations',
-    children: [
-      { id: 'slack-integration', label: 'Slack' },
-      { id: 'teams-integration', label: 'Microsoft Teams' },
-      { id: 'integration-logs',  label: 'Integration Logs' },
-    ],
-  },
-  {
     id: 'prompt-engineering', label: 'Prompt Engineering',
     children: [
       // Phase E.6 (2026-05-10) — 'prompt-modules' leaf removed.
@@ -124,22 +109,8 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     ],
   },
   {
-    id: 'chargeback', label: 'Chargeback & Costs',
-    children: [
-      { id: 'chargeback-dashboard', label: 'Cost Management' },
-    ],
-  },
-  {
     id: 'monitoring', label: 'Monitoring & Logs',
     children: [
-      { id: 'user-activity',  label: 'User Activity' },
-      { id: 'analytics',      label: 'Usage Analytics' },
-      { id: 'feedback',       label: 'Feedback Analytics' },
-      { id: 'audit',          label: 'Audit Logs' },
-      { id: 'errors',         label: 'Monitoring & Logs' },
-      { id: 'context-window', label: 'Context Window Metrics' },
-      { id: 'embeddings',     label: 'Embedding Metrics' },
-      { id: 'cluster-health', label: 'Cluster Health', badge: 'Live' },
       { id: 'grafana',        label: 'Grafana Dashboards', badge: 'Live', externalUrl: '/grafana/' },
       { id: 'test-harness',   label: 'Test Harness',       badge: 'Live' },
     ],
