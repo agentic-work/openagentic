@@ -83,8 +83,8 @@ export function useE2eHarness() {
     abortRef.current = new AbortController();
     try {
       const token =
-        localStorage.getItem('awc_token') ||
-        document.cookie.match(/awc_token=([^;]+)/)?.[1] ||
+        localStorage.getItem('auth_token') ||
+        document.cookie.match(/auth_token=([^;]+)/)?.[1] ||
         '';
 
       const response = await fetch(apiEndpoint('/admin/test-harness/run-e2e'), {

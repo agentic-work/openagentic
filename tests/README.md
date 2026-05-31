@@ -69,7 +69,7 @@ npm run test:load:stress
 
 ### Authentication & Security
 - [x] Local JWT authentication
-- [x] API key authentication (awc_* format)
+- [x] API key authentication (oa_* user keys / oa_sys_* system tokens; base64url, 43-char body)
 - [x] Azure AD token validation
 - [x] Token expiration handling
 - [x] Admin authorization

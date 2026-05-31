@@ -14,17 +14,17 @@ Six test cases:
      `dev-secret-change-in-production`.
   3. Request without Authorization → 401 missing_authorization
      (regression confirm).
-  4. Bearer awc_system_<bad-suffix> → 401 (currently passes — fix this).
-  5. Bearer awc_system_<HMAC_of_INTERNAL_SERVICE_SECRET> → 200 with
+  4. Bearer oa_sys_<bad-suffix> → 401 (currently passes — fix this).
+  5. Bearer oa_sys_<HMAC_of_INTERNAL_SERVICE_SECRET> → 200 with
      system-admin context.
-  6. Bearer awc_<user-key> → validates against api /api/auth/me.
+  6. Bearer oa_<user-key> → validates against api /api/auth/me.
 
 The HMAC contract:
 
     suffix = base64url(HMAC_SHA256(INTERNAL_SERVICE_SECRET, "openagentic-system-token"))
 
 Both api side (ToolSemanticCacheService.ts:527) and mcp-proxy side
-(get_user_info awc_system_ branch) MUST compute the same suffix and use
+(get_user_info oa_sys_ branch) MUST compute the same suffix and use
 hmac.compare_digest for constant-time compare.
 """
 from __future__ import annotations
@@ -157,7 +157,7 @@ class TestNoAuthorizationHeader:
             assert "missing_authorization" in str(detail)
 
 # ---------------------------------------------------------------------------
-# 4. Bearer awc_system_<bad-suffix> → 401 (HMAC mismatch)
+# 4. Bearer oa_sys_<bad-suffix> → 401 (HMAC mismatch)
 # ---------------------------------------------------------------------------
 
 class TestSystemTokenBadSuffix:
@@ -175,7 +175,7 @@ class TestSystemTokenBadSuffix:
 
         creds = HTTPAuthorizationCredentials(
             scheme="Bearer",
-            credentials="awc_system_this-is-a-fake-suffix-not-the-hmac",
+            credentials="oa_sys_this-is-a-fake-suffix-not-the-hmac",
         )
 
         with pytest.raises(HTTPException) as excinfo:
@@ -192,7 +192,7 @@ class TestSystemTokenBadSuffix:
 
     @pytest.mark.asyncio
     async def test_legacy_plain_secret_suffix_rejected(self, main_module):
-        # Pre-fix shape: `awc_system_<INTERNAL_SERVICE_SECRET>` raw.
+        # Pre-fix shape: `oa_sys_<INTERNAL_SERVICE_SECRET>` raw.
         # Post-fix: that plain-secret suffix MUST NOT pass — only the HMAC
         # of the secret keyed by SYSTEM_TOKEN_LABEL is accepted.
         from fastapi import HTTPException
@@ -200,7 +200,7 @@ class TestSystemTokenBadSuffix:
 
         creds = HTTPAuthorizationCredentials(
             scheme="Bearer",
-            credentials=f"awc_system_{TEST_INTERNAL_SECRET}",
+            credentials=f"oa_sys_{TEST_INTERNAL_SECRET}",
         )
 
         with pytest.raises(HTTPException) as excinfo:
@@ -214,7 +214,7 @@ class TestSystemTokenBadSuffix:
 
         creds = HTTPAuthorizationCredentials(
             scheme="Bearer",
-            credentials="awc_system_",
+            credentials="oa_sys_",
         )
 
         with pytest.raises(HTTPException) as excinfo:
@@ -236,7 +236,7 @@ class TestSystemTokenBadSuffix:
         # no secret configured to verify against.
         creds = HTTPAuthorizationCredentials(
             scheme="Bearer",
-            credentials="awc_system_anything",
+            credentials="oa_sys_anything",
         )
 
         with pytest.raises(HTTPException) as excinfo:
@@ -244,7 +244,7 @@ class TestSystemTokenBadSuffix:
         assert excinfo.value.status_code == 401
 
 # ---------------------------------------------------------------------------
-# 5. Bearer awc_system_<HMAC_of_INTERNAL_SERVICE_SECRET> → 200 system admin
+# 5. Bearer oa_sys_<HMAC_of_INTERNAL_SERVICE_SECRET> → 200 system admin
 # ---------------------------------------------------------------------------
 
 class TestSystemTokenHmacAccepted:
@@ -262,7 +262,7 @@ class TestSystemTokenHmacAccepted:
         suffix = _expected_system_suffix(TEST_INTERNAL_SECRET)
         creds = HTTPAuthorizationCredentials(
             scheme="Bearer",
-            credentials=f"awc_system_{suffix}",
+            credentials=f"oa_sys_{suffix}",
         )
 
         result = await main_module.get_user_info(credentials=creds)
@@ -281,7 +281,7 @@ class TestSystemTokenHmacAccepted:
         assert suffix_a == suffix_b
 
 # ---------------------------------------------------------------------------
-# 6. Bearer awc_<user-key> → validates against api /api/auth/me
+# 6. Bearer oa_<user-key> → validates against api /api/auth/me
 # ---------------------------------------------------------------------------
 
 class TestUserApiKeyValidation:
@@ -336,9 +336,12 @@ class TestUserApiKeyValidation:
 
         from fastapi.security import HTTPAuthorizationCredentials
 
+        # New user API key format: "oa_" + base64url(randomBytes(32)),
+        # i.e. a 43-char URL-safe base64 body with no padding.
+        user_api_key = "oa_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_ABCde"
         creds = HTTPAuthorizationCredentials(
             scheme="Bearer",
-            credentials="awc_user-api-key-abc123",
+            credentials=user_api_key,
         )
 
         result = await main_module.get_user_info(credentials=creds)
@@ -347,4 +350,6 @@ class TestUserApiKeyValidation:
         assert result.get("email") == "alice@example.com"
         assert result.get("is_admin") is False
         assert captured.get("url", "").endswith("/api/auth/me")
-        assert captured["headers"]["Authorization"].startswith("Bearer awc_")
+        assert captured["headers"]["Authorization"].startswith("Bearer oa_")
+        # Must be the user-key path, NOT the oa_sys_ system-token path.
+        assert not captured["headers"]["Authorization"].startswith("Bearer oa_sys_")

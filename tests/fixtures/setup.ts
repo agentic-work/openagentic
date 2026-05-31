@@ -46,7 +46,7 @@ export const getTestEnv = (): TestEnvironment => {
     mcpProxyUrl: process.env.TEST_MCP_URL || 'http://localhost:8090',
     databaseUrl: process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/openagentic_test',
     redisUrl: process.env.TEST_REDIS_URL || 'redis://localhost:6379',
-    testApiKey: process.env.TEST_API_KEY || 'awc_test_key_for_testing_only_not_real',
+    testApiKey: process.env.TEST_API_KEY || 'oa_test_key_for_testing_only_not_real',
     testUserId: process.env.TEST_USER_ID || 'test-user-id',
     isDocker,
     isHelm

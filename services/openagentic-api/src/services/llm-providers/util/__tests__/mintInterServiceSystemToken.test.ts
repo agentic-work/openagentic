@@ -1,7 +1,7 @@
 /**
  * mintInterServiceSystemToken — #1025 (2026-05-22).
  *
- * Pure helper that mints the `awc_system_<HMAC>` token that mcp-proxy
+ * Pure helper that mints the `oa_sys_<HMAC>` token that mcp-proxy
  * validates for inter-service callers. Pattern lifted verbatim from
  * `MCPToolIndexingService.ts:372-376` so the four current call sites
  * (admin-test-harness, MCPToolIndexingService [2x], ToolSemanticCacheService)
@@ -13,11 +13,15 @@
  * helper and re-wires the harness to call it. RED here before the helper
  * file exists.
  *
+ * Token format (OSS — fresh keys only, no legacy `awc_`/`awc_system_`):
+ *   - User API keys:        `oa_<base64url(randomBytes(32))>`
+ *   - System/inter-service: `oa_sys_<HMAC_SHA256(secret, label).base64url>`
+ *
  * Spec (matches existing inline behavior so the dedupe in #1029 is a no-op):
  *   - mintInterServiceSystemToken('any-secret') →
- *       `awc_system_${base64url(HMAC_SHA256(secret, 'openagentic-system-token'))}`
- *   - mintInterServiceSystemToken('') → `awc_system_` (prefix only)
- *   - mintInterServiceSystemToken(undefined) → `awc_system_`
+ *       `oa_sys_${base64url(HMAC_SHA256(secret, 'openagentic-system-token'))}`
+ *   - mintInterServiceSystemToken('') → `oa_sys_` (prefix only)
+ *   - mintInterServiceSystemToken(undefined) → `oa_sys_`
  *   - deterministic: same input → same output across calls
  *   - HMAC label 'openagentic-system-token' must match mcp-proxy verify
  *     side (services/openagentic-mcp-proxy/src/main.py:913).
@@ -27,19 +31,20 @@ import { createHmac } from 'node:crypto';
 import { mintInterServiceSystemToken } from '../mintInterServiceSystemToken.js';
 
 const LABEL = 'openagentic-system-token';
+const SYSTEM_PREFIX = 'oa_sys_';
 
 function expectedToken(secret: string): string {
-  if (!secret) return 'awc_system_';
+  if (!secret) return SYSTEM_PREFIX;
   const suffix = createHmac('sha256', secret).update(LABEL).digest('base64url');
-  return `awc_system_${suffix}`;
+  return `${SYSTEM_PREFIX}${suffix}`;
 }
 
 describe('mintInterServiceSystemToken — #1025 inter-service auth helper', () => {
-  it('mints awc_system_<HMAC> for a non-empty secret', () => {
+  it('mints oa_sys_<HMAC> for a non-empty secret', () => {
     const out = mintInterServiceSystemToken('test-secret-64chars-' + 'a'.repeat(44));
-    expect(out.startsWith('awc_system_')).toBe(true);
+    expect(out.startsWith(SYSTEM_PREFIX)).toBe(true);
     // SHA-256 base64url (no padding) = 43 chars
-    const suffix = out.slice('awc_system_'.length);
+    const suffix = out.slice(SYSTEM_PREFIX.length);
     expect(suffix.length).toBe(43);
     // base64url alphabet — [A-Za-z0-9_-]
     expect(/^[A-Za-z0-9_-]+$/.test(suffix)).toBe(true);
@@ -50,21 +55,21 @@ describe('mintInterServiceSystemToken — #1025 inter-service auth helper', () =
     expect(mintInterServiceSystemToken(secret)).toBe(expectedToken(secret));
   });
 
-  it('returns prefix-only `awc_system_` when secret is empty string', () => {
+  it('returns prefix-only `oa_sys_` when secret is empty string', () => {
     // Matches the inline behavior at MCPToolIndexingService.ts:373:
     //   const systemTokenSuffix = internalSecret ? createHmac(...) : '';
-    //   const systemToken = `awc_system_${systemTokenSuffix}`;
-    // So empty secret yields `awc_system_` with no suffix — caller's
+    //   const systemToken = `oa_sys_${systemTokenSuffix}`;
+    // So empty secret yields `oa_sys_` with no suffix — caller's
     // responsibility to not call with empty secret in prod.
-    expect(mintInterServiceSystemToken('')).toBe('awc_system_');
+    expect(mintInterServiceSystemToken('')).toBe(SYSTEM_PREFIX);
   });
 
-  it('returns prefix-only `awc_system_` when secret is undefined', () => {
+  it('returns prefix-only `oa_sys_` when secret is undefined', () => {
     // The 3 prod call sites read `process.env.INTERNAL_SERVICE_SECRET || ''`,
     // so undefined is already coerced to '' before reaching here. But making
     // the helper handle undefined defensively means callers can drop the
     // `|| ''` boilerplate.
-    expect(mintInterServiceSystemToken(undefined)).toBe('awc_system_');
+    expect(mintInterServiceSystemToken(undefined)).toBe(SYSTEM_PREFIX);
   });
 
   it('is deterministic — same input produces same output every call', () => {
@@ -93,6 +98,6 @@ describe('mintInterServiceSystemToken — #1025 inter-service auth helper', () =
       .update('openagentic-system-token')
       .digest('base64url');
     const out = mintInterServiceSystemToken(secret);
-    expect(out).toBe(`awc_system_${handComputed}`);
+    expect(out).toBe(`${SYSTEM_PREFIX}${handComputed}`);
   });
 });

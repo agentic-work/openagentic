@@ -848,7 +848,8 @@ ${parentRag.slice(0, 3).map(renderChunk).join('\n\n')}
       headers['X-Internal-Secret'] = internalSecret;
       // ALSO send as Authorization: Bearer so API tokenValidator accepts it
       headers['Authorization'] = `Bearer ${internalSecret}`;
-      if (internalSecret.startsWith('awc_')) {
+      // oa_ covers user keys; oa_sys_ covers system/inter-service tokens (a prefix of oa_)
+      if (internalSecret.startsWith('oa_')) {
         headers['X-API-Key'] = internalSecret;
       }
     } else {
@@ -863,8 +864,9 @@ ${parentRag.slice(0, 3).map(renderChunk).join('\n\n')}
 
       // Always use Authorization: Bearer for API auth (tokenValidator checks this header)
       headers['Authorization'] = `Bearer ${authToken}`;
-      if (authToken.startsWith('awc_')) {
-        headers['X-API-Key'] = authToken; // Also send as X-API-Key for backwards compat
+      // oa_ covers user keys; oa_sys_ covers system/inter-service tokens (a prefix of oa_)
+      if (authToken.startsWith('oa_')) {
+        headers['X-API-Key'] = authToken; // Also send as X-API-Key when the token is an oa_ platform key
       }
     }
 

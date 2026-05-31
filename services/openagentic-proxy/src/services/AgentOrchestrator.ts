@@ -510,7 +510,10 @@ export class AgentOrchestrator {
       const authHeaders: Record<string, string> = {};
       const mcpToken = request.userToken || process.env.OPENAGENTIC_PROXY_API_KEY;
       if (mcpToken) {
-        if (mcpToken.startsWith('awc_')) {
+        // User API keys (oa_…) authenticate via X-API-Key; system tokens
+        // (oa_sys_…) and JWTs go through Authorization: Bearer. Note oa_sys_
+        // also matches the oa_ prefix, so check the system prefix first.
+        if (mcpToken.startsWith('oa_') && !mcpToken.startsWith('oa_sys_')) {
           authHeaders['X-API-Key'] = mcpToken;
         } else {
           authHeaders['Authorization'] = `Bearer ${mcpToken}`;
@@ -1022,7 +1025,8 @@ Rules:
         headers['X-Internal-Secret'] = internalSecret;
         // ALSO send as Authorization: Bearer so API tokenValidator accepts it
         headers['Authorization'] = `Bearer ${internalSecret}`;
-        if (internalSecret.startsWith('awc_')) {
+        // User API keys (oa_…, excluding oa_sys_…) also go in X-API-Key.
+        if (internalSecret.startsWith('oa_') && !internalSecret.startsWith('oa_sys_')) {
           headers['X-API-Key'] = internalSecret;
         }
       } else {
@@ -1031,7 +1035,8 @@ Rules:
           return results.map(r => r.output).join('\n\n---\n\n');
         }
         headers['Authorization'] = `Bearer ${authToken}`;
-        if (authToken.startsWith('awc_')) {
+        // User API keys (oa_…, excluding oa_sys_…) authenticate via X-API-Key.
+        if (authToken.startsWith('oa_') && !authToken.startsWith('oa_sys_')) {
           headers['X-API-Key'] = authToken;
         } else {
           headers['Authorization'] = `Bearer ${authToken}`;

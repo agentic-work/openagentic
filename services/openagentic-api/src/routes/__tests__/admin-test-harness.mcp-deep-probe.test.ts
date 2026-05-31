@@ -143,22 +143,28 @@ describe('admin-test-harness — MCP category deep probe', () => {
 
   /**
    * #1027 (2026-05-22) — RED: the Authorization header MUST be
-   * `Bearer awc_system_${HMAC(INTERNAL_SERVICE_SECRET, 'openagentic-system-token')}`,
+   * `Bearer oa_sys_${HMAC(INTERNAL_SERVICE_SECRET, 'openagentic-system-token')}`,
    * NOT `Bearer ${process.env.MCP_PROXY_API_KEY}` (the wrong env var that's
    * never set in the live api pod → empty Bearer → 401 on every openagentic_* MCP).
+   *
+   * Token format (OSS — fresh keys only, no legacy back-compat):
+   *   - User API keys:        `oa_<base64url(randomBytes(32))>`  (43-char suffix)
+   *   - System/inter-service: `oa_sys_<HMAC_SHA256(secret, label).base64url>`
+   * (Replaces the old `awc_`/`awc_system_` prefixes — see
+   * services/openagentic-api/src/services/llm-providers/util/mintInterServiceSystemToken.ts.)
    *
    * Smoking gun: live harness probe on chat-dev showed mcp 1p/10f, all 10 fails
    * with `Request failed with status code 401`. api pod env: MCP_PROXY_API_KEY
    * length 0, INTERNAL_SERVICE_SECRET length 64. mcp-proxy auth scheme spec is
    * services/openagentic-mcp-proxy/src/main.py:913.
    */
-  it('signs MCP proxy requests with awc_system_ token minted from INTERNAL_SERVICE_SECRET', async () => {
+  it('signs MCP proxy requests with oa_sys_ token minted from INTERNAL_SERVICE_SECRET', async () => {
     const { createHmac } = await import('node:crypto');
     const TEST_SECRET = 'test-internal-service-secret-for-#1027';
     const expectedSuffix = createHmac('sha256', TEST_SECRET)
       .update('openagentic-system-token')
       .digest('base64url');
-    const expectedAuth = `Bearer awc_system_${expectedSuffix}`;
+    const expectedAuth = `Bearer oa_sys_${expectedSuffix}`;
 
     const prevSecret = process.env.INTERNAL_SERVICE_SECRET;
     const prevApiKey = process.env.MCP_PROXY_API_KEY;
@@ -225,11 +231,11 @@ describe('admin-test-harness — MCP category deep probe', () => {
       };
       await fastifyStub._runHandler(fakeRequest, fakeReply);
 
-      // ASSERT: every captured Authorization header is the expected awc_system_ token,
+      // ASSERT: every captured Authorization header is the expected oa_sys_ token,
       // NOT `Bearer ` (empty MCP_PROXY_API_KEY).
       expect(capturedAuth.length, 'at least one MCP proxy call captured').toBeGreaterThan(0);
       for (const auth of capturedAuth) {
-        expect(auth, 'Authorization header uses awc_system_ from INTERNAL_SERVICE_SECRET').toBe(expectedAuth);
+        expect(auth, 'Authorization header uses oa_sys_ from INTERNAL_SERVICE_SECRET').toBe(expectedAuth);
       }
     } finally {
       if (prevSecret === undefined) delete process.env.INTERNAL_SERVICE_SECRET;

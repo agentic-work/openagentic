@@ -149,8 +149,11 @@ export class SkillsRegistry {
       headers['x-internal-secret'] = this.internalSecret;
       return headers;
     }
-    // Fallback to user API key if internal secret isn't configured
-    if (this.apiKey.startsWith('awc_')) {
+    // Fallback to user API key if internal secret isn't configured.
+    // User API keys use the "oa_" prefix (oa_<base64url>); system/inter-service
+    // tokens use "oa_sys_". Route user keys via X-API-Key, everything else
+    // (system tokens, bearer JWTs) via Authorization: Bearer.
+    if (this.apiKey.startsWith('oa_') && !this.apiKey.startsWith('oa_sys_')) {
       headers['X-API-Key'] = this.apiKey;
     } else if (this.apiKey) {
       headers['Authorization'] = `Bearer ${this.apiKey}`;

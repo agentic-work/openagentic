@@ -762,7 +762,7 @@ export const DeveloperAPIView: React.FC<DeveloperAPIViewProps> = ({ theme }) => 
               </p>
               <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--color-surface)' }}>
                 <code className="text-sm" style={{ color: 'var(--color-success)' }}>
-                  x-api-key: awc_your_api_key_here
+                  x-api-key: oa_your_api_key_here
                 </code>
               </div>
             </div>
@@ -1059,7 +1059,7 @@ yarn add @openagentic/sdk`}
 
 // Initialize the client
 const client = new OpenAgenticClient({
-  apiKey: 'awc_your_api_key',
+  apiKey: 'oa_your_api_key',
   baseUrl: 'https://<your-deploy-host>'
 });
 
@@ -1129,7 +1129,7 @@ const result = await client.mcp.execute({
 
 # Initialize the client
 client = OpenAgenticClient(
-    api_key="awc_your_api_key",
+    api_key="oa_your_api_key",
     base_url="https://<your-deploy-host>"
 )
 
@@ -1176,7 +1176,7 @@ result = client.mcp.execute(
                   style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text)' }}
                 >
 {`Content-Type: application/json
-x-api-key: awc_your_api_key_here`}
+x-api-key: oa_your_api_key_here`}
                 </pre>
               </div>
             </div>

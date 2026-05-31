@@ -6,7 +6,7 @@ const config = {
   // API Configuration
   apiUrl: process.env.API_URL || 'http://localhost:8000',
   // Override via $API_KEY env var; placeholder is non-functional.
-  apiKey: process.env.API_KEY || 'awc_test_PLACEHOLDER_REPLACE_WITH_REAL_KEY',
+  apiKey: process.env.API_KEY || 'oa_test_PLACEHOLDER_REPLACE_WITH_REAL_KEY',
 
   // UI Configuration
   uiUrl: process.env.UI_URL || 'http://localhost',

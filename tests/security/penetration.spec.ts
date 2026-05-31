@@ -42,7 +42,7 @@ describe('Security Tests', () => {
 
     it('should reject expired tokens', async () => {
       // Test with obviously expired/malformed token
-      const expiredApi = new TestAPIClient(env.apiBaseUrl, 'awc_expired_token_test_123456789');
+      const expiredApi = new TestAPIClient(env.apiBaseUrl, 'oa_expiredTokenTest0123456789abcdefghijABCDEF');
 
       try {
         await expiredApi.get('/api/chat/sessions');
@@ -53,7 +53,7 @@ describe('Security Tests', () => {
     });
 
     it('should not expose auth error details', async () => {
-      const badApi = new TestAPIClient(env.apiBaseUrl, 'awc_bad_key_1234567890');
+      const badApi = new TestAPIClient(env.apiBaseUrl, 'oa_badKey0123456789abcdefghijABCDEFGHIJKLMNOPQ');
 
       try {
         await badApi.get('/api/chat/sessions');
@@ -79,7 +79,7 @@ describe('Security Tests', () => {
 
       // Try to access with different key (if available)
       try {
-        const otherApi = new TestAPIClient(env.apiBaseUrl, 'awc_other_user_key_12345');
+        const otherApi = new TestAPIClient(env.apiBaseUrl, 'oa_otherUserKey0123456789abcdefghijABCDEFGHIJK');
         await otherApi.get(`/api/chat/sessions/${sessionId}`);
         // If succeeds, check if data is properly filtered
       } catch (e: any) {
@@ -243,7 +243,7 @@ describe('Security Tests', () => {
             // Full key should never be returned after creation
             if (token.key) {
               expect(token.key.length).toBeLessThan(40);
-              expect(token.key).toMatch(/^\*+|awc_\*+$/);
+              expect(token.key).toMatch(/^\*+|oa_(sys_)?\*+$/);
             }
           }
         }
@@ -450,7 +450,7 @@ describe('Security Tests', () => {
         // Should have key on creation
         if (created.token || created.key) {
           const key = created.token || created.key;
-          expect(key.startsWith('awc_')).toBe(true);
+          expect(key.startsWith('oa_')).toBe(true);
         }
 
         // List should not show full key

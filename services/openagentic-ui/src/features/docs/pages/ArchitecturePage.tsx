@@ -43,7 +43,7 @@ const fullArchitectureDiagram: DiagramDefinition = {
     // Auth
     { id: 'azure-ad', label: 'Azure AD', description: 'SSO / OIDC', shape: 'rounded', color: 'azure' },
     { id: 'google-oauth', label: 'Google OAuth', shape: 'rounded', color: 'gcp' },
-    { id: 'api-keys', label: 'API Keys', description: 'awc_ prefix', shape: 'rounded', color: 'gray' },
+    { id: 'api-keys', label: 'API Keys', description: 'oa_ prefix', shape: 'rounded', color: 'gray' },
     // Observability
     { id: 'prometheus', label: 'Prometheus', description: 'Metrics', shape: 'rounded', color: 'red' },
     { id: 'grafana', label: 'Grafana', description: '12 dashboards', shape: 'rounded', color: 'orange' },

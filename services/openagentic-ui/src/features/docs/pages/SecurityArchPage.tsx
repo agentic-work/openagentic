@@ -57,7 +57,7 @@ const authMethods = [
   },
   {
     title: 'API Keys',
-    description: 'Programmatic access tokens with the awc_ prefix. Keys are bcrypt-hashed in the database and scoped to individual users. Used for automation, CI/CD, and SDK access.',
+    description: 'Programmatic access tokens with the oa_ prefix (oa_sys_ for system / inter-service tokens). Keys are base64url-encoded, bcrypt-hashed in the database, and scoped to individual users. Used for automation, CI/CD, and SDK access.',
   },
   {
     title: 'Local JWT',

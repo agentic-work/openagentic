@@ -665,7 +665,8 @@ async def get_user_info(credentials: HTTPAuthorizationCredentials = Depends(secu
 
     # Check if this is a system-level API token (special marker in token)
     # System tokens bypass Azure AD validation and use SP credentials for all MCP calls
-    if token and token.startswith('awc_system_'):
+    # Format: oa_sys_<base64url(randomBytes(32))>
+    if token and token.startswith('oa_sys_'):
         logger.info("System-level API token detected - bypassing Azure AD validation, will use SP credentials")
         return {
             'token': 'SYSTEM_SP_AUTH',  # Special marker for SP credential usage
@@ -678,9 +679,10 @@ async def get_user_info(credentials: HTTPAuthorizationCredentials = Depends(secu
             'is_admin': True
         }
 
-    # Check for OpenAgentic user API key (awc_ prefix, not system key)
+    # Check for OpenAgentic user API key (oa_ prefix, not the oa_sys_ system key)
+    # Format: oa_<base64url(randomBytes(32))>  (43-char base64url body)
     # This is used when users authenticate with API keys instead of Azure AD
-    if token and token.startswith('awc_') and not token.startswith('awc_system_'):
+    if token and token.startswith('oa_') and not token.startswith('oa_sys_'):
         logger.info("OpenAgentic user API key detected - validating against API")
         try:
             # Validate the API key by calling the OpenAgentic API's /api/auth/me endpoint

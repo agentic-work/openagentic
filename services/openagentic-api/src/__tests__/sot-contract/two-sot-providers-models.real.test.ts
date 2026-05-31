@@ -61,7 +61,7 @@ beforeAll(() => {
     // eslint-disable-next-line no-console
     console.warn(
       '[two-sot-real-test] OPENAGENTIC_TEST_KEY not set — skipping real-platform contract test.\n' +
-        'To run: export OPENAGENTIC_TEST_KEY=awc_xxxx (admin API key minted via /api/admin/tokens).',
+        'To run: export OPENAGENTIC_TEST_KEY=oa_xxxx (admin API key minted via /api/admin/tokens).',
     );
   }
 });

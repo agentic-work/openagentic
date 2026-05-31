@@ -42,7 +42,7 @@ const permissionRoles = [
 ];
 
 const apiTokenFeatures = [
-  { feature: 'Token Prefix', description: 'All API tokens begin with the awc_ prefix for easy identification in logs, secrets scanners, and credential detection tools.' },
+  { feature: 'Token Prefix', description: 'User API keys begin with the oa_ prefix and inter-service system tokens begin with the oa_sys_ prefix, for easy identification in logs, secrets scanners, and credential detection tools.' },
   { feature: 'Scope Control', description: 'Tokens can be scoped to specific API operations: chat-only, flows-only, read-only, or full-access. Narrow scopes follow the principle of least privilege.' },
   { feature: 'Expiration', description: 'Tokens have a configurable expiration date. Options include 30 days, 90 days, 1 year, or custom. Expired tokens are automatically rejected.' },
   { feature: 'Usage Tracking', description: 'Each token tracks its last used timestamp, total request count, and associated IP addresses. Unused tokens are flagged for cleanup.' },

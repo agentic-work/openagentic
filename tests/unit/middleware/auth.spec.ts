@@ -13,23 +13,36 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 describe('Authentication Middleware', () => {
   describe('API Key Validation', () => {
+    // New OSS API-key format:
+    //   - User keys:   "oa_"     + base64url(randomBytes(32))  (43-char body)
+    //   - System keys: "oa_sys_" + base64url(randomBytes(32))  (inter-service tokens)
+    // base64url chars are [A-Za-z0-9_-], no padding. Hashing/storage (bcrypt of the
+    // full key) is unchanged — only the human-visible prefix + body encoding changed.
     const validateApiKey = (key: string | undefined): { valid: boolean; userId?: string; error?: string } => {
       if (!key) {
         return { valid: false, error: 'API key required' };
       }
 
-      if (!key.startsWith('awc_')) {
+      // System tokens use the "oa_sys_" prefix; user keys use the bare "oa_" prefix.
+      // Check the more specific prefix first so it isn't shadowed by "oa_".
+      const isSystem = key.startsWith('oa_sys_');
+      const isUser = !isSystem && key.startsWith('oa_');
+      if (!isSystem && !isUser) {
         return { valid: false, error: 'Invalid API key format' };
       }
 
-      if (key.length < 20) {
+      // base64url body of 32 random bytes is 43 chars (no padding). Reject anything
+      // whose body is too short to be a real key.
+      const body = isSystem ? key.slice('oa_sys_'.length) : key.slice('oa_'.length);
+      if (body.length < 43) {
         return { valid: false, error: 'Invalid API key length' };
       }
 
-      // Simulated key lookup
+      // Simulated key lookup (43-char base64url bodies = 32 random bytes)
       const validKeys: Record<string, string> = {
-        'awc_test_key_1234567890': 'user_123',
-        'awc_admin_key_0987654321': 'admin_456'
+        'oa_gPugrhxI45eOQ-Tvw2XhThLqDIMLqLpbmi2vx-Pyq4s': 'user_123',
+        'oa_iEbwhnY6HQqX1zKyYvGX898xv0jKK91JTqDO5TG0kIY': 'admin_456',
+        'oa_sys_u8XmYeEGxtzY3G3RhkVML8ujxxD7TY5xpgyT6vB38HM': 'system'
       };
 
       const userId = validKeys[key];
@@ -52,20 +65,32 @@ describe('Authentication Middleware', () => {
       expect(result.error).toContain('format');
     });
 
+    it('should reject legacy awc_ prefix', () => {
+      const result = validateApiKey('awc_test_key_1234567890');
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('format');
+    });
+
     it('should reject short keys', () => {
-      const result = validateApiKey('awc_short');
+      const result = validateApiKey('oa_short');
       expect(result.valid).toBe(false);
       expect(result.error).toContain('length');
     });
 
     it('should validate correct API key', () => {
-      const result = validateApiKey('awc_test_key_1234567890');
+      const result = validateApiKey('oa_gPugrhxI45eOQ-Tvw2XhThLqDIMLqLpbmi2vx-Pyq4s');
       expect(result.valid).toBe(true);
       expect(result.userId).toBe('user_123');
     });
 
+    it('should validate system inter-service token', () => {
+      const result = validateApiKey('oa_sys_u8XmYeEGxtzY3G3RhkVML8ujxxD7TY5xpgyT6vB38HM');
+      expect(result.valid).toBe(true);
+      expect(result.userId).toBe('system');
+    });
+
     it('should reject unknown API key', () => {
-      const result = validateApiKey('awc_unknown_key_123456789');
+      const result = validateApiKey('oa_sjpqhDnA3eVRWJPnyQweMjO4YW5jRHDyDcSSi882Cbw');
       expect(result.valid).toBe(false);
       expect(result.error).toContain('not found');
     });

@@ -385,8 +385,8 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
     try {
       let dbUser: any = null;
 
-      // Check if this is an API key (starts with awc_ or awc_system_)
-      if (token.startsWith('awc_')) {
+      // Check if this is an API key (starts with oa_ for user keys or oa_sys_ for system tokens)
+      if (token.startsWith('oa_')) {
         logger.info({ tokenPrefix: token.substring(0, 15) + '...' }, '[Auth] Validating API key');
 
         // Find all active API keys
@@ -531,7 +531,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
         // Check for OpenAgentic session cookies
         if (cookie.startsWith('openagentic_token=') ||
             cookie.startsWith('session=') ||
-            cookie.startsWith('awc_session=')) {
+            cookie.startsWith('oa_session=')) {
           token = cookie.split('=')[1];
           break;
         }
@@ -1400,7 +1400,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
   /**
    * Lightweight token validation for service-to-service auth (openagentic-proxy, etc.)
    * Validates the Bearer token from the Authorization header and returns user identity.
-   * Supports both JWT tokens and API keys (awc_*).
+   * Supports both JWT tokens and API keys (oa_* for user keys, oa_sys_* for system tokens).
    */
   fastify.post('/api/auth/validate-token', async (request, reply) => {
     const authHeader = request.headers.authorization;
@@ -1411,8 +1411,8 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
     const token = authHeader.substring(7);
 
     try {
-      // Check if this is an API key
-      if (token.startsWith('awc_')) {
+      // Check if this is an API key (oa_ for user keys, oa_sys_ for system tokens)
+      if (token.startsWith('oa_')) {
         const apiKeys = await prisma.apiKey.findMany({
           where: {
             is_active: true,

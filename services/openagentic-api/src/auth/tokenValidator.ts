@@ -6,7 +6,7 @@
  * 1. Local JWT tokens
  * 2. Azure AD tokens (when AUTH_PROVIDER=azure-ad)
  * 3. Google tokens (when AUTH_PROVIDER=google)
- * 4. API keys (awc_<64-hex-chars>)
+ * 4. API keys — user keys (oa_<43-char-base64url>) and system/inter-service tokens (oa_sys_<43-char-base64url>)
  *
  * STOP CALLING azureADAuthService.validateToken() DIRECTLY!
  */
@@ -68,10 +68,14 @@ export async function validateAnyToken(
   }
 ): Promise<UnifiedTokenResult> {
   try {
-    // Step 0: Check if this is an API key (format: awc_<64-hex-chars>)
-    if (token.startsWith('awc_')) {
+    // Step 0: Check if this is an API key.
+    // User keys are formatted oa_<base64url(32 bytes)> and system/inter-service
+    // tokens are formatted oa_sys_<base64url(32 bytes)>. Both share the oa_ prefix,
+    // so a single startsWith('oa_') check routes either kind to bcrypt validation.
+    if (token.startsWith('oa_')) {
       if (options?.logger) {
-        options.logger.debug({ tokenPrefix: 'awc_' }, '[TOKEN-VALIDATOR] Detected API key format');
+        const tokenPrefix = token.startsWith('oa_sys_') ? 'oa_sys_' : 'oa_';
+        options.logger.debug({ tokenPrefix }, '[TOKEN-VALIDATOR] Detected API key format');
       }
 
       return await validateApiKey(token, options);

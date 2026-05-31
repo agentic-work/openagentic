@@ -31,8 +31,9 @@ async function main() {
     console.log(`Found user: ${user.id} (${user.email})`);
 
     // Generate API key
-    const randomBytes = crypto.randomBytes(32).toString('hex');
-    const apiKey = `awc_${randomBytes}`;
+    // Format: "oa_" + base64url(32 random bytes) — URL-safe, no padding (43 chars)
+    const randomBytes = crypto.randomBytes(32).toString('base64url');
+    const apiKey = `oa_${randomBytes}`;
 
     // Hash for storage
     const keyHash = await bcrypt.hash(apiKey, 10);

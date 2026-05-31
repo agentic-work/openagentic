@@ -114,7 +114,8 @@ function formatDate(iso: string | null | undefined, fallback = 'Never'): string 
 }
 
 function tokenPrefix(apiKey: string): string {
-  // Backend prefix is `awc_` or `awc_system_` — show the first 8 chars + ellipsis.
+  // Backend prefix is `oa_` (user keys) or `oa_sys_` (system/inter-service
+  // tokens) — show the first 8 chars + ellipsis.
   if (!apiKey) return ''
   return `${apiKey.slice(0, 8)}…`
 }
@@ -309,7 +310,7 @@ export const TokenManagementView: React.FC = () => {
                 color: 'var(--ap-fg-2, var(--fg-2))',
               }}
             >
-              awc_…
+              oa_…
             </span>
           ),
           tier: <Pill tone={tierToTone(t.rateLimitTier)}>{t.rateLimitTier || 'free'}</Pill>,

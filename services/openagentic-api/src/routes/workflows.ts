@@ -53,7 +53,7 @@ import type { ExecutionEvent } from '@openagentic/workflow-engine';
 import { deriveFlowToolSchema } from '@openagentic/workflow-engine';
 import { subscribeAgentProgressForFlowsStream } from '../services/workflowAgentProgressBridge.js';
 import { WorkflowCompiler } from '../services/WorkflowCompiler.js';
-import { randomUUID, createHash } from 'crypto';
+import { randomUUID, createHash, randomBytes } from 'crypto';
 import bcrypt from 'bcrypt';
 import axios from 'axios';
 import { getRedisClient } from '../utils/redis-client.js';
@@ -3461,9 +3461,9 @@ data.on("data", (chunk: Buffer) => {
           return reply.code(400).send({ error: 'name is required' });
         }
 
-        // Generate a secure API key
-        const prefix = 'awc_';
-        const rawKey = prefix + randomUUID().replace(/-/g, '') + randomUUID().replace(/-/g, '').substring(0, 16);
+        // Generate a secure API key: "oa_" + base64url(32 random bytes) (URL-safe, no padding).
+        const prefix = 'oa_';
+        const rawKey = prefix + randomBytes(32).toString('base64url');
         const keyHash = await bcrypt.hash(rawKey, 10);
 
         const apiKey = await prisma.apiKey.create({

@@ -183,7 +183,7 @@ describe('Redis Integration', () => {
 
     it('should handle expired tokens gracefully', async () => {
       // Use an obviously expired/invalid token
-      const expiredApi = new TestAPIClient(env.apiBaseUrl, 'awc_expired_token_test');
+      const expiredApi = new TestAPIClient(env.apiBaseUrl, 'oa_ZXhwaXJlZF90b2tlbl90ZXN0X3NhbXBsZV8wMDAwMDAw');
 
       try {
         await expiredApi.get('/api/chat/sessions');

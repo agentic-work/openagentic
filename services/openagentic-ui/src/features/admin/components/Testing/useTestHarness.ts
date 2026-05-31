@@ -54,7 +54,7 @@ export function useTestHarness() {
     try {
       addLog('info', `Starting tests: ${categories.join(', ')}`);
 
-      const token = localStorage.getItem('awc_token') || document.cookie.match(/awc_token=([^;]+)/)?.[1] || '';
+      const token = localStorage.getItem('auth_token') || document.cookie.match(/auth_token=([^;]+)/)?.[1] || '';
 
       const response = await fetch(apiEndpoint('/admin/test-harness/run'), {
         method: 'POST',

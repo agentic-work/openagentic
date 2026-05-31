@@ -72,7 +72,7 @@ describe('unifiedAuth — tenantId propagation (SEV-0 Flows-fix-A1)', () => {
       tenantId: 'api-key',
     };
 
-    const requestUser = buildRequestUser(validatedUser, 'api-key', 'awc_xxxxxxxx');
+    const requestUser = buildRequestUser(validatedUser, 'api-key', 'oa_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx');
 
     expect(requestUser.tenantId).toBe('api-key');
   });

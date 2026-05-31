@@ -214,7 +214,8 @@ export async function unifiedAuthHook(request: FastifyRequest): Promise<void> {
     }
 
     // Check for API key first (X-API-Key header)
-    // API keys have format: awc_<64-hex-chars>
+    // API keys have format: oa_<43-base64url-chars> (user keys),
+    // or oa_sys_<...> (system / inter-service tokens).
     let token = request.headers['x-api-key'] as string;
 
     // If no API key, extract bearer token from header OR query params (for SSE where EventSource can't send headers)

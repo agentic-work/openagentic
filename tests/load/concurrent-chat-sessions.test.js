@@ -29,7 +29,7 @@ const path = require('path');
 // Configuration
 const CONFIG = {
   apiUrl: process.env.API_URL || 'http://localhost:8000',
-  apiKey: process.env.API_KEY || 'awc_test_PLACEHOLDER_REPLACE_WITH_REAL_KEY',
+  apiKey: process.env.API_KEY || 'oa_test_PLACEHOLDER_REPLACE_WITH_REAL_KEY',
   testUser: 'loadtest@example.com',
   numSessions: parseInt(process.env.NUM_SESSIONS, 10) || 100,
   messagesPerSession: parseInt(process.env.MESSAGES_PER_SESSION, 10) || 20,

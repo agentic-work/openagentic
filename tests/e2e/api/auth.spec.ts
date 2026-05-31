@@ -12,7 +12,7 @@
 import { test, expect } from '@playwright/test';
 
 const API_BASE = process.env.TEST_API_URL || 'http://localhost:8000';
-const TEST_API_KEY = process.env.TEST_API_KEY || 'awc_test_key';
+const TEST_API_KEY = process.env.TEST_API_KEY || 'oa_test_key';
 
 test.describe('Authentication API', () => {
   test.describe('Health & Status', () => {
@@ -46,7 +46,7 @@ test.describe('Authentication API', () => {
     test('invalid API key returns 401', async ({ request }) => {
       const response = await request.get(`${API_BASE}/api/chat/sessions`, {
         headers: {
-          'X-API-Key': 'awc_invalid_key_12345678901234567890123456789012345678901234567890'
+          'X-API-Key': 'oa_invalidkeyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
         }
       });
       expect(response.status()).toBe(401);

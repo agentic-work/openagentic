@@ -90,7 +90,7 @@ export async function generateAuthentication(basePath: string): Promise<DocManif
         'local': 'Platform-issued JWT with userId claim',
         'azure-ad': 'Microsoft Azure AD token with tid and oid claims',
         'google': 'Google token with accounts.google.com issuer',
-        'api-key': 'API key with awc_ prefix (awc_ followed by 64 hex chars)',
+        'api-key': 'API key with oa_ prefix (oa_ followed by 43 base64url chars); system tokens use oa_sys_ prefix',
       };
       for (const t of types) {
         const typeName = t.replace(/'/g, '');

@@ -13,7 +13,8 @@
 import { test, expect } from '@playwright/test';
 
 const API_BASE = process.env.TEST_API_URL || 'http://localhost:8000';
-const TEST_API_KEY = process.env.TEST_API_KEY || 'awc_test_key';
+// User API key format: 'oa_' + base64url(crypto.randomBytes(32)) (43 chars, URL-safe, no padding)
+const TEST_API_KEY = process.env.TEST_API_KEY || 'oa_TESTtest0123456789abcdefABCDEF-_0123456789a';
 
 const authHeaders = {
   'X-API-Key': TEST_API_KEY,

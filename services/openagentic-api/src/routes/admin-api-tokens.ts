@@ -172,10 +172,11 @@ export default async function adminApiTokenRoutes(fastify: FastifyInstance) {
       }
 
       // Generate a secure random API key
-      // Format: awc_<32 random hex chars> or awc_system_<32 random hex chars> for system tokens
-      const apiKeyPrefix = isSystemToken ? 'awc_system' : 'awc';
-      const randomBytes = crypto.randomBytes(32).toString('hex');
-      const apiKey = `${apiKeyPrefix}_${randomBytes}`;
+      // Format: oa_<43-char base64url> for user tokens, oa_sys_<43-char base64url> for system tokens
+      // (base64url of 32 random bytes = 43 chars, URL-safe, no padding)
+      const apiKeyPrefix = isSystemToken ? 'oa_sys' : 'oa';
+      const randomToken = crypto.randomBytes(32).toString('base64url');
+      const apiKey = `${apiKeyPrefix}_${randomToken}`;
 
       if (isSystemToken) {
         logger.warn({

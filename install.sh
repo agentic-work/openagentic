@@ -20,6 +20,10 @@
 #                  (provider choice, per-MCP creds, Helm, etc.). Power-user
 #                  path; the Ink wizard writes the same .env shape that
 #                  --env consumes, so you can wizard once then commit it.
+#   --helm         One-line Kubernetes install. Clones the repo, then
+#                  `helm upgrade --install` the chart into the `openagentic`
+#                  namespace and waits for rollout. Needs helm + kubectl + a
+#                  reachable cluster (kube-context). No Docker required.
 #   --env PATH     Skip ALL prompts. Copy PATH to ./.env and bring up the
 #                  stack as-is. Useful for scripted installs / CI / 2nd
 #                  machines where you already have a known-good .env.
@@ -59,6 +63,7 @@ ENV_FILE_OVERRIDE=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --wizard)  MODE=wizard;     shift ;;
+    --helm)    MODE=helm;       shift ;;
     --env)     MODE=env-file; ENV_FILE_OVERRIDE="$2"; shift 2 ;;
     --no-open) OPEN_BROWSER=0;  shift ;;
     --ollama)  OLLAMA_HOST_OVERRIDE="$2"; shift 2 ;;
@@ -73,11 +78,18 @@ banner
 
 # ─── Pre-flight ─────────────────────────────────────────────────────────────
 step "Pre-flight"
-command -v docker >/dev/null 2>&1 || fatal 'Docker is required. Install from https://docs.docker.com/get-docker/'
-docker info >/dev/null 2>&1       || fatal 'Docker daemon not running. Start Docker Desktop / the docker service and re-run.'
-docker compose version >/dev/null 2>&1 || fatal 'Docker Compose v2 plugin is required.'
 command -v git >/dev/null 2>&1    || fatal 'git is required.'
-ok 'Docker, Compose v2, git'
+if [[ "$MODE" == "helm" ]]; then
+  command -v helm    >/dev/null 2>&1 || fatal 'helm is required for --helm. Install: https://helm.sh/docs/intro/install/'
+  command -v kubectl >/dev/null 2>&1 || fatal 'kubectl is required for --helm.'
+  kubectl cluster-info >/dev/null 2>&1 || fatal 'No reachable Kubernetes cluster (check your kube-context).'
+  ok 'helm, kubectl, cluster, git'
+else
+  command -v docker >/dev/null 2>&1 || fatal 'Docker is required. Install from https://docs.docker.com/get-docker/'
+  docker info >/dev/null 2>&1       || fatal 'Docker daemon not running. Start Docker Desktop / the docker service and re-run.'
+  docker compose version >/dev/null 2>&1 || fatal 'Docker Compose v2 plugin is required.'
+  ok 'Docker, Compose v2, git'
+fi
 
 if [[ "$MODE" == "wizard" ]]; then
   command -v node >/dev/null 2>&1 || fatal 'Node.js 20+ is required for the wizard.'
@@ -107,6 +119,27 @@ else
   fi
 fi
 cd "$INSTALL_DIR"
+
+# ─── Helm path ──────────────────────────────────────────────────────────────
+# One-line Kubernetes install: helm upgrade --install the chart, wait for the
+# rollout, print the WOW banner. Values: values-local-k8s.yaml if present,
+# else the chart defaults.
+if [[ "$MODE" == "helm" ]]; then
+  NS="${OPENAGENTIC_NAMESPACE:-openagentic}"
+  VALUES="helm/openagentic/values-local-k8s.yaml"
+  [[ -f "$VALUES" ]] || VALUES="helm/openagentic/values.yaml"
+  step "helm upgrade --install openagentic (namespace: ${NS})"
+  info "values: ${C_BOLD}${VALUES}${C_RESET}"
+  helm upgrade --install openagentic ./helm/openagentic \
+    --namespace "$NS" --create-namespace \
+    -f "$VALUES" --wait --timeout 10m 2>&1 | tail -12
+  ok 'Helm release deployed'
+  printf '\n  %sOpenAgentic is up on Kubernetes.%s\n\n' "$C_GREEN$C_BOLD" "$C_RESET"
+  printf '  Namespace:  %s%s%s\n' "$C_BOLD" "$NS" "$C_RESET"
+  printf '  Open UI:    %skubectl -n %s port-forward svc/ui 8080:80%s  →  %shttp://localhost:8080%s\n' "$C_BOLD" "$NS" "$C_RESET" "$C_BOLD" "$C_RESET"
+  printf '  Pods:       %skubectl -n %s get pods%s\n\n' "$C_BOLD" "$NS" "$C_RESET"
+  exit 0
+fi
 
 # Cloud-secret stub files — mcp-proxy mounts these as env_file unconditionally.
 SECRETS_DIR="$HOME/.openagentic/cloud-secrets"
