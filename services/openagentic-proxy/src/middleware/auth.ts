@@ -15,7 +15,13 @@ setInterval(() => {
 
 export async function authMiddleware(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const authHeader = request.headers['authorization'];
-  const openagenticProxyHeader = request.headers['x-openagentic-proxy'];
+  // api-side callers (AgentProxyClient, AgentListTool, admin-agents) stamp the
+  // service-to-service marker as `X-Agent-Proxy: true`. Accept that AND the
+  // legacy `x-openagentic-proxy` name so the internal-key fast-path matches
+  // regardless of which header the caller uses (a brand-rewrite once drifted
+  // these apart → sub-agent dispatch 401'd).
+  const openagenticProxyHeader =
+    request.headers['x-agent-proxy'] ?? request.headers['x-openagentic-proxy'];
   const internalKey = process.env.OPENAGENTIC_PROXY_INTERNAL_KEY;
 
   // Allow internal calls from API service (service-to-service with shared key)

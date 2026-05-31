@@ -69,7 +69,6 @@ import BackgroundJobsPanel from './BackgroundJobsPanel';
 import { WorkflowsPage } from '@/features/workflows';
 import { CodeModePanel } from '@/features/code/CodeModePanel';
 import ErrorBoundary from '@/shared/components/ErrorBoundary';
-import { OnboardingTour } from './OnboardingTour';
 import HITLPanel, { type HITLMode, type HITLLogEntry } from './HITLPanel';
 import ToolApprovalDialog from '@/shared/components/Dialogs/ToolApprovalDialog';
 import AdminToolInspector from './AdminToolInspector';
@@ -1943,9 +1942,6 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   return (
     <div className="flex h-screen relative overflow-hidden">
       {/* Background is now global in App.tsx via WebGLBackground */}
-
-      {/* Onboarding Tour - shown on first visit */}
-      <OnboardingTour />
 
       {/* New Hamburger Sidebar - Hidden when fullscreen overlays are open */}
       {!showAdminPortal && !showDocsViewer && (

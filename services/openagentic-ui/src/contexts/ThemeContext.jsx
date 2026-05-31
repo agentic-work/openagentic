@@ -116,8 +116,22 @@ export const ThemeProvider = ({ children }) => {
   const [accentColor, setAccentColor] = useState(() => {
     // Initialize accent color from localStorage
     if (typeof window !== 'undefined') {
+      // One-time migration to the openagentic signal-orange brand default.
+      // Returning users carry the old "Dark Blue" default from the previous
+      // (agenticwork-derived) build; reset it once so the OSS build shows its own
+      // visual identity. Explicit non-default accents are preserved.
+      try {
+        const VER = 'oa-brand-2';
+        if (localStorage.getItem('oa-theme-version') !== VER) {
+          const cur = JSON.parse(localStorage.getItem('ac-accent-color') || 'null');
+          const isOldDefault = !cur || cur.name === 'Dark Blue' ||
+            ['#1E40AF', '#0A84FF', '#007AFF', '#3B82F6'].includes(cur.primary);
+          if (isOldDefault) localStorage.setItem('ac-accent-color', JSON.stringify(accentColors[0]));
+          localStorage.setItem('oa-theme-version', VER);
+        }
+      } catch { /* ignore */ }
       const saved = localStorage.getItem('ac-accent-color');
-      return saved ? JSON.parse(saved) : accentColors[0]; // Default to Dark Blue
+      return saved ? JSON.parse(saved) : accentColors[0]; // Default: signal orange
     }
     return accentColors[0];
   });

@@ -43,9 +43,20 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: 3300
+          envFrom:
+            # Shares OPENAGENTIC_PROXY_INTERNAL_KEY (+ JWT/signing) with the api so
+            # service-to-service sub-agent dispatch authenticates. authMiddleware
+            # compares Bearer ${OPENAGENTIC_PROXY_INTERNAL_KEY}.
+            - secretRef:
+                name: openagentic-secrets
           env:
             - name: API_URL
               value: http://api:8000
+            # Sub-agents get their MCP tools (web_search/web_fetch/…) by listing
+            # them from the mcp-proxy. Default is openagentic-mcp-proxy:5001 (wrong
+            # for this chart) — point at the real service so sub-agents have tools.
+            - name: MCP_PROXY_URL
+              value: http://mcp-proxy:8080
             - name: REDIS_URL
               value: redis://redis:6379
             - name: REDIS_HOST
