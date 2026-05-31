@@ -423,6 +423,8 @@ export function CodeModeWizard({ onLaunched, onClose, startStep = 'welcome' }: W
         body: JSON.stringify({
           model: selectedModel || undefined,
           repoUrl: workspaceType === 'clone' && repoUrl ? repoUrl : undefined,
+          // Default codemode to the stream-json chat UX (CodeModeChat, no xterm).
+          mode: 'chat',
         }),
       });
       if (!res.ok) {
@@ -430,7 +432,7 @@ export function CodeModeWizard({ onLaunched, onClose, startStep = 'welcome' }: W
         throw new Error(`Session creation failed: ${text}`);
       }
       const session = await res.json();
-      onLaunched(session);
+      onLaunched({ ...session, mode: 'chat' });
     } catch (e) {
       setLaunchError(e instanceof Error ? e.message : 'Unknown error');
     } finally {

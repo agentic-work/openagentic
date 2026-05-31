@@ -57,7 +57,7 @@ const codeSessionsRoutes: FastifyPluginAsync<CodeSessionsPluginOptions> = async 
    * Body: { model?: string; repoUrl?: string }
    * Creates a new exec session and returns session metadata.
    */
-  fastify.post<{ Body: { model?: string; repoUrl?: string } }>(
+  fastify.post<{ Body: { model?: string; repoUrl?: string; mode?: 'terminal' | 'chat' } }>(
     '/sessions',
     async (request, reply) => {
       const user = (request as any).user;
@@ -67,7 +67,7 @@ const codeSessionsRoutes: FastifyPluginAsync<CodeSessionsPluginOptions> = async 
         return reply.code(401).send({ error: 'unauthorized' });
       }
 
-      const body = (request.body as { model?: string; repoUrl?: string }) ?? {};
+      const body = (request.body as { model?: string; repoUrl?: string; mode?: 'terminal' | 'chat' }) ?? {};
       const sessionId = randomUUID();
       const workspacePath = `/workspaces/${userId}/${sessionId}`;
 
@@ -84,6 +84,7 @@ const codeSessionsRoutes: FastifyPluginAsync<CodeSessionsPluginOptions> = async 
         model: body.model || '',
         authToken,
         apiEndpoint,
+        mode: body.mode || 'terminal',
       });
 
       await resolvedCodeModeSettings.setCodeModeSettings(userId, {

@@ -13,6 +13,7 @@
  */
 import React, { useState } from 'react';
 import { Terminal } from './Terminal';
+import { CodeModeChat } from './CodeModeChat';
 import { CodeModeWizard } from './wizard/CodeModeWizard';
 import { useCodeModeFirstRun } from './useCodeModeFirstRun';
 import { useCodeModeStore } from '@/stores/useCodeModeStore';
@@ -49,9 +50,13 @@ export const CodeModePanel: React.FC = () => {
 
   // --- Active session → show terminal (skip loading gate if we already have one) ---
   if (activeSession) {
+    // 'chat' → CodeModeChat (stream-json → React, no xterm); else legacy xterm.
+    const isChat = (activeSession as { mode?: string }).mode === 'chat';
     return (
       <div style={{ width: '100%', height: '100%' }}>
-        <Terminal sessionId={activeSession.sessionId} />
+        {isChat
+          ? <CodeModeChat sessionId={activeSession.sessionId} />
+          : <Terminal sessionId={activeSession.sessionId} />}
       </div>
     );
   }

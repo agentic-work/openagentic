@@ -9,10 +9,13 @@ import crypto from 'crypto';
 import { loadConfig } from './config.js';
 import { writeClaudeSettings } from './claudeSettings.js';
 import { PtyManager } from './ptyManager.js';
+import { ChatManager } from './chatManager.js';
 
 export async function startServer(): Promise<{ port: number; stop: () => Promise<void> }> {
   const config = loadConfig();
   const ptyManager = new PtyManager({ claudePath: config.claudePath });
+  // Stream-json codemode path (no xterm): renders structured NDJSON as DOM/React.
+  const chatManager = new ChatManager({ claudePath: config.claudePath });
 
   const app = express();
   app.use(express.json());
@@ -96,7 +99,7 @@ export async function startServer(): Promise<{ port: number; stop: () => Promise
 
   // ─── POST /sessions ───────────────────────────────────────────────────────
   app.post('/sessions', async (req, res) => {
-    const { sessionId, userId, userEmail, workspacePath: rawWorkspacePath, model, apiKey, authToken, apiEndpoint } = req.body || {};
+    const { sessionId, userId, userEmail, workspacePath: rawWorkspacePath, model, apiKey, authToken, apiEndpoint, mode } = req.body || {};
 
     if (!sessionId || !userId || !rawWorkspacePath) {
       res.status(400).json({ error: 'sessionId, userId, and workspacePath are all required' });
@@ -117,7 +120,9 @@ export async function startServer(): Promise<{ port: number; stop: () => Promise
       // resolves and onboarding/permission settings apply.
       await writeClaudeSettings(config.claudeHome, { model: model || undefined });
 
-      const s = await ptyManager.createSession({
+      // mode 'chat' → stream-json (CodeModeChat, no xterm); default → PTY terminal.
+      const mgr = mode === 'chat' ? chatManager : ptyManager;
+      const s = await mgr.createSession({
         sessionId,
         userId,
         userEmail: userEmail || undefined,
@@ -267,7 +272,7 @@ export async function startServer(): Promise<{ port: number; stop: () => Promise
 
   httpServer.on('upgrade', (req, socket, head) => {
     const url = req.url || '';
-    const match = url.match(/^\/ws\/terminal\/([^/?]+)/);
+    const match = url.match(/^\/ws\/(?:terminal|chat)\/([^/?]+)/);
     if (!match) {
       socket.destroy();
       return;
@@ -295,39 +300,40 @@ export async function startServer(): Promise<{ port: number; stop: () => Promise
 
   wss.on('connection', (socket, req) => {
     const url = req.url || '';
-    const match = url.match(/^\/ws\/terminal\/([^/?]+)/);
-    const sessionId = match ? match[1] : null;
+    const match = url.match(/^\/ws\/(terminal|chat)\/([^/?]+)/);
+    const kind = match ? match[1] : null;
+    const sessionId = match ? match[2] : null;
+    // /ws/terminal → PtyManager (raw bytes → xterm); /ws/chat → ChatManager
+    // (NDJSON stream-json → DOM/React). Both share the same listener surface.
+    const mgr = kind === 'chat' ? chatManager : ptyManager;
 
-    if (!sessionId || ptyManager.getStatus(sessionId) === 'unknown') {
+    if (!sessionId || mgr.getStatus(sessionId) === 'unknown') {
       socket.close(1008, 'Session not found');
       return;
     }
 
-    // I2: Register the live listener first, then flush the snapshot taken
-    // BEFORE registration. Because PTY data only arrives on future event-loop
-    // ticks, doing register-then-flush in a single synchronous block guarantees:
-    //   - no gap (live data received after register is delivered in order)
-    //   - no duplication (snapshot was captured before any new data could arrive)
-    // No setTimeout is needed or used.
-    const snap = ptyManager.getOutputBuffer(sessionId);
+    // Register the live listener first, then flush the snapshot taken BEFORE
+    // registration — guarantees no gap and no duplication (see PtyManager note).
+    const snap = mgr.getOutputBuffer(sessionId);
     const cb = (data: string) => {
       if (socket.readyState === socket.OPEN) {
-        socket.send(data);
+        // chat sends one NDJSON line per message; terminal sends raw byte chunks.
+        socket.send(kind === 'chat' ? data + '\n' : data);
       }
     };
-    ptyManager.onData(sessionId, cb);
+    mgr.onData(sessionId, cb);
     if (snap && socket.readyState === socket.OPEN) {
       socket.send(snap);
     }
 
-    // C2: Remove the listener when the socket closes to prevent leaks and
-    // cross-talk on reconnect.
     socket.on('close', () => {
-      ptyManager.removeListener(sessionId, cb);
+      mgr.removeListener(sessionId, cb);
     });
 
+    // terminal: raw keystrokes → pty; chat: a user turn ({text} or raw) → claude
+    // stdin (ChatManager.write wraps it into a stream-json user message).
     socket.on('message', (msg) => {
-      ptyManager.write(sessionId, msg.toString());
+      mgr.write(sessionId, msg.toString());
     });
   });
 
@@ -346,8 +352,10 @@ export async function startServer(): Promise<{ port: number; stop: () => Promise
   // ─── stop() ───────────────────────────────────────────────────────────────
   const stop = (): Promise<void> => {
     return new Promise((resolveStop) => {
-      const sessions = ptyManager.getAllSessions();
-      const stopPromises = sessions.map(s => ptyManager.stopSession(s.sessionId));
+      const stopPromises = [
+        ...ptyManager.getAllSessions().map(s => ptyManager.stopSession(s.sessionId)),
+        ...chatManager.getAllSessions().map(s => chatManager.stopSession(s.sessionId)),
+      ];
 
       Promise.allSettled(stopPromises).then(() => {
         // Terminate all open WS clients so wss.close() doesn't hang

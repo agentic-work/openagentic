@@ -192,6 +192,8 @@ export interface CodeSession {
   podName?: string;
   /** CLI backend: 'openagentic-cli' or 'claude-code' */
   cliBackend?: 'openagentic-cli' | 'claude-code';
+  /** UI mode: 'chat' → CodeModeChat (stream-json, no xterm); 'terminal' → xterm. */
+  mode?: 'terminal' | 'chat';
 }
 
 // Initialization step for the checklist UI

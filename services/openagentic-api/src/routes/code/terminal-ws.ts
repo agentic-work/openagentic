@@ -97,96 +97,83 @@ export const codeTerminalWsRoute: FastifyPluginAsync<TerminalWsPluginOptions> = 
    *   handler: (connection: any, req: any) => { ... }
    *   ws = connection?.socket || connection   ← v10/v11 compat
    */
-  fastify.get(
-    '/ws/terminal',
-    { websocket: true } as any,
-    async (connection: any, req: any) => {
-      // v10: connection.socket  v11: connection is the socket directly
-      const clientWs: WebSocket = connection?.socket || connection;
+  // Shared proxy: /ws/terminal → exec /ws/terminal (raw PTY bytes → xterm);
+  // /ws/chat → exec /ws/chat (stream-json NDJSON → CodeModeChat DOM/React).
+  const makeProxyHandler = (kind: 'terminal' | 'chat') => async (connection: any, req: any) => {
+    // v10: connection.socket  v11: connection is the socket directly
+    const clientWs: WebSocket = connection?.socket || connection;
 
-      const { token, sessionId } = (req.query ?? {}) as {
-        token?: string;
-        sessionId?: string;
-      };
+    const { token, sessionId } = (req.query ?? {}) as { token?: string; sessionId?: string };
+    logger.info?.({ kind, sessionId, hasToken: !!token }, `Code WS (${kind}): client connected`);
 
-      logger.info?.({ sessionId, hasToken: !!token }, 'Terminal WS: client connected');
+    // ── Auth ─────────────────────────────────────────────────────────────
+    if (!token) {
+      logger.warn?.({ kind, sessionId }, 'Code WS: no token — closing 1008');
+      clientWs.close(1008, 'Authentication required');
+      return;
+    }
 
-      // ── Auth ─────────────────────────────────────────────────────────────
-      if (!token) {
-        logger.warn?.({ sessionId }, 'Terminal WS: no token — closing 1008');
-        clientWs.close(1008, 'Authentication required');
-        return;
-      }
+    let authResult: { ok: boolean; user: any };
+    try {
+      authResult = await validateToken(token);
+    } catch (err: any) {
+      logger.warn?.({ err: err?.message, kind, sessionId }, 'Code WS: validateToken threw — closing 1008');
+      clientWs.close(1008, 'Authentication error');
+      return;
+    }
 
-      let authResult: { ok: boolean; user: any };
-      try {
-        authResult = await validateToken(token);
-      } catch (err: any) {
-        logger.warn?.({ err: err?.message, sessionId }, 'Terminal WS: validateToken threw — closing 1008');
-        clientWs.close(1008, 'Authentication error');
-        return;
-      }
+    if (!authResult.ok || !authResult.user) {
+      logger.warn?.({ kind, sessionId }, 'Code WS: invalid token — closing 1008');
+      clientWs.close(1008, 'Invalid token');
+      return;
+    }
 
-      if (!authResult.ok || !authResult.user) {
-        logger.warn?.({ sessionId }, 'Terminal WS: invalid token — closing 1008');
-        clientWs.close(1008, 'Invalid token');
-        return;
-      }
+    const userId = authResult.user?.userId || authResult.user?.id || 'unknown';
+    logger.info?.({ kind, sessionId, userId }, 'Code WS: auth OK — opening exec connection');
 
-      const userId = authResult.user?.userId || authResult.user?.id || 'unknown';
-      logger.info?.({ sessionId, userId }, 'Terminal WS: auth OK — opening exec connection');
+    // ── Open outbound exec WS ────────────────────────────────────────────
+    const execUrl = `${wsBaseUrl}/ws/${kind}/${encodeURIComponent(sessionId ?? '')}`;
+    let execWs: WebSocket | null = null;
 
-      // ── Open outbound exec WS ────────────────────────────────────────────
-      const execUrl = `${wsBaseUrl}/ws/terminal/${encodeURIComponent(sessionId ?? '')}`;
-      let execWs: WebSocket | null = null;
+    try {
+      execWs = connectExec(execUrl, { 'x-internal-api-key': internalKey });
+    } catch (err: any) {
+      logger.error?.({ err: err?.message, kind, sessionId, execUrl }, 'Code WS: failed to create exec WS');
+      if (clientWs.readyState === WebSocket.OPEN) clientWs.close();
+      return;
+    }
 
-      try {
-        execWs = connectExec(execUrl, {
-          'x-internal-api-key': internalKey,
-        });
-      } catch (err: any) {
-        logger.error?.({ err: err?.message, sessionId, execUrl }, 'Terminal WS: failed to create exec WS');
-        if (clientWs.readyState === WebSocket.OPEN) clientWs.close();
-        return;
-      }
+    // ── Pipe: exec → client ──────────────────────────────────────────────
+    execWs.on('message', (data: any) => {
+      if (clientWs.readyState === WebSocket.OPEN) clientWs.send(data);
+    });
+    execWs.on('close', () => {
+      logger.info?.({ kind, sessionId }, 'Code WS: exec closed — closing client');
+      if (clientWs.readyState === WebSocket.OPEN) clientWs.close();
+    });
+    execWs.on('error', (err: Error) => {
+      logger.error?.({ err: err.message, kind, sessionId }, 'Code WS: exec error — closing client');
+      if (clientWs.readyState === WebSocket.OPEN) clientWs.close();
+    });
 
-      // ── Pipe: exec → client ──────────────────────────────────────────────
-      execWs.on('message', (data: any) => {
-        if (clientWs.readyState === WebSocket.OPEN) {
-          clientWs.send(data);
-        }
-      });
+    // ── Pipe: client → exec ──────────────────────────────────────────────
+    clientWs.on('message', (data: any) => {
+      if (execWs && execWs.readyState === WebSocket.OPEN) execWs.send(data);
+    });
+    clientWs.on('close', () => {
+      logger.info?.({ kind, sessionId }, 'Code WS: client closed — closing exec');
+      if (execWs && execWs.readyState === WebSocket.OPEN) execWs.close();
+    });
+    clientWs.on('error', (err: Error) => {
+      logger.error?.({ err: err.message, kind, sessionId }, 'Code WS: client error — closing exec');
+      if (execWs && execWs.readyState === WebSocket.OPEN) execWs.close();
+    });
+  };
 
-      execWs.on('close', (_code: number, _reason: Buffer) => {
-        logger.info?.({ sessionId }, 'Terminal WS: exec closed — closing client');
-        if (clientWs.readyState === WebSocket.OPEN) clientWs.close();
-      });
+  fastify.get('/ws/terminal', { websocket: true } as any, makeProxyHandler('terminal'));
+  fastify.get('/ws/chat', { websocket: true } as any, makeProxyHandler('chat'));
 
-      execWs.on('error', (err: Error) => {
-        logger.error?.({ err: err.message, sessionId }, 'Terminal WS: exec error — closing client');
-        if (clientWs.readyState === WebSocket.OPEN) clientWs.close();
-      });
-
-      // ── Pipe: client → exec ──────────────────────────────────────────────
-      clientWs.on('message', (data: any) => {
-        if (execWs && execWs.readyState === WebSocket.OPEN) {
-          execWs.send(data);
-        }
-      });
-
-      clientWs.on('close', () => {
-        logger.info?.({ sessionId }, 'Terminal WS: client closed — closing exec');
-        if (execWs && execWs.readyState === WebSocket.OPEN) execWs.close();
-      });
-
-      clientWs.on('error', (err: Error) => {
-        logger.error?.({ err: err.message, sessionId }, 'Terminal WS: client error — closing exec');
-        if (execWs && execWs.readyState === WebSocket.OPEN) execWs.close();
-      });
-    },
-  );
-
-  logger.info?.('Terminal WS route registered at /ws/terminal (parent adds /api/code prefix)');
+  logger.info?.('Code WS routes registered at /ws/terminal + /ws/chat (parent adds /api/code prefix)');
 };
 
 export default codeTerminalWsRoute;

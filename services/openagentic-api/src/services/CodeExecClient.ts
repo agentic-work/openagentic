@@ -21,6 +21,8 @@ export interface CreateSessionInput {
   apiKey?: string;
   authToken?: string;
   apiEndpoint?: string;
+  /** 'chat' → stream-json (CodeModeChat, no xterm); default/'terminal' → PTY. */
+  mode?: 'terminal' | 'chat';
 }
 
 export interface ExecSession {
