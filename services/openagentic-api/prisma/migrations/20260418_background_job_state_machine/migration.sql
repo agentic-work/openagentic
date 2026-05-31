@@ -1,4 +1,4 @@
--- Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
+
 
 -- 0.6.6 P8 (task #113): extend BackgroundJob for a proper state machine.
 --

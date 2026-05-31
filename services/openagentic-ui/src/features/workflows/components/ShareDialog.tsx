@@ -348,7 +348,7 @@ const RoleDropdown: React.FC<{
               key={opt.value}
               onClick={() => { onChange(opt.value); setOpen(false); }}
               className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-white/5"
-              style={{ color: value === opt.value ? '#3b82f6' : TEXT }}
+              style={{ color: value === opt.value ? 'var(--user-accent-primary, #FF5722)' : TEXT }}
             >
               {roleIcon(opt.value)}
               <div>
@@ -414,15 +414,15 @@ const VisibilityTab: React.FC<{
               onClick={() => setSelected(option.value)}
               className="w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all"
               style={{
-                borderColor: isSelected ? '#3b82f6' : BORDER,
-                background: isSelected ? 'rgba(59,130,246,0.1)' : 'transparent',
+                borderColor: isSelected ? 'var(--user-accent-primary, #FF5722)' : BORDER,
+                background: isSelected ? 'color-mix(in srgb, var(--user-accent-primary, #FF5722) 10%, transparent)' : 'transparent',
               }}
             >
               <div
                 className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center"
                 style={{
-                  background: isSelected ? 'rgba(59,130,246,0.2)' : BG_SECONDARY,
-                  color: isSelected ? '#3b82f6' : TEXT_TERTIARY,
+                  background: isSelected ? 'color-mix(in srgb, var(--user-accent-primary, #FF5722) 20%, transparent)' : BG_SECONDARY,
+                  color: isSelected ? 'var(--user-accent-primary, #FF5722)' : TEXT_TERTIARY,
                 }}
               >
                 {option.icon}
@@ -433,9 +433,9 @@ const VisibilityTab: React.FC<{
               </div>
               <div
                 className="flex-shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center"
-                style={{ borderColor: isSelected ? '#3b82f6' : TEXT_TERTIARY }}
+                style={{ borderColor: isSelected ? 'var(--user-accent-primary, #FF5722)' : TEXT_TERTIARY }}
               >
-                {isSelected && <div className="w-2 h-2 rounded-full bg-blue-500" />}
+                {isSelected && <div className="w-2 h-2 rounded-full" style={{ background: 'var(--user-accent-primary, #FF5722)' }} />}
               </div>
             </button>
           );
@@ -482,8 +482,8 @@ const VisibilityTab: React.FC<{
                         <div
                           className="w-4 h-4 rounded border flex items-center justify-center"
                           style={{
-                            borderColor: selectedGroupIds.has(g.id) ? '#3b82f6' : BORDER,
-                            background: selectedGroupIds.has(g.id) ? '#3b82f6' : 'transparent',
+                            borderColor: selectedGroupIds.has(g.id) ? 'var(--user-accent-primary, #FF5722)' : BORDER,
+                            background: selectedGroupIds.has(g.id) ? 'var(--user-accent-primary, #FF5722)' : 'transparent',
                           }}
                         >
                           {selectedGroupIds.has(g.id) && <Check className="w-3 h-3 text-white" />}
@@ -519,7 +519,7 @@ const VisibilityTab: React.FC<{
         <button
           onClick={onSave}
           disabled={saving}
-          className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-500 text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
+          className="px-4 py-2 text-sm font-medium rounded-lg bg-accent-primary text-white transition-colors hover:bg-accent-primary/90 disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save Changes'}
         </button>
@@ -933,7 +933,7 @@ const ApiAccessTab: React.FC<{
             onClick={toggleWebhook}
             disabled={togglingWebhook || loadingWebhook}
             className="relative w-10 h-5 rounded-full transition-colors"
-            style={{ background: webhook?.active ? '#3b82f6' : BG_SECONDARY }}
+            style={{ background: webhook?.active ? 'var(--user-accent-primary, #FF5722)' : BG_SECONDARY }}
           >
             <div
               className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
@@ -994,7 +994,7 @@ const ApiAccessTab: React.FC<{
           <button
             onClick={generateApiKey}
             disabled={generatingKey}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-blue-500 text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-accent-primary text-white transition-colors hover:bg-accent-primary/90 disabled:opacity-50"
           >
             {generatingKey ? <Spinner size="w-3 h-3" /> : <Plus className="w-3 h-3" />}
             Generate Key
@@ -1060,8 +1060,8 @@ const ApiAccessTab: React.FC<{
               onClick={() => setSnippetLang(lang)}
               className="px-2.5 py-1 text-xs rounded-md transition-colors"
               style={{
-                background: snippetLang === lang ? 'rgba(59,130,246,0.15)' : 'transparent',
-                color: snippetLang === lang ? '#3b82f6' : TEXT_TERTIARY,
+                background: snippetLang === lang ? 'color-mix(in srgb, var(--user-accent-primary, #FF5722) 15%, transparent)' : 'transparent',
+                color: snippetLang === lang ? 'var(--user-accent-primary, #FF5722)' : TEXT_TERTIARY,
               }}
             >
               {lang}
@@ -1157,7 +1157,7 @@ const EmbedTab: React.FC<{ workflowId: string }> = ({ workflowId }) => {
         >
           {/* Mock widget header */}
           <div className="flex items-center gap-2 px-3 py-2.5 border-b" style={{ borderColor: BORDER, background: 'rgba(59,130,246,0.1)' }}>
-            <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+            <div className="w-6 h-6 rounded-full bg-accent-primary flex items-center justify-center">
               <Play className="w-3 h-3 text-white" />
             </div>
             <span className="text-xs font-medium" style={{ color: TEXT }}>OpenAgentic</span>
@@ -1170,7 +1170,7 @@ const EmbedTab: React.FC<{ workflowId: string }> = ({ workflowId }) => {
               </div>
             </div>
             <div className="flex justify-end">
-              <div className="rounded-lg px-2.5 py-1.5 text-[10px] max-w-[180px] bg-blue-500 text-white">
+              <div className="rounded-lg px-2.5 py-1.5 text-[10px] max-w-[180px] bg-accent-primary text-white">
                 Run the workflow
               </div>
             </div>
@@ -1291,14 +1291,14 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
                       className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors relative"
-                      style={{ color: isActive ? '#3b82f6' : 'rgba(156,163,175,1)' }}
+                      style={{ color: isActive ? 'var(--user-accent-primary, #FF5722)' : 'rgba(156,163,175,1)' }}
                     >
                       {tab.icon}
                       {tab.label}
                       {isActive && (
                         <motion.div
                           layoutId="share-tab-indicator"
-                          className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500"
+                          className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-primary"
                           transition={{ duration: 0.2 }}
                         />
                       )}

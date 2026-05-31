@@ -4,9 +4,9 @@
  * Plan: docs/superpowers/plans/2026-05-10-chatmode-rip-implementation.md §C.1
  * Spec: docs/superpowers/specs/2026-05-10-chatmode-three-layer-architecture.md §Layer-2
  *
- * The T1 catalog (12 primitives in canonical order):
+ * The T1 catalog (canonical order):
  *   tool_search · agent_search · Task · agent_send · agent_list · agent_stop ·
- *   read_large_result · web_search · web_fetch · synth ·
+ *   read_large_result · web_search · web_fetch ·
  *   pattern_save · pattern_recall
  *
  * pattern_save / pattern_recall added 2026-05-11 — model self-curates a
@@ -45,7 +45,6 @@ import { AGENT_STOP_TOOL } from '../../../../services/AgentStopTool.js';
 import { READ_LARGE_RESULT_TOOL_DEF } from '../../../../services/ReadLargeResultTool.js';
 import { WEB_SEARCH_TOOL } from '../../../../services/WebSearchTool.js';
 import { WEB_FETCH_TOOL } from '../../../../services/WebFetchTool.js';
-import { SYNTH_TOOL } from '../../../../services/SynthTool.js';
 import { PATTERN_SAVE_TOOL } from '../../../../services/PatternSaveTool.js';
 import { PATTERN_RECALL_TOOL } from '../../../../services/PatternRecallTool.js';
 // 2026-05-24 — memory_search re-added to T1 catalog for #1085 (per-user RAG
@@ -125,7 +124,6 @@ export function getAllBaseTools(
     READ_LARGE_RESULT_TOOL_DEF,
     WEB_SEARCH_TOOL,
     WEB_FETCH_TOOL,
-    SYNTH_TOOL,
     PATTERN_SAVE_TOOL,
     PATTERN_RECALL_TOOL,
     // #1085 — per-user RAG memory recall. Sibling of memorize (write side

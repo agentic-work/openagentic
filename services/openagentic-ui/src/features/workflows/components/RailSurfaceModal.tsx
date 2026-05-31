@@ -148,7 +148,7 @@ export const RailSurfaceModal: React.FC<RailSurfaceModalProps> = ({
             className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
             style={{
               background:
-                'linear-gradient(135deg, var(--user-accent-primary, #7c3aed) 0%, var(--user-accent-secondary, #2563eb) 100%)',
+                'linear-gradient(135deg, var(--user-accent-primary, #FF5722) 0%, var(--user-accent-secondary, #B83A0E) 100%)',
             }}
           >
             <Icon className="w-5 h-5 text-white" />
@@ -156,7 +156,7 @@ export const RailSurfaceModal: React.FC<RailSurfaceModalProps> = ({
           <div className="flex flex-col">
             <span
               className="text-[10px] font-bold tracking-[0.14em] uppercase"
-              style={{ color: 'var(--user-accent-primary, #7c3aed)' }}
+              style={{ color: 'var(--user-accent-primary, #FF5722)' }}
             >
               Workspace
             </span>

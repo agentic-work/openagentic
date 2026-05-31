@@ -48,6 +48,7 @@ import { useChatStreamingStore } from '@/stores/useChatStreamingStore';
 import { useModelStore } from '@/stores/useModelStore';
 import { useChatSessions } from '../hooks/useChatSessions';
 import { useMCPTools } from '../hooks/useMCPTools';
+import { useFollowupChipListener } from '../hooks/useFollowupChipListener';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 // Import sub-components
@@ -1260,6 +1261,25 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     }
   }, [inputMessage, activeSessionId, isStreaming, sendSSEMessage, selectedFiles, enabledTools, selectedModel, enabledPromptTechniques, agentHandlers.onStreamStart]);
 
+  // Wire the end-of-message follow-up suggestion chips. Clicking a chip
+  // dispatches a 'followup-chip-clicked' window event (AgenticActivityStream /
+  // ChipsRow). The listener hook existed + was unit-tested but was never
+  // mounted, so chips fired into the void and did nothing. We fill the composer
+  // with the chip's prompt and auto-submit on the next render once the input
+  // state has flushed (sendMessage reads inputMessage, which is async).
+  const followupPendingRef = useRef(false);
+  useFollowupChipListener((prompt: string) => {
+    if (isStreaming) return;
+    setInputMessage(prompt);
+    followupPendingRef.current = true;
+  });
+  useEffect(() => {
+    if (followupPendingRef.current && inputMessage.trim() && !isStreaming) {
+      followupPendingRef.current = false;
+      void sendMessage();
+    }
+  }, [inputMessage, isStreaming, sendMessage]);
+
   // Load sessions on mount
   useEffect(() => {
     if (isAuthenticated) {
@@ -1912,9 +1932,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   //   setShowKeyboardHelp(true);
   // });
 
-  // App Mode keyboard shortcut - Ctrl+Shift+C. Routes through
-  // handleAppModeChange so the OSS lock-screen fires instead of an
-  // unhandled appMode='code' state.
+  // App Mode keyboard shortcut - Ctrl+Shift+C toggles Chat / Code mode.
   useHotkeys('ctrl+shift+c', (e) => {
     e.preventDefault();
     handleAppModeChange(appMode === 'chat' ? 'code' : 'chat');
@@ -2025,7 +2043,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
           // Open documentation as overlay modal
           openUI('showDocsViewer');
         }}
-        // App Mode toggle (Chat / Code [locked in OSS] / Flows)
+        // App Mode toggle (Chat / Code / Flows)
         appMode={appMode}
         onAppModeChange={handleAppModeChange}
         canUseCodeMode={true}
@@ -2038,7 +2056,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
           <Suspense fallback={
             <div className="h-full w-full flex items-center justify-center" style={{ backgroundColor: 'var(--color-background)' }}>
               <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto" />
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-primary mx-auto" />
                 <p className="mt-4 text-sm" style={{ color: 'var(--color-textMuted)' }}>Loading Admin Portal...</p>
               </div>
             </div>
@@ -2186,7 +2204,7 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
                   className="absolute left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium shadow-lg backdrop-blur-sm hover:scale-105 transition-transform"
                   style={{
                     bottom: '20px',
-                    background: 'var(--color-primary, #3b82f6)',
+                    background: 'var(--color-primary, var(--user-accent-primary))',
                     color: 'white',
                     border: '1px solid var(--color-primary-border, rgba(255,255,255,0.2))',
                   }}
@@ -2490,65 +2508,6 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
 
       {/* Activity Orb replaced by UnifiedAgentActivity component with integrated ThinkingSphere */}
 
-    </div>
-  );
-};
-
-/**
- * Modal-wrapped lock screen shown when a user clicks the Code Mode
- * sidebar entry in the OSS edition. Backed by the shared LockScreen
- * component used for admin enterprise leaves so the visual is
- * consistent across upsell surfaces.
- */
-const CodeModeUpsellModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  // Avoid pulling the admin chunk into the chat bundle.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { LockScreen } = require('@/features/admin/Upsell') as typeof import('@/features/admin/Upsell');
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Code Mode — hosted feature"
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 60,
-        background: 'rgba(0,0,0,0.55)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 24,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          maxWidth: 640, width: '100%',
-          background: 'var(--color-bg-primary, #fff)',
-          borderRadius: 12,
-          boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
-          overflow: 'hidden',
-          position: 'relative',
-        }}
-      >
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          style={{
-            position: 'absolute', top: 12, right: 12,
-            background: 'transparent', border: 'none', cursor: 'pointer',
-            fontSize: 22, lineHeight: 1, color: 'var(--color-text-secondary, #6b7280)',
-          }}
-        >×</button>
-        <LockScreen
-          feature="Code Mode"
-          description="Per-user sandboxed coding workspace with your choice of CLI (Claude Code, Gemini CLI, Aider, OpenCode, …). Each session runs in an isolated container with persistent file mounts and live terminal access."
-          capabilities={[
-            'Isolated per-user workspace',
-            'Choice of bundled coding CLI',
-            'Persistent file mounts',
-            'Live terminal + VS Code shell',
-            'MCP tool routing inside the sandbox',
-          ]}
-        />
-      </div>
     </div>
   );
 };

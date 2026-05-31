@@ -1232,7 +1232,7 @@ export class ModelCapabilityRegistry {
 
     try {
       const rows: any[] = await (this.prisma as any).modelRoleAssignment?.findMany({
-        where: { state: 'active', enabled: true },
+        where: { enabled: true },
       }) ?? [];
 
       for (const row of rows) {

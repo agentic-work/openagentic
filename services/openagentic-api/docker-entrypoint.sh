@@ -4,31 +4,39 @@ echo "========================================="
 echo "Dependencies Health Check"
 echo "========================================="
 
-# Step 1: Wait for Milvus gRPC port (MANDATORY — semantic search requires it)
-echo "[1/4] Waiting for Milvus vector database to be fully ready..."
-MILVUS_HOST=${MILVUS_HOST:-milvus}
-MILVUS_PORT=${MILVUS_PORT:-19530}
+# Step 1: Wait for Milvus gRPC port.
+# Milvus is OPTIONAL — a minimal install uses pgvector inside postgres for
+# vector search (no Milvus container). Skip the wait when Milvus is disabled
+# (MILVUS_ENABLED=false) or the tool semantic cache is off
+# (SKIP_TOOL_SEMANTIC_CACHE=true) — i.e. the pgvector-only configuration.
+if [ "${MILVUS_ENABLED}" = "false" ] || [ "${SKIP_TOOL_SEMANTIC_CACHE}" = "true" ]; then
+  echo "[1/4] Milvus disabled — using pgvector for vector search, skipping Milvus wait."
+else
+  echo "[1/4] Waiting for Milvus vector database to be fully ready..."
+  MILVUS_HOST=${MILVUS_HOST:-milvus}
+  MILVUS_PORT=${MILVUS_PORT:-19530}
 
-echo "  Checking Milvus gRPC at: $MILVUS_HOST:$MILVUS_PORT"
-MILVUS_READY=false
-for i in $(seq 1 60); do
-  echo -n "  Attempt $i/60: "
-  if nc -z -w 2 "$MILVUS_HOST" "$MILVUS_PORT" 2>/dev/null; then
-    echo "✅ Milvus gRPC port is accepting connections"
-    echo "  Waiting 5 seconds for Milvus to stabilize..."
-    sleep 5
-    echo "✅ Milvus is ready"
-    MILVUS_READY=true
-    break
-  else
-    echo "❌ Milvus not ready yet"
-    sleep 5
+  echo "  Checking Milvus gRPC at: $MILVUS_HOST:$MILVUS_PORT"
+  MILVUS_READY=false
+  for i in $(seq 1 60); do
+    echo -n "  Attempt $i/60: "
+    if nc -z -w 2 "$MILVUS_HOST" "$MILVUS_PORT" 2>/dev/null; then
+      echo "✅ Milvus gRPC port is accepting connections"
+      echo "  Waiting 5 seconds for Milvus to stabilize..."
+      sleep 5
+      echo "✅ Milvus is ready"
+      MILVUS_READY=true
+      break
+    else
+      echo "❌ Milvus not ready yet"
+      sleep 5
+    fi
+  done
+
+  if [ "$MILVUS_READY" = "false" ]; then
+    echo "🚨 FATAL: Milvus not ready after 5 minutes — cannot start without vector search"
+    exit 1
   fi
-done
-
-if [ "$MILVUS_READY" = "false" ]; then
-  echo "🚨 FATAL: Milvus not ready after 5 minutes — cannot start without vector search"
-  exit 1
 fi
 
 # Step 2: Wait for Redis to be ready

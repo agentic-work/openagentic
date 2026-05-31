@@ -1,12 +1,3 @@
-/**
- * buildTree unit tests
- *
- * For all inquiries, please contact:
- *
- * Openagentic LLC
- * hello@openagentic.io
- */
-
 import { describe, test, expect } from 'vitest';
 import { buildTree } from './buildTree';
 import type { NormalizedStreamEvent } from '../../../../types/AnthropicStreamEvent';

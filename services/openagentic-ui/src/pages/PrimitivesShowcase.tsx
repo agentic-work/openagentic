@@ -50,7 +50,7 @@ const PAGE_BG_DARK = '#09090b';
 const PAGE_FG_DARK = '#f8fafc';
 const PAGE_BG_LIGHT = '#fafafa';
 const PAGE_FG_LIGHT = '#09090b';
-const ACCENT = '#8b5cf6';
+const ACCENT = 'var(--user-accent-primary)';
 const LINE = 'rgba(255,255,255,0.10)';
 
 interface SectionProps {

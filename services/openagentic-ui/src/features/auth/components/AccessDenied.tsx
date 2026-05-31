@@ -169,7 +169,7 @@ const AccessDenied: React.FC = () => {
         <div className="text-center mt-6 text-gray-600 text-xs">
           <p>
             <a
-              href="https://gnomus.ai"
+              href="https://agenticwork.io"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-gray-400 underline"

@@ -115,21 +115,19 @@ const Login: React.FC = () => {
   const showDivider = authConfig.localEnabled && (authConfig.googleEnabled || authConfig.microsoftEnabled);
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#0a0a0f]">
-      {/* Animated gradient background */}
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{ background: '#18130C' }}>
+      {/* openagentics.io "field-guide" warm glow — signal orange on warm-black */}
       <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-950/50 via-transparent to-blue-950/50" />
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-violet-600/20 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-600/10 rounded-full blur-[150px]" />
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[120px] animate-pulse" style={{ background: 'rgba(255,87,34,0.12)' }} />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full blur-[100px] animate-pulse" style={{ background: 'rgba(255,184,126,0.08)', animationDelay: '1s' }} />
       </div>
 
-      {/* Grid pattern overlay */}
+      {/* Grid pattern overlay (paper hairline) */}
       <div
-        className="absolute inset-0 opacity-[0.03]"
+        className="absolute inset-0 opacity-[0.04]"
         style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-                           linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(rgba(244,239,230,0.5) 1px, transparent 1px),
+                           linear-gradient(90deg, rgba(244,239,230,0.5) 1px, transparent 1px)`,
           backgroundSize: '64px 64px'
         }}
       />
@@ -143,13 +141,14 @@ const Login: React.FC = () => {
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="flex justify-center mb-12"
         >
-          <div className="relative">
-            <div className="absolute -inset-4 bg-gradient-to-r from-violet-600/20 to-blue-600/20 rounded-2xl blur-xl" />
-            <img
-              src="/company-logo.svg"
-              alt="OpenAgentic"
-              className="relative h-16 w-auto drop-shadow-2xl"
-            />
+          <div className="relative flex items-center">
+            <div className="absolute -inset-5 rounded-2xl blur-xl" style={{ background: 'rgba(255,87,34,0.16)' }} />
+            <span
+              className="relative"
+              style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 34, letterSpacing: '-0.02em', color: '#F4EFE6' }}
+            >
+              <span style={{ color: '#FF5722' }}>⌥ </span>openagentic
+            </span>
           </div>
         </motion.div>
 
@@ -160,10 +159,10 @@ const Login: React.FC = () => {
           transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
         >
           <div className="relative">
-            {/* Card glow effect */}
-            <div className="absolute -inset-[1px] bg-gradient-to-b from-white/20 to-white/5 rounded-2xl" />
+            {/* Card edge — warm hairline */}
+            <div className="absolute -inset-[1px] rounded-2xl" style={{ background: 'rgba(255,184,126,0.18)' }} />
 
-            <div className="relative bg-white/[0.03] backdrop-blur-2xl rounded-2xl border border-white/10 p-8">
+            <div className="relative rounded-2xl border p-8" style={{ background: '#211A11', borderColor: 'rgba(244,239,230,0.10)' }}>
               <AnimatePresence mode="wait">
                 {!showLocalForm ? (
                   <motion.div
@@ -174,10 +173,10 @@ const Login: React.FC = () => {
                     transition={{ duration: 0.2 }}
                   >
                     <div className="text-center mb-8">
-                      <h2 className="text-2xl font-semibold text-white mb-2">
+                      <h2 className="text-2xl mb-2" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.02em', color: '#F4EFE6' }}>
                         Welcome back
                       </h2>
-                      <p className="text-white/50 text-sm">
+                      <p className="text-sm" style={{ color: 'rgba(244,239,230,0.55)' }}>
                         Sign in to continue to your workspace
                       </p>
                     </div>
@@ -273,10 +272,10 @@ const Login: React.FC = () => {
                     </button>
 
                     <div className="mb-6">
-                      <h2 className="text-xl font-semibold text-white mb-1">
+                      <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: 'var(--font-display)', color: '#F4EFE6' }}>
                         Sign in with email
                       </h2>
-                      <p className="text-white/40 text-sm">
+                      <p className="text-sm" style={{ color: 'rgba(244,239,230,0.45)' }}>
                         Enter your credentials to continue
                       </p>
                     </div>
@@ -301,7 +300,8 @@ const Login: React.FC = () => {
                           type="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
+                          className="w-full px-4 py-3 rounded-xl outline-none transition-all focus:ring-2"
+                          style={{ background: 'rgba(244,239,230,0.05)', border: '1px solid rgba(244,239,230,0.12)', color: '#F4EFE6', fontFamily: 'var(--font-display)', ['--tw-ring-color' as any]: 'rgba(255,87,34,0.30)' }}
                           placeholder="you@example.com"
                           required
                         />
@@ -314,7 +314,8 @@ const Login: React.FC = () => {
                           type="password"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 outline-none transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
+                          className="w-full px-4 py-3 rounded-xl outline-none transition-all focus:ring-2"
+                          style={{ background: 'rgba(244,239,230,0.05)', border: '1px solid rgba(244,239,230,0.12)', color: '#F4EFE6', fontFamily: 'var(--font-display)', ['--tw-ring-color' as any]: 'rgba(255,87,34,0.30)' }}
                           placeholder="Enter your password"
                           required
                         />
@@ -324,9 +325,12 @@ const Login: React.FC = () => {
                         disabled={isLoading}
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
-                        className="w-full py-3.5 rounded-xl font-semibold text-white flex items-center justify-center gap-2 mt-6 transition-all disabled:opacity-60 disabled:cursor-not-allowed relative overflow-hidden group"
+                        className="w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 mt-6 transition-all disabled:opacity-60 disabled:cursor-not-allowed relative overflow-hidden group"
                         style={{
-                          background: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 50%, #3B82F6 100%)',
+                          background: 'linear-gradient(135deg, #FF5722 0%, #E64A19 55%, #B83A0E 100%)',
+                          color: '#18130C',
+                          fontFamily: 'var(--font-display)',
+                          letterSpacing: '0.01em',
                         }}
                       >
                         <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -367,7 +371,7 @@ const Login: React.FC = () => {
           className="mt-8 text-center"
         >
           <p className="text-[11px] text-white/20">
-            © {new Date().getFullYear()} OpenAgentic
+            © {new Date().getFullYear()} Agenticwork™ LLC
           </p>
         </motion.div>
       </div>

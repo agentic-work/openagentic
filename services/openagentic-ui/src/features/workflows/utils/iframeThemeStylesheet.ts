@@ -58,9 +58,9 @@ const THEME_VARS: ThemeVar[] = [
   { name: '--line-2', darkDefault: 'rgba(255, 255, 255, 0.10)', lightDefault: 'rgba(0, 0, 0, 0.10)' },
   { name: '--line-3', darkDefault: 'rgba(255, 255, 255, 0.16)', lightDefault: 'rgba(0, 0, 0, 0.16)' },
   // ── Brand + status ─────────────────────────────────────────────────
-  { name: '--accent', darkDefault: '#8b5cf6', lightDefault: '#8b5cf6' },
-  { name: '--accent-soft', darkDefault: 'rgba(139, 92, 246, 0.14)', lightDefault: 'rgba(139, 92, 246, 0.10)' },
-  { name: '--accent-line', darkDefault: 'rgba(139, 92, 246, 0.32)', lightDefault: 'rgba(139, 92, 246, 0.28)' },
+  { name: '--accent', darkDefault: '#FF5722', lightDefault: '#FF5722' },
+  { name: '--accent-soft', darkDefault: 'color-mix(in srgb, #FF5722 14%, transparent)', lightDefault: 'color-mix(in srgb, #FF5722 10%, transparent)' },
+  { name: '--accent-line', darkDefault: 'color-mix(in srgb, #FF5722 32%, transparent)', lightDefault: 'color-mix(in srgb, #FF5722 28%, transparent)' },
   { name: '--ok', darkDefault: '#22c55e', lightDefault: '#16A34A' },
   { name: '--warn', darkDefault: '#f59e0b', lightDefault: '#EA580C' },
   { name: '--err', darkDefault: '#ef4444', lightDefault: '#B91C1C' },
@@ -70,7 +70,7 @@ const THEME_VARS: ThemeVar[] = [
   { name: '--color-surface', darkDefault: '#0f1012', lightDefault: '#fafafa' },
   { name: '--color-text', darkDefault: '#f8fafc', lightDefault: '#09090b' },
   { name: '--color-border', darkDefault: 'rgba(255, 255, 255, 0.06)', lightDefault: 'rgba(0, 0, 0, 0.06)' },
-  { name: '--color-primary', darkDefault: '#8b5cf6', lightDefault: '#8b5cf6' },
+  { name: '--color-primary', darkDefault: '#FF5722', lightDefault: '#FF5722' },
   // ── Typography ─────────────────────────────────────────────────────
   {
     name: '--font-sans',

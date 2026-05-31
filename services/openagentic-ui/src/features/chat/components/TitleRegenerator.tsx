@@ -216,11 +216,11 @@ export const TitleRegenerator: React.FC<TitleRegeneratorProps> = ({
               onClick={() => setSelectedStyle(style.value)}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors
                 ${selectedStyle === style.value
-                  ? 'bg-blue-50 border-blue-200 '
+                  ? 'bg-accent-primary/10 border-accent-primary/30 '
                   : 'bg-gray-50 hover:bg-gray-100 :bg-gray-700'
                 } border`}
             >
-              <span className={`${selectedStyle === style.value ? 'text-blue-500' : 'text-gray-400'}`}>
+              <span className={`${selectedStyle === style.value ? 'text-accent-primary' : 'text-gray-400'}`}>
                 {style.icon}
               </span>
               <div className="flex-1">
@@ -248,7 +248,7 @@ export const TitleRegenerator: React.FC<TitleRegeneratorProps> = ({
           font-medium transition-colors ${
           isLoading
             ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            : 'bg-blue-500 hover:bg-blue-600 text-white'
+            : 'bg-accent-primary hover:bg-accent-primary/90 text-white'
         }`}
       >
         {isLoading ? (

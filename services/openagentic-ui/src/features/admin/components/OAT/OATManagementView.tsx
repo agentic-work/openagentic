@@ -232,7 +232,7 @@ export const OATManagementView: React.FC<OATManagementViewProps> = ({ theme }) =
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <CpuIcon size={28} className="text-purple-500" />
+            <CpuIcon size={28} className="text-accent-primary" />
             Tool Synthesis
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--color-text-secondary)' }}>
@@ -248,7 +248,7 @@ export const OATManagementView: React.FC<OATManagementViewProps> = ({ theme }) =
                 title={config.visibleToLLM ? 'LLM can see Synth capabilities' : 'Synth is hidden from LLM'}
                 className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
                   config.visibleToLLM
-                    ? 'bg-purple-600 text-white hover:bg-purple-700'
+                    ? 'bg-accent-primary text-white hover:bg-accent-primary/90'
                     : 'bg-orange-500 text-white hover:bg-orange-600'
                 }`}
               >
@@ -273,7 +273,7 @@ export const OATManagementView: React.FC<OATManagementViewProps> = ({ theme }) =
           <button
             onClick={saveConfig}
             disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2 hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 bg-accent-primary text-white rounded-lg flex items-center gap-2 hover:bg-accent-primary/90 disabled:opacity-50"
           >
             <SuccessIcon size={16} />
             {saving ? 'Saving...' : 'Save Changes'}
@@ -319,7 +319,7 @@ export const OATManagementView: React.FC<OATManagementViewProps> = ({ theme }) =
             onClick={() => setActiveTab(id as typeof activeTab)}
             className={`px-4 py-3 flex items-center gap-2 border-b-2 transition-colors ${
               activeTab === id
-                ? 'border-blue-500 text-blue-500'
+                ? 'border-accent-primary text-accent-primary'
                 : 'border-transparent'
             }`}
             style={activeTab !== id ? { color: 'var(--color-text-secondary)' } : undefined}
@@ -336,7 +336,7 @@ export const OATManagementView: React.FC<OATManagementViewProps> = ({ theme }) =
           {/* LLM Settings */}
           <div className="p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <CpuIcon size={20} className="text-purple-500" />
+              <CpuIcon size={20} className="text-accent-primary" />
               LLM Settings
             </h3>
             <div className="space-y-4">

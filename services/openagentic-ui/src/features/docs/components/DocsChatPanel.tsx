@@ -202,7 +202,7 @@ const DocsChatPanel: React.FC<DocsChatPanelProps> = ({
           <defs>
             <linearGradient id="docsChatGrad" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="var(--color-primary)" />
-              <stop offset="100%" stopColor="#8b5cf6" />
+              <stop offset="100%" stopColor="var(--user-accent-secondary)" />
             </linearGradient>
           </defs>
           <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="url(#docsChatGrad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -233,7 +233,7 @@ const DocsChatPanel: React.FC<DocsChatPanelProps> = ({
               <defs>
                 <linearGradient id="docsWelcomeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="var(--color-primary)" />
-                  <stop offset="100%" stopColor="#8b5cf6" />
+                  <stop offset="100%" stopColor="var(--user-accent-secondary)" />
                 </linearGradient>
               </defs>
               <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z" stroke="url(#docsWelcomeGrad)" strokeWidth="2" />

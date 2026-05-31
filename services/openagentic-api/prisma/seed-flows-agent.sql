@@ -1,4 +1,4 @@
--- Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
+
 
 -- Flows Agent: Seed Script
 -- Inserts the Flows Agent into the agentic_loops table

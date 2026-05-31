@@ -22,7 +22,10 @@ export default function MinimalBackground() {
   const isLightTheme = resolvedTheme === 'light';
 
   // Get accent colors with fallbacks
-  const primaryColor = accentColor?.primary || '#1E40AF';
+  // Fallback matches the default accent token (--user-accent-primary: signal
+  // orange). Kept as a hex literal because it is concatenated with hex-alpha
+  // suffixes (`${primaryColor}08`) for the subtle corner glows below.
+  const primaryColor = accentColor?.primary || '#FF5722';
 
   return (
     <div

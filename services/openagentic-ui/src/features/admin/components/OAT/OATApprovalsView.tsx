@@ -131,7 +131,7 @@ export const OATApprovalsView: React.FC<OATApprovalsViewProps> = ({ theme }) => 
         </div>
         <button
           onClick={fetchApprovals}
-          className="p-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+          className="p-2 rounded bg-accent-primary text-white hover:bg-accent-primary/90"
         >
           <RefreshIcon size={16} />
         </button>

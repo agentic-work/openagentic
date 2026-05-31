@@ -1,8 +1,8 @@
 /**
- * Flows access gate (OSS edition).
+ * Flows access gate.
  *
- * In the OSS edition Flows is open to any authenticated user — no per-role
- * gating. The enterprise edition swaps this stub for an RBAC-aware guard.
+ * Flows is open to any authenticated user — no per-role gating. This is a
+ * seam where deployments can drop in an RBAC-aware guard if they need one.
  */
 import type { FastifyRequest, FastifyReply } from 'fastify';
 

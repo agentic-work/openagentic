@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: searxng-settings
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+data:
+  # The web MCP queries SearXNG's JSON API, so `json` must be in formats.
+  settings.yml: |
+    use_default_settings: true
+    server:
+      secret_key: {{ .Values.secrets.signingSecret | quote }}
+      limiter: false
+      image_proxy: false
+    search:
+      safe_search: 0
+      formats:
+        - html
+        - json
+    engines:
+      - name: wikipedia
+        disabled: false
+      - name: duckduckgo
+        disabled: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: searxng
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: searxng
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: searxng
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: searxng
+  template:
+    metadata:
+      labels:
+        app: searxng
+    spec:
+      enableServiceLinks: false
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      # searxng's entrypoint writes into /etc/searxng (uwsgi.ini etc.), so the
+      # read-only ConfigMap is copied into a writable emptyDir first.
+      initContainers:
+        - name: copy-settings
+          image: busybox:1.36
+          command: ["sh", "-c", "cp /src/settings.yml /etc/searxng/settings.yml"]
+          volumeMounts:
+            - name: settings-src
+              mountPath: /src
+            - name: settings
+              mountPath: /etc/searxng
+      containers:
+        - name: searxng
+          image: {{ .Values.searxng.image }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SEARXNG_BASE_URL
+              value: http://localhost:8080/
+          volumeMounts:
+            - name: settings
+              mountPath: /etc/searxng
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources.searxng | nindent 12 }}
+      volumes:
+        - name: settings-src
+          configMap:
+            name: searxng-settings
+        - name: settings
+          emptyDir: {}

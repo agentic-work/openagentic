@@ -1,7 +1,6 @@
 import React, { Suspense, lazy } from 'react'
 import { DashboardOverview } from '../pages/dashboard/DashboardOverview'
 import { useTheme } from '../hooks/useTheme'
-import { LockScreen } from '../Upsell'
 
 // ---------------------------------------------------------------------------
 // Lazy-loaded v1 section components — paths mirror AdminPortal.tsx exactly
@@ -170,16 +169,12 @@ const SystemSettingsView = lazy(() => import('../components/System/SystemSetting
 // ---------------------------------------------------------------------------
 // Placeholder for sections that are still inline JSX in v1 AdminPortal
 // ---------------------------------------------------------------------------
-function V2PagePlaceholder({ sectionId }: { sectionId: string }) {
+function V2PagePlaceholder({ sectionId: _sectionId }: { sectionId: string }) {
   return (
     <div className="p-10 text-center max-w-xl mx-auto mt-10">
-      <div className="text-fg-3 font-mono text-xs tracking-widest uppercase">// Phase 3.1</div>
-      <h2 className="text-fg-0 text-xl font-bold mt-2">This page is still wired into v1</h2>
+      <h2 className="text-fg-0 text-xl font-bold mt-2">Select a section</h2>
       <p className="text-fg-2 mt-3">
-        The <span className="font-mono text-fg-1">{sectionId}</span> page uses inline rendering in the v1 admin
-        shell and hasn&apos;t been split out as a standalone component yet. Flip{' '}
-        <span className="font-mono text-fg-1">VITE_FEATURE_ADMIN_V2=false</span> to use it, or wait
-        for the Phase 3.1 extraction.
+        Choose a section from the navigation to get started.
       </p>
     </div>
   )
@@ -214,177 +209,9 @@ function SectionLoading() {
 }
 
 // ---------------------------------------------------------------------------
-// Enterprise gate. Every leaf ID in this set renders the LockScreen
-// instead of its real route in the OSS edition. The leaves still appear
-// in the sidebar (visible + clickable) so operators understand the full
-// feature surface; the lock screen explains what they get with the
-// hosted edition and routes them to agenticwork.io/purchase.
-// ---------------------------------------------------------------------------
-const ENTERPRISE_LEAVES: Record<string, { feature: string; description?: string; capabilities?: string[] }> = {
-  // Admin v2 leaves (also covered by v3 mapping in AdminPortalHostV3.tsx)
-  'rate-limits': {
-    feature: 'Per-user rate limits',
-    description: 'Enforce per-user and per-tier request rate limits across chat, flows, and tool calls — required for multi-tenant deployments.',
-  },
-  'webhook-security': {
-    feature: 'Webhook security policies',
-    description: 'Signed-payload verification, IP allowlists, and replay-attack protection on inbound webhook receivers.',
-  },
-  'dlp-config': {
-    feature: 'DLP rules + exemption policies',
-    description: 'Configure data-loss-prevention rules, per-tool exemptions, and the redaction registry that gates LLM context.',
-  },
-  'dlp-audit': {
-    feature: 'DLP audit log',
-    description: 'Append-only audit trail of every DLP redaction + exemption decision, exportable for compliance review.',
-  },
-  'tiered-fc': {
-    feature: 'Tiered function-calling',
-    description: 'Route tool calls to cheaper models when a request doesn\'t need premium reasoning. Cuts tool-call cost ~60% on observed traffic.',
-  },
-  'chargeback': {
-    feature: 'Cost management + chargeback',
-    description: 'Per-user, per-team, and per-tenant cost tracking with monthly chargeback reports and budget alerts.',
-  },
-  'chargeback-dashboard': {
-    feature: 'Cost management + chargeback',
-    description: 'Per-user, per-team, and per-tenant cost tracking with monthly chargeback reports and budget alerts.',
-  },
-  'audit': { feature: 'Audit logs', description: 'SOC 2 / FedRAMP-grade append-only audit log of every admin action, signed and exportable.' },
-  'audit-logs': { feature: 'Audit logs', description: 'SOC 2 / FedRAMP-grade append-only audit log of every admin action, signed and exportable.' },
-  'admin-audit-logs': { feature: 'Audit logs', description: 'SOC 2 / FedRAMP-grade append-only audit log of every admin action, signed and exportable.' },
-  'credential-audit': { feature: 'Credential audit trail', description: 'Track every credential rotation, view, and export across the platform.' },
-  'flow-audit': { feature: 'Flow governance audit', description: 'Per-flow approval history, change tracking, and run-time policy enforcement events.' },
-  'llm-metrics': { feature: 'LLM performance metrics', description: 'Per-provider, per-model latency / cost / error-rate dashboards with historical trends.' },
-  'llm-performance': { feature: 'LLM performance metrics', description: 'Per-provider, per-model latency / cost / error-rate dashboards with historical trends.' },
-  'dashboard-metrics': { feature: 'Platform metrics dashboard', description: 'Tenant-wide chat / flow / tool usage rollups with time-series export.' },
-  // Code Mode (the heavy exec sandbox stays in the hosted edition)
-  'codemode': {
-    feature: 'Code Mode',
-    description: 'Per-user sandboxed coding workspace. The hosted edition spins up an isolated Kubernetes pod per session with your choice of coding CLI (Claude Code, Gemini CLI, Aider, …).',
-    capabilities: [
-      'Per-user isolated workspace',
-      'Choice of bundled coding CLI',
-      'Persistent file mounts',
-      'Live terminal + VS Code shell',
-      'MCP tool routing inside the sandbox',
-    ],
-  },
-  'codemode-settings':  { feature: 'Code Mode Settings', description: 'Default coding adapter, resource limits, and per-tier session policies.' },
-  'codemode-global':    { feature: 'Code Mode Global Settings', description: 'Cluster-wide quotas, image catalog, and admission policy for Code Mode pods.' },
-  'codemode-mcp':       { feature: 'Code Mode MCP policy', description: 'Allow/deny MCP servers per coding session.' },
-  'codemode-skills':    { feature: 'Code Mode Skills & Plugins', description: 'Approve, version, and roll out skills + plugins to user sessions.' },
-  'codemode-users':     { feature: 'Code Mode Users & Sessions', description: 'Per-user session inventory, kill-switch, and quota inspection.' },
-  'openagentic-metrics': { feature: 'Code Mode metrics', description: 'Active sessions, tokens, cost, and queue depth across the Code Mode fleet.' },
-
-  // v3 sidebar leaf IDs (the v3 nav uses `cm-*` IDs; v2 used `codemode-*`).
-  // Without these the v3 shell would fall through to V2PagePlaceholder and
-  // expose Code Mode admin surfaces without the lock screen.
-  'cm-settings':  { feature: 'Code Mode Settings', description: 'Default coding adapter, resource limits, and per-tier session policies.' },
-  'cm-global':    { feature: 'Code Mode Global Settings', description: 'Cluster-wide quotas, image catalog, and admission policy for Code Mode pods.' },
-  'cm-mcp':       { feature: 'Code Mode MCP policy', description: 'Allow/deny MCP servers per coding session.' },
-  'cm-skills':    { feature: 'Code Mode Skills & Plugins', description: 'Approve, version, and roll out skills + plugins to user sessions.' },
-  'cm-users':     { feature: 'Code Mode Users & Sessions', description: 'Per-user session inventory, kill-switch, and quota inspection.' },
-  'cm-metrics':   { feature: 'Code Mode metrics', description: 'Active sessions, tokens, cost, and queue depth across the Code Mode fleet.' },
-
-  // ────────────────────────────────────────────────────────────────────
-  // 2026-05-26 expansion — multi-tenant / governance / analytics leaves.
-  // Match the server-side enterpriseOnly middleware applied by
-  // tools/gate-enterprise-routes.py so the UI and API agree on what's
-  // free vs. hosted.
-  // ────────────────────────────────────────────────────────────────────
-
-  // Per-user observability (multi-tenant fleet view).
-  'user-activity': {
-    feature: 'Per-user activity',
-    description: 'Per-user request volumes, model picks, tool usage, and cost — the fleet view operators need to run multi-tenant deployments.',
-  },
-  'analytics': {
-    feature: 'Usage Analytics',
-    description: 'Cross-tenant usage rollups by model, tool, intent, and team — with time-series export for finance + capacity planning.',
-  },
-
-  // Feedback governance (user feedback collection + advisories).
-  'feedback': {
-    feature: 'Feedback analytics',
-    description: 'User feedback collection, per-turn thumbs/scores, and trend dashboards — surfaces what to improve in production.',
-  },
-  'feedback-advisories': {
-    feature: 'Feedback advisories',
-    description: 'AI-generated advisories synthesized from user feedback streams, surfaced to admins with severity + suggested fixes.',
-  },
-
-  // Prompt governance (analytics + RBAC system prompts).
-  'prompt-effectiveness': {
-    feature: 'Prompt effectiveness analytics',
-    description: 'Per-prompt-module win/loss tracking, A/B comparison, and cost-per-success metrics — closes the loop on prompt tuning.',
-  },
-  'prompt-metrics': {
-    feature: 'Prompt metrics',
-    description: 'Per-prompt-module invocation counts, latency, token cost, and stop-reason distribution across the fleet.',
-  },
-  'prompt-modules': {
-    feature: 'RBAC system prompts',
-    description: 'Per-role system prompts, per-tenant overrides, cache_control budgeting, and section-versioned rollouts.',
-  },
-
-  // Tenant / role / access-control (multi-tenant identity stack).
-  'user-lockouts': {
-    feature: 'Per-user lockout management',
-    description: 'Threshold-based account lockouts, per-user lockout history, manual unlock with audit trail.',
-  },
-  'teams': {
-    feature: 'Teams management',
-    description: 'Team-scoped users, budgets, model access, and chargeback reports — required for any multi-team deployment.',
-  },
-
-  // Flow governance.
-  'governance': {
-    feature: 'Flow governance',
-    description: 'Per-flow approval gates, change tracking, and run-time policy enforcement across workflows.',
-  },
-  'kpi-dashboard': {
-    feature: 'Flows KPI dashboard',
-    description: 'Workflow throughput, success rate, p95 duration, and cost-per-execution by template + tenant.',
-  },
-
-  // SRE / SLO governance.
-  'slo': {
-    feature: 'SLOs',
-    description: 'Multi-tenant uptime tracking, latency SLOs by intent, and error-budget burn alerts.',
-  },
-
-  // Admin test harness — internal QA tooling, not part of OSS surface.
-  'test-harness': {
-    feature: 'Admin test harness',
-    description: 'End-to-end QA harness with scenario fixtures, real-model probe matrix, and CI-replayable wire captures.',
-  },
-};
-
-// Public helper: returns the enterprise lock-screen JSX if `id` is gated,
-// or null if the route should render normally. Imported by both v2 and v3
-// admin shells so they apply the same gate set.
-export function enterpriseLockFor(id: string): React.ReactNode | null {
-  const meta = ENTERPRISE_LEAVES[id];
-  if (!meta) return null;
-  return <LockScreen feature={meta.feature} description={meta.description} capabilities={meta.capabilities} />;
-}
-
-// Sidebar-side check — the V3 sidebar uses this to render a dimmed leaf
-// row with a PRO badge for enterprise-only routes. Clicking still works
-// and the route then resolves to the lock screen.
-export function isEnterpriseLeaf(id: string): boolean {
-  return id in ENTERPRISE_LEAVES;
-}
-
-// ---------------------------------------------------------------------------
 // Core dispatch — mirrors AdminPortal.renderMainContent() switch statement
 // ---------------------------------------------------------------------------
 function renderSection(id: string, theme: 'dark' | 'light'): React.ReactNode {
-  // OSS enterprise gate runs FIRST so locked leaves never hit the
-  // lazy-loaded route bundle.
-  const locked = enterpriseLockFor(id);
-  if (locked) return locked;
   switch (id) {
     // LLM
     case 'providers':

@@ -49,7 +49,7 @@ const ThinkingStarburst: React.FC<{ size?: number; animate?: boolean; className?
       stroke="currentColor"
       strokeWidth={2}
       style={{
-        color: 'var(--accent, #8b5cf6)',
+        color: 'var(--accent, var(--user-accent-primary))',
         flexShrink: 0,
       }}
     >
@@ -62,8 +62,8 @@ const ThinkingStarburst: React.FC<{ size?: number; animate?: boolean; className?
           position: 'absolute',
           inset: -2,
           borderRadius: '50%',
-          border: '1px solid var(--accent-line, rgba(139,92,246,0.32))',
-          borderTopColor: 'var(--accent, #8b5cf6)',
+          border: '1px solid var(--accent-line, color-mix(in srgb, var(--user-accent-primary) 32%, transparent))',
+          borderTopColor: 'var(--accent, var(--user-accent-primary))',
           animation: 'spin 1.2s linear infinite',
         }}
       />

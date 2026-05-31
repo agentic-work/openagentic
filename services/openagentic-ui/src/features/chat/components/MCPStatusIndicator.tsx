@@ -185,7 +185,7 @@ export const MCPStatusIndicator: React.FC = () => {
                   <button
                     onClick={() => window.location.href = '/mcp/dashboard'}
                     
-                    className="w-full text-xs px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                    className="w-full text-xs px-3 py-2 bg-accent-primary hover:bg-accent-primary/90 rounded-md transition-colors"
                     style={{ color: 'var(--color-text)' }}
                   >
                     Open MCP Dashboard

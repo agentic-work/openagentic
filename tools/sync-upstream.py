@@ -95,7 +95,7 @@ SKIP_PREFIXES = (
     'helm/agenticwork/',
     # Upstream session notes / dev-only audit dumps
     'services/audit/',
-    # Code Mode — enterprise-only; OSS shows lock screen with upsell URL.
+    # Code Mode — removed from OSS entirely (too heavy to ship/operate at v1).
     # Source, exec runtime, manager, admin pages, MCPs, helm templates,
     # e2e specs — all OSS-out at sync time.
     'services/openagentic-exec/', 'services/openagentic-manager/',
@@ -434,12 +434,7 @@ PRESERVE = {
     'services/openagentic-api/src/server.ts',  # boot made non-fatal on empty MCP index + integrity check
     'services/openagentic-api/src/utils/redis-client.ts',
     'services/openagentic-api/package.json',  # OSS-added deps (undici) + any upstream strips
-    'services/openagentic-api/src/features.ts',  # OSS edition flag — integrity-guarded
-    'services/openagentic-api/src/utils/oss-integrity.ts',
-    'services/openagentic-api/src/middleware/enterpriseOnly.ts',
-    'services/openagentic-ui/src/features/admin/Upsell.tsx',
-    'tools/setup/src/ui/Upsell.tsx',
-    '.github/required-upsell-strings.tsv',
+    'services/openagentic-api/src/features.ts',  # OSS edition flag (no gating)
     '.github/workflows/oss-integrity.yml',
     '.github/workflows/sonar.yml',
     '.github/workflows/sonar-summary.yml',
@@ -531,7 +526,6 @@ PRESERVE = {
     'services/shared/workflow-engine/package.json',
     'services/shared/llm-sdk/package.json',
     'pnpm-workspace.yaml',
-    'services/openagentic-ui/src/features/admin/Upsell.tsx',
     'services/openagentic-ui/src/features/admin/components/Shell/AdminPortal.tsx',
     'services/openagentic-ui/src/features/admin/components/Shell/AdminPortalHostV3.tsx',
     'services/openagentic-ui/src/features/admin/shell-v2/pageRouter.tsx',

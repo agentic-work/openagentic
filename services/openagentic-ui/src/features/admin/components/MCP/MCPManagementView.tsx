@@ -943,7 +943,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
                       <button
                         onClick={() => toggleServerEnabled(serverName, !isEnabled)}
                         disabled={isToggling}
-                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent-primary/40 focus:ring-offset-2 ${
                           isEnabled ? 'bg-primary-600' : isDark ? 'bg-surface-hover' : 'bg-surface-secondary'
                         } ${isToggling ? 'opacity-50 cursor-wait' : ''}`}
                         role="switch"

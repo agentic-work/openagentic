@@ -72,28 +72,19 @@ docker compose up -d postgres redis
 pnpm -C services/openagentic-api test
 ```
 
-## What ships in OSS vs. the hosted edition
+## What ships
 
-The OSS edition focuses on the local single-tenant install:
+Everything in this repo is the real thing — there are no paywalls,
+no 402 walls, no locked admin screens, no "demo mode" flags. The OSS
+edition is the complete platform: chat + multi-provider LLMs, visual
+Flows, the bundled MCP servers, the admin console (providers, models,
+MCP fleet, DLP, workflow secrets/data, router tuning, etc.), local
+docker-compose install, and the Helm chart templates.
 
-| Capability | OSS | Hosted / Enterprise |
-|---|---|---|
-| Chat + multi-provider LLMs | ✅ | ✅ |
-| Visual Flows + 16 bundled MCPs | ✅ | ✅ |
-| Local install + docker-compose | ✅ | ✅ |
-| Helm chart for k8s | ✅ (templates) | ✅ (managed) |
-| Admin: chargeback, audit logs, DLP rules, rate limits, per-tier fc | 402 upsell | ✅ |
-| Multi-tenant, SSO, SAML, FedRAMP/HIPAA controls | — | ✅ |
-| Managed model fleet + ops support | — | ✅ |
-
-Some `/api/admin/*` routes return **402 Payment Required** with an
-upgrade link to [agenticwork.io](https://agenticwork.io). That's
-intentional — the funnel keeps the OSS install free and lets the team
-fund continued development. Please don't strip those gates in PRs.
-
-The 402 gate is implemented in
-`services/openagentic-api/src/middleware/enterpriseOnly.ts` and applied
-to specific admin routes by `tools/gate-enterprise-routes.py`.
+A separate managed-hosting option exists at
+[agenticwork.io](https://agenticwork.io) for people who'd rather not
+run it themselves (multi-tenant, SSO/SAML, ops support) — but that's
+hosting, not a feature gate. Nothing here is held back.
 
 ## What we DO want in PRs
 
@@ -107,7 +98,8 @@ to specific admin routes by `tools/gate-enterprise-routes.py`.
 
 ## What we DON'T want in PRs
 
-- Bypassing the enterprise 402 gates (see above)
+- Reintroducing upsells, 402 walls, or lock screens (the OSS edition is
+  deliberately gate-free)
 - Reintroducing Code Mode (the per-user exec sandbox + coding CLI
   integration was deliberately removed for the OSS edition — too
   heavy to ship and operate at v1)
@@ -136,10 +128,10 @@ to specific admin routes by `tools/gate-enterprise-routes.py`.
 
 ## CI
 
-The only workflow that runs on PRs is `oss-integrity.yml`, which checks
-that the edition flag and required upsell strings are intact (it shells
-out to `tools/verify-oss-integrity.sh`). Build / image-push jobs are
-out of scope for the public repo.
+The only workflow that runs on PRs is `oss-integrity.yml`, a lightweight
+sanity check (edition flag is `oss` + core install artifacts present; it
+shells out to `tools/verify-oss-integrity.sh`). Build / image-push jobs
+are out of scope for the public repo.
 
 Please run the local checks before opening a PR:
 
@@ -149,7 +141,7 @@ pnpm -C services/openagentic-api type-check
 pnpm -C services/openagentic-ui type-check
 pnpm -C services/openagentic-workflows exec tsc --noEmit
 
-# OSS integrity (edition flag, upsell strings)
+# OSS sanity check (edition flag + install artifacts)
 bash tools/verify-oss-integrity.sh
 
 # Wizard end-to-end (catches install regressions)

@@ -243,7 +243,7 @@ export const EnhancedNavigation: React.FC = () => {
             <span style={{ color: 'var(--color-textMuted)' }}>{item.label}</span>
             {item.badge && (
               <span 
-              className="px-2 py-0.5 text-xs bg-blue-600 rounded-full"
+              className="px-2 py-0.5 text-xs bg-accent-primary/15 rounded-full"
               style={{ color: 'var(--color-text)' }}>
                 {item.badge}
               </span>
@@ -312,7 +312,7 @@ export const EnhancedNavigation: React.FC = () => {
           </div>
           {isAdmin && (
             <span 
-            className="px-2 py-1 text-xs bg-purple-600 rounded"
+            className="px-2 py-1 text-xs bg-accent-primary/15 rounded"
             style={{ color: 'var(--color-text)' }}>
               Admin
             </span>

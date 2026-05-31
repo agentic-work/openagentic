@@ -1,4 +1,4 @@
--- Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
+
 
 -- 0.6.6 P1 (UC-A14): seed admin.system_configuration with the HITL policy row.
 --

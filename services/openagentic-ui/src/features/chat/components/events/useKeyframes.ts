@@ -14,8 +14,8 @@ const STYLE_ID = 'phase-g-event-keyframes';
 
 const KEYFRAMES = `
 @keyframes stageStripPulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 3px rgba(139,92,246,0.22); }
-  50%      { opacity: 0.7; box-shadow: 0 0 0 5px rgba(139,92,246,0.15); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 3px color-mix(in srgb, var(--user-accent-primary) 22%, transparent); }
+  50%      { opacity: 0.7; box-shadow: 0 0 0 5px color-mix(in srgb, var(--user-accent-primary) 15%, transparent); }
 }
 @keyframes ragSpin {
   from { transform: rotate(0deg); }

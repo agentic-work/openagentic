@@ -1,13 +1,3 @@
-/**
- * buildTree — pure function that converts a flat array of NormalizedStreamEvent[]
- * into a nested TreeNode[] for rendering in UnifiedActivityTree.
- *
- * For all inquiries, please contact:
- *
- * Openagentic LLC
- * hello@openagentic.io
- */
-
 import type { NormalizedStreamEvent } from '../../../../types/AnthropicStreamEvent';
 
 export interface TreeNode {

@@ -147,8 +147,8 @@ const CostPillComponent: React.FC<CostPillProps> = ({
         fontFamily: "'JetBrains Mono', ui-monospace, monospace",
         fontVariantNumeric: 'tabular-nums',
         color: 'var(--fg-0, #f8fafc)',
-        background: 'var(--accent-soft, rgba(139,92,246,0.14))',
-        border: '1px solid var(--accent-line, rgba(139,92,246,0.32))',
+        background: 'var(--accent-soft, color-mix(in srgb, var(--user-accent-primary) 14%, transparent))',
+        border: '1px solid var(--accent-line, color-mix(in srgb, var(--user-accent-primary) 32%, transparent))',
         lineHeight: 1.4,
       }}
     >
@@ -159,7 +159,7 @@ const CostPillComponent: React.FC<CostPillProps> = ({
             width: 6,
             height: 6,
             borderRadius: '50%',
-            background: 'var(--accent, #8b5cf6)',
+            background: 'var(--accent, var(--user-accent-primary))',
             flexShrink: 0,
           }}
           animate={{ opacity: [1, 0.4, 1], scale: [1, 1.15, 1] }}

@@ -607,7 +607,7 @@ const PipelineVisualization: React.FC<PipelineVisualizationProps> = ({ activeSta
       <div className="min-w-[900px] p-4">
         {/* Input Arrow */}
         <div className="flex items-center gap-2 mb-4">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-500/20 to-blue-500/10 border border-primary/30">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-accent-primary/20 to-accent-primary/10 border border-primary/30">
             <Icons.MessageSquare size={16} className="text-primary-500" />
             <span className="text-sm font-medium text-primary-500">User Message</span>
           </div>

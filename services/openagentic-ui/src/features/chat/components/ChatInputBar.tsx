@@ -467,7 +467,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 flex items-center justify-center bg-blue-500/10 rounded-input z-10 border-2 border-dashed border-blue-500"
+                className="absolute inset-0 flex items-center justify-center bg-accent-primary/10 rounded-input z-10 border-2 border-dashed border-accent-primary"
               >
                 <div className="text-center">
                   <motion.div
@@ -509,7 +509,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                           className="w-full rounded-full h-1.5 mt-1"
                           style={{ backgroundColor: 'var(--color-background)' }}>
                             <motion.div
-                              className="bg-blue-500 h-1.5 rounded-full"
+                              className="bg-accent-primary h-1.5 rounded-full"
                               initial={{ width: 0 }}
                               animate={{ width: `${progress}%` }}
                               transition={{ duration: 0.2 }}

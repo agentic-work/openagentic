@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-data
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 12Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: ollama
+  ports:
+    - port: 11434
+      targetPort: 11434
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      enableServiceLinks: false
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: ollama
+          image: ollama/ollama:latest
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 11434
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0:11434"
+          volumeMounts:
+            - name: data
+              mountPath: /root/.ollama
+          readinessProbe:
+            exec:
+              command: ["ollama", "list"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              {{- toYaml .Values.resources.ollama.requests | nindent 14 }}
+            limits:
+              {{- toYaml .Values.resources.ollama.limits | nindent 14 }}
+              {{- if .Values.ollama.gpu }}
+              nvidia.com/gpu: 1
+              {{- end }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: ollama-data
+---
+# One-shot model pull. Waits for ollama, pulls the embed + chat models, exits.
+# A plain Job (not a Helm hook) so `helm install` returns promptly instead of
+# blocking on the multi-GB model download — the pull proceeds in the background.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ollama-init
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 20
+  activeDeadlineSeconds: 3600
+  template:
+    metadata:
+      labels:
+        app: ollama-init
+    spec:
+      enableServiceLinks: false
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: OnFailure
+      containers:
+        - name: pull
+          image: ollama/ollama:latest
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: OLLAMA_HOST
+              value: "http://ollama:11434"
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              echo "Waiting for ollama..."
+              until ollama list >/dev/null 2>&1; do sleep 3; done
+              echo "Pulling embed model: {{ .Values.ollama.embedModel }}"
+              ollama pull "{{ .Values.ollama.embedModel }}"
+              {{- if .Values.ollama.chatModel }}
+              echo "Pulling chat model: {{ .Values.ollama.chatModel }}"
+              ollama pull "{{ .Values.ollama.chatModel }}"
+              {{- end }}
+              echo "Models ready."

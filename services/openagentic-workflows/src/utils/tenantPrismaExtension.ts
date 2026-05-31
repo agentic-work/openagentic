@@ -91,24 +91,15 @@ export function getCurrentTenant(): TenantContext | undefined {
 // Lower-case Prisma model names (the keys on the PrismaClient).
 // ----------------------------------------------------------------------------
 
-export const TENANTED_MODELS = new Set<string>([
-  'Workflow',
-  'WorkflowVersion',
-  'WorkflowExecution',
-  'WorkflowApproval',
-  'WorkflowExecutionLog',
-  'WorkflowWebhook',
-  'WorkflowSchedule',
-  'WorkflowTest',
-  'WorkflowTemplate',
-  'WorkflowShare',
-  'WorkflowSecret',
-  'DataSource',
-  'IdempotencyKey',
-  'FlowAuditLog',
-  'Integration',
-  'IntegrationLog',
-]);
+// The OSS (single-tenant) workflows schema does NOT define a `tenant_id` field
+// on ANY workflow-domain model. Injecting a tenant predicate therefore made
+// Prisma reject every query with "Unknown argument tenant_id" the moment a
+// tenant context was set (e.g. tenant_id:"local"/"api-key") — corrupting
+// execution-state tracking and making flow runs flaky/non-deterministic.
+// A model belongs here ONLY if its Prisma model has a real tenant_id column.
+// In this single-tenant build that's none, so the set is empty (no injection).
+// Re-add a model only alongside a tenant_id column + migration in the schema.
+export const TENANTED_MODELS = new Set<string>([]);
 
 // Operations whose `where` is a Prisma `WhereInput` (accepts AND/OR
 // composition). Safe to fold the tenant predicate in.

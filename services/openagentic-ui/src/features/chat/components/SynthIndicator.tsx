@@ -118,8 +118,8 @@ const SynthIndicator: React.FC<SynthIndicatorProps> = ({
         aria-haspopup="menu"
         className={clsx(
           'relative p-2 rounded-lg transition-colors',
-          enabled ? 'hover:bg-purple-500/20' : 'hover:bg-white/5',
-          dropdownOpen && (enabled ? 'bg-purple-500/20' : 'bg-white/5'),
+          enabled ? 'hover:bg-accent-primary/20' : 'hover:bg-white/5',
+          dropdownOpen && (enabled ? 'bg-accent-primary/20' : 'bg-white/5'),
         )}
         style={{
           color: enabled ? 'var(--cm-accent)' : 'var(--color-textMuted)',

@@ -116,7 +116,7 @@ const EditableMessage: React.FC<EditableMessageProps> = ({
       </div>
 
       {/* Textarea */}
-      <div className="relative rounded-lg border transition-colors duration-150 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus-within:border-blue-500">
+      <div className="relative rounded-lg border transition-colors duration-150 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus-within:border-accent-primary">
         <textarea
           ref={textareaRef}
           value={editContent}
@@ -169,7 +169,7 @@ const EditableMessage: React.FC<EditableMessageProps> = ({
             className={clsx(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors duration-150',
               editContent.trim()
-                ? 'bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white'
+                ? 'bg-accent-primary hover:bg-accent-primary/90 text-white'
                 : 'opacity-50 cursor-not-allowed bg-gray-400 text-gray-600'
             )}
           >

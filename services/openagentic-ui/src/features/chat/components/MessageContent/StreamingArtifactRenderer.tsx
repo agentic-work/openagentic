@@ -574,10 +574,8 @@ const StreamingArtifactRenderer: React.FC<StreamingArtifactRendererProps> = ({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         className="relative rounded-xl overflow-hidden"
         style={{
-          background: theme === 'dark'
-            ? 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(168,85,247,0.08) 50%, rgba(236,72,153,0.08) 100%)'
-            : 'linear-gradient(135deg, rgba(99,102,241,0.06) 0%, rgba(168,85,247,0.06) 50%, rgba(236,72,153,0.06) 100%)',
-          border: `1px solid ${theme === 'dark' ? 'rgba(139,92,246,0.3)' : 'rgba(139,92,246,0.2)'}`,
+          background: 'linear-gradient(135deg, color-mix(in srgb, var(--user-accent-primary) 8%, transparent) 0%, color-mix(in srgb, var(--user-accent-secondary) 8%, transparent) 100%)',
+          border: '1px solid color-mix(in srgb, var(--user-accent-primary) 28%, transparent)',
         }}
         data-testid="streaming-artifact"
       >
@@ -585,7 +583,7 @@ const StreamingArtifactRenderer: React.FC<StreamingArtifactRendererProps> = ({
         <div
           className="absolute inset-0 rounded-xl"
           style={{
-            background: `linear-gradient(90deg, transparent, ${theme === 'dark' ? 'rgba(139,92,246,0.15)' : 'rgba(139,92,246,0.1)'}, transparent)`,
+            background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--user-accent-primary) 14%, transparent), transparent)',
             animation: 'shimmer 2s ease-in-out infinite',
           }}
         />
@@ -597,13 +595,13 @@ const StreamingArtifactRenderer: React.FC<StreamingArtifactRendererProps> = ({
             <span className="text-lg">{typeIcon}</span>
             <span
               className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full animate-pulse"
-              style={{ background: '#8b5cf6' }}
+              style={{ background: 'var(--user-accent-primary)' }}
             />
           </div>
 
           {/* Info */}
           <div className="flex flex-col min-w-0">
-            <span style={{ color: theme === 'dark' ? '#c4b5fd' : '#7c3aed', fontSize: 13, fontWeight: 600 }}>
+            <span style={{ color: 'var(--user-accent-primary)', fontSize: 13, fontWeight: 600 }}>
               Creating {typeLabel} Artifact
             </span>
             <span style={{ color: theme === 'dark' ? '#9ca3af' : '#6b7280', fontSize: 11 }}>
@@ -615,13 +613,13 @@ const StreamingArtifactRenderer: React.FC<StreamingArtifactRendererProps> = ({
           <div className="ml-auto flex items-center gap-2">
             <div
               className="h-1.5 rounded-full overflow-hidden"
-              style={{ width: 60, background: theme === 'dark' ? 'rgba(139,92,246,0.2)' : 'rgba(139,92,246,0.15)' }}
+              style={{ width: 60, background: 'color-mix(in srgb, var(--user-accent-primary) 18%, transparent)' }}
             >
               <div
                 className="h-full rounded-full"
                 style={{
                   width: '100%',
-                  background: 'linear-gradient(90deg, #8b5cf6, #ec4899)',
+                  background: 'linear-gradient(90deg, var(--user-accent-primary), var(--user-accent-secondary))',
                   animation: 'progress-pulse 1.5s ease-in-out infinite',
                 }}
               />
@@ -630,7 +628,7 @@ const StreamingArtifactRenderer: React.FC<StreamingArtifactRendererProps> = ({
             <button
               onClick={handleCopyCode}
               className="p-1.5 rounded-md transition-all duration-150 hover:scale-105"
-              style={{ background: 'rgba(139,92,246,0.1)', color: theme === 'dark' ? '#c4b5fd' : '#7c3aed', border: `1px solid ${theme === 'dark' ? 'rgba(139,92,246,0.3)' : 'rgba(139,92,246,0.2)'}` }}
+              style={{ background: 'color-mix(in srgb, var(--user-accent-primary) 10%, transparent)', color: 'var(--user-accent-primary)', border: '1px solid color-mix(in srgb, var(--user-accent-primary) 30%, transparent)' }}
               title="Copy source code"
             >
               {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
@@ -649,7 +647,7 @@ const StreamingArtifactRenderer: React.FC<StreamingArtifactRendererProps> = ({
       style={{
         height: isFullscreen ? undefined : effectiveHeight,
         borderColor: 'var(--color-border)',
-        background: theme === 'dark' ? '#1a1a2e' : '#ffffff',
+        background: 'var(--color-surface)',
       }}
       data-testid="artifact-complete"
     >

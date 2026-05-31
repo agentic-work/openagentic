@@ -28,6 +28,15 @@ LINE_PATTERNS = [
     re.compile(r'^\s*#\s*For all inquiries.*$', re.MULTILINE | re.IGNORECASE),
     re.compile(r'^\s*#\s*Openagentic LLC\s*$',  re.MULTILINE),
     re.compile(r'^\s*#\s*hello@openagentic\.io\s*$', re.MULTILINE | re.IGNORECASE),
+    # Star-comment attribution lines inside /** ... */ headers (no Copyright keyword)
+    re.compile(r'^\s*\*\s*For all inquiries.*$', re.MULTILINE | re.IGNORECASE),
+    re.compile(r'^\s*\*\s*Openagentic LLC\s*$',  re.MULTILINE),
+    re.compile(r'^\s*\*\s*hello@openagentic\.io\s*$', re.MULTILINE | re.IGNORECASE),
+    # Hash-style leftover brand / contact lines (Gnomus, openagentics.io)
+    re.compile(r'^\s*#\s*Gnomus\.ai\s*$', re.MULTILINE | re.IGNORECASE),
+    re.compile(r'^\s*#\s*hello@openagentics?\.io\s*$', re.MULTILINE | re.IGNORECASE),
+    # SQL "-- Copyright (c) ... OpenAgentic ... All rights reserved." (entity-scoped)
+    re.compile(r'^\s*--\s*Copyright[^\n]*(?:Openagentic|Gnomus|All rights reserved)[^\n]*$', re.MULTILINE | re.IGNORECASE),
     # "Proprietary and confidential. Unauthorized copying prohibited."
     # (legacy upstream banner — drop in #, --, //, * (CSS), and HTML comment styles.)
     re.compile(r'^\s*(#|--|//|\*)\s*Proprietary and confidential\..*$', re.MULTILINE | re.IGNORECASE),
@@ -46,7 +55,7 @@ BLOCK_PATTERNS = [
     re.compile(
         r'/\*{1,2}\s*\n'
         r'(?:[^*]|\*(?!/))*?'
-        r'(?:Apache License|Licensed under|Copyright\s*\(c\)|Copyright\s*\d{4}|PROPRIETARY|All rights reserved)'
+        r'(?:Apache License|Licensed under|Copyright\s*\(c\)|Copyright\s*\d{4}|PROPRIETARY|All rights reserved|Openagentic LLC|hello@openagentic|For all inquiries)'
         r'(?:[^*]|\*(?!/))*?\*/\s*\n',
         re.IGNORECASE,
     ),
@@ -57,6 +66,22 @@ BLOCK_PATTERNS = [
         r'.*?\"{3}\s*\n',
         re.MULTILINE | re.DOTALL | re.IGNORECASE,
     ),
+    # HTML comment carrying a copyright / attribution banner (our index.html files)
+    re.compile(r'<!--\s*Copyright[^>]*?-->\s*\n?', re.IGNORECASE | re.DOTALL),
+    # Hash-style license block anchored on OUR copyright line (shell / python / conf).
+    # Entity-scoped so third-party Apache headers are never touched. Consumes the
+    # contiguous run of '#' comment lines (the Apache boilerplate) that follows.
+    re.compile(
+        r'^[ \t]*#[ \t]*Copyright[^\n]*(?:Gnomus|Openagentic)[^\n]*\n'
+        r'(?:[ \t]*#[^\n]*\n)*',
+        re.MULTILINE | re.IGNORECASE,
+    ),
+    # //-style header block anchored on OUR copyright line (ts/js configs).
+    re.compile(
+        r'^[ \t]*//[ \t]*Copyright[^\n]*(?:Gnomus|Openagentic)[^\n]*\n'
+        r'(?:[ \t]*//[^\n]*\n)*',
+        re.MULTILINE | re.IGNORECASE,
+    ),
 ]
 
 TEXT_EXTS = {
@@ -64,12 +89,18 @@ TEXT_EXTS = {
     '.py', '.sh', '.bash',
     '.yml', '.yaml', '.toml', '.json',
     '.md', '.sql', '.html', '.css',
+    '.template', '.conf', '.tpl',
     '',  # Dockerfile and similar
 }
 
 
 def is_text(path: str) -> bool:
     base = os.path.basename(path)
+    # Never touch vendored / minified / generated third-party assets — their
+    # copyright + license notices are legally required to remain intact.
+    norm = path.replace(os.sep, '/')
+    if '.min.' in base or '/artifact-runtime/' in norm or '/docs/generated/' in norm:
+        return False
     if base.startswith('Dockerfile'):
         return True
     ext = os.path.splitext(path)[1].lower()

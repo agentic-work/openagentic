@@ -224,4 +224,4 @@ services/mcps/oap-azure-mcp/
 
 ## License
 
-Copyright (c) 2025 OpenAgentic. All rights reserved.
+[Apache-2.0](../../../LICENSE) © Agenticwork™ LLC

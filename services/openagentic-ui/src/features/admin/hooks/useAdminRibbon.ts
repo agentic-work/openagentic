@@ -39,7 +39,6 @@ interface ProviderHealthResponse {
 const DASH = (n: number | undefined): string =>
   typeof n === 'number' && Number.isFinite(n) ? String(n) : '—'
 
-
 export interface AdminRibbonState {
   cells: RibbonCell[]
   isLoading: boolean

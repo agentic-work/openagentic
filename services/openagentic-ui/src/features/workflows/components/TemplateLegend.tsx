@@ -34,7 +34,7 @@ interface Props {
   onClose?: () => void;
 }
 
-const TONE_ACCENT = 'var(--user-accent-primary, #7c3aed)';
+const TONE_ACCENT = 'var(--user-accent-primary, #FF5722)';
 
 export const TemplateLegend: React.FC<Props> = ({ meta, variant = 'card', title, onClose }) => {
   if (!meta || (!meta.purpose && !meta.how_it_works?.length && !meta.expected_output && !meta.useful_when)) {

@@ -124,6 +124,10 @@ services:
   ollama:
     <<: *defaults
     image: ollama/ollama:latest
+    # CPU by default (portable). For GPU acceleration, layer a GPU override:
+    #   Linux + nvidia-container-toolkit → docker-compose.gpu-nvidia.yml
+    #   WSL2 (no toolkit)                → docker-compose.gpu-wsl.yml
+    # e.g.  docker compose -f docker-compose.yml -f docker-compose.gpu-wsl.yml up -d
     volumes:
       - ollama-data:/root/.ollama
     healthcheck:
@@ -139,7 +143,7 @@ services:
     depends_on:
       ollama: { condition: service_healthy }
     environment:
-      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
       OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-}
     entrypoint: ["/bin/sh", "-c"]
@@ -183,16 +187,26 @@ services:
       MILVUS_PORT: "19530"
       SKIP_TOOL_SEMANTIC_CACHE: ${SKIP_TOOL_SEMANTIC_CACHE:-true}
       OLLAMA_ENABLED: "true"
-      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
-      OLLAMA_BASE_URL: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
+      OLLAMA_BASE_URL: ${OLLAMA_HOST:-http://ollama:11434}
       OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       EMBEDDING_PROVIDER: ollama
+      # Bootstrap an Ollama LLM provider on first boot so a bare install can
+      # chat with zero API keys. Seeds ONE provider row only when the provider
+      # table is empty (admin UI owns it thereafter). The chat role is seeded
+      # only when OLLAMA_CHAT_MODEL is set (a chat model was pulled). Set
+      # BOOTSTRAP_PROVIDER_NAME= (empty) in .env to opt out.
+      BOOTSTRAP_PROVIDER_NAME: ${BOOTSTRAP_PROVIDER_NAME-ollama-local}
+      BOOTSTRAP_PROVIDER_DISPLAY_NAME: ${BOOTSTRAP_PROVIDER_DISPLAY_NAME-Ollama (local)}
+      BOOTSTRAP_PROVIDER_TYPE: ${BOOTSTRAP_PROVIDER_TYPE-ollama}
+      BOOTSTRAP_PROVIDER_CONFIG: '{"endpoint":"${OLLAMA_HOST:-http://ollama:11434}"}'
+      BOOTSTRAP_PROVIDER_DEFAULTS: '{"chat":"${OLLAMA_CHAT_MODEL:-}","embedding":"${OLLAMA_EMBED_MODEL:-nomic-embed-text}","embeddingDimension":768}'
       # Disable RAG retrieval on first boot — prevents pipeline stalls from
       # embedding timeouts when Ollama is shared with chat/tools. Re-enable
       # once a dedicated embedding endpoint or local embed model is set up.
       DISABLE_RAG: ${DISABLE_RAG:-true}
-      EMBEDDING_OLLAMA_BASE_URL: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      EMBEDDING_OLLAMA_BASE_URL: ${OLLAMA_HOST:-http://ollama:11434}
       EMBEDDING_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
       API_HOST: api
       API_PORT: "8000"
@@ -200,6 +214,9 @@ services:
       MCP_PROXY_PORT: "8080"
       WORKFLOWS_HOST: workflows
       WORKFLOWS_PORT: "3400"
+      # Flow execution is delegated to the workflows service (POST /execute-sync).
+      # Without this, every flow run fails with "WORKFLOW_SERVICE_URL is not set".
+      WORKFLOW_SERVICE_URL: ${WORKFLOW_SERVICE_URL:-http://workflows:3400}
       SYNTH_HOST: synth
       SYNTH_PORT: "8090"
       OPENAGENTIC_PROXY_URL: http://proxy:3300
@@ -284,9 +301,24 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-openagentic}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-openagentic}
       REDIS_URL: redis://redis:6379
       API_URL: http://api:8000
+      # mcp_tool nodes call the MCP proxy here. Default is the k8s hostname;
+      # in compose the service is `mcp-proxy`. Unset → web/tool nodes 404.
+      MCP_PROXY_URL: ${MCP_PROXY_URL:-http://mcp-proxy:8080}
+      # Internal service auth — MUST match the api/ui/mcp-proxy value so the
+      # api's `Bearer <internal-key>` calls to /execute-sync validate AND the
+      # engine's callbacks to the api authenticate. Was missing → every flow
+      # 503'd with "Service auth not configured".
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-openagentic-dev-internal-key-change-me}
+      JWT_SECRET: ${JWT_SECRET:-openagentic-dev-jwt-secret-change-me}
+      SIGNING_SECRET: ${SIGNING_SECRET:-openagentic-dev-signing-secret-change-me}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      # Wait for the api: it runs the Prisma schema push that creates the
+      # workflow tables the engine reads/seeds. Without this the engine boots
+      # first, fails to seed templates, and the scheduler crash-loops until a
+      # manual restart.
+      api: { condition: service_healthy }
 
   mcp-proxy:
     <<: *defaults
@@ -323,6 +355,8 @@ services:
       # mounted host CLI configs above. If you don't have e.g. `az login`,
       # the MCP just returns an "auth missing" error and the agent moves on.
       MCPS_ENABLED: ${MCPS_ENABLED:-web,knowledge,admin,azure,aws,gcp,kubernetes}
+      # Free, self-hosted web search backend for the web MCP (no API key needed).
+      SEARXNG_URL: ${SEARXNG_URL:-http://searxng:8080}
       OpenAgentic_WEB_MCP_DISABLED: ${OpenAgentic_WEB_MCP_DISABLED:-false}
       OpenAgentic_KNOWLEDGE_MCP_DISABLED: ${OpenAgentic_KNOWLEDGE_MCP_DISABLED:-false}
       OpenAgentic_ADMIN_MCP_DISABLED: ${OpenAgentic_ADMIN_MCP_DISABLED:-false}
@@ -346,6 +380,21 @@ services:
       LOKI_PASSWORD: ${LOKI_PASSWORD:-}
       ALERTMANAGER_URL: ${ALERTMANAGER_URL:-}
     depends_on: [api]
+
+  # Free, self-hosted metasearch engine — the web MCP's default search backend
+  # (no paid API key). Web-search flows (e.g. Research and Publish) need this.
+  searxng:
+    <<: *defaults
+    image: searxng/searxng:latest
+    environment:
+      SEARXNG_BASE_URL: http://localhost:8080/
+    volumes:
+      - ./scripts/searxng:/etc/searxng:rw
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   openagentic-exec:
     <<: *defaults

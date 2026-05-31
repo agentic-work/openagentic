@@ -123,27 +123,25 @@ export const adminMissingRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // ──────────────────────────────────────────────────────────────────────
-  // OSS enterprise stubs — these routes exist in the hosted edition but
-  // are not part of OSS. Returning 402 (not 404) lets the UI render the
-  // enterprise lock screen instead of a generic "endpoint missing" error.
+  // Optional integrations with no backend wired in this deployment.
+  // Return a neutral 501 (NOT a paywall) so the UI can render an empty /
+  // "not configured" state instead of an error or upsell.
   // ──────────────────────────────────────────────────────────────────────
-  const enterpriseStub = async (_req: FastifyRequest, reply: FastifyReply) => {
-    return reply.code(402).send({
-      error: 'PaymentRequired',
-      edition: 'oss',
-      message: 'This feature requires the hosted edition.',
-      upgrade_url: 'https://agenticwork.io/purchase',
+  const notConfigured = async (_req: FastifyRequest, reply: FastifyReply) => {
+    return reply.code(501).send({
+      error: 'not_configured',
+      message: 'This endpoint is not configured in this deployment.',
     });
   };
-  // Prometheus query proxy — Dashboard charts (enterprise observability).
-  fastify.post('/prom/query', enterpriseStub);
-  fastify.post('/prom/query_range', enterpriseStub);
-  fastify.get('/prom/health', enterpriseStub);
-  // Cluster fleet — multi-node coordination (enterprise infra).
+  // Prometheus query proxy — wire a Prometheus endpoint to enable dashboards.
+  fastify.post('/prom/query', notConfigured);
+  fastify.post('/prom/query_range', notConfigured);
+  fastify.get('/prom/health', notConfigured);
+  // Cluster fleet — multi-node coordination.
   // NOTE: /cluster/health is owned by admin/v3-extras-misc.ts already.
-  fastify.get('/cluster/services', enterpriseStub);
-  // Code Mode API keys — codemode stripped from OSS entirely.
-  fastify.get('/agenticode/api-keys', enterpriseStub);
+  fastify.get('/cluster/services', notConfigured);
+  // Code Mode API keys.
+  fastify.get('/agenticode/api-keys', notConfigured);
 };
 
 /**

@@ -406,7 +406,7 @@ const LoginDev: React.FC = () => {
       >
         {/* Copyright */}
         <div className="text-xs text-gray-600 space-y-1">
-          <p>© {new Date().getFullYear()} OpenAgentic</p>
+          <p>© {new Date().getFullYear()} Agenticwork™ LLC</p>
         </div>
       </motion.div>
     </div>

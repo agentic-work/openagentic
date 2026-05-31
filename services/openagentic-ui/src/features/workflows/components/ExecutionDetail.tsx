@@ -161,8 +161,8 @@ export const ExecutionDetail: React.FC<ExecutionDetailProps> = ({
                 onClick={() => { setSelectedNode(nodeId); setInspectorTab('output'); }}
                 className="w-full px-3 py-2 text-left transition-colors"
                 style={{
-                  background: isSelected ? 'rgba(59,130,246,0.1)' : 'transparent',
-                  borderLeft: isSelected ? '2px solid #3b82f6' : '2px solid transparent',
+                  background: isSelected ? 'color-mix(in srgb, var(--user-accent-primary, #FF5722) 10%, transparent)' : 'transparent',
+                  borderLeft: isSelected ? '2px solid var(--user-accent-primary, #FF5722)' : '2px solid transparent',
                 }}
               >
                 <div className="flex items-center gap-2 mb-1">
@@ -250,8 +250,8 @@ export const ExecutionDetail: React.FC<ExecutionDetailProps> = ({
                     onClick={() => setInspectorTab(tab)}
                     className="px-4 py-2.5 text-xs font-medium transition-colors"
                     style={{
-                      color: inspectorTab === tab ? '#3b82f6' : 'var(--color-text-tertiary)',
-                      borderBottom: inspectorTab === tab ? '2px solid #3b82f6' : '2px solid transparent',
+                      color: inspectorTab === tab ? 'var(--user-accent-primary, #FF5722)' : 'var(--color-text-tertiary)',
+                      borderBottom: inspectorTab === tab ? '2px solid var(--user-accent-primary, #FF5722)' : '2px solid transparent',
                     }}
                   >
                     {tab.charAt(0).toUpperCase() + tab.slice(1)}

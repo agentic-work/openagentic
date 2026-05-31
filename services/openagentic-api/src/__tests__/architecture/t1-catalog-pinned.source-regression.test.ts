@@ -40,6 +40,8 @@ const REG_PATH = join(
 // The first entry uses `taskTool` (TASK_TOOL with optional description
 // override) so the source check accepts that local name in place of
 // TASK_TOOL.
+// Canonical T1 catalog, in array order, as actually shipped by
+// getAllBaseTools(). `synth` was removed from the OSS edition.
 const T1_SYMBOLS = [
   'TOOL_SEARCH_TOOL',
   'AGENT_SEARCH_TOOL',
@@ -50,13 +52,18 @@ const T1_SYMBOLS = [
   'READ_LARGE_RESULT_TOOL_DEF',
   'WEB_SEARCH_TOOL',
   'WEB_FETCH_TOOL',
-  'SYNTH_TOOL',
   'PATTERN_SAVE_TOOL',
   'PATTERN_RECALL_TOOL',
+  'MEMORY_SEARCH_TOOL_DEF',
+  'COMPOSE_VISUAL_TOOL',
+  'COMPOSE_APP_TOOL',
+  'GENERATE_IMAGE_TOOL',
+  'RENDER_ARTIFACT_TOOL',
+  'REQUEST_CLARIFICATION_TOOL',
 ] as const;
 
-describe('arch — T1 catalog pinned to exactly 12 primitives (Phase C.14)', () => {
-  it('toolRegistry.ts getAllBaseTools returns exactly the canonical 12 symbols, in order', () => {
+describe('arch — T1 catalog pinned (Phase C.14)', () => {
+  it('toolRegistry.ts getAllBaseTools returns exactly the canonical symbols, in order', () => {
     const src = readFileSync(REG_PATH, 'utf8');
 
     // Extract the `return [ ... ];` block inside getAllBaseTools.
@@ -81,15 +88,12 @@ describe('arch — T1 catalog pinned to exactly 12 primitives (Phase C.14)', () 
       cursor = idx + sym.length;
     }
 
-    // Disallow any of the legacy meta-tool symbols that Phase C.1 ripped.
+    // Symbols that must NOT appear in the base catalog — discoverable via
+    // tool_search, or removed from the OSS edition entirely (synth).
     const FORBIDDEN = [
-      'COMPOSE_VISUAL_TOOL',
-      'COMPOSE_APP_TOOL',
-      'RENDER_ARTIFACT_TOOL',
-      'REQUEST_CLARIFICATION_TOOL',
       'BROWSER_SANDBOX_EXEC_TOOL',
       'MEMORIZE_TOOL',
-      'MEMORY_SEARCH_TOOL_DEF',
+      'SYNTH_TOOL',
       'SYNTH_EXECUTE_TOOL_DEF',
     ];
     for (const forb of FORBIDDEN) {

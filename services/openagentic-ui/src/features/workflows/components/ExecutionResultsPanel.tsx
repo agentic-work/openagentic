@@ -783,7 +783,7 @@ const OutputTab: React.FC<{
                 onClick={() => onFixWithAI(node.id, error)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
-                  background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+                  background: 'linear-gradient(135deg, var(--user-accent-primary, #FF5722) 0%, var(--user-accent-secondary, #B83A0E) 100%)',
                   border: 'none', borderRadius: 6, color: '#fff', fontSize: 12,
                   fontWeight: 500, cursor: 'pointer', alignSelf: 'flex-start',
                 }}
@@ -1270,7 +1270,7 @@ const RunDetailView: React.FC<{
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
       <div style={{ padding: '12px 16px', background: 'var(--wf-ep-bg)', borderBottom: '1px solid var(--wf-ep-border)' }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#58a6ff', fontSize: 11, cursor: 'pointer', padding: 0, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--user-accent-primary, #FF5722)', fontSize: 11, cursor: 'pointer', padding: 0, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
           <ChevronRight style={{ width: 12, height: 12, transform: 'rotate(180deg)' }} /> Back to History
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -1505,10 +1505,10 @@ const CopyButton: React.FC<{ text: string }> = ({ text }) => {
     <button
       onClick={handleCopy}
       style={{
-        background: copied ? 'rgba(46,160,67,0.15)' : 'rgba(88,166,255,0.1)',
-        border: `1px solid ${copied ? 'rgba(46,160,67,0.3)' : 'rgba(88,166,255,0.2)'}`,
+        background: copied ? 'rgba(46,160,67,0.15)' : 'color-mix(in srgb, var(--user-accent-primary, #FF5722) 10%, transparent)',
+        border: `1px solid ${copied ? 'rgba(46,160,67,0.3)' : 'color-mix(in srgb, var(--user-accent-primary, #FF5722) 20%, transparent)'}`,
         borderRadius: 6, padding: '4px 10px', fontSize: 10, fontWeight: 600,
-        color: copied ? '#2ea043' : '#58a6ff', cursor: 'pointer',
+        color: copied ? '#2ea043' : 'var(--user-accent-primary, #FF5722)', cursor: 'pointer',
         display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.2s',
       }}
     >
@@ -1602,9 +1602,9 @@ const CodeTab: React.FC<{ workflowId: string | null; workflowName: string }> = (
             key={lang}
             onClick={() => setActiveLang(lang)}
             style={{
-              background: 'none', border: 'none', borderBottom: activeLang === lang ? '2px solid #58a6ff' : '2px solid transparent',
+              background: 'none', border: 'none', borderBottom: activeLang === lang ? '2px solid var(--user-accent-primary, #FF5722)' : '2px solid transparent',
               padding: '8px 12px', fontSize: 11, fontWeight: activeLang === lang ? 700 : 500,
-              color: activeLang === lang ? '#58a6ff' : 'var(--wf-ep-text-secondary)',
+              color: activeLang === lang ? 'var(--user-accent-primary, #FF5722)' : 'var(--wf-ep-text-secondary)',
               cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s',
             }}
           >

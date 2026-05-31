@@ -227,7 +227,7 @@ export const SynthManagementView: React.FC<SynthManagementViewProps> = ({ theme 
           explainer="Synth — dynamic tool synthesis and execution."
         />
         <div className="p-6 flex items-center justify-center min-h-[400px]" style={{ backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text)' }}>
-          <RefreshIcon size={32} className="animate-spin text-blue-500" />
+          <RefreshIcon size={32} className="animate-spin text-accent-primary" />
         </div>
       </div>
     );
@@ -288,7 +288,7 @@ export const SynthManagementView: React.FC<SynthManagementViewProps> = ({ theme 
             onClick={() => setActiveTab(id as typeof activeTab)}
             className={`px-4 py-3 flex items-center gap-2 border-b-2 transition-colors ${
               activeTab === id
-                ? 'border-blue-500 text-blue-500'
+                ? 'border-accent-primary text-accent-primary'
                 : 'border-transparent'
             }`}
             style={activeTab !== id ? { color: 'var(--color-text-secondary)' } : undefined}
@@ -408,7 +408,7 @@ export const SynthManagementView: React.FC<SynthManagementViewProps> = ({ theme 
           {/* Limits */}
           <div className="p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <UsersIcon size={20} className="text-blue-500" />
+              <UsersIcon size={20} className="text-accent-primary" />
               Limits
             </h3>
             <div className="space-y-4">
@@ -507,7 +507,7 @@ export const SynthManagementView: React.FC<SynthManagementViewProps> = ({ theme 
           {/* Semantic Search Settings */}
           <div className="p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <ActivityIcon size={20} className="text-blue-500" />
+              <ActivityIcon size={20} className="text-accent-primary" />
               Semantic Tool Search
             </h3>
             <div className="space-y-4">

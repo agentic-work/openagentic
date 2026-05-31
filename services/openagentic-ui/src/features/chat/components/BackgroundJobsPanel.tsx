@@ -348,7 +348,7 @@ export const BackgroundJobsPanel: React.FC<BackgroundJobsPanelProps> = ({
                           {job.status === 'completed' && job.hasResult && (
                             <button
                               onClick={() => handleViewResult(job.jobId)}
-                              className="text-xs mt-2 px-2 py-1 rounded transition-colors duration-150 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-500/30"
+                              className="text-xs mt-2 px-2 py-1 rounded transition-colors duration-150 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20"
                             >
                               {expandedResults.has(job.jobId) ? 'Hide Result' : 'View Result'}
                             </button>

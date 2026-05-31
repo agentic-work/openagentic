@@ -662,7 +662,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
           {onRerun && execution?.status !== 'running' && (
             <button
               onClick={(e) => { e.stopPropagation(); onRerun(); }}
-              className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors hover:bg-blue-500/20 text-blue-400"
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors hover:bg-accent-primary/20 text-accent-primary"
               title="Re-run workflow"
             >
               <RotateCcw className="w-3 h-3" />
@@ -695,7 +695,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
           >
             {/* Resize Handle */}
             <div
-              className={`h-1 cursor-ns-resize hover:bg-blue-500/30 transition-colors ${isResizing ? 'bg-blue-500/50' : ''}`}
+              className={`h-1 cursor-ns-resize hover:bg-accent-primary/30 transition-colors ${isResizing ? 'bg-accent-primary/50' : ''}`}
               onMouseDown={handleMouseDown}
             />
 
@@ -712,7 +712,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                   key={tab}
                   onClick={() => setPanelTab(tab)}
                   className={`px-3 py-1 text-[11px] font-medium rounded transition-colors ${
-                    panelTab === tab ? 'bg-blue-500/20 text-blue-400' : ''
+                    panelTab === tab ? 'bg-accent-primary/20 text-accent-primary' : ''
                   }`}
                   style={panelTab !== tab ? { color: 'var(--color-text-tertiary, #636366)' } : undefined}
                 >
@@ -815,7 +815,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                     <p className="text-xs mb-2">Pre-flight check for your workflow</p>
                     <button
                       onClick={handleValidate}
-                      className="px-3 py-1.5 rounded-md text-xs font-medium bg-blue-600 text-white hover:bg-blue-500 transition-colors"
+                      className="px-3 py-1.5 rounded-md text-xs font-medium bg-accent-primary text-white hover:bg-accent-primary/90 transition-colors"
                     >
                       Run Validation
                     </button>
@@ -947,7 +947,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                     {/* Re-validate button */}
                     <button
                       onClick={handleValidate}
-                      className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition-colors hover:bg-blue-500/20 text-blue-400 border border-blue-500/20"
+                      className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition-colors hover:bg-accent-primary/20 text-accent-primary border border-accent-primary/20"
                     >
                       <RefreshCw className="w-3 h-3" />
                       Re-validate
@@ -1136,7 +1136,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                                     {(['input', 'output', 'logs'] as InspectorTab[]).map(tab => (
                                       <button key={tab} onClick={() => setHistoryInspectorTab(tab)}
                                         className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors uppercase tracking-wider ${
-                                          historyInspectorTab === tab ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'border border-transparent'
+                                          historyInspectorTab === tab ? 'bg-accent-primary/20 text-accent-primary border border-accent-primary/30' : 'border border-transparent'
                                         }`}
                                         style={historyInspectorTab !== tab ? { color: 'var(--color-text-tertiary)' } : undefined}>
                                         {tab}
@@ -1349,7 +1349,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                             {(['input', 'output', 'logs'] as InspectorTab[]).map(tab => (
                               <button key={tab} onClick={() => setInspectorTab(tab)}
                                 className={`px-2.5 py-1 text-[11px] font-medium rounded transition-colors uppercase tracking-wider ${
-                                  inspectorTab === tab ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'border border-transparent'
+                                  inspectorTab === tab ? 'bg-accent-primary/20 text-accent-primary border border-accent-primary/30' : 'border border-transparent'
                                 }`}
                                 style={inspectorTab !== tab ? { color: 'var(--color-text-tertiary)' } : undefined}>
                                 {tab}

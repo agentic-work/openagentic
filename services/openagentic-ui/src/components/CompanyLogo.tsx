@@ -1,14 +1,21 @@
 /**
- * CompanyLogo — renders the official [openagentic] brand mark
- * stored at /public/company-logo.svg. Sidebar header + About panel
- * both consume this. `icon` variant shows just the "A" glyph for
- * the collapsed sidebar rail.
+ * CompanyLogo — the official `⌥ openagentic` brand mark.
  *
- * The previous "A in a violet square" placeholder was wrong — user
- * explicitly asked for the correct brand asset back.
+ * Sidebar header (chat / code / flows / admin), About panel, and the
+ * version badge all consume this. `full`/`compact` render the shared
+ * OpenAgenticWordmark (single source of truth — ⌥ glyph in signal
+ * orange + cream/ink word in IBM Plex Mono, theme-adaptive). `icon`
+ * renders just the ⌥ glyph on a warm tile for the collapsed rail.
+ *
+ * (Replaces the old purple→blue→amber gradient SVG and the violet "A"
+ * square placeholder — both predated the warm field-guide identity.)
  */
 
 import React from 'react';
+import { OpenAgenticWordmark } from '@/shared/components/OpenAgenticWordmark';
+
+/** macOS option-key glyph (U+2325) — the openagentic brand mark. */
+const GLYPH = '⌥';
 
 interface CompanyLogoProps {
   className?: string;
@@ -23,52 +30,46 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   height,
   variant = 'full',
 }) => {
-  const dims = (() => {
-    if (variant === 'icon') return { w: width ?? 28, h: height ?? 28 };
-    if (variant === 'compact') return { w: width ?? 160, h: height ?? 28 };
-    return { w: width ?? 220, h: height ?? 38 };
-  })();
-
   if (variant === 'icon') {
+    const h = Number(height ?? 28);
     return (
       <div
         className={className}
-        aria-label="OpenAgentic"
+        aria-label="openagentic"
         style={{
-          width: dims.w,
-          height: dims.h,
+          width: width ?? h,
+          height: h,
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
-          borderRadius: 6,
-          background: 'conic-gradient(from 220deg, #8b5cf6, #6366f1, #8b5cf6)',
-          color: 'white',
+          borderRadius: 7,
+          background: 'var(--surface-1, #211A11)',
+          border: '1px solid rgba(255, 87, 34, 0.35)',
+          color: 'var(--signal, #FF5722)',
+          fontFamily: "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
           fontWeight: 700,
-          fontSize: Math.max(11, Math.floor(Number(dims.h) * 0.55)),
-          boxShadow:
-            '0 0 0 1px rgba(139,92,246,.3), 0 4px 12px rgba(139,92,246,.2)',
+          fontSize: Math.max(13, Math.floor(Number(h) * 0.62)),
+          textShadow: '0 0 10px rgba(255, 87, 34, 0.4)',
           flexShrink: 0,
         }}
       >
-        A
+        {GLYPH}
       </div>
     );
   }
 
+  // full / compact → the shared ⌥ openagentic wordmark, sized from height.
+  const h = Number(height ?? (variant === 'full' ? 38 : 28));
+  const size = Math.max(14, Math.round(h * 0.58));
+
   return (
-    <img
-      src="/company-logo.svg"
-      alt="OpenAgentic"
+    <span
       className={className}
-      width={dims.w}
-      height={dims.h}
-      style={{
-        width: dims.w,
-        height: dims.h,
-        objectFit: 'contain',
-        display: 'inline-block',
-      }}
-    />
+      aria-label="openagentic"
+      style={{ display: 'inline-flex', alignItems: 'center', height: h }}
+    >
+      <OpenAgenticWordmark size={size} animate={false} />
+    </span>
   );
 };
 

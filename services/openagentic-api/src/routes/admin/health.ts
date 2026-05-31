@@ -7,6 +7,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { requireAdminFastify } from '../../middleware/adminGuard.js';
 import { getAdminPortalHealth } from '../../startup/validateAdminPortal.js';
+import { prisma } from '../../utils/prisma.js';
 
 export const adminHealthRoutes: FastifyPluginAsync = async (fastify) => {
   
@@ -75,17 +76,30 @@ export const adminHealthRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       const promptHealth = await getAdminPortalHealth();
-      
-      // Add additional system health checks here in the future
+
+      // Real database health: round-trip a trivial query and time it.
+      let dbStatus: 'healthy' | 'unhealthy' = 'healthy';
+      let dbResponseTime: number | null = null;
+      try {
+        const t0 = Date.now();
+        await prisma.$queryRaw`SELECT 1`;
+        dbResponseTime = Date.now() - t0;
+      } catch (dbErr) {
+        dbStatus = 'unhealthy';
+        fastify.log.error({ err: dbErr }, 'Admin system health: database check failed');
+      }
+
+      const overall =
+        promptHealth.status === 'healthy' && dbStatus === 'healthy' ? 'healthy' : 'degraded';
       const systemHealth = {
         prompts: promptHealth,
         database: {
-          status: 'healthy', // TODO: Add actual database health check
-          responseTime: null
+          status: dbStatus,
+          responseTime: dbResponseTime
         },
-        overall: promptHealth.status
+        overall
       };
-      
+
       const statusCode = systemHealth.overall === 'healthy' ? 200 : 503;
       return reply.code(statusCode).send(systemHealth);
       

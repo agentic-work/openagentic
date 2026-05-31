@@ -3,8 +3,8 @@
    ============================================================ */
 :root {
   /* Mockup shade stack */
-  --bg-0: #09090b;
-  --bg-1: #0f1012;
+  --bg-0: #18130C;
+  --bg-1: #211A11;
   --bg-2: #16181c;
   --bg-3: #1c1f24;
   --bg-4: #242831;
@@ -56,8 +56,8 @@
    the brand stays violet either way. Shadows drop intensity.
    ============================================================ */
 html[data-theme='light'] {
-  --bg-0: #ffffff;
-  --bg-1: #fafafa;
+  --bg-0: #F4EFE6;
+  --bg-1: #EFE9DD;
   --bg-2: #f4f4f5;
   --bg-3: #e4e4e7;
   --bg-4: #d4d4d8;

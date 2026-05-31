@@ -167,7 +167,7 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                         agenticwork.io
                       </a>
                       <span style={{ color: 'var(--color-textMuted)' }}>
-                        — Hosted edition &amp; enterprise features
+                        — Project website
                       </span>
                     </div>
                     <div className="flex items-center gap-2">

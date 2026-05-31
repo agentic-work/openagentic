@@ -469,7 +469,7 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = ({ embedded = false, 
           <p className="text-red-500 mb-4">{error}</p>
           <button
             onClick={loadWorkflows}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            className="px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90"
           >
             Retry
           </button>
@@ -604,7 +604,7 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = ({ embedded = false, 
 //     a description, so the legend slot is always present
 // ---------------------------------------------------------------------------
 
-const LEGEND_ACCENT = 'var(--user-accent-primary, #7c3aed)';
+const LEGEND_ACCENT = 'var(--user-accent-primary, #FF5722)';
 
 const WorkflowAboutPanel: React.FC<{
   meta: TemplateMeta | null;

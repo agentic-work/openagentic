@@ -1,11 +1,3 @@
-/**
-
- * For all inquiries, please contact:
- * 
- * Openagentic LLC
- * hello@openagentic.io
- */
-
 import type { FastifyBaseLogger } from 'fastify';
 import { randomUUID } from 'crypto';
 import type { ProviderManager } from './llm-providers/ProviderManager.js';

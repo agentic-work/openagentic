@@ -1672,8 +1672,8 @@
     "zwitch": "^2.0.4"
   },
   "keywords": [],
-  "author": "OpenAgentic LLC <legal@openagentic.io>",
-  "license": "SEE LICENSE IN LICENSE",
+  "author": "Agenticwork™ LLC <legal@agenticwork.io> (https://agenticwork.io)",
+  "license": "Apache-2.0",
   "pnpm": {
     "overrides": {
       "picomatch": "^4.0.4",

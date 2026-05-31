@@ -1046,21 +1046,21 @@ const WelcomePage: React.FC = () => {
               fontSize: '15px',
               fontWeight: 600,
               color: '#ffffff',
-              background: 'linear-gradient(135deg, #7C3AED, #3B82F6)',
+              background: 'linear-gradient(135deg, var(--user-accent-primary), var(--user-accent-secondary))',
               border: 'none',
               borderRadius: '12px',
               padding: '12px 28px',
               cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(124, 58, 237, 0.3)',
+              boxShadow: '0 4px 16px color-mix(in srgb, var(--user-accent-primary) 30%, transparent)',
               transition: 'box-shadow 0.3s ease',
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLElement).style.boxShadow =
-                '0 6px 24px rgba(124, 58, 237, 0.45)';
+                '0 6px 24px color-mix(in srgb, var(--user-accent-primary) 45%, transparent)';
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLElement).style.boxShadow =
-                '0 4px 16px rgba(124, 58, 237, 0.3)';
+                '0 4px 16px color-mix(in srgb, var(--user-accent-primary) 30%, transparent)';
             }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

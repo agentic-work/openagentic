@@ -2186,7 +2186,14 @@ export class WorkflowExecutionEngine extends EventEmitter {
       {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': this.context.authToken || '',
+          // Authenticate as System Root via the service-internal key so mcp-proxy
+          // authorizes WITHOUT a per-user policy round-trip to the api. The
+          // user-token path is fragile: mcp-proxy must reach the api to resolve
+          // group policies, which fails transiently and 401s the whole tool call
+          // (made grounded flows non-deterministic). Single-tenant: correct.
+          'Authorization': (process.env.API_INTERNAL_KEY || process.env.INTERNAL_API_KEY)
+            ? `Bearer ${process.env.API_INTERNAL_KEY || process.env.INTERNAL_API_KEY}`
+            : (this.context.authToken || ''),
           // Pass ID token for AWS Identity Center and Azure OBO federation
           // (same as chat mode's tool-execution.helper.ts)
           ...(this.context.idToken ? {

@@ -64,7 +64,7 @@ export const ScrollToBottomButton: React.FC<ScrollToBottomButtonProps> = ({
             shadow-lg hover:shadow-xl
             transition-all duration-150 ease-out
             hover:scale-110 active:scale-95
-            bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-500 text-white
+            bg-accent-primary hover:bg-accent-primary/90 text-white
           "
           aria-label="Scroll to bottom"
           title="Jump to bottom"

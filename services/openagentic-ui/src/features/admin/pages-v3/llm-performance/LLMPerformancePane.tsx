@@ -1,9 +1,9 @@
 /**
- * LLM Performance pane — enterprise analytics tab.
+ * LLM Performance pane.
  *
- * The underlying /api/admin/prom proxy and gen_ai.* OTel metrics are
- * only available in the hosted edition. OSS shows the enterprise upsell
- * instead of empty charts / "no data" states.
+ * The underlying /api/admin/prom proxy and gen_ai.* OTel metrics aren't
+ * wired in this build, so the pane shows a neutral empty-state instead of
+ * empty charts / "no data" states.
  */
 import * as React from 'react'
 import { Panel, SectionBar } from '../../primitives-v3'
@@ -14,48 +14,16 @@ interface Props {
 
 const LLMPerformancePane: React.FC<Props> = () => (
   <>
-    <SectionBar
-      title="advanced analytics"
-      right={
-        <a
-          href="https://agenticwork.io"
-          target="_blank"
-          rel="noreferrer noopener"
-          style={{ color: 'var(--accent)', fontSize: 11, textDecoration: 'none' }}
-        >
-          upgrade → agenticwork.io
-        </a>
-      }
-    />
+    <SectionBar title="llm & router analytics" />
     <Panel>
       <div style={{ padding: '32px 24px', textAlign: 'center' }}>
         <p style={{ color: 'var(--fg-2)', fontSize: 14, marginBottom: 6, fontWeight: 600 }}>
-          Advanced Analytics — Enterprise Edition
+          LLM &amp; Router analytics
         </p>
-        <p style={{ color: 'var(--fg-3)', fontSize: 12, marginBottom: 4 }}>
-          LLM &amp; Router analytics require the hosted edition.
+        <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>
+          TTFT / TPOT latency charts, per-model throughput, finish-reason distribution, and
+          router decision analytics aren&apos;t available in this build.
         </p>
-        <p style={{ color: 'var(--fg-3)', fontSize: 12, marginBottom: 20 }}>
-          TTFT / TPOT latency charts, per-model throughput, finish-reason distribution,
-          OTel gen_ai.* metrics, and router decision analytics.
-        </p>
-        <a
-          href="https://agenticwork.io"
-          target="_blank"
-          rel="noreferrer noopener"
-          style={{
-            display: 'inline-block',
-            padding: '8px 18px',
-            borderRadius: 6,
-            background: 'var(--accent)',
-            color: '#fff',
-            fontSize: 12,
-            fontWeight: 600,
-            textDecoration: 'none',
-          }}
-        >
-          Learn more at agenticwork.io
-        </a>
       </div>
     </Panel>
   </>

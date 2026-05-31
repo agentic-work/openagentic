@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ui
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: ui
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ui
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ui
+  template:
+    metadata:
+      labels:
+        app: ui
+    spec:
+      enableServiceLinks: false
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: ui
+          image: {{ .Values.image.registry }}/openagentic-ui:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 80
+          envFrom:
+            - secretRef:
+                name: openagentic-secrets
+          env:
+            # The entrypoint converts these short names to in-cluster FQDNs and
+            # derives the nginx DNS resolver from /etc/resolv.conf automatically.
+            - name: API_HOST
+              value: api
+            - name: API_PORT
+              value: "8000"
+            - name: MCP_HOST
+              value: mcp-proxy
+            - name: MCP_PORT
+              value: "8080"
+            - name: WORKFLOWS_HOST
+              value: workflows
+            - name: WORKFLOWS_PORT
+              value: "3400"
+            - name: EXEC_HOST
+              value: openagentic-exec
+            - name: EXEC_PORT
+              value: "3060"
+            - name: OPENAGENTIC_PROXY_HOST
+              value: proxy
+            - name: OPENAGENTIC_PROXY_PORT
+              value: "3300"
+            - name: AUTH_PROVIDER
+              value: local
+            - name: LOCAL_LOGIN_ENABLED
+              value: "true"
+            - name: MICROSOFT_LOGIN_ENABLED
+              value: "false"
+            - name: GOOGLE_LOGIN_ENABLED
+              value: "false"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources.ui | nindent 12 }}

@@ -1,11 +1,3 @@
-/**
-
- * For all inquiries, please contact:
- *
- * Openagentic LLC
- * hello@openagentic.io
- */
-
 import React, { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight } from '@/shared/icons';
 import { ReactFlowDiagram, parseDiagramJson } from '@/components/diagrams/ReactFlowDiagram';

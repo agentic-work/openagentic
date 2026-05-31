@@ -4,12 +4,9 @@
 import { FastifyInstance } from 'fastify';
 import { getDLPScanner } from '../../services/DLPScannerService.js';
 import { prisma } from '../../utils/prisma.js';
-import { enterpriseOnly } from '../../middleware/enterpriseOnly.js';
 
 export default async function dlpRoutes(fastify: FastifyInstance) {
 
-  // OSS gate — all routes in this plugin return 402 with upgrade_url.
-  fastify.addHook('preHandler', enterpriseOnly);
   const logger = fastify.log.child({ component: 'admin-dlp' }) as any;
 
   // GET /admin/dlp/rules — List all rules with hit counts

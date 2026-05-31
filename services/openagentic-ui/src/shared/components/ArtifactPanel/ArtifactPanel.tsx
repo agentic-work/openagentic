@@ -174,7 +174,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
           width: '100%',
           height: '100%',
           background: theme === 'dark' ? '#0d1117' : '#ffffff',
-          borderLeft: '1px solid rgba(139,92,246,0.18)',
+          borderLeft: '1px solid color-mix(in srgb, var(--user-accent-primary) 18%, transparent)',
           overflow: 'hidden',
         }}
       >
@@ -184,8 +184,8 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
             alignItems: 'center',
             gap: 10,
             padding: '10px 14px',
-            borderBottom: '1px solid rgba(139,92,246,0.12)',
-            background: 'rgba(139,92,246,0.03)',
+            borderBottom: '1px solid color-mix(in srgb, var(--user-accent-primary) 12%, transparent)',
+            background: 'color-mix(in srgb, var(--user-accent-primary) 3%, transparent)',
             flexShrink: 0,
           }}
         >
@@ -193,7 +193,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
             style={{
               fontSize: 10,
               letterSpacing: 0.8,
-              color: '#a78bfa',
+              color: 'var(--user-accent-primary)',
               fontWeight: 600,
               fontFamily: "'JetBrains Mono', monospace",
               textTransform: 'uppercase',
@@ -283,7 +283,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
         width: '100%',
         height: '100%',
         background: theme === 'dark' ? '#0d1117' : '#ffffff',
-        borderLeft: '1px solid rgba(139,92,246,0.24)',
+        borderLeft: '1px solid color-mix(in srgb, var(--user-accent-primary) 24%, transparent)',
         overflow: 'hidden',
       }}
     >
@@ -296,8 +296,8 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
           alignItems: 'center',
           gap: 10,
           padding: '10px 14px',
-          borderBottom: '1px solid rgba(139,92,246,0.18)',
-          background: 'linear-gradient(90deg, rgba(139,92,246,0.06), rgba(14,165,233,0.03))',
+          borderBottom: '1px solid color-mix(in srgb, var(--user-accent-primary) 18%, transparent)',
+          background: 'linear-gradient(90deg, color-mix(in srgb, var(--user-accent-primary) 6%, transparent), color-mix(in srgb, var(--user-accent-secondary) 3%, transparent))',
           flexShrink: 0,
         }}
       >
@@ -306,7 +306,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
           style={{
             fontSize: 10,
             letterSpacing: 0.8,
-            color: '#a78bfa',
+            color: 'var(--user-accent-primary)',
             fontWeight: 600,
             fontFamily: "'JetBrains Mono', monospace",
             textTransform: 'uppercase',
@@ -454,7 +454,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
             display: 'flex',
             gap: 1,
             padding: '0 10px',
-            borderBottom: '1px solid rgba(139,92,246,0.14)',
+            borderBottom: '1px solid color-mix(in srgb, var(--user-accent-primary) 14%, transparent)',
             background: theme === 'dark' ? '#06080c' : '#f8fafc',
             overflowX: 'auto',
             flexShrink: 0,
@@ -484,7 +484,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
                     : 'transparent',
                   border: 'none',
                   borderBottom: selected
-                    ? '2px solid #a78bfa'
+                    ? '2px solid var(--user-accent-primary)'
                     : '2px solid transparent',
                   color: selected
                     ? (theme === 'dark' ? '#e4e4e7' : '#18181b')

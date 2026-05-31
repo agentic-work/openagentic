@@ -1,15 +1,12 @@
 /**
- * ArtifactsSection - OSS edition shows the enterprise upsell LockScreen.
- * The persistArtifact runtime call in the execution engine is unaffected;
- * only the management UI panel is gated here.
+ * ArtifactsSection - inline accordion body for the Flows sidebar.
+ * Renders the real artifacts list (workflow-generated outputs persisted
+ * via persistArtifact) by delegating to the shared section-body renderer.
  */
 
 import React from 'react';
-import { LockScreen } from '@/features/admin/Upsell';
+import { renderSectionBody } from './SidebarSectionModal';
 
 export const ArtifactsSection: React.FC = () => (
-  <LockScreen
-    feature="Artifacts"
-    description="Browse and search workflow-generated artifacts. Artifacts are saved automatically when a flow node calls persistArtifact."
-  />
+  <>{renderSectionBody({ section: 'artifacts' })}</>
 );

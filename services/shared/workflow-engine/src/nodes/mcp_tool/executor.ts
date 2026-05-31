@@ -154,7 +154,15 @@ export async function execute(
     {
       headers: {
         'Content-Type': 'application/json',
-        Authorization: ctx.authToken || '',
+        // Prefer the service-internal key (System Root) so mcp-proxy authorizes
+        // WITHOUT a per-user policy round-trip to the api. The user-token path
+        // is fragile: mcp-proxy must reach the api to resolve group policies,
+        // which fails transiently and 401s the whole tool call (made grounded
+        // flows non-deterministic). Single-tenant: System Root is correct.
+        Authorization:
+          (process.env.API_INTERNAL_KEY || process.env.INTERNAL_API_KEY)
+            ? `Bearer ${process.env.API_INTERNAL_KEY || process.env.INTERNAL_API_KEY}`
+            : (ctx.authToken || ''),
         // Pass ID token for AWS Identity Center and Azure OBO federation.
         ...(ctx.idToken
           ? {

@@ -1,182 +1,104 @@
 # =============================================================================
-# Default values for the openagentic Helm chart (public OSS)
+# Barebones OpenAgentic stack — default values
 # =============================================================================
 #
-# Override in your own values file. Images are pulled from
-# ghcr.io/agentic-work/* — overlay your own registry if you
-# self-host (see values-local-registry.yaml for an example).
+# A self-contained single-replica deployment: postgres (pgvector), redis,
+# ollama, and the app services (api, ui, workflows, mcp-proxy, proxy, exec)
+# plus searxng for web search. Vector search uses pgvector; Milvus is omitted.
 #
-# Usage:
 #   helm install openagentic ./helm/openagentic -n openagentic --create-namespace
 #
-# With a custom values file:
-#   helm install openagentic ./helm/openagentic -f my-values.yaml -n openagentic
+# Override image.registry/tag, ingress.host, and secrets.* in your own values
+# file for a real deployment. The defaults below run a working demo stack.
 # =============================================================================
 
-global:
-  environment: production
-  imagePullPolicy: IfNotPresent
-  # Override per-chart by setting a registry on each service.image.repository.
-  imageRegistry: "ghcr.io/agentic-work/"
+# Container image coordinates. All app images share one registry + tag.
+image:
+  registry: ghcr.io/agentic-work
+  tag: latest
+  pullPolicy: IfNotPresent
 
-# ─── Core services ──────────────────────────────────────────────────────────
-api:
-  enabled: true
-  image:
-    repository: ghcr.io/agentic-work/openagentic-api
-    tag: latest
+# Pull secret name for a private registry (e.g. Harbor). Empty = public.
+imagePullSecrets: []
+#  - name: harbor-creds
 
-ui:
-  enabled: true
-  image:
-    repository: ghcr.io/agentic-work/openagentic-ui
-    tag: latest
+# Shared secrets. CHANGE THESE for any non-demo deployment.
+secrets:
+  postgresPassword: openagentic-dev-pg-pass
+  jwtSecret: openagentic-dev-jwt-secret-change-me
+  signingSecret: openagentic-dev-signing-secret-change-me
+  internalApiKey: openagentic-dev-internal-key-change-me
+  codeExecInternalKey: openagentic-dev-code-exec-key-change-me
+  frontendSecret: dev-frontend-secret-change-me
+  # First-boot admin seed (created once).
+  adminEmail: admin@openagentic.local
+  adminPassword: changeme-on-first-login
+  # Optional AWS creds for a Bedrock provider (Claude on Bedrock). Leave empty
+  # to skip; set in your overlay to enable Sonnet/Opus via Bedrock.
+  awsAccessKeyId: ""
+  awsSecretAccessKey: ""
+  awsRegion: us-east-1
 
-workflows:
-  enabled: true
-  image:
-    repository: ghcr.io/agentic-work/openagentic-workflows
-    tag: latest
+# Local model runtime. nomic-embed-text (embeddings) is always pulled; a chat
+# model is pulled so a bare install can chat with zero API keys.
+ollama:
+  embedModel: nomic-embed-text
+  chatModel: llama3.2:3b
+  # GPU off by default for portability. CPU inference is fine for small models.
+  gpu: false
 
-mcpProxy:
-  enabled: true
-  image:
-    repository: ghcr.io/agentic-work/openagentic-mcp-proxy
-    tag: latest
-
-openagenticProxy:
-  enabled: true
-  image:
-    repository: ghcr.io/agentic-work/openagentic-proxy
-    tag: latest
-
-synth:
-  enabled: false
-  image:
-    repository: ghcr.io/agentic-work/openagentic-synth
-    tag: latest
-
-# ─── Bundled MCPs (all disabled by default; enable in your overlay) ─────────
-awpAdminMcp:
-  enabled: false
-  image:
-    repository: ghcr.io/agentic-work/oap-admin-mcp
-    tag: latest
-
-awpAwsMcp:
-  enabled: false
-  image:
-    repository: ghcr.io/agentic-work/oap-aws-mcp
-    tag: latest
-
-awpAzureMcp:
-  enabled: false
-  image:
-    repository: ghcr.io/agentic-work/oap-azure-mcp
-    tag: latest
-
-awpGcpMcp:
-  enabled: false
-  image:
-    repository: ghcr.io/agentic-work/oap-gcp-mcp
-    tag: latest
-
-awpKubernetesMcp:
-  enabled: false
-  image:
-    repository: ghcr.io/agentic-work/oap-kubernetes-mcp
-    tag: latest
-
-awpPrometheusMcp:
-  enabled: false
-  image:
-    repository: ghcr.io/agentic-work/oap-prometheus-mcp
-    tag: latest
-
-awpLokiMcp:
-  enabled: false
-  image:
-    repository: ghcr.io/agentic-work/oap-loki-mcp
-    tag: latest
-
-awpAlertmanagerMcp:
-  enabled: false
-  image:
-    repository: ghcr.io/agentic-work/oap-alertmanager-mcp
-    tag: latest
-
-awpWebMcp:
-  enabled: true
-  image:
-    repository: ghcr.io/agentic-work/oap-web-mcp
-    tag: latest
-
-awpGithubMcp:
-  enabled: false
-  image:
-    repository: ghcr.io/agentic-work/oap-github-mcp
-    tag: latest
-
-awpKnowledgeMcp:
-  enabled: true
-  image:
-    repository: ghcr.io/agentic-work/oap-knowledge-mcp
-    tag: latest
-
-awpIncidentMcp:
-  enabled: false
-  image:
-    repository: ghcr.io/agentic-work/oap-incident-mcp
-    tag: latest
-
-awpRunbookMcp:
-  enabled: false
-  image:
-    repository: ghcr.io/agentic-work/oap-runbook-mcp
-    tag: latest
-
-awpAgentArchitectMcp:
-  enabled: false
-  image:
-    repository: ghcr.io/agentic-work/oap-agent-architect-mcp
-    tag: latest
-
-awpAzureCostMcp:
-  enabled: false
-  image:
-    repository: ghcr.io/agentic-work/oap-azure-cost-mcp
-    tag: latest
-
-# ─── Third-party (off-cluster registries) ───────────────────────────────────
-postgresql:
-  image:
-    repository: pgvector/pgvector
-    tag: pg16
+# Postgres datastore (pgvector). storage sizes are modest for a demo.
+postgres:
+  image: pgvector/pgvector:pg16
+  storage: 8Gi
 
 redis:
-  image:
-    repository: redis
-    tag: 7-alpine
+  image: redis:7-alpine
 
+searxng:
+  image: searxng/searxng:latest
+
+# Vector DB for the tool semantic cache. The api requires a vector backend;
+# milvus (with bundled etcd + minio) is the in-cluster default. Set enabled
+# false ONLY if you wire the api to pgvector-only mode (MILVUS_ENABLED=false).
 milvus:
-  image:
-    repository: milvusdb/milvus
-    tag: v2.4.15
+  enabled: true
+  image: milvusdb/milvus:v2.4.15
 
-ollama:
+# Which MCP servers the proxy spawns. web/knowledge/admin need no creds.
+mcps:
+  enabled: "web,knowledge,admin"
+
+# Per-service resource requests/limits. Tuned small; raise for production load.
+resources:
+  api:        { requests: { cpu: "250m", memory: "768Mi" }, limits: { memory: "2Gi" } }
+  ui:         { requests: { cpu: "50m",  memory: "64Mi" },  limits: { memory: "256Mi" } }
+  workflows:  { requests: { cpu: "100m", memory: "384Mi" }, limits: { memory: "1Gi" } }
+  mcpProxy:   { requests: { cpu: "100m", memory: "256Mi" }, limits: { memory: "1Gi" } }
+  proxy:      { requests: { cpu: "50m",  memory: "128Mi" }, limits: { memory: "512Mi" } }
+  exec:       { requests: { cpu: "50m",  memory: "128Mi" }, limits: { memory: "512Mi" } }
+  ollama:     { requests: { cpu: "500m", memory: "2Gi" },   limits: { memory: "6Gi" } }
+  postgres:   { requests: { cpu: "100m", memory: "256Mi" }, limits: { memory: "1Gi" } }
+  redis:      { requests: { cpu: "50m",  memory: "64Mi" },  limits: { memory: "256Mi" } }
+  searxng:    { requests: { cpu: "50m",  memory: "128Mi" }, limits: { memory: "512Mi" } }
+
+# Optional components. exec powers Code Mode; proxy is an egress shim for tool
+# calls. Both are off by default for a minimal install — the core (chat, flows,
+# MCPs) runs without them. Enable in your overlay if you need them.
+exec:
   enabled: false
-  image:
-    repository: ollama/ollama
-    tag: latest
 
-# ─── Misc ───────────────────────────────────────────────────────────────────
+proxy:
+  enabled: false
+
+# Node placement. Empty = schedule anywhere. Set kubernetes.io/arch when
+# your images are single-arch and the cluster is mixed amd64/arm64.
+nodeSelector: {}
+
+# Ingress (nginx). Set host + tlsSecret to expose the UI over HTTPS.
 ingress:
   enabled: false
-
-# Only set this when pulling from a private registry. Create the secret with:
-#   kubectl create secret docker-registry registry-pull-secret \
-#     --docker-server=<your-registry-host> \
-#     --docker-username=<user> --docker-password=<token> \
-#     -n openagentic
-# Leave empty for public registries (default: ghcr.io/agentic-work).
-imagePullSecrets: []
+  className: nginx
+  host: openagentic.local
+  # Name of a pre-existing kubernetes.io/tls secret in the release namespace.
+  tlsSecret: ""

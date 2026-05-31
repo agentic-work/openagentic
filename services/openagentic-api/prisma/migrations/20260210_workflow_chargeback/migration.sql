@@ -1,4 +1,4 @@
--- Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
+
 
 -- OpenAgentic Workflow Platform & Chargeback Schema Migration
 -- Date: 2026-02-10

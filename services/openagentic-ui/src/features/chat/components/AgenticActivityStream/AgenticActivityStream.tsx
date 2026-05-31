@@ -847,7 +847,7 @@ const ToolProgressTick: React.FC<{ message: string; elapsed?: number }> = memo(
             width: 6,
             height: 6,
             borderRadius: 3,
-            background: 'var(--color-primary, #6366f1)',
+            background: 'var(--color-primary, var(--user-accent-primary))',
             animation: 'pulse 1.2s ease-in-out infinite',
             flexShrink: 0,
           }}
@@ -1066,7 +1066,7 @@ const InlineThinking: React.FC<InlineThinkingProps> = memo(({
               {isStreaming && thinkingProgress && (
                 <span style={{
                   fontSize: 11,
-                  color: 'var(--color-primary, #A855F7)',
+                  color: 'var(--color-primary, var(--user-accent-primary))',
                   fontWeight: 500,
                 }}>
                   {thinkingProgress.percentage.toFixed(0)}%
@@ -1118,7 +1118,7 @@ const InlineThinking: React.FC<InlineThinkingProps> = memo(({
               {content}
               {isStreaming && (
                 <span className="thinking-cursor" style={{
-                  color: 'var(--color-primary, #A855F7)',
+                  color: 'var(--color-primary, var(--user-accent-primary))',
                   animation: 'blink 1s infinite',
                   marginLeft: 2,
                 }}>|</span>

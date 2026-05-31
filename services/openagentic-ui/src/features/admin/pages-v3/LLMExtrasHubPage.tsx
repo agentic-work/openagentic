@@ -170,44 +170,15 @@ export const LLMExtrasHubPage: React.FC<LLMExtrasHubPageProps> = ({
       {tab === 'tiered-fc' && <TieredFcPane />}
       {tab === 'performance' && (
         <>
-          <SectionBar
-            title="performance metrics"
-            right={
-              <a
-                href="https://agenticwork.io"
-                target="_blank"
-                rel="noreferrer noopener"
-                style={{ color: 'var(--accent)', fontSize: 11, textDecoration: 'none' }}
-              >
-                upgrade → agenticwork.io
-              </a>
-            }
-          />
+          <SectionBar title="performance metrics" />
           <Panel>
             <div style={{ padding: '32px 24px', textAlign: 'center' }}>
               <p style={{ color: 'var(--fg-2)', fontSize: 14, marginBottom: 6, fontWeight: 600 }}>
-                Advanced Analytics — Enterprise Edition
+                LLM performance metrics
               </p>
-              <p style={{ color: 'var(--fg-3)', fontSize: 12, marginBottom: 20 }}>
-                LLM performance metrics (TTFT, latency percentiles, throughput) require the hosted edition.
+              <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>
+                TTFT, latency percentiles, and throughput aren&apos;t available in this build.
               </p>
-              <a
-                href="https://agenticwork.io"
-                target="_blank"
-                rel="noreferrer noopener"
-                style={{
-                  display: 'inline-block',
-                  padding: '8px 18px',
-                  borderRadius: 6,
-                  background: 'var(--accent)',
-                  color: '#fff',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  textDecoration: 'none',
-                }}
-              >
-                Learn more at agenticwork.io
-              </a>
             </div>
           </Panel>
         </>

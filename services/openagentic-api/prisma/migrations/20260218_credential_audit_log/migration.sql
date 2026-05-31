@@ -1,4 +1,4 @@
--- Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
+
 
 -- Credential Audit Log - Tracks admin CRUD operations on LLM providers, MCP servers, API keys
 -- Date: 2026-02-18

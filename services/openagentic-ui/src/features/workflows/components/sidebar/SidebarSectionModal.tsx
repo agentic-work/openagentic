@@ -45,7 +45,6 @@ import { workflowEndpoint } from '@/utils/api';
 import { nodeTypeConfigs } from '../../utils/nodeConfigs';
 import { TemplateLegend } from '../TemplateLegend';
 import { DataSection } from './DataSection';
-import { LockScreen } from '@/features/admin/Upsell';
 import {
   Zap, Brain, Bot, Rocket as Rocket2, Sparkles, Target, Code, Terminal as Terminal2,
   GitBranch as GitBranch2, RotateCw, Hourglass, ArrowRightLeft,
@@ -538,13 +537,19 @@ const NodesContent: React.FC = () => {
 // CREDENTIALS CONTENT
 // ---------------------------------------------------------------------------
 
-// OSS edition: Credentials management is enterprise-only.
-// Runtime resolution of {{secret:name}} in the execution engine is unaffected.
+// Credentials: workflow secrets are stored server-side and referenced as
+// {{secret:name}} in any node. The execution engine resolves them at runtime.
 const CredentialsContent: React.FC<{ workflowId?: string }> = (_props) => (
-  <LockScreen
-    feature="Credentials"
-    description="Store and manage workflow secrets (API keys, tokens, passwords) and reference them as {{secret:name}} in any node."
-  />
+  <div className="py-12 text-center">
+    <div className="text-base font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
+      Workflow secrets
+    </div>
+    <div className="text-sm max-w-md mx-auto" style={{ color: 'var(--color-text-tertiary)' }}>
+      Secrets are stored server-side and referenced as{' '}
+      <code style={{ color: 'var(--color-text-secondary)' }}>{'{{secret:name}}'}</code> in any node.
+      The execution engine resolves them at runtime.
+    </div>
+  </div>
 );
 
 // ---------------------------------------------------------------------------
@@ -812,16 +817,10 @@ const AgentsContent: React.FC = () => {
 // DATA CONTENT
 // ---------------------------------------------------------------------------
 
-// OSS edition: Data Stores management is enterprise-only.
-const DataContent: React.FC = () => (
-  <LockScreen
-    feature="Data Stores"
-    description="Create and manage vector collections, upload documents for RAG search, and query knowledge from your workflow nodes."
-  />
-);
-
-// Legacy DataContent kept as _LegacyDataContent for reference
-const _LegacyDataContent: React.FC = () => {
+// Data Stores: create/manage vector collections, upload documents for RAG
+// search, and browse collections. Backed by the un-gated
+// /workflows/data/collections + /workflows/data/upload endpoints.
+const DataContent: React.FC = () => {
   const { getAuthHeaders } = useAuth();
   const [stores, setStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1241,13 +1240,19 @@ function coerceValue(value: string, type: VariableType): any {
   }
 }
 
-// OSS edition: Variables management panel is enterprise-only.
-// Note: {{variables.x}} interpolation in the execution engine is unaffected.
+// Variables: reusable workflow variables referenced as {{variables.name}} in
+// any node, resolved at runtime by the execution engine.
 const VariablesContent: React.FC<VariablesContentProps> = (_props) => (
-  <LockScreen
-    feature="Variables"
-    description="Define reusable workflow variables and reference them as {{variables.name}} in any node. Variables are resolved at runtime."
-  />
+  <div className="py-12 text-center">
+    <div className="text-base font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
+      Workflow variables
+    </div>
+    <div className="text-sm max-w-md mx-auto" style={{ color: 'var(--color-text-tertiary)' }}>
+      Variables are referenced as{' '}
+      <code style={{ color: 'var(--color-text-secondary)' }}>{'{{variables.name}}'}</code> in any node and
+      resolved at runtime by the execution engine.
+    </div>
+  </div>
 );
 
 // ---------------------------------------------------------------------------
@@ -2122,11 +2127,11 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
               className="group relative p-4 rounded-xl border transition-all hover:shadow-md cursor-pointer"
               style={{
                 borderColor: filter === 'templates' && expandedId === wf.id
-                  ? 'var(--user-accent-primary, #7c3aed)'
+                  ? 'var(--user-accent-primary, #FF5722)'
                   : 'var(--color-border)',
                 backgroundColor: 'var(--color-bg-secondary)',
                 boxShadow: filter === 'templates' && expandedId === wf.id
-                  ? '0 0 0 1px var(--user-accent-primary, #7c3aed)' : undefined,
+                  ? '0 0 0 1px var(--user-accent-primary, #FF5722)' : undefined,
               }}
               onClick={(e) => {
                 // Templates view: single-click toggles legend; clicks on
@@ -2169,7 +2174,7 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
                 <span className="relative flex-shrink-0 mt-1">
                   <span
                     className="inline-block w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: filter === 'deployed' ? '#22c55e' : filter === 'templates' ? '#7c3aed' : '#94a3b8' }}
+                    style={{ backgroundColor: filter === 'deployed' ? '#22c55e' : filter === 'templates' ? 'var(--user-accent-primary, #FF5722)' : '#94a3b8' }}
                   />
                   {filter === 'deployed' && (
                     <span className="absolute inset-0 rounded-full animate-ping" style={{ backgroundColor: '#22c55e', opacity: 0.3, width: 10, height: 10 }} />
@@ -2262,7 +2267,7 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
                   {filter === 'templates' && wf.meta && (
                     <span style={{
                       fontWeight: 600,
-                      color: 'var(--user-accent-primary, #7c3aed)',
+                      color: 'var(--user-accent-primary, #FF5722)',
                       cursor: 'pointer',
                     }}>
                       {expandedId === wf.id ? 'Hide legend' : 'Show legend'}
@@ -2303,7 +2308,7 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
                         }
                       }}
                       className="px-2 py-0.5 text-[11px] font-medium rounded border transition-colors"
-                      style={{ borderColor: 'var(--user-accent-primary, #7c3aed)', color: 'var(--user-accent-primary, #7c3aed)' }}
+                      style={{ borderColor: 'var(--user-accent-primary, #FF5722)', color: 'var(--user-accent-primary, #FF5722)' }}
                     >
                       Use Template
                     </button>
@@ -3326,7 +3331,7 @@ const ArtifactsModalContent: React.FC = () => {
             style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
           >
             <div className="flex items-start gap-3">
-              <FileText className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--user-accent-primary, #7c3aed)' }} />
+              <FileText className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--user-accent-primary, #FF5722)' }} />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }} title={title}>
                   {title}

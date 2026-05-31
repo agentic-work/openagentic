@@ -1,0 +1,74 @@
+{{- if .Values.exec.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: openagentic-exec
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: openagentic-exec
+  ports:
+    - port: 3060
+      targetPort: 3060
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openagentic-exec
+  labels:
+    {{- include "openagentic.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openagentic-exec
+  template:
+    metadata:
+      labels:
+        app: openagentic-exec
+    spec:
+      enableServiceLinks: false
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: exec
+          image: {{ .Values.image.registry }}/openagentic-exec:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 3060
+          env:
+            - name: PORT
+              value: "3060"
+            - name: WORKSPACES_PATH
+              value: /workspaces
+            - name: OPENAGENTIC_API_ENDPOINT
+              value: http://api:8000
+            - name: SANDBOX_ENABLED
+              value: "false"
+            # exec authenticates internal calls with the api's CODE_EXEC key.
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openagentic-secrets
+                  key: CODE_EXEC_INTERNAL_KEY
+          volumeMounts:
+            - name: workspaces
+              mountPath: /workspaces
+          readinessProbe:
+            tcpSocket:
+              port: 3060
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources.exec | nindent 12 }}
+      volumes:
+        - name: workspaces
+          emptyDir: {}
+{{- end }}

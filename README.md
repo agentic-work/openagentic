@@ -102,24 +102,17 @@ See [`CLAUDE.md`](./CLAUDE.md) for the service-level map.
 ## Want to take this and run with it?
 
 That's the whole point. Fork it, slap your own brand on it, run it on
-prem, sell it to your customers — Apache-2.0 means you can. The OSS
-edition is the complete chat + flows + MCP routing surface. There are
-no time bombs, no feature flags that flip you back to "demo mode",
-no calling home.
+prem, sell it to your customers — Apache-2.0 means you can. Everything
+that ships is yours: the complete chat + flows + MCP routing surface,
+fully working. No paywalls, no locked admin screens, no 402 walls, no
+"demo mode" flags, no calling home, no usage caps.
 
-Some `/api/admin/*` routes return **402 Payment Required** with a link
-to [agenticwork.io](https://agenticwork.io) — chargeback dashboards,
-DLP rules, multi-tenant SSO, audit logs, FedRAMP/HIPAA controls. That
-keeps the OSS install free and lets us fund continued development.
-Everything else is yours.
+## Links
 
-## Want managed?
-
-- **[agenticwork.io](https://agenticwork.io)** — the hosted edition.
-  Multi-tenant, SSO/SAML, audit logs, managed model fleet, FedRAMP/HIPAA.
-  Same chat + flows surface as OSS; we run it for you.
-- **[openagentics.io](https://openagentics.io)** — community, docs,
-  releases, the changelog.
+- **[openagentics.io](https://openagentics.io)** — docs, releases, the changelog.
+- **[agenticwork.io](https://agenticwork.io)** — if you'd rather not run
+  it yourself, there's a managed hosting option. Entirely optional; the
+  self-hosted edition here is complete.
 
 ## Demos
 
@@ -152,4 +145,4 @@ See also [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md).
 
 ## License
 
-[Apache-2.0](./LICENSE) © Gnomus.ai
+[Apache-2.0](./LICENSE) © Agenticwork™ LLC

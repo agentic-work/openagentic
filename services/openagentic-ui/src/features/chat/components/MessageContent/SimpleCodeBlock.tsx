@@ -214,7 +214,7 @@ const SimpleCodeBlock: React.FC<SimpleCodeBlockProps> = ({
                 style={{
                   width: '2px',
                   height: '1em',
-                  backgroundColor: 'var(--color-primary, #6366f1)',
+                  backgroundColor: 'var(--color-primary, var(--user-accent-primary))',
                   marginLeft: '2px',
                   verticalAlign: 'middle',
                 }}

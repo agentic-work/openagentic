@@ -101,6 +101,10 @@ export default defineConfig({
         // Use K3S_API_URL for k3s dev server, or fallback to localhost for local dev
         target: process.env.K3S_API_URL || (process.env.DOCKER_ENV ? 'http://openagentic-api:8000' : 'http://localhost:8000'),
         changeOrigin: true,
+        // Present an allowed Origin to the backend so its CORS allowlist accepts
+        // requests from the local dev server (DEV_ORIGIN env, e.g. the deployed
+        // host) — otherwise login 500s with "Not allowed by CORS".
+        headers: process.env.DEV_ORIGIN ? { origin: process.env.DEV_ORIGIN } : undefined,
         // Note: Don't strip /api prefix - the API server expects routes at /api/*
         // rewrite: (path) => path.replace(/^\/api/, '')
       },

@@ -1,7 +1,3 @@
-// Copyright (c) 2025 Openagentic LLC
-// For all inquiries, please contact:
-// Openagentic LLC
-// hello@openagentic.io
 
 import { defineConfig } from 'vitest/config';
 import path from 'path';

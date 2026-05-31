@@ -81,15 +81,20 @@ function Metaball({ position, scale, speed = 1, color1, color2 }: MetaballProps)
 
 function Scene() {
   const { viewport } = useThree()
-  const [lavaColor1, setLavaColor1] = useState('#A855F7')
-  const [lavaColor2, setLavaColor2] = useState('#3B82F6')
-  
+  // Defaults match the accent tokens (--user-accent-primary / -secondary,
+  // signal orange) so the ambient glow tracks the brand accent.
+  const [lavaColor1, setLavaColor1] = useState('#FF5722')
+  const [lavaColor2, setLavaColor2] = useState('#B83A0E')
+
   // Update colors from CSS variables
   useEffect(() => {
     const updateColors = () => {
       const root = document.documentElement;
-      const color1 = getComputedStyle(root).getPropertyValue('--lava-color-1').trim() || '#A855F7';
-      const color2 = getComputedStyle(root).getPropertyValue('--lava-color-2').trim() || '#3B82F6';
+      const styles = getComputedStyle(root);
+      const color1 = styles.getPropertyValue('--lava-color-1').trim()
+        || styles.getPropertyValue('--user-accent-primary').trim() || '#FF5722';
+      const color2 = styles.getPropertyValue('--lava-color-2').trim()
+        || styles.getPropertyValue('--user-accent-secondary').trim() || '#B83A0E';
 
       // Update state if colors changed
       setLavaColor1((prev) => color1 !== prev ? color1 : prev);

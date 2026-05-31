@@ -1,27 +1,3 @@
-/**
- * Enhanced Shiki Code Block with Advanced Rendering Features
- * 
- * Features:
- * - Syntax highlighting with Shiki
- * - Platform-specific command prompt styling
- * - Copy button with feedback
- * - Line numbers (optional)
- * - Diff highlighting
- * - Error highlighting
- * - Theme-aware rendering
- * - Interactive features
- * - v0.6.7 chat-polish (fix 3/5) — INCREMENTAL highlighting while streaming:
- *   re-highlight only the tail chunk that has grown since the last render
- *   and concatenate onto cached HTML. Highlighting is frozen on
- *   !isStreaming. Auto-scroll-to-tail while streaming.
- *
-
- * For all inquiries, please contact:
- *
- * Openagentic LLC
- * hello@openagentic.io
- */
-
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { createHighlighter, type Highlighter, type BundledLanguage } from 'shiki';
 import { motion, AnimatePresence } from 'framer-motion';

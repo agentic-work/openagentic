@@ -259,7 +259,7 @@ const AgentGroup: React.FC<{ label: string; agents: any[] }> = ({ label, agents 
         >
           <div
             className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm"
-            style={{ backgroundColor: '#7c3aed' }}
+            style={{ backgroundColor: 'var(--user-accent-primary, #FF5722)' }}
           >
             {agent.icon || '\uD83E\uDD16'}
           </div>

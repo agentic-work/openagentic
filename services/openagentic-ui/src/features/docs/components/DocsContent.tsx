@@ -119,7 +119,7 @@ const MermaidDiagram: React.FC<{ chart: string; title?: string }> = ({ chart, ti
           className="px-4 py-2.5 border-b flex items-center gap-2"
           style={{ borderColor: 'var(--color-border)' }}
         >
-          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#3b82f6' }} />
+          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--user-accent-primary)' }} />
           <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-textSecondary)' }}>
             {title}
           </span>
@@ -253,7 +253,7 @@ const HighlightText: React.FC<{ text: string; query: string }> = ({ text, query 
           <mark
             key={i}
             style={{
-              backgroundColor: '#3b82f640',
+              backgroundColor: 'color-mix(in srgb, var(--user-accent-primary) 25%, transparent)',
               color: 'var(--color-text)',
               borderRadius: '2px',
               padding: '0 2px',
@@ -541,7 +541,7 @@ const FlowStepCard: React.FC<{ item: DocManifestItem; query: string; index: numb
     <div className="flex flex-col items-center flex-shrink-0">
       <div
         className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-        style={{ backgroundColor: '#3b82f620', color: '#3b82f6', border: '1px solid #3b82f630' }}
+        style={{ backgroundColor: 'color-mix(in srgb, var(--user-accent-primary) 12%, transparent)', color: 'var(--user-accent-primary)', border: '1px solid color-mix(in srgb, var(--user-accent-primary) 18%, transparent)' }}
       >
         {index + 1}
       </div>

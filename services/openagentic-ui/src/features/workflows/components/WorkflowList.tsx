@@ -112,7 +112,7 @@ export const WorkflowList: React.FC<WorkflowListProps> = ({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onCreateNew}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-gradient-to-r from-accent-primary to-accent-secondary text-white hover:opacity-90 shadow-lg"
           >
             <Plus className="w-5 h-5" />
             Create Workflow

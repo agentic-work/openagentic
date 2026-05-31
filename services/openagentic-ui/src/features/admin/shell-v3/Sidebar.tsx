@@ -1,7 +1,6 @@
 import * as React from 'react'
 import { ADMIN_NAV } from './sidebar-data'
 import { useSidebarCounts } from '../hooks/useSidebarCounts'
-import { isEnterpriseLeaf } from '../shell-v2/pageRouter'
 import { useTheme as useChatTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/app/providers/AuthContext'
 import SettingsMenu from '@/features/chat/components/SettingsMenu'
@@ -246,21 +245,16 @@ export const Sidebar = ({ active, onSelect, onSignOut }: SidebarProps) => {
                   const isLive = liveLeaves[leaf.id]
                   const meta = count ?? (isLive ? '●' : undefined)
                   const isPinned = pinned.includes(leaf.id)
-                  const isLocked = isEnterpriseLeaf(leaf.id)
                   return (
                     <button
                       key={leaf.id}
-                      className={`aw-sidebar__leaf${isLocked ? ' aw-sidebar__leaf--locked' : ''}`}
+                      className="aw-sidebar__leaf"
                       aria-current={active === leaf.id ? 'page' : undefined}
-                      title={isLocked ? 'Enterprise edition' : undefined}
                       onClick={() => selectAndTrack(leaf.id)}
                     >
                       <span className="aw-sidebar__leaf-key">{leaf.key}</span>
                       <span className="aw-sidebar__leaf-name">{leaf.name}</span>
-                      {isLocked && (
-                        <span className="aw-sidebar__leaf-pro" aria-label="enterprise edition">PRO</span>
-                      )}
-                      {meta && !isLocked && (
+                      {meta && (
                         <span
                           className={`aw-sidebar__leaf-meta ${isLive && !count ? 'aw-sidebar__leaf-meta--live' : ''}`}
                         >

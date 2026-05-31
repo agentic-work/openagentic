@@ -521,7 +521,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({ theme }) => {
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && fetchData()}
             placeholder={`Search ${activeTab === 'chat' ? 'sessions, users, models...' : activeTab === 'code' ? 'sessions, pods, users...' : 'workflows, executions...'}`}
-            className="w-full pl-9 pr-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+            className="w-full pl-9 pr-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
             style={s.input}
           />
         </div>

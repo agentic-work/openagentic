@@ -11,7 +11,7 @@
 export type WidgetTheme = 'light' | 'dark';
 
 export interface PreambleOptions {
-  /** Override --accent (defaults to #8b5cf6). */
+  /** Override --accent (defaults to signal orange #FF5722). */
   accent?: string;
 }
 
@@ -43,7 +43,7 @@ const LIGHT_PALETTE = {
 
 export function buildPreambleCSS(theme: WidgetTheme, opts: PreambleOptions = {}): string {
   const p = theme === 'light' ? LIGHT_PALETTE : DARK_PALETTE;
-  const accent = opts.accent ?? '#8b5cf6';
+  const accent = opts.accent ?? '#FF5722';
   // CLAUDE.md Rule 8(b) — iframe-rendered compose_visual artifacts MUST be
   // able to resolve `var(--cm-*)` tokens. We define BOTH naming families:
   //   - canonical `--cm-*` (matches AppRenderer iframe injection + index.css)

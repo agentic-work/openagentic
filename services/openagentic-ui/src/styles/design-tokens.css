@@ -43,15 +43,14 @@
   /* Parsed from --user-accent-primary = #1E40AF on first paint. */
   --primary-rgb: 30, 64, 175;
 
-  /* ── Tonal surface scale (dark-mode defaults) ──────────────────────────
-     Each step is ~4% luminance lighter than the previous, giving
-     Material 3 style "tint" elevation without box-shadows.
-     surface-0 is the page background; surface-4 is the highest elevation. */
-  --surface-0: #161618;
-  --surface-1: #1E1E21;
-  --surface-2: #2A2A2E;
-  --surface-3: #38383C;
-  --surface-4: #45454A;
+  /* ── Tonal surface scale — openagentics.io "terminal" warm-black (dark) ──
+     Warm near-black field-guide palette (vs cold M3 grey) so the OSS app reads
+     distinctly from enterprise agenticwork. surface-0 = page bg. */
+  --surface-0: #18130C;   /* terminal warm near-black */
+  --surface-1: #211A11;
+  --surface-2: #2C2418;
+  --surface-3: #392F20;
+  --surface-4: #473A29;
 
   /* ── Soft shadow scale ─────────────────────────────────────────────────
      Low opacity + heavy blur = gentle "float" without a hard edge.
@@ -117,11 +116,12 @@
    LIGHT THEME OVERRIDES
    ========================================================================== */
 [data-theme="light"] {
-  --surface-0: #FAFAFA;
-  --surface-1: #F5F5F5;
-  --surface-2: #EFEFEF;
-  --surface-3: #E8E8E8;
-  --surface-4: #E0E0E0;
+  /* openagentics.io "paper" — warm bone-cream field-guide (light). */
+  --surface-0: #F4EFE6;   /* bone cream paper */
+  --surface-1: #EFE9DD;
+  --surface-2: #EBE5D8;
+  --surface-3: #E2DACB;
+  --surface-4: #DBD3BF;
 
   --shadow-soft-sm: 0 1px 4px rgba(0, 0, 0, 0.04);
   --shadow-soft-md: 0 6px 20px rgba(0, 0, 0, 0.06);

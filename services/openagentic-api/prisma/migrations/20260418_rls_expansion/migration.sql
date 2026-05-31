@@ -1,4 +1,4 @@
--- Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
+
 
 -- 0.6.6 P5 (task #110): expand FedRAMP AC-4 row-level security coverage.
 --

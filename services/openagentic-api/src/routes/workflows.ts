@@ -60,7 +60,6 @@ import { getRedisClient } from '../utils/redis-client.js';
 import { ndjsonHeaders, writeNDJSON, createSSEToNDJSONTranslator } from '../infra/ndjson.js';
 import { getNodeSchemasProxyService } from '../services/NodeSchemasProxyService.js';
 import { featureFlags } from '../config/featureFlags.js';
-import { enterpriseOnly } from '../middleware/enterpriseOnly.js';
 
 const workflowCompiler = new WorkflowCompiler();
 
@@ -3562,9 +3561,7 @@ data.on("data", (chunk: Buffer) => {
    * Enterprise-only: secrets management is gated (runtime {{secret:name}} resolution is unaffected).
    */
   fastify.get(
-    '/secrets',
-    { preHandler: enterpriseOnly },
-    async (request, reply) => {
+    '/secrets',    async (request, reply) => {
       try {
         const user = (request as any).user;
         const userId = user?.userId || user?.id;
@@ -3617,9 +3614,7 @@ data.on("data", (chunk: Buffer) => {
    * Enterprise-only management route.
    */
   fastify.get(
-    '/data/collections',
-    { preHandler: enterpriseOnly },
-    async (request, reply) => {
+    '/data/collections',    async (request, reply) => {
       try {
         const user = (request as any).user;
         const userId = user?.userId || user?.id;
@@ -3735,9 +3730,7 @@ data.on("data", (chunk: Buffer) => {
    * Enterprise-only management route.
    */
   fastify.post(
-    '/data/upload',
-    { preHandler: enterpriseOnly },
-    async (request, reply) => {
+    '/data/upload',    async (request, reply) => {
       try {
         const user = (request as any).user;
         const userId = user?.userId || user?.id;
@@ -3867,9 +3860,7 @@ data.on("data", (chunk: Buffer) => {
    * Enterprise-only management route.
    */
   fastify.post(
-    '/data/collections',
-    { preHandler: enterpriseOnly },
-    async (request, reply) => {
+    '/data/collections',    async (request, reply) => {
       try {
         const user = (request as any).user;
         const userId = user?.userId || user?.id;
@@ -3973,9 +3964,7 @@ data.on("data", (chunk: Buffer) => {
    * Enterprise-only management route.
    */
   fastify.delete(
-    '/data/collections/:name',
-    { preHandler: enterpriseOnly },
-    async (request, reply) => {
+    '/data/collections/:name',    async (request, reply) => {
       try {
         const user = (request as any).user;
         const userId = user?.userId || user?.id;
@@ -4158,9 +4147,7 @@ data.on("data", (chunk: Buffer) => {
     Params: { executionId: string };
     Body: { content: string; title: string; format?: string; nodeId?: string; workflowId?: string };
   }>(
-    '/executions/:executionId/artifacts',
-    { preHandler: enterpriseOnly },
-    async (request, reply) => {
+    '/executions/:executionId/artifacts',    async (request, reply) => {
       try {
         const { executionId } = request.params;
         const user = (request as any).user;
@@ -4398,16 +4385,17 @@ export async function autoSeedWorkflowTemplates(): Promise<{
 
 export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
   // ══════════════════════════════════════════════════════════════════════════
-  // 1. Multi-Agent Research Team
-  // Uses: trigger, multi_agent, merge, openagentic_llm
+  // 1. Multi-Agent Research Team (grounded)
+  // Uses: trigger, mcp_tool(web_search_and_read), multi_agent, merge,
+  //       openagentic_llm, grounding_check
   //
-  // The trigger declares ONE required input (`topic`). The engine refuses to
-  // start the run if it isn't provided. The wizard surfaces it as a required
-  // field on Use-Template; pre-flight validation blocks Run if empty.
+  // Grounding-first design: a real web_search fires BEFORE the agents so they
+  // analyze actually-fetched sources, then grounding_check verifies the report
+  // against those sources. The trigger declares ONE required input (`topic`).
   // ══════════════════════════════════════════════════════════════════════════
   {
     name: 'Multi-Agent Research Team',
-    description: 'Spawns three specialized agents (researcher, analyst, critic) to investigate a topic, merges their findings, and synthesizes a comprehensive report.',
+    description: 'Runs a real web search, then three specialized agents (researcher, analyst, critic) analyze the actually-fetched sources, synthesize a report with verifiable links, and a grounding check verifies every claim against the real sources — no fabrication.',
     icon: 'Bot',
     category: 'ai-analysis',
     tags: ['multi-agent', 'research', 'ai-analysis'],
@@ -4436,11 +4424,28 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
           },
         },
         {
+          // DETERMINISTIC grounding: a real web search fires BEFORE the agents,
+          // so they analyze actually-fetched sources instead of fabricating.
+          // The old design only *told* the agents to search (they never did —
+          // multi_agent ships them no tools), so reports were 100% invented.
+          id: 'search',
+          type: 'mcp_tool',
+          position: { x: X * 0.6, y: Y },
+          data: {
+            label: 'Web Search (real sources)',
+            icon: 'Globe',
+            color: '#06b6d4',
+            toolName: 'web_search_and_read',
+            toolServer: 'openagentic_web',
+            arguments: { query: '{{trigger.topic}}', num_results: 4 },
+          },
+        },
+        {
           id: 'multi-research',
           type: 'multi_agent',
           position: { x: X, y: Y },
           data: {
-            label: 'Research Team',
+            label: 'Research Team (grounded)',
             icon: 'Users',
             color: '#7c3aed',
             pattern: 'parallel',
@@ -4448,17 +4453,17 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
               {
                 role: 'researcher',
                 taskDescription:
-                  'Research the topic thoroughly. Use web_search + web_fetch to find key facts, recent developments, and authoritative sources. Cite URLs. Topic: {{trigger.topic}}',
+                  'You are the RESEARCHER. Below are REAL web search results (titles, URLs, and fetched page content) for the topic. Extract the key verifiable facts. Every fact MUST be traceable to one of these sources — quote the exact URL after each fact. If the sources do not answer something, say "not found in sources" — do NOT use prior knowledge or invent anything.\n\nTOPIC: {{trigger.topic}}\n\nREAL SOURCES:\n{{steps.search.output}}',
               },
               {
                 role: 'analyst',
                 taskDescription:
-                  'Analyze the topic from multiple perspectives — technical feasibility, market impact, and risks. Use tools to ground your analysis in real data. Topic: {{trigger.topic}}',
+                  'You are the ANALYST. Using ONLY the REAL web sources below, identify trends, comparisons, and what the evidence supports. Cite the exact URL for every claim. Flag anything the sources disagree on. Never use outside knowledge.\n\nTOPIC: {{trigger.topic}}\n\nREAL SOURCES:\n{{steps.search.output}}',
               },
               {
                 role: 'critic',
                 taskDescription:
-                  'Challenge assumptions about the topic. Use tools to find counterarguments, weaknesses, and blind spots in the conventional wisdom. Topic: {{trigger.topic}}',
+                  'You are the CRITIC/FACT-CHECKER. For each notable claim derivable from the REAL sources below, state whether it is well-supported, weakly supported, or unsupported BY THESE SOURCES, with the URL. Explicitly call out anything that would be a hallucination if asserted (not present in the sources).\n\nTOPIC: {{trigger.topic}}\n\nREAL SOURCES:\n{{steps.search.output}}',
               },
             ],
             strategy: 'parallel',
@@ -4479,14 +4484,44 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
             icon: 'Brain',
             color: '#7c4dff',
             prompt:
-              'You are a research director writing a report on: "{{trigger.topic}}".\n\nThree agents have investigated the topic from different angles:\n\n{{steps.merge-findings.output}}\n\nSynthesize their findings into a structured report with:\n1. Executive Summary\n2. Key Findings (areas of agreement, with citations)\n3. Conflicting Views (where agents disagreed)\n4. Risk Assessment\n5. Recommendations\n\nIf the agents did not actually research the topic (e.g., they returned only meta-commentary or refusal patterns), say so plainly and stop — do NOT fabricate findings.',
+              'Write a research report on "{{trigger.topic}}" using ONLY the grounded agent findings below. Every claim must cite a real source URL drawn from the findings. Include: Executive Summary, Key Findings (each with its source URL), Analysis, and Open Questions. If the sources are insufficient, say so plainly — do NOT fabricate.\n\nGROUNDED FINDINGS:\n{{steps.merge-findings.output}}',
+          },
+        },
+        {
+          // REAL grounding: verify the synthesized report against the
+          // actually-fetched web content (not another LLM output). Flags any
+          // entity/claim that appears in the report but not in the sources.
+          id: 'ground',
+          type: 'grounding_check',
+          position: { x: X * 4, y: Y },
+          data: {
+            label: 'Grounding Check (vs real sources)',
+            icon: 'ShieldCheck',
+            color: '#16a34a',
+            claim: '{{steps.llm-synthesize.output}}',
+            groundTruth: '{{steps.search.output}}',
+          },
+        },
+        {
+          id: 'llm-finalize',
+          type: 'openagentic_llm',
+          position: { x: X * 5, y: Y },
+          data: {
+            label: 'Final Report + Sources',
+            icon: 'FileCheck',
+            color: '#7c4dff',
+            prompt:
+              'Produce the FINAL Markdown report from:\n{{steps.llm-synthesize.output}}\n\nGrounding analysis: {{steps.ground.output}}\n\nAppend a "## Sources" section listing every real URL cited (from the search results), and a "## Grounding" section stating the score and that all claims were checked against the actually-fetched web sources. If grounding flagged unfounded items, list them as caveats.',
           },
         },
       ],
       edges: [
-        { id: 'e1', source: 'trigger-1', target: 'multi-research', animated: true },
-        { id: 'e2', source: 'multi-research', target: 'merge-findings', animated: true },
-        { id: 'e3', source: 'merge-findings', target: 'llm-synthesize', animated: true },
+        { id: 'e1', source: 'trigger-1', target: 'search', animated: true },
+        { id: 'e2', source: 'search', target: 'multi-research', animated: true },
+        { id: 'e3', source: 'multi-research', target: 'merge-findings', animated: true },
+        { id: 'e4', source: 'merge-findings', target: 'llm-synthesize', animated: true },
+        { id: 'e5', source: 'llm-synthesize', target: 'ground', animated: true },
+        { id: 'e6', source: 'ground', target: 'llm-finalize', animated: true },
       ],
     },
   },

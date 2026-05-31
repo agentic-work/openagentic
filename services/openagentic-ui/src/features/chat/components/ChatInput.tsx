@@ -313,11 +313,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
         >
           {/* Drag overlay */}
           {isDragging && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center rounded-[24px] bg-blue-500/20 border-2 border-dashed border-blue-500">
+            <div className="absolute inset-0 z-50 flex items-center justify-center rounded-[24px] bg-accent-primary/20 border-2 border-dashed border-accent-primary">
               <div className="text-center">
-                <Plus className="w-12 h-12 text-blue-400 mx-auto mb-2" />
-                <p className="text-blue-400 font-medium">Drop files here</p>
-                <p className="text-blue-400/70 text-sm">Images, PDFs, and text documents supported</p>
+                <Plus className="w-12 h-12 text-accent-primary mx-auto mb-2" />
+                <p className="text-accent-primary font-medium">Drop files here</p>
+                <p className="text-accent-primary/70 text-sm">Images, PDFs, and text documents supported</p>
               </div>
             </div>
           )}
@@ -335,7 +335,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 <Plus size={20} />
                 {selectedFiles.length > 0 && (
                   <span
-                  className="absolute -top-1 -right-1 bg-blue-600 text-xs rounded-full w-4 h-4 flex items-center justify-center text-[10px]"
+                  className="absolute -top-1 -right-1 bg-accent-primary text-xs rounded-full w-4 h-4 flex items-center justify-center text-[10px]"
                   style={{ color: 'var(--color-text)' }}>
                     {selectedFiles.length}
                   </span>
@@ -350,7 +350,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 onClick={() => setShowToolsPopup(!showToolsPopup)}
                 className={`p-2 rounded-full transition-all mb-1 ${
                   showToolsPopup
-                    ? 'bg-blue-600/20 text-blue-400 hover:text-blue-300'
+                    ? 'bg-accent-primary/20 text-accent-primary hover:text-accent-primary/80'
                     : 'hover:bg-white/10 text-text-secondary hover:text-text-primary'
                 }`}
               >
@@ -470,7 +470,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
               {/* Assistant/Agent Indicator */}
               <div
                 data-testid="assistant-name"
-                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm h-full border bg-blue-500/10 text-blue-400 border-blue-500/20"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm h-full border bg-accent-primary/10 text-accent-primary border-accent-primary/20"
               >
                 <span className="font-medium">AI Assistant:</span>
                 <span className="font-semibold">
@@ -481,7 +481,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                   <button
                     data-testid="assistant-info"
                     aria-label="Assistant capabilities"
-                    className="p-1 rounded-lg transition-colors hover:bg-blue-500/20 text-blue-400"
+                    className="p-1 rounded-lg transition-colors hover:bg-accent-primary/20 text-accent-primary"
                   >
                     <Info size={14} />
                   </button>
@@ -495,7 +495,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                   disabled={modelsLoading}
                   data-testid="assistant-selector"
                   aria-label="Select assistant model"
-                  className={`h-full flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer border bg-bg-tertiary hover:bg-bg-hover text-text-secondary border-border hover:border-border-hover focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${
+                  className={`h-full flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer border bg-bg-tertiary hover:bg-bg-hover text-text-secondary border-border hover:border-border-hover focus:outline-none focus:ring-2 focus:ring-accent-primary/30 ${
                     modelsLoading ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                   style={{
@@ -549,14 +549,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
                   onClick={() => setShowLiveUsage(!showLiveUsage)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all border h-full ${
                     showLiveUsage
-                      ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)] ring-1 ring-blue-500/40'
+                      ? 'bg-accent-primary/20 text-accent-primary border-accent-primary/30 shadow-[0_0_15px_var(--user-accent-soft)] ring-1 ring-accent-primary/40'
                       : 'bg-bg-tertiary hover:bg-bg-hover text-text-muted hover:text-text-secondary border-border hover:border-border-hover'
                   }`}
                 >
                   <Activity size={16} />
                   <span>Analytics</span>
                   {showLiveUsage && (
-                    <div className="w-2 h-2 rounded-full animate-pulse bg-blue-400" />
+                    <div className="w-2 h-2 rounded-full animate-pulse bg-accent-primary" />
                   )}
                 </motion.button>
               </Tooltip>
@@ -609,7 +609,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                             whileTap={{ scale: 0.95 }}
                             onClick={onToggleTokenUsage}
                             className={`relative w-11 h-6 rounded-full transition-colors ${
-                              showTokenUsage ? 'bg-blue-600' : 'bg-bg-tertiary'
+                              showTokenUsage ? 'bg-accent-primary' : 'bg-bg-tertiary'
                             }`}
                           >
                             <motion.div
@@ -628,7 +628,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                             whileTap={{ scale: 0.95 }}
                             onClick={onToggleCoT}
                             className={`relative w-11 h-6 rounded-full transition-colors ${
-                              showCoT ? 'bg-blue-600' : 'bg-bg-tertiary'
+                              showCoT ? 'bg-accent-primary' : 'bg-bg-tertiary'
                             }`}
                           >
                             <motion.div

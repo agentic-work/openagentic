@@ -1,4 +1,4 @@
--- Copyright (c) 2024-2026 OpenAgentic LLC. All rights reserved.
+
 
 -- Documentation Assistant Agent: Seed Script
 -- Inserts the docs_assistant agent into the agentic_loops table

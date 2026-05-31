@@ -79,7 +79,7 @@ export const WhatsNewToast: React.FC<WhatsNewToastProps> = ({ version, onSelectF
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: '#7c3aed' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--user-accent-primary, #FF5722)' }}>
             Flows {version}
           </div>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>What's new</h3>

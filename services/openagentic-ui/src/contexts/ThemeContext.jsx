@@ -26,85 +26,81 @@ const ThemeContext = createContext();
  * @property {string} secondary - Secondary/lighter color hex value
  */
 export const accentColors = [
-  { name: 'Dark Blue', primary: '#1E40AF', secondary: '#3B82F6' },    // Default - Professional blue
-  { name: 'Green', primary: '#16A34A', secondary: '#22C55E' },        // True green - no teal/emerald
-  { name: 'Purple', primary: '#7C3AED', secondary: '#A855F7' },       // True purple - not violet
-  { name: 'Orange', primary: '#EA580C', secondary: '#F97316' },       // True orange - not amber
+  { name: 'Orange', primary: '#FF5722', secondary: '#FFB87E' },       // Default — openagentic signal orange
+  { name: 'Blue', primary: '#1E40AF', secondary: '#3B82F6' },         // Professional blue
+  { name: 'Green', primary: '#16A34A', secondary: '#22C55E' },        // True green
+  { name: 'Purple', primary: '#7C3AED', secondary: '#A855F7' },       // True purple
 ];
 
 export const themes = {
   dark: {
-    // Primary colors - Apple Blue default
-    primary: 'var(--user-accent-primary, #0A84FF)',
-    secondary: 'var(--user-accent-secondary, #64D2FF)',
-    accent: 'var(--user-accent-color, #F97316)',
-    success: '#22C55E',       // True Green - no yellow tint
-    warning: '#F97316',       // True Orange - not amber
-    error: '#FF453A',         // Apple Red
+    // Accent — openagentic signal orange (respects the accent picker)
+    primary: 'var(--user-accent-primary, #FF5722)',
+    secondary: 'var(--user-accent-secondary, #FFB87E)',
+    accent: 'var(--user-accent-color, #FF5722)',
+    success: '#22C55E',       // green
+    warning: '#F59E0B',       // amber (distinct from signal accent)
+    error: '#FF453A',         // red
 
-    // Dark theme backgrounds - solid, macOS-style
-    background: '#000000',
-    surface: '#1C1C1E',
-    surfaceHover: '#2C2C2E',
+    // Warm field-guide "terminal" dark — not cold macOS grey.
+    background: '#18130C',
+    surface: '#211A11',
+    surfaceHover: '#2C2418',
 
-    // Text hierarchy - Apple dark mode
-    text: '#FFFFFF',
-    textSecondary: '#EBEBF5',
-    textMuted: '#8E8E93',
-    textDisabled: '#636366',
+    // Text hierarchy — cream on warm-black
+    text: '#F4EFE6',
+    textSecondary: '#CDC4B2',
+    textMuted: '#968B76',
+    textDisabled: '#6E6657',
 
-    // Borders - subtle
-    border: 'rgba(255, 255, 255, 0.08)',
-    borderHover: 'rgba(255, 255, 255, 0.15)',
+    // Borders — warm cream alpha
+    border: 'rgba(244, 239, 230, 0.08)',
+    borderHover: 'rgba(244, 239, 230, 0.16)',
 
-    // Effects - no blur by default
-    shadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+    shadow: '0 2px 8px rgba(0, 0, 0, 0.35)',
 
-    // NO purple-blue gradient - use solid color
-    gradientPrimary: 'var(--user-accent-primary, #0A84FF)',
-    gradientSecondary: 'var(--user-accent-secondary, #64D2FF)',
-    gradientDark: 'linear-gradient(180deg, #000000 0%, #1C1C1E 100%)',
+    gradientPrimary: 'var(--user-accent-primary, #FF5722)',
+    gradientSecondary: 'var(--user-accent-secondary, #FFB87E)',
+    gradientDark: 'linear-gradient(180deg, #18130C 0%, #211A11 100%)',
 
-    // Status colors - Apple palette
     statusHealthy: '#22C55E',
-    statusWarning: '#F97316',
+    statusWarning: '#F59E0B',
     statusError: '#FF453A',
-    statusUnknown: '#8E8E93',
+    statusUnknown: '#968B76',
   },
   light: {
-    // Light theme - Apple Blue default
-    primary: 'var(--user-accent-primary, #007AFF)',  // Apple Blue for light mode
-    secondary: 'var(--user-accent-secondary, #5AC8FA)',
-    accent: 'var(--user-accent-color, #EA580C)',
-    success: '#16A34A',       // True Green for light - no yellow tint
-    warning: '#EA580C',       // True Orange for light - not amber
-    error: '#FF3B30',         // Apple Red for light
+    // Accent — signal orange on paper
+    primary: 'var(--user-accent-primary, #FF5722)',
+    secondary: 'var(--user-accent-secondary, #E8835A)',
+    accent: 'var(--user-accent-color, #B83A0E)',
+    success: '#16A34A',       // green
+    warning: '#B45309',       // amber-brown for paper contrast
+    error: '#DC2626',         // red
 
-    // Clean white backgrounds - macOS-style
-    background: '#FFFFFF',
-    surface: '#F2F2F7',
-    surfaceHover: '#E5E5EA',
+    // Warm "paper" light — bone cream, not pure white.
+    background: '#F4EFE6',
+    surface: '#EFE9DD',
+    surfaceHover: '#E2DACB',
 
-    // Text hierarchy - Apple light mode
-    text: '#000000',
-    textSecondary: '#3C3C43',
-    textMuted: '#8E8E93',
-    textDisabled: '#AEAEB2',
+    // Text hierarchy — ink on paper
+    text: '#0E0D0B',
+    textSecondary: '#46402F',
+    textMuted: '#7A7058',
+    textDisabled: '#A89E88',
 
-    border: 'rgba(0, 0, 0, 0.08)',
-    borderHover: 'rgba(0, 0, 0, 0.15)',
+    border: 'rgba(14, 13, 11, 0.10)',
+    borderHover: 'rgba(14, 13, 11, 0.18)',
 
-    shadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+    shadow: '0 2px 8px rgba(46, 36, 20, 0.10)',
 
-    // NO purple-blue gradient - use solid color
-    gradientPrimary: 'var(--user-accent-primary, #007AFF)',
-    gradientSecondary: 'var(--user-accent-secondary, #5AC8FA)',
-    gradientDark: 'linear-gradient(180deg, #FFFFFF 0%, #F2F2F7 100%)',
+    gradientPrimary: 'var(--user-accent-primary, #FF5722)',
+    gradientSecondary: 'var(--user-accent-secondary, #E8835A)',
+    gradientDark: 'linear-gradient(180deg, #F4EFE6 0%, #EFE9DD 100%)',
 
     statusHealthy: '#16A34A',
-    statusWarning: '#EA580C',
-    statusError: '#FF3B30',
-    statusUnknown: '#8E8E93',
+    statusWarning: '#B45309',
+    statusError: '#DC2626',
+    statusUnknown: '#7A7058',
   }
 };
 

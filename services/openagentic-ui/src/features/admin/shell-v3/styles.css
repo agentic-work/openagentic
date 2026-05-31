@@ -512,32 +512,6 @@
 }
 .aw-sidebar__leaf-meta--live { color: var(--ok); }
 
-/* Enterprise-only leaves: dimmed row + PRO badge. Clicking still opens
-   the lock screen (the page itself is the upsell), so the leaf stays
-   interactive — we just visually mark it as not-included-in-OSS. */
-.aw-sidebar__leaf--locked .aw-sidebar__leaf-name,
-.aw-sidebar__leaf--locked .aw-sidebar__leaf-key {
-  color: var(--fg-3);
-  opacity: 0.75;
-}
-.aw-sidebar__leaf--locked:hover .aw-sidebar__leaf-name,
-.aw-sidebar__leaf--locked:hover .aw-sidebar__leaf-key {
-  opacity: 1;
-}
-.aw-sidebar__leaf-pro {
-  margin-left: auto;
-  font-family: var(--font-v3-mono);
-  font-size: 8px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  padding: 1px 5px;
-  border-radius: 3px;
-  color: #c4b5fd;
-  background: rgba(139, 92, 246, 0.14);
-  border: 1px solid rgba(139, 92, 246, 0.32);
-  text-transform: uppercase;
-}
-
 /* ============================================================
    Main content area
    ============================================================ */

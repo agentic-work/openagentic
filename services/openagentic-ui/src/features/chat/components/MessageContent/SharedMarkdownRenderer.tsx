@@ -408,7 +408,7 @@ const ArtifactTag: React.FC<{
       }}
     >
       <span style={{ fontSize: 14, opacity: 0.7, flexShrink: 0 }}>{icon}</span>
-      <span style={{ fontWeight: 500, color: 'var(--color-primary, #6366f1)' }}>{title}</span>
+      <span style={{ fontWeight: 500, color: 'var(--color-primary, var(--user-accent-primary))' }}>{title}</span>
       <span style={{ fontSize: 10, color: 'var(--color-textMuted, #8b949e)', textTransform: 'uppercase' as const, letterSpacing: '0.3px', marginLeft: 2 }}>{type}</span>
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.4, marginLeft: 2, flexShrink: 0 }}>
         <path d="M4.5 2.5L8 6L4.5 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1349,7 +1349,7 @@ export const SharedMarkdownRenderer: React.FC<SharedMarkdownRendererProps> = mem
                     fontSize: '0.72em',
                     fontWeight: 600,
                     lineHeight: 1,
-                    color: 'var(--color-primary, #6366f1)',
+                    color: 'var(--color-primary, var(--user-accent-primary))',
                     background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
                     border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)',
                     textDecoration: 'none',

@@ -1352,6 +1352,22 @@ async function registerAllRoutes() {
     loggers.routes.error({ err: error }, 'Failed to register agent persistence routes');
   }
 
+  // Register Internal Tool Search route (model-driven MCP discovery — the
+  // tool_search meta-tool POSTs here mid-turn to expand its tool set). Without
+  // this registration the route 404s and every chat tool_search call fails,
+  // so the model loops until the max-turns cap. getSearchService resolves the
+  // ToolSemanticCacheService singleton lazily (set on global after RAG init).
+  try {
+    const { registerInternalToolSearchRoute } = await import('./routes/internal/tool-search.js');
+    registerInternalToolSearchRoute(server, {
+      internalSecret: process.env.INTERNAL_SERVICE_SECRET ?? '',
+      getSearchService: () => (global as any).toolSemanticCache,
+    });
+    loggers.routes.info('Internal tool-search route registered at /api/internal/tool-search');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register internal tool-search route');
+  }
+
   // Register MCP Logs routes (for mcp-proxy to send logs)
   try {
     const { default: mcpLogsRoutes } = await import('./routes/mcp-logs.js');
@@ -2280,13 +2296,6 @@ const start = async () => {
     loggers.services.error({ err }, '❌ Admin portal SOT validation failed - server cannot start');
     loggers.services.error('SOLUTION: Initialize admin portal with proper prompt templates using initialization services');
     process.exit(1); // Exit if admin portal is not properly configured
-  }
-
-  try {
-    const { logIntegrityAtBoot } = await import('./utils/oss-integrity.js');
-    logIntegrityAtBoot(loggers.services);
-  } catch (err) {
-    loggers.services.warn({ err }, 'OSS integrity check could not run');
   }
 
   try {

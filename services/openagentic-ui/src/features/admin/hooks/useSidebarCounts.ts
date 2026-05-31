@@ -54,7 +54,6 @@ const fmt = (n: number | undefined | null): string | undefined => {
   return String(n)
 }
 
-
 export function useSidebarCounts(): SidebarCountState {
   const dash = useAdminQuery<DashboardMetricsResponse>(
     ['dashboard-counts'],

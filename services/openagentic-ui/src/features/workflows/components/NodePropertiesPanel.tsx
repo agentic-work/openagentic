@@ -148,7 +148,7 @@ const FormInput: React.FC<{
       max={max}
       data-required-field={required ? 'true' : undefined}
       data-field-error={error ? 'true' : undefined}
-      className="w-full px-3 py-2.5 rounded-lg border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500"
+      className="w-full px-3 py-2.5 rounded-lg border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-accent-primary/40 focus:border-accent-primary"
       style={{
         backgroundColor: 'var(--color-bg-secondary)',
         borderColor: error ? '#ef4444' : 'var(--color-border)',
@@ -193,7 +193,7 @@ const FormTextarea: React.FC<{
       placeholder={placeholder}
       data-required-field={required ? 'true' : undefined}
       data-field-error={error ? 'true' : undefined}
-      className={`w-full px-3 py-2.5 rounded-lg border text-sm transition-all resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 ${monospace ? 'font-mono' : ''}`}
+      className={`w-full px-3 py-2.5 rounded-lg border text-sm transition-all resize-none focus:outline-none focus:ring-2 focus:ring-accent-primary/40 focus:border-accent-primary ${monospace ? 'font-mono' : ''}`}
       style={{
         backgroundColor: 'var(--color-bg-secondary)',
         borderColor: error ? '#ef4444' : 'var(--color-border)',
@@ -224,7 +224,7 @@ const FormSelect: React.FC<{
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full px-3 py-2.5 rounded-lg border text-sm transition-all appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500"
+      className="w-full px-3 py-2.5 rounded-lg border text-sm transition-all appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent-primary/40 focus:border-accent-primary"
       style={{
         backgroundColor: 'var(--color-bg-secondary)',
         borderColor: 'var(--color-border)',
@@ -347,7 +347,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <select
           value={nodeData.triggerType || 'manual'}
           onChange={(e) => updateData('triggerType', e.target.value as any)}
-          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
           style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
         >
           <option value="manual">Manual</option>
@@ -372,7 +372,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             value={nodeData.triggerConfig?.cron || ''}
             onChange={(e) => updateData('triggerConfig', { ...nodeData.triggerConfig, cron: e.target.value })}
             placeholder="0 */6 * * *"
-            className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
             style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
           />
           <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
@@ -391,7 +391,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             value={nodeData.triggerConfig?.messagePattern || ''}
             onChange={(e) => updateData('triggerConfig', { ...nodeData.triggerConfig, messagePattern: e.target.value })}
             placeholder="e.g., /workflow.*"
-            className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
             style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
           />
           <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
@@ -427,7 +427,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
               }
             }
           }}
-          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
           style={{
             backgroundColor: 'var(--color-bg-secondary)',
             borderColor: !nodeData.toolName ? '#f59e0b' : 'var(--color-border)',
@@ -490,7 +490,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                           const newArgs = { ...args, [key]: e.target.value };
                           updateData('arguments', newArgs);
                         }}
-                        className="w-full px-2 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-2 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
                         style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
                       >
                         <option value="">Select...</option>
@@ -518,7 +518,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                           updateData('arguments', newArgs);
                         }}
                         placeholder={prop.default != null ? String(prop.default) : ''}
-                        className="w-full px-2 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-2 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
                         style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
                       />
                     ) : (
@@ -530,7 +530,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                           updateData('arguments', newArgs);
                         }}
                         placeholder={prop.default != null ? String(prop.default) : `Enter ${key}...`}
-                        className="w-full px-2 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-2 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
                         style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
                       />
                     )}
@@ -561,7 +561,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 }
               }}
               rows={6}
-              className="w-full px-3 py-2 rounded-lg border font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 rounded-lg border font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary"
               style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
               placeholder='{}'
             />
@@ -583,7 +583,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <select
           value={nodeData.model || ''}
           onChange={(e) => updateData('model', e.target.value)}
-          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
           style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
         >
           <option value="auto">Auto (platform default)</option>
@@ -650,7 +650,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           onChange={(e) => updateData('maxTokens', parseInt(e.target.value))}
           min="1"
           max="32000"
-          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
           style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
         />
         <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
@@ -669,7 +669,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <select
           value={nodeData.language || 'javascript'}
           onChange={(e) => updateData('language', e.target.value as any)}
-          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
           style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
         >
           <option value="javascript">JavaScript</option>
@@ -714,7 +714,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <select
           value={nodeData.operator || 'equals'}
           onChange={(e) => updateData('operator', e.target.value as any)}
-          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
           style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
         >
           <option value="equals">Equals</option>
@@ -739,7 +739,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <select
           value={nodeData.transformType || 'map'}
           onChange={(e) => updateData('transformType', e.target.value as any)}
-          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
           style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
         >
           <option value="map">Map</option>
@@ -1188,7 +1188,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         <select
           value={nodeData.language || 'javascript'}
           onChange={(e) => updateData('language', e.target.value as any)}
-          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
           style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
         >
           <option value="javascript">JavaScript</option>
@@ -2486,7 +2486,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                     updateData('cases' as any, updated);
                   }}
                   placeholder="Value"
-                  className="flex-1 px-2 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-2 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
                   style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
                 />
                 <input
@@ -2498,7 +2498,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                     updateData('cases' as any, updated);
                   }}
                   placeholder="Label"
-                  className="flex-1 px-2 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-2 py-1.5 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
                   style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
                 />
                 <button
@@ -2968,7 +2968,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             type="text"
             value={nodeData.label || ''}
             onChange={(e) => updateData('label', e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
             style={{
               backgroundColor: 'var(--color-bg-secondary)',
               borderColor: 'var(--color-border)',
@@ -2989,7 +2989,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             value={nodeData.description || ''}
             onChange={(e) => updateData('description', e.target.value)}
             rows={2}
-            className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
             style={{
               backgroundColor: 'var(--color-bg-secondary)',
               borderColor: 'var(--color-border)',
@@ -3047,7 +3047,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
               ${showSaveConfirmation
                 ? 'bg-emerald-500 text-white'
                 : hasChanges
-                ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-lg shadow-blue-500/20'
+                ? 'bg-accent-primary text-white hover:bg-accent-primary/90 shadow-lg shadow-accent-primary/20'
                 : 'cursor-not-allowed opacity-50'
               }
             `}

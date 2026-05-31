@@ -258,11 +258,11 @@ export const Dashboard = () => {
       )}
 
       <div id="section-overview"><OverviewPane counts={counts} providerHealth={providerHealth} /></div>
-      <div id="section-usage" style={{ marginTop: 24 }}><EnterpriseAnalyticsUpsell section="Usage & Cost" /></div>
-      <div id="section-llm-performance" style={{ marginTop: 24 }}><EnterpriseAnalyticsUpsell section="LLM & Router" /></div>
-      <div id="section-flows-agents" style={{ marginTop: 24 }}><EnterpriseAnalyticsUpsell section="Flows & Agents" /></div>
-      <div id="section-mcp-tools" style={{ marginTop: 24 }}><EnterpriseAnalyticsUpsell section="MCP & Tools" /></div>
-      <div id="section-api-limits" style={{ marginTop: 24 }}><EnterpriseAnalyticsUpsell section="Infra & Perf" /></div>
+      <div id="section-usage" style={{ marginTop: 24 }}><AnalyticsPlaceholder section="Usage & Cost" /></div>
+      <div id="section-llm-performance" style={{ marginTop: 24 }}><AnalyticsPlaceholder section="LLM & Router" /></div>
+      <div id="section-flows-agents" style={{ marginTop: 24 }}><AnalyticsPlaceholder section="Flows & Agents" /></div>
+      <div id="section-mcp-tools" style={{ marginTop: 24 }}><AnalyticsPlaceholder section="MCP & Tools" /></div>
+      <div id="section-api-limits" style={{ marginTop: 24 }}><AnalyticsPlaceholder section="Infra & Perf" /></div>
 
       <SidePanel
         open={detail != null}
@@ -341,14 +341,12 @@ const DetailBody: React.FC<{ detail: Detail; tab: string }> = ({ detail, tab }) 
 }
 
 /**
- * Per-resource metrics — enterprise analytics are not available in OSS.
+ * Per-resource metrics — no detailed time-series metrics view for this
+ * resource yet.
  */
 const DetailMetrics: React.FC<{ detail: Detail }> = () => (
   <EmptyInline pad>
-    per-resource metrics require the hosted edition —{' '}
-    <a href="https://agenticwork.io" target="_blank" rel="noreferrer noopener" style={{ color: 'var(--accent)' }}>
-      agenticwork.io
-    </a>
+    no detailed metrics available for this resource.
   </EmptyInline>
 )
 
@@ -423,54 +421,20 @@ const DetailConfig: React.FC<{ detail: Detail }> = ({ detail }) => {
 type DrillFn = (d: Detail) => void
 
 // ============================================================
-// EnterpriseAnalyticsUpsell — replaces every enterprise analytics
-// tab so operators see a clear upgrade path instead of empty charts
-// or 404 error banners. Deleted endpoints: /api/admin/dashboard/metrics,
-// /api/admin/metrics/llm/*, analytics time-series, etc.
+// AnalyticsPlaceholder — neutral empty-state for analytics sections
+// whose detailed time-series endpoints aren't wired in this build.
 // ============================================================
-const EnterpriseAnalyticsUpsell = ({ section }: { section: string }) => (
+const AnalyticsPlaceholder = ({ section }: { section: string }) => (
   <>
-    <SectionBar
-      title="advanced analytics"
-      right={
-        <a
-          href="https://agenticwork.io"
-          target="_blank"
-          rel="noreferrer noopener"
-          style={{ color: 'var(--accent)', fontSize: 11, textDecoration: 'none' }}
-        >
-          upgrade → agenticwork.io
-        </a>
-      }
-    />
+    <SectionBar title="analytics" />
     <Panel>
       <div style={{ padding: '32px 24px', textAlign: 'center' }}>
         <p style={{ color: 'var(--fg-2)', fontSize: 14, marginBottom: 6, fontWeight: 600 }}>
-          Advanced Analytics — Enterprise Edition
+          {section}
         </p>
-        <p style={{ color: 'var(--fg-3)', fontSize: 12, marginBottom: 4 }}>
-          {section} analytics require the hosted edition.
+        <p style={{ color: 'var(--fg-3)', fontSize: 12 }}>
+          Detailed time-series analytics for this section aren&apos;t available yet.
         </p>
-        <p style={{ color: 'var(--fg-3)', fontSize: 12, marginBottom: 20 }}>
-          Time-series charts, per-model cost breakdown, token usage trends, latency percentiles, and more.
-        </p>
-        <a
-          href="https://agenticwork.io"
-          target="_blank"
-          rel="noreferrer noopener"
-          style={{
-            display: 'inline-block',
-            padding: '8px 18px',
-            borderRadius: 6,
-            background: 'var(--accent)',
-            color: '#fff',
-            fontSize: 12,
-            fontWeight: 600,
-            textDecoration: 'none',
-          }}
-        >
-          Learn more at agenticwork.io
-        </a>
       </div>
     </Panel>
   </>
@@ -586,7 +550,7 @@ const OverviewPane = ({
         />
       </KpiGrid>
 
-      <EnterpriseAnalyticsUpsell section="Overview" />
+      <AnalyticsPlaceholder section="Overview" />
     </>
   )
 }

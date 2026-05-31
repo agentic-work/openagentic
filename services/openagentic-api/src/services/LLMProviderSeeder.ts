@@ -120,7 +120,6 @@ async function ensureBootstrapChatRoleAssignment(
       role: 'chat',
       model: chatModel,
       provider: seed.name,
-      provider_id: createdProvider?.id ?? null,
       priority: 10,
       enabled: true,
       temperature: 0.7,

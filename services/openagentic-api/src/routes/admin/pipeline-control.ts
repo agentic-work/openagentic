@@ -306,14 +306,9 @@ export default async function pipelineControlRoutes(fastify: FastifyInstance) {
         stageHealthEntry.enabled = enabled;
         stageHealthEntry.lastCheck = new Date();
 
-        // Add mock metrics for demo
-        if (enabled) {
-          stageHealthEntry.metrics = {
-            latency: Math.random() * 100,
-            errorRate: Math.random() * 0.05,
-            throughput: Math.random() * 1000
-          };
-        }
+        // Per-stage latency/errorRate/throughput are not instrumented yet.
+        // Return nothing rather than fabricating numbers operators would trust
+        // — wire real Prometheus metrics to populate this.
 
         stages.push({
           name: stage,
@@ -324,29 +319,30 @@ export default async function pipelineControlRoutes(fastify: FastifyInstance) {
         });
       }
 
-      // Add service status
+      // Service status. Only the API's own process metrics are real; cross-
+      // service memory/cpu are null (not probed) rather than fabricated.
       services.push({
         name: 'Chat API',
         status: 'healthy',
         uptime: process.uptime(),
         memory: process.memoryUsage().heapUsed / 1024 / 1024,
-        cpu: 0.15
+        cpu: null
       });
 
       services.push({
         name: 'MCP Orchestrator',
-        status: 'healthy',
-        uptime: process.uptime() * 0.95,
-        memory: 256,
-        cpu: 0.08
+        status: 'unknown',
+        uptime: null,
+        memory: null,
+        cpu: null
       });
 
       services.push({
         name: 'Vector Database',
-        status: 'healthy',
-        uptime: process.uptime() * 0.99,
-        memory: 512,
-        cpu: 0.12
+        status: 'unknown',
+        uptime: null,
+        memory: null,
+        cpu: null
       });
 
       const overallHealth = stages.every(s => s.status === 'healthy') ? 'healthy' :
@@ -357,12 +353,14 @@ export default async function pipelineControlRoutes(fastify: FastifyInstance) {
         stages,
         services,
         config: currentConfig,
+        // Aggregate request metrics are not instrumented yet — null, not faked.
         metrics: {
-          totalRequests: Math.floor(Math.random() * 10000),
-          avgLatency: Math.random() * 200,
-          errorRate: Math.random() * 0.02,
-          throughput: Math.random() * 500
+          totalRequests: null,
+          avgLatency: null,
+          errorRate: null,
+          throughput: null
         },
+        metricsInstrumented: false,
         lastUpdated: new Date()
       });
     } catch (error) {
@@ -403,15 +401,7 @@ export default async function pipelineControlRoutes(fastify: FastifyInstance) {
         stageHealthEntry.enabled = enabled;
         stageHealthEntry.lastCheck = new Date();
 
-        // Add mock metrics for enabled stages
-        if (enabled) {
-          stageHealthEntry.metrics = {
-            latency: Math.random() * 100,
-            errorRate: Math.random() * 0.05,
-            throughput: Math.random() * 1000
-          };
-        }
-
+        // Per-stage metrics not instrumented — no fabricated numbers.
         health.push({ ...stageHealthEntry });
       }
 
@@ -460,14 +450,14 @@ export default async function pipelineControlRoutes(fastify: FastifyInstance) {
         const stageStart = Date.now();
 
         if (enabled) {
-          // Simulate processing delay
-          await new Promise(resolve => setTimeout(resolve, Math.random() * 50));
-
+          // Config-validation only: confirms the stage is enabled in the
+          // pipeline config. This endpoint does NOT execute the real stage —
+          // it validates wiring, so the output is labelled as such.
           results.push({
             stage,
-            status: 'processed',
+            status: 'enabled',
             duration: Date.now() - stageStart,
-            output: `${stage} completed`
+            output: `${stage} is enabled (config check — not a live execution)`
           });
         } else {
           results.push({

@@ -1,35 +1,20 @@
-
-
 apiVersion: v2
 name: openagentic
-description: A comprehensive Helm chart for openagentic application
+description: Barebones Helm chart for a self-contained OpenAgentic stack (chat, flows, MCPs)
 type: application
-version: 1.0.27
-appVersion: "0.6.5"
+version: 2.0.0
+appVersion: "1.0.0"
 keywords:
   - openagentic
-  - chat
+  - agents
   - mcp
   - ai
+home: https://github.com/agentic-work/openagentic
+sources:
+  - https://github.com/agentic-work/openagentic
 maintainers:
-  - name: OpenAgentic Team
-    email: hello@openagentic.io
+  - name: agentic-work
+# Self-contained: postgres (pgvector), redis, ollama, and all app services ship
+# as plain Deployments in this chart. No external subcharts. Vector search uses
+# pgvector inside postgres; Milvus is intentionally omitted for a minimal install.
 dependencies: []
-  # All subcharts deployed separately to keep helm release under 1MB etcd limit
-  # Deploy with: helm install <name> <chart> -n openagentic -f <values>
-  # - name: postgresql
-  #   version: "16.x.x"
-  #   repository: https://charts.bitnami.com/bitnami
-  #   condition: postgresql.enabled
-  # - name: redis
-  #   version: "20.x.x"
-  #   repository: https://charts.bitnami.com/bitnami
-  #   condition: redis.enabled
-  # - name: milvus
-  #   version: "5.x.x"
-  #   repository: https://zilliztech.github.io/milvus-helm/
-  #   condition: milvus.enabled
-# When dependencies are disabled (e.g. k3s-local), deploy them separately:
-#   helm install postgresql bitnami/postgresql -n openagentic -f postgresql-values.yaml
-#   helm install redis bitnami/redis -n openagentic -f redis-values.yaml
-#   helm install milvus zilliztech/milvus -n openagentic -f milvus-standalone-gpu.yaml
