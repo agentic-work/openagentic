@@ -1540,6 +1540,18 @@ async function registerAllRoutes() {
     loggers.routes.error({ err: error }, 'Failed to register Grafana proxy routes');
   }
 
+  // Register the REAL Prometheus proxy (admin dashboard PromQL surfaces). The
+  // 501 placeholder stubs that previously shadowed these live in
+  // admin-missing-routes.ts and have been removed to avoid a duplicate-route
+  // collision. Reads PROMETHEUS_HOST/PORT (set by helm when prometheus.enabled).
+  try {
+    const { promProxyRoutes } = await import('./routes/admin/prom-proxy.js');
+    await server.register(promProxyRoutes, { prefix: '/api/admin/prom' });
+    loggers.routes.info('Prometheus proxy routes registered at /api/admin/prom/*');
+  } catch (error) {
+    loggers.routes.error({ err: error }, 'Failed to register Prometheus proxy routes');
+  }
+
   // Register Pipeline Log routes (admin observability — pipeline log viewer)
   try {
     const { pipelineLogRoutes } = await import('./routes/admin/pipeline-log.js');

@@ -133,10 +133,9 @@ export const adminMissingRoutes: FastifyPluginAsync = async (fastify) => {
       message: 'This endpoint is not configured in this deployment.',
     });
   };
-  // Prometheus query proxy — wire a Prometheus endpoint to enable dashboards.
-  fastify.post('/prom/query', notConfigured);
-  fastify.post('/prom/query_range', notConfigured);
-  fastify.get('/prom/health', notConfigured);
+  // Prometheus query proxy is now served by the REAL promProxyRoutes
+  // (routes/admin/prom-proxy.ts, registered at /api/admin/prom in server.ts).
+  // The 501 stubs were removed here to avoid a duplicate-route collision.
   // Cluster fleet — multi-node coordination.
   // NOTE: /cluster/health is owned by admin/v3-extras-misc.ts already.
   fastify.get('/cluster/services', notConfigured);
