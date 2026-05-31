@@ -14,6 +14,7 @@
 import React, { useState } from 'react';
 import { Terminal } from './Terminal';
 import { CodeModeChat } from './CodeModeChat';
+import { AgenticodeGridView } from './AgenticodeGridView';
 import { CodeModeWizard } from './wizard/CodeModeWizard';
 import { useCodeModeFirstRun } from './useCodeModeFirstRun';
 import { useCodeModeStore } from '@/stores/useCodeModeStore';
@@ -47,6 +48,16 @@ export const CodeModePanel: React.FC = () => {
       void markComplete({ model: session?.model });
     }
   };
+
+  // --- agenticode TUI → DOM demo (Path A: own Ink reconciler + pure-TS Yoga →
+  // char-grid → DOM, no xterm). Reach via the Code tab with hash #agc. ---
+  if (typeof location !== 'undefined' && location.hash === '#agc') {
+    return (
+      <div style={{ width: '100%', height: '100%' }}>
+        <AgenticodeGridView />
+      </div>
+    );
+  }
 
   // --- Active session → show terminal (skip loading gate if we already have one) ---
   if (activeSession) {
