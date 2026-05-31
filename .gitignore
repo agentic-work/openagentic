@@ -19,10 +19,14 @@
 
 # Docs — internal working notes; track only curated OSS docs.
 # Git won't descend into an ignored directory, so we use the /docs/*
-# pattern (ignore direct children) + a !/docs/enterprise-setup/ negation
-# to re-include the enterprise-setup subtree.
+# pattern (ignore direct children) + per-path negations to re-include the
+# curated OSS doc subtrees/files (enterprise-setup, launch, and the
+# README-linked zero-telemetry + air-gapped-install pages).
 /docs/*
 !/docs/enterprise-setup/
+!/docs/launch/
+!/docs/zero-telemetry.md
+!/docs/air-gapped-install.md
 
 # Screenshots (test artifacts)
 screenshots/

@@ -7,7 +7,7 @@ What the Azure MCP needs to introspect your tenant:
 3. **Role assignments** on whatever subscriptions you want the MCP to read
 4. Optionally: a **security group** that members of Entra ID can join for SSO-based access, plus the Enterprise App config to make the openagentic UI usable with Microsoft sign-in
 
-For the reference deployment we provisioned everything to the your tenant against the `<YOUR_AZURE_SUBSCRIPTION_NAME>` subscription only — your environment/prod subscriptions were explicitly not touched.
+For the reference deployment we provisioned everything to your tenant against the `<YOUR_AZURE_SUBSCRIPTION_NAME>` subscription only — your environment/prod subscriptions were explicitly not touched.
 
 ## Preconditions
 
