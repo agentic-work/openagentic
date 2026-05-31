@@ -4539,10 +4539,10 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
     color: '#2196f3',
     definition: {
       nodes: [
-        { id: 'trigger-1', type: 'trigger', position: { x: 0, y: Y }, data: { label: 'User Question', triggerType: 'manual', icon: 'Play', color: '#ff9800' } },
-        { id: 'llm-queries', type: 'openagentic_llm', position: { x: X, y: Y }, data: { label: 'Generate Queries', icon: 'Brain', color: '#7c4dff', prompt: 'Given the user question below, generate 3 diverse search queries that would help retrieve relevant information. Output them as a JSON array of strings.\n\nQuestion: {{input}}' } },
+        { id: 'trigger-1', type: 'trigger', position: { x: 0, y: Y }, data: { label: 'User Question', triggerType: 'manual', icon: 'Play', color: '#ff9800', inputs: [{ name: 'question', label: 'Your question', type: 'string', required: true, placeholder: 'e.g., How does the smart router pick a model?', description: 'A question to answer from the indexed knowledge base (docs collection).' }] } },
+        { id: 'llm-queries', type: 'openagentic_llm', position: { x: X, y: Y }, data: { label: 'Generate Queries', icon: 'Brain', color: '#7c4dff', prompt: 'Given the user question below, generate 3 diverse search queries that would help retrieve relevant information. Output them as a JSON array of strings.\n\nQuestion: {{trigger.question}}' } },
         { id: 'rag-search', type: 'rag_query', position: { x: X * 2, y: Y }, data: { label: 'Vector Search', icon: 'Database', color: '#2196f3', collection: 'docs', query: '{{steps.llm-queries.output}}', topK: 10, minScore: 0.5, filter: { file_extensions: ['md', 'mdx'] } } },
-        { id: 'llm-answer', type: 'openagentic_llm', position: { x: X * 3, y: Y }, data: { label: 'Synthesize Answer', icon: 'Brain', color: '#7c4dff', prompt: 'Answer the user question using ONLY the retrieved context below. Cite specific sources. If the context is insufficient, say so.\n\nQuestion: {{input}}\n\nRetrieved Context:\n{{steps.rag-search.output}}' } },
+        { id: 'llm-answer', type: 'openagentic_llm', position: { x: X * 3, y: Y }, data: { label: 'Synthesize Answer', icon: 'Brain', color: '#7c4dff', prompt: 'Answer the user question using ONLY the retrieved context below. Cite specific sources. If the context is insufficient, say so.\n\nQuestion: {{trigger.question}}\n\nRetrieved Context:\n{{steps.rag-search.output}}' } },
       ],
       edges: [
         { id: 'e1', source: 'trigger-1', target: 'llm-queries', animated: true },
@@ -4553,35 +4553,83 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 3. Smart Router Showcase
-  // Uses: trigger, openagentic_llm (3 tiers), merge
-  // 2026-04-19 — slider removed (task #144); each tier now picks by explicit
-  // modelOverride on the node, honoring UserModelBudgetService caps.
+  // 3. Web Page → Structured Brief (grounded)
+  // Uses: trigger(inputs:url), mcp_tool(web_search_and_read), openagentic_llm,
+  //       grounding_check. Reads a real page/topic and briefs it WITHOUT
+  //       fabrication — replaces the old "Smart Router Showcase" demo.
   // ══════════════════════════════════════════════════════════════════════════
   {
-    name: 'Smart Router Showcase',
-    description: 'Sends the same prompt to three model tiers (economical/balanced/premium) in parallel, merges responses, then compares quality and speed tradeoffs.',
-    icon: 'Sparkles',
-    category: 'demo',
-    tags: ['smart-router', 'model-comparison', 'demo'],
-    color: '#f59e0b',
+    name: 'Web Page → Structured Brief',
+    description: 'Reads a web page (or searches a topic and reads the top results), then writes a structured brief — TL;DR, key points each with their source URL, entities, and open questions — grounded against the actually-fetched content. No fabrication.',
+    icon: 'Globe',
+    category: 'research',
+    tags: ['web', 'summarize', 'research', 'grounded'],
+    color: '#06b6d4',
     definition: {
       nodes: [
-        { id: 'trigger-1', type: 'trigger', position: { x: 0, y: Y * 2 }, data: { label: 'Test Prompt', triggerType: 'manual', icon: 'Play', color: '#ff9800' } },
-        { id: 'llm-eco', type: 'openagentic_llm', position: { x: X, y: 0 }, data: { label: 'Economical', icon: 'Brain', color: '#4caf50', prompt: '{{input}}' } },
-        { id: 'llm-balanced', type: 'openagentic_llm', position: { x: X, y: Y * 2 }, data: { label: 'Balanced', icon: 'Brain', color: '#ff9800', prompt: '{{input}}' } },
-        { id: 'llm-premium', type: 'openagentic_llm', position: { x: X, y: Y * 4 }, data: { label: 'Premium', icon: 'Brain', color: '#7c4dff', prompt: '{{input}}' } },
-        { id: 'merge-responses', type: 'merge', position: { x: X * 2, y: Y * 2 }, data: { label: 'Merge Responses', icon: 'GitMerge', color: '#9c27b0', strategy: 'combine' } },
-        { id: 'llm-compare', type: 'openagentic_llm', position: { x: X * 3, y: Y * 2 }, data: { label: 'Compare Models', icon: 'Brain', color: '#7c4dff', prompt: 'Three AI models at different quality tiers answered the same prompt. Compare their responses on:\n1. Accuracy and completeness\n2. Response quality\n3. Which tier provides the best value for this type of question\n\nResponses:\n{{steps.merge-responses.output}}' } },
+        {
+          id: 'trigger-1',
+          type: 'trigger',
+          position: { x: 0, y: Y },
+          data: {
+            label: 'Page or Topic',
+            triggerType: 'manual',
+            icon: 'Play',
+            color: '#ff9800',
+            inputs: [
+              {
+                name: 'url',
+                label: 'Page URL or search topic',
+                type: 'string',
+                required: true,
+                placeholder: 'https://example.com/article   — or —   latest on post-quantum cryptography',
+                description: 'A URL to read, or a topic to search the web for and read.',
+              },
+            ],
+          },
+        },
+        {
+          id: 'fetch',
+          type: 'mcp_tool',
+          position: { x: X, y: Y },
+          data: {
+            label: 'Read the web (real content)',
+            icon: 'Globe',
+            color: '#06b6d4',
+            toolName: 'web_search_and_read',
+            toolServer: 'openagentic_web',
+            arguments: { query: '{{trigger.url}}', num_results: 3 },
+          },
+        },
+        {
+          id: 'brief',
+          type: 'openagentic_llm',
+          position: { x: X * 2, y: Y },
+          data: {
+            label: 'Structured Brief',
+            icon: 'Brain',
+            color: '#7c4dff',
+            prompt:
+              'Produce a STRUCTURED BRIEF using ONLY the fetched web content below. Markdown sections:\n"## TL;DR" — 3 sentences.\n"## Key Points" — bullets, each ending with its source URL.\n"## Entities" — people / orgs / products named in the content.\n"## Open Questions".\nUse ONLY facts present in the content; do not add outside knowledge. If the content is thin or off-topic, say so plainly.\n\nFETCHED CONTENT:\n{{steps.fetch.output}}',
+          },
+        },
+        {
+          id: 'ground',
+          type: 'grounding_check',
+          position: { x: X * 3, y: Y },
+          data: {
+            label: 'Grounding Check (vs fetched content)',
+            icon: 'ShieldCheck',
+            color: '#16a34a',
+            claim: '{{steps.brief.output}}',
+            groundTruth: '{{steps.fetch.output}}',
+          },
+        },
       ],
       edges: [
-        { id: 'e1a', source: 'trigger-1', target: 'llm-eco', animated: true },
-        { id: 'e1b', source: 'trigger-1', target: 'llm-balanced' },
-        { id: 'e1c', source: 'trigger-1', target: 'llm-premium' },
-        { id: 'e2a', source: 'llm-eco', target: 'merge-responses' },
-        { id: 'e2b', source: 'llm-balanced', target: 'merge-responses' },
-        { id: 'e2c', source: 'llm-premium', target: 'merge-responses' },
-        { id: 'e3', source: 'merge-responses', target: 'llm-compare', animated: true },
+        { id: 'e1', source: 'trigger-1', target: 'fetch', animated: true },
+        { id: 'e2', source: 'fetch', target: 'brief', animated: true },
+        { id: 'e3', source: 'brief', target: 'ground', animated: true },
       ],
     },
   },
@@ -4599,10 +4647,10 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
     color: '#10b981',
     definition: {
       nodes: [
-        { id: 'trigger-1', type: 'trigger', position: { x: 0, y: Y }, data: { label: 'Submit Code', triggerType: 'manual', icon: 'Play', color: '#ff9800' } },
-        { id: 'llm-analyze', type: 'openagentic_llm', position: { x: X, y: Y }, data: { label: 'Analyze Code', icon: 'Brain', color: '#7c4dff', prompt: 'Review the following code for bugs, security vulnerabilities, and quality issues. Classify the overall severity as "critical" (must fix before merge), "warning" (should fix), or "clean" (ready to merge).\n\nRespond with a JSON object: { "severity": "critical|warning|clean", "issues": [...], "suggestions": [...] }\n\nCode:\n{{input}}' } },
+        { id: 'trigger-1', type: 'trigger', position: { x: 0, y: Y }, data: { label: 'Submit Code', triggerType: 'manual', icon: 'Play', color: '#ff9800', inputs: [{ name: 'code', label: 'Code to review', type: 'text', required: true, placeholder: 'Paste the code (any language) to review…', description: 'The source to analyze for bugs, security, and quality.' }] } },
+        { id: 'llm-analyze', type: 'openagentic_llm', position: { x: X, y: Y }, data: { label: 'Analyze Code', icon: 'Brain', color: '#7c4dff', prompt: 'Review the following code for bugs, security vulnerabilities, and quality issues. Classify the overall severity as "critical" (must fix before merge), "warning" (should fix), or "clean" (ready to merge).\n\nRespond with a JSON object: { "severity": "critical|warning|clean", "issues": [...], "suggestions": [...] }\n\nCode:\n{{trigger.code}}' } },
         { id: 'cond-severity', type: 'condition', position: { x: X * 2, y: Y }, data: { label: 'Critical Issues?', icon: 'GitBranch', color: '#2196f3', expression: '{{steps.llm-analyze.output}}.includes("critical")' } },
-        { id: 'agent-fix', type: 'agent_single', position: { x: X * 3, y: 0 }, data: { label: 'Auto-Fix Agent', icon: 'Wrench', color: '#f44336', agentType: 'coder', task: 'Fix the critical issues identified in this code review:\n\nReview:\n{{steps.llm-analyze.output}}\n\nOriginal Code:\n{{input}}\n\nReturn the corrected code with comments explaining each fix.' } },
+        { id: 'agent-fix', type: 'agent_single', position: { x: X * 3, y: 0 }, data: { label: 'Auto-Fix Agent', icon: 'Wrench', color: '#f44336', agentType: 'coder', task: 'Fix the critical issues identified in this code review:\n\nReview:\n{{steps.llm-analyze.output}}\n\nOriginal Code:\n{{trigger.code}}\n\nReturn the corrected code with comments explaining each fix.' } },
         { id: 'llm-approve', type: 'openagentic_llm', position: { x: X * 3, y: Y * 2 }, data: { label: 'Approval Summary', icon: 'CheckCircle', color: '#4caf50', prompt: 'Generate a concise code review approval summary based on the analysis:\n\n{{steps.llm-analyze.output}}\n\nInclude any minor suggestions for future improvement.' } },
       ],
       edges: [
@@ -4627,8 +4675,8 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
     color: '#06b6d4',
     definition: {
       nodes: [
-        { id: 'trigger-1', type: 'trigger', position: { x: 0, y: Y }, data: { label: 'Start', triggerType: 'manual', icon: 'Play', color: '#ff9800' } },
-        { id: 'http-fetch', type: 'http_request', position: { x: X, y: Y }, data: { label: 'Fetch Data', icon: 'Globe', color: '#06b6d4', url: '{{input.url || "https://jsonplaceholder.typicode.com/posts?_limit=5"}}', method: 'GET' } },
+        { id: 'trigger-1', type: 'trigger', position: { x: 0, y: Y }, data: { label: 'Start', triggerType: 'manual', icon: 'Play', color: '#ff9800', inputs: [{ name: 'url', label: 'JSON API URL', type: 'string', required: true, placeholder: 'https://api.example.com/data.json', description: 'A URL returning JSON to fetch, transform, and analyze.' }] } },
+        { id: 'http-fetch', type: 'http_request', position: { x: X, y: Y }, data: { label: 'Fetch Data', icon: 'Globe', color: '#06b6d4', url: '{{trigger.url}}', method: 'GET' } },
         { id: 'transform-parse', type: 'transform', position: { x: X * 2, y: Y }, data: { label: 'Parse & Enrich', icon: 'FileText', color: '#4caf50', expression: '(Array.isArray(input) ? { type: "array", count: input.length, items: input } : { type: "single", count: 1, items: [input] })' } },
         { id: 'cond-size', type: 'condition', position: { x: X * 3, y: Y }, data: { label: 'Large Dataset?', icon: 'GitBranch', color: '#2196f3', expression: 'JSON.parse({{steps.transform-parse.output}} || "{}").count > 3' } },
         { id: 'llm-summarize', type: 'openagentic_llm', position: { x: X * 4, y: 0 }, data: { label: 'Summarize Large', icon: 'Brain', color: '#7c4dff', prompt: 'Summarize this large dataset. Identify patterns, outliers, and key statistics:\n\n{{steps.transform-parse.output}}' } },
@@ -4660,8 +4708,8 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
     color: '#ef4444',
     definition: {
       nodes: [
-        { id: 'trigger-1', type: 'trigger', position: { x: 0, y: Y }, data: { label: 'Submit Contract', triggerType: 'manual', icon: 'Play', color: '#ff9800' } },
-        { id: 'llm-extract', type: 'openagentic_llm', position: { x: X, y: Y }, data: { label: 'Extract Clauses', icon: 'Brain', color: '#7c4dff', prompt: 'Extract all distinct clauses from the following contract. Return them as a JSON array of objects: [{ "id": 1, "title": "...", "text": "..." }, ...]\n\nContract:\n{{input}}' } },
+        { id: 'trigger-1', type: 'trigger', position: { x: 0, y: Y }, data: { label: 'Submit Contract', triggerType: 'manual', icon: 'Play', color: '#ff9800', inputs: [{ name: 'contract', label: 'Contract text', type: 'text', required: true, placeholder: 'Paste the contract / agreement text…', description: 'The full contract to extract clauses from and risk-score.' }] } },
+        { id: 'llm-extract', type: 'openagentic_llm', position: { x: X, y: Y }, data: { label: 'Extract Clauses', icon: 'Brain', color: '#7c4dff', prompt: 'Extract all distinct clauses from the following contract. Return them as a JSON array of objects: [{ "id": 1, "title": "...", "text": "..." }, ...]\n\nContract:\n{{trigger.contract}}' } },
         { id: 'loop-clauses', type: 'loop', position: { x: X * 2, y: Y }, data: { label: 'Iterate Clauses', icon: 'Repeat', color: '#f59e0b', iterateOver: '{{steps.llm-extract.output}}', itemVariable: 'clause' } },
         { id: 'llm-score', type: 'openagentic_llm', position: { x: X * 3, y: Y }, data: { label: 'Score Risk', icon: 'Brain', color: '#7c4dff', prompt: 'Score the risk of this contract clause on a scale of 1-10 and explain why.\n\nRespond with JSON: { "clause_title": "...", "risk_score": N, "risk_level": "low|medium|high|critical", "explanation": "...", "recommendation": "..." }\n\nClause:\n{{clause}}' } },
         { id: 'merge-scores', type: 'merge', position: { x: X * 4, y: Y }, data: { label: 'Collect Scores', icon: 'GitMerge', color: '#9c27b0', strategy: 'combine' } },
@@ -4678,31 +4726,118 @@ export const SEED_WORKFLOW_TEMPLATES: SeedTemplate[] = [
   },
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 7. Approval Gate Demo
-  // Uses: trigger, openagentic_llm, human_approval, condition
+  // 7. Topic Watch → Briefing (grounded, human-approved publish)
+  // Uses: trigger(inputs:topic,focus), mcp_tool(web_search_and_read),
+  //       openagentic_llm, grounding_check, human_approval. Searches the LIVE web
+  //       and writes a dated briefing from real sources, then a human approves
+  //       before it's finalized — replaces the old "Approval Gate Demo".
   // ══════════════════════════════════════════════════════════════════════════
   {
-    name: 'Approval Gate Demo',
-    description: 'Drafts content with LLM, pauses for human approval, then either finalizes the approved version or revises based on feedback.',
-    icon: 'CheckSquare',
-    category: 'demo',
-    tags: ['human-in-the-loop', 'approval', 'demo'],
-    color: '#8b5cf6',
+    name: 'Topic Watch → Briefing',
+    description: 'Searches the live web for the latest on a topic, writes a dated briefing (What\'s New / Why It Matters / Watch List / Sources) grounded against the real search results, then pauses for human approval before finalizing.',
+    icon: 'Newspaper',
+    category: 'research',
+    tags: ['monitoring', 'briefing', 'research', 'grounded', 'human-in-the-loop'],
+    color: '#0ea5e9',
     definition: {
       nodes: [
-        { id: 'trigger-1', type: 'trigger', position: { x: 0, y: Y }, data: { label: 'Start', triggerType: 'manual', icon: 'Play', color: '#ff9800' } },
-        { id: 'llm-draft', type: 'openagentic_llm', position: { x: X, y: Y }, data: { label: 'Draft Content', icon: 'Brain', color: '#7c4dff', prompt: 'Draft a professional document based on the following brief. Make it publication-ready.\n\nBrief: {{input}}' } },
-        { id: 'approval-gate', type: 'human_approval', position: { x: X * 2, y: Y }, data: { label: 'Review & Approve', icon: 'UserCheck', color: '#8b5cf6', message: 'Please review the drafted content and approve or reject with feedback.', timeout: 3600 } },
-        { id: 'cond-approved', type: 'condition', position: { x: X * 3, y: Y }, data: { label: 'Approved?', icon: 'GitBranch', color: '#2196f3', expression: '{{steps.approval-gate.output}}.includes("approved")' } },
-        { id: 'llm-finalize', type: 'openagentic_llm', position: { x: X * 4, y: 0 }, data: { label: 'Finalize', icon: 'CheckCircle', color: '#4caf50', prompt: 'The following draft has been approved. Add a final polish — fix any typos, improve formatting, and add a publication header.\n\nApproved Draft:\n{{steps.llm-draft.output}}' } },
-        { id: 'llm-revise', type: 'openagentic_llm', position: { x: X * 4, y: Y * 2 }, data: { label: 'Revise', icon: 'Edit', color: '#f59e0b', prompt: 'The following draft was rejected with feedback. Revise it to address the concerns.\n\nOriginal Draft:\n{{steps.llm-draft.output}}\n\nReviewer Feedback:\n{{steps.approval-gate.output}}' } },
+        {
+          id: 'trigger-1',
+          type: 'trigger',
+          position: { x: 0, y: Y },
+          data: {
+            label: 'Watch Topic',
+            triggerType: 'manual',
+            icon: 'Play',
+            color: '#ff9800',
+            inputs: [
+              {
+                name: 'topic',
+                label: 'Topic to brief',
+                type: 'string',
+                required: true,
+                placeholder: 'e.g., Kubernetes security advisories',
+                description: 'What should we get the latest grounded briefing on?',
+              },
+              {
+                name: 'focus',
+                label: 'Focus (optional)',
+                type: 'string',
+                required: false,
+                placeholder: 'e.g., enterprise impact, last 30 days',
+                description: 'Optional angle to emphasize in the briefing.',
+              },
+            ],
+          },
+        },
+        {
+          id: 'search',
+          type: 'mcp_tool',
+          position: { x: X, y: Y },
+          data: {
+            label: 'Live Web Search',
+            icon: 'Globe',
+            color: '#06b6d4',
+            toolName: 'web_search_and_read',
+            toolServer: 'openagentic_web',
+            arguments: { query: 'latest {{trigger.topic}} {{trigger.focus}}', num_results: 5 },
+          },
+        },
+        {
+          id: 'brief',
+          type: 'openagentic_llm',
+          position: { x: X * 2, y: Y },
+          data: {
+            label: 'Write Briefing',
+            icon: 'Brain',
+            color: '#7c4dff',
+            prompt:
+              'Write a BRIEFING on "{{trigger.topic}}" using ONLY the live search results below. Markdown:\n"## What\'s New" — bullets, each with its source URL (and date if present).\n"## Why It Matters".\n"## Watch List" — what to track next.\n"## Sources" — every URL used.\nUse ONLY facts present in the results; if something is unclear or unsupported, say so. No fabrication.\n\nLIVE RESULTS:\n{{steps.search.output}}',
+          },
+        },
+        {
+          id: 'ground',
+          type: 'grounding_check',
+          position: { x: X * 3, y: Y },
+          data: {
+            label: 'Grounding Check (vs live results)',
+            icon: 'ShieldCheck',
+            color: '#16a34a',
+            claim: '{{steps.brief.output}}',
+            groundTruth: '{{steps.search.output}}',
+          },
+        },
+        {
+          id: 'approve',
+          type: 'human_approval',
+          position: { x: X * 4, y: Y },
+          data: {
+            label: 'Approve to Publish',
+            icon: 'UserCheck',
+            color: '#8b5cf6',
+            message: 'Review the grounded briefing (and grounding result) below, then approve or reject before it is finalized.',
+            timeout: 3600,
+          },
+        },
+        {
+          id: 'finalize',
+          type: 'openagentic_llm',
+          position: { x: X * 5, y: Y },
+          data: {
+            label: 'Finalize Briefing',
+            icon: 'FileCheck',
+            color: '#4caf50',
+            prompt:
+              'Produce the FINAL briefing from the approved draft below. Keep all source URLs. Add a one-line "_Grounding:_" footer noting it was fact-checked against the live sources.\n\nDRAFT:\n{{steps.brief.output}}\n\nGROUNDING:\n{{steps.ground.output}}\n\nAPPROVAL:\n{{steps.approve.output}}',
+          },
+        },
       ],
       edges: [
-        { id: 'e1', source: 'trigger-1', target: 'llm-draft', animated: true },
-        { id: 'e2', source: 'llm-draft', target: 'approval-gate', animated: true },
-        { id: 'e3', source: 'approval-gate', target: 'cond-approved', animated: true },
-        { id: 'e4', source: 'cond-approved', target: 'llm-finalize', label: 'Approved', sourceHandle: 'true' },
-        { id: 'e5', source: 'cond-approved', target: 'llm-revise', label: 'Rejected', sourceHandle: 'false' },
+        { id: 'e1', source: 'trigger-1', target: 'search', animated: true },
+        { id: 'e2', source: 'search', target: 'brief', animated: true },
+        { id: 'e3', source: 'brief', target: 'ground', animated: true },
+        { id: 'e4', source: 'ground', target: 'approve', animated: true },
+        { id: 'e5', source: 'approve', target: 'finalize', animated: true },
       ],
     },
   },
