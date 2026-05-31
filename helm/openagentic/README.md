@@ -114,6 +114,38 @@ kubectl port-forward -n openagentic svc/openagentic-api 8080:8000 &
 curl -s http://localhost:8080/api/health | jq .
 ```
 
+### 6. Providers & models (via values)
+
+A bare install ships with **local Ollama** — zero API keys, everything runs
+in-cluster. Override the models that get pulled on first boot:
+
+```yaml
+# values.yaml
+ollama:
+  chatModel: llama3.2:3b        # local chat model (pulled on first boot)
+  embedModel: nomic-embed-text  # embeddings — required for RAG + memory
+  gpu: false                    # set true if your nodes have GPUs
+```
+
+For **AWS Bedrock** (Claude Sonnet / Opus), add your AWS credentials. The chart
+seeds a Bedrock provider on first boot and the Smart Router uses it automatically
+(no model IDs in app config — the router picks per request):
+
+```yaml
+secrets:
+  awsAccessKeyId: "AKIA…"
+  awsSecretAccessKey: "…"
+  awsRegion: us-east-1
+```
+
+> **Compose users:** you don't need any of this — the default local Ollama model
+> is enough to chat out of the box. Bedrock is a Kubernetes-deployment nicety.
+
+**Adding more** (Azure OpenAI, OpenAI, Google Vertex, additional models, per-role
+defaults) happens at runtime in **Admin → LLM → Provider Management**. Only the
+*bootstrap* provider comes from values; every other provider/model is managed in
+the Admin UI and persisted in the database.
+
 ## Configuration
 
 All knobs live in `values.yaml`. The most common ones:
