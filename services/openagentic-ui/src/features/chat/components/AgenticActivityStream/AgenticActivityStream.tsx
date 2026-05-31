@@ -43,6 +43,7 @@ import ShikiCodeBlock from '../MessageContent/ShikiCodeBlock';
 import { MCPToolRenderer, getRendererForTool, GenericMCPRenderer } from './MCPRenderers';
 import { CollapsedThinkingBlock, ArtifactErrorBoundary } from '@/shared/components';
 import { ThinkingSphere } from '@/shared/components/ThinkingSphere';
+import { useTheme } from '@/contexts/ThemeContext';
 import { humanizeToolName, getCategoryColor } from '../../utils/toolNameHumanizer';
 import { summarizeToolCall, type ToolSummary, type RichSummary } from '../../utils/toolSummarizer';
 import { formatToolInputDelta } from '../../utils/toolInputDelta';
@@ -2991,6 +2992,16 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
   onDenyHitl,
   streamingTables = [],
 }) => {
+  // Light-mode prose readability fix (2026-05-31): the top-level wrapper below
+  // sets a data-theme scope that openagentic-theme.css uses to pin --color-text
+  // for ALL descendant assistant prose (.interleaved-text-block → .prose). The
+  // `theme` prop defaults to 'dark' and our caller (MessageBubble) never passes
+  // it, so in light mode the wrapper stayed data-theme="dark" and forced cream
+  // text on light paper — illegible. Drive the wrapper scope from the GLOBAL
+  // app theme instead so prose follows light/dark; child code/tool widgets keep
+  // their own hardcoded theme="dark" sub-scopes (syntax highlighting).
+  const { resolvedTheme } = useTheme();
+  const wrapperTheme = resolvedTheme === 'light' ? 'light' : 'dark';
   // Sev-0 dup-render rip (2026-05-21) — fast lookup by artifactId so the
   // viz_render(template=table) render branch can swap an iframe for a
   // native <StreamingTable> at O(1). The same artifact_id is shared by
@@ -3585,7 +3596,7 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
   return (
     <div
       className={className}
-      data-theme={theme}
+      data-theme={wrapperTheme}
       data-testid="agentic-activity-stream"
       data-streaming={isStreaming ? 'true' : 'false'}
       style={{ marginBottom: 16 }}
