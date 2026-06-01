@@ -204,21 +204,21 @@ function groupChromeFor(kind: ArchGroupKind | undefined, tokens: ReturnType<type
   chip: string
 } {
   switch (kind) {
-    case 'org':       return { stroke: tokens.accent, fill: 'color-mix(in srgb, var(--accent, #8b5cf6) 6%, transparent)', chip: tokens.accent }
-    case 'folder':    return { stroke: tokens.fg2,    fill: 'color-mix(in srgb, var(--accent, #8b5cf6) 4%, transparent)', dash: '6 4', chip: tokens.fg2 }
-    case 'account':   return { stroke: tokens.info,   fill: 'color-mix(in srgb, var(--info, #38bdf8) 5%, transparent)', chip: tokens.info }
-    case 'project':   return { stroke: tokens.ok,     fill: 'color-mix(in srgb, var(--ok, #4ade80) 5%, transparent)', chip: tokens.ok }
-    case 'region':    return { stroke: tokens.fg3,    fill: 'color-mix(in srgb, var(--fg-3, #94a3b8) 3%, transparent)', dash: '4 4', chip: tokens.fg2 }
-    case 'az':        return { stroke: tokens.fg3,    fill: 'color-mix(in srgb, var(--fg-3, #94a3b8) 5%, transparent)', dash: '2 4', chip: tokens.fg3 }
-    case 'vpc':       return { stroke: tokens.info,   fill: 'color-mix(in srgb, var(--info, #38bdf8) 6%, transparent)', chip: tokens.info }
-    case 'subnet':    return { stroke: tokens.info,   fill: 'color-mix(in srgb, var(--info, #38bdf8) 4%, transparent)', dash: '4 3', chip: tokens.info }
-    case 'cluster':   return { stroke: tokens.accent, fill: 'color-mix(in srgb, var(--accent, #8b5cf6) 5%, transparent)', chip: tokens.accent }
-    case 'namespace': return { stroke: tokens.accent, fill: 'color-mix(in srgb, var(--accent, #8b5cf6) 3%, transparent)', dash: '3 3', chip: tokens.accent }
-    case 'tier':      return { stroke: tokens.warn,   fill: 'color-mix(in srgb, var(--warn, #f59e0b) 4%, transparent)', chip: tokens.warn }
-    case 'zone':      return { stroke: tokens.fg2,    fill: 'color-mix(in srgb, var(--fg-2, #cbd5e1) 4%, transparent)', dash: '6 3', chip: tokens.fg2 }
-    case 'env':       return { stroke: tokens.fg2,    fill: 'color-mix(in srgb, var(--accent, #8b5cf6) 3%, transparent)', chip: tokens.fg2 }
+    case 'org':       return { stroke: tokens.accent, fill: 'color-mix(in srgb, var(--color-accent) 6%, transparent)', chip: tokens.accent }
+    case 'folder':    return { stroke: tokens.fg2,    fill: 'color-mix(in srgb, var(--color-accent) 4%, transparent)', dash: '6 4', chip: tokens.fg2 }
+    case 'account':   return { stroke: tokens.info,   fill: 'color-mix(in srgb, var(--color-nfo) 5%, transparent)', chip: tokens.info }
+    case 'project':   return { stroke: tokens.ok,     fill: 'color-mix(in srgb, var(--color-ok) 5%, transparent)', chip: tokens.ok }
+    case 'region':    return { stroke: tokens.fg3,    fill: 'color-mix(in srgb, var(--color-fg-subtle) 3%, transparent)', dash: '4 4', chip: tokens.fg2 }
+    case 'az':        return { stroke: tokens.fg3,    fill: 'color-mix(in srgb, var(--color-fg-subtle) 5%, transparent)', dash: '2 4', chip: tokens.fg3 }
+    case 'vpc':       return { stroke: tokens.info,   fill: 'color-mix(in srgb, var(--color-nfo) 6%, transparent)', chip: tokens.info }
+    case 'subnet':    return { stroke: tokens.info,   fill: 'color-mix(in srgb, var(--color-nfo) 4%, transparent)', dash: '4 3', chip: tokens.info }
+    case 'cluster':   return { stroke: tokens.accent, fill: 'color-mix(in srgb, var(--color-accent) 5%, transparent)', chip: tokens.accent }
+    case 'namespace': return { stroke: tokens.accent, fill: 'color-mix(in srgb, var(--color-accent) 3%, transparent)', dash: '3 3', chip: tokens.accent }
+    case 'tier':      return { stroke: tokens.warn,   fill: 'color-mix(in srgb, var(--color-warn) 4%, transparent)', chip: tokens.warn }
+    case 'zone':      return { stroke: tokens.fg2,    fill: 'color-mix(in srgb, var(--color-fg-muted) 4%, transparent)', dash: '6 3', chip: tokens.fg2 }
+    case 'env':       return { stroke: tokens.fg2,    fill: 'color-mix(in srgb, var(--color-accent) 3%, transparent)', chip: tokens.fg2 }
     case 'generic':
-    default:          return { stroke: tokens.line2,  fill: 'color-mix(in srgb, var(--fg-2, #cbd5e1) 3%, transparent)', chip: tokens.fg3 }
+    default:          return { stroke: tokens.line2,  fill: 'color-mix(in srgb, var(--color-fg-muted) 3%, transparent)', chip: tokens.fg3 }
   }
 }
 

@@ -52,7 +52,7 @@ export const ActivityDrawer: React.FC<ActivityDrawerProps> = ({ open, onClose })
         style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0,0,0,0.25)',
+          background: 'color-mix(in srgb, var(--color-shadow) 25%, transparent)',
           zIndex: 998,
         }}
       />
@@ -113,7 +113,7 @@ export const ActivityDrawer: React.FC<ActivityDrawerProps> = ({ open, onClose })
                 background: 'transparent',
                 color: 'var(--fg-3)',
                 cursor: 'pointer',
-                fontFamily: 'var(--font-v3-mono)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 11,
               }}
               title="refresh"
@@ -129,7 +129,7 @@ export const ActivityDrawer: React.FC<ActivityDrawerProps> = ({ open, onClose })
                 background: 'transparent',
                 color: 'var(--fg-3)',
                 cursor: 'pointer',
-                fontFamily: 'var(--font-v3-mono)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 11,
               }}
               title="close"
@@ -167,14 +167,14 @@ export const ActivityDrawer: React.FC<ActivityDrawerProps> = ({ open, onClose })
                     {' · '}
                     <span style={{ color: 'var(--fg-2)' }}>{it.resource_type}</span>
                   </span>
-                  <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-v3-mono)', fontSize: 10 }}>
+                  <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)', fontSize: 10 }}>
                     {relTime(it.created_at)}
                   </span>
                 </div>
                 <div
                   style={{
                     color: 'var(--fg-2)',
-                    fontFamily: 'var(--font-v3-mono)',
+                    fontFamily: 'var(--font-mono)',
                     fontSize: 11,
                     marginTop: 2,
                     wordBreak: 'break-all',

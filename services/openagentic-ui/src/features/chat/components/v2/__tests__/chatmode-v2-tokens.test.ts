@@ -1,9 +1,11 @@
 /**
- * Z.1 — --cm-accent fallback PURPLE → GREEN
+ * ONE-SOT migration — --cm-accent now DERIVES from the canonical theme.
  *
- * The mock SoT (end-state-NN-*.html) defines --cm-accent: #4ade80 (green).
- * The CSS fallback was historically #8b5cf6 (purple). Sprint Z flips it
- * to match the mocks.
+ * Pre-migration the cm-accent fallback was a hardcoded color (purple #8b5cf6,
+ * then green #4ade80 to match the mocks). Under the ONE-SOT theme, chatmode-v2
+ * no longer holds ANY accent literal: --cm-accent reads the canonical
+ * --color-accent (which itself derives from --user-accent, default signal
+ * orange) so the chat surface follows the global accent + dark/light flip.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -12,24 +14,28 @@ import { resolve } from 'path';
 
 const CSS_PATH = resolve(__dirname, '../chatmode-v2.css');
 
-describe('chatmode-v2.css token values (Z.1)', () => {
-  it('--cm-accent fallback should be #4ade80 (green, not purple)', () => {
+describe('chatmode-v2.css accent derives from the ONE-SOT theme', () => {
+  it('--cm-accent reads the canonical --color-accent (no hardcoded fallback)', () => {
     const css = readFileSync(CSS_PATH, 'utf-8');
-    // Must contain the green fallback
-    expect(css).toContain('--cm-accent: var(--user-accent-primary, #4ade80)');
-    // Must NOT contain the old purple fallback
+    expect(css).toContain('--cm-accent: var(--color-accent)');
+    // No hardcoded accent literal (neither the old purple nor the green).
     expect(css).not.toContain('--cm-accent: var(--user-accent-primary, #8b5cf6)');
+    expect(css).not.toContain('--cm-accent: var(--user-accent-primary, #4ade80)');
   });
 
-  it('--cm-accent-soft fallback derives from green (#4ade80 alpha)', () => {
+  it('--cm-accent-soft/-line derive from the canonical accent tints', () => {
     const css = readFileSync(CSS_PATH, 'utf-8');
-    // After the accent flip, the soft token should reference 74,222,128 (4ade80)
-    // not the old 139,92,246 (purple) values
-    expect(css).not.toContain('--cm-accent-soft: var(--user-accent-soft, rgba(139, 92, 246, 0.14))');
+    expect(css).toContain('--cm-accent-soft: var(--color-accent-soft)');
+    expect(css).toContain('--cm-accent-line: var(--color-accent-line)');
+    // No hardcoded purple alpha tints remain.
+    expect(css).not.toContain('rgba(139, 92, 246, 0.14)');
+    expect(css).not.toContain('rgba(139, 92, 246, 0.32)');
   });
 
-  it('--cm-accent-line fallback derives from green', () => {
+  it('the bg/fg/line ramps derive from the canonical --color-* tokens', () => {
     const css = readFileSync(CSS_PATH, 'utf-8');
-    expect(css).not.toContain('--cm-accent-line: var(--user-accent-line, rgba(139, 92, 246, 0.32))');
+    expect(css).toContain('--cm-bg-1: var(--color-surface)');
+    expect(css).toContain('--cm-fg-0: var(--color-fg)');
+    expect(css).toContain('--cm-line-1: var(--color-rule)');
   });
 });

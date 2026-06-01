@@ -1,3 +1,4 @@
+// theme-allow: decorative gradient SVG illustration icons (multi-stop art glyphs).
 import React from 'react';
 import { motion } from 'framer-motion';
 
@@ -151,7 +152,7 @@ const SchedulingTriggersPage: React.FC = () => {
                 border: '1px solid var(--color-border)',
               }}
             >
-              <div className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: '#3b82f6' }} />
+              <div className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: 'var(--color-accent)' }} />
               <div>
                 <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
                   {item.feature}

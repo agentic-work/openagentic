@@ -669,7 +669,7 @@ const ServerCardGrid = ({
             <div style={{ minWidth: 0, flex: 1 }}>
               <div
                 style={{
-                  fontFamily: 'var(--font-v3-mono)',
+                  fontFamily: 'var(--font-mono)',
                   fontSize: 'var(--v3-t-body, 13px)',
                   color: 'var(--fg-0)',
                   fontWeight: 500,
@@ -683,7 +683,7 @@ const ServerCardGrid = ({
               <div
                 style={{
                   marginTop: 1,
-                  fontFamily: 'var(--font-v3-mono)',
+                  fontFamily: 'var(--font-mono)',
                   fontSize: 'var(--v3-t-meta, 11px)',
                   color: 'var(--fg-3)',
                 }}
@@ -698,7 +698,7 @@ const ServerCardGrid = ({
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              fontFamily: 'var(--font-v3-mono)',
+              fontFamily: 'var(--font-mono)',
               fontSize: 'var(--v3-t-meta)',
               color: 'var(--fg-2)',
             }}
@@ -870,7 +870,7 @@ const OverviewTab = ({ server }: { server: MCPServer }) => {
           rowGap: 6,
           columnGap: 12,
           padding: '8px 0 12px',
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 'var(--v3-t-meta)',
         }}
       >
@@ -903,7 +903,7 @@ const OverviewTab = ({ server }: { server: MCPServer }) => {
               gridTemplateColumns: 'repeat(4, 1fr)',
               gap: 8,
               padding: '4px 0 12px',
-              fontFamily: 'var(--font-v3-mono)',
+              fontFamily: 'var(--font-mono)',
               fontSize: 'var(--v3-t-meta)',
             }}
           >
@@ -999,7 +999,7 @@ const ToolsTab = ({ server }: { server: MCPServer }) => {
             color: 'var(--fg-0)',
             border: '1px solid var(--line-1)',
             padding: '5px 9px',
-            fontFamily: 'var(--font-v3-mono)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 'var(--v3-t-meta)',
             outline: 'none',
           }}
@@ -1020,7 +1020,7 @@ const ToolsTab = ({ server }: { server: MCPServer }) => {
             >
               <div
                 style={{
-                  fontFamily: 'var(--font-v3-mono)',
+                  fontFamily: 'var(--font-mono)',
                   fontSize: 'var(--v3-t-body, 13px)',
                   color: 'var(--fg-0)',
                   fontWeight: 500,
@@ -1044,7 +1044,7 @@ const ToolsTab = ({ server }: { server: MCPServer }) => {
                 <div
                   style={{
                     marginTop: 5,
-                    fontFamily: 'var(--font-v3-mono)',
+                    fontFamily: 'var(--font-mono)',
                     fontSize: 10.5,
                     color: 'var(--fg-3)',
                   }}
@@ -1148,7 +1148,7 @@ const LogsTab = ({ server }: { server: MCPServer }) => {
         title="recent calls"
         count={merged.length}
         right={
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-v3-mono)', fontSize: 'var(--v3-t-meta)', color: 'var(--fg-3)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 'var(--v3-t-meta)', color: 'var(--fg-3)' }}>
             <StatusDot status={sseStatus === 'open' ? 'ok' : sseStatus === 'error' ? 'warn' : 'idle'} />
             {headerStatus}
           </span>
@@ -1251,7 +1251,7 @@ const ConfigTab = ({ server }: { server: MCPServer }) => {
               rowGap: 4,
               columnGap: 12,
               padding: '6px 0',
-              fontFamily: 'var(--font-v3-mono)',
+              fontFamily: 'var(--font-mono)',
               fontSize: 'var(--v3-t-meta)',
             }}
           >
@@ -1310,7 +1310,7 @@ const IamTab = ({ server }: { server: MCPServer }) => {
       <div
         style={{
           padding: '8px 0 12px',
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 'var(--v3-t-meta)',
           color: 'var(--fg-1)',
           display: 'grid',
@@ -1350,7 +1350,7 @@ const IamTab = ({ server }: { server: MCPServer }) => {
         <div
           style={{
             padding: '6px 0 12px',
-            fontFamily: 'var(--font-v3-mono)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 'var(--v3-t-meta)',
             display: 'grid',
             gridTemplateColumns: '110px 1fr 130px',
@@ -1573,7 +1573,7 @@ const LiveActivityDrawer = ({
         zIndex: 40,
         background: 'var(--bg-1)',
         borderTop: '1px solid var(--line-2)',
-        boxShadow: '0 -8px 24px rgba(0,0,0,0.25)',
+        boxShadow: '0 -8px 24px color-mix(in srgb, var(--color-shadow) 25%, transparent)',
         maxHeight: open ? 240 : 28,
         overflow: 'hidden',
         transition: 'max-height 200ms ease',
@@ -1591,7 +1591,7 @@ const LiveActivityDrawer = ({
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 'var(--v3-t-meta)',
           color: 'var(--fg-2)',
           cursor: 'pointer',

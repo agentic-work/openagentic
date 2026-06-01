@@ -152,9 +152,9 @@ export const WorkspaceNavRail: React.FC<WorkspaceNavRailProps> = ({
               height: 40,
               margin: '0 8px',
               borderRadius: 8,
-              background: isActive ? 'rgba(124,58,237,0.15)' : 'transparent',
-              color: isActive ? '#c4b5fd' : 'var(--color-text-secondary, #8b949e)',
-              border: isActive ? '1px solid rgba(124,58,237,0.4)' : '1px solid transparent',
+              background: isActive ? 'color-mix(in srgb, var(--color-accent) 15%, transparent)' : 'transparent',
+              color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary, #8b949e)',
+              border: isActive ? '1px solid color-mix(in srgb, var(--color-accent) 40%, transparent)' : '1px solid transparent',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -181,7 +181,7 @@ export const WorkspaceNavRail: React.FC<WorkspaceNavRailProps> = ({
                   width: 8,
                   height: 8,
                   borderRadius: '50%',
-                  background: '#f44336',
+                  background: 'var(--color-error)',
                 }}
               />
             ) : null}
@@ -196,7 +196,7 @@ export const WorkspaceNavRail: React.FC<WorkspaceNavRailProps> = ({
                   height: 16,
                   padding: '0 4px',
                   borderRadius: 8,
-                  background: '#2196f3',
+                  background: 'var(--color-info)',
                   color: 'white',
                   fontSize: 10,
                   fontWeight: 600,

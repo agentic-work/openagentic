@@ -273,7 +273,7 @@ export const ScoreBreakdownTable = ({
       <div
         style={{
           padding: '8px 18px',
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 11,
           color: 'var(--fg-2)',
           background: 'var(--bg-1)',

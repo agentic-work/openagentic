@@ -105,7 +105,7 @@ const OverviewTab: React.FC<{ row: AdminWorkflowRow; onStub: (l: string) => void
           rowGap: 6,
           columnGap: 12,
           padding: '8px 0 12px',
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 'var(--v3-t-meta)',
         }}
       >

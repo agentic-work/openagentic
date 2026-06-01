@@ -112,7 +112,7 @@ export const SettingsPane: React.FC = () => {
           background: 'var(--bg-1)',
         }}>
           <span style={{
-            fontFamily: 'var(--font-v3-mono)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 'var(--v3-t-meta)',
             color: 'var(--warn)',
           }}>unsaved changes</span>
@@ -286,7 +286,7 @@ const ReadOnlyModeSection: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
             <Toggle on={active} disabled={q.isLoading || pending} onChange={onToggle} />
             <span style={{
-              fontFamily: 'var(--font-v3-mono)',
+              fontFamily: 'var(--font-mono)',
               fontSize: 'var(--v3-t-meta)',
               color: active ? 'var(--warn)' : 'var(--fg-3)',
             }}>

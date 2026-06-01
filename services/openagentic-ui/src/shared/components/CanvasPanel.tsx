@@ -61,6 +61,10 @@ const OAT_BRIDGE_SCRIPT = '<script>' +
  * text — completely invisible on the dark app chrome.
  */
 function canvasThemeDefenseBlock(isDark: boolean): string {
+  // theme-allow: these literals are injected into the sandboxed preview IFRAME
+  // srcdoc (GitHub-style rendered-HTML passthrough). The iframe has no access
+  // to the parent document's CSS custom properties, so the theme defense block
+  // must inline resolved colors (same exemption as widgetThemePreamble.ts).
   const bg = isDark ? '#0d1117' : '#ffffff';
   const surface = isDark ? '#161b22' : '#f6f8fa';
   const border = isDark ? '#30363d' : '#d0d7de';
@@ -134,6 +138,8 @@ function injectIntoHead(html: string, payload: string): string {
 function buildPreviewHTML(content: CanvasContent, theme: 'light' | 'dark'): string {
   const raw = typeof content.content === 'string' ? content.content : JSON.stringify(content.content, null, 2);
   const isDark = theme === 'dark';
+  // theme-allow: injected into the sandboxed preview IFRAME srcdoc, which
+  // cannot read parent CSS vars (same exemption as widgetThemePreamble.ts).
   const bg = isDark ? '#0d1117' : '#ffffff';
   const fg = isDark ? '#e6edf3' : '#1f2328';
   const themeDefense = canvasThemeDefenseBlock(isDark);
@@ -426,7 +432,7 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.4 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black"
+            className="fixed inset-0 z-40 bg-[var(--color-shadow)]"
             onClick={onClose}
           />
 
@@ -474,8 +480,8 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
                   onClick={() => setActiveView('code')}
                   className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium transition-colors"
                   style={{
-                    background: activeView === 'code' ? 'var(--color-primary)' : 'transparent',
-                    color: activeView === 'code' ? '#fff' : 'var(--text-secondary)',
+                    background: activeView === 'code' ? 'var(--color-accent)' : 'transparent',
+                    color: activeView === 'code' ? 'var(--color-on-accent)' : 'var(--text-secondary)',
                   }}
                 >
                   <FileCode size={13} />
@@ -486,8 +492,8 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
                     onClick={() => setActiveView('preview')}
                     className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium transition-colors"
                     style={{
-                      background: activeView === 'preview' ? 'var(--color-primary)' : 'transparent',
-                      color: activeView === 'preview' ? '#fff' : 'var(--text-secondary)',
+                      background: activeView === 'preview' ? 'var(--color-accent)' : 'transparent',
+                      color: activeView === 'preview' ? 'var(--color-on-accent)' : 'var(--text-secondary)',
                       borderLeft: '1px solid var(--color-border)',
                     }}
                   >
@@ -502,17 +508,17 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
                 {/* Copy */}
                 <button
                   onClick={handleCopy}
-                  className="p-1.5 rounded-md transition-colors hover:bg-white/5"
+                  className="p-1.5 rounded-md transition-colors hover:bg-surface-hover"
                   title="Copy code"
                   style={{ color: 'var(--text-muted)' }}
                 >
-                  {copied ? <Check size={15} className="text-green-400" /> : <Copy size={15} />}
+                  {copied ? <Check size={15} className="text-ok" /> : <Copy size={15} />}
                 </button>
 
                 {/* Download */}
                 <button
                   onClick={handleDownload}
-                  className="p-1.5 rounded-md transition-colors hover:bg-white/5"
+                  className="p-1.5 rounded-md transition-colors hover:bg-surface-hover"
                   title="Download"
                   style={{ color: 'var(--text-muted)' }}
                 >
@@ -523,7 +529,7 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
                 {canPreview && (
                   <button
                     onClick={handleOpenExternal}
-                    className="p-1.5 rounded-md transition-colors hover:bg-white/5"
+                    className="p-1.5 rounded-md transition-colors hover:bg-surface-hover"
                     title="Open in new tab"
                     style={{ color: 'var(--text-muted)' }}
                   >
@@ -537,7 +543,7 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
                   <button
                     onClick={() => onExecute(content.content, content.language!)}
                     className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors"
-                    style={{ background: 'var(--color-success)', color: '#fff' }}
+                    style={{ background: 'var(--color-ok)', color: 'var(--color-on-accent)' }}
                     title="Execute code"
                   >
                     <Play size={12} />
@@ -549,7 +555,7 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
                 {onSave && (
                   <button
                     onClick={() => onSave(content)}
-                    className="p-1.5 rounded-md transition-colors hover:bg-white/5"
+                    className="p-1.5 rounded-md transition-colors hover:bg-surface-hover"
                     title="Save to Knowledge Base"
                     style={{ color: 'var(--text-muted)' }}
                   >
@@ -560,7 +566,7 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
                 {/* Maximize */}
                 <button
                   onClick={() => setIsMaximized(!isMaximized)}
-                  className="p-1.5 rounded-md transition-colors hover:bg-white/5"
+                  className="p-1.5 rounded-md transition-colors hover:bg-surface-hover"
                   title={isMaximized ? 'Restore' : 'Maximize'}
                   style={{ color: 'var(--text-muted)' }}
                 >
@@ -570,7 +576,7 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
                 {/* Close */}
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-md transition-colors hover:bg-white/5"
+                  className="p-1.5 rounded-md transition-colors hover:bg-surface-hover"
                   style={{ color: 'var(--text-muted)' }}
                 >
                   <X size={15} />
@@ -582,18 +588,18 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
             <div className="flex-1 overflow-hidden">
               {activeView === 'code' ? (
                 /* ─── Code View ─── */
-                <div className="h-full overflow-auto" style={{ background: theme === 'dark' ? '#1a1b26' : '#fafbfc' }}>
+                <div className="h-full overflow-auto" style={{ background: 'var(--color-surface)' }}>
                   {highlightedHtml && !isLoading ? (
                     <div className="flex h-full">
                       {/* Line numbers */}
                       <div
                         className="flex-shrink-0 select-none text-right pr-3 pt-4 pb-4 pl-3"
                         style={{
-                          color: theme === 'dark' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)',
+                          color: 'var(--color-fg-subtle)',
                           fontSize: '13px',
                           lineHeight: '1.5rem',
                           fontFamily: 'var(--font-mono)',
-                          borderRight: `1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)'}`,
+                          borderRight: '1px solid var(--color-rule)',
                           minWidth: '48px',
                         }}
                       >
@@ -612,7 +618,7 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
                     <pre
                       className="p-4 text-sm leading-relaxed overflow-auto h-full m-0"
                       style={{
-                        color: theme === 'dark' ? '#e8e8ed' : '#1a1a1a',
+                        color: 'var(--color-fg)',
                         fontFamily: 'var(--font-mono)',
                       }}
                     >
@@ -622,21 +628,21 @@ const CanvasPanel: React.FC<CanvasPanelProps> = ({
                 </div>
               ) : (
                 /* ─── Preview View ─── */
-                <div className="h-full relative" style={{ background: theme === 'dark' ? '#161618' : '#fff' }}>
+                <div className="h-full relative" style={{ background: 'var(--color-bg)' }}>
                   <iframe
                     ref={iframeRef}
                     srcDoc={previewSrcDoc}
                     title="Artifact Preview"
                     sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
                     className="w-full h-full border-0"
-                    style={{ background: theme === 'dark' ? '#161618' : '#fff' }}
+                    style={{ background: 'var(--color-bg)' }}
                   />
                   {/* Floating GhostPilot indicator — AI can see this preview */}
                   <div
                     className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded-full text-xs"
                     style={{
-                      background: 'rgba(0,0,0,0.5)',
-                      color: 'rgba(255,255,255,0.6)',
+                      background: 'color-mix(in srgb, var(--color-shadow) 50%, transparent)',
+                      color: 'var(--color-on-accent)',
                       backdropFilter: 'blur(8px)',
                     }}
                   >

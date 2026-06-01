@@ -30,8 +30,9 @@ const IntelligenceSliderPage: React.FC = () => (
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
         <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-success)' }}>Fast / Low Cost</span>
-        <span style={{ fontSize: '12px', fontWeight: 600, color: '#a855f7' }}>Maximum Quality</span>
+        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-accent)' }}>Maximum Quality</span>
       </div>
+      {/* theme-allow: intelligence-spectrum illustrative gradient bar (fast→quality) */}
       <div style={{ height: '10px', borderRadius: '5px', background: 'linear-gradient(90deg, #22c55e, #3b82f6, #8b5cf6, #a855f7)', marginBottom: '8px' }} />
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((v) => (

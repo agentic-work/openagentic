@@ -167,6 +167,7 @@ const DocsScreenshot: React.FC<DocsScreenshotProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              // theme-allow: fixed dark lightbox scrim + white-on-scrim hint (standard image-viewer backdrop, not a themed surface)
               background: 'rgba(0, 0, 0, 0.85)',
               backdropFilter: 'blur(8px)',
               cursor: 'zoom-out',

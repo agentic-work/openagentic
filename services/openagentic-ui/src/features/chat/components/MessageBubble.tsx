@@ -77,17 +77,23 @@ class MessageErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg m-2">
-          <div className="flex items-center gap-2 text-red-400 mb-2">
+        <div
+          className="p-4 border rounded-lg m-2"
+          style={{
+            background: 'color-mix(in srgb, var(--color-err) 10%, transparent)',
+            borderColor: 'color-mix(in srgb, var(--color-err) 30%, transparent)',
+          }}
+        >
+          <div className="flex items-center gap-2 mb-2" style={{ color: 'var(--color-err)' }}>
             <AlertTriangle size={16} />
             <span className="font-medium">Message Render Error (ID: {this.props.messageId})</span>
           </div>
-          <pre className="text-xs text-red-300 whitespace-pre-wrap break-all">
+          <pre className="text-xs whitespace-pre-wrap break-all" style={{ color: 'var(--color-err)' }}>
             {this.state.error?.message}
           </pre>
           <details className="mt-2">
-            <summary className="text-xs text-red-400 cursor-pointer">Stack Trace</summary>
-            <pre className="text-[10px] text-red-300/70 mt-1 overflow-auto max-h-32">
+            <summary className="text-xs cursor-pointer" style={{ color: 'var(--color-err)' }}>Stack Trace</summary>
+            <pre className="text-[10px] mt-1 overflow-auto max-h-32" style={{ color: 'var(--color-err)', opacity: 0.7 }}>
               {this.state.error?.stack}
             </pre>
           </details>
@@ -121,7 +127,10 @@ const AttachedFileThumbnail = memo(function AttachedFileThumbnail({
   return (
     <div className="relative group">
       {isImage && imageUrl ? (
-        <div className="w-16 h-16 rounded-lg overflow-hidden border border-white/20 bg-black/20">
+        <div
+          className="w-16 h-16 rounded-lg overflow-hidden border"
+          style={{ borderColor: 'var(--color-rule)', background: 'var(--color-surface-2)' }}
+        >
           <img
             src={imageUrl}
             alt={name}
@@ -129,17 +138,23 @@ const AttachedFileThumbnail = memo(function AttachedFileThumbnail({
           />
         </div>
       ) : (
-        <div className="w-16 h-16 rounded-lg border border-white/20 bg-black/20 flex items-center justify-center">
+        <div
+          className="w-16 h-16 rounded-lg border flex items-center justify-center"
+          style={{ borderColor: 'var(--color-rule)', background: 'var(--color-surface-2)' }}
+        >
           {isPdf ? (
-            <FileText size={24} className="text-white/70" />
+            <FileText size={24} style={{ color: 'var(--color-fg-muted)' }} />
           ) : (
-            <ImageIcon size={24} className="text-white/70" />
+            <ImageIcon size={24} style={{ color: 'var(--color-fg-muted)' }} />
           )}
         </div>
       )}
       {/* File name tooltip on hover */}
       <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-        <div className="bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap max-w-[150px] truncate">
+        <div
+          className="text-xs px-2 py-1 rounded whitespace-nowrap max-w-[150px] truncate"
+          style={{ background: 'var(--color-fg)', color: 'var(--color-bg)' }}
+        >
           {name}
         </div>
       </div>
@@ -234,7 +249,7 @@ const FeedbackRow = memo(function FeedbackRow({
       <button
         onClick={handleCopy}
         style={copied ? activeStyle : buttonStyle}
-        className="hover:bg-white/5 hover:text-[var(--color-text-secondary)]"
+        className="hover:bg-[color-mix(in_srgb,var(--color-fg)_5%,transparent)] hover:text-[var(--color-text-secondary)]"
         title={copied ? 'Copied!' : 'Copy to clipboard'}
         aria-label={copied ? 'Copied to clipboard' : 'Copy message content'}
       >
@@ -245,7 +260,7 @@ const FeedbackRow = memo(function FeedbackRow({
       <button
         onClick={handleThumbsUp}
         style={feedback === 'up' ? activeStyle : buttonStyle}
-        className="hover:bg-white/5 hover:text-[var(--color-text-secondary)]"
+        className="hover:bg-[color-mix(in_srgb,var(--color-fg)_5%,transparent)] hover:text-[var(--color-text-secondary)]"
         title="Good response"
         aria-label="Rate as good response"
       >
@@ -256,7 +271,7 @@ const FeedbackRow = memo(function FeedbackRow({
       <button
         onClick={handleThumbsDown}
         style={feedback === 'down' ? activeStyle : buttonStyle}
-        className="hover:bg-white/5 hover:text-[var(--color-text-secondary)]"
+        className="hover:bg-[color-mix(in_srgb,var(--color-fg)_5%,transparent)] hover:text-[var(--color-text-secondary)]"
         title="Bad response"
         aria-label="Rate as bad response"
       >
@@ -268,7 +283,7 @@ const FeedbackRow = memo(function FeedbackRow({
         <button
           onClick={handleRetry}
           style={buttonStyle}
-          className="hover:bg-white/5 hover:text-[var(--color-text-secondary)]"
+          className="hover:bg-[color-mix(in_srgb,var(--color-fg)_5%,transparent)] hover:text-[var(--color-text-secondary)]"
           title="Retry this message"
           aria-label="Retry generating this response"
         >
@@ -987,7 +1002,7 @@ const MessageBubble = memo(function MessageBubble({
                   <button
                     onClick={() => onEditSubmit(message.id)}
                     aria-label="Submit edited message"
-                    className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                    className="p-2 rounded-full hover:bg-[color-mix(in_srgb,var(--color-fg)_10%,transparent)] transition-colors"
                     style={{ color: 'var(--user-accent-primary, var(--cm-accent))' }}
                   >
                     <Send size={16} aria-hidden="true" />
@@ -1019,8 +1034,7 @@ const MessageBubble = memo(function MessageBubble({
                       // Editorial typography — mirror codemode .cm-markdown.
                       // Inter first, tighter letter-spacing, full font-feature
                       // set for single-story 'a' + ligatures + tabular nums.
-                      fontFamily:
-                        '"Inter", "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                      fontFamily: 'var(--font-body)',
                       fontSize: 15,
                       lineHeight: 1.6,
                       letterSpacing: '-0.005em',
@@ -1049,7 +1063,7 @@ const MessageBubble = memo(function MessageBubble({
                         marginTop: 4,
                         fontSize: 10,
                         color: 'var(--fg-3, var(--cm-text-muted))',
-                        fontFamily: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+                        fontFamily: 'var(--font-mono)',
                         fontVariantNumeric: 'tabular-nums',
                         textAlign: 'right',
                       }}
@@ -1069,7 +1083,7 @@ const MessageBubble = memo(function MessageBubble({
                   <button
                     onClick={() => onEditStart(message)}
                     aria-label="Edit message and resubmit"
-                    className="absolute -left-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-white/10"
+                    className="absolute -left-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-[color-mix(in_srgb,var(--color-fg)_10%,transparent)]"
                     style={{ color: 'var(--color-text-secondary)' }}
                     title="Edit message (resubmit)"
                   >
@@ -1123,8 +1137,11 @@ const MessageBubble = memo(function MessageBubble({
                       width: 18,
                       height: 18,
                       borderRadius: '50%',
+                      // Decorative 3D orb: the accent darkened toward black /
+                      // lightened toward white is sphere shading math, not a
+                      // theme surface — black/white are the legit shade endpoints.
                       background:
-                        'radial-gradient(circle at 32% 30%, var(--accent, var(--cm-accent)) 0%, color-mix(in srgb, var(--accent, var(--cm-accent)) 65%, #000) 80%, color-mix(in srgb, var(--accent, var(--cm-accent)) 40%, #000) 100%)',
+                        'radial-gradient(circle at 32% 30%, var(--accent, var(--cm-accent)) 0%, color-mix(in srgb, var(--accent, var(--cm-accent)) 65%, black) 80%, color-mix(in srgb, var(--accent, var(--cm-accent)) 40%, black) 100%)',
                       boxShadow:
                         '0 0 0 1px var(--accent-line, color-mix(in srgb, var(--cm-accent) 32%, transparent)), 0 1px 6px color-mix(in srgb, var(--accent, var(--cm-accent)) 35%, transparent)',
                     }}
@@ -1137,7 +1154,7 @@ const MessageBubble = memo(function MessageBubble({
                         width: 5,
                         height: 5,
                         borderRadius: '50%',
-                        background: 'color-mix(in srgb, var(--cm-accent) 30%, #fff)',
+                        background: 'color-mix(in srgb, var(--cm-accent) 30%, white)',
                         filter: 'blur(0.5px)',
                       }}
                     />

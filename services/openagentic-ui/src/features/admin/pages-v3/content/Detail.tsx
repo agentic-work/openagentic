@@ -25,7 +25,7 @@ const KV: React.FC<{ label: string; value: React.ReactNode; mono?: boolean }> = 
     <span
       style={{
         color: 'var(--fg-3)',
-        fontFamily: 'var(--font-v3-mono)',
+        fontFamily: 'var(--font-mono)',
         textTransform: 'uppercase',
         letterSpacing: '0.06em',
       }}
@@ -82,7 +82,7 @@ export const SharedKBDetail: React.FC<{ row: SharedKBSourceRow }> = ({ row }) =>
             style={{
               margin: 0,
               padding: '10px 14px',
-              fontFamily: 'var(--font-v3-mono)',
+              fontFamily: 'var(--font-mono)',
               fontSize: 'var(--v3-t-meta)',
               color: 'var(--err)',
               whiteSpace: 'pre-wrap',
@@ -108,7 +108,7 @@ export const SharedKBDetail: React.FC<{ row: SharedKBSourceRow }> = ({ row }) =>
         style={{
           margin: 0,
           padding: '10px 14px',
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 'var(--v3-t-meta)',
           color: 'var(--fg-1)',
           background: 'var(--bg-0)',

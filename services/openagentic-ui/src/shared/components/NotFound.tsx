@@ -53,7 +53,7 @@ const NotFound: React.FC = () => {
         >
           <Link
             to="/"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all transform hover:scale-105 bg-info hover:bg-info/80 text-white"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all transform hover:scale-105 bg-accent hover:opacity-90 text-on-accent"
           >
             <Home size={20} />
             Go to Homepage

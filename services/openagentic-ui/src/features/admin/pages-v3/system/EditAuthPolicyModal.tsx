@@ -126,7 +126,7 @@ export const EditAuthPolicyModal: React.FC<EditAuthPolicyModalProps> = ({
             {touched && !valid && (
               <div style={{
                 marginTop: 4,
-                fontFamily: 'var(--font-v3-mono)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 'var(--v3-t-meta)',
                 color: 'var(--err)',
               }}>

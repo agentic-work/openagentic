@@ -3,6 +3,11 @@
  * Replaces Lottie animations with crisp, lightweight SVGs.
  * All icons render at 18x18 by default, white fill for dark icon circles.
  */
+// theme-allow: node-TYPE icon artwork. Every `#fff` here is the icon glyph rendered
+// on the node's saturated category-color disc (legit on-accent/on-disc contrast — it
+// must stay white regardless of theme), plus a handful of vendor brand logo SVGs
+// (OpenAI etc.) and the node-TYPE category accent hues. Same carve-out as the workflow
+// node-type identity palette + the "legit on-accent #fff" allowlist item.
 import React from 'react';
 
 const S = 18; // default icon size

@@ -515,7 +515,7 @@ export const ModelGardenTab: React.FC<{
               <span className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
                 {selectedProvider.display_name || selectedProvider.name}
               </span>
-              <CheckCircle size={14} className="text-emerald-400" />
+              <CheckCircle size={14} className="text-ok" />
             </div>
           )}
         </div>
@@ -598,8 +598,8 @@ export const ModelGardenTab: React.FC<{
             )}
 
             {discoverError && (
-              <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/5">
-                <div className="flex items-center gap-2 text-xs text-red-400">
+              <div className="p-4 rounded-xl border border-[color-mix(in_srgb,var(--color-err)_30%,transparent)] bg-[color-mix(in_srgb,var(--color-err)_5%,transparent)]">
+                <div className="flex items-center gap-2 text-xs text-err">
                   <XCircle size={14} />
                   <span>{discoverError}</span>
                 </div>
@@ -634,7 +634,7 @@ export const ModelGardenTab: React.FC<{
                       <div
                         key={model.id}
                         className={`flex items-center justify-between px-4 py-3 transition-colors ${i > 0 ? 'border-t' : ''} ${
-                          isSelected ? 'bg-white/[0.04]' : 'hover:bg-white/[0.02]'
+                          isSelected ? 'bg-[color-mix(in_srgb,var(--color-fg)_4%,transparent)]' : 'hover:bg-[color-mix(in_srgb,var(--color-fg)_2%,transparent)]'
                         }`}
                         style={{
                           borderColor: 'var(--color-border)',
@@ -650,7 +650,7 @@ export const ModelGardenTab: React.FC<{
                                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{model.name}</span>
                               )}
                               {isConfigured && (
-                                <span className="flex-shrink-0 inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                                <span className="flex-shrink-0 inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-[color-mix(in_srgb,var(--color-ok)_10%,transparent)] text-ok border border-[color-mix(in_srgb,var(--color-ok)_30%,transparent)]">
                                   <Check size={8} /> Configured
                                 </span>
                               )}
@@ -661,9 +661,9 @@ export const ModelGardenTab: React.FC<{
                                 {model.costTier && (
                                   <span className="text-xs px-1.5 py-0.5 rounded font-medium"
                                     style={{
-                                      backgroundColor: model.costTier === 'premium' ? 'rgba(168,85,247,0.1)' :
-                                        model.costTier === 'high' ? 'rgba(245,158,11,0.1)' :
-                                        model.costTier === 'low' || model.costTier === 'free' ? 'rgba(16,185,129,0.1)' : 'rgba(59,130,246,0.1)',
+                                      backgroundColor: model.costTier === 'premium' ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)' :
+                                        model.costTier === 'high' ? 'color-mix(in srgb, var(--color-warn) 10%, transparent)' :
+                                        model.costTier === 'low' || model.costTier === 'free' ? 'color-mix(in srgb, var(--color-ok) 10%, transparent)' : 'color-mix(in srgb, var(--color-nfo) 10%, transparent)',
                                       color: model.costTier === 'premium' ? 'var(--ap-accent)' :
                                         model.costTier === 'high' ? 'var(--ap-warn)' :
                                         model.costTier === 'low' || model.costTier === 'free' ? 'var(--ap-ok)' : 'var(--ap-accent)',
@@ -814,7 +814,7 @@ export const ModelGardenTab: React.FC<{
                     <Sliders size={14} style={{ color: getProviderColor(selectedProvider.provider_type) }} />
                     <h4 className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Add Model</h4>
                   </div>
-                  <button onClick={() => setConfigPanelModel(null)} className="p-1 rounded hover:bg-white/10 transition-colors">
+                  <button onClick={() => setConfigPanelModel(null)} className="p-1 rounded hover:bg-[color-mix(in_srgb,var(--color-fg)_10%,transparent)] transition-colors">
                     <XIcon size={14} style={{ color: 'var(--text-muted)' }} />
                   </button>
                 </div>
@@ -951,9 +951,9 @@ export const ModelGardenTab: React.FC<{
                     <label className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Enabled</label>
                     <button
                       onClick={() => setAddConfig(c => ({ ...c, config: { ...c.config, enabled: !c.config.enabled } }))}
-                      className={`relative w-10 h-5 rounded-full transition-colors ${addConfig.config.enabled ? 'bg-emerald-500' : 'bg-gray-600'}`}
+                      className={`relative w-10 h-5 rounded-full transition-colors ${addConfig.config.enabled ? 'bg-[var(--color-ok)]' : 'bg-[var(--color-fg-subtle)]'}`}
                     >
-                      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${addConfig.config.enabled ? 'left-5' : 'left-0.5'}`} />
+                      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-surface transition-transform ${addConfig.config.enabled ? 'left-5' : 'left-0.5'}`} />
                     </button>
                   </div>
 
@@ -1023,7 +1023,7 @@ export const ModelGardenTab: React.FC<{
                       onClick={saveNewModel}
                       disabled={addingModel === addConfig.modelId}
                       className="w-full flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium rounded-lg transition-all"
-                      style={{ background: getProviderColor(selectedProvider.provider_type), color: 'white' }}
+                      style={{ background: getProviderColor(selectedProvider.provider_type), color: 'var(--color-on-accent)' }}
                     >
                       {addingModel === addConfig.modelId ? (
                         <RefreshCw size={12} className="animate-spin" />

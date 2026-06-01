@@ -682,7 +682,7 @@ export const AuthAccessControlView: React.FC = () => {
 
       {/* Add User Modal */}
       {showAddUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-[color-mix(in_srgb,var(--color-shadow)_50%,transparent)] flex items-center justify-center z-50">
           <div className="bg-background rounded-lg p-6 w-full max-w-md border border-border">
             <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">Add Allowed User</h3>
             <div className="space-y-4">
@@ -740,7 +740,7 @@ export const AuthAccessControlView: React.FC = () => {
 
       {/* Add Domain Modal */}
       {showAddDomain && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-[color-mix(in_srgb,var(--color-shadow)_50%,transparent)] flex items-center justify-center z-50">
           <div className="bg-background rounded-lg p-6 w-full max-w-md border border-border">
             <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">Add Allowed Domain</h3>
             <div className="space-y-4">
@@ -792,7 +792,7 @@ export const AuthAccessControlView: React.FC = () => {
 
       {/* Edit User Modal */}
       {editingUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-[color-mix(in_srgb,var(--color-shadow)_50%,transparent)] flex items-center justify-center z-50">
           <div className="bg-background rounded-lg p-6 w-full max-w-md border border-border">
             <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">Edit User</h3>
             <div className="space-y-4">

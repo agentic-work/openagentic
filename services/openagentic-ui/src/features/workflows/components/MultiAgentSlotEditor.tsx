@@ -79,7 +79,7 @@ export const MultiAgentSlotEditor: React.FC<MultiAgentSlotEditorProps> = ({
           type="button"
           onClick={onRemove}
           className="text-xs"
-          style={{ color: '#f44336', background: 'transparent', border: 'none', cursor: 'pointer' }}
+          style={{ color: 'var(--color-error)', background: 'transparent', border: 'none', cursor: 'pointer' }}
           title="Remove this agent slot"
         >
           Remove

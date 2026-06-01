@@ -32,10 +32,9 @@ export const OpenAgenticWordmark: React.FC<OpenAgenticWordmarkProps> = ({
   className,
   style,
 }) => {
-  const MONO =
-    "'IBM Plex Mono', var(--cm-mono-font, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)";
-  const SIGNAL = 'var(--signal, #FF5722)';
-  const INK = 'var(--color-text, var(--cm-text, #F4EFE6))';
+  const MONO = 'var(--font-display)';
+  const SIGNAL = 'var(--color-accent)';
+  const INK = 'var(--color-fg)';
 
   const rootStyle: React.CSSProperties = {
     fontFamily: MONO,
@@ -53,7 +52,7 @@ export const OpenAgenticWordmark: React.FC<OpenAgenticWordmarkProps> = ({
     color: SIGNAL,
     fontWeight: 700,
     marginRight: '0.12em',
-    textShadow: '0 0 10px rgba(255, 87, 34, 0.35)',
+    textShadow: '0 0 10px color-mix(in srgb, var(--color-accent) 35%, transparent)',
   };
 
   if (!animate) {

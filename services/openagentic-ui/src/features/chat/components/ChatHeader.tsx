@@ -37,8 +37,8 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
         alignItems: 'center',
         gap: 12,
         padding: '12px 20px',
-        borderBottom: '1px solid var(--line-1, rgba(255,255,255,0.06))',
-        background: 'var(--bg-1, #0f1012)',
+        borderBottom: '1px solid var(--color-rule)',
+        background: 'var(--color-surface)',
       }}
     >
       <Crumbs trail={trail} />

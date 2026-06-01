@@ -60,7 +60,7 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
               <span className="text-xs px-2 py-0.5 rounded-full" style={{ border: '1px solid var(--color-border)', color: 'var(--text-muted)' }}>
                 P{provider.priority}
               </span>
-              {isEnv && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30">ENV</span>}
+              {isEnv && <span className="text-xs px-2 py-0.5 rounded-full bg-[color-mix(in_srgb,var(--color-nfo)_15%,transparent)] text-info border border-[color-mix(in_srgb,var(--color-nfo)_30%,transparent)]">ENV</span>}
               {modelCount > 0 && (
                 <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--ap-accent-soft)', color: 'var(--ap-accent)', border: '1px solid var(--ap-accent-line)' }}>
                   {modelCount} model{modelCount > 1 ? 's' : ''}

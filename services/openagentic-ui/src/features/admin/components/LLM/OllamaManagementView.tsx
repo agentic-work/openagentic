@@ -285,10 +285,10 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
 
       {/* Error */}
       {error && (
-        <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-          <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-          <span className="text-red-300 text-sm flex-1">{error}</span>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300">&times;</button>
+        <div className="flex items-center gap-2 p-3 bg-[color-mix(in_srgb,var(--color-err)_10%,transparent)] border border-[color-mix(in_srgb,var(--color-err)_30%,transparent)] rounded-lg">
+          <AlertCircle className="w-4 h-4 text-err flex-shrink-0" />
+          <span className="text-err text-sm flex-1">{error}</span>
+          <button onClick={() => setError(null)} className="text-err hover:text-err">&times;</button>
         </div>
       )}
 
@@ -307,7 +307,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
               style={activeHostId === host.id ? { borderBottomColor: 'var(--ap-accent)' } : undefined}
             >
               <span className={`w-2 h-2 rounded-full ${
-                host.status === 'connected' ? 'bg-green-400' : 'bg-red-400'
+                host.status === 'connected' ? 'bg-[var(--color-ok)]' : 'bg-[var(--color-err)]'
               }`} />
               <OllamaLogo size={16} />
               <span className="font-medium">{host.displayName || host.name}</span>
@@ -333,9 +333,9 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
           <div className="flex items-center justify-between p-3 rounded-lg bg-surface border border-border-hover">
             <div className="flex items-center gap-4">
               {activeHost.status === 'connected' ? (
-                <CheckCircle className="w-5 h-5 text-green-400" />
+                <CheckCircle className="w-5 h-5 text-ok" />
               ) : (
-                <AlertCircle className="w-5 h-5 text-red-400" />
+                <AlertCircle className="w-5 h-5 text-err" />
               )}
               <div>
                 <span className="text-[var(--color-text)] text-sm font-medium">{activeHost.host}</span>
@@ -398,7 +398,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                     disabled={pulling || !pullModelName.trim()}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${
                       pulling || !pullModelName.trim()
-                        ? 'bg-gray-600 cursor-not-allowed text-white'
+                        ? 'bg-[var(--color-fg-subtle)] cursor-not-allowed text-on-accent'
                         : ''
                     }`}
                     style={
@@ -417,19 +417,19 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
               {runningModels.length > 0 && (
                 <div className="p-4 rounded-lg border bg-surface border-border-hover">
                   <h3 className="font-medium mb-2 flex items-center gap-2 text-[var(--color-text)] text-sm">
-                    <Cpu className="w-4 h-4 text-green-400" />
+                    <Cpu className="w-4 h-4 text-ok" />
                     Running ({runningModels.length})
                   </h3>
                   <div className="space-y-1.5">
                     {runningModels.map((m) => (
-                      <div key={m.digest} className="flex items-center justify-between p-2.5 rounded bg-green-500/5 border border-green-500/20">
+                      <div key={m.digest} className="flex items-center justify-between p-2.5 rounded bg-[color-mix(in_srgb,var(--color-ok)_5%,transparent)] border border-[color-mix(in_srgb,var(--color-ok)_20%,transparent)]">
                         <div>
                           <span className="font-medium text-[var(--color-text)] text-sm">{m.name}</span>
                           <span className="text-xs text-text-secondary ml-3">
                             VRAM: {formatBytes(m.sizeVram || 0)} &middot; Size: {formatBytes(m.size)}
                           </span>
                         </div>
-                        <span className="flex items-center gap-1 text-green-400 text-xs">
+                        <span className="flex items-center gap-1 text-ok text-xs">
                           <Play className="w-3 h-3" /> Active
                         </span>
                       </div>
@@ -462,7 +462,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-[var(--color-text)] text-sm">{m.name}</span>
                               {isRunning && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400">RUNNING</span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-ok)_20%,transparent)] text-ok">RUNNING</span>
                               )}
                               {m.details?.parameter_size && (
                                 <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--ap-accent-soft)', color: 'var(--ap-accent)' }}>
@@ -483,7 +483,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                             <button onClick={() => handleTestGenerate(m.name)} disabled={testing} className="p-1.5 rounded hover:bg-surface-secondary text-text-secondary hover:text-[var(--color-text)]" title="Test">
                               <MessageSquare className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => handleDelete(m.name)} className="p-1.5 rounded hover:bg-red-500/20 text-text-secondary hover:text-red-400" title="Delete">
+                            <button onClick={() => handleDelete(m.name)} className="p-1.5 rounded hover:bg-[color-mix(in_srgb,var(--color-err)_20%,transparent)] text-text-secondary hover:text-err" title="Delete">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -508,15 +508,15 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                   <div className="space-y-2">
                     {syncResults.map(r => (
                       <div key={r.providerId} className={`p-3 rounded border ${
-                        r.status === 'synced' ? 'border-green-500/20 bg-green-500/5' :
-                        'border-red-500/20 bg-red-500/5'
+                        r.status === 'synced' ? 'border-[color-mix(in_srgb,var(--color-ok)_20%,transparent)] bg-[color-mix(in_srgb,var(--color-ok)_5%,transparent)]' :
+                        'border-[color-mix(in_srgb,var(--color-err)_20%,transparent)] bg-[color-mix(in_srgb,var(--color-err)_5%,transparent)]'
                       }`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             {r.status === 'synced' ? (
-                              <CheckCircle className="w-4 h-4 text-green-400" />
+                              <CheckCircle className="w-4 h-4 text-ok" />
                             ) : (
-                              <AlertCircle className="w-4 h-4 text-red-400" />
+                              <AlertCircle className="w-4 h-4 text-err" />
                             )}
                             <span className="text-[var(--color-text)] text-sm font-medium">{r.providerName}</span>
                             <span className="text-text-secondary text-xs">{r.host}</span>
@@ -528,12 +528,12 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                             Models on host: <span className="text-[var(--color-text)]">{r.modelsOnHost?.length || 0}</span>
                           </span>
                           {r.modelsAdded.length > 0 && (
-                            <span className="text-green-400">+{r.modelsAdded.length} added: {r.modelsAdded.join(', ')}</span>
+                            <span className="text-ok">+{r.modelsAdded.length} added: {r.modelsAdded.join(', ')}</span>
                           )}
                           {r.modelsRemoved.length > 0 && (
-                            <span className="text-red-400">-{r.modelsRemoved.length} removed: {r.modelsRemoved.join(', ')}</span>
+                            <span className="text-err">-{r.modelsRemoved.length} removed: {r.modelsRemoved.join(', ')}</span>
                           )}
-                          {r.error && <span className="text-red-400">{r.error}</span>}
+                          {r.error && <span className="text-err">{r.error}</span>}
                         </div>
                       </div>
                     ))}
@@ -562,7 +562,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                             </span>
                           </div>
                           {/* VRAM bar */}
-                          <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                          <div className="h-2 bg-[var(--color-fg-subtle)] rounded-full overflow-hidden">
                             <div
                               className="h-full rounded-full transition-all"
                               style={{ width: `${Math.min(vramPct, 100)}%`, background: 'var(--ap-accent)' }}
@@ -586,7 +586,7 @@ export const OllamaManagementView: React.FC<OllamaManagementViewProps> = () => {
                   {hosts.map(h => (
                     <div key={h.id} className="p-3 rounded bg-surface-hover border border-border-hover">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className={`w-2 h-2 rounded-full ${h.status === 'connected' ? 'bg-green-400' : 'bg-red-400'}`} />
+                        <span className={`w-2 h-2 rounded-full ${h.status === 'connected' ? 'bg-[var(--color-ok)]' : 'bg-[var(--color-err)]'}`} />
                         <span className="text-[var(--color-text)] text-sm font-medium">{h.name}</span>
                       </div>
                       <div className="text-xs text-text-secondary space-y-0.5">

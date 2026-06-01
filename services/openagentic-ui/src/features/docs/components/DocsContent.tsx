@@ -52,9 +52,10 @@ const MermaidDiagram: React.FC<{ chart: string; title?: string }> = ({ chart, ti
           startOnLoad: false,
           theme: 'dark',
           securityLevel: 'strict',
-          fontFamily: "'IBM Plex Sans', Inter, system-ui, sans-serif",
+          fontFamily: "Inter, system-ui, sans-serif",
           flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
           sequence: { useMaxWidth: true, actorMargin: 50 },
+          // theme-allow: mermaid diagram palette (isolated SVG render context, cannot read parent CSS vars)
           themeVariables: {
             primaryColor: '#3b82f6',
             primaryTextColor: '#ffffff',
@@ -274,13 +275,19 @@ const HighlightText: React.FC<{ text: string; query: string }> = ({ text, query 
 // ============================================================================
 
 const SeverityBadge: React.FC<{ severity: string }> = ({ severity }) => {
-  const colors: Record<string, { bg: string; fg: string; border: string }> = {
-    low: { bg: '#22c55e18', fg: '#22c55e', border: '#22c55e30' },
-    medium: { bg: '#eab30818', fg: '#eab308', border: '#eab30830' },
-    high: { bg: '#f9731618', fg: '#f97316', border: '#f9731630' },
-    critical: { bg: '#ef444418', fg: '#ef4444', border: '#ef444430' },
+  // Severity maps onto the semantic status tokens; soft bg/border derived via color-mix.
+  const tone: Record<string, string> = {
+    low: 'var(--color-success)',
+    medium: 'var(--color-warning)',
+    high: 'var(--color-warning)',
+    critical: 'var(--color-error)',
   };
-  const c = colors[severity] || colors.medium;
+  const fg = tone[severity] || tone.medium;
+  const c = {
+    bg: `color-mix(in srgb, ${fg} 9%, transparent)`,
+    fg,
+    border: `color-mix(in srgb, ${fg} 30%, transparent)`,
+  };
   return (
     <span
       className="text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider"
@@ -305,14 +312,16 @@ const CategoryBadge: React.FC<{ category: string }> = ({ category }) => (
 );
 
 const MethodBadge: React.FC<{ method: string }> = ({ method }) => {
-  const colors: Record<string, { bg: string; fg: string }> = {
-    GET: { bg: '#22c55e20', fg: '#22c55e' },
-    POST: { bg: '#3b82f620', fg: '#3b82f6' },
-    PUT: { bg: '#f9731620', fg: '#f97316' },
-    PATCH: { bg: '#eab30820', fg: '#eab308' },
-    DELETE: { bg: '#ef444420', fg: '#ef4444' },
+  // HTTP verbs map onto semantic status/accent tokens (GET=ok, DELETE=error, …).
+  const tone: Record<string, string> = {
+    GET: 'var(--color-success)',
+    POST: 'var(--color-accent)',
+    PUT: 'var(--color-warning)',
+    PATCH: 'var(--color-warning)',
+    DELETE: 'var(--color-error)',
   };
-  const c = colors[method.toUpperCase()] || { bg: 'var(--color-surfaceSecondary)', fg: 'var(--color-textMuted)' };
+  const fg = tone[method.toUpperCase()] || 'var(--color-textMuted)';
+  const c = { bg: `color-mix(in srgb, ${fg} 12%, transparent)`, fg };
   return (
     <span
       className="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider font-mono"
@@ -329,19 +338,19 @@ const DocsTierLabel: React.FC<{ config: Record<string, unknown> }> = ({ config }
   const maxTok = Number(config.maxTokens ?? 0);
 
   let tier = 'Fast';
-  let color = '#22c55e';
+  let color = 'var(--color-success)';
   if (thinking && maxTok >= 8192) {
     tier = 'Complex';
-    color = '#8b5cf6';
+    color = 'var(--color-accent)';
   } else if (maxTok >= 4096 || temp > 0) {
     tier = 'Standard';
-    color = '#3b82f6';
+    color = 'var(--color-info)';
   }
 
   return (
     <span
       className="text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider"
-      style={{ backgroundColor: `${color}18`, color, border: `1px solid ${color}30` }}
+      style={{ backgroundColor: `color-mix(in srgb, ${color} 9%, transparent)`, color, border: `1px solid color-mix(in srgb, ${color} 30%, transparent)` }}
     >
       {tier}
     </span>
@@ -352,8 +361,8 @@ const OptionalBadge: React.FC<{ optional: boolean }> = ({ optional }) => (
   <span
     className="text-[10px] font-medium px-1.5 py-0.5 rounded"
     style={{
-      backgroundColor: optional ? '#eab30815' : '#3b82f615',
-      color: optional ? '#eab308' : '#3b82f6',
+      backgroundColor: optional ? 'color-mix(in srgb, var(--color-warning) 9%, transparent)' : 'color-mix(in srgb, var(--color-info) 9%, transparent)',
+      color: optional ? 'var(--color-warning)' : 'var(--color-info)',
     }}
   >
     {optional ? 'optional' : 'required'}
@@ -411,7 +420,7 @@ const AgentTypeCard: React.FC<{ item: DocManifestItem; query: string }> = ({ ite
             <span>tokens: <strong style={{ color: 'var(--color-textSecondary)' }}>{String(item.properties.maxTokens)}</strong></span>
           )}
           {item.properties.thinkingEnabled !== undefined && (
-            <span>thinking: <strong style={{ color: item.properties.thinkingEnabled ? '#22c55e' : 'var(--color-textMuted)' }}>{item.properties.thinkingEnabled ? 'on' : 'off'}</strong></span>
+            <span>thinking: <strong style={{ color: item.properties.thinkingEnabled ? 'var(--color-success)' : 'var(--color-textMuted)' }}>{item.properties.thinkingEnabled ? 'on' : 'off'}</strong></span>
           )}
           {item.properties.costBudgetPerCall !== undefined && (
             <span>budget: <strong style={{ color: 'var(--color-textSecondary)' }}>{String(item.properties.costBudgetPerCall)}c</strong></span>
@@ -499,7 +508,7 @@ const ModelConfigCard: React.FC<{ item: DocManifestItem; query: string }> = ({ i
                 </td>
                 <td className="py-1 font-mono" style={{ color: 'var(--color-textMuted)' }}>
                   {typeof value === 'boolean' ? (
-                    <span style={{ color: value ? '#22c55e' : 'var(--color-textMuted)' }}>{String(value)}</span>
+                    <span style={{ color: value ? 'var(--color-success)' : 'var(--color-textMuted)' }}>{String(value)}</span>
                   ) : (
                     String(value)
                   )}
@@ -525,7 +534,7 @@ const InterfaceFieldCard: React.FC<{ item: DocManifestItem; query: string }> = (
       <span className="text-sm font-mono font-medium" style={{ color: 'var(--color-text)' }}>
         <HighlightText text={item.name} query={query} />
       </span>
-      <span className="text-xs font-mono" style={{ color: '#8b5cf6' }}>{fieldType}</span>
+      <span className="text-xs font-mono" style={{ color: 'var(--color-accent)' }}>{fieldType}</span>
       <OptionalBadge optional={isOptional} />
       {item.description && item.description !== `${fieldType} field` && (
         <span className="text-xs ml-auto" style={{ color: 'var(--color-textMuted)' }}>
@@ -573,7 +582,7 @@ const McpServerCard: React.FC<{ item: DocManifestItem; query: string }> = ({ ite
     className="rounded-lg px-4 py-3 flex items-center gap-3"
     style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
   >
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: '#f97316', flexShrink: 0 }}>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--color-warning)', flexShrink: 0 }}>
       <rect x="2" y="3" width="20" height="6" rx="2" stroke="currentColor" strokeWidth="2" />
       <rect x="2" y="15" width="20" height="6" rx="2" stroke="currentColor" strokeWidth="2" />
       <circle cx="6" cy="6" r="1" fill="currentColor" />
@@ -590,7 +599,7 @@ const McpServerCard: React.FC<{ item: DocManifestItem; query: string }> = ({ ite
       )}
     </div>
     {item.properties?.toolCount && (
-      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#f9731618', color: '#f97316' }}>
+      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: 'color-mix(in srgb, var(--color-warning) 9%, transparent)', color: 'var(--color-warning)' }}>
         {String(item.properties.toolCount)} tools
       </span>
     )}
@@ -614,7 +623,7 @@ const McpToolCard: React.FC<{ item: DocManifestItem; query: string }> = ({ item,
       >
         <span
           className="text-[10px] font-medium px-2 py-0.5 rounded-full uppercase tracking-wide flex-shrink-0"
-          style={{ backgroundColor: '#f9731620', color: '#f97316', border: '1px solid #f9731630' }}
+          style={{ backgroundColor: 'color-mix(in srgb, var(--color-warning) 12%, transparent)', color: 'var(--color-warning)', border: '1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)' }}
         >
           tool
         </span>
@@ -845,7 +854,7 @@ const SwaggerSection: React.FC = () => (
         src="/api/swagger"
         title="Swagger API Reference"
         className="w-full h-full border-0"
-        style={{ backgroundColor: '#1a1a2e' }}
+        style={{ backgroundColor: 'var(--color-bg)' }}
         sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
       />
     </div>
@@ -949,6 +958,7 @@ export const DocsContent: React.FC = () => {
               <OpenAgenticWordmark size={22} animate />
               <span
                 style={{
+                  // theme-allow: light label sits over the fixed photographic atlas.png hero (not a themed surface)
                   color: '#ffffff',
                   fontSize: 13,
                   fontWeight: 600,
@@ -969,6 +979,7 @@ export const DocsContent: React.FC = () => {
                 fontSize: 11,
                 padding: '3px 8px',
                 borderRadius: 999,
+                // theme-allow: version pill sits over the fixed photographic atlas.png hero (not a themed surface)
                 backgroundColor: 'rgba(0,0,0,0.55)',
                 color: '#ffffff',
                 border: '1px solid rgba(255,255,255,0.18)',

@@ -83,7 +83,7 @@ export function ChartExpandModal({
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.65)',
+        background: 'color-mix(in srgb, var(--color-shadow) 65%, transparent)',
         backdropFilter: 'blur(2px)',
         zIndex: 90,
         display: 'flex',

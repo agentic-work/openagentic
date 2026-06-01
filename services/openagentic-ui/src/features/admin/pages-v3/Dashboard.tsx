@@ -104,7 +104,7 @@ const TimeRangeSelector = ({
           border: 0,
           borderLeft: i === 0 ? 0 : '1px solid var(--line-1)',
           color: value === r ? 'var(--accent)' : 'var(--fg-2)',
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 11,
           padding: '4px 10px',
           cursor: 'pointer',
@@ -339,7 +339,7 @@ const DetailBody: React.FC<{ detail: Detail; tab: string }> = ({ detail, tab }) 
   return (
     <>
       <SectionBar title="object" />
-      <div style={{ padding: '8px 14px', fontFamily: 'var(--font-v3-mono)', fontSize: 'var(--v3-t-meta)', color: 'var(--fg-2)' }}>
+      <div style={{ padding: '8px 14px', fontFamily: 'var(--font-mono)', fontSize: 'var(--v3-t-meta)', color: 'var(--fg-2)' }}>
         <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
 {JSON.stringify(detail, null, 2)}
         </pre>
@@ -384,7 +384,7 @@ const DetailLogs: React.FC<{ detail: Detail }> = ({ detail }) => {
   return (
     <>
       <SectionBar title={`audit log · matching "${name}"`} count={matched.length} />
-      <div style={{ padding: '8px 14px', fontFamily: 'var(--font-v3-mono)', fontSize: 'var(--v3-t-meta)' }}>
+      <div style={{ padding: '8px 14px', fontFamily: 'var(--font-mono)', fontSize: 'var(--v3-t-meta)' }}>
         {matched.slice(0, 30).map((row: any, i: number) => (
           <div key={i} style={{ padding: '4px 0', borderBottom: '1px solid var(--line-1)' }}>
             <span style={{ color: 'var(--fg-3)' }}>{row.timestamp ?? row.created_at ?? '—'}</span>{' '}
@@ -410,7 +410,7 @@ const DetailConfig: React.FC<{ detail: Detail }> = ({ detail }) => {
   return (
     <>
       <SectionBar title="config" />
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-v3-mono)', fontSize: 'var(--v3-t-meta)' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-mono)', fontSize: 'var(--v3-t-meta)' }}>
         <tbody>
           {entries.map(([k, v]) => (
             <tr key={k}>

@@ -52,12 +52,12 @@ const UnauthorizedAccessDialog: React.FC<UnauthorizedAccessDialogProps> = ({
                   <h2 
                   className="text-lg font-bold"
                   style={{ color: 'var(--color-text)' }}>Federal System</h2>
-                  <p className="text-red-100 text-sm font-medium">Unauthorized Access</p>
+                  <p className="text-on-accent text-sm font-medium">Unauthorized Access</p>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                className="p-2 hover:opacity-80 rounded-lg transition-opacity"
               >
                 <X 
                 className="w-5 h-5"

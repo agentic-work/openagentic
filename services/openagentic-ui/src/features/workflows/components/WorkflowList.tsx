@@ -62,15 +62,15 @@ export const WorkflowList: React.FC<WorkflowListProps> = ({
   const getStatusColor = (status: WorkflowStatus) => {
     switch (status) {
       case 'active':
-        return 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30';
+        return 'text-success bg-[color-mix(in_srgb,var(--color-success)_20%,transparent)] border-[color-mix(in_srgb,var(--color-success)_30%,transparent)]';
       case 'paused':
-        return 'text-amber-400 bg-amber-500/20 border-amber-500/30';
+        return 'text-warning bg-[color-mix(in_srgb,var(--color-warning)_20%,transparent)] border-[color-mix(in_srgb,var(--color-warning)_30%,transparent)]';
       case 'draft':
-        return 'text-gray-400 bg-gray-500/20 border-gray-500/30';
+        return 'text-text-muted bg-[color-mix(in_srgb,var(--color-fg-subtle)_20%,transparent)] border-[color-mix(in_srgb,var(--color-fg-subtle)_30%,transparent)]';
       case 'archived':
-        return 'text-gray-500 bg-gray-600/20 border-gray-600/30';
+        return 'text-text-muted bg-[color-mix(in_srgb,var(--color-fg-subtle)_20%,transparent)] border-border/30';
       default:
-        return 'text-gray-400 bg-gray-500/20 border-gray-500/30';
+        return 'text-text-muted bg-[color-mix(in_srgb,var(--color-fg-subtle)_20%,transparent)] border-[color-mix(in_srgb,var(--color-fg-subtle)_30%,transparent)]';
     }
   };
 
@@ -112,7 +112,7 @@ export const WorkflowList: React.FC<WorkflowListProps> = ({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onCreateNew}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-gradient-to-r from-accent-primary to-accent-secondary text-white hover:opacity-90 shadow-lg"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-gradient-to-r from-accent-primary to-accent-secondary text-text hover:opacity-90 shadow-lg"
           >
             <Plus className="w-5 h-5" />
             Create Workflow
@@ -128,7 +128,7 @@ export const WorkflowList: React.FC<WorkflowListProps> = ({
               placeholder="Search workflows..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="w-full pl-10 pr-4 py-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--color-accent)_50%,transparent)]"
               style={{
                 backgroundColor: 'var(--color-bg-secondary)',
                 color: 'var(--color-text)',
@@ -140,7 +140,7 @@ export const WorkflowList: React.FC<WorkflowListProps> = ({
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as WorkflowStatus | 'all')}
-            className="px-4 py-2 rounded-lg text-sm font-medium border focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="px-4 py-2 rounded-lg text-sm font-medium border focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--color-accent)_50%,transparent)]"
             style={{
               backgroundColor: 'var(--color-bg-secondary)',
               color: 'var(--color-text)',
@@ -241,7 +241,7 @@ export const WorkflowList: React.FC<WorkflowListProps> = ({
                             onDelete?.(workflow.id);
                             setShowMenu(null);
                           }}
-                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-left hover:opacity-80 text-red-400"
+                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-left hover:opacity-80 text-error"
                         >
                           <Trash2 className="w-4 h-4" />
                           Delete
@@ -264,12 +264,12 @@ export const WorkflowList: React.FC<WorkflowListProps> = ({
 
                     {/* Visibility indicator */}
                     {workflow.is_public ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-500/10 text-green-500 border border-green-500/20">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[color-mix(in_srgb,var(--color-success)_10%,transparent)] text-success border border-[color-mix(in_srgb,var(--color-success)_20%,transparent)]">
                         <Globe className="w-3 h-3" />
                         Public
                       </span>
                     ) : (workflow as any).group_id ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[color-mix(in_srgb,var(--color-info)_10%,transparent)] text-info border border-[color-mix(in_srgb,var(--color-info)_20%,transparent)]">
                         <Users className="w-3 h-3" />
                         Team
                       </span>

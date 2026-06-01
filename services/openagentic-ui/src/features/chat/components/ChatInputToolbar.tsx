@@ -61,27 +61,27 @@ const DeepResearchModal: React.FC<{
             style={{
               backgroundColor: 'var(--color-surface)',
               border: '1px solid var(--color-border)',
-              boxShadow: '0 25px 50px -12px color-mix(in srgb, var(--cm-text) 50%, transparent)'
+              boxShadow: '0 25px 50px -12px color-mix(in srgb, var(--color-fg) 50%, transparent)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Animated rainbow gradient header - intentional decorative colors */}
-            {/* eslint-disable no-restricted-syntax */}
+            {/* Accent header bar (brand signal-orange ramp). Was a rainbow
+                chord — the brand identity rejects the rainbow, so this now
+                rides the user accent. */}
             <div
               className="h-1.5"
               style={{
-                background: 'linear-gradient(90deg, #FF375F, #F97316, #FFD60A, #22C55E, #0A84FF, #BF5AF2, #FF375F)',
+                background: 'linear-gradient(90deg, var(--color-accent), var(--color-accent-line), var(--color-accent))',
                 backgroundSize: '200% 100%',
                 animation: 'gradient-shift 4s ease infinite'
               }}
             />
-            {/* eslint-enable no-restricted-syntax */}
 
             {/* Close button */}
             <button
               onClick={onClose}
               aria-label="Close Deep Research Agent dialog"
-              className="absolute top-4 right-4 p-1.5 rounded-lg transition-colors hover:bg-white/10 z-10"
+              className="absolute top-4 right-4 p-1.5 rounded-lg transition-colors hover:bg-[color-mix(in_srgb,var(--color-fg)_10%,transparent)] z-10"
               style={{ color: 'var(--color-textMuted)' }}
             >
               <X size={18} aria-hidden="true" />
@@ -101,39 +101,18 @@ const DeepResearchModal: React.FC<{
                   <Sparkles
                     size={36}
                     style={{
-                      color: 'url(#rainbow-gradient)'
+                      color: 'var(--color-accent)'
                     }}
                   />
-                  {/* Rainbow gradient SVG - intentional decorative colors */}
-                  {/* eslint-disable no-restricted-syntax */}
-                  <svg width="0" height="0" className="absolute">
-                    <defs>
-                      <linearGradient id="rainbow-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#FF375F" />
-                        <stop offset="33%" stopColor="#BF5AF2" />
-                        <stop offset="66%" stopColor="#0A84FF" />
-                        <stop offset="100%" stopColor="#22C55E" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  {/* eslint-enable no-restricted-syntax */}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    {/* Rainbow text gradient - intentional decorative colors */}
-                    {/* eslint-disable no-restricted-syntax */}
                     <h2
                       className="text-xl font-bold"
-                      style={{
-                        background: 'linear-gradient(90deg, #ff0080, #8b5cf6, #00bfff)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text'
-                      }}
+                      style={{ color: 'var(--color-accent)' }}
                     >
                       Deep Research Agent
                     </h2>
-                    {/* eslint-enable no-restricted-syntax */}
                     <span
                       className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
                       style={{
@@ -473,7 +452,7 @@ const MCPServersDropdown: React.FC<{
           <button
             onClick={onClose}
             aria-label="Close tools panel"
-            className="absolute top-3 right-3 p-1 rounded-md transition-colors hover:bg-red-500/20"
+            className="absolute top-3 right-3 p-1 rounded-md transition-colors hover:bg-[color-mix(in_srgb,var(--color-err)_20%,transparent)]"
             style={{ color: 'var(--color-textMuted)' }}
             title="Close"
           >
@@ -492,7 +471,7 @@ const MCPServersDropdown: React.FC<{
               <div className="flex items-center gap-2 mb-1.5">
                 <span style={{
                   width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                  background: connected ? 'var(--cm-success)' : 'var(--cm-error)',
+                  background: connected ? 'var(--cm-ok)' : 'var(--cm-err)',
                 }} />
                 <span className="text-xs font-semibold" style={{ color: 'var(--color-textSecondary)' }}>
                   {serverName}

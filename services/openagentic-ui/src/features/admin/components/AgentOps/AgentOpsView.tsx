@@ -52,8 +52,8 @@ const Kpi: React.FC<{ testid: string; label: string; value: string }> = ({ testi
       minWidth: 140,
       padding: 14,
       borderRadius: 10,
-      background: 'var(--color-bg-secondary, #161b22)',
-      border: '1px solid var(--color-border, #2a2a2a)',
+      background: 'var(--color-bg-secondary)',
+      border: '1px solid var(--color-border)',
       display: 'flex',
       flexDirection: 'column',
       gap: 4,
@@ -62,7 +62,7 @@ const Kpi: React.FC<{ testid: string; label: string; value: string }> = ({ testi
     <span
       style={{
         fontSize: 10,
-        color: 'var(--color-text-tertiary, #6e7681)',
+        color: 'var(--color-text-tertiary)',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
       }}
@@ -73,7 +73,7 @@ const Kpi: React.FC<{ testid: string; label: string; value: string }> = ({ testi
       style={{
         fontSize: 22,
         fontWeight: 700,
-        fontFamily: 'ui-monospace, monospace',
+        fontFamily: 'var(--font-mono)',
       }}
     >
       {value}
@@ -119,7 +119,7 @@ export const AgentOpsView: React.FC<AgentOpsViewProps> = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: 24 }}>
       <div>
         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>AgentOps</h1>
-        <p style={{ fontSize: 13, color: 'var(--color-text-tertiary, #6e7681)' }}>
+        <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)' }}>
           Fleet view of registered agents — health, recent activity, and 24-hour cost roll-ups.
         </p>
       </div>
@@ -129,7 +129,7 @@ export const AgentOpsView: React.FC<AgentOpsViewProps> = ({
       </div>
 
       <section>
-        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-secondary, #8b949e)' }}>
+        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-secondary)' }}>
           Agents
         </h2>
         {agents.length === 0 ? (
@@ -137,9 +137,9 @@ export const AgentOpsView: React.FC<AgentOpsViewProps> = ({
             style={{
               padding: 24,
               textAlign: 'center',
-              color: 'var(--color-text-tertiary, #6e7681)',
+              color: 'var(--color-text-tertiary)',
               fontSize: 13,
-              border: '1px dashed var(--color-border, #2a2a2a)',
+              border: '1px dashed var(--color-border)',
               borderRadius: 10,
             }}
           >
@@ -161,7 +161,7 @@ export const AgentOpsView: React.FC<AgentOpsViewProps> = ({
       </section>
 
       <section>
-        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-secondary, #8b949e)' }}>
+        <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-text-secondary)' }}>
           Recent runs
         </h2>
         <AgentRunsTable runs={runs} loading={loading} onSelect={onSelectRun} />

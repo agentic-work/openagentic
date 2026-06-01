@@ -36,10 +36,10 @@ function bandFor(m: AgentHealthMetrics): Band {
 }
 
 const bandColor: Record<Band, string> = {
-  healthy: '#10b981',
-  degraded: '#f59e0b',
-  critical: '#ef4444',
-  idle: '#6b7280',
+  healthy: 'var(--color-ok)',
+  degraded: 'var(--color-warn)',
+  critical: 'var(--color-err)',
+  idle: 'var(--color-fg-subtle)',
 };
 
 const formatCost = (cents: number) => `$${(cents / 100).toFixed(2)}`;
@@ -67,9 +67,9 @@ export const AgentHealthCard: React.FC<AgentHealthCardProps> = ({ metrics, onCli
         width: '100%',
         padding: 14,
         borderRadius: 10,
-        background: 'var(--color-bg-secondary, #161b22)',
+        background: 'var(--color-bg-secondary)',
         border: `1px solid ${bandColor[band]}33`,
-        color: 'var(--color-text, #e6edf3)',
+        color: 'var(--color-text)',
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
@@ -79,7 +79,7 @@ export const AgentHealthCard: React.FC<AgentHealthCardProps> = ({ metrics, onCli
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
           <span style={{ fontWeight: 600, fontSize: 14 }}>{metrics.agentName}</span>
-          <span style={{ fontSize: 11, color: 'var(--color-text-tertiary, #6e7681)' }}>{metrics.agentType}</span>
+          <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{metrics.agentType}</span>
         </div>
         <span
           style={{
@@ -87,7 +87,7 @@ export const AgentHealthCard: React.FC<AgentHealthCardProps> = ({ metrics, onCli
             borderRadius: 12,
             fontSize: 10,
             fontWeight: 700,
-            color: 'white',
+            color: 'var(--color-on-accent)',
             background: bandColor[band],
             textTransform: 'uppercase',
             letterSpacing: 0.5,
@@ -120,13 +120,13 @@ const Metric: React.FC<{ label: string; value: string }> = ({ label, value }) =>
     <span
       style={{
         fontSize: 10,
-        color: 'var(--color-text-tertiary, #6e7681)',
+        color: 'var(--color-text-tertiary)',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
       }}
     >
       {label}
     </span>
-    <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 600 }}>{value}</span>
+    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{value}</span>
   </div>
 );

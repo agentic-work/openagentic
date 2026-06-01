@@ -308,10 +308,11 @@ const ChatModePage: React.FC = () => {
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-primary)' }}>
               Balanced (41-60)
             </span>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#a855f7' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-accent)' }}>
               Premium (61-100)
             </span>
           </div>
+          {/* theme-allow: intelligence-spectrum illustrative gradient bar (fast→premium) */}
           <div
             style={{
               height: '8px',

@@ -582,7 +582,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   'w-full resize-none bg-transparent',
                   'text-[16px] leading-relaxed',
                   'outline-none border-0 focus:outline-none',
-                  'placeholder-gray-500',
+                  'placeholder:text-[var(--color-fg-subtle)]',
                   'overflow-y-auto',
                   'text-theme-text-primary',
                   disabled && 'cursor-not-allowed opacity-60'
@@ -618,9 +618,9 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
                     className={clsx(
                       'h-10 w-10 rounded-pill flex items-center justify-center',
                       'transition-[background,transform] duration-200 ease-emphasized',
-                      'focus-visible:outline-none focus-visible:shadow-focus-ring',
-                      'bg-red-600 hover:bg-red-700 text-white'
+                      'focus-visible:outline-none focus-visible:shadow-focus-ring'
                     )}
+                    style={{ backgroundColor: 'var(--color-err)', color: 'var(--color-on-accent)' }}
                   >
                     <Square size={14} aria-hidden="true" />
                   </motion.button>
@@ -662,7 +662,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({
           <div
             className="mx-4 h-px"
             style={{
-              backgroundColor: 'color-mix(in srgb, var(--cm-text) 10%, transparent)',
+              backgroundColor: 'color-mix(in srgb, var(--color-fg) 10%, transparent)',
               opacity: 0.3
             }}
           />

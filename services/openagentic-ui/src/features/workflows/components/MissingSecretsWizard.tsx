@@ -29,7 +29,7 @@ const inputStyle = (border: string): React.CSSProperties => ({
   width: '100%',
   padding: '10px 12px',
   fontSize: 13,
-  fontFamily: 'monospace',
+  fontFamily: 'var(--font-mono)',
   background: 'var(--color-bg-tertiary, #0d1117)',
   color: 'var(--color-text, #e6edf3)',
   border: `1px solid ${border}`,
@@ -109,7 +109,7 @@ export const MissingSecretsWizard: React.FC<MissingSecretsWizardProps> = ({
                       display: 'block',
                       fontSize: 13,
                       fontWeight: 600,
-                      fontFamily: 'monospace',
+                      fontFamily: 'var(--font-mono)',
                       marginBottom: 4,
                     }}
                   >
@@ -152,9 +152,9 @@ export const MissingSecretsWizard: React.FC<MissingSecretsWizardProps> = ({
               disabled={!allFilled}
               style={{
                 padding: '8px 14px', fontSize: 13, fontWeight: 600,
-                background: allFilled ? '#2196f3' : '#444',
+                background: allFilled ? 'var(--color-info)' : '#444',
                 color: 'white',
-                border: '1px solid ' + (allFilled ? '#2196f3' : '#444'),
+                border: '1px solid ' + (allFilled ? 'var(--color-info)' : '#444'),
                 borderRadius: 6,
                 cursor: allFilled ? 'pointer' : 'not-allowed',
                 opacity: allFilled ? 1 : 0.6,

@@ -34,10 +34,10 @@ import { apiRequest } from '@/utils/api';
 const FormField: React.FC<{ label: string; required?: boolean; error?: string; help?: string; children: React.ReactNode }> = ({ label, required, error, help, children }) => (
   <div>
     <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-primary)' }}>
-      {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      {label}{required && <span className="text-err ml-0.5">*</span>}
     </label>
     {children}
-    {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+    {error && <p className="mt-1 text-xs text-err">{error}</p>}
     {help && !error && <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>{help}</p>}
   </div>
 );
@@ -326,7 +326,7 @@ export const ProviderFormPanel: React.FC<{
         </FormField>
         <FormField label="Status">
           <button type="button" onClick={() => setFd(prev => ({ ...prev, enabled: !prev.enabled }))}
-            className={`w-full px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${fd.enabled ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' : 'bg-red-500/15 border-red-500/30 text-red-400'}`}>
+            className={`w-full px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${fd.enabled ? 'bg-[color-mix(in_srgb,var(--color-ok)_15%,transparent)] border-[color-mix(in_srgb,var(--color-ok)_30%,transparent)] text-ok' : 'bg-[color-mix(in_srgb,var(--color-err)_15%,transparent)] border-[color-mix(in_srgb,var(--color-err)_30%,transparent)] text-err'}`}>
             {fd.enabled ? 'Enabled' : 'Disabled'}
           </button>
         </FormField>
@@ -368,7 +368,7 @@ export const ProviderFormPanel: React.FC<{
               {derivedDisplayName}
             </span>
           </p>
-          {errors.origin && <p className="text-xs text-red-400">{errors.origin}</p>}
+          {errors.origin && <p className="text-xs text-err">{errors.origin}</p>}
         </div>
       )}
 
@@ -458,8 +458,8 @@ export const ProviderFormPanel: React.FC<{
                     onClick={() => update(!val)}
                     className="inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-lg border transition-all"
                     style={{
-                      background: val ? 'rgba(0,210,106,0.15)' : 'transparent',
-                      borderColor: val ? 'rgba(0,210,106,0.4)' : 'var(--color-border)',
+                      background: val ? 'color-mix(in srgb, var(--color-ok) 15%, transparent)' : 'transparent',
+                      borderColor: val ? 'color-mix(in srgb, var(--color-ok) 40%, transparent)' : 'var(--color-border)',
                       color: val ? 'var(--ap-ok)' : 'var(--text-muted)',
                     }}
                   >
@@ -523,7 +523,7 @@ export const ProviderFormPanel: React.FC<{
 
       {/* Test Connection + Submit */}
       {testResult && (
-        <div className="rounded-lg border p-3 text-sm" style={{ borderColor: testResult.ok ? 'var(--ap-ok-soft)' : 'var(--ap-err-soft)', backgroundColor: testResult.ok ? 'rgba(0,210,106,0.08)' : 'rgba(239,68,68,0.08)', color: testResult.ok ? 'var(--ap-ok)' : 'var(--ap-err)' }}>
+        <div className="rounded-lg border p-3 text-sm" style={{ borderColor: testResult.ok ? 'var(--ap-ok-soft)' : 'var(--ap-err-soft)', backgroundColor: testResult.ok ? 'color-mix(in srgb, var(--color-ok) 8%, transparent)' : 'color-mix(in srgb, var(--color-err) 8%, transparent)', color: testResult.ok ? 'var(--ap-ok)' : 'var(--ap-err)' }}>
           {testResult.ok ? <CheckCircle size={14} className="inline mr-2" /> : <XCircle size={14} className="inline mr-2" />}
           {testResult.message}
         </div>

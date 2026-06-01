@@ -119,7 +119,7 @@ export function Sankey({ data, title, height = 460, disableFrame, wheelZoom, onE
   const sourceColors = useMemo(() => {
     return [tokens.accent, tokens.info, tokens.ok, tokens.warn, tokens.err, tokens.capThinking, tokens.capStreaming, tokens.capTools];
   }, [tokens]);
-  const sinkColor = '#475569';
+  const sinkColor = tokens.fg3; // neutral sink node color (theme-driven)
 
   const colorBySource = useMemo(() => {
     const out: Record<string, string> = {};

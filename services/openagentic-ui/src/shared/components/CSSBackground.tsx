@@ -15,14 +15,12 @@ export default function CSSBackground() {
 
   return (
     <div className="css-background">
-      {/* Base layer - softer background color */}
+      {/* Base layer — flips with the theme via the SOT token */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
-          background: isLightTheme
-            ? '#f5f5f7'  // Soft off-white instead of pure white
-            : '#0a0a0f', // Soft dark instead of pure black
+          background: 'var(--color-bg)',
         }}
       />
 
@@ -86,8 +84,8 @@ export default function CSSBackground() {
           position: 'absolute',
           inset: 0,
           background: isLightTheme
-            ? 'rgba(248, 248, 250, 0.92)'  // More opaque for clean look
-            : 'rgba(10, 10, 15, 0.88)',     // Darker, cleaner overlay
+            ? 'color-mix(in srgb, var(--color-bg) 92%, transparent)'
+            : 'color-mix(in srgb, var(--color-bg) 88%, transparent)',
           backdropFilter: 'blur(80px) saturate(100%)',
           WebkitBackdropFilter: 'blur(80px) saturate(100%)',
         }}

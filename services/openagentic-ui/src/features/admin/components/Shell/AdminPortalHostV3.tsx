@@ -62,7 +62,7 @@ class LeafErrorBoundary extends React.Component<
         <>
           <PageHead title={this.props.leafName} meta="render error · v2 page body crashed" />
           <Banner level="err" label="leaf error">
-            v2 component threw: <span style={{ fontFamily: 'var(--font-v3-mono)' }}>{this.state.error.message}</span>
+            v2 component threw: <span style={{ fontFamily: 'var(--font-mono)' }}>{this.state.error.message}</span>
           </Banner>
           <EmptyInline pad>
             <div>The leaf nav still works — pick another leaf to continue.</div>

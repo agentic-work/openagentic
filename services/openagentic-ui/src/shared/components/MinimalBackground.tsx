@@ -22,9 +22,9 @@ export default function MinimalBackground() {
   const isLightTheme = resolvedTheme === 'light';
 
   // Get accent colors with fallbacks
-  // Fallback matches the default accent token (--user-accent-primary: signal
-  // orange). Kept as a hex literal because it is concatenated with hex-alpha
-  // suffixes (`${primaryColor}08`) for the subtle corner glows below.
+  // theme-allow: fallback matches the default accent token (signal orange) and
+  // MUST be a raw hex because it is concatenated with hex-alpha suffixes
+  // (`${primaryColor}08`) for the subtle corner glows below.
   const primaryColor = accentColor?.primary || '#FF5722';
 
   return (
@@ -34,8 +34,8 @@ export default function MinimalBackground() {
         position: 'fixed',
         inset: 0,
         zIndex: -1,
-        // Solid background - no GPU compositing
-        background: isLightTheme ? '#FAFAFA' : '#0D0D0F',
+        // Solid background — flips with the theme via the SOT token.
+        background: 'var(--color-bg)',
       }}
     >
       {/* Optional: Very subtle static corner accents (no animation, no blur) */}
@@ -66,8 +66,8 @@ export default function MinimalBackground() {
           right: 0,
           height: '30%',
           background: isLightTheme
-            ? 'linear-gradient(to top, rgba(0,0,0,0.02), transparent)'
-            : 'linear-gradient(to top, rgba(0,0,0,0.3), transparent)',
+            ? 'linear-gradient(to top, color-mix(in srgb, var(--color-shadow) 2%, transparent), transparent)'
+            : 'linear-gradient(to top, color-mix(in srgb, var(--color-shadow) 30%, transparent), transparent)',
           pointerEvents: 'none',
         }}
       />

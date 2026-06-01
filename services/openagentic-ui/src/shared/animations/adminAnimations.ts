@@ -3,6 +3,11 @@
  *
  * Maps admin sidebar icon names to programmatically-generated Lottie animation data.
  * Uses factory functions from lottieBuilder.ts to create each animation.
+ *
+ * theme-allow: the per-icon hex values below are a CATEGORICAL icon-animation
+ * palette (icon identity colors) baked into Lottie JSON — the Lottie renderer
+ * cannot read CSS custom properties, so these must be literals. Same exemption
+ * class as the workflow node-TYPE identity colors and the diagram palettes.
  */
 
 import type { LottieAnimationData } from './lottieBuilder';

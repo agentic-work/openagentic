@@ -245,7 +245,7 @@ export const LLMProvidersView: React.FC<LLMProvidersViewProps> = ({ theme }) => 
         </div>
         <button
           onClick={fetchProviders}
-          className="mt-4 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
+          className="mt-4 px-4 py-2 bg-primary-500 text-on-accent rounded-lg hover:bg-primary-600"
         >
           Retry
         </button>

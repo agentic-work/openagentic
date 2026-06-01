@@ -92,7 +92,7 @@ export const InviteUserModal: React.FC<InviteUserModalProps> = ({ open, onClose 
             {touched && !emailValid && (
               <div style={{
                 marginTop: 4,
-                fontFamily: 'var(--font-v3-mono)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 'var(--v3-t-meta)',
                 color: 'var(--err)',
               }}>

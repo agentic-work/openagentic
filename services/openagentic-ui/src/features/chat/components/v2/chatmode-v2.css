@@ -8,36 +8,53 @@
  * ========================================================================== */
 
 .cm-v2 {
-  --cm-bg-0: #09090b;
-  --cm-bg-1: #0f1012;
-  --cm-bg-2: #16181c;
-  --cm-bg-3: #1c1f24;
-  --cm-bg-4: #242831;
-  --cm-line-1: rgba(255, 255, 255, 0.06);
-  --cm-line-2: rgba(255, 255, 255, 0.10);
-  --cm-line-3: rgba(255, 255, 255, 0.16);
-  --cm-fg-0: #f8fafc;
-  --cm-fg-1: #d4d4d8;
-  --cm-fg-2: #a1a1aa;
-  --cm-fg-3: #71717a;
-  /* Accent flows from the user's Settings → Accent picker.
-   * ThemeContext.applyAccentColor() sets --user-accent-primary on
-   * <html>, plus --user-accent-soft (alpha 0.14) and --user-accent-line
-   * (alpha 0.32). The fallbacks here are the canonical green from the
-   * mocks (end-state-NN-*.html all define --cm-accent: #4ade80) for
-   * first-paint before ThemeContext mounts. Sprint Z changed from purple
-   * (#8b5cf6) to match the mock SoT. */
-  --cm-accent: var(--user-accent-primary, #4ade80);
-  --cm-accent-soft: var(--user-accent-soft, rgba(74, 222, 128, 0.14));
-  --cm-accent-line: var(--user-accent-line, rgba(74, 222, 128, 0.32));
+  /* ONE-SOT migration: the cm-* surface/line/fg ramps now DERIVE from the
+   * canonical --color-* tokens defined in src/styles/theme.css (the only
+   * file allowed raw color literals). These no longer hold hex/rgba of
+   * their own, so the whole V2 chat surface flips dark/light + carries the
+   * brutalist paper/ink palette automatically. The numbered namespace names
+   * are kept because ~1900 call sites read them. */
+  --cm-bg-0: var(--color-bg);
+  --cm-bg-1: var(--color-surface);
+  --cm-bg-2: var(--color-surface-2);
+  --cm-bg-3: var(--color-surface-2);
+  --cm-bg-4: var(--color-surface-2);
+  --cm-line-1: var(--color-rule);
+  --cm-line-2: var(--color-rule);
+  --cm-line-3: var(--color-rule-strong);
+  --cm-fg-0: var(--color-fg);
+  --cm-fg-1: var(--color-fg-muted);
+  --cm-fg-2: var(--color-fg-muted);
+  --cm-fg-3: var(--color-fg-subtle);
+  /* Accent flows from the user's Settings → Accent picker via the canonical
+   * --color-accent token (ThemeContext writes --user-accent; the soft/line
+   * tints derive via color-mix in theme.css). */
+  --cm-accent: var(--color-accent);
+  --cm-accent-soft: var(--color-accent-soft);
+  --cm-accent-line: var(--color-accent-line);
   --cm-agent-c: #f59e0b;
   --cm-agent-g: #10b981;
   --cm-agent-s: #ef4444;
   --cm-agent-k: #3b82f6;
-  --cm-ok: #22c55e;
-  --cm-warn: #f59e0b;
-  --cm-err: #ef4444;
-  --cm-info: #38bdf8;
+  /* status hues derive from the canonical --color-ok/warn/err/nfo SOT tokens */
+  --cm-ok: var(--color-ok);
+  --cm-warn: var(--color-warn);
+  --cm-err: var(--color-err);
+  --cm-info: var(--color-nfo);
+  /* Semantic cm-* aliases the chat components reference by these longer
+   * names (cm-success / cm-error / cm-warning / cm-text / cm-text-muted /
+   * cm-border). Map them to the canonical tokens so every consumer resolves
+   * to the ONE palette. */
+  --cm-success: var(--color-ok);
+  --cm-error: var(--color-err);
+  --cm-warning: var(--color-warn);
+  --cm-text: var(--color-fg);
+  --cm-text-muted: var(--color-fg-subtle);
+  --cm-border: var(--color-rule);
+  --cm-bg: var(--color-bg);
+  --cm-fg: var(--color-fg);
+  --cm-surface: var(--color-surface);
+  --cm-bg-secondary: var(--color-surface);
   /* Cloud-category tokens (mock-07 §tri-cloud-cost-spikes). Drive
    * per-cloud accents on tool-card left-borders, streaming-table
    * Cloud-cells (CloudBadge), and sankey gradient stops. AWS reuses
@@ -65,31 +82,20 @@
   --cm-ok-glow: rgba(34, 197, 94, 0.40);
   --cm-warn-glow: rgba(245, 158, 11, 0.40);
   --cm-err-glow: rgba(239, 68, 68, 0.40);
-  --cm-radius-sm: 6px;
-  --cm-radius-md: 10px;
-  --cm-radius-lg: 14px;
-  --cm-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  /* brutalist sharp corners — radii come from the SOT radius scale */
+  --cm-radius-sm: var(--radius-sm);
+  --cm-radius-md: var(--radius-sm);
+  --cm-radius-lg: var(--radius-chip);
+  --cm-shadow-sm: var(--shadow-xs);
   --cm-transcript-max-width: 902px;
 }
 
+/* Light-theme override: the bg/line/fg ramps already flip via the canonical
+ * --color-* tokens (defined once in theme.css under [data-theme=light]), so
+ * the duplicate paper-ramp hex that lived here is gone. Only the light-mode
+ * accent-soft tint + the categorical thinking hue need a light variant. */
 html[data-theme='light'] .cm-v2 {
-  --cm-bg-0: #fafafa;
-  --cm-bg-1: #ffffff;
-  --cm-bg-2: #f4f4f5;
-  --cm-bg-3: #e4e4e7;
-  --cm-bg-4: #d4d4d8;
-  --cm-line-1: rgba(0, 0, 0, 0.06);
-  --cm-line-2: rgba(0, 0, 0, 0.10);
-  --cm-line-3: rgba(0, 0, 0, 0.16);
-  --cm-fg-0: #09090b;
-  --cm-fg-1: #27272a;
-  --cm-fg-2: #52525b;
-  --cm-fg-3: #71717a;
-  /* Light theme uses a tighter alpha on the soft tint so it stays
-   * legible against the brighter background. The user-accent-soft
-   * override (set by ThemeContext) wins when a non-default accent
-   * is picked. */
-  --cm-accent-soft: var(--user-accent-soft-light, rgba(139, 92, 246, 0.10));
+  --cm-accent-soft: var(--color-accent-soft);
   --cm-thinking: #7c3aed;
   --cm-thinking-soft: #5b21b6;
   --cm-thinking-glow: rgba(124, 58, 237, 0.30);
@@ -125,9 +131,11 @@ html[data-theme='light'] .cm-v2 {
   place-items: center;
   font-weight: 600;
   font-size: 12px;
-  color: white;
+  /* theme-allow: legit on-accent white — sits on the saturated categorical
+   * avatar gradient (allowlisted below), where white is the contrast color. */
+  color: #fff;
   letter-spacing: -0.01em;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-fg) 6%, transparent);
 }
 .cm-avatar.cm-av-asst { background: linear-gradient(135deg, #a78bfa, #6366f1); }
 .cm-avatar.cm-av-c { background: linear-gradient(135deg, #fbbf24, #d97706); }
@@ -189,7 +197,7 @@ html[data-theme='light'] .cm-v2 {
   content: '';
   position: absolute;
   inset: -2px 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(74, 222, 128, 0.06) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--color-accent) 7%, transparent) 50%, transparent 100%);
   background-size: 200% 100%;
   animation: cm-shimmer 1.8s ease-in-out infinite;
   pointer-events: none;
@@ -204,7 +212,7 @@ html[data-theme='light'] .cm-v2 {
   font-size: 12px;
   color: var(--cm-fg-2);
 }
-.cm-tool .cm-t-head:hover { color: var(--cm-fg-0); background: rgba(255,255,255,0.02); }
+.cm-tool .cm-t-head:hover { color: var(--cm-fg-0); background: color-mix(in srgb, var(--color-fg) 4%, transparent); }
 .cm-tool[aria-expanded='true'] .cm-t-head { color: var(--cm-fg-0); }
 .cm-tool .cm-t-ico {
   width: 22px;
@@ -294,7 +302,7 @@ html[data-theme='light'] .cm-v2 {
   gap: 10px;
   padding: 9px 12px;
   font-size: 12px;
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in srgb, var(--color-fg) 4%, transparent);
   border-bottom: 1px solid var(--cm-line-1);
 }
 .cm-sa-head .cm-name { font-weight: 600; color: var(--cm-fg-0); font-size: 13px; }
@@ -1080,9 +1088,9 @@ sup.cm-citation {
   font-weight: 600;
   line-height: 1;
   vertical-align: super;
-  background: var(--cm-accent-soft, rgba(139, 92, 246, 0.14));
-  border: 1px solid var(--cm-accent-line, rgba(139, 92, 246, 0.32));
-  color: var(--cm-accent, #b9a8ff);
+  background: var(--cm-accent-soft);
+  border: 1px solid var(--cm-accent-line);
+  color: var(--cm-accent);
   cursor: help;
   text-decoration: none;
 }
@@ -1150,11 +1158,11 @@ sup.cm-citation {
   gap: 6px;
   padding: 3px 10px;
   border-radius: 99px;
-  border: 1px solid var(--cm-line-2, rgba(255, 255, 255, 0.10));
-  background: rgba(139, 92, 246, 0.05);
+  border: 1px solid var(--cm-line-2);
+  background: var(--cm-accent-soft);
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 11px;
-  color: var(--cm-fg-1, #d4d4d8);
+  color: var(--cm-fg-1);
   font-variant-numeric: tabular-nums;
 }
 .cm-cost-pill .cm-dot {
@@ -1285,8 +1293,8 @@ sup.cm-citation {
 .cm-handoff-chip-model {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 11px;
-  color: var(--cm-accent, #b9a8ff);
-  background: rgba(0, 0, 0, 0.18);
+  color: var(--cm-accent);
+  background: color-mix(in srgb, var(--color-bg) 60%, transparent);
   padding: 1px 6px;
   border-radius: 4px;
 }

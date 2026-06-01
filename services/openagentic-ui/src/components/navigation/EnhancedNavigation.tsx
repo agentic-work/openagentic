@@ -232,7 +232,7 @@ export const EnhancedNavigation: React.FC = () => {
               handleNavigation(item.path);
             }
           }}
-          className={`w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-800 rounded-lg transition-colors ${
+          className={`w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-surface-hover rounded-lg transition-colors ${
             depth > 0 ? 'pl-8' : ''
           }`}
         >
@@ -332,7 +332,7 @@ export const EnhancedNavigation: React.FC = () => {
         <button
           onClick={() => window.open(getDocsBaseUrl(), '_blank')}
           
-          className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-800 rounded-lg transition-colors"
+          className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-surface-hover rounded-lg transition-colors"
           style={{ color: 'var(--color-textMuted)' }}
         >
           <HelpCircle 
@@ -343,7 +343,7 @@ export const EnhancedNavigation: React.FC = () => {
         
         <button
           onClick={logout}
-          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-400 hover:bg-gray-800 rounded-lg transition-colors"
+          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-err hover:bg-surface-hover rounded-lg transition-colors"
         >
           <LogOut className="w-4 h-4" />
           Sign Out

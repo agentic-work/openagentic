@@ -239,7 +239,7 @@ export const OpsPane: React.FC<OpsPaneProps> = ({
                     </>
                   }
                   right={
-                    <span style={{ fontFamily: 'var(--font-v3-mono)' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)' }}>
                       {fmtUsdFromCents(e.total_cost_cents)}
                     </span>
                   }

@@ -152,7 +152,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, o
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.45)',
+        background: 'color-mix(in srgb, var(--color-shadow) 45%, transparent)',
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
@@ -172,7 +172,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, o
           display: 'flex',
           flexDirection: 'column',
           fontFamily: 'var(--font-v3-body)',
-          boxShadow: '0 20px 80px rgba(0,0,0,0.45)',
+          boxShadow: '0 20px 80px color-mix(in srgb, var(--color-shadow) 45%, transparent)',
         }}
       >
         <div
@@ -197,7 +197,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, o
             borderBottom: '1px solid var(--line-1)',
           }}
         >
-          <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-v3-mono)', fontSize: 12 }}>
+          <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
             /
           </span>
           <input
@@ -218,7 +218,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, o
           />
           <kbd
             style={{
-              fontFamily: 'var(--font-v3-mono)',
+              fontFamily: 'var(--font-mono)',
               fontSize: 10,
               padding: '2px 6px',
               border: '1px solid var(--line-2)',
@@ -283,7 +283,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, o
                       >
                         <span
                           style={{
-                            fontFamily: 'var(--font-v3-mono)',
+                            fontFamily: 'var(--font-mono)',
                             fontSize: 9,
                             padding: '1px 4px',
                             border: '1px solid var(--line-1)',
@@ -314,7 +314,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, o
             display: 'flex',
             justifyContent: 'space-between',
             color: 'var(--fg-3)',
-            fontFamily: 'var(--font-v3-mono)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 10,
           }}
         >

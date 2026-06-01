@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// theme-allow: the hidden "Arcade Mode" easter-egg game below uses a
+// deliberate neon / synthwave CRT aesthetic (glowing magenta/cyan/yellow,
+// scanlines) that is an intentional standalone visual identity, not the app
+// theme. The maintenance-page CHROME (outer background, docs/retry buttons,
+// footer) reads SOT tokens; only the retro game keeps its bespoke palette.
+
 interface GameEmoji {
   id: string;
   x: number;
@@ -268,7 +274,7 @@ const MaintenancePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+    <div className="min-h-screen bg-bg flex items-center justify-center">
       <div className="max-w-md w-full space-y-8 p-8">
         <div className="text-center">
           {/* Animated Logo/Icon */}
@@ -731,8 +737,8 @@ const MaintenancePage: React.FC = () => {
           </div>
 
           {/* Docs Link */}
-          <div className="mb-6 p-3 bg-blue-900/30 rounded-lg border border-blue-700/50">
-            <p 
+          <div className="mb-6 p-3 bg-surface rounded-lg border border-rule">
+            <p
             className="text-sm"
             style={{ color: 'var(--color-text)' }}>
               Still bored? Check out the{' '}
@@ -740,26 +746,25 @@ const MaintenancePage: React.FC = () => {
                 href={docsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 underline"
+                className="text-accent hover:opacity-80 underline"
               >
                 documentation page
               </a>
               {' '}while you wait.
             </p>
           </div>
-          
+
           {/* Retry button */}
-          <button 
+          <button
             onClick={() => window.location.reload()}
-            
-            className="w-full bg-blue-600 hover:bg-blue-700 font-medium py-3 px-4 rounded-lg transition-colors duration-200"
-            style={{ color: 'var(--color-text)' }}
+
+            className="w-full bg-accent text-on-accent hover:opacity-90 font-medium py-3 px-4 rounded-lg transition-colors duration-200"
           >
             Try Again
           </button>
-          
+
           {/* Footer */}
-          <p className="mt-6 text-xs text-slate-400">
+          <p className="mt-6 text-xs text-fg-subtle">
             If this issue persists, please contact support.
           </p>
         </div>

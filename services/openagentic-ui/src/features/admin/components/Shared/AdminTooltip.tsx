@@ -73,7 +73,7 @@ export const AdminTooltip: React.FC<AdminTooltipProps> = ({
               backgroundColor: 'var(--color-surfaceSecondary)',
               color: 'var(--text-primary)',
               border: '1px solid var(--color-border)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+              boxShadow: '0 4px 12px color-mix(in srgb, var(--color-shadow) 25%, transparent)',
             }}
           >
             {content}

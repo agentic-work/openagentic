@@ -73,7 +73,7 @@ const textareaStyle: React.CSSProperties = {
   width: '100%',
   minHeight: 280,
   padding: '10px 12px',
-  fontFamily: 'var(--font-v3-mono)',
+  fontFamily: 'var(--font-mono)',
   fontSize: 12,
   lineHeight: 1.5,
   background: 'var(--bg-0)',
@@ -156,7 +156,7 @@ const PendingTable: React.FC<{ pending: PendingApproval[] }> = ({ pending }) => 
       style={{
         width: '100%',
         borderCollapse: 'collapse',
-        fontFamily: 'var(--font-v3-mono)',
+        fontFamily: 'var(--font-mono)',
         fontSize: 12,
       }}
     >

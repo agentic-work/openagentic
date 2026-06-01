@@ -316,7 +316,7 @@ const SecurityArchPage: React.FC = () => {
                   fontSize: '13px',
                   fontWeight: 700,
                   color: 'var(--color-primary)',
-                  fontFamily: 'monospace',
+                  fontFamily: 'var(--font-mono)',
                   minWidth: '110px',
                 }}
               >
@@ -384,7 +384,7 @@ const SecurityArchPage: React.FC = () => {
                 style={{
                   fontSize: '12px',
                   fontWeight: 600,
-                  fontFamily: 'monospace',
+                  fontFamily: 'var(--font-mono)',
                   color: 'var(--color-primary)',
                   background: 'var(--color-surfaceSecondary)',
                   border: '1px solid var(--color-border)',
@@ -416,10 +416,10 @@ const SecurityArchPage: React.FC = () => {
                     style={{
                       fontSize: '12px',
                       fontWeight: 700,
-                      color: item.severity === 'Low' ? '#22c55e'
-                        : item.severity === 'Medium' ? '#f59e0b'
-                        : item.severity === 'High' ? '#ef4444'
-                        : '#dc2626',
+                      color: item.severity === 'Low' ? 'var(--color-success)'
+                        : item.severity === 'Medium' ? 'var(--color-warning)'
+                        : item.severity === 'High' ? 'var(--color-error)'
+                        : 'var(--color-error)',
                     }}
                   >
                     {item.severity}
@@ -629,9 +629,9 @@ const SecurityArchPage: React.FC = () => {
                   style={{
                     fontSize: '11px',
                     fontWeight: 600,
-                    color: item.status === 'Compliant' ? '#22c55e'
-                      : item.status === 'Available' ? '#3b82f6'
-                      : item.status === 'In Progress' ? '#f59e0b'
+                    color: item.status === 'Compliant' ? 'var(--color-success)'
+                      : item.status === 'Available' ? 'var(--color-info)'
+                      : item.status === 'In Progress' ? 'var(--color-warning)'
                       : 'var(--color-textMuted)',
                     background: 'var(--color-surfaceSecondary)',
                     border: '1px solid var(--color-border)',

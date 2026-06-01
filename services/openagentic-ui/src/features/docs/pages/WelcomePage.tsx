@@ -100,6 +100,8 @@ interface ModeData {
   iconSvg: React.ReactNode;
 }
 
+// theme-allow: per-feature illustration identity gradients + glow hues + gradient SVG
+// icons below (decorative feature-card art, same carve-out as the illustration palettes).
 const modes: ModeData[] = [
   {
     title: 'Chat',
@@ -325,6 +327,7 @@ const WelcomePage: React.FC = () => {
             zIndex: 0,
           }}
         >
+          {/* theme-allow: decorative animated background "orb" glows (illustration art) */}
           <div
             style={{
               position: 'absolute',
@@ -1021,7 +1024,7 @@ const WelcomePage: React.FC = () => {
               gap: '8px',
               fontSize: '15px',
               fontWeight: 600,
-              color: '#ffffff',
+              color: 'var(--color-on-accent)',
               background: 'linear-gradient(135deg, var(--user-accent-primary), var(--user-accent-secondary))',
               border: 'none',
               borderRadius: '12px',

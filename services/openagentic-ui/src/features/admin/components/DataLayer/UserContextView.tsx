@@ -525,7 +525,7 @@ export const UserContextView: React.FC<UserContextViewProps> = ({ theme }) => {
 
       {/* Purge Confirmation Dialog */}
       {purgeConfirm && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setPurgeConfirm(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" onClick={() => setPurgeConfirm(false)}>
           <div
             className="rounded-xl w-[440px] shadow-2xl"
             style={{
@@ -554,7 +554,7 @@ export const UserContextView: React.FC<UserContextViewProps> = ({ theme }) => {
               >Cancel</button>
               <button
                 onClick={handlePurge}
-                className="flex items-center gap-1.5 px-5 py-2 text-xs font-medium rounded-lg text-white transition-opacity hover:opacity-80"
+                className="flex items-center gap-1.5 px-5 py-2 text-xs font-medium rounded-lg text-on-accent transition-opacity hover:opacity-80"
                 style={{ backgroundColor: 'var(--color-error)' }}
               >
                 <Trash2 size={14} /> Purge All Context

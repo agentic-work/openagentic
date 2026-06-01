@@ -1036,8 +1036,8 @@ const InlineThinking: React.FC<InlineThinkingProps> = memo(({
             transition={{ duration: 0.2 }}
             style={{
               padding: '10px 14px',
-              background: 'var(--thinking-bg, rgba(139, 92, 246, 0.05))',
-              border: '1px solid var(--thinking-border, rgba(139, 92, 246, 0.2))',
+              background: 'var(--thinking-bg, color-mix(in srgb, var(--cm-thinking) 6%, transparent))',
+              border: '1px solid var(--thinking-border, color-mix(in srgb, var(--cm-thinking) 20%, transparent))',
               borderRadius: 8,
               overflow: 'hidden',
             }}
@@ -1104,7 +1104,7 @@ const InlineThinking: React.FC<InlineThinkingProps> = memo(({
             <pre style={{
               margin: 0,
               fontSize: 12,
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+              fontFamily: 'var(--font-mono)',
               fontStyle: 'italic',
               color: 'var(--color-text-secondary)',
               whiteSpace: 'pre-wrap',
@@ -1112,7 +1112,7 @@ const InlineThinking: React.FC<InlineThinkingProps> = memo(({
               maxHeight: isStreaming ? 200 : 150,
               overflowY: 'auto',
               lineHeight: 1.6,
-              borderLeft: '2px solid var(--thinking-accent, rgba(139, 92, 246, 0.3))',
+              borderLeft: '2px solid var(--thinking-accent, color-mix(in srgb, var(--cm-thinking) 30%, transparent))',
               paddingLeft: 12,
               opacity: 0.85,
             }}>
@@ -1204,7 +1204,7 @@ const ThinkingBlock: React.FC<ThinkingBlockProps> = memo(({
           <pre style={{
             margin: 0,
             fontSize: 13,
-            fontFamily: 'system-ui, -apple-system, sans-serif',
+            fontFamily: 'var(--font-body)',
             color: 'var(--color-text-secondary)',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
@@ -1277,7 +1277,7 @@ const ThinkingBudgetBadge: React.FC<ThinkingBudgetBadgeProps> = memo(({
         marginBottom: 4,
       }}
     >
-      <Zap size={10} style={{ color: percentage > 75 ? 'var(--color-warning, #F97316)' : 'var(--color-text-muted)' }} />
+      <Zap size={10} style={{ color: percentage > 75 ? 'var(--color-warning)' : 'var(--color-text-muted)' }} />
       <span>{formattedUsed}/{formattedBudget} thinking tokens</span>
       <span style={{ color: 'var(--color-text-muted)', opacity: 0.7 }}>({percentage}%)</span>
     </motion.div>
@@ -1583,7 +1583,7 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
           {/* Duration / Elapsed timer */}
           <span style={{
             fontSize: depth > 0 ? 10 : 11,
-            color: finalStatus === 'error' ? '#da3633' : finalStatus === 'running' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            color: finalStatus === 'error' ? 'var(--color-err)' : finalStatus === 'running' ? 'var(--color-primary)' : 'var(--color-text-muted)',
             flexShrink: 0,
             fontFamily: 'var(--font-mono)',
             fontWeight: finalStatus === 'running' ? 500 : 400,
@@ -1665,7 +1665,7 @@ const TreeStepItem: React.FC<TreeStepItemProps> = memo(({
                   textTransform: 'uppercase',
                   letterSpacing: '0.08em',
                   color: hasError
-                    ? 'var(--err, #ef4444)'
+                    ? 'var(--cm-err)'
                     : 'var(--fg-3, var(--color-text-muted))',
                   marginBottom: 6,
                   fontWeight: 600,
@@ -1849,7 +1849,7 @@ const TreeStepsContainer: React.FC<TreeStepsContainerProps> = memo(({
                   }}
                 />
                 <span style={{
-                  fontFamily: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+                  fontFamily: 'var(--font-mono)',
                   fontWeight: 500,
                   color: 'var(--color-text, var(--fg-0))',
                   whiteSpace: 'nowrap',
@@ -1954,7 +1954,7 @@ const HitlInlineCard: React.FC<HitlInlineCardProps> = ({ entry, onApprove, onDen
         borderRadius: 6,
         padding: '10px 12px',
         background: 'var(--cm-bg-1)',
-        fontFamily: 'var(--font-v3-mono, monospace)',
+        fontFamily: 'var(--font-mono)',
         fontSize: 12,
         margin: '4px 0',
       }}
@@ -2268,7 +2268,7 @@ const ExpandableToolItem: React.FC<{
           {/* Duration */}
           <span style={{
             fontSize: 11,
-            color: hasError ? '#da3633' : 'var(--color-text-muted)',
+            color: hasError ? 'var(--color-err)' : 'var(--color-text-muted)',
             flexShrink: 0,
             fontFamily: 'var(--font-mono)',
           }}>
@@ -2432,7 +2432,7 @@ const ExpandableToolItem: React.FC<{
                     textTransform: 'uppercase',
                     letterSpacing: '0.08em',
                     color: hasError
-                      ? 'var(--err, #ef4444)'
+                      ? 'var(--cm-err)'
                       : 'var(--fg-3, var(--color-text-muted))',
                     marginBottom: 6,
                     fontWeight: 600,
@@ -2540,7 +2540,7 @@ const CollapsedToolRow: React.FC<CollapsedToolRowProps> = memo(({ block, toolCal
           }}
         />
         <span style={{
-          fontFamily: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+          fontFamily: 'var(--font-mono)',
           fontWeight: 500,
           color: 'var(--color-text, var(--fg-0))',
           whiteSpace: 'nowrap',
@@ -2630,7 +2630,7 @@ const CollapsedToolRow: React.FC<CollapsedToolRowProps> = memo(({ block, toolCal
                 color: 'var(--fg-3, var(--color-text-muted))', fontWeight: 600,
               }}>
                 <span style={{
-                  padding: '1px 6px', borderRadius: 3, background: 'var(--bg-3, rgba(255,255,255,0.06))',
+                  padding: '1px 6px', borderRadius: 3, background: 'var(--color-surface-2)',
                   color: 'var(--fg-2, var(--color-text-secondary))', fontSize: 9,
                 }}>INPUT</span>
               </div>
@@ -2647,11 +2647,11 @@ const CollapsedToolRow: React.FC<CollapsedToolRowProps> = memo(({ block, toolCal
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4,
                 fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em',
-                color: isErr ? 'var(--err, #ef4444)' : 'var(--fg-3, var(--color-text-muted))',
+                color: isErr ? 'var(--cm-err)' : 'var(--fg-3, var(--color-text-muted))',
                 fontWeight: 600,
               }}>
                 <span style={{
-                  padding: '1px 6px', borderRadius: 3, background: 'var(--bg-3, rgba(255,255,255,0.06))',
+                  padding: '1px 6px', borderRadius: 3, background: 'var(--color-surface-2)',
                   color: 'var(--fg-2, var(--color-text-secondary))', fontSize: 9,
                 }}>{isErr ? 'ERROR' : (<>RESULT</>)}</span>
               </div>
@@ -3478,7 +3478,7 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
 
               <span style={{
                 fontSize: 11,
-                color: hasError ? '#da3633' : 'var(--color-text-muted)',
+                color: hasError ? 'var(--color-err)' : 'var(--color-text-muted)',
                 flexShrink: 0,
                 fontFamily: 'var(--font-mono)',
               }}>
@@ -3616,7 +3616,7 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
               gap: 6,
               padding: '6px 12px',
               background: 'transparent',
-              border: '1px solid var(--color-border, #333)',
+              border: '1px solid var(--color-border)',
               borderRadius: 6,
               cursor: 'pointer',
               color: 'var(--color-text-muted)',
@@ -3944,7 +3944,7 @@ export const AgenticActivityStream: React.FC<AgenticActivityStreamProps> = ({
                         <div
                           key={`agent-fallback-${group.startIndex}-${role}`}
                           style={{
-                            borderLeft: '2px solid var(--color-primary, #7c4dff)',
+                            borderLeft: '2px solid var(--color-primary)',
                             paddingLeft: 12,
                           }}
                         >

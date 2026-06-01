@@ -103,7 +103,11 @@ export function Sparkstrip({ data, className }: ChartProps<SparkstripData>) {
                   fontFamily: tokens.fontMono, fontSize: 11,
                   padding: '2px 7px', borderRadius: 3,
                   color: dir === 'up' ? tokens.ok : dir === 'down' ? tokens.err : tokens.fg3,
-                  background: dir === 'up' ? 'rgba(74,222,128,0.12)' : dir === 'down' ? 'rgba(248,113,113,0.12)' : 'transparent',
+                  background: dir === 'up'
+                    ? 'color-mix(in srgb, var(--color-ok) 12%, transparent)'
+                    : dir === 'down'
+                    ? 'color-mix(in srgb, var(--color-err) 12%, transparent)'
+                    : 'transparent',
                 }}>
                   {dir === 'up' ? '↑' : dir === 'down' ? '↓' : '·'} {Math.abs(k.delta).toFixed(1)}%
                 </span>

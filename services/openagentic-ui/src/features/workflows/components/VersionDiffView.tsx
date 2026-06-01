@@ -215,7 +215,7 @@ export const VersionDiffView: React.FC<VersionDiffViewProps> = ({
       >
         <button
           onClick={onClose}
-          className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
+          className="p-1.5 rounded-md hover:bg-surface/10 transition-colors"
           title="Close diff view"
         >
           <ArrowLeft size={16} />
@@ -231,11 +231,11 @@ export const VersionDiffView: React.FC<VersionDiffViewProps> = ({
         className="grid grid-cols-5 gap-2 px-4 py-3 border-b text-xs"
         style={{ borderColor: 'var(--border-primary, #27272a)' }}
       >
-        <StatBadge label="Added" count={summary.nodesAdded} color="#4ade80" />
-        <StatBadge label="Removed" count={summary.nodesRemoved} color="#f87171" />
-        <StatBadge label="Modified" count={summary.nodesModified} color="#fbbf24" />
-        <StatBadge label="Edges +" count={summary.edgesAdded} color="#4ade80" />
-        <StatBadge label="Edges -" count={summary.edgesRemoved} color="#f87171" />
+        <StatBadge label="Added" count={summary.nodesAdded} color="var(--color-success)" />
+        <StatBadge label="Removed" count={summary.nodesRemoved} color="var(--color-error)" />
+        <StatBadge label="Modified" count={summary.nodesModified} color="var(--color-warning)" />
+        <StatBadge label="Edges +" count={summary.edgesAdded} color="var(--color-success)" />
+        <StatBadge label="Edges -" count={summary.edgesRemoved} color="var(--color-error)" />
       </div>
 
       {/* Change list */}
@@ -267,11 +267,11 @@ export const VersionDiffView: React.FC<VersionDiffViewProps> = ({
                 key={change.edgeId}
                 className="flex items-center gap-2 px-3 py-2 rounded-md text-xs mb-1"
                 style={{
-                  background: change.type === 'added' ? 'rgba(74, 222, 128, 0.08)' : 'rgba(248, 113, 113, 0.08)',
-                  borderLeft: `3px solid ${change.type === 'added' ? '#4ade80' : '#f87171'}`,
+                  background: change.type === 'added' ? 'color-mix(in srgb, var(--color-success) 8%, transparent)' : 'color-mix(in srgb, var(--color-error) 8%, transparent)',
+                  borderLeft: `3px solid ${change.type === 'added' ? 'var(--color-success)' : 'var(--color-error)'}`,
                 }}
               >
-                {change.type === 'added' ? <Plus size={12} color="#4ade80" /> : <Minus size={12} color="#f87171" />}
+                {change.type === 'added' ? <Plus size={12} color="var(--color-success)" /> : <Minus size={12} color="var(--color-error)" />}
                 <span>{change.source} &rarr; {change.target}</span>
               </div>
             ))}
@@ -296,12 +296,12 @@ const NodeChangeRow: React.FC<{
   expanded: boolean;
   onToggle: () => void;
 }> = ({ change, expanded, onToggle }) => {
-  const bgMap = { added: 'rgba(74, 222, 128, 0.08)', removed: 'rgba(248, 113, 113, 0.08)', modified: 'rgba(251, 191, 36, 0.08)' };
-  const borderMap = { added: '#4ade80', removed: '#f87171', modified: '#fbbf24' };
+  const bgMap = { added: 'color-mix(in srgb, var(--color-success) 8%, transparent)', removed: 'color-mix(in srgb, var(--color-error) 8%, transparent)', modified: 'color-mix(in srgb, var(--color-warning) 8%, transparent)' };
+  const borderMap = { added: 'var(--color-success)', removed: 'var(--color-error)', modified: 'var(--color-warning)' };
   const iconMap = {
-    added: <Plus size={14} color="#4ade80" />,
-    removed: <Minus size={14} color="#f87171" />,
-    modified: <Edit size={14} color="#fbbf24" />,
+    added: <Plus size={14} color="var(--color-success)" />,
+    removed: <Minus size={14} color="var(--color-error)" />,
+    modified: <Edit size={14} color="var(--color-warning)" />,
   };
 
   return (
@@ -335,22 +335,22 @@ const NodeChangeRow: React.FC<{
                 <div key={f.field} className="grid grid-cols-2 gap-2 text-xs">
                   <div>
                     <div className="font-medium mb-0.5" style={{ color: 'var(--text-secondary, #71717a)' }}>
-                      {f.field} <span style={{ color: '#f87171' }}>(old)</span>
+                      {f.field} <span style={{ color: 'var(--color-error)' }}>(old)</span>
                     </div>
                     <pre
                       className="p-2 rounded text-xs overflow-x-auto whitespace-pre-wrap break-all"
-                      style={{ background: 'rgba(248, 113, 113, 0.06)', maxHeight: 120 }}
+                      style={{ background: 'color-mix(in srgb, var(--color-error) 6%, transparent)', maxHeight: 120 }}
                     >
                       {formatValue(f.oldValue)}
                     </pre>
                   </div>
                   <div>
                     <div className="font-medium mb-0.5" style={{ color: 'var(--text-secondary, #71717a)' }}>
-                      {f.field} <span style={{ color: '#4ade80' }}>(new)</span>
+                      {f.field} <span style={{ color: 'var(--color-success)' }}>(new)</span>
                     </div>
                     <pre
                       className="p-2 rounded text-xs overflow-x-auto whitespace-pre-wrap break-all"
-                      style={{ background: 'rgba(74, 222, 128, 0.06)', maxHeight: 120 }}
+                      style={{ background: 'color-mix(in srgb, var(--color-success) 6%, transparent)', maxHeight: 120 }}
                     >
                       {formatValue(f.newValue)}
                     </pre>

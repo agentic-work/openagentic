@@ -97,7 +97,7 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
         style={{ borderColor: 'var(--wf-node-border)' }}
       >
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4" style={{ color: '#7c4dff' }} />
+          <Sparkles className="w-4 h-4" style={{ color: 'var(--color-accent)' }} />
           <span className="text-sm font-semibold" style={{ color: 'var(--color-text, #333)' }}>
             AI Flow Builder
           </span>
@@ -140,7 +140,7 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
                 onClick={() => handleSend('The last execution failed. For EACH failed node:\n1. Identify the root cause from the error message\n2. Apply the fix using a ```patch block\n3. If the node type is fundamentally wrong (e.g. mcp_tool referencing unavailable tool), replace it with an openagentic_llm node that achieves the same goal.\nFix ALL errors, not just the first one.')}
                 disabled={isGenerating}
                 className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium border transition-colors hover:border-[#f44336]"
-                style={{ borderColor: 'rgba(244,67,54,0.3)', color: '#f44336', background: 'rgba(244,67,54,0.05)' }}
+                style={{ borderColor: 'color-mix(in srgb, var(--color-error) 30%, transparent)', color: 'var(--color-error)', background: 'color-mix(in srgb, var(--color-error) 5%, transparent)' }}
               >
                 <AlertCircle className="w-3 h-3" /> Fix Errors
               </button>
@@ -148,7 +148,7 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
                 onClick={() => handleSend('The last execution failed. Diagnose every failed node, output a ```patch block that fixes ALL errors, then I will re-execute. Be surgical — only change what is broken. Common fixes: remove invalid modelOverride, fix mcp_tool arguments to match tool schema, fix condition expressions to use `input.field` instead of template syntax, replace unavailable MCP tools with openagentic_llm equivalents.')}
                 disabled={isGenerating}
                 className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium border transition-colors hover:border-[#ff9800]"
-                style={{ borderColor: 'rgba(255,152,0,0.3)', color: '#ff9800', background: 'rgba(255,152,0,0.05)' }}
+                style={{ borderColor: 'color-mix(in srgb, var(--color-warning) 30%, transparent)', color: 'var(--color-warning)', background: 'color-mix(in srgb, var(--color-warning) 5%, transparent)' }}
               >
                 <Zap className="w-3 h-3" /> Fix & Run
               </button>
@@ -214,7 +214,7 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
 
         {isGenerating && messages.length > 0 && messages[messages.length - 1].role !== 'assistant' && (
           <div className="flex items-center gap-2 px-3 py-2">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: '#7c4dff' }} />
+            <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--color-accent)' }} />
             <span className="text-xs" style={{ color: 'var(--color-text-tertiary, #999)' }}>Generating workflow...</span>
           </div>
         )}
@@ -246,7 +246,7 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
             <button
               onClick={stopGeneration}
               className="p-1.5 rounded-md transition-colors flex-shrink-0"
-              style={{ backgroundColor: 'rgba(244,67,54,0.1)', color: '#f44336' }}
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-error) 10%, transparent)', color: 'var(--color-error)' }}
               title="Stop generating"
             >
               <X className="w-4 h-4" />
@@ -257,8 +257,8 @@ export const AIFlowBuilder: React.FC<AIFlowBuilderProps> = ({
               disabled={!input.trim()}
               className="p-1.5 rounded-md transition-colors flex-shrink-0"
               style={{
-                backgroundColor: input.trim() ? 'rgba(124,77,255,0.1)' : 'transparent',
-                color: input.trim() ? '#7c4dff' : 'var(--color-text-tertiary, #999)',
+                backgroundColor: input.trim() ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)' : 'transparent',
+                color: input.trim() ? 'var(--color-accent)' : 'var(--color-text-tertiary, #999)',
                 opacity: input.trim() ? 1 : 0.5,
               }}
               title="Send"
@@ -285,7 +285,7 @@ const MessageBubble: React.FC<{
       <div
         className={`max-w-[90%] rounded-lg px-3 py-2 text-xs leading-relaxed ${isUser ? 'rounded-br-sm' : 'rounded-bl-sm'}`}
         style={{
-          background: isUser ? 'rgba(124,77,255,0.1)' : 'var(--color-surface)',
+          background: isUser ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)' : 'var(--color-surface)',
           color: 'var(--color-text, #333)',
           border: isUser ? 'none' : '1px solid var(--wf-node-border)',
         }}
@@ -305,9 +305,9 @@ const MessageBubble: React.FC<{
             onClick={() => onApply(message.workflowDefinition!)}
             className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-[11px] font-semibold transition-colors"
             style={{
-              background: 'rgba(124,77,255,0.15)',
-              color: '#7c4dff',
-              border: '1px solid rgba(124,77,255,0.3)',
+              background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
+              color: 'var(--color-accent)',
+              border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)',
             }}
           >
             <Sparkles className="w-3 h-3" />
@@ -325,9 +325,9 @@ const MessageBubble: React.FC<{
             onClick={() => onApplyPatch(message.patches!)}
             className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-[11px] font-semibold transition-colors"
             style={{
-              background: 'rgba(255,152,0,0.15)',
-              color: '#ff9800',
-              border: '1px solid rgba(255,152,0,0.3)',
+              background: 'color-mix(in srgb, var(--color-warning) 15%, transparent)',
+              color: 'var(--color-warning)',
+              border: '1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)',
             }}
           >
             <Zap className="w-3 h-3" />

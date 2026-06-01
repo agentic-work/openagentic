@@ -93,7 +93,7 @@ export default function TestHarnessView() {
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
         padding: '8px 14px', borderRadius: 6,
-        background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)',
+        background: 'color-mix(in srgb, var(--color-warn) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-warn) 30%, transparent)',
         fontSize: 12, color: 'var(--color-warning)',
       }}>
         <span style={{ fontSize: 16 }}>&#9888;</span>
@@ -218,13 +218,13 @@ export default function TestHarnessView() {
                       borderRadius: 4,
                       fontSize: 11,
                       fontWeight: 600,
-                      background: r.status === 'pass' ? 'rgba(0,210,106,0.15)' : r.status === 'fail' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.05)',
+                      background: r.status === 'pass' ? 'color-mix(in srgb, var(--color-ok) 15%, transparent)' : r.status === 'fail' ? 'color-mix(in srgb, var(--color-err) 15%, transparent)' : 'color-mix(in srgb, var(--color-fg) 5%, transparent)',
                       color: r.status === 'pass' ? 'var(--color-success)' : r.status === 'fail' ? 'var(--color-error)' : 'var(--text-tertiary)',
                     }}>
                       {r.status.toUpperCase()}
                     </span>
                   </td>
-                  <td style={{ padding: '6px 12px', textAlign: 'right', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                  <td style={{ padding: '6px 12px', textAlign: 'right', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                     {r.durationMs != null ? `${r.durationMs}ms` : '-'}
                   </td>
                   <td style={{ padding: '6px 12px', color: 'var(--text-tertiary)', fontSize: 12, maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

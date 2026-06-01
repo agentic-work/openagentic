@@ -646,7 +646,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
                 <button
                   onClick={handleTestTool}
                   disabled={testLoading}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-600/50 text-white rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-600/50 text-on-accent rounded-lg transition-colors"
                 >
                   {testLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -931,7 +931,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
                         title={isEnabled ? 'Click to disable' : 'Click to enable'}
                       >
                         <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-surface shadow ring-0 transition duration-200 ease-in-out ${
                             isEnabled ? 'translate-x-5' : 'translate-x-0'
                           }`}
                         >
@@ -1129,8 +1129,8 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
               onClick={() => isStreaming ? abortRef.current?.abort() : startStreaming()}
               className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${
                 isStreaming
-                  ? 'bg-error-500 hover:bg-error-500 text-white'
-                  : 'bg-success-500 hover:bg-success-500 text-white'
+                  ? 'bg-error-500 hover:bg-error-500 text-on-accent'
+                  : 'bg-success-500 hover:bg-success-500 text-on-accent'
               }`}
             >
               {isStreaming ? (
@@ -1324,7 +1324,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
               </p>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-on-accent rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Add MCP Server
@@ -1387,7 +1387,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
                 Server Health Status
               </h3>
             </div>
-            <div className="divide-y divide-gray-700">
+            <div className="divide-y divide-[var(--color-rule)]">
               {servers.length === 0 ? (
                 <div className={`p-8 text-center ${isDark ? 'text-text-secondary' : 'text-text-secondary'}`}>
                   <Server className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -1454,7 +1454,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
 
       {/* Add Server Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[color-mix(in_srgb,var(--color-shadow)_50%,transparent)]">
           <div className="w-full max-w-2xl rounded-lg shadow-xl" style={{ background: 'var(--color-surface)' }}>
             <div className="p-6 border-b" style={{ borderColor: 'var(--color-border)' }}>
               <h3 className="text-xl font-semibold" style={{ color: 'var(--color-text)' }}>
@@ -1494,7 +1494,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
               </button>
               <button
                 onClick={handleAddServer}
-                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-on-accent rounded-lg transition-colors"
               >
                 Add Server
               </button>
@@ -1505,7 +1505,7 @@ export const MCPManagementView: React.FC<MCPManagementViewProps> = ({ theme }) =
 
       {/* Server Details Modal */}
       {selectedServer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[color-mix(in_srgb,var(--color-shadow)_50%,transparent)]">
           <div className="w-full max-w-4xl rounded-lg shadow-xl max-h-[90vh] overflow-y-auto" style={{ background: 'var(--color-surface)' }}>
             <div className="p-6 border-b flex items-start justify-between" style={{ borderColor: 'var(--color-border)' }}>
               <div>

@@ -8,10 +8,6 @@ import App from './app/App'
 // docs/design/theme-sot-spec.md.
 import './styles/theme.css'
 import './index.css'
-// Legacy canonical theme — kept during Phase 0 (its !important aliases share
-// the same brand values as theme.css, so there is no conflict). Deleted in a
-// later phase once call sites read the theme.css tokens directly.
-import './styles/openagentic-theme.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

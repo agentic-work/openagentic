@@ -82,7 +82,7 @@ export const SlideInPanel: React.FC<SlideInPanelProps> = ({
   return (
     <div
       className="fixed inset-0 z-50 flex justify-end"
-      style={{ backgroundColor: showBackdrop ? 'rgba(0, 0, 0, 0.5)' : 'transparent' }}
+      style={{ backgroundColor: showBackdrop ? 'color-mix(in srgb, var(--color-shadow) 50%, transparent)' : 'transparent' }}
       onClick={handleBackdropClick}
       role="dialog"
       aria-modal="true"

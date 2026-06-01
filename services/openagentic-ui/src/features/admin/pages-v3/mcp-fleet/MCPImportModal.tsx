@@ -142,7 +142,7 @@ export const MCPImportModal: React.FC<MCPImportModalProps> = ({ open, onClose, o
               marginBottom: 8,
               fontSize: 12,
               color: 'var(--fg-2)',
-              fontFamily: 'var(--font-v3-mono)',
+              fontFamily: 'var(--font-mono)',
               lineHeight: 1.5,
             }}
           >
@@ -153,7 +153,7 @@ export const MCPImportModal: React.FC<MCPImportModalProps> = ({ open, onClose, o
               marginBottom: 4,
               fontSize: 11,
               color: 'var(--fg-3)',
-              fontFamily: 'var(--font-v3-mono)',
+              fontFamily: 'var(--font-mono)',
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
             }}
@@ -197,7 +197,7 @@ export const MCPImportModal: React.FC<MCPImportModalProps> = ({ open, onClose, o
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 4,
-                fontFamily: 'var(--font-v3-mono)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 12,
               }}
             >

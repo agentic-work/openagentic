@@ -193,7 +193,7 @@ const CustomNode = ({
         fill="var(--color-text)"
         dominantBaseline="middle"
         style={{
-          fontFamily: 'Inter, system-ui, sans-serif',
+          fontFamily: 'var(--font-body)',
           textShadow: '0 1px 2px color-mix(in srgb, black 50%, transparent)'
         }}
       >
@@ -209,7 +209,7 @@ const CustomNode = ({
         fill={nodeColor}
         dominantBaseline="middle"
         style={{
-          fontFamily: 'Inter, system-ui, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontWeight: 500
         }}
       >
@@ -459,7 +459,7 @@ export const MultiModelSankeyChart: React.FC<MultiModelSankeyChartProps> = ({
                   color: colors.accent,
                   fontSize: '13px',
                   fontWeight: 600,
-                  fontFamily: 'monospace'
+                  fontFamily: 'var(--font-mono)'
                 }}>
                   {tokens.toLocaleString()}
                 </span>

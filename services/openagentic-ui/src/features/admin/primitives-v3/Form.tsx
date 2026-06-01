@@ -17,7 +17,7 @@ export const FormRow = ({ name, desc, configKey, children, status }: FormRowProp
       {configKey && (
         <span
           style={{
-            fontFamily: 'var(--font-v3-mono)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 9,
             color: 'var(--fg-3)',
             background: 'var(--bg-2)',

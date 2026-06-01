@@ -80,16 +80,18 @@ const UnauthorizedWarning: React.FC<UnauthorizedWarningProps> = ({ clientIp }) =
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-black">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-bg">
       {/* Animated red background */}
       <div
         className="absolute inset-0 opacity-30"
         style={{
+          // theme-allow: deliberate danger-alarm radial glow for the intrusion honeypot screen
           background: 'radial-gradient(circle at 50% 50%, #ff0000 0%, #000000 100%)',
           animation: 'pulse 2s ease-in-out infinite'
         }}
       />
 
+      {/* theme-allow: decorative red-alarm scanline / glow effects for the intrusion honeypot screen */}
       <style>
         {`
           @keyframes pulse {
@@ -157,7 +159,7 @@ const UnauthorizedWarning: React.FC<UnauthorizedWarningProps> = ({ clientIp }) =
         animate={{ scale: 1, opacity: 1 }}
         className="relative z-10 max-w-4xl mx-auto p-8"
       >
-        <div className="warning-border bg-black rounded-lg p-12">
+        <div className="warning-border bg-bg rounded-lg p-12">
           {/* Skull icon */}
           <AnimatePresence>
             {showSkull && (
@@ -167,16 +169,16 @@ const UnauthorizedWarning: React.FC<UnauthorizedWarningProps> = ({ clientIp }) =
                 exit={{ scale: 0, rotate: 180 }}
                 className="flex justify-center mb-8"
               >
-                <Skull className="w-24 h-24 text-red-600" strokeWidth={2} />
+                <Skull className="w-24 h-24 text-err" strokeWidth={2} />
               </motion.div>
             )}
           </AnimatePresence>
 
           {/* Main warning text */}
           <motion.h1
-            className="text-5xl font-black text-center mb-6 text-red-600 glitch-effect text-glow-red"
+            className="text-5xl font-black text-center mb-6 text-err glitch-effect text-glow-red"
             style={{
-              fontFamily: '"Courier New", monospace',
+              fontFamily: 'var(--font-mono)',
               letterSpacing: '0.1em'
             }}
           >
@@ -185,34 +187,34 @@ const UnauthorizedWarning: React.FC<UnauthorizedWarningProps> = ({ clientIp }) =
 
           {/* IP Address display */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-3 bg-red-900/30 border-2 border-red-600 rounded-lg px-6 py-3">
-              <Eye className="w-6 h-6 text-red-500" />
-              <p className="text-2xl font-mono text-red-400">
-                IP: <span className="text-red-300 font-bold">{clientIp}</span>
+            <div className="inline-flex items-center gap-3 border-2 rounded-lg px-6 py-3" style={{ background: 'color-mix(in srgb, var(--color-err) 25%, transparent)', borderColor: 'var(--color-err)' }}>
+              <Eye className="w-6 h-6 text-err" />
+              <p className="text-2xl font-mono text-err">
+                IP: <span className="text-err font-bold">{clientIp}</span>
               </p>
             </div>
           </div>
 
           {/* Threat message */}
-          <div className="space-y-6 text-center text-red-300 text-lg font-mono">
+          <div className="space-y-6 text-center text-err text-lg font-mono">
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
               className="flex items-center justify-center gap-3"
             >
-              <Zap className="w-6 h-6 text-yellow-500" />
-              <span className="text-yellow-400 font-bold">
+              <Zap className="w-6 h-6 text-warn" />
+              <span className="text-warn font-bold">
                 THANK YOU FOR YOUR IP
               </span>
-              <Zap className="w-6 h-6 text-yellow-500" />
+              <Zap className="w-6 h-6 text-warn" />
             </motion.p>
 
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
-              className="text-2xl font-bold text-red-500"
+              className="text-2xl font-bold text-err"
             >
               INITIATING AI MULTI-AGENT COUNTER-ATTACK
             </motion.p>
@@ -221,33 +223,34 @@ const UnauthorizedWarning: React.FC<UnauthorizedWarningProps> = ({ clientIp }) =
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.1 }}
-              className="bg-red-950/50 border border-red-700 rounded-lg p-6 mt-6"
+              className="border rounded-lg p-6 mt-6"
+              style={{ background: 'color-mix(in srgb, var(--color-err) 35%, var(--color-bg))', borderColor: 'color-mix(in srgb, var(--color-err) 60%, transparent)' }}
             >
               <div className="flex items-center justify-center gap-3 mb-4">
-                <Shield className="w-8 h-8 text-red-500 animate-pulse" />
-                <p className="text-xl font-bold text-red-400">SECURITY MEASURES ACTIVATED</p>
-                <Shield className="w-8 h-8 text-red-500 animate-pulse" />
+                <Shield className="w-8 h-8 text-err animate-pulse" />
+                <p className="text-xl font-bold text-err">SECURITY MEASURES ACTIVATED</p>
+                <Shield className="w-8 h-8 text-err animate-pulse" />
               </div>
 
-              <ul className="text-left space-y-2 text-red-300">
+              <ul className="text-left space-y-2 text-err">
                 <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> IP Address Logged: {clientIp}
+                  <span className="text-ok">✓</span> IP Address Logged: {clientIp}
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> Geolocation Traced
+                  <span className="text-ok">✓</span> Geolocation Traced
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> ISP Information Captured
+                  <span className="text-ok">✓</span> ISP Information Captured
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> Autonomous Defense Systems Deployed
+                  <span className="text-ok">✓</span> Autonomous Defense Systems Deployed
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-green-500">✓</span> AI Agents Monitoring Your Network
+                  <span className="text-ok">✓</span> AI Agents Monitoring Your Network
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-yellow-500 animate-pulse">⚠</span>
-                  <span className="text-yellow-400">Federal Authorities Notified</span>
+                  <span className="text-warn animate-pulse">⚠</span>
+                  <span className="text-warn">Federal Authorities Notified</span>
                 </li>
               </ul>
             </motion.div>
@@ -256,18 +259,19 @@ const UnauthorizedWarning: React.FC<UnauthorizedWarningProps> = ({ clientIp }) =
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 1.5 }}
-              className="mt-8 p-6 bg-black/60 border-2 border-yellow-600 rounded-lg"
+              className="mt-8 p-6 border-2 rounded-lg"
+              style={{ background: 'color-mix(in srgb, var(--color-bg) 60%, transparent)', borderColor: 'var(--color-warn)' }}
             >
-              <p className="text-yellow-500 text-xl font-bold mb-2">
+              <p className="text-warn text-xl font-bold mb-2">
                 ⚠️ COUNTER-INTRUSION DEPLOYMENT
               </p>
-              <p className="text-yellow-400 text-lg">
+              <p className="text-warn text-lg">
                 Advanced Persistent Threat (APT) Response Initiated
               </p>
-              <div className="mt-4 text-6xl font-black text-red-600 animate-pulse">
+              <div className="mt-4 text-6xl font-black text-err animate-pulse">
                 {countdown}
               </div>
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-sm text-fg-muted mt-2">
                 Defensive measures activating in {countdown} seconds...
               </p>
             </motion.div>
@@ -276,13 +280,13 @@ const UnauthorizedWarning: React.FC<UnauthorizedWarningProps> = ({ clientIp }) =
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 2 }}
-              className="text-sm text-gray-600 mt-8 italic"
+              className="text-sm text-fg-subtle mt-8 italic"
             >
               This system is protected by autonomous AI security agents.
               <br />
               Unauthorized access attempts are monitored, logged, and actively defended against.
               <br />
-              <span className="text-red-500">Your intrusion attempt has been permanently recorded.</span>
+              <span className="text-err">Your intrusion attempt has been permanently recorded.</span>
             </motion.p>
           </div>
 
@@ -295,13 +299,14 @@ const UnauthorizedWarning: React.FC<UnauthorizedWarningProps> = ({ clientIp }) =
           >
             {['Analyzing threat level', 'Deploying countermeasures', 'Activating AI defense grid'].map((text, i) => (
               <div key={i} className="space-y-1">
-                <p className="text-xs text-red-400 font-mono">{text}...</p>
-                <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+                <p className="text-xs text-err font-mono">{text}...</p>
+                <div className="w-full bg-surface-2 rounded-full h-2 overflow-hidden">
                   <motion.div
                     initial={{ width: '0%' }}
                     animate={{ width: '100%' }}
                     transition={{ duration: 2, delay: 2.5 + i * 0.3 }}
-                    className="h-full bg-gradient-to-r from-red-600 to-red-400"
+                    className="h-full"
+                    style={{ background: 'linear-gradient(to right, var(--color-err), color-mix(in srgb, var(--color-err) 70%, var(--color-bg)))' }}
                   />
                 </div>
               </div>
@@ -331,7 +336,7 @@ const UnauthorizedWarning: React.FC<UnauthorizedWarningProps> = ({ clientIp }) =
             }}
             className="absolute"
           >
-            <AlertTriangle className="w-16 h-16 text-red-600" />
+            <AlertTriangle className="w-16 h-16 text-err" />
           </motion.div>
         ))}
       </div>

@@ -202,7 +202,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
           <button
             onClick={handleDownload}
             
-            className="px-4 py-2 bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
+            className="px-4 py-2 bg-accent text-on-accent rounded-lg hover:opacity-90 transition-colors"
             style={{ color: 'var(--color-text)' }}
           >
             Download File
@@ -269,7 +269,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
                   <button
                     onClick={handleZoomOut}
                     
-                    className="p-2 hover:text-gray-800 :text-gray-100 hover:bg-gray-100 :bg-gray-700 rounded-lg transition-colors"
+                    className="p-2 hover:text-text hover:bg-surface-2 rounded-lg transition-colors"
                     style={{ color: 'var(--color-textSecondary)' }}
                     title="Zoom Out"
                   >
@@ -285,7 +285,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
                   <button
                     onClick={handleZoomIn}
                     
-                    className="p-2 hover:text-gray-800 :text-gray-100 hover:bg-gray-100 :bg-gray-700 rounded-lg transition-colors"
+                    className="p-2 hover:text-text hover:bg-surface-2 rounded-lg transition-colors"
                     style={{ color: 'var(--color-textSecondary)' }}
                     title="Zoom In"
                   >
@@ -295,7 +295,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
                   <button
                     onClick={handleRotate}
                     
-                    className="p-2 hover:text-gray-800 :text-gray-100 hover:bg-gray-100 :bg-gray-700 rounded-lg transition-colors"
+                    className="p-2 hover:text-text hover:bg-surface-2 rounded-lg transition-colors"
                     style={{ color: 'var(--color-textSecondary)' }}
                     title="Rotate"
                   >
@@ -311,7 +311,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
               <button
                 onClick={handleDownload}
                 
-                className="p-2 hover:text-gray-800 :text-gray-100 hover:bg-gray-100 :bg-gray-700 rounded-lg transition-colors"
+                className="p-2 hover:text-text hover:bg-surface-2 rounded-lg transition-colors"
                 style={{ color: 'var(--color-textSecondary)' }}
                 title="Download"
               >
@@ -321,7 +321,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
               <button
                 onClick={handleOpenExternal}
                 
-                className="p-2 hover:text-gray-800 :text-gray-100 hover:bg-gray-100 :bg-gray-700 rounded-lg transition-colors"
+                className="p-2 hover:text-text hover:bg-surface-2 rounded-lg transition-colors"
                 style={{ color: 'var(--color-textSecondary)' }}
                 title="Open in New Tab"
               >
@@ -331,7 +331,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
               <button
                 onClick={() => setIsMaximized(!isMaximized)}
                 
-                className="p-2 hover:text-gray-800 :text-gray-100 hover:bg-gray-100 :bg-gray-700 rounded-lg transition-colors"
+                className="p-2 hover:text-text hover:bg-surface-2 rounded-lg transition-colors"
                 style={{ color: 'var(--color-textSecondary)' }}
                 title={isMaximized ? 'Restore' : 'Maximize'}
               >
@@ -341,7 +341,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
               <button
                 onClick={onClose}
                 
-                className="p-2 hover:text-gray-800 :text-gray-100 hover:bg-gray-100 :bg-gray-700 rounded-lg transition-colors"
+                className="p-2 hover:text-text hover:bg-surface-2 rounded-lg transition-colors"
                 style={{ color: 'var(--color-textSecondary)' }}
                 title="Close"
               >
@@ -360,7 +360,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
             {isLoading && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="flex items-center gap-3">
-                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-500 border-t-transparent" />
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-accent border-t-transparent" />
                   <span style={{ color: 'var(--color-textSecondary)' }}>Loading preview...</span>
                 </div>
               </div>
@@ -369,7 +369,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
             {error && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
-                  <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                  <AlertTriangle className="w-12 h-12 text-error mx-auto mb-4" />
                   <h3 
                   className="text-lg font-semibold mb-2"
                   style={{ color: 'var(--color-text)' }}>
@@ -381,7 +381,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
                   <button
                     onClick={handleDownload}
                     
-                    className="px-4 py-2 bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
+                    className="px-4 py-2 bg-accent text-on-accent rounded-lg hover:opacity-90 transition-colors"
                     style={{ color: 'var(--color-text)' }}
                   >
                     Download File Instead

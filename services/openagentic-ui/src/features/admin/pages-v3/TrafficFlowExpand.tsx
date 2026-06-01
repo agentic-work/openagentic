@@ -230,7 +230,7 @@ const RingView: React.FC<{ agg: ReturnType<typeof useAggregatedFlow> }> = ({ agg
         }}>
           <div style={{
             color: 'var(--fg-3)',
-            fontFamily: 'var(--font-v3-mono)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 11,
             textTransform: 'uppercase',
             letterSpacing: 0.6,
@@ -249,7 +249,7 @@ const RingView: React.FC<{ agg: ReturnType<typeof useAggregatedFlow> }> = ({ agg
                     gridTemplateColumns: '24px 1fr 90px',
                     alignItems: 'center',
                     gap: 10,
-                    fontFamily: 'var(--font-v3-mono)',
+                    fontFamily: 'var(--font-mono)',
                     fontSize: 11,
                   }}>
                     <span style={{ color: 'var(--fg-3)' }}>#{i + 1}</span>

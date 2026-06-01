@@ -77,7 +77,7 @@ export const SidePanel = ({
           flexDirection: 'column',
           transform: open ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 220ms cubic-bezier(.6,0,0,1)',
-          boxShadow: '-12px 0 32px rgba(0,0,0,0.5)',
+          boxShadow: '-12px 0 32px color-mix(in srgb, var(--color-shadow) 50%, transparent)',
         }}
       >
         <div
@@ -106,7 +106,7 @@ export const SidePanel = ({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{
-                fontFamily: 'var(--font-v3-mono)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 'var(--v3-t-display, 16px)',
                 color: 'var(--fg-0)',
                 fontWeight: 500,
@@ -120,7 +120,7 @@ export const SidePanel = ({
             {meta && (
               <div
                 style={{
-                  fontFamily: 'var(--font-v3-mono)',
+                  fontFamily: 'var(--font-mono)',
                   fontSize: 'var(--v3-t-meta, 11px)',
                   color: 'var(--fg-3)',
                   marginTop: 2,
@@ -170,7 +170,7 @@ export const SidePanel = ({
                   border: 0,
                   cursor: 'pointer',
                   padding: '8px 14px',
-                  fontFamily: 'var(--font-v3-mono)',
+                  fontFamily: 'var(--font-mono)',
                   fontSize: 'var(--v3-t-meta)',
                   color: activeTab === t.id ? 'var(--accent)' : 'var(--fg-2)',
                   textTransform: 'uppercase',

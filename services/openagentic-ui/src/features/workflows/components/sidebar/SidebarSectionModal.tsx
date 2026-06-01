@@ -110,7 +110,7 @@ const btnPrimary =
 
 const btnPrimaryStyle: React.CSSProperties = {
   backgroundColor: 'var(--user-accent-primary, #2196f3)',
-  color: '#fff',
+  color: 'var(--color-on-accent)',
 };
 
 const tableHeaderClass =
@@ -128,33 +128,33 @@ const tableCellStyle: React.CSSProperties = {
 };
 
 const scopeColors: Record<string, string> = {
-  global: '#2196f3',
-  group: '#9c27b0',
-  workflow: '#ff9800',
+  global: 'var(--color-info)',
+  group: 'var(--color-accent)',
+  workflow: 'var(--color-warning)',
 };
 
 const methodColors: Record<string, string> = {
-  POST: '#22c55e',
-  GET: '#2196f3',
-  PUT: '#ff9800',
-  DELETE: '#ef5350',
+  POST: 'var(--color-success)',
+  GET: 'var(--color-info)',
+  PUT: 'var(--color-warning)',
+  DELETE: 'var(--color-error)',
 };
 
 const roleColors: Record<string, string> = {
-  viewer: '#9e9e9e',
-  editor: '#2196f3',
-  executor: '#ff9800',
-  admin: '#9c27b0',
+  viewer: 'var(--color-fg-muted)',
+  editor: 'var(--color-info)',
+  executor: 'var(--color-warning)',
+  admin: 'var(--color-accent)',
 };
 
 type VariableType = 'string' | 'number' | 'boolean' | 'json' | 'secret_ref';
 
 const typeColors: Record<VariableType, string> = {
-  string: '#2196f3',
-  number: '#ff9800',
-  boolean: '#22c55e',
-  json: '#9c27b0',
-  secret_ref: '#ef5350',
+  string: 'var(--color-info)',
+  number: 'var(--color-warning)',
+  boolean: 'var(--color-success)',
+  json: 'var(--color-accent)',
+  secret_ref: 'var(--color-error)',
 };
 
 const COMMON_EXPRESSIONS = [
@@ -180,7 +180,7 @@ const TabButton: React.FC<{
     className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
     style={{
       backgroundColor: active ? 'var(--user-accent-primary, #2196f3)' : 'transparent',
-      color: active ? '#fff' : 'var(--color-text-secondary, #999)',
+      color: active ? 'var(--color-on-accent)' : 'var(--color-text-secondary)',
     }}
   >
     {children}
@@ -460,7 +460,7 @@ const NodesContent: React.FC = () => {
                             </div>
                             <div className="flex flex-wrap gap-1.5">
                               {caps.inputs.map(i => (
-                                <span key={i} className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(34, 197, 94, 0.12)', color: 'var(--color-success)' }}>{i}</span>
+                                <span key={i} className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: 'color-mix(in srgb, var(--color-success) 12%, transparent)', color: 'var(--color-success)' }}>{i}</span>
                               ))}
                             </div>
                           </div>
@@ -472,7 +472,7 @@ const NodesContent: React.FC = () => {
                             </div>
                             <div className="flex flex-wrap gap-1.5">
                               {caps.outputs.map(o => (
-                                <span key={o} className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b' }}>{o}</span>
+                                <span key={o} className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: 'color-mix(in srgb, var(--color-warning) 12%, transparent)', color: 'var(--color-warning)' }}>{o}</span>
                               ))}
                             </div>
                           </div>
@@ -754,8 +754,8 @@ const AgentsContent: React.FC = () => {
                     </span>
                   </td>
                   <td className={tableCellClass} style={tableCellStyle}>
-                    <button onClick={() => handleToggle(agent)} className="relative w-9 h-5 rounded-full transition-colors" style={{ backgroundColor: agent.enabled !== false ? '#22c55e' : 'var(--color-surface-secondary, #555)' }}>
-                      <motion.div className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow" animate={{ left: agent.enabled !== false ? 18 : 2 }} transition={{ duration: 0.15 }} />
+                    <button onClick={() => handleToggle(agent)} className="relative w-9 h-5 rounded-full transition-colors" style={{ backgroundColor: agent.enabled !== false ? 'var(--color-success)' : 'var(--color-surface-secondary, #555)' }}>
+                      <motion.div className="absolute top-0.5 w-4 h-4 rounded-full bg-surface shadow" animate={{ left: agent.enabled !== false ? 18 : 2 }} transition={{ duration: 0.15 }} />
                     </button>
                   </td>
                   <td className={tableCellClass} style={tableCellStyle}>
@@ -787,12 +787,12 @@ const AgentsContent: React.FC = () => {
             exit={{ opacity: 0, y: -10 }}
             style={{
               padding: '10px 14px', borderRadius: 8, marginTop: 8,
-              background: testResult.success ? 'rgba(34, 197, 94,0.08)' : 'rgba(244,67,54,0.08)',
-              border: `1px solid ${testResult.success ? 'rgba(34, 197, 94,0.3)' : 'rgba(244,67,54,0.3)'}`,
+              background: testResult.success ? 'color-mix(in srgb, var(--color-success) 8%, transparent)' : 'color-mix(in srgb, var(--color-error) 8%, transparent)',
+              border: `1px solid ${testResult.success ? 'color-mix(in srgb, var(--color-success) 30%, transparent)' : 'color-mix(in srgb, var(--color-error) 30%, transparent)'}`,
             }}
           >
             <div className="flex items-center justify-between mb-1">
-              <span style={{ fontSize: 11, fontWeight: 600, color: testResult.success ? '#22c55e' : '#f44336' }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: testResult.success ? 'var(--color-success)' : 'var(--color-error)' }}>
                 {testResult.success ? 'Test Passed' : 'Test Failed'}
               </span>
               <button onClick={() => setTestResult(null)} style={{ color: 'var(--color-text-tertiary)', padding: 2 }}>
@@ -800,7 +800,7 @@ const AgentsContent: React.FC = () => {
               </button>
             </div>
             <div style={{
-              fontSize: 10, fontFamily: "'SF Mono', Monaco, monospace",
+              fontSize: 10, fontFamily: 'var(--font-mono)',
               color: 'var(--color-text-secondary)', maxHeight: 120, overflowY: 'auto',
               whiteSpace: 'pre-wrap', wordBreak: 'break-word',
             }}>
@@ -958,8 +958,8 @@ const DataContent: React.FC = () => {
   }, [getAuthHeaders, newCollectionName, fetchStores]);
 
   const storeLabels: Record<string, string> = { milvus: 'Milvus (Vector)', pgvector: 'pgvector (SQL+Vector)', redis: 'Redis (Cache)' };
-  const storeColors: Record<string, string> = { milvus: '#9c27b0', pgvector: '#2196f3', redis: '#ef5350' };
-  const statusColors: Record<string, string> = { connected: '#22c55e', configured: '#ff9800', disconnected: '#ef5350' };
+  const storeColors: Record<string, string> = { milvus: 'var(--color-accent)', pgvector: 'var(--color-info)', redis: 'var(--color-error)' };
+  const statusColors: Record<string, string> = { connected: 'var(--color-success)', configured: 'var(--color-warning)', disconnected: 'var(--color-error)' };
 
   return (
     <div className="space-y-4">
@@ -1075,8 +1075,8 @@ const DataContent: React.FC = () => {
           <div
             className="text-xs px-2 py-1.5 rounded"
             style={{
-              backgroundColor: uploadResult.success ? 'rgba(34, 197, 94,0.1)' : 'rgba(239,83,80,0.1)',
-              color: uploadResult.success ? '#22c55e' : '#ef5350',
+              backgroundColor: uploadResult.success ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'rgba(239,83,80,0.1)',
+              color: uploadResult.success ? 'var(--color-success)' : 'var(--color-error)',
             }}
           >
             {uploadResult.message}
@@ -1112,7 +1112,7 @@ const DataContent: React.FC = () => {
                   className="w-full flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--color-surface)]"
                   style={{ backgroundColor: 'var(--color-surface)' }}
                 >
-                  <Database className="w-5 h-5 flex-shrink-0" style={{ color: storeColors[storeKey] || '#999' }} />
+                  <Database className="w-5 h-5 flex-shrink-0" style={{ color: storeColors[storeKey] || 'var(--color-fg-subtle)' }} />
                   <div className="flex-1 text-left">
                     <div className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>
                       {storeLabels[storeKey] || storeKey}
@@ -1122,8 +1122,8 @@ const DataContent: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <StatusDot color={statusColors[store.status] || '#9e9e9e'} />
-                    <span className="text-xs capitalize" style={{ color: statusColors[store.status] || '#9e9e9e' }}>
+                    <StatusDot color={statusColors[store.status] || 'var(--color-fg-muted)'} />
+                    <span className="text-xs capitalize" style={{ color: statusColors[store.status] || 'var(--color-fg-muted)' }}>
                       {store.status}
                     </span>
                   </div>
@@ -1187,7 +1187,7 @@ const DataContent: React.FC = () => {
                 style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
               >
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(156,39,176,0.1)' }}>
-                  <Database className="w-4 h-4" style={{ color: '#9c27b0' }} />
+                  <Database className="w-4 h-4" style={{ color: 'var(--color-accent)' }} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate" style={{ color: 'var(--color-text)' }}>
@@ -1412,7 +1412,7 @@ const WebhooksContent: React.FC<{ workflowId?: string }> = ({ workflowId }) => {
                     </td>
                     <td className={tableCellClass} style={tableCellStyle}>
                       <div className="flex items-center gap-2">
-                        <StatusDot color={wh.status === 'active' ? '#22c55e' : '#9e9e9e'} />
+                        <StatusDot color={wh.status === 'active' ? 'var(--color-success)' : 'var(--color-fg-muted)'} />
                         <span className="text-xs">{wh.status}</span>
                       </div>
                     </td>
@@ -1422,14 +1422,14 @@ const WebhooksContent: React.FC<{ workflowId?: string }> = ({ workflowId }) => {
                           {testingId === wh.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                         </button>
                         <button onClick={() => handleCopy(wh.url, wh.id)} className="p-1.5 rounded-lg transition-colors hover:bg-[var(--color-surface)]" title="Copy URL" style={{ color: 'var(--color-text-tertiary)' }}>
-                          {copiedId === wh.id ? <Check className="w-4 h-4" style={{ color: '#22c55e' }} /> : <Copy className="w-4 h-4" />}
+                          {copiedId === wh.id ? <Check className="w-4 h-4" style={{ color: 'var(--color-success)' }} /> : <Copy className="w-4 h-4" />}
                         </button>
                         {wh.stats?.last_calls?.length > 0 && (
                           <button onClick={() => setExpandedId(expandedId === wh.id ? null : wh.id)} className="p-1.5 rounded-lg transition-colors hover:bg-[var(--color-surface)]" title="Request history" style={{ color: 'var(--color-text-tertiary)' }}>
                             <Clock className="w-4 h-4" />
                           </button>
                         )}
-                        <button onClick={() => handleDelete(wh.id)} className="p-1.5 rounded-lg transition-colors hover:bg-[var(--color-surface)]" title="Delete" style={{ color: '#ef5350' }}>
+                        <button onClick={() => handleDelete(wh.id)} className="p-1.5 rounded-lg transition-colors hover:bg-[var(--color-surface)]" title="Delete" style={{ color: 'var(--color-error)' }}>
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -1440,7 +1440,7 @@ const WebhooksContent: React.FC<{ workflowId?: string }> = ({ workflowId }) => {
                     <tr>
                       <td colSpan={5} className="px-4 py-2" style={{ borderBottom: '1px solid var(--color-border)' }}>
                         {testResult?.id === wh.id && (
-                          <div className="text-xs font-mono mb-2" style={{ color: testResult.status >= 200 && testResult.status < 300 ? '#22c55e' : '#ef5350' }}>
+                          <div className="text-xs font-mono mb-2" style={{ color: testResult.status >= 200 && testResult.status < 300 ? 'var(--color-success)' : 'var(--color-error)' }}>
                             Test: {testResult.status === 0 ? 'Failed' : `${testResult.status}`} ({testResult.time}ms)
                           </div>
                         )}
@@ -1451,7 +1451,7 @@ const WebhooksContent: React.FC<{ workflowId?: string }> = ({ workflowId }) => {
                               {wh.stats.last_calls.slice(0, 10).map((call: any, i: number) => (
                                 <div key={i} className="flex items-center gap-3 text-xs">
                                   <span style={{ color: 'var(--color-text-tertiary)' }}>{new Date(call.timestamp).toLocaleString()}</span>
-                                  <span className="font-mono font-bold" style={{ color: call.status_code >= 200 && call.status_code < 300 ? '#22c55e' : '#ef5350' }}>{call.status_code}</span>
+                                  <span className="font-mono font-bold" style={{ color: call.status_code >= 200 && call.status_code < 300 ? 'var(--color-success)' : 'var(--color-error)' }}>{call.status_code}</span>
                                   <span style={{ color: 'var(--color-text-tertiary)' }}>{call.response_time_ms}ms</span>
                                 </div>
                               ))}
@@ -1527,7 +1527,7 @@ const ApiEndpointContent: React.FC<{ workflowId?: string }> = ({ workflowId }) =
 
   const CopyBtn: React.FC<{ field: string; text: string }> = ({ field, text }) => (
     <button onClick={() => copy(text, field)} className="p-1 rounded transition-colors hover:bg-[var(--color-surface)]" style={{ color: 'var(--color-text-tertiary)' }}>
-      {copiedField === field ? <Check className="w-3.5 h-3.5" style={{ color: '#2ea043' }} /> : <Copy className="w-3.5 h-3.5" />}
+      {copiedField === field ? <Check className="w-3.5 h-3.5" style={{ color: 'var(--color-success)' }} /> : <Copy className="w-3.5 h-3.5" />}
     </button>
   );
 
@@ -1537,10 +1537,10 @@ const ApiEndpointContent: React.FC<{ workflowId?: string }> = ({ workflowId }) =
       <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Terminal className="w-4 h-4" style={{ color: '#2ea043' }} />
+            <Terminal className="w-4 h-4" style={{ color: 'var(--color-success)' }} />
             <h3 className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Direct Execute</h3>
           </div>
-          <span className="text-xs px-2 py-0.5 rounded-full font-mono font-bold" style={{ backgroundColor: '#2ea04315', color: '#2ea043' }}>POST</span>
+          <span className="text-xs px-2 py-0.5 rounded-full font-mono font-bold" style={{ backgroundColor: '#2ea04315', color: 'var(--color-success)' }}>POST</span>
         </div>
 
         <div className="flex items-center gap-2 p-2.5 rounded-lg" style={{ background: 'var(--color-bg-primary)' }}>
@@ -1549,7 +1549,7 @@ const ApiEndpointContent: React.FC<{ workflowId?: string }> = ({ workflowId }) =
         </div>
 
         <div className="text-xs space-y-1" style={{ color: 'var(--color-text-tertiary)' }}>
-          <p><strong style={{ color: 'var(--color-text-secondary)' }}>Authentication:</strong> <code className="font-mono px-1" style={{ color: '#bc8cff' }}>Authorization: Bearer &lt;api_key&gt;</code></p>
+          <p><strong style={{ color: 'var(--color-text-secondary)' }}>Authentication:</strong> <code className="font-mono px-1" style={{ color: 'var(--color-accent)' }}>Authorization: Bearer &lt;api_key&gt;</code></p>
           <p><strong style={{ color: 'var(--color-text-secondary)' }}>Content-Type:</strong> <code className="font-mono px-1">application/json</code></p>
           <p><strong style={{ color: 'var(--color-text-secondary)' }}>Response:</strong> SSE stream (<code className="font-mono px-1">text/event-stream</code>)</p>
         </div>
@@ -1559,7 +1559,7 @@ const ApiEndpointContent: React.FC<{ workflowId?: string }> = ({ workflowId }) =
           <div className="absolute top-2 right-2"><CopyBtn field="curl" text={curlDirect} /></div>
         </div>
 
-        <button onClick={handleTest} disabled={testing} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50" style={{ backgroundColor: 'var(--user-accent-primary, #2196f3)', color: '#fff' }}>
+        <button onClick={handleTest} disabled={testing} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50" style={{ backgroundColor: 'var(--user-accent-primary)', color: 'var(--color-on-accent)' }}>
           <Play className="w-3 h-3" />
           {testing ? 'Running...' : 'Try it'}
         </button>
@@ -1567,7 +1567,7 @@ const ApiEndpointContent: React.FC<{ workflowId?: string }> = ({ workflowId }) =
         {testResult && (
           <div className="space-y-2 pt-2 border-t" style={{ borderColor: 'var(--color-border)' }}>
             <div className="flex items-center gap-3 text-xs">
-              <span className="font-mono font-bold" style={{ color: testResult.status >= 200 && testResult.status < 300 ? '#2ea043' : '#f85149' }}>{testResult.status || 'Error'}</span>
+              <span className="font-mono font-bold" style={{ color: testResult.status >= 200 && testResult.status < 300 ? 'var(--color-success)' : 'var(--color-error)' }}>{testResult.status || 'Error'}</span>
               <span style={{ color: 'var(--color-text-tertiary)' }}>{testResult.time}ms</span>
             </div>
             <pre className="text-[10px] font-mono p-2 rounded-lg overflow-auto max-h-48" style={{ backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-tertiary)' }}>{testResult.preview}</pre>
@@ -1579,7 +1579,7 @@ const ApiEndpointContent: React.FC<{ workflowId?: string }> = ({ workflowId }) =
       {webhooks.length > 0 && (
         <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
           <div className="flex items-center gap-2">
-            <Link className="w-4 h-4" style={{ color: '#d29922' }} />
+            <Link className="w-4 h-4" style={{ color: 'var(--color-warning)' }} />
             <h3 className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Webhook Endpoints</h3>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: 'var(--color-bg-primary)', color: 'var(--color-text-tertiary)' }}>No auth required</span>
           </div>
@@ -1589,7 +1589,7 @@ const ApiEndpointContent: React.FC<{ workflowId?: string }> = ({ workflowId }) =
               <div key={wh.id} className="p-3 rounded-lg border space-y-2" style={{ borderColor: 'var(--color-border)' }}>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium" style={{ color: 'var(--color-text)' }}>{wh.name}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: '#2196f315', color: '#58a6ff' }}>{wh.response_mode}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: '#2196f315', color: 'var(--color-info)' }}>{wh.response_mode}</span>
                 </div>
                 <div className="flex items-center gap-2 p-2 rounded" style={{ background: 'var(--color-bg-primary)' }}>
                   <code className="text-[11px] font-mono flex-1 truncate" style={{ color: 'var(--color-text-secondary)' }}>{wh.url}</code>
@@ -1690,7 +1690,7 @@ const TeamContent: React.FC<{ workflowId?: string }> = ({ workflowId }) => {
     } catch { /* silently handle */ }
   }, [workflowId, getAuthHeaders, fetchShares]);
 
-  const statusColors: Record<string, string> = { completed: '#22c55e', failed: '#ef5350', running: '#ff9800' };
+  const statusColors: Record<string, string> = { completed: 'var(--color-success)', failed: 'var(--color-error)', running: 'var(--color-warning)' };
 
   if (!workflowId) {
     return <div className="py-8 text-center text-sm" style={{ color: 'var(--color-text-tertiary)' }}>Save workflow first to manage team access</div>;
@@ -1812,9 +1812,9 @@ const TeamContent: React.FC<{ workflowId?: string }> = ({ workflowId }) => {
             <div className="divide-y" style={{ borderColor: 'var(--color-border)' }}>
               {activity.map(entry => (
                 <div key={entry.id} className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--color-surface)]">
-                  <StatusDot color={statusColors[entry.status] || '#9e9e9e'} />
+                  <StatusDot color={statusColors[entry.status] || 'var(--color-fg-muted)'} />
                   <span className="text-sm flex-1" style={{ color: 'var(--color-text)' }}>{entry.user_name}</span>
-                  <span className="text-xs capitalize" style={{ color: statusColors[entry.status] || '#9e9e9e' }}>{entry.status}</span>
+                  <span className="text-xs capitalize" style={{ color: statusColors[entry.status] || 'var(--color-fg-muted)' }}>{entry.status}</span>
                   {entry.duration_ms !== undefined && (
                     <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
                       {entry.duration_ms < 1000 ? `${entry.duration_ms}ms` : `${(entry.duration_ms / 1000).toFixed(1)}s`}
@@ -1862,25 +1862,28 @@ const PlaygroundContent: React.FC = () => (
 // ---------------------------------------------------------------------------
 // TAG COLORS — consistent palette for workflow tags
 // ---------------------------------------------------------------------------
-
+// theme-allow: categorical tag identity palette (incl. vendor brand hues — AWS
+// #ff9900, Azure #008ad7, GCP #4285f4, k8s #326ce5, GitHub). Same carve-out as the
+// node-TYPE identity + vendor brand color allowlist; these are recognizable tag
+// identities, not themeable surfaces (soft `${color}10` bg / `${color}30` border tints).
 const TAG_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'aws':              { bg: '#ff990010', text: '#ff9900', border: '#ff990030' },
   'azure':            { bg: '#008ad710', text: '#008ad7', border: '#008ad730' },
   'gcp':              { bg: '#4285f410', text: '#4285f4', border: '#4285f430' },
   'kubernetes':       { bg: '#326ce510', text: '#326ce5', border: '#326ce530' },
   'github':           { bg: '#8b5cf610', text: '#8b5cf6', border: '#8b5cf630' },
-  'security':         { bg: '#ef444410', text: '#ef4444', border: '#ef444430' },
-  'multi-agent':      { bg: '#f59e0b10', text: '#f59e0b', border: '#f59e0b30' },
+  'security':         { bg: '#ef444410', text: 'var(--color-error)', border: '#ef444430' },
+  'multi-agent':      { bg: '#f59e0b10', text: 'var(--color-warning)', border: '#f59e0b30' },
   'ai-analysis':      { bg: '#8b5cf610', text: '#8b5cf6', border: '#8b5cf630' },
-  'web-research':     { bg: '#06b6d410', text: '#06b6d4', border: '#06b6d430' },
-  'mcp-tool':         { bg: '#10b98110', text: '#10b981', border: '#10b98130' },
-  'monitoring':       { bg: '#f9731610', text: '#f97316', border: '#f9731630' },
-  'cost-analysis':    { bg: '#eab30810', text: '#eab308', border: '#eab30830' },
+  'web-research':     { bg: '#06b6d410', text: 'var(--color-info)', border: '#06b6d430' },
+  'mcp-tool':         { bg: '#10b98110', text: 'var(--color-success)', border: '#10b98130' },
+  'monitoring':       { bg: '#f9731610', text: 'var(--color-warning)', border: '#f9731630' },
+  'cost-analysis':    { bg: '#eab30810', text: 'var(--color-warning)', border: '#eab30830' },
   'seo':              { bg: '#ec489910', text: '#ec4899', border: '#ec489930' },
   'competitive-intel':{ bg: '#6366f110', text: '#6366f1', border: '#6366f130' },
   'content':          { bg: '#14b8a610', text: '#14b8a6', border: '#14b8a630' },
   'feedback':         { bg: '#a855f710', text: '#a855f7', border: '#a855f730' },
-  'compliance':       { bg: '#dc262610', text: '#dc2626', border: '#dc262630' },
+  'compliance':       { bg: '#dc262610', text: 'var(--color-error)', border: '#dc262630' },
   'devops':           { bg: '#2563eb10', text: '#2563eb', border: '#2563eb30' },
   'research':         { bg: '#0ea5e910', text: '#0ea5e9', border: '#0ea5e930' },
   'code-execution':   { bg: '#84cc1610', text: '#84cc16', border: '#84cc1630' },
@@ -1900,7 +1903,7 @@ const TagPill: React.FC<{ tag: string; selected?: boolean; onClick?: () => void 
       className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border transition-all"
       style={{
         backgroundColor: selected ? colors.text : colors.bg,
-        color: selected ? '#fff' : colors.text,
+        color: selected ? 'var(--color-on-accent)' : colors.text,
         borderColor: colors.border,
         cursor: onClick ? 'pointer' : 'default',
       }}
@@ -1916,10 +1919,10 @@ const TagPill: React.FC<{ tag: string; selected?: boolean; onClick?: () => void 
 
 function getCategoryColor(category: string): string {
   const colors: Record<string, string> = {
-    ops: '#ff9800', data: '#2196f3', security: '#f44336', cloud: '#00bcd4',
-    engineering: '#4caf50', gov: '#7c3aed', research: '#ec4899', starter: '#64748b',
+    ops: 'var(--color-warning)', data: 'var(--color-info)', security: 'var(--color-error)', cloud: '#00bcd4',
+    engineering: 'var(--color-success)', gov: 'var(--color-accent)', research: 'var(--color-accent)', starter: 'var(--color-fg-subtle)',
   };
-  return colors[category?.toLowerCase()] || '#64748b';
+  return colors[category?.toLowerCase()] || 'var(--color-fg-subtle)';
 }
 
 const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }> = ({ filter }) => {
@@ -2174,10 +2177,10 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
                 <span className="relative flex-shrink-0 mt-1">
                   <span
                     className="inline-block w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: filter === 'deployed' ? '#22c55e' : filter === 'templates' ? 'var(--user-accent-primary, #FF5722)' : '#94a3b8' }}
+                    style={{ backgroundColor: filter === 'deployed' ? 'var(--color-success)' : filter === 'templates' ? 'var(--user-accent-primary)' : 'var(--color-fg-subtle)' }}
                   />
                   {filter === 'deployed' && (
-                    <span className="absolute inset-0 rounded-full animate-ping" style={{ backgroundColor: '#22c55e', opacity: 0.3, width: 10, height: 10 }} />
+                    <span className="absolute inset-0 rounded-full animate-ping" style={{ backgroundColor: 'var(--color-success)', opacity: 0.3, width: 10, height: 10 }} />
                   )}
                 </span>
 
@@ -2316,8 +2319,8 @@ const WorkflowCardGridView: React.FC<{ filter: 'deployed' | 'my' | 'templates' }
                     <button
                       onClick={() => handleDelete(wf.id, wf.name)}
                       disabled={deleting === wf.id}
-                      className="p-1 rounded transition-colors hover:bg-red-500/10"
-                      style={{ color: '#ef4444' }}
+                      className="p-1 rounded transition-colors hover:bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)]"
+                      style={{ color: 'var(--color-error)' }}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -2439,8 +2442,8 @@ const DeployedContent: React.FC = () => {
             >
               {/* Status dot */}
               <span className="relative flex-shrink-0">
-                <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#22c55e' }} />
-                <span className="absolute inset-0 rounded-full animate-ping" style={{ backgroundColor: '#22c55e', opacity: 0.3, width: 10, height: 10 }} />
+                <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'var(--color-success)' }} />
+                <span className="absolute inset-0 rounded-full animate-ping" style={{ backgroundColor: 'var(--color-success)', opacity: 0.3, width: 10, height: 10 }} />
               </span>
 
               {/* Info */}
@@ -2472,8 +2475,8 @@ const DeployedContent: React.FC = () => {
                 <button
                   onClick={() => handleDelete(wf.id, wf.name)}
                   disabled={deleting === wf.id}
-                  className="p-1.5 rounded-md transition-colors hover:bg-red-500/10"
-                  style={{ color: '#ef4444' }}
+                  className="p-1.5 rounded-md transition-colors hover:bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)]"
+                  style={{ color: 'var(--color-error)' }}
                   title="Delete permanently"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -2647,7 +2650,7 @@ const SettingsContent: React.FC<{
               <input type="text" value={v.value} onChange={e => { const nv = [...envVars]; nv[idx] = { ...nv[idx], value: e.target.value }; updateEnvVars(nv); }}
                 placeholder="value" className={`${inputClass} flex-1 font-mono`} style={inputStyle} />
               <button onClick={() => { const nv = envVars.filter((_, i) => i !== idx); updateEnvVars(nv.length ? nv : [{ key: '', value: '' }]); }}
-                className="p-1.5 rounded-lg transition-colors hover:bg-red-500/10" style={{ color: '#ef5350' }}>
+                className="p-1.5 rounded-lg transition-colors hover:bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)]" style={{ color: 'var(--color-error)' }}>
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -2717,10 +2720,10 @@ const RunsContent: React.FC = () => {
   useEffect(() => { fetchExecutions(); }, [fetchExecutions]);
 
   const statusColor = (status: string) => {
-    if (status === 'completed') return '#22c55e';
-    if (status === 'failed') return '#ef5350';
-    if (status === 'running') return '#ff9800';
-    return '#9e9e9e';
+    if (status === 'completed') return 'var(--color-success)';
+    if (status === 'failed') return 'var(--color-error)';
+    if (status === 'running') return 'var(--color-warning)';
+    return 'var(--color-fg-muted)';
   };
 
   const timeAgo = (dateStr: string) => {
@@ -2865,8 +2868,8 @@ const InsightsContent: React.FC = () => {
           <div className="grid grid-cols-4 gap-3">
             {[
               { label: 'Total Runs', value: stats.total, color: 'var(--color-text)' },
-              { label: 'Succeeded', value: stats.succeeded, color: '#22c55e' },
-              { label: 'Failed', value: stats.failed, color: '#ef5350' },
+              { label: 'Succeeded', value: stats.succeeded, color: 'var(--color-success)' },
+              { label: 'Failed', value: stats.failed, color: 'var(--color-error)' },
               { label: 'Success Rate', value: `${stats.rate}%`, color: 'var(--color-text)' },
             ].map(card => (
               <div
@@ -2934,13 +2937,13 @@ const VersionsContent: React.FC<{
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold px-2 py-0.5 rounded-full" style={{
-                    backgroundColor: idx === 0 ? 'rgba(33,150,243,0.12)' : 'var(--color-surface)',
+                    backgroundColor: idx === 0 ? 'color-mix(in srgb, var(--color-info) 12%, transparent)' : 'var(--color-surface)',
                     color: idx === 0 ? 'var(--user-accent-primary, #2196f3)' : 'var(--color-text-secondary)',
                   }}>
                     v{version.version || versions.length - idx}
                   </span>
                   {idx === 0 && (
-                    <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ backgroundColor: 'rgba(34, 197, 94,0.12)', color: '#22c55e' }}>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ backgroundColor: 'color-mix(in srgb, var(--color-success) 12%, transparent)', color: 'var(--color-success)' }}>
                       Current
                     </span>
                   )}
@@ -3085,7 +3088,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
           </button>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--user-accent-primary, #2196f3)' }}>
-              <SectionIcon className="w-4 h-4 text-white" />
+              <SectionIcon className="w-4 h-4 text-text" />
             </div>
             <h1 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>
               {sectionTitles[section]}

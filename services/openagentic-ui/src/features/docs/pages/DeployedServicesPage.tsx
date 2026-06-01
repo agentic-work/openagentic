@@ -54,6 +54,9 @@ interface ClusterResponse {
 }
 
 // ── Category → colour ───────────────────────────────────────────────────────
+// theme-allow: React-Flow diagram node-TYPE identity palette (same carve-out as the
+// workflow canvas node-type colors) — a categorical scale on fixed dark diagram nodes,
+// not themeable UI surfaces.
 const CATEGORY_STYLE: Record<ServiceRow['category'], { bg: string; border: string; label: string }> = {
   core:       { bg: '#1e3a5f', border: '#3b82f6', label: 'Core' },
   data:       { bg: '#3f1d4a', border: '#a855f7', label: 'Data' },
@@ -63,13 +66,16 @@ const CATEGORY_STYLE: Record<ServiceRow['category'], { bg: string; border: strin
 };
 
 const STATUS_DOT: Record<ServiceRow['status'], string> = {
-  available: '#10b981',
-  progressing: '#f59e0b',
-  unavailable: '#ef4444',
-  unknown: '#6b7280',
+  available: 'var(--color-success)',
+  progressing: 'var(--color-warning)',
+  unavailable: 'var(--color-error)',
+  unknown: 'var(--color-fg-subtle)',
 };
 
 // ── Custom node ─────────────────────────────────────────────────────────────
+// theme-allow: ServiceNode is a React-Flow diagram node painted on the fixed dark
+// category bg above; its internal neutral text/edge hues are diagram-palette values,
+// not themeable app surfaces (same carve-out as the workflow canvas nodes).
 const ServiceNode: React.FC<NodeProps> = ({ data }) => {
   const svc = data.svc as ServiceRow;
   const [showFullDigest, setShowFullDigest] = useState(false);
@@ -84,7 +90,7 @@ const ServiceNode: React.FC<NodeProps> = ({ data }) => {
         padding: '10px 12px',
         minWidth: 220,
         color: '#e5e7eb',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontFamily: 'var(--font-body)',
         fontSize: 12,
         boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
       }}
@@ -103,17 +109,17 @@ const ServiceNode: React.FC<NodeProps> = ({ data }) => {
         />
       </div>
 
-      <div style={{ marginTop: 4, color: '#9ca3af', fontSize: 10, fontFamily: 'monospace' }}>
+      <div style={{ marginTop: 4, color: '#9ca3af', fontSize: 10, fontFamily: 'var(--font-mono)' }}>
         {svc.kind} · {svc.replicas.ready}/{svc.replicas.desired} ready
       </div>
 
-      <div style={{ marginTop: 8, fontFamily: 'monospace', fontSize: 10, color: '#cbd5e1', wordBreak: 'break-all' }}>
+      <div style={{ marginTop: 8, fontFamily: 'var(--font-mono)', fontSize: 10, color: '#cbd5e1', wordBreak: 'break-all' }}>
         <span style={{ color: '#94a3b8' }}>tag:</span> <span style={{ color: '#fbbf24' }}>{svc.tag}</span>
       </div>
 
       {svc.shaShort && (
         <div
-          style={{ marginTop: 4, fontFamily: 'monospace', fontSize: 10, color: '#cbd5e1', cursor: 'pointer' }}
+          style={{ marginTop: 4, fontFamily: 'var(--font-mono)', fontSize: 10, color: '#cbd5e1', cursor: 'pointer' }}
           onClick={(e) => { e.stopPropagation(); setShowFullDigest(s => !s); }}
           title="Click to expand full sha256 digest"
         >
@@ -175,6 +181,7 @@ function layout(services: ServiceRow[]): { nodes: Node[]; edges: Edge[] } {
           id: `${s.name}->${target}`,
           source: s.name,
           target,
+          // theme-allow: React-Flow diagram edge color (diagram palette)
           markerEnd: { type: MarkerType.ArrowClosed, color: '#6b7280' },
           style: { stroke: '#6b7280', strokeWidth: 1, opacity: 0.6 },
         });
@@ -231,13 +238,13 @@ const DeployedServicesPage: React.FC = () => {
           {data?.release && (
             <span style={{
               padding: '3px 10px', borderRadius: 14, fontSize: 12, fontWeight: 600,
-              background: 'rgba(59,130,246,0.18)', color: '#60a5fa',
+              background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
             }}>
               v{data.release.version} — {data.release.codename}
             </span>
           )}
           {data && (
-            <span style={{ fontSize: 11, color: 'var(--color-textMuted, #94a3b8)', fontFamily: 'monospace' }}>
+            <span style={{ fontSize: 11, color: 'var(--color-textMuted, #94a3b8)', fontFamily: 'var(--font-mono)' }}>
               namespace: {data.namespace}
             </span>
           )}
@@ -248,7 +255,7 @@ const DeployedServicesPage: React.FC = () => {
         </p>
         <div style={{ marginTop: 8, fontSize: 11, color: 'var(--color-textMuted, #6b7280)' }}>
           {loading && !data && '⏳ Loading cluster state…'}
-          {error && <span style={{ color: '#ef4444' }}>⚠ {error}</span>}
+          {error && <span style={{ color: 'var(--color-error)' }}>⚠ {error}</span>}
           {refreshedAt && !error && (
             <>Last refreshed {refreshedAt.toLocaleTimeString()} {data && `· ${data.services.length} services`}</>
           )}
@@ -286,6 +293,7 @@ const DeployedServicesPage: React.FC = () => {
             maxZoom={1.5}
             proOptions={{ hideAttribution: true }}
           >
+            {/* theme-allow: React-Flow canvas chrome (dot grid / minimap) — diagram palette */}
             <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="#3a3a3a" />
             <Controls />
             <MiniMap
@@ -310,7 +318,7 @@ const DeployedServicesPage: React.FC = () => {
             Raw table ({data.services.length} services)
           </summary>
           <div style={{ marginTop: 8, overflowX: 'auto' }}>
-            <table style={{ width: '100%', fontSize: 11, fontFamily: 'monospace', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', fontSize: 11, fontFamily: 'var(--font-mono)', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ color: 'var(--color-textMuted, #94a3b8)', textAlign: 'left' }}>
                   <th style={{ padding: '4px 8px' }}>name</th>
@@ -323,9 +331,9 @@ const DeployedServicesPage: React.FC = () => {
               <tbody>
                 {data.services.map(s => (
                   <tr key={s.name} style={{ borderTop: '1px solid var(--color-border, #2a2a2a)' }}>
-                    <td style={{ padding: '4px 8px', color: '#e5e7eb' }}>{s.name}</td>
-                    <td style={{ padding: '4px 8px', color: '#fbbf24' }}>{s.image}</td>
-                    <td style={{ padding: '4px 8px', color: '#22d3ee', wordBreak: 'break-all' }}>{s.imageDigest || '—'}</td>
+                    <td style={{ padding: '4px 8px', color: 'var(--color-text)' }}>{s.name}</td>
+                    <td style={{ padding: '4px 8px', color: 'var(--color-warning)' }}>{s.image}</td>
+                    <td style={{ padding: '4px 8px', color: 'var(--color-info)', wordBreak: 'break-all' }}>{s.imageDigest || '—'}</td>
                     <td style={{ padding: '4px 8px' }}>{s.replicas.ready}/{s.replicas.desired}</td>
                     <td style={{ padding: '4px 8px', color: STATUS_DOT[s.status] }}>{s.status}</td>
                   </tr>

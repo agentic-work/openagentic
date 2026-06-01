@@ -231,7 +231,7 @@ export const ModelManagementView: React.FC<ModelManagementViewProps> = ({ theme 
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{error}</p>
           </div>
         </div>
-        <button onClick={fetchProviders} className="mt-3 px-4 py-1.5 text-xs font-medium rounded-lg" style={{ background: 'var(--ap-accent)', color: 'white' }}>
+        <button onClick={fetchProviders} className="mt-3 px-4 py-1.5 text-xs font-medium rounded-lg" style={{ background: 'var(--ap-accent)', color: 'var(--color-on-accent)' }}>
           Retry
         </button>
       </div>
@@ -278,7 +278,7 @@ export const ModelManagementView: React.FC<ModelManagementViewProps> = ({ theme 
               {tab.label}
               {tab.count !== undefined && (
                 <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs ${
-                  activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-gray-500/20'
+                  activeTab === tab.id ? 'bg-[color-mix(in_srgb,var(--color-fg)_20%,transparent)] text-on-accent' : 'bg-[color-mix(in_srgb,var(--color-fg-subtle)_20%,transparent)]'
                 }`}>{tab.count}</span>
               )}
             </button>

@@ -343,10 +343,11 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     relative z-10 flex items-center gap-1.5 rounded-md transition-colors duration-200
                     ${isExpanded ? 'flex-1 px-3 py-1.5 justify-center' : 'p-2'}
                     ${appMode === 'chat'
-                      ? 'text-white'
+                      ? ''
                       : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
                     }
                   `}
+                  style={appMode === 'chat' ? { color: 'var(--color-on-accent)' } : undefined}
                   title="Chat Mode"
                 >
                   <MessageSquare size={isExpanded ? 14 : 16} />
@@ -361,10 +362,11 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                       relative z-10 flex items-center gap-1.5 rounded-md transition-colors duration-200
                       ${isExpanded ? 'flex-1 px-3 py-1.5 justify-center' : 'p-2'}
                       ${appMode === 'flows'
-                        ? 'text-white'
+                        ? ''
                         : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
                       }
                     `}
+                    style={appMode === 'flows' ? { color: 'var(--color-on-accent)' } : undefined}
                     title="Flows Mode - Visual Workflow Builder"
                   >
                     <Workflow size={isExpanded ? 14 : 16} />
@@ -520,7 +522,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                         fontSize: 10,
                         textTransform: 'uppercase',
                         letterSpacing: '0.08em',
-                        color: 'var(--fg-3, #71717a)',
+                        color: 'var(--color-fg-subtle)',
                         fontWeight: 500,
                       }}
                     >

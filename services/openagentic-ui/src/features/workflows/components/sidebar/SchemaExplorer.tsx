@@ -34,19 +34,19 @@ interface SchemaExplorerProps {
 function typeIndicator(type: string): { text: string; color: string } {
   const t = type.toLowerCase();
   if (t.includes('int') || t.includes('float') || t.includes('double') || t.includes('decimal') || t.includes('numeric') || t.includes('serial') || t.includes('real')) {
-    return { text: '#', color: '#4fc3f7' };
+    return { text: '#', color: 'var(--color-info)' };
   }
   if (t.includes('bool')) {
-    return { text: 'B', color: '#ab47bc' };
+    return { text: 'B', color: 'var(--color-accent)' };
   }
   if (t.includes('date') || t.includes('time') || t.includes('timestamp')) {
-    return { text: 'D', color: '#ffb74d' };
+    return { text: 'D', color: 'var(--color-warning)' };
   }
   if (t.includes('json') || t.includes('array')) {
-    return { text: '{}', color: '#66bb6a' };
+    return { text: '{}', color: 'var(--color-success)' };
   }
   // default: string / text / varchar / char / uuid / etc.
-  return { text: 'T', color: '#90a4ae' };
+  return { text: 'T', color: 'var(--color-fg-muted)' };
 }
 
 export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
@@ -75,7 +75,7 @@ export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
         mode: 'raw',
         query: `SELECT * FROM ${fullName} LIMIT 100`,
         icon: 'Database',
-        color: '#2196f3',
+        color: 'var(--color-info)',
       },
     }));
     e.dataTransfer.effectAllowed = 'copy';
@@ -122,7 +122,7 @@ export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
               <span style={{
                 fontSize: '10px',
                 fontWeight: 700,
-                color: '#2196f3',
+                color: 'var(--color-info)',
                 width: '14px',
                 textAlign: 'center',
                 flexShrink: 0,
@@ -156,7 +156,7 @@ export const SchemaExplorer: React.FC<SchemaExplorerProps> = ({
                       }}
                     >
                       {col.primaryKey && (
-                        <Key className="w-2.5 h-2.5 flex-shrink-0" style={{ color: '#ffc107' }} />
+                        <Key className="w-2.5 h-2.5 flex-shrink-0" style={{ color: 'var(--color-warning)' }} />
                       )}
                       <span style={{
                         fontSize: '9px',

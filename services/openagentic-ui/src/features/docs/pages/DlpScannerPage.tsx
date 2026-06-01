@@ -72,8 +72,8 @@ const DlpScannerPage: React.FC = () => (
                 <td style={{ padding: '12px 16px' }}>
                   <span style={{
                     fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px',
-                    color: p.action === 'Block' ? '#ef4444' : p.action === 'Redact' ? '#f97316' : 'var(--color-textMuted)',
-                    background: p.action === 'Block' ? 'rgba(239,68,68,0.12)' : p.action === 'Redact' ? 'rgba(249,115,22,0.12)' : 'var(--color-surfaceSecondary)',
+                    color: p.action === 'Block' ? 'var(--color-error)' : p.action === 'Redact' ? 'var(--color-warning)' : 'var(--color-textMuted)',
+                    background: p.action === 'Block' ? 'color-mix(in srgb, var(--color-error) 12%, transparent)' : p.action === 'Redact' ? 'color-mix(in srgb, var(--color-warning) 12%, transparent)' : 'var(--color-surfaceSecondary)',
                   }}>{p.action}</span>
                 </td>
               </tr>

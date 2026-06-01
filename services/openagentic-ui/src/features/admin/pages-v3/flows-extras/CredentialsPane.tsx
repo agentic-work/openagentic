@@ -65,7 +65,7 @@ export const CredentialsPane: React.FC<CredentialsPaneProps> = ({
       className: 'name',
       render: (r) => (
         <>
-          <div style={{ color: 'var(--fg-0)', fontFamily: 'var(--font-v3-mono)' }}>{r.name}</div>
+          <div style={{ color: 'var(--fg-0)', fontFamily: 'var(--font-mono)' }}>{r.name}</div>
           {r.description && (
             <div style={{ color: 'var(--fg-3)', fontSize: 11, marginTop: 2 }}>
               {r.description}
@@ -80,7 +80,7 @@ export const CredentialsPane: React.FC<CredentialsPaneProps> = ({
       render: (r) => (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <StatusDot status={scopeStatusDot(r.scope)} />
-          <span style={{ fontFamily: 'var(--font-v3-mono)', fontSize: 11 }}>{r.scope}</span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{r.scope}</span>
         </span>
       ),
     },
@@ -144,7 +144,7 @@ export const CredentialsPane: React.FC<CredentialsPaneProps> = ({
           title="workflow secrets"
           count={isLoading ? '…' : filtered.length}
           right={
-            <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-v3-mono)', fontSize: 11 }}>
+            <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
               read-only · use {'{{secret:name}}'} in node fields
             </span>
           }

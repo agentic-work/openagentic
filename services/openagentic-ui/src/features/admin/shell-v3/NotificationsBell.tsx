@@ -112,7 +112,7 @@ export const NotificationsBell: React.FC = () => {
             background: 'var(--bg-1)',
             border: '1px solid var(--line-2)',
             color: 'var(--fg-0)',
-            boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
+            boxShadow: '0 12px 40px color-mix(in srgb, var(--color-shadow) 40%, transparent)',
             display: 'flex',
             flexDirection: 'column',
             zIndex: 999,
@@ -161,7 +161,7 @@ export const NotificationsBell: React.FC = () => {
                 color: 'var(--accent)',
                 cursor: items.length === 0 ? 'default' : 'pointer',
                 fontSize: 11,
-                fontFamily: 'var(--font-v3-mono)',
+                fontFamily: 'var(--font-mono)',
                 opacity: items.length === 0 ? 0.5 : 1,
               }}
             >
@@ -203,11 +203,11 @@ export const NotificationsBell: React.FC = () => {
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6 }}>
                       <span style={{ color: 'var(--fg-0)', fontWeight: 500 }}>{it.title}</span>
-                      <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-v3-mono)', fontSize: 10 }}>
+                      <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)', fontSize: 10 }}>
                         {relTime(it.ts)}
                       </span>
                     </div>
-                    <div style={{ color: 'var(--fg-2)', fontFamily: 'var(--font-v3-mono)', fontSize: 11, marginTop: 2 }}>
+                    <div style={{ color: 'var(--fg-2)', fontFamily: 'var(--font-mono)', fontSize: 11, marginTop: 2 }}>
                       {it.source} · {it.detail}
                     </div>
                   </div>

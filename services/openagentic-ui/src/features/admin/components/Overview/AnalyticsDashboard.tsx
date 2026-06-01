@@ -206,7 +206,7 @@ export const AnalyticsDashboard: React.FC = () => {
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-3">
             <div className={`p-3 rounded-lg ${color}`}>
-              <Icon size={24} className="text-white" />
+              <Icon size={24} className="text-on-accent" />
             </div>
             <h3 className="text-sm font-medium text-text-secondary">{title}</h3>
           </div>
@@ -295,7 +295,7 @@ export const AnalyticsDashboard: React.FC = () => {
               {(systemAnalytics.topModels || []).slice(0, 5).map((model, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-surface-secondary hover:bg-surface-secondary/80 transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary-500 text-white flex items-center justify-center font-bold text-sm">
+                    <div className="w-8 h-8 rounded-full bg-primary-500 text-on-accent flex items-center justify-center font-bold text-sm">
                       {idx + 1}
                     </div>
                     <div>
@@ -349,7 +349,7 @@ export const AnalyticsDashboard: React.FC = () => {
                           </p>
                           <p className="text-xs text-text-secondary">{userSpend.user?.email}</p>
                           {userSpend.user?.is_admin && (
-                            <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded-full bg-info-500 text-white">
+                            <span className="inline-block mt-1 px-2 py-0.5 text-xs rounded-full bg-info-500 text-on-accent">
                               Admin
                             </span>
                           )}

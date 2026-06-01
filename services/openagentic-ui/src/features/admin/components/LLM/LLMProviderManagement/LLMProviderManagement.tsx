@@ -293,7 +293,7 @@ export const LLMProviderManagement: React.FC<LLMProviderManagementProps> = ({ th
   if (error && dbProviders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <XCircle size={32} className="text-red-400" />
+        <XCircle size={32} className="text-err" />
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{error}</p>
         <button onClick={fetchAll} className={btnPrimary}>Retry</button>
       </div>

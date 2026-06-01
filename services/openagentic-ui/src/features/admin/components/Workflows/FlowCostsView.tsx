@@ -222,7 +222,7 @@ export const FlowCostsView: React.FC<FlowCostsViewProps> = ({ theme }) => {
                           <tbody>
                             {row.models.map((m, i) => (
                               <tr key={i} style={{ borderTop: '1px solid var(--ap-ln-3)' }}>
-                                <td style={{ padding: '4px 8px', color: headerColor, fontFamily: 'monospace' }}>{m.model}</td>
+                                <td style={{ padding: '4px 8px', color: headerColor, fontFamily: 'var(--font-mono)' }}>{m.model}</td>
                                 <td style={{ padding: '4px 8px', textAlign: 'right', color: headerColor }}>{m.calls}</td>
                                 <td style={{ padding: '4px 8px', textAlign: 'right', color: headerColor }}>{formatTokens(m.tokens)}</td>
                                 <td style={{ padding: '4px 8px', textAlign: 'right', color: accentGreen }}>{formatCost(m.cost)}</td>

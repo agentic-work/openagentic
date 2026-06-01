@@ -223,7 +223,7 @@ export const MCPCallLogsView: React.FC<MCPCallLogsViewProps> = ({ theme }) => {
         </div>
         <button
           onClick={fetchLogs}
-          className="mt-4 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
+          className="mt-4 px-4 py-2 bg-primary-500 text-on-accent rounded-lg hover:bg-primary-600"
         >
           Retry
         </button>
@@ -508,7 +508,7 @@ export const MCPCallLogsView: React.FC<MCPCallLogsViewProps> = ({ theme }) => {
                                 e.stopPropagation();
                                 copyToClipboard(log.input, `req-${log.id}`);
                               }}
-                              className="flex items-center gap-1 px-2 py-1 text-xs rounded hover:bg-white/10 transition-colors"
+                              className="flex items-center gap-1 px-2 py-1 text-xs rounded hover:bg-[color-mix(in_srgb,var(--color-fg)_10%,transparent)] transition-colors"
                               title="Copy Request JSON"
                             >
                               {copiedId === `req-${log.id}` ? (
@@ -539,7 +539,7 @@ export const MCPCallLogsView: React.FC<MCPCallLogsViewProps> = ({ theme }) => {
                                   e.stopPropagation();
                                   copyToClipboard(log.output, `res-${log.id}`);
                                 }}
-                                className="flex items-center gap-1 px-2 py-1 text-xs rounded hover:bg-white/10 transition-colors"
+                                className="flex items-center gap-1 px-2 py-1 text-xs rounded hover:bg-[color-mix(in_srgb,var(--color-fg)_10%,transparent)] transition-colors"
                                 title="Copy Response JSON"
                               >
                                 {copiedId === `res-${log.id}` ? (

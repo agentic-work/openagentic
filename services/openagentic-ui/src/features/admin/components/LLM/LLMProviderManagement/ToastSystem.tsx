@@ -11,7 +11,7 @@ export const ToastContainer: React.FC<{ toasts: Toast[]; onDismiss: (id: string)
     {toasts.map(t => (
       <div key={t.id} className="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-sm font-medium"
         style={{
-          backgroundColor: t.type === 'success' ? 'rgba(0,210,106,0.15)' : t.type === 'error' ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.15)',
+          backgroundColor: t.type === 'success' ? 'color-mix(in srgb, var(--color-ok) 15%, transparent)' : t.type === 'error' ? 'color-mix(in srgb, var(--color-err) 15%, transparent)' : 'color-mix(in srgb, var(--ap-accent) 15%, transparent)',
           border: `1px solid ${t.type === 'success' ? 'var(--ap-ok)' : t.type === 'error' ? 'var(--ap-err)' : 'var(--ap-accent)'}40`,
           color: t.type === 'success' ? 'var(--ap-ok)' : t.type === 'error' ? 'var(--ap-err)' : 'var(--ap-accent)',
         }}>

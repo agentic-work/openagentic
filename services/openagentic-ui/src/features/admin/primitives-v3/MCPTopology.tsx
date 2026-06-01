@@ -133,7 +133,7 @@ export const MCPTopology = ({
                 textAnchor="middle"
                 fontFamily="var(--font-v3-mono)"
                 fontSize={9}
-                fill={n.status === 'idle' ? 'var(--fg-2)' : '#000'}
+                fill={n.status === 'idle' ? 'var(--fg-2)' : 'var(--color-on-accent)'}
                 fontWeight={600}
                 style={{ pointerEvents: 'none' }}
               >

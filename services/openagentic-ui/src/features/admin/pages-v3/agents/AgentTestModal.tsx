@@ -116,7 +116,7 @@ export const AgentTestModal: React.FC<AgentTestModalProps> = ({ open, onClose, a
           <div style={{ display: 'grid', gap: 8 }}>
             <div
               style={{
-                fontFamily: 'var(--font-v3-mono)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 'var(--v3-t-meta)',
                 color: 'var(--fg-3)',
                 textTransform: 'uppercase',
@@ -146,7 +146,7 @@ export const AgentTestModal: React.FC<AgentTestModalProps> = ({ open, onClose, a
                 border: '1px solid var(--line-1)',
                 padding: 10,
                 color: 'var(--fg-1)',
-                fontFamily: 'var(--font-v3-mono)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 'var(--v3-t-body, 12px)',
                 whiteSpace: 'pre-wrap',
                 margin: 0,
@@ -171,7 +171,7 @@ const Field: React.FC<{ label: string; desc?: string; children: React.ReactNode 
   <div style={{ display: 'grid', gap: 4 }}>
     <label
       style={{
-        fontFamily: 'var(--font-v3-mono)',
+        fontFamily: 'var(--font-mono)',
         fontSize: 'var(--v3-t-meta)',
         textTransform: 'uppercase',
         letterSpacing: '0.06em',

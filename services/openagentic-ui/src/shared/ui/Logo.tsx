@@ -13,7 +13,7 @@ const OpenAgenticLogo: React.FC<OpenAgenticLogoProps> = ({ size = 'md', classNam
   };
 
   return (
-    <div className={`${sizeClasses[size]} ${className} flex items-center justify-center rounded-lg text-white font-bold`} style={{ background: 'var(--color-primary)' }}>
+    <div className={`${sizeClasses[size]} ${className} flex items-center justify-center rounded-lg text-on-accent font-bold`} style={{ background: 'var(--color-accent)' }}>
       <span className="text-xs">A</span>
     </div>
   );

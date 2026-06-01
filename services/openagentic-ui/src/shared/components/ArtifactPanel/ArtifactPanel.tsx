@@ -195,7 +195,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
               letterSpacing: 0.8,
               color: 'var(--user-accent-primary)',
               fontWeight: 600,
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: 'var(--font-mono)',
               textTransform: 'uppercase',
             }}
           >
@@ -209,15 +209,15 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             flex: 1,
-            color: theme === 'dark' ? '#71717a' : '#a1a1aa',
+            color: 'var(--color-fg-subtle)',
             fontSize: 13,
-            fontFamily: 'system-ui, -apple-system, sans-serif',
+            fontFamily: 'var(--font-body)',
             padding: 32,
             textAlign: 'center',
           }}
         >
           <div>
-            <div style={{ fontSize: 14, marginBottom: 6, color: theme === 'dark' ? '#a1a1aa' : '#52525b' }}>
+            <div style={{ fontSize: 14, marginBottom: 6, color: 'var(--color-fg-muted)' }}>
               Awaiting artifact
             </div>
             <div style={{ fontSize: 12, opacity: 0.7 }}>
@@ -308,7 +308,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
             letterSpacing: 0.8,
             color: 'var(--user-accent-primary)',
             fontWeight: 600,
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: 'var(--font-mono)',
             textTransform: 'uppercase',
           }}
         >
@@ -320,7 +320,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
             color: 'var(--color-text)',
             fontSize: 13,
             fontWeight: 500,
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: 'var(--font-mono)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -333,8 +333,8 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
           data-testid="artifact-panel-meta"
           style={{
             fontSize: 11,
-            color: '#71717a',
-            fontFamily: "'JetBrains Mono', monospace",
+            color: 'var(--color-fg-subtle)',
+            fontFamily: 'var(--font-mono)',
             whiteSpace: 'nowrap',
           }}
         >
@@ -352,10 +352,10 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
               gap: 4,
               padding: '2px 7px',
               borderRadius: 99,
-              background: 'rgba(34,197,94,0.14)',
-              color: '#22c55e',
+              background: 'color-mix(in srgb, var(--color-ok) 14%, transparent)',
+              color: 'var(--color-ok)',
               fontSize: 10,
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: 'var(--font-mono)',
             }}
           >
             <svg width="9" height="9" viewBox="0 0 24 24" fill="none"
@@ -375,13 +375,13 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
             borderRadius: 6,
             background: 'transparent',
             border: 'none',
-            color: '#a1a1aa',
+            color: 'var(--color-fg-subtle)',
             fontSize: 11,
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
             cursor: 'pointer',
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: 'var(--font-mono)',
           }}
         >
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
@@ -402,7 +402,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
             borderRadius: 6,
             background: 'transparent',
             border: 'none',
-            color: copied ? '#22c55e' : '#a1a1aa',
+            color: copied ? 'var(--color-ok)' : 'var(--color-fg-subtle)',
             cursor: 'pointer',
           }}
         >
@@ -427,7 +427,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#a1a1aa',
+              color: 'var(--color-fg-subtle)',
               cursor: 'pointer',
               padding: 4,
               lineHeight: 1,
@@ -484,13 +484,13 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
                     : 'transparent',
                   border: 'none',
                   borderBottom: selected
-                    ? '2px solid var(--user-accent-primary)'
+                    ? '2px solid var(--color-accent)'
                     : '2px solid transparent',
                   color: selected
-                    ? 'var(--color-text)'
-                    : '#71717a',
+                    ? 'var(--color-fg)'
+                    : 'var(--color-fg-subtle)',
                   fontSize: 12,
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: 'var(--font-mono)',
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
                   display: 'inline-flex',
@@ -507,7 +507,7 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
                       width: 6,
                       height: 6,
                       borderRadius: '50%',
-                      background: '#f59e0b',
+                      background: 'var(--color-warn)',
                       display: 'inline-block',
                     }}
                   />
@@ -548,8 +548,8 @@ const ArtifactPanelComponent: React.FC<ArtifactPanelProps> = ({
           <div
             style={{
               padding: 24,
-              color: '#71717a',
-              fontFamily: "'JetBrains Mono', monospace",
+              color: 'var(--color-fg-subtle)',
+              fontFamily: 'var(--font-mono)',
               fontSize: 12,
             }}
           >

@@ -98,7 +98,7 @@ export const ListPanel: React.FC<ListPanelProps> = ({
           </span>
           <span style={{
             color: 'var(--fg-3)',
-            fontFamily: 'var(--font-v3-mono)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 'var(--v3-t-meta, 11px)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -241,7 +241,7 @@ const Avatar: React.FC<{ initials: string; size?: number }> = ({ initials, size 
       background: 'var(--bg-2)',
       border: '1px solid var(--line-1)',
       color: 'var(--fg-1)',
-      fontFamily: 'var(--font-v3-mono)',
+      fontFamily: 'var(--font-mono)',
       fontSize: Math.max(9, Math.round(size * 0.42)),
       fontWeight: 600,
       letterSpacing: 0,
@@ -261,7 +261,7 @@ const RolePill: React.FC<{ role: UserRole }> = ({ role }) => {
       style={{
         display: 'inline-block',
         padding: '1px 6px',
-        fontFamily: 'var(--font-v3-mono)',
+        fontFamily: 'var(--font-mono)',
         fontSize: 'var(--v3-t-meta, 10px)',
         textTransform: 'uppercase',
         letterSpacing: '0.06em',
@@ -287,7 +287,7 @@ const StatusCell: React.FC<{ user: ApiUser }> = ({ user }) => {
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
       <StatusDot status={v.dot} />
       <span style={{
-        fontFamily: 'var(--font-v3-mono)',
+        fontFamily: 'var(--font-mono)',
         fontSize: 'var(--v3-t-meta, 11px)',
         color: 'var(--fg-2)',
       }}>{v.label}</span>

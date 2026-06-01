@@ -100,9 +100,9 @@ type SnippetLang = 'curl' | 'python' | 'javascript' | 'typescript' | 'mcp_tool';
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 const SC: Record<string, string> = {
-  completed: '#2ea043', running: '#d29922', failed: '#f85149',
-  pending: '#8b949e', skipped: '#8b949e', completed_with_errors: '#d29922',
-  assertion_failed: '#f97316',
+  completed: 'var(--color-success)', running: 'var(--color-warning)', failed: 'var(--color-error)',
+  pending: 'var(--color-fg-muted)', skipped: 'var(--color-fg-muted)', completed_with_errors: 'var(--color-warning)',
+  assertion_failed: 'var(--color-warning)',
 };
 
 function fmt(ms?: number): string {
@@ -219,7 +219,7 @@ function formatErrorMessage(error: string, nodeLabel?: string, nodeType?: string
   };
 }
 
-const nColor = (t: string) => nodeTypeConfigs[t]?.color || '#58a6ff';
+const nColor = (t: string) => nodeTypeConfigs[t]?.color || 'var(--color-info)';
 const nIcon = (t: string) => nodeTypeConfigs[t]?.icon || '\u25CF';
 const isObj = (v: any): boolean => v !== null && typeof v === 'object' && !Array.isArray(v);
 
@@ -264,11 +264,11 @@ const TimelineError: React.FC<{ error: string; nodeLabel?: string; nodeType?: st
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        <XCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: '#f85149' }} />
+        <XCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-error)' }} />
         <div>
-          <span style={{ color: '#f85149', wordBreak: 'break-word', fontWeight: 600 }}>{fmtErr.message}</span>
+          <span style={{ color: 'var(--color-error)', wordBreak: 'break-word', fontWeight: 600 }}>{fmtErr.message}</span>
           {fmtErr.suggestion && (
-            <div style={{ fontSize: 10, color: '#8b949e', marginTop: 2 }}>{fmtErr.suggestion}</div>
+            <div style={{ fontSize: 10, color: 'var(--color-fg-muted)', marginTop: 2 }}>{fmtErr.suggestion}</div>
           )}
         </div>
       </div>
@@ -287,7 +287,7 @@ const ViewToggle: React.FC<{ mode: ViewMode; onChange: (m: ViewMode) => void }> 
 );
 
 const TableView: React.FC<{ data: any }> = ({ data }) => {
-  if (data == null) return <span style={{ color: '#6e7681', fontStyle: 'italic', fontSize: 11 }}>null</span>;
+  if (data == null) return <span style={{ color: 'var(--color-fg-subtle)', fontStyle: 'italic', fontSize: 11 }}>null</span>;
   const entries: [string, any][] = Array.isArray(data)
     ? data.map((v, i) => [String(i), v])
     : isObj(data) ? Object.entries(data) : [['-', data]];
@@ -297,7 +297,7 @@ const TableView: React.FC<{ data: any }> = ({ data }) => {
         <thead><tr><th>Key</th><th>Value</th></tr></thead>
         <tbody>{entries.slice(0, 100).map(([key, value], idx) => (
           <tr key={idx}>
-            <td style={{ color: '#bc8cff', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{key}</td>
+            <td style={{ color: 'var(--color-accent)', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{key}</td>
             <td style={{ wordBreak: 'break-all' }}>
               {isObj(value) || Array.isArray(value)
                 ? <pre style={{ whiteSpace: 'pre-wrap', fontSize: 10, margin: 0 }}>{JSON.stringify(value, null, 2)}</pre>
@@ -331,6 +331,9 @@ const downloadContent = (content: string, filename: string, mimeType = 'text/pla
 const openInNewTab = (content: string, title: string, format: 'markdown' | 'html' | 'text') => {
   let html: string;
   if (format === 'html') {
+    // theme-allow: self-contained CSS for a DOWNLOADED standalone HTML export file —
+    // opened outside the app (no access to the --color-* SOT vars), so it ships its own
+    // fixed GitHub-dark palette. Same carve-out as the iframe/widget srcdoc preambles.
     // If already full HTML document, open as-is; otherwise wrap it
     html = content.trim().startsWith('<!DOCTYPE') || content.trim().startsWith('<html')
       ? content
@@ -530,22 +533,22 @@ const DataSection: React.FC<{
                   <span style={{ position: 'relative', display: 'inline-flex' }}>
                     <button onClick={(e) => { e.stopPropagation(); handleSaveToKB('personal'); }}
                       className="wf-view-btn" title="Save to My Knowledge Base"
-                      style={{ padding: '2px 6px', color: saveStatus === 'saved' ? '#2ea043' : saveStatus === 'error' ? '#f85149' : undefined }}>
+                      style={{ padding: '2px 6px', color: saveStatus === 'saved' ? 'var(--color-success)' : saveStatus === 'error' ? 'var(--color-error)' : undefined }}>
                       {saveStatus === 'saving' ? <Loader2 className="w-3 h-3 animate-spin" /> :
                        saveStatus === 'saved' ? <Check className="w-3 h-3" /> :
                        <Save className="w-3 h-3" />}
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); handleSaveToKB('global'); }}
                       className="wf-view-btn" title="Save to Global Knowledge Base (DLP scanned)"
-                      style={{ padding: '2px 4px', fontSize: 8, fontWeight: 700, color: saveStatus === 'error' ? '#f85149' : 'var(--color-text-tertiary)' }}>
+                      style={{ padding: '2px 4px', fontSize: 8, fontWeight: 700, color: saveStatus === 'error' ? 'var(--color-error)' : 'var(--color-text-tertiary)' }}>
                       G
                     </button>
                     {dlpMessage && (
                       <div style={{
                         position: 'absolute', top: '100%', right: 0, zIndex: 50,
                         padding: '4px 8px', borderRadius: 4, fontSize: 10,
-                        background: '#f8514920', border: '1px solid #f85149',
-                        color: '#f85149', whiteSpace: 'nowrap', marginTop: 2,
+                        background: 'color-mix(in srgb, var(--color-error) 12%, transparent)', border: '1px solid var(--color-error)',
+                        color: 'var(--color-error)', whiteSpace: 'nowrap', marginTop: 2,
                       }}>
                         {dlpMessage}
                       </div>
@@ -559,7 +562,7 @@ const DataSection: React.FC<{
       </div>
       {open && (
         !has ? (
-          <div className="wf-json-block" style={{ padding: 16, textAlign: 'center', color: '#6e7681', fontStyle: 'italic' }}>
+          <div className="wf-json-block" style={{ padding: 16, textAlign: 'center', color: 'var(--color-fg-subtle)', fontStyle: 'italic' }}>
             No {title.toLowerCase()} data
           </div>
         ) : mode === 'json' ? (
@@ -605,7 +608,7 @@ const DataSection: React.FC<{
           <div className="wf-rendered-output wf-scrollbar" style={{ maxHeight: 400, overflowY: 'auto', padding: '8px 12px' }}>
             <pre style={{
               margin: 0,
-              fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace",
+              fontFamily: 'var(--font-code)',
               fontSize: 11.5,
               lineHeight: 1.55,
               color: 'var(--color-text, #e6edf3)',
@@ -693,11 +696,11 @@ const OutputTab: React.FC<{
                 display: 'inline-flex', alignItems: 'center', gap: 4,
                 padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600,
                 background: 'rgba(88,166,255,0.12)', border: '1px solid rgba(88,166,255,0.3)',
-                color: '#58a6ff',
+                color: 'var(--color-info)',
               }}
             >
               <span style={{
-                width: 5, height: 5, borderRadius: '50%', background: '#58a6ff',
+                width: 5, height: 5, borderRadius: '50%', background: 'var(--color-info)',
                 animation: 'wf-agent-pulse 1.4s ease-in-out infinite',
                 display: 'inline-block',
               }} />
@@ -724,8 +727,8 @@ const OutputTab: React.FC<{
             border: '1px solid rgba(88,166,255,0.15)',
             borderRadius: 6,
             fontSize: 11,
-            fontFamily: "'SF Mono', Monaco, monospace",
-            color: '#c9d1d9',
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--color-fg)',
             lineHeight: 1.5,
             maxHeight: 160,
             overflowY: 'auto',
@@ -735,7 +738,7 @@ const OutputTab: React.FC<{
         >
           {streamingText}
           <span style={{
-            display: 'inline-block', color: '#58a6ff',
+            display: 'inline-block', color: 'var(--color-info)',
             animation: 'wf-cursor-blink 1s step-start infinite', marginLeft: 1,
           }}>▎</span>
         </div>
@@ -750,15 +753,15 @@ const OutputTab: React.FC<{
         return (
         <div className="wf-output-section">
           <div style={{
-            background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.2)',
+            background: 'color-mix(in srgb, var(--color-error) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-error) 20%, transparent)',
             borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8,
           }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-              <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#f85149' }} />
+              <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-error)' }} />
               <div>
-                <div style={{ fontSize: 12, color: '#f85149', fontWeight: 600, lineHeight: 1.5 }}>{formatted.message}</div>
+                <div style={{ fontSize: 12, color: 'var(--color-error)', fontWeight: 600, lineHeight: 1.5 }}>{formatted.message}</div>
                 {formatted.suggestion && (
-                  <div style={{ fontSize: 11, color: '#8b949e', marginTop: 4, lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 11, color: 'var(--color-fg-muted)', marginTop: 4, lineHeight: 1.5 }}>
                     {formatted.suggestion}
                   </div>
                 )}
@@ -766,11 +769,11 @@ const OutputTab: React.FC<{
             </div>
             {formatted.message !== error && (
               <details style={{ marginTop: 4 }}>
-                <summary style={{ fontSize: 10, color: '#6e7681', cursor: 'pointer', userSelect: 'none' }}>
+                <summary style={{ fontSize: 10, color: 'var(--color-fg-subtle)', cursor: 'pointer', userSelect: 'none' }}>
                   Show raw error
                 </summary>
                 <pre style={{
-                  fontSize: 10, color: '#8b949e', marginTop: 4, padding: 8,
+                  fontSize: 10, color: 'var(--color-fg-muted)', marginTop: 4, padding: 8,
                   background: 'rgba(0,0,0,0.2)', borderRadius: 4, whiteSpace: 'pre-wrap',
                   wordBreak: 'break-all', maxHeight: 200, overflow: 'auto',
                 }}>
@@ -784,7 +787,7 @@ const OutputTab: React.FC<{
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
                   background: 'linear-gradient(135deg, var(--user-accent-primary, #FF5722) 0%, var(--user-accent-secondary, #B83A0E) 100%)',
-                  border: 'none', borderRadius: 6, color: '#fff', fontSize: 12,
+                  border: 'none', borderRadius: 6, color: 'var(--color-on-accent)', fontSize: 12,
                   fontWeight: 500, cursor: 'pointer', alignSelf: 'flex-start',
                 }}
               >
@@ -838,7 +841,7 @@ const TimelineTab: React.FC<{
             {assertionFailed > 0 && (
               <span
                 data-testid="assertion-failed-status"
-                style={{ marginLeft: 8, fontSize: 11, color: '#f97316', fontWeight: 600 }}
+                style={{ marginLeft: 8, fontSize: 11, color: 'var(--color-warning)', fontWeight: 600 }}
               >
                 {displayStatus}
               </span>
@@ -846,8 +849,8 @@ const TimelineTab: React.FC<{
           </div>
           <div className="wf-run-meta">
             manual &middot; {ago(startedAt)} &middot; {completed}/{nes.length} nodes
-            {failed > 0 && <span style={{ color: '#f85149' }}> &middot; {failed} failed</span>}
-            {assertionFailed > 0 && <span style={{ color: '#f97316' }}> &middot; {assertionFailed} assertion{assertionFailed !== 1 ? 's' : ''} failed</span>}
+            {failed > 0 && <span style={{ color: 'var(--color-error)' }}> &middot; {failed} failed</span>}
+            {assertionFailed > 0 && <span style={{ color: 'var(--color-warning)' }}> &middot; {assertionFailed} assertion{assertionFailed !== 1 ? 's' : ''} failed</span>}
           </div>
         </div>
         {isExecuting && <div className="wf-exec-spinner" style={{ width: 14, height: 14 }} />}
@@ -892,7 +895,7 @@ const TimelineTab: React.FC<{
                     <span
                       data-testid="timeline-assertion-pill"
                       className="wf-status-pill"
-                      style={{ backgroundColor: 'rgba(249,115,22,0.15)', color: '#f97316', borderColor: 'rgba(249,115,22,0.3)' }}
+                      style={{ backgroundColor: 'color-mix(in srgb, var(--color-warning) 15%, transparent)', color: 'var(--color-warning)', borderColor: 'color-mix(in srgb, var(--color-warning) 30%, transparent)' }}
                     >
                       assertion failed
                     </span>
@@ -924,15 +927,15 @@ const TimelineTab: React.FC<{
                         {ne.assertionFailed && ne.assertionErrorMessage ? (
                           <div data-testid="assertion-error-message" style={{
                             display: 'flex', flexDirection: 'column', gap: 4,
-                            background: 'rgba(249,115,22,0.08)',
-                            border: '1px solid rgba(249,115,22,0.25)',
+                            background: 'color-mix(in srgb, var(--color-warning) 8%, transparent)',
+                            border: '1px solid color-mix(in srgb, var(--color-warning) 25%, transparent)',
                             borderRadius: 6, padding: '8px 10px',
                           }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#f97316' }} />
-                              <span style={{ color: '#f97316', fontWeight: 700, fontSize: 11 }}>Output validation failed</span>
+                              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--color-warning)' }} />
+                              <span style={{ color: 'var(--color-warning)', fontWeight: 700, fontSize: 11 }}>Output validation failed</span>
                             </div>
-                            <div style={{ color: '#fdba74', fontSize: 11, marginLeft: 20 }}>{ne.assertionErrorMessage}</div>
+                            <div style={{ color: 'var(--color-warning)', fontSize: 11, marginLeft: 20 }}>{ne.assertionErrorMessage}</div>
                           </div>
                         ) : ne.error ? (
                           <TimelineError error={ne.error} nodeLabel={ne.nodeLabel} nodeType={ne.nodeType} />
@@ -949,7 +952,7 @@ const TimelineTab: React.FC<{
                             </div>
                           )
                         ) : (
-                          <span style={{ color: '#6e7681', fontStyle: 'italic' }}>No output</span>
+                          <span style={{ color: 'var(--color-fg-subtle)', fontStyle: 'italic' }}>No output</span>
                         )}
                       </div>
                     </motion.div>
@@ -960,7 +963,7 @@ const TimelineTab: React.FC<{
           );
         })}
         {nes.length === 0 && (
-          <div style={{ textAlign: 'center', padding: 24, color: '#6e7681', fontSize: 12 }}>
+          <div style={{ textAlign: 'center', padding: 24, color: 'var(--color-fg-subtle)', fontSize: 12 }}>
             No node executions recorded
           </div>
         )}
@@ -1075,7 +1078,7 @@ const AssistantTab: React.FC<{
                 <button
                   className="wf-ai-action"
                   onClick={() => onWorkflowPatch(msg.patches!)}
-                  style={{ color: '#d29922', background: 'rgba(210,153,34,0.1)', borderColor: 'rgba(210,153,34,0.2)' }}
+                  style={{ color: 'var(--color-warning)', background: 'rgba(210,153,34,0.1)', borderColor: 'rgba(210,153,34,0.2)' }}
                 >
                   <Zap className="w-3 h-3" />
                   Apply Patch ({msg.patches.length} node{msg.patches.length > 1 ? 's' : ''})
@@ -1089,8 +1092,8 @@ const AssistantTab: React.FC<{
           <div className="wf-ai-msg">
             <div className="wf-ai-avatar bot">✨</div>
             <div className="wf-ai-bubble" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Loader2 className="w-3.5 h-3.5" style={{ color: '#bc8cff', animation: 'wf-spin 0.6s linear infinite' }} />
-              <span style={{ fontSize: 11, color: '#8b949e' }}>Generating...</span>
+              <Loader2 className="w-3.5 h-3.5" style={{ color: 'var(--color-accent)', animation: 'wf-spin 0.6s linear infinite' }} />
+              <span style={{ fontSize: 11, color: 'var(--color-fg-muted)' }}>Generating...</span>
             </div>
           </div>
         )}
@@ -1106,7 +1109,7 @@ const AssistantTab: React.FC<{
           </button>
         ))}
         {messages.length > 0 && (
-          <button className="wf-ai-suggestion" onClick={clearMessages} style={{ borderColor: 'rgba(248,81,73,0.2)', color: '#f85149' }}>
+          <button className="wf-ai-suggestion" onClick={clearMessages} style={{ borderColor: 'color-mix(in srgb, var(--color-error) 20%, transparent)', color: 'var(--color-error)' }}>
             <Trash2 className="w-3 h-3" /> Clear
           </button>
         )}
@@ -1135,9 +1138,9 @@ const AssistantTab: React.FC<{
             style={{
               display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
               background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-              border: 'none', borderRadius: 8, color: '#fff', fontSize: 13,
+              border: 'none', borderRadius: 8, color: 'var(--color-on-accent)', fontSize: 13,
               fontWeight: 600, cursor: 'pointer', width: '100%', justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(245,158,11,0.3)',
+              boxShadow: '0 2px 8px color-mix(in srgb, var(--color-warning) 30%, transparent)',
               opacity: isGenerating ? 0.5 : 1,
             }}
           >
@@ -1150,8 +1153,8 @@ const AssistantTab: React.FC<{
         <div style={{ padding: '0 12px', marginBottom: 8 }}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
-            background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
-            borderRadius: 8, fontSize: 12, color: '#f59e0b',
+            background: 'color-mix(in srgb, var(--color-warning) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-warning) 20%, transparent)',
+            borderRadius: 8, fontSize: 12, color: 'var(--color-warning)',
           }}>
             <Loader2 className="w-4 h-4 animate-spin" />
             Auto-fixing... (iteration {autoFixIteration}/{autoFixMaxIterations})
@@ -1172,7 +1175,7 @@ const AssistantTab: React.FC<{
             className="wf-ai-input"
           />
           {isGenerating ? (
-            <button className="wf-ai-send-btn" onClick={stopGeneration} style={{ background: 'rgba(248,81,73,0.8)' }}>
+            <button className="wf-ai-send-btn" onClick={stopGeneration} style={{ background: 'color-mix(in srgb, var(--color-error) 80%, transparent)' }}>
               <X className="w-4 h-4" />
             </button>
           ) : (
@@ -1274,13 +1277,13 @@ const RunDetailView: React.FC<{
           <ChevronRight style={{ width: 12, height: 12, transform: 'rotate(180deg)' }} /> Back to History
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <span className="wf-run-status-dot" style={{ backgroundColor: SC[execution.status] || '#8b949e', width: 10, height: 10 }} />
+          <span className="wf-run-status-dot" style={{ backgroundColor: SC[execution.status] || 'var(--color-fg-muted)', width: 10, height: 10 }} />
           <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--wf-ep-text-bright)' }}>Run #{runIndex}</span>
-          <span style={{ fontSize: 10, color: 'var(--wf-ep-text-secondary)', fontFamily: 'monospace' }}>{execution.id.slice(0, 12)}</span>
+          <span style={{ fontSize: 10, color: 'var(--wf-ep-text-secondary)', fontFamily: 'var(--font-mono)' }}>{execution.id.slice(0, 12)}</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
           {[
-            { val: `${completedCount}/${entries.length}`, lbl: 'Nodes', color: failedCount > 0 ? '#d29922' : '#2ea043' },
+            { val: `${completedCount}/${entries.length}`, lbl: 'Nodes', color: failedCount > 0 ? 'var(--color-warning)' : 'var(--color-success)' },
             { val: fmt(dur), lbl: 'Duration', color: 'var(--wf-ep-text-bright)' },
             { val: `${entries.reduce((sum, [, n]) => sum + ((n as any).tokens || 0), 0).toLocaleString() || '--'}`, lbl: 'Tokens', color: 'var(--wf-ep-text-bright)' },
             { val: execution.cost != null ? `$${execution.cost.toFixed(2)}` : '--', lbl: 'Cost', color: 'var(--wf-ep-text-bright)' },
@@ -1319,12 +1322,12 @@ const RunDetailView: React.FC<{
                       <div style={{ fontSize: 9, color: 'var(--wf-ep-text-secondary)' }}>{nt}{nd.model ? ` \u00B7 ${nd.model}` : ''}{nd.tokens ? ` \u00B7 ${nd.tokens} tokens` : ''}{nd.cost ? ` \u00B7 $${nd.cost.toFixed(4)}` : ''}</div>
                     </div>
                     <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase',
-                      background: nd.status === 'completed' || nd.status === 'success' ? 'rgba(46,160,67,0.12)' : nd.status === 'failed' || nd.status === 'error' ? 'rgba(248,81,73,0.12)' : 'rgba(139,148,158,0.12)',
-                      color: nd.status === 'completed' || nd.status === 'success' ? '#2ea043' : nd.status === 'failed' || nd.status === 'error' ? '#f85149' : '#8b949e',
+                      background: nd.status === 'completed' || nd.status === 'success' ? 'color-mix(in srgb, var(--color-success) 12%, transparent)' : nd.status === 'failed' || nd.status === 'error' ? 'color-mix(in srgb, var(--color-error) 12%, transparent)' : 'rgba(139,148,158,0.12)',
+                      color: nd.status === 'completed' || nd.status === 'success' ? 'var(--color-success)' : nd.status === 'failed' || nd.status === 'error' ? 'var(--color-error)' : 'var(--color-fg-muted)',
                     }}>{fmt(nd.duration)}</span>
                   </div>
                   {nd.error && (
-                    <div style={{ background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.2)', borderRadius: 6, padding: '6px 8px', fontSize: 11, color: '#f85149', marginBottom: 6, fontFamily: 'monospace' }}>
+                    <div style={{ background: 'color-mix(in srgb, var(--color-error) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-error) 20%, transparent)', borderRadius: 6, padding: '6px 8px', fontSize: 11, color: 'var(--color-error)', marginBottom: 6, fontFamily: 'var(--font-mono)' }}>
                       {nd.error.slice(0, 200)}
                     </div>
                   )}
@@ -1342,14 +1345,14 @@ const RunDetailView: React.FC<{
 
       {/* Export toolbar */}
       <div style={{ display: 'flex', gap: 6, padding: '8px 12px', borderTop: '1px solid var(--wf-ep-border)', background: 'var(--wf-ep-bg)', flexWrap: 'wrap' }}>
-        <button onClick={() => handleExport('json')} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.25)', color: '#58a6ff', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <button onClick={() => handleExport('json')} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.25)', color: 'var(--color-info)', display: 'flex', alignItems: 'center', gap: 4 }}>
           {'{ }'} JSON
         </button>
-        <button onClick={() => handleExport('markdown')} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', background: 'rgba(46,160,67,0.1)', border: '1px solid rgba(46,160,67,0.25)', color: '#2ea043', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <button onClick={() => handleExport('markdown')} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', background: 'color-mix(in srgb, var(--color-success) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-success) 25%, transparent)', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 4 }}>
           MD Export
         </button>
         {onLoadExecution && (
-          <button onClick={() => onLoadExecution(execution.id)} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', background: 'rgba(188,140,255,0.1)', border: '1px solid rgba(188,140,255,0.25)', color: '#bc8cff', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button onClick={() => onLoadExecution(execution.id)} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer', background: 'rgba(188,140,255,0.1)', border: '1px solid rgba(188,140,255,0.25)', color: 'var(--color-accent)', display: 'flex', alignItems: 'center', gap: 4 }}>
             Load on Canvas
           </button>
         )}
@@ -1411,8 +1414,8 @@ const HistoryTab: React.FC<{
   );
   if (error) return (
     <div className="wf-exec-empty">
-      <AlertCircle className="wf-exec-empty-icon" style={{ color: '#f85149', opacity: 0.6 }} />
-      <div className="wf-exec-empty-text" style={{ color: '#f85149' }}>{error}</div>
+      <AlertCircle className="wf-exec-empty-icon" style={{ color: 'var(--color-error)', opacity: 0.6 }} />
+      <div className="wf-exec-empty-text" style={{ color: 'var(--color-error)' }}>{error}</div>
     </div>
   );
   if (!execs.length) return (
@@ -1424,7 +1427,7 @@ const HistoryTab: React.FC<{
 
   return (
     <div className="wf-exec-content wf-scrollbar" style={{ overflowY: 'auto', padding: '8px 0' }}>
-      <div style={{ padding: '0 12px 6px', fontSize: 10, color: '#6e7681' }}>Click to load on canvas. Double-click for detailed report.</div>
+      <div style={{ padding: '0 12px 6px', fontSize: 10, color: 'var(--color-fg-subtle)' }}>Click to load on canvas. Double-click for detailed report.</div>
       {execs.map((ex, idx) => {
         const nodeOutputs = (ex as any).node_outputs || {};
         const nodeEntries = Object.entries(nodeOutputs);
@@ -1437,11 +1440,11 @@ const HistoryTab: React.FC<{
             className={`wf-history-item ${active ? 'active' : ''}`}
             onClick={() => onLoadExecution?.(ex.id)}
             onDoubleClick={(e) => { e.stopPropagation(); setDetailExec(ex); setDetailIndex(execs.length - idx); }}>
-            <span className="wf-run-status-dot" style={{ backgroundColor: SC[ex.status] || '#8b949e' }} />
+            <span className="wf-run-status-dot" style={{ backgroundColor: SC[ex.status] || 'var(--color-fg-muted)' }} />
             <div className="wf-history-info">
               <div className="wf-history-trigger">
                 Run #{execs.length - idx}
-                <span style={{ fontWeight: 400, color: '#6e7681', marginLeft: 8, fontSize: 10 }}>
+                <span style={{ fontWeight: 400, color: 'var(--color-fg-subtle)', marginLeft: 8, fontSize: 10 }}>
                   {(ex as any).trigger_type || 'manual'}
                 </span>
               </div>
@@ -1455,9 +1458,9 @@ const HistoryTab: React.FC<{
                   {nodeEntries.slice(0, 20).map(([nid, ne]: [string, any], i: number) => (
                     <span key={i} className="wf-health-dot"
                       title={`${nid} (${ne.status || 'unknown'})`}
-                      style={{ backgroundColor: SC[ne.status] || SC[ne.status === 'failed_with_fallback' ? 'completed' : 'pending'] || '#8b949e' }} />
+                      style={{ backgroundColor: SC[ne.status] || SC[ne.status === 'failed_with_fallback' ? 'completed' : 'pending'] || 'var(--color-fg-muted)' }} />
                   ))}
-                  {nodeEntries.length > 20 && <span style={{ fontSize: 9, color: '#6e7681', marginLeft: 2 }}>+{nodeEntries.length - 20}</span>}
+                  {nodeEntries.length > 20 && <span style={{ fontSize: 9, color: 'var(--color-fg-subtle)', marginLeft: 2 }}>+{nodeEntries.length - 20}</span>}
                 </div>
               )}
             </div>
@@ -1465,7 +1468,7 @@ const HistoryTab: React.FC<{
               <button
                 onClick={(e) => { e.stopPropagation(); onLoadExecution?.(ex.id); }}
                 className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors"
-                style={{ color: '#8b949e', background: 'rgba(255,255,255,0.04)' }}
+                style={{ color: 'var(--color-fg-muted)', background: 'rgba(255,255,255,0.04)' }}
                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
                 title="Load this execution on canvas"
@@ -1505,10 +1508,10 @@ const CopyButton: React.FC<{ text: string }> = ({ text }) => {
     <button
       onClick={handleCopy}
       style={{
-        background: copied ? 'rgba(46,160,67,0.15)' : 'color-mix(in srgb, var(--user-accent-primary, #FF5722) 10%, transparent)',
-        border: `1px solid ${copied ? 'rgba(46,160,67,0.3)' : 'color-mix(in srgb, var(--user-accent-primary, #FF5722) 20%, transparent)'}`,
+        background: copied ? 'color-mix(in srgb, var(--color-success) 15%, transparent)' : 'color-mix(in srgb, var(--user-accent-primary, #FF5722) 10%, transparent)',
+        border: `1px solid ${copied ? 'color-mix(in srgb, var(--color-success) 30%, transparent)' : 'color-mix(in srgb, var(--user-accent-primary, #FF5722) 20%, transparent)'}`,
         borderRadius: 6, padding: '4px 10px', fontSize: 10, fontWeight: 600,
-        color: copied ? '#2ea043' : 'var(--user-accent-primary, #FF5722)', cursor: 'pointer',
+        color: copied ? 'var(--color-success)' : 'var(--user-accent-primary, #FF5722)', cursor: 'pointer',
         display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.2s',
       }}
     >
@@ -1566,8 +1569,8 @@ const CodeTab: React.FC<{ workflowId: string | null; workflowName: string }> = (
 
   if (error) return (
     <div className="wf-exec-empty">
-      <AlertCircle className="wf-exec-empty-icon" style={{ color: '#f85149', opacity: 0.6 }} />
-      <div className="wf-exec-empty-text" style={{ color: '#f85149' }}>{error}</div>
+      <AlertCircle className="wf-exec-empty-icon" style={{ color: 'var(--color-error)', opacity: 0.6 }} />
+      <div className="wf-exec-empty-text" style={{ color: 'var(--color-error)' }}>{error}</div>
     </div>
   );
 
@@ -1626,8 +1629,8 @@ const CodeTab: React.FC<{ workflowId: string | null; workflowName: string }> = (
           borderRadius: 8,
           padding: '14px 16px',
           fontSize: 11,
-          fontFamily: "'SF Mono', Monaco, 'Cascadia Code', monospace",
-          color: '#c9d1d9',
+          fontFamily: 'var(--font-mono)',
+          color: 'var(--color-fg)',
           lineHeight: 1.6,
           overflowX: 'auto',
           whiteSpace: 'pre-wrap',
@@ -1644,7 +1647,7 @@ const CodeTab: React.FC<{ workflowId: string | null; workflowName: string }> = (
         background: 'var(--wf-ep-bg)', fontSize: 10, color: 'var(--wf-ep-text-muted)',
         lineHeight: 1.5,
       }}>
-        Replace <code style={{ background: 'rgba(88,166,255,0.1)', padding: '1px 4px', borderRadius: 3, color: '#58a6ff' }}>YOUR_API_KEY</code> with
+        Replace <code style={{ background: 'rgba(88,166,255,0.1)', padding: '1px 4px', borderRadius: 3, color: 'var(--color-info)' }}>YOUR_API_KEY</code> with
         a key from Settings &rarr; API Keys.
       </div>
     </div>

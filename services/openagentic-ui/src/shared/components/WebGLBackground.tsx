@@ -139,8 +139,8 @@ function Scene() {
         <Metaball key={i} {...props} color1={lavaColor1} color2={lavaColor2} />
       ))}
       
-      {/* Background fog effect */}
-      <fog attach="fog" args={['#0a0a0a', 5, 15]} />
+      {/* Background fog effect — theme-allow: brand terminal-bg snapshot (3D fog needs a resolved color) */}
+      <fog attach="fog" args={['#18130C', 5, 15]} />
     </>
   )
 }
@@ -170,7 +170,9 @@ export default function WebGLBackground() {
       <div
         className="absolute inset-0"
         style={{
-          background: isLightTheme ? 'rgba(252, 252, 254, 0.98)' : 'rgba(10, 10, 15, 0.75)',
+          background: isLightTheme
+            ? 'color-mix(in srgb, var(--color-bg) 98%, transparent)'
+            : 'color-mix(in srgb, var(--color-bg) 75%, transparent)',
           backdropFilter: 'blur(120px) saturate(100%)',
           WebkitBackdropFilter: 'blur(120px) saturate(100%)',
         }}
@@ -224,7 +226,7 @@ export default function WebGLBackground() {
       </div>
       
       {/* Additional gradient for better text readability at edges */}
-      <div className="absolute inset-0 bg-gradient-radial from-transparent via-black/20 to-black/40 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-radial from-transparent via-[var(--color-shadow)]/20 to-[var(--color-shadow)]/40 pointer-events-none" />
     </div>
   )
 }

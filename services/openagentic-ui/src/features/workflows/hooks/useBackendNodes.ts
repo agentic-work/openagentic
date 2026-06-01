@@ -94,28 +94,30 @@ function getIconForType(type: NodeType, nodeName: string): string {
  * Get color for node type
  */
 function getColorForType(type: NodeType): string {
+  // theme-allow: node-TYPE identity color map (categorical scale, same carve-out as
+  // the workflow node-type palette); mixed with semantic tokens where they align.
   const colorMap: Partial<Record<NodeType, string>> = {
-    'trigger': '#f59e0b',
-    'mcp_tool': '#3b82f6',
+    'trigger': 'var(--color-warning)',
+    'mcp_tool': 'var(--color-info)',
     'llm_completion': '#8b5cf6',
-    'code': '#10b981',
+    'code': 'var(--color-success)',
     'condition': '#ec4899',
-    'loop': '#06b6d4',
-    'transform': '#f97316',
+    'loop': 'var(--color-info)',
+    'transform': 'var(--color-warning)',
     'merge': '#84cc16',
-    'wait': '#f59e0b',
-    'openagentic': '#10b981',
+    'wait': 'var(--color-warning)',
+    'openagentic': 'var(--color-success)',
     'openagentic_llm': '#8b5cf6',
     'multi_agent': '#7c3aed',
-    'http_request': '#3b82f6',
-    'approval': '#00D26A',
-    'human_approval': '#00D26A',
+    'http_request': 'var(--color-info)',
+    'approval': 'var(--color-success)',
+    'human_approval': 'var(--color-success)',
     'agent_spawn': '#8b5cf6',
     'a2a': '#6366f1',
     'synth': '#ec4899',
   };
 
-  return colorMap[type] || '#6b7280';
+  return colorMap[type] || 'var(--color-fg-subtle)';
 }
 
 /**

@@ -369,9 +369,9 @@ export const AdminWorkflowSettingsView: React.FC = () => {
         <div
           className="px-4 py-2 rounded-lg text-xs"
           style={{
-            backgroundColor: toast.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-            border: `1px solid ${toast.type === 'success' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
-            color: toast.type === 'success' ? 'rgb(74,222,128)' : 'rgb(248,113,113)',
+            backgroundColor: toast.type === 'success' ? 'color-mix(in srgb, var(--color-ok) 10%, transparent)' : 'color-mix(in srgb, var(--color-err) 10%, transparent)',
+            border: `1px solid ${toast.type === 'success' ? 'color-mix(in srgb, var(--color-ok) 30%, transparent)' : 'color-mix(in srgb, var(--color-err) 30%, transparent)'}`,
+            color: toast.type === 'success' ? 'var(--color-ok)' : 'var(--color-err)',
           }}
         >
           {toast.message}

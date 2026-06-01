@@ -17,7 +17,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({ isOpen, onCl
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={onClose}>
+    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'color-mix(in srgb, var(--color-bg) 80%, transparent)' }} onClick={onClose}>
       <div className="max-w-4xl max-h-screen p-4">
         {imageUrl && <img src={imageUrl} alt="Documentation" className="max-w-full max-h-full" />}
       </div>

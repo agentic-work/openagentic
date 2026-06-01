@@ -138,7 +138,7 @@ export const AdminCard: React.FC<AdminCardProps> = ({
       onMouseEnter={(e) => {
         if (hoverable) {
           e.currentTarget.style.borderColor = 'var(--color-borderHover)';
-          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+          e.currentTarget.style.boxShadow = '0 4px 12px color-mix(in srgb, var(--color-shadow) 8%, transparent)';
         }
       }}
       onMouseLeave={(e) => {

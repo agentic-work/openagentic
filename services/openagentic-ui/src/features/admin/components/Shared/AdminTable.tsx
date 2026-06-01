@@ -180,7 +180,7 @@ export function AdminTable<T>({
                     textAlign: col.align || 'left',
                     color: 'var(--ap-fg-0)',
                     fontSize: 'var(--text-sm)',
-                    borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRight: '1px solid color-mix(in srgb, var(--color-fg) 10%, transparent)',
                     cursor: col.sortable !== false ? 'pointer' : undefined,
                     userSelect: 'none',
                   }}

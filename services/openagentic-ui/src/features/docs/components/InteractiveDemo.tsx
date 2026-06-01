@@ -177,7 +177,7 @@ export const PipelineVisualizer: React.FC = () => {
                   style={{
                     fontSize: '9px',
                     color: isActive
-                      ? 'rgba(255,255,255,0.7)'
+                      ? 'color-mix(in srgb, var(--color-on-accent) 70%, transparent)'
                       : 'var(--color-textMuted)',
                     marginTop: '2px',
                     whiteSpace: 'nowrap',
@@ -454,12 +454,12 @@ export const AgentTypeExplorer: React.FC = () => {
                     fontWeight: 600,
                     color:
                       agent.tier === 'premium'
-                        ? '#3b82f6'
-                        : '#eab308',
+                        ? 'var(--color-info)'
+                        : 'var(--color-warning)',
                     background:
                       agent.tier === 'premium'
-                        ? 'rgba(59,130,246,0.12)'
-                        : 'rgba(234,179,8,0.12)',
+                        ? 'color-mix(in srgb, var(--color-info) 12%, transparent)'
+                        : 'color-mix(in srgb, var(--color-warning) 12%, transparent)',
                     padding: '2px 6px',
                     borderRadius: '4px',
                     textTransform: 'uppercase',

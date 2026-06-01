@@ -361,7 +361,7 @@ export const RegistryTab: React.FC<{
 
       {/* Tenant default models now managed in System Configuration → Default Models */}
       <div style={{
-        background: 'rgba(88,166,255,0.06)', border: '1px solid rgba(88,166,255,0.25)',
+        background: 'color-mix(in srgb, var(--color-nfo) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--color-nfo) 25%, transparent)',
         borderRadius: 8, padding: '10px 14px', fontSize: 13,
         color: 'var(--text-muted)',
       }}>
@@ -441,7 +441,7 @@ export const RegistryTab: React.FC<{
             return (
             <div key={model.id}>
             <div
-              className={`grid grid-cols-[2fr_1.2fr_80px_1fr_55px_65px_180px] gap-2 px-4 py-2.5 items-center text-xs cursor-pointer hover:bg-white/[0.02] transition-colors ${i > 0 ? 'border-t' : ''}`}
+              className={`grid grid-cols-[2fr_1.2fr_80px_1fr_55px_65px_180px] gap-2 px-4 py-2.5 items-center text-xs cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-fg)_2%,transparent)] transition-colors ${i > 0 ? 'border-t' : ''}`}
               style={{ borderColor: 'var(--color-border)' }}
               onClick={() => setExpandedModel(isExpanded ? null : model.id)}
             >
@@ -478,7 +478,7 @@ export const RegistryTab: React.FC<{
               <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{model.maxTokens ? `${(model.maxTokens / 1000).toFixed(0)}K` : '-'}</span>
               <span>
                 <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                  effectiveEnabled ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-gray-500/10 border border-gray-500/30'
+                  effectiveEnabled ? 'bg-[color-mix(in_srgb,var(--color-ok)_10%,transparent)] text-ok border border-[color-mix(in_srgb,var(--color-ok)_30%,transparent)]' : 'bg-[color-mix(in_srgb,var(--color-fg-subtle)_10%,transparent)] border border-[color-mix(in_srgb,var(--color-fg-subtle)_30%,transparent)]'
                 }`} style={{ color: effectiveEnabled ? undefined : 'var(--text-muted)' }}>
                   {effectiveEnabled ? <CheckCircle size={9} /> : <XCircle size={9} />}
                   {effectiveEnabled ? 'Active' : 'Off'}
@@ -487,20 +487,20 @@ export const RegistryTab: React.FC<{
               <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                 {/* Test model — low-token health probe (#54) */}
                 <button onClick={() => handleTestModel(model)} disabled={testingModel === model.id}
-                  className="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 transition-colors disabled:opacity-50 flex-shrink-0"
+                  className="px-2 py-0.5 rounded text-[10px] font-medium bg-[color-mix(in_srgb,var(--color-ok)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-ok)_25%,transparent)] text-ok border border-[color-mix(in_srgb,var(--color-ok)_30%,transparent)] transition-colors disabled:opacity-50 flex-shrink-0"
                   title={`Probe ${model.name} with a tiny request and verify it responds`}>
                   {testingModel === model.id ? 'Testing…' : 'Test'}
                 </button>
                 {/* Refresh from provider — re-runs live discovery (#650 U7) */}
                 <button onClick={() => handleRefreshModel(model)} disabled={refreshingModel === model.id}
-                  className="p-1 rounded hover:bg-purple-500/20 transition-colors disabled:opacity-50 flex-shrink-0"
+                  className="p-1 rounded hover:bg-[color-mix(in_srgb,var(--color-accent)_20%,transparent)] transition-colors disabled:opacity-50 flex-shrink-0"
                   title={`Refresh capabilities, limits, and pricing for ${model.name} from the upstream provider`}>
-                  <RefreshCw size={13} className={`${refreshingModel === model.id ? 'animate-spin text-purple-300' : 'text-purple-400 hover:text-purple-300'}`} />
+                  <RefreshCw size={13} className={`${refreshingModel === model.id ? 'animate-spin text-accent' : 'text-accent hover:text-accent'}`} />
                 </button>
                 {/* Edit config */}
                 <button onClick={() => { startEditing(model); setExpandedModel(model.id); }}
-                  className="p-1 rounded hover:bg-blue-500/20 transition-colors flex-shrink-0" title={`Edit ${model.name} config`}>
-                  <Edit3 size={13} className="text-blue-400 hover:text-blue-300" />
+                  className="p-1 rounded hover:bg-[color-mix(in_srgb,var(--color-nfo)_20%,transparent)] transition-colors flex-shrink-0" title={`Edit ${model.name} config`}>
+                  <Edit3 size={13} className="text-info hover:text-info" />
                 </button>
                 {/* Enable/disable toggle — MC-H: replaced bespoke button with StateMachineToggle */}
                 <StateMachineToggle
@@ -512,8 +512,8 @@ export const RegistryTab: React.FC<{
                 />
                 {/* Delete */}
                 <button onClick={() => handleDeleteModel(model)} disabled={deletingModel === model.id}
-                  className="p-1 rounded hover:bg-red-500/20 transition-colors flex-shrink-0" title={`Remove ${model.name}`}>
-                  <Trash2 size={13} className={deletingModel === model.id ? 'text-gray-500 animate-pulse' : 'text-red-400 hover:text-red-300'} />
+                  className="p-1 rounded hover:bg-[color-mix(in_srgb,var(--color-err)_20%,transparent)] transition-colors flex-shrink-0" title={`Remove ${model.name}`}>
+                  <Trash2 size={13} className={deletingModel === model.id ? 'text-text-tertiary animate-pulse' : 'text-err hover:text-err'} />
                 </button>
               </div>
             </div>
@@ -665,8 +665,8 @@ export const RegistryTab: React.FC<{
                               }))}
                               className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-all`}
                               style={{
-                                background: active ? 'rgba(59,130,246,0.15)' : 'transparent',
-                                borderColor: active ? 'rgba(59,130,246,0.4)' : 'var(--color-border)',
+                                background: active ? 'color-mix(in srgb, var(--color-nfo) 15%, transparent)' : 'transparent',
+                                borderColor: active ? 'color-mix(in srgb, var(--color-nfo) 40%, transparent)' : 'var(--color-border)',
                                 color: active ? 'var(--ap-accent)' : 'var(--text-muted)',
                               }}
                             >
@@ -722,7 +722,7 @@ export const RegistryTab: React.FC<{
                     {/* (#69) TTFT display (read-only — measured by chat pipeline) */}
                     {editConfig.ttftMs !== undefined && (
                       <div className="text-xs flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
-                        <span>TTFT: <strong className="text-emerald-400">{editConfig.ttftMs}ms</strong></span>
+                        <span>TTFT: <strong className="text-ok">{editConfig.ttftMs}ms</strong></span>
                         {editConfig.ttftMeasuredAt && (
                           <span className="opacity-60">measured {new Date(editConfig.ttftMeasuredAt).toLocaleString()}</span>
                         )}
@@ -735,7 +735,7 @@ export const RegistryTab: React.FC<{
                         onClick={() => saveModelConfig(model)}
                         disabled={saving}
                         className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-lg transition-all"
-                        style={{ background: 'var(--ap-accent)', color: 'white' }}
+                        style={{ background: 'var(--ap-accent)', color: 'var(--color-on-accent)' }}
                       >
                         {saving ? <RefreshCw size={11} className="animate-spin" /> : <Check size={11} />}
                         Save
@@ -782,7 +782,7 @@ export const RegistryTab: React.FC<{
                       <div>
                         <div className="font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Status</div>
                         <div className="flex items-center gap-1">
-                          {effectiveEnabled ? <CheckCircle size={12} className="text-emerald-400" /> : <XCircle size={12} className="text-gray-500" />}
+                          {effectiveEnabled ? <CheckCircle size={12} className="text-ok" /> : <XCircle size={12} className="text-text-tertiary" />}
                           <span style={{ color: effectiveEnabled ? 'var(--ap-ok)' : 'var(--text-muted)' }}>{effectiveEnabled ? 'Active' : 'Disabled'}</span>
                         </div>
                       </div>
@@ -801,7 +801,7 @@ export const RegistryTab: React.FC<{
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); startEditing(model); }}
-                        className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-lg border transition-all hover:border-blue-400"
+                        className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-lg border transition-all hover:border-[var(--color-nfo)]"
                         style={{ borderColor: 'var(--color-border)', color: 'var(--text-primary)' }}
                       >
                         <Edit3 size={11} />
@@ -829,7 +829,7 @@ export const RegistryTab: React.FC<{
             </div>
           );
         })}
-        <div className="p-3 rounded-lg border border-gray-500/30" style={{ background: 'var(--color-surfaceSecondary)' }}>
+        <div className="p-3 rounded-lg border border-[color-mix(in_srgb,var(--color-fg-subtle)_30%,transparent)]" style={{ background: 'var(--color-surfaceSecondary)' }}>
           <div className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{models.length}</div>
           <div className="text-xs uppercase tracking-wider font-medium" style={{ color: 'var(--text-muted)' }}>Total</div>
         </div>
@@ -848,7 +848,7 @@ export const RegistryTab: React.FC<{
       {aifBlockedAction && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+          style={{ background: 'color-mix(in srgb, var(--color-shadow) 70%, transparent)', backdropFilter: 'blur(4px)' }}
           onClick={() => setAifBlockedAction(null)}
         >
           <div
@@ -897,7 +897,7 @@ export const RegistryTab: React.FC<{
               <button
                 onClick={() => setAifBlockedAction(null)}
                 className="px-4 py-1.5 text-xs font-medium rounded-lg transition-colors"
-                style={{ background: 'var(--ap-accent)', color: 'white' }}
+                style={{ background: 'var(--ap-accent)', color: 'var(--color-on-accent)' }}
               >
                 Got it
               </button>

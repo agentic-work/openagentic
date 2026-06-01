@@ -221,7 +221,7 @@ export const DeveloperAPIView: React.FC<DeveloperAPIViewProps> = ({ theme }) => 
         <button
           onClick={loadSpec}
           className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors"
-          style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}
+          style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
         >
           <RefreshCw className="w-4 h-4" />
           Retry
@@ -276,7 +276,7 @@ export const DeveloperAPIView: React.FC<DeveloperAPIViewProps> = ({ theme }) => 
           </button>
           <button
             onClick={loadSpec}
-            className="p-2 rounded-lg transition-colors hover:bg-white/10"
+            className="p-2 rounded-lg transition-colors hover:bg-[color-mix(in_srgb,var(--color-fg)_10%,transparent)]"
             style={{ color: 'var(--color-text)' }}
             title="Refresh"
           >
@@ -295,7 +295,7 @@ export const DeveloperAPIView: React.FC<DeveloperAPIViewProps> = ({ theme }) => 
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === tab ? 'bg-primary-500/20 text-primary-500' : 'hover:bg-white/5'
+              activeTab === tab ? 'bg-primary-500/20 text-primary-500' : 'hover:bg-[color-mix(in_srgb,var(--color-fg)_5%,transparent)]'
             }`}
             style={{ color: activeTab === tab ? 'var(--color-info)' : 'var(--color-textSecondary)' }}
           >
@@ -429,7 +429,7 @@ export const DeveloperAPIView: React.FC<DeveloperAPIViewProps> = ({ theme }) => 
               <div key={tag} className="rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--color-surfaceSecondary)' }}>
                 <button
                   onClick={() => toggleTag(tag)}
-                  className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
+                  className="w-full flex items-center justify-between p-4 hover:bg-[color-mix(in_srgb,var(--color-fg)_5%,transparent)] transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     {expandedTags.has(tag) ? (
@@ -459,7 +459,7 @@ export const DeveloperAPIView: React.FC<DeveloperAPIViewProps> = ({ theme }) => 
                         <div key={pathKey} className="border-b last:border-b-0" style={{ borderColor: 'var(--color-border)' }}>
                           <button
                             onClick={() => togglePath(pathKey)}
-                            className="w-full flex items-center gap-3 p-4 hover:bg-white/5 transition-colors text-left"
+                            className="w-full flex items-center gap-3 p-4 hover:bg-[color-mix(in_srgb,var(--color-fg)_5%,transparent)] transition-colors text-left"
                           >
                             <span
                               className={`px-2 py-1 rounded text-xs font-mono font-bold uppercase ${colors.bg} ${colors.text}`}
@@ -476,7 +476,7 @@ export const DeveloperAPIView: React.FC<DeveloperAPIViewProps> = ({ theme }) => 
                             )}
                             <button
                               onClick={(e) => { e.stopPropagation(); copyPath(path); }}
-                              className="p-1 rounded hover:bg-white/10"
+                              className="p-1 rounded hover:bg-[color-mix(in_srgb,var(--color-fg)_10%,transparent)]"
                               title="Copy path"
                             >
                               {copiedPath === path ? (

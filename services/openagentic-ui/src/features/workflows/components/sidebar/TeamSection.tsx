@@ -40,10 +40,10 @@ interface ActivityEntry {
 }
 
 const roleColors: Record<string, string> = {
-  viewer: '#9e9e9e',
-  editor: '#2196f3',
-  executor: '#ff9800',
-  admin: '#9c27b0',
+  viewer: 'var(--color-fg-muted)',
+  editor: 'var(--color-info)',
+  executor: 'var(--color-warning)',
+  admin: 'var(--color-accent)',
 };
 
 const roleIcons: Record<string, React.ReactNode> = {
@@ -54,9 +54,9 @@ const roleIcons: Record<string, React.ReactNode> = {
 };
 
 const statusColors: Record<string, string> = {
-  completed: '#22c55e',
-  failed: '#ef5350',
-  running: '#ff9800',
+  completed: 'var(--color-success)',
+  failed: 'var(--color-error)',
+  running: 'var(--color-warning)',
 };
 
 export const TeamSection: React.FC<TeamSectionProps> = ({ workflowId }) => {
@@ -236,7 +236,7 @@ export const TeamSection: React.FC<TeamSectionProps> = ({ workflowId }) => {
               >
                 <span
                   className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: statusColors[entry.status] || '#9e9e9e' }}
+                  style={{ backgroundColor: statusColors[entry.status] || 'var(--color-fg-muted)' }}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="text-[11px] truncate" style={{ color: 'var(--color-text)' }}>

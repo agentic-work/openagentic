@@ -164,7 +164,7 @@ const RoleEditor: React.FC<EditorProps> = ({ role, onClose, onSaved }) => {
           style={{
             width: '100%',
             minHeight: 360,
-            fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 12,
             background: 'var(--bg-1)',
             color: 'var(--fg-0)',

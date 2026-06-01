@@ -116,12 +116,12 @@ export const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({ is
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/80"
+        className="absolute inset-0 bg-[var(--color-shadow)]/80"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="relative max-w-3xl w-full max-h-[80vh] overflow-hidden rounded-2xl shadow-2xl bg-[var(--color-surface)] border border-[var(--color-border)]">
+      {/* Modal — neo-brutalist: sharp corners, 2px ink border, hard shadow */}
+      <div className="relative max-w-3xl w-full max-h-[80vh] overflow-hidden shadow-hard-lg bg-surface border-ink">
         {/* Header */}
         <div className="px-6 py-4 border-b border-[var(--color-border)]">
           <h2 className="text-xl font-semibold text-[var(--color-text)]">
@@ -133,23 +133,23 @@ export const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({ is
         <div className="px-6 py-4 overflow-y-auto max-h-[60vh]">
           {categories.map(category => (
             <div key={category} className="mb-6 last:mb-0">
-              <h3 className="text-sm font-semibold mb-3 text-gray-600 dark:text-gray-400">
+              <h3 className="text-sm font-semibold mb-3 text-fg-subtle">
                 {category}
               </h3>
               <div className="space-y-2">
                 {shortcutsByCategory[category].map(({ keys, description }) => (
                   <div
                     key={keys}
-                    className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                    className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-surface-hover"
                   >
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                    <span className="text-sm text-fg-muted">
                       {description}
                     </span>
                     <div className="flex gap-1">
                       {keys.split(', ').map((key, idx) => (
                         <kbd
                           key={idx}
-                          className="px-2 py-1 text-xs font-mono rounded bg-[var(--color-surface-2)] text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700"
+                          className="px-2 py-1 text-xs font-mono rounded bg-[var(--color-surface-2)] text-fg-muted border border-rule"
                         >
                           {formatShortcutKey(key)}
                         </kbd>
@@ -166,7 +166,7 @@ export const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({ is
         <div className="px-6 py-3 border-t border-[var(--color-border)]">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 bg-[var(--color-surface-2)] hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 bg-[var(--color-surface-2)] hover:bg-surface-hover text-fg-muted"
           >
             Close (Esc)
           </button>

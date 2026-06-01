@@ -48,7 +48,7 @@ export const TopBar = ({
             four product surfaces. */}
         <CompanyLogo variant="compact" width={160} height={28} />
         {version && (
-          <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-v3-mono)', fontSize: 9, color: 'var(--fg-3)' }}>
+          <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--fg-3)' }}>
             v{version}
           </span>
         )}
@@ -156,7 +156,7 @@ export const TopBar = ({
           <span className="aw-topbar__agent-name">{agentLabel}</span>
           <kbd
             style={{
-              fontFamily: 'var(--font-v3-mono)',
+              fontFamily: 'var(--font-mono)',
               fontSize: 9,
               background: 'var(--bg-3)',
               border: '1px solid var(--line-2)',

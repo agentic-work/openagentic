@@ -174,7 +174,7 @@ export const PROVIDER_META: Record<ProviderType, {
 }> = {
   'azure-openai': {
     label: 'Azure OpenAI', icon: <AzureIcon size={20} />, color: 'var(--provider-azure)',
-    bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/30',
+    bgColor: 'bg-[color-mix(in_srgb,var(--color-nfo)_10%,transparent)]', borderColor: 'border-[color-mix(in_srgb,var(--color-nfo)_30%,transparent)]',
     description: 'Microsoft Azure hosted GPT models',
     // Legacy single-mode `authFields` kept as a fallback for non-azure consumers
     // and tests that read the union; the form uses `authModes` when present.
@@ -203,7 +203,7 @@ export const PROVIDER_META: Record<ProviderType, {
   },
   'azure-ai-foundry': {
     label: 'Azure AI Foundry', icon: <AzureAIIcon size={20} />, color: 'var(--provider-azure)',
-    bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/30',
+    bgColor: 'bg-[color-mix(in_srgb,var(--color-nfo)_10%,transparent)]', borderColor: 'border-[color-mix(in_srgb,var(--color-nfo)_30%,transparent)]',
     description: 'Azure AI Foundry unified model router',
     authFields: [
       { key: 'endpoint', label: 'Endpoint URL', type: 'text', required: true, placeholder: 'https://your-foundry.services.ai.azure.com' },
@@ -253,7 +253,7 @@ export const PROVIDER_META: Record<ProviderType, {
   },
   'vertex-ai': {
     label: 'Google Vertex AI', icon: <VertexAIIcon size={20} />, color: 'var(--provider-google)',
-    bgColor: 'bg-red-500/10', borderColor: 'border-red-500/30',
+    bgColor: 'bg-[color-mix(in_srgb,var(--color-err)_10%,transparent)]', borderColor: 'border-[color-mix(in_srgb,var(--color-err)_30%,transparent)]',
     description: 'Google Cloud Gemini models',
     authFields: [
       { key: 'projectId', label: 'GCP Project ID', type: 'text', required: true },
@@ -285,7 +285,7 @@ export const PROVIDER_META: Record<ProviderType, {
   },
   'aws-bedrock': {
     label: 'AWS Bedrock', icon: <AWSIcon size={20} />, color: 'var(--provider-aws)',
-    bgColor: 'bg-orange-500/10', borderColor: 'border-orange-500/30',
+    bgColor: 'bg-[color-mix(in_srgb,var(--color-warn)_10%,transparent)]', borderColor: 'border-[color-mix(in_srgb,var(--color-warn)_30%,transparent)]',
     description: 'Amazon hosted Claude, Llama, Titan models',
     authFields: [
       { key: 'region', label: 'AWS Region', type: 'text', required: true, placeholder: 'us-east-1' },
@@ -325,7 +325,7 @@ export const PROVIDER_META: Record<ProviderType, {
   },
   ollama: {
     label: 'Ollama', icon: <OllamaIcon size={20} />, color: 'var(--provider-ollama)',
-    bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/30',
+    bgColor: 'bg-[color-mix(in_srgb,var(--color-ok)_10%,transparent)]', borderColor: 'border-[color-mix(in_srgb,var(--color-ok)_30%,transparent)]',
     description: 'Self-hosted open source models',
     authFields: [
       { key: 'endpoint', label: 'Endpoint URL', type: 'text', required: true, placeholder: 'http://ollama:11434' },
@@ -360,7 +360,7 @@ export const PROVIDER_META: Record<ProviderType, {
   },
   anthropic: {
     label: 'Anthropic', icon: <AnthropicIcon size={20} />, color: 'var(--provider-anthropic)',
-    bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/30',
+    bgColor: 'bg-[color-mix(in_srgb,var(--color-warn)_10%,transparent)]', borderColor: 'border-[color-mix(in_srgb,var(--color-warn)_30%,transparent)]',
     description: 'Direct Claude API access',
     authFields: [
       { key: 'apiKey', label: 'API Key', type: 'password', required: true },
@@ -391,7 +391,7 @@ export const PROVIDER_META: Record<ProviderType, {
   },
   openai: {
     label: 'OpenAI', icon: <OpenAIIcon size={20} />, color: 'var(--provider-openai)',
-    bgColor: 'bg-green-500/10', borderColor: 'border-green-500/30',
+    bgColor: 'bg-[color-mix(in_srgb,var(--color-ok)_10%,transparent)]', borderColor: 'border-[color-mix(in_srgb,var(--color-ok)_30%,transparent)]',
     description: 'Direct GPT API or compatible endpoints',
     authFields: [
       { key: 'apiKey', label: 'API Key', type: 'password', required: true },
@@ -424,9 +424,9 @@ export const PROVIDER_META: Record<ProviderType, {
 // border at rest. Pill-shaped primary / danger buttons; btn (12px) secondary.
 export const inputCls = "w-full px-4 py-2.5 rounded-input-sm border text-sm transition-[border-color,box-shadow] duration-200 ease-emphasized focus:outline-none focus:shadow-focus-ring";
 export const inputStyle: React.CSSProperties = { backgroundColor: 'var(--surface-1)', borderColor: 'var(--color-border)', color: 'var(--text-primary)' };
-export const btnPrimary = "px-6 py-2 rounded-pill text-sm font-medium bg-primary-500 text-white hover:bg-primary-600 transition-[background,transform] duration-200 ease-emphasized active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:shadow-focus-ring";
+export const btnPrimary = "px-6 py-2 rounded-pill text-sm font-medium bg-primary-500 text-on-accent hover:bg-primary-600 transition-[background,transform] duration-200 ease-emphasized active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:shadow-focus-ring";
 export const btnSecondary = "px-4 py-2 rounded-btn text-sm font-medium border transition-[background,transform] duration-200 ease-emphasized active:scale-[0.98] hover:brightness-110 focus-visible:outline-none focus-visible:shadow-focus-ring";
-export const btnDanger = "px-6 py-2 rounded-pill text-sm font-medium bg-red-500/15 text-red-400 border border-red-500/30 transition-[background,transform] duration-200 ease-emphasized active:scale-[0.98] hover:bg-red-500/25 focus-visible:outline-none focus-visible:shadow-focus-ring";
+export const btnDanger = "px-6 py-2 rounded-pill text-sm font-medium bg-[color-mix(in_srgb,var(--color-err)_15%,transparent)] text-err border border-[color-mix(in_srgb,var(--color-err)_30%,transparent)] transition-[background,transform] duration-200 ease-emphasized active:scale-[0.98] hover:bg-[color-mix(in_srgb,var(--color-err)_25%,transparent)] focus-visible:outline-none focus-visible:shadow-focus-ring";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // UTILITY FUNCTIONS

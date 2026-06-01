@@ -293,13 +293,27 @@ const ChatInput: React.FC<ChatInputProps> = ({
       {/* Solid backdrop */}
       <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-background)] via-[var(--color-background)]/80 to-transparent pointer-events-none" />
       {!isAuthenticated && (
-        <div className="mb-3 px-4 py-2 rounded-lg text-center text-sm text-yellow-500 bg-yellow-500/10 border border-yellow-500/20">
+        <div
+          className="mb-3 px-4 py-2 rounded-lg text-center text-sm border"
+          style={{
+            color: 'var(--color-warn)',
+            background: 'color-mix(in srgb, var(--color-warn) 10%, transparent)',
+            borderColor: 'color-mix(in srgb, var(--color-warn) 20%, transparent)',
+          }}
+        >
           Please login to start using OpenAgentic Chat
         </div>
       )}
       {!isAuthenticated ? (
         <div className="max-w-3xl mx-auto">
-          <div className="w-full px-6 py-4 rounded-2xl text-center bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">
+          <div
+            className="w-full px-6 py-4 rounded-2xl text-center border"
+            style={{
+              color: 'var(--color-warn)',
+              background: 'color-mix(in srgb, var(--color-warn) 10%, transparent)',
+              borderColor: 'color-mix(in srgb, var(--color-warn) 20%, transparent)',
+            }}
+          >
             Please sign in to start chatting
           </div>
         </div>
@@ -330,7 +344,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 rounded-full transition-all mb-1 hover:bg-white/10 text-text-secondary hover:text-text-primary"
+                className="p-2 rounded-full transition-all mb-1 hover:bg-[color-mix(in_srgb,var(--color-fg)_10%,transparent)] text-text-secondary hover:text-text-primary"
               >
                 <Plus size={20} />
                 {selectedFiles.length > 0 && (
@@ -351,7 +365,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 className={`p-2 rounded-full transition-all mb-1 ${
                   showToolsPopup
                     ? 'bg-accent-primary/20 text-accent-primary hover:text-accent-primary/80'
-                    : 'hover:bg-white/10 text-text-secondary hover:text-text-primary'
+                    : 'hover:bg-[color-mix(in_srgb,var(--color-fg)_10%,transparent)] text-text-secondary hover:text-text-primary'
                 }`}
               >
                 <Settings size={20} />
@@ -364,9 +378,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 onClick={() => setShowLiveUsage(!showLiveUsage)}
                 className={`p-2 rounded-full transition-all mb-1 ${
                   showLiveUsage
-                    ? 'bg-green-600/20 text-green-400 hover:text-green-300'
-                    : 'hover:bg-white/10 text-text-secondary hover:text-text-primary'
+                    ? ''
+                    : 'hover:bg-[color-mix(in_srgb,var(--color-fg)_10%,transparent)] text-text-secondary hover:text-text-primary'
                 }`}
+                style={showLiveUsage ? { background: 'color-mix(in srgb, var(--color-ok) 20%, transparent)', color: 'var(--color-ok)' } : undefined}
               >
                 <Activity size={20} />
               </motion.button>
@@ -440,9 +455,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={onStopGeneration}
-                    className="p-2.5 rounded-full transition-colors bg-red-600 hover:bg-red-700"
+                    className="p-2.5 rounded-full transition-colors"
+                    style={{ background: 'var(--color-err)', color: 'var(--color-on-accent)' }}
                   >
-                    <Square size={16} style={{ color: 'var(--color-text)' }} />
+                    <Square size={16} />
                   </motion.button>
                 ) : (
                   <motion.button
@@ -451,10 +467,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
                     onClick={handleSendWithDraftClear}
                     disabled={!inputMessage.trim()}
                     className={`p-2.5 rounded-full transition-all ${
-                      !inputMessage.trim()
-                        ? 'bg-white/5 text-text-secondary cursor-not-allowed'
-                        : 'bg-white/20 hover:bg-white/30 text-white active:scale-[0.98]'
+                      !inputMessage.trim() ? 'cursor-not-allowed' : 'active:scale-[0.98]'
                     }`}
+                    style={
+                      !inputMessage.trim()
+                        ? { background: 'color-mix(in srgb, var(--color-fg) 5%, transparent)', color: 'var(--color-fg-subtle)' }
+                        : { background: 'var(--color-accent)', color: 'var(--color-on-accent)' }
+                    }
                   >
                     <ArrowUp size={16} />
                   </motion.button>
@@ -502,6 +521,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
                     WebkitAppearance: 'none',
                     MozAppearance: 'none',
                     appearance: 'none',
+                    // theme-allow: a data-URI SVG cannot read CSS custom
+                    // properties, so the chevron stroke must be inlined; this
+                    // muted-grey reads correctly on both paper and terminal bg.
                     backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right 1rem center',
@@ -528,12 +550,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
               </div>
 
               {/* Connection Status */}
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm h-full border ${
-                wsConnected
-                  ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                  : 'bg-red-500/10 text-red-400 border-red-500/20'
-              }`}>
-                <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-400' : 'bg-red-400'}`} />
+              <div
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm h-full border"
+                style={{
+                  color: wsConnected ? 'var(--color-ok)' : 'var(--color-err)',
+                  background: `color-mix(in srgb, ${wsConnected ? 'var(--color-ok)' : 'var(--color-err)'} 10%, transparent)`,
+                  borderColor: `color-mix(in srgb, ${wsConnected ? 'var(--color-ok)' : 'var(--color-err)'} 20%, transparent)`,
+                }}
+              >
+                <div className="w-2 h-2 rounded-full" style={{ background: wsConnected ? 'var(--color-ok)' : 'var(--color-err)' }} />
                 <span className="font-medium">{wsConnected ? 'Connected' : 'Disconnected'}</span>
               </div>
             </div>
@@ -649,8 +674,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
                               whileTap={{ scale: 0.95 }}
                               onClick={onToggleMCPIndicators}
                               className={`relative w-11 h-6 rounded-full transition-colors ${
-                                showMCPIndicators ? 'bg-green-600' : 'bg-bg-tertiary'
+                                showMCPIndicators ? '' : 'bg-bg-tertiary'
                               }`}
+                              style={showMCPIndicators ? { background: 'var(--color-ok)' } : undefined}
                             >
                               <motion.div
                                 animate={{ x: showMCPIndicators ? 20 : 2 }}

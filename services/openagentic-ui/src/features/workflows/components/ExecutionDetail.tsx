@@ -36,11 +36,11 @@ interface NodeSummary {
 }
 
 const statusColors: Record<string, string> = {
-  completed: '#22c55e',
-  running: '#ff9800',
-  failed: '#f44336',
-  pending: '#9e9e9e',
-  unknown: '#607d8b',
+  completed: 'var(--color-success)',
+  running: 'var(--color-warning)',
+  failed: 'var(--color-error)',
+  pending: 'var(--color-fg-muted)',
+  unknown: 'var(--color-fg-subtle)',
 };
 
 export const ExecutionDetail: React.FC<ExecutionDetailProps> = ({
@@ -101,7 +101,7 @@ export const ExecutionDetail: React.FC<ExecutionDetailProps> = ({
 
   if (error) {
     return (
-      <div className="flex items-center justify-center p-8 text-red-500">
+      <div className="flex items-center justify-center p-8 text-error">
         <AlertCircle className="w-5 h-5 mr-2" />
         {error}
       </div>
@@ -113,8 +113,8 @@ export const ExecutionDetail: React.FC<ExecutionDetailProps> = ({
       {/* Summary bar */}
       <div className="flex items-center gap-4 px-4 py-3 border-b" style={{ borderColor: 'var(--color-border)' }}>
         <div className="flex items-center gap-2">
-          {execution?.status === 'completed' && <CheckCircle style={{ width: 16, height: 16, color: '#22c55e' }} />}
-          {execution?.status === 'failed' && <XCircle style={{ width: 16, height: 16, color: '#f44336' }} />}
+          {execution?.status === 'completed' && <CheckCircle style={{ width: 16, height: 16, color: 'var(--color-success)' }} />}
+          {execution?.status === 'failed' && <XCircle style={{ width: 16, height: 16, color: 'var(--color-error)' }} />}
           {execution?.status === 'running' && <div className="wf-exec-spinner" style={{ width: 14, height: 14 }} />}
           <span className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
             {execution?.status?.charAt(0).toUpperCase() + execution?.status?.slice(1)}
@@ -136,7 +136,7 @@ export const ExecutionDetail: React.FC<ExecutionDetailProps> = ({
 
         <div className="flex-1" />
 
-        <button onClick={onClose} className="p-1 rounded hover:bg-white/10" style={{ color: 'var(--color-text-tertiary)' }}>
+        <button onClick={onClose} className="p-1 rounded hover:bg-surface/10" style={{ color: 'var(--color-text-tertiary)' }}>
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -168,7 +168,7 @@ export const ExecutionDetail: React.FC<ExecutionDetailProps> = ({
                 <div className="flex items-center gap-2 mb-1">
                   <span
                     className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: statusColors[node.status] || '#607d8b' }}
+                    style={{ backgroundColor: statusColors[node.status] || 'var(--color-fg-subtle)' }}
                   />
                   <span className="text-xs font-medium truncate" style={{ color: 'var(--color-text)' }}>
                     {nodeId}
@@ -179,13 +179,13 @@ export const ExecutionDetail: React.FC<ExecutionDetailProps> = ({
                       data-testid={`streaming-indicator-${nodeId}`}
                       style={{
                         display: 'inline-flex', alignItems: 'center', gap: 2,
-                        fontSize: 9, color: '#58a6ff', marginLeft: 2,
+                        fontSize: 9, color: 'var(--color-info)', marginLeft: 2,
                       }}
                       title="Streaming…"
                     >
                       <span style={{
                         display: 'inline-block', width: 4, height: 4, borderRadius: '50%',
-                        background: '#58a6ff',
+                        background: 'var(--color-info)',
                         animation: 'wf-agent-pulse 1.4s ease-in-out infinite',
                       }} />
                       …
@@ -203,9 +203,9 @@ export const ExecutionDetail: React.FC<ExecutionDetailProps> = ({
                         alignItems: 'center',
                         gap: 2,
                         fontSize: 9,
-                        color: '#ff9800',
-                        background: 'rgba(255,152,0,0.1)',
-                        border: '1px solid rgba(255,152,0,0.3)',
+                        color: 'var(--color-warning)',
+                        background: 'color-mix(in srgb, var(--color-warning) 10%, transparent)',
+                        border: '1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)',
                         borderRadius: 4,
                         padding: '1px 5px',
                         cursor: 'pointer',
@@ -223,7 +223,7 @@ export const ExecutionDetail: React.FC<ExecutionDetailProps> = ({
                       height: 6,
                       width: `${barWidth}%`,
                       borderRadius: 3,
-                      backgroundColor: statusColors[node.status] || '#607d8b',
+                      backgroundColor: statusColors[node.status] || 'var(--color-fg-subtle)',
                       transition: 'width 0.3s ease',
                     }}
                   />
@@ -293,7 +293,7 @@ export const ExecutionDetail: React.FC<ExecutionDetailProps> = ({
                       {selectedNodeData.logs.map((log: any, i: number) => (
                         <div key={i} className="flex items-start gap-2 text-xs py-1">
                           <span className="font-mono w-16 flex-shrink-0" style={{
-                            color: log.level === 'error' ? '#f44336' : log.level === 'warn' ? '#ff9800' : 'var(--color-text-tertiary)',
+                            color: log.level === 'error' ? 'var(--color-error)' : log.level === 'warn' ? 'var(--color-warning)' : 'var(--color-text-tertiary)',
                           }}>
                             [{log.level}]
                           </span>

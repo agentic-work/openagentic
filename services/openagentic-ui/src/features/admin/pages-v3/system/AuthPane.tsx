@@ -265,7 +265,7 @@ export const AuthPane: React.FC = () => {
             </Btn>
           </span>
         ) : (
-          <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-v3-mono)' }}>—</span>
+          <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}>—</span>
         )
       ),
     },

@@ -236,7 +236,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({
                 ...inputStyle,
                 height: '300px',
                 resize: 'vertical',
-                fontFamily: 'monospace',
+                fontFamily: 'var(--font-mono)',
                 lineHeight: '1.5',
               }}
             />
@@ -442,7 +442,7 @@ export const ModuleEditor: React.FC<ModuleEditorProps> = ({
                 ...inputStyle,
                 height: '140px',
                 resize: 'vertical',
-                fontFamily: 'monospace',
+                fontFamily: 'var(--font-mono)',
                 lineHeight: '1.5',
               }}
             />

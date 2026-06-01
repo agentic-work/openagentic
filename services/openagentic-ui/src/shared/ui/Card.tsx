@@ -1,9 +1,12 @@
 import React from 'react';
 
 /**
- * Shared Card — M3 Expressive (task #160).
- * 20px radius (rounded-card), surface-1 background, no hard shadow —
- * tonal elevation only.
+ * Shared Card — NEO-BRUTALIST field-guide restyle.
+ *
+ * Reads ONLY theme tokens. Sharp corners (rounded-none), 2px solid ink
+ * border (border-rule-strong), surface background, and the hard zero-blur
+ * offset shadow (shadow-hard) — the field-guide "card sitting on paper"
+ * motif. Prop API ({ children, className, style }) is unchanged.
  */
 export interface CardProps {
   children: React.ReactNode;
@@ -14,7 +17,7 @@ export interface CardProps {
 export const Card: React.FC<CardProps> = ({ children, className = '', style }) => {
   return (
     <div
-      className={`rounded-card bg-surface-1 ${className}`}
+      className={`rounded-none border-2 border-rule-strong bg-surface text-fg shadow-hard ${className}`}
       style={style}
     >
       {children}

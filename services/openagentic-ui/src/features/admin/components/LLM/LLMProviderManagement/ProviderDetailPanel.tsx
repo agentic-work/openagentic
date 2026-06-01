@@ -54,7 +54,7 @@ export const ProviderDetailPanel: React.FC<{
       <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--text-secondary)' }}>
         <span>Last health check: {health?.lastChecked ? new Date(health.lastChecked).toLocaleTimeString() : 'Never'}</span>
         {health?.endpoint && <span>Endpoint: <code style={{ color: 'var(--text-primary)' }}>{health.endpoint}</code></span>}
-        {health?.error && <span className="text-red-400">Error: {health.error.substring(0, 80)}</span>}
+        {health?.error && <span className="text-err">Error: {health.error.substring(0, 80)}</span>}
       </div>
 
       {/* Models */}
@@ -107,9 +107,9 @@ export const ProviderDetailPanel: React.FC<{
             || (ac.type && Object.keys(ac).length > 1);
           return isConfigured;
         })() ? (
-          <span className="flex items-center gap-1.5 text-emerald-400"><CheckCircle size={12} /> Credentials configured</span>
+          <span className="flex items-center gap-1.5 text-ok"><CheckCircle size={12} /> Credentials configured</span>
         ) : (
-          <span className="flex items-center gap-1.5 text-yellow-400"><AlertCircle size={12} /> Credentials needed</span>
+          <span className="flex items-center gap-1.5 text-warn"><AlertCircle size={12} /> Credentials needed</span>
         )}
         {!isEnv && (
           <button onClick={onRotateCredentials} className="text-xs underline transition-colors hover:opacity-80" style={{ color: 'var(--text-secondary)' }}>

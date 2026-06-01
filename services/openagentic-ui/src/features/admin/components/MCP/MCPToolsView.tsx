@@ -125,7 +125,7 @@ export const MCPToolsView: React.FC<MCPToolsViewProps> = ({ theme }) => {
         </div>
         <button
           onClick={fetchStatus}
-          className="mt-4 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
+          className="mt-4 px-4 py-2 bg-primary-500 text-on-accent rounded-lg hover:bg-primary-600"
         >
           Retry
         </button>
@@ -160,7 +160,7 @@ export const MCPToolsView: React.FC<MCPToolsViewProps> = ({ theme }) => {
           <button
             onClick={handleReindex}
             disabled={reindexing}
-            className="px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 bg-primary-500 text-white hover:bg-primary-600 disabled:opacity-50"
+            className="px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 bg-primary-500 text-on-accent hover:bg-primary-600 disabled:opacity-50"
           >
             {reindexing ? (
               <>

@@ -83,19 +83,22 @@ const storeLabels: Record<string, string> = {
 };
 
 const storeColors: Record<string, string> = {
-  milvus: '#9c27b0',
-  pgvector: '#2196f3',
-  redis: '#ef5350',
+  milvus: 'var(--color-accent)',
+  pgvector: 'var(--color-info)',
+  redis: 'var(--color-error)',
 };
 
 const statusColors: Record<string, string> = {
-  connected: '#22c55e',
-  configured: '#ff9800',
-  untested: '#ff9800',
-  disconnected: '#ef5350',
-  failed: '#ef5350',
+  connected: 'var(--color-success)',
+  configured: 'var(--color-warning)',
+  untested: 'var(--color-warning)',
+  disconnected: 'var(--color-error)',
+  failed: 'var(--color-error)',
 };
 
+// theme-allow: data-source-TYPE identity palette (vendor brand hues — PostgreSQL
+// #336791, MySQL #4479a1, S3 #e25444, Redis #dc382d, …). Vendor/categorical identity
+// carve-out, like the node-TYPE + brand-color allowlist; not themeable surfaces.
 const dsTypeInfo: Record<string, { text: string; color: string }> = {
   postgres: { text: 'PostgreSQL', color: '#336791' },
   postgresql: { text: 'PostgreSQL', color: '#336791' },
@@ -239,6 +242,7 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
   const handleMcpToolDrag = useCallback((e: React.DragEvent, tool: { name: string; description?: string }, serverName: string) => {
     e.dataTransfer.setData('application/reactflow-node', JSON.stringify({
       type: 'mcp_tool',
+      // theme-allow: node-TYPE identity color assigned to the created MCP-tool node (action category)
       data: { label: tool.name, toolName: tool.name, toolServer: serverName, icon: 'Wrench', color: '#00bcd4' },
     }));
     e.dataTransfer.effectAllowed = 'copy';
@@ -506,7 +510,7 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '12px' }}>
                 {dataSources.map(ds => {
-                  const typeInfo = dsTypeInfo[ds.type] || { text: ds.type, color: '#999' };
+                  const typeInfo = dsTypeInfo[ds.type] || { text: ds.type, color: 'var(--color-fg-subtle)' };
                   const statusColor = statusColors[ds.status || 'untested'];
                   const statusLabel = ds.status === 'connected' ? 'Connected' : ds.status === 'failed' ? 'Failed' : 'Untested';
                   const isExpanded = expandedDs.has(ds.id);
@@ -542,7 +546,7 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                           width: '44px', height: '44px', borderRadius: '10px', background: typeInfo.color,
                           display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                         }}>
-                          <Database className="w-5 h-5" style={{ color: '#fff' }} />
+                          <Database className="w-5 h-5" style={{ color: 'var(--color-on-accent)' }} />
                         </div>
 
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -628,7 +632,7 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '12px' }}>
                 {mcpServers.map(server => {
                   const isExpanded = expandedServers.has(server.name);
-                  const serverColor = server.status === 'connected' ? '#22c55e' : server.status === 'disconnected' ? '#ef5350' : '#ff9800';
+                  const serverColor = server.status === 'connected' ? 'var(--color-success)' : server.status === 'disconnected' ? 'var(--color-error)' : 'var(--color-warning)';
 
                   return (
                     <div key={server.name} style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden', background: 'var(--color-bg-secondary, #1a1a2e)' }}>
@@ -636,8 +640,9 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                         onClick={() => toggleServer(server.name)}
                         style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px', cursor: 'pointer', transition: 'background 0.15s' }}
                       >
+                        {/* theme-allow: MCP-tool node-TYPE identity color (action category) */}
                         <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#00bcd4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Wrench className="w-5 h-5" style={{ color: '#fff' }} />
+                          <Wrench className="w-5 h-5" style={{ color: 'var(--color-on-accent)' }} />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{server.name}</div>
@@ -667,6 +672,7 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                 title={tool.description || tool.name}
                               >
+                                {/* theme-allow: action node-TYPE identity color */}
                                 <span style={{ fontSize: '11px', fontWeight: 700, color: '#00bcd4', padding: '2px 6px', borderRadius: '4px', background: 'color-mix(in srgb, #00bcd4 12%, transparent)' }}>fn</span>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tool.name}</div>
@@ -726,8 +732,9 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                         onClick={() => handleExpandBucket(bucket.name)}
                         style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px', cursor: 'pointer' }}
                       >
+                        {/* theme-allow: S3 data-source-TYPE identity color */}
                         <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#e25444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <HardDrive className="w-5 h-5" style={{ color: '#fff' }} />
+                          <HardDrive className="w-5 h-5" style={{ color: 'var(--color-on-accent)' }} />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text)' }}>{bucket.name}</div>
@@ -771,6 +778,7 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                                 onDragStart={!obj.isFolder ? e => {
                                   e.dataTransfer.setData('application/reactflow-node', JSON.stringify({
                                     type: 'data_source_query',
+                                    // theme-allow: S3 data-source-TYPE identity color on the created node
                                     data: { label: `File: ${obj.key.split('/').pop()}`, bucket: bucket.name, objectKey: obj.key, icon: 'File', color: '#e25444' },
                                   }));
                                   e.dataTransfer.effectAllowed = 'copy';
@@ -783,7 +791,7 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                               >
                                 {obj.isFolder
-                                  ? <FolderOpen className="w-4 h-4" style={{ color: '#ff9800', flexShrink: 0 }} />
+                                  ? <FolderOpen className="w-4 h-4" style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
                                   : <File className="w-4 h-4" style={{ color: 'var(--color-text-tertiary)', flexShrink: 0 }} />
                                 }
                                 <span style={{ flex: 1, fontSize: '13px', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -833,13 +841,13 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                 {stores.map(store => (
                   <div key={store.store} style={{ border: '1px solid var(--color-border)', borderRadius: '12px', overflow: 'hidden', background: 'var(--color-bg-secondary, #1a1a2e)' }}>
                     <div onClick={() => toggleStore(store.store)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px', cursor: 'pointer' }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: storeColors[store.store] || '#666', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Database className="w-5 h-5" style={{ color: '#fff' }} />
+                      <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: storeColors[store.store] || 'var(--color-fg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Database className="w-5 h-5" style={{ color: 'var(--color-on-accent)' }} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text)' }}>{storeLabels[store.store] || store.store}</div>
                         <div style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
-                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[store.status] || '#999' }} />
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[store.status] || 'var(--color-fg-subtle)' }} />
                           <span style={{ color: 'var(--color-text-tertiary)' }}>{store.collections?.length || 0} collections</span>
                         </div>
                       </div>
@@ -863,7 +871,7 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
                               onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface, #2a2a2a)')}
                               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                             >
-                              <Database className="w-4 h-4" style={{ color: storeColors[col.store] || '#999', flexShrink: 0 }} />
+                              <Database className="w-4 h-4" style={{ color: storeColors[col.store] || 'var(--color-fg-subtle)', flexShrink: 0 }} />
                               <span style={{ flex: 1, fontSize: '13px', fontWeight: 500, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{col.name}</span>
                               <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                                 {col.entity_count !== undefined && (
@@ -909,12 +917,12 @@ export const DataSection: React.FC<DataSectionProps> = ({ mcpServers }) => {
               </div>
             </div>
 
-            {uploadProgress && <div style={{ fontSize: '13px', padding: '10px 4px', color: '#22c55e', fontWeight: 500 }}>{uploadProgress}</div>}
+            {uploadProgress && <div style={{ fontSize: '13px', padding: '10px 4px', color: 'var(--color-success)', fontWeight: 500 }}>{uploadProgress}</div>}
             {uploadError && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', padding: '8px 4px' }}>
-                <span style={{ color: '#f44336' }}>{uploadError}</span>
+                <span style={{ color: 'var(--color-error)' }}>{uploadError}</span>
                 <button onClick={() => setUploadError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                  <X className="w-4 h-4" style={{ color: '#f44336' }} />
+                  <X className="w-4 h-4" style={{ color: 'var(--color-error)' }} />
                 </button>
               </div>
             )}

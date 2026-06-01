@@ -1,142 +1,37 @@
 /* ============================================================
-   A. Mockup token set — full dark palette from 01-cloud-ops.html
+   A. Mockup namespace — now DERIVED from the ONE SOT (theme.css).
+   The full dark/light palette + the legacy --color-* re-wiring that
+   used to live here have been DELETED: theme.css owns --color-* and
+   already aliases --bg-* / --fg-* / --line-* / --accent to the
+   canonical warm field-guide tokens (and flips them per [data-theme]).
+   Keeping local literal definitions here re-introduced the stale
+   violet accent + cold-grey surfaces because this file loads after
+   theme.css. Only the structural skin rules below remain; the few
+   tokens this file uniquely owns are derived from the SOT.
    ============================================================ */
 :root {
-  /* Mockup shade stack */
-  --bg-0: #18130C;
-  --bg-1: #211A11;
-  --bg-2: #16181c;
-  --bg-3: #1c1f24;
-  --bg-4: #242831;
+  /* Sub-agent hash palette (4 anchors; colorHashForId maps agent ids
+     via djb2 → one of these four). theme-allow: a CATEGORICAL identity
+     palette (not theme surfaces), warm-tuned to the brand ramp. */
+  --agent-c: #F59E0B; /* amber  */
+  --agent-g: #22C55E; /* green  */
+  --agent-s: #FF453A; /* red    */
+  --agent-k: #FF5722; /* signal */
 
-  --line-1: rgba(255, 255, 255, 0.06);
-  --line-2: rgba(255, 255, 255, 0.10);
-  --line-3: rgba(255, 255, 255, 0.16);
+  /* Mockup shape scale → brutalist sharp corners from the SOT. */
+  --mk-radius-sm: var(--radius-sm, 4px);
+  --mk-radius-md: var(--radius-chip, 6px);
+  --mk-radius-lg: var(--radius-card, 0px);
 
-  --fg-0: #f8fafc;
-  --fg-1: #d4d4d8;
-  --fg-2: #a1a1aa;
-  --fg-3: #71717a;
-
-  /* Violet accent + sub-agent hash palette (4 anchors; colorHashForId
-     maps agent ids via djb2 → pick one of these four). */
-  --accent: #8b5cf6;
-  --accent-soft: rgba(139, 92, 246, 0.14);
-  --accent-line: rgba(139, 92, 246, 0.32);
-
-  --agent-c: #f59e0b;
-  --agent-g: #10b981;
-  --agent-s: #ef4444;
-  --agent-k: #3b82f6;
-
-  /* Status (kept alongside existing --color-success etc.) */
-  --ok:   #22c55e;
-  --warn: #f59e0b;
-  --err:  #ef4444;
-  --info: #38bdf8;
-
-  /* Mockup shape scale. The existing --radius-sm/md legacy aliases at
-     6/12 in design-tokens.css get narrowed here to 6/10/14 so the
-     "pill", "card", "message" visuals match the mockup. */
-  --mk-radius-sm: 6px;
-  --mk-radius-md: 10px;
-  --mk-radius-lg: 14px;
-
-  --mk-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --mk-shadow-md: 0 4px 20px rgba(0, 0, 0, 0.45);
+  /* Mockup shadows → the SOT hard zero-blur offset shadows. */
+  --mk-shadow-sm: var(--shadow-xs);
+  --mk-shadow-md: var(--shadow-sm);
 }
 
-/* ============================================================
-   A₂. Light theme overrides (task #182). The :root block above
-   declares the dark palette; without these overrides the mockup
-   tokens stay dark in light mode, producing white text on white
-   background for every inline-styled element that reads --fg-0
-   etc. Flip the scale — bg gets light, fg gets dark, lines get
-   darker low-alpha strokes, accent + agent hashes unchanged so
-   the brand stays violet either way. Shadows drop intensity.
-   ============================================================ */
-html[data-theme='light'] {
-  --bg-0: #F4EFE6;
-  --bg-1: #EFE9DD;
-  --bg-2: #f4f4f5;
-  --bg-3: #e4e4e7;
-  --bg-4: #d4d4d8;
-
-  --line-1: rgba(0, 0, 0, 0.06);
-  --line-2: rgba(0, 0, 0, 0.10);
-  --line-3: rgba(0, 0, 0, 0.16);
-
-  --fg-0: #09090b;
-  --fg-1: #3f3f46;
-  --fg-2: #52525b;
-  --fg-3: #71717a;
-
-  /* Accent + agent colors are saturated and work on both grounds,
-     but accent-soft + accent-line use white-alpha in dark; swap to
-     violet-alpha-on-white for proper bg tint. */
-  --accent-soft: rgba(139, 92, 246, 0.10);
-  --accent-line: rgba(139, 92, 246, 0.28);
-
-  --mk-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
-  --mk-shadow-md: 0 4px 20px rgba(0, 0, 0, 0.10);
-}
-
-/* ============================================================
-   B. Re-wire the legacy --color-* semantic vars so every existing
-   component picks up the mockup skin automatically. Only applies
-   on the dark theme (light keeps its overrides from index.css).
-   ============================================================ */
-:root,
-html[data-theme='dark'] {
-  --color-background:       var(--bg-0);
-  --color-surface:          var(--bg-1);
-  --color-surfaceSecondary: var(--bg-2);
-  --color-surfaceTertiary:  var(--bg-3);
-  --color-surfaceHover:     var(--bg-3);
-
-  --color-bg-primary:   var(--bg-0);
-  --color-bg-secondary: var(--bg-1);
-  --color-bg-tertiary:  var(--bg-2);
-
-  /* Kebab-case aliases for semantic surface tokens — some inline-styled
-     admin components read `--color-surface-primary` / `-secondary` /
-     `-tertiary` and `--color-bg` which weren't previously defined here,
-     so their backgrounds resolved to transparent (causing the Router
-     Tuning tooltip + misc admin chrome to look unthemed). Fixed 2026-04-23. */
-  --color-surface-primary:   var(--bg-1);
-  --color-surface-secondary: var(--bg-2);
-  --color-surface-tertiary:  var(--bg-3);
-  --color-surface-hover:     var(--bg-3);
-  --color-bg:                var(--bg-0);
-  --color-text-primary:      var(--fg-0);
-  --color-text-secondary:    var(--fg-1);
-  --color-text-muted:        var(--fg-2);
-
-  --color-text:          var(--fg-0);
-  --color-textSecondary: var(--fg-1);
-  --color-textMuted:     var(--fg-2);
-
-  --color-border:      var(--line-1);
-  --color-borderHover: var(--line-2);
-
-  --color-primary: var(--accent);
-
-  /* Violet accent surfaces leveraged by inline-style components. */
-  --color-accent: var(--accent);
-
-  /* M3 surface tokens (task #160) re-aligned to mockup stack so the
-     existing `bg-surface-1` etc. utilities produce mockup shades. */
-  --surface-0: var(--bg-0);
-  --surface-1: var(--bg-1);
-  --surface-2: var(--bg-2);
-  --surface-3: var(--bg-3);
-  --surface-4: var(--bg-4);
-}
-
-/* Shift body background so the whole chat surface picks up --bg-0. */
+/* Shift body background so the whole chat surface picks up the page bg. */
 body {
-  background-color: var(--bg-0);
-  color: var(--fg-1);
+  background-color: var(--color-bg);
+  color: var(--color-fg-muted);
   font-feature-settings: 'ss01', 'cv11';
 }
 
@@ -192,7 +87,7 @@ body {
   background: var(--accent-soft) !important;
   border: 1px solid var(--accent-line) !important;
   color: var(--fg-0) !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: var(--font-mono) !important;
   font-size: 11px !important;
   font-variant-numeric: tabular-nums;
   border-radius: 99px !important;
@@ -238,7 +133,7 @@ body {
   margin: 4px 0;
 }
 [data-testid='tool-call-card'] button:first-of-type {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   padding: 9px 12px !important;
   color: var(--fg-0) !important;
@@ -246,14 +141,14 @@ body {
 [data-testid='tool-call-card'] button:first-of-type .truncate {
   color: var(--fg-0) !important;
   font-weight: 500;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 /* Section labels (INPUT / OUTPUT) uppercased + tiny. */
 [data-testid='tool-call-card'] pre {
   background: var(--bg-0) !important;
   border: 1px solid var(--line-1) !important;
   border-radius: 6px !important;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 12px !important;
   color: var(--fg-1) !important;
 }
@@ -295,7 +190,7 @@ body {
 [data-testid='parallel-tool-subcard'] pre {
   background: var(--bg-0) !important;
   border: 1px solid var(--line-1) !important;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 
 /* ============================================================
@@ -335,7 +230,7 @@ button[aria-label='Queue message'] {
 }
 button[aria-label='Send message']:hover,
 button[aria-label='Queue message']:hover {
-  background: #7c3aed !important; /* violet-600 */
+  background: color-mix(in srgb, var(--color-accent) 85%, var(--color-shadow)) !important;
 }
 
 /* ============================================================
@@ -344,7 +239,7 @@ button[aria-label='Queue message']:hover {
 /* Gradient headline conic mark for "A" brand icon, when present. */
 .av-asst,
 .avatar-brand {
-  background: linear-gradient(135deg, #a78bfa, #6366f1) !important;
+  background: linear-gradient(135deg, var(--color-accent), var(--brand-signal-soft)) !important;
 }
 
 /* Mockup chip (pills near the top bar or model badge). */
@@ -400,24 +295,24 @@ button[aria-label='Queue message']:hover {
 .prose h2,
 .prose h3,
 .prose h4 {
-  color: var(--fg-0, #f8fafc) !important;
+  color: var(--fg-0) !important;
   letter-spacing: -0.015em;
   font-weight: 600 !important;
 }
 .prose h2 {
-  color: var(--fg-0, #f8fafc) !important;
+  color: var(--fg-0) !important;
   margin-top: 1.6em !important;
   margin-bottom: 0.4em !important;
-  border-bottom: 1px solid var(--line-1, rgba(255, 255, 255, 0.06));
+  border-bottom: 1px solid var(--line-1);
   padding-bottom: 6px;
 }
 .prose h3 {
-  color: var(--accent, #8b5cf6) !important;
+  color: var(--accent) !important;
   margin-top: 1.2em !important;
   margin-bottom: 0.3em !important;
 }
 .prose h4 {
-  color: var(--fg-1, #d4d4d8) !important;
+  color: var(--fg-1) !important;
   font-size: 13px !important;
   margin-top: 1em !important;
   margin-bottom: 0.25em !important;
@@ -427,7 +322,7 @@ button[aria-label='Queue message']:hover {
    Key Points / Risk / Interpretation — pop the term. */
 .prose li > strong,
 .prose p > strong {
-  color: var(--fg-0, #f8fafc) !important;
+  color: var(--fg-0) !important;
   font-weight: 600 !important;
 }
 
@@ -435,11 +330,10 @@ button[aria-label='Queue message']:hover {
    Tailwind's prose default renders them as plain colored text; we need
    the pill shape + accent tint to match mockup .inline-code. */
 .prose :not(pre) > code {
-  background: var(--accent-soft, rgba(139, 92, 246, 0.14)) !important;
-  border: 1px solid var(--accent-line, rgba(139, 92, 246, 0.32));
-  color: var(--fg-0, #f8fafc) !important;
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo,
-    monospace !important;
+  background: var(--accent-soft) !important;
+  border: 1px solid var(--accent-line);
+  color: var(--fg-0) !important;
+  font-family: var(--font-mono) !important;
   font-size: 0.88em;
   padding: 0.08em 0.42em !important;
   border-radius: 6px !important;
@@ -452,11 +346,11 @@ button[aria-label='Queue message']:hover {
 
 /* Blockquote: violet rail + tinted bg for Note/Risk/Disclaimer. */
 .prose blockquote {
-  border-left: 3px solid var(--accent, #8b5cf6) !important;
-  background: color-mix(in srgb, var(--accent, #8b5cf6) 8%, transparent);
+  border-left: 3px solid var(--accent) !important;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
   padding: 10px 14px !important;
   margin: 12px 0 !important;
-  color: var(--fg-1, #d4d4d8) !important;
+  color: var(--fg-1) !important;
   border-radius: 0 8px 8px 0;
   font-style: normal !important;
 }
@@ -467,45 +361,45 @@ button[aria-label='Queue message']:hover {
 .prose li,
 .prose td,
 .prose dd {
-  color: var(--fg-1, #d4d4d8) !important;
+  color: var(--fg-1) !important;
 }
 .prose strong {
-  color: var(--fg-0, #f8fafc) !important;
+  color: var(--fg-0) !important;
 }
 
 /* Table — mockup-parity: accent-tinted header row, line-1 borders,
    zebra banding via nth-child on data rows. Overrides the older
    excel-table defaults when the mockup palette is active. */
 .excel-table thead tr {
-  background: color-mix(in srgb, var(--accent, #8b5cf6) 12%, transparent) !important;
+  background: color-mix(in srgb, var(--accent) 12%, transparent) !important;
 }
 .excel-table thead th {
-  color: var(--fg-0, #f8fafc) !important;
-  border-bottom: 1px solid var(--accent-line, rgba(139, 92, 246, 0.32)) !important;
+  color: var(--fg-0) !important;
+  border-bottom: 1px solid var(--accent-line) !important;
   font-weight: 600;
 }
 .excel-table tbody tr:nth-child(even) {
-  background: var(--bg-1, #0f1012) !important;
+  background: var(--bg-1) !important;
 }
 .excel-table tbody tr:nth-child(odd) {
-  background: var(--bg-0, #09090b) !important;
+  background: var(--bg-0) !important;
 }
 .excel-table tbody tr:hover {
-  background: var(--bg-2, #16181c) !important;
+  background: var(--bg-2) !important;
 }
 .excel-table td {
-  border-bottom: 1px solid var(--line-1, rgba(255,255,255,0.06)) !important;
-  color: var(--fg-1, #d4d4d8);
+  border-bottom: 1px solid var(--line-1) !important;
+  color: var(--fg-1);
 }
 
 /* Numbered list markers pick up the accent color so long
    enumerations like Next Actions 1-7 have a visible rhythm. */
 .prose ol > li::marker {
-  color: var(--accent, #8b5cf6) !important;
+  color: var(--accent) !important;
   font-weight: 600;
 }
 .prose ul > li::marker {
-  color: var(--fg-3, #71717a) !important;
+  color: var(--fg-3) !important;
 }
 
 /* Status-keyword tinting via custom attribute. The markdown renderer
@@ -513,22 +407,22 @@ button[aria-label='Queue message']:hover {
    (see SharedMarkdownRenderer.tsx status-wrap pass). These rules paint them
    into OK/WARN/ERR pills that match --ok/--warn/--err from mockup tokens. */
 [data-status="ok"] {
-  color: var(--ok, #22c55e);
-  background: color-mix(in srgb, var(--ok, #22c55e) 12%, transparent);
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
   padding: 0.05em 0.4em;
   border-radius: 5px;
   font-weight: 500;
 }
 [data-status="warn"] {
-  color: var(--warn, #f59e0b);
-  background: color-mix(in srgb, var(--warn, #f59e0b) 14%, transparent);
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
   padding: 0.05em 0.4em;
   border-radius: 5px;
   font-weight: 500;
 }
 [data-status="err"] {
-  color: var(--err, #ef4444);
-  background: color-mix(in srgb, var(--err, #ef4444) 14%, transparent);
+  color: var(--err);
+  background: color-mix(in srgb, var(--err) 14%, transparent);
   padding: 0.05em 0.4em;
   border-radius: 5px;
   font-weight: 500;

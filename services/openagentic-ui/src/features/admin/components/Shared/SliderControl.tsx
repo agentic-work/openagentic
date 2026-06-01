@@ -300,7 +300,7 @@ export const SliderControl: React.FC<SliderControlProps> = ({
                 className="flex items-center gap-1 px-3 py-1.5 rounded text-sm font-medium transition-colors disabled:opacity-50"
                 style={{
                   backgroundColor: isDirty ? 'var(--color-primary)' : 'var(--color-surfaceTertiary)',
-                  color: isDirty ? '#FFFFFF' : 'var(--text-muted)',
+                  color: isDirty ? 'var(--color-on-accent)' : 'var(--text-muted)',
                 }}
                 onMouseEnter={(e) => {
                   if (isDirty && !disabled && !isSaving) {

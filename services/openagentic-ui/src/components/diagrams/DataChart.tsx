@@ -77,14 +77,17 @@ const DEFAULT_COLORS = [
   '#FFD60A', // Apple Yellow
 ];
 
-// Get accent color from CSS
+// Get accent color from CSS (the canonical --color-accent, falls back to the
+// legacy --user-accent-primary alias, then the brand signal-orange snapshot).
 const getAccentColor = (): string => {
-  // eslint-disable-next-line no-restricted-syntax -- Fallback color for SSR
-  if (typeof window === 'undefined') return '#0A84FF';
-  return getComputedStyle(document.documentElement)
-    .getPropertyValue('--user-accent-primary')
-    // eslint-disable-next-line no-restricted-syntax -- Fallback color
-    .trim() || '#0A84FF';
+  // theme-allow: SSR fallback — brand signal-orange snapshot
+  if (typeof window === 'undefined') return '#FF5722';
+  const root = getComputedStyle(document.documentElement);
+  return (
+    root.getPropertyValue('--color-accent').trim() ||
+    root.getPropertyValue('--user-accent-primary').trim() ||
+    '#FF5722' // theme-allow: brand signal-orange snapshot
+  );
 };
 
 // Custom tooltip styling

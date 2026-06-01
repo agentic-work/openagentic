@@ -158,7 +158,7 @@ const ServicePromptEditor: React.FC<EditorProps> = ({ promptKey, onClose, onSave
           style={{
             width: '100%',
             minHeight: 280,
-            fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 12,
             background: 'var(--bg-1)',
             color: 'var(--fg-0)',

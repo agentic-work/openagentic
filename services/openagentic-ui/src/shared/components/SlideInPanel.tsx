@@ -120,7 +120,7 @@ export const SlideInPanel: React.FC<SlideInPanelProps> = ({
             className="fixed inset-0"
             style={{
               zIndex: PANEL_CONFIG.zIndex.backdrop,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              backgroundColor: 'color-mix(in srgb, var(--color-shadow) 50%, transparent)',
               backdropFilter: 'blur(4px)',
             }}
             onClick={handleBackdropClick}
@@ -143,9 +143,9 @@ export const SlideInPanel: React.FC<SlideInPanelProps> = ({
               zIndex: PANEL_CONFIG.zIndex.panel,
               width: `${panelWidth}px`,
               maxWidth: '100vw',
-              backgroundColor: 'var(--color-background)',
-              borderLeft: '1px solid var(--color-border)',
-              boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.3)',
+              backgroundColor: 'var(--color-bg)',
+              borderLeft: 'var(--border-w, 2px) solid var(--color-rule-strong)',
+              boxShadow: 'var(--shadow-card-lg)',
             }}
             role="dialog"
             aria-modal="true"
@@ -175,7 +175,7 @@ export const SlideInPanel: React.FC<SlideInPanelProps> = ({
               {icon && (
                 <div
                   className="p-2 rounded-lg shrink-0"
-                  style={{ backgroundColor: 'var(--color-primary)', color: 'white' }}
+                  style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
                 >
                   {icon}
                 </div>
@@ -283,11 +283,11 @@ export const SlideInPanelFooter: React.FC<SlideInPanelFooterProps> = ({
   const getSubmitColor = () => {
     switch (submitVariant) {
       case 'danger':
-        return 'rgb(239, 68, 68)';
+        return 'var(--color-err)';
       case 'success':
-        return 'rgb(34, 197, 94)';
+        return 'var(--color-ok)';
       default:
-        return 'var(--color-primary)';
+        return 'var(--color-accent)';
     }
   };
 
@@ -310,14 +310,14 @@ export const SlideInPanelFooter: React.FC<SlideInPanelFooterProps> = ({
           className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity flex items-center gap-2"
           style={{
             backgroundColor: getSubmitColor(),
-            color: 'white',
+            color: 'var(--color-on-accent)',
             opacity: isSubmitting || isSubmitDisabled ? 0.6 : 1,
             cursor: isSubmitting || isSubmitDisabled ? 'not-allowed' : 'pointer',
           }}
         >
           {isSubmitting && (
             <div
-              className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin"
+              className="w-4 h-4 rounded-full border-2 border-[var(--color-on-accent)] border-t-transparent animate-spin"
             />
           )}
           {isSubmitting ? 'Saving...' : submitText}
@@ -401,7 +401,7 @@ export const SlideInPanelField: React.FC<SlideInPanelFieldProps> = ({
         style={{ color: 'var(--color-text)' }}
       >
         {label}
-        {required && <span style={{ color: 'rgb(239, 68, 68)' }}> *</span>}
+        {required && <span style={{ color: 'var(--color-err)' }}> *</span>}
       </label>
       {children}
       {hint && !error && (
@@ -410,7 +410,7 @@ export const SlideInPanelField: React.FC<SlideInPanelFieldProps> = ({
         </p>
       )}
       {error && (
-        <p className="text-xs mt-1" style={{ color: 'rgb(239, 68, 68)' }}>
+        <p className="text-xs mt-1" style={{ color: 'var(--color-err)' }}>
           {error}
         </p>
       )}

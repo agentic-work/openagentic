@@ -92,7 +92,7 @@ const codeBlockStyle: React.CSSProperties = {
   border: '1px solid var(--color-border)',
   borderRadius: '10px',
   padding: '20px 24px',
-  fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+  fontFamily: 'var(--font-code)',
   fontSize: '13px',
   lineHeight: 1.7,
   color: 'var(--color-text)',
@@ -191,7 +191,7 @@ const DeploymentGuidePage: React.FC = () => {
                   display: 'inline-block',
                   fontSize: '12px',
                   fontWeight: 600,
-                  fontFamily: 'monospace',
+                  fontFamily: 'var(--font-mono)',
                   color: 'var(--color-primary)',
                   background: 'var(--color-surfaceSecondary)',
                   border: '1px solid var(--color-border)',
@@ -258,7 +258,7 @@ const DeploymentGuidePage: React.FC = () => {
                   fontSize: '14px',
                   fontWeight: 600,
                   color: 'var(--color-text)',
-                  fontFamily: 'monospace',
+                  fontFamily: 'var(--font-mono)',
                 }}
               >
                 {item.value}
@@ -304,7 +304,7 @@ const DeploymentGuidePage: React.FC = () => {
                   fontSize: '13px',
                   fontWeight: 700,
                   color: 'var(--color-primary)',
-                  fontFamily: 'monospace',
+                  fontFamily: 'var(--font-mono)',
                   minWidth: '120px',
                 }}
               >
@@ -397,7 +397,7 @@ const DeploymentGuidePage: React.FC = () => {
                   fontSize: '14px',
                   fontWeight: 700,
                   color: 'var(--color-primary)',
-                  fontFamily: 'monospace',
+                  fontFamily: 'var(--font-mono)',
                 }}
               >
                 {node.name}

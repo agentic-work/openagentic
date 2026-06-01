@@ -72,6 +72,9 @@ const EXAMPLES: Example[] = [
   },
 ];
 
+// theme-allow: this whole panel is an "earthen sedimentary rock strata" data
+// visualization — an intentional illustration palette + rock-texture gradients/alphas
+// (same carve-out as the diagram/illustration palettes), not themeable app surfaces.
 // Earthen sedimentary rock palette — deliberately not pastel.
 const COLOR_BY_NAME: Record<string, string> = {
   'continuation':          '#5d5040',
@@ -148,7 +151,7 @@ export const SedimentaryComposerPanel: React.FC = () => {
         <div style={{ fontSize: 11, color: 'var(--color-textMuted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>User input</div>
         <div
           style={{
-            fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+            fontFamily: 'var(--font-mono)',
             fontSize: 13,
             lineHeight: 1.5,
             color: 'var(--color-text)',
@@ -162,7 +165,7 @@ export const SedimentaryComposerPanel: React.FC = () => {
           {ex.text}
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontFamily: 'ui-monospace, monospace', fontSize: 11 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 11 }}>
           <Tag label={`mode: ${ex.intents.mode}`} on />
           <Tag label="intent: visualization" on={ex.intents.visualization} off={!ex.intents.visualization} />
           <Tag label="intent: long-form" on={!!ex.intents['long-form']} />
@@ -173,7 +176,7 @@ export const SedimentaryComposerPanel: React.FC = () => {
         <div style={{ marginTop: 8, fontSize: 11, color: 'var(--color-textMuted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
           Cycle ({paused ? 'paused' : 'auto'})
         </div>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontFamily: 'var(--font-mono)', fontSize: 12 }}>
           {EXAMPLES.map((e, i) => (
             <li
               key={i}
@@ -198,7 +201,7 @@ export const SedimentaryComposerPanel: React.FC = () => {
           <div style={{ fontSize: 11, color: 'var(--color-textMuted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             Composed prompt — strata view
           </div>
-          <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 11, color: 'var(--color-text)' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text)' }}>
             {activeCount} modules active
           </div>
         </div>
@@ -278,7 +281,7 @@ const Bedrock: React.FC = () => (
       borderTop: '1px solid rgba(255,255,255,0.08)',
       display: 'flex',
       alignItems: 'center',
-      fontFamily: 'ui-monospace, monospace',
+      fontFamily: 'var(--font-mono)',
       fontSize: 10,
       letterSpacing: '0.12em',
       textTransform: 'uppercase',
@@ -315,7 +318,7 @@ const Layer: React.FC<{ m: SeedModule & { dropped: boolean }; index: number }> =
         alignItems: 'center',
         gap: 10,
         padding: '0 14px',
-        fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+        fontFamily: 'var(--font-mono)',
         fontSize: 12,
         color: 'rgba(255,255,255,0.92)',
         overflow: 'hidden',

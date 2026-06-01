@@ -58,7 +58,7 @@ const ToolApprovalDialog: React.FC<ToolApprovalDialogProps> = ({
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[100] flex items-center justify-center p-4"
         style={{
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backgroundColor: 'color-mix(in srgb, var(--color-shadow) 75%, transparent)',
           backdropFilter: 'blur(4px)'
         }}
       >

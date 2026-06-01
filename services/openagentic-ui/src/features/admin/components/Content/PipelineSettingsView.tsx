@@ -258,7 +258,7 @@ const CATEGORY_COLORS: Record<SkillCategory, string> = {
   development: 'text-primary-500 bg-primary-500/10',
   design: 'ap-text-info bg-info-500/10',
   writing: 'ap-text-success bg-success-500/10',
-  analysis: 'text-amber-500 bg-amber-500/10',
+  analysis: 'text-warn bg-[color-mix(in_srgb,var(--color-warn)_10%,transparent)]',
   enterprise: 'text-primary-500 bg-primary-500/10',
   custom: 'ap-text-info bg-info-500/10',
 };
@@ -336,7 +336,7 @@ const BUILT_IN_SKILLS: Skill[] = [
     category: 'analysis',
     systemPrompt: `Provide rigorous, insightful data analysis with clear visualizations.`,
     icon: 'BarChart',
-    color: 'text-amber-500 bg-amber-500/10',
+    color: 'text-warn bg-[color-mix(in_srgb,var(--color-warn)_10%,transparent)]',
     isBuiltIn: true,
   },
   {
@@ -369,7 +369,7 @@ const BUILT_IN_SKILLS: Skill[] = [
     category: 'analysis',
     systemPrompt: `Perform comprehensive security assessments with actionable remediation guidance.`,
     icon: 'Shield',
-    color: 'text-amber-500 bg-amber-500/10',
+    color: 'text-warn bg-[color-mix(in_srgb,var(--color-warn)_10%,transparent)]',
     isBuiltIn: true,
   },
   {
@@ -532,13 +532,13 @@ const STAGES: Array<{
   { id: 'validation', label: 'Validation', shortLabel: 'Valid', icon: Icons.CheckCircle, color: 'ap-text-success bg-success-500/10', description: 'Message history and context limits' },
   { id: 'rag', label: 'RAG', shortLabel: 'RAG', icon: Icons.Database, color: 'ap-text-info bg-info-500/10', description: 'Knowledge retrieval settings' },
   { id: 'memory', label: 'Memory', shortLabel: 'Mem', icon: Icons.Brain, color: 'ap-text-info bg-info-500/10', description: 'Session memory settings' },
-  { id: 'prompt', label: 'Prompt', shortLabel: 'Prompt', icon: Icons.MessageSquare, color: 'text-indigo-500 bg-indigo-500/10', description: 'Dynamic prompt settings' },
+  { id: 'prompt', label: 'Prompt', shortLabel: 'Prompt', icon: Icons.MessageSquare, color: 'text-info bg-[color-mix(in_srgb,var(--color-nfo)_10%,transparent)]', description: 'Dynamic prompt settings' },
   { id: 'mcp', label: 'MCP Tools', shortLabel: 'MCP', icon: Icons.Wrench, color: 'ap-text-warning bg-warning-500/10', description: 'Tool discovery and limits' },
   { id: 'messagePreparation', label: 'Msg Prep', shortLabel: 'Prep', icon: Icons.Layers, color: 'text-primary-500 bg-primary-500/10', description: 'Deduplication and validation' },
   { id: 'completion', label: 'Completion', shortLabel: 'LLM', icon: Icons.Zap, color: 'ap-text-warning bg-warning-500/10', description: 'Model and streaming settings' },
   { id: 'multiModel', label: 'Multi-Model', shortLabel: 'Multi', icon: Icons.Layers, color: 'text-[color:var(--ap-accent)] bg-[color:var(--ap-accent-soft)]', description: 'Multi-model orchestration' },
-  { id: 'toolExecution', label: 'Tool Exec', shortLabel: 'Tools', icon: Icons.Settings, color: 'text-teal-500 bg-teal-500/10', description: 'Tool rounds and caching' },
-  { id: 'response', label: 'Response', shortLabel: 'Resp', icon: Icons.FileOutput, color: 'text-emerald-500 bg-emerald-500/10', description: 'Response processing' },
+  { id: 'toolExecution', label: 'Tool Exec', shortLabel: 'Tools', icon: Icons.Settings, color: 'text-info bg-[color-mix(in_srgb,var(--color-nfo)_10%,transparent)]', description: 'Tool rounds and caching' },
+  { id: 'response', label: 'Response', shortLabel: 'Resp', icon: Icons.FileOutput, color: 'text-ok bg-[color-mix(in_srgb,var(--color-ok)_10%,transparent)]', description: 'Response processing' },
 ];
 
 // Extended stage info for visualization tooltips
@@ -645,7 +645,7 @@ const PipelineVisualization: React.FC<PipelineVisualizationProps> = ({ activeSta
                     {/* Stage Number Badge */}
                     <div className={`
                       absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold
-                      ${isActive ? 'bg-primary-500 text-white' : 'bg-surface-secondary text-text-secondary border border-border'}
+                      ${isActive ? 'bg-primary-500 text-on-accent' : 'bg-surface-secondary text-text-secondary border border-border'}
                     `}>
                       {index + 1}
                     </div>
@@ -698,9 +698,9 @@ const PipelineVisualization: React.FC<PipelineVisualizationProps> = ({ activeSta
           {/* Output */}
           <div className="flex items-center gap-2 ml-2">
             <Icons.ArrowRight size={20} className="text-text-secondary" />
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-emerald-500/10 to-emerald-500/20 border border-emerald-500/30">
-              <Icons.Zap size={16} className="text-emerald-400" />
-              <span className="text-sm font-medium text-emerald-400">AI Response</span>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-[color-mix(in_srgb,var(--color-ok)_10%,transparent)] to-[color-mix(in_srgb,var(--color-ok)_20%,transparent)] border border-[color-mix(in_srgb,var(--color-ok)_30%,transparent)]">
+              <Icons.Zap size={16} className="text-ok" />
+              <span className="text-sm font-medium text-ok">AI Response</span>
             </div>
           </div>
         </div>
@@ -808,7 +808,7 @@ const SkillsManager: React.FC<SkillsManagerProps> = ({
         </div>
         <button
           onClick={() => setIsCreating(true)}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-500 text-on-accent hover:bg-primary-600 transition-colors"
         >
           <Icons.Plus size={16} />
           New Skill
@@ -821,7 +821,7 @@ const SkillsManager: React.FC<SkillsManagerProps> = ({
           onClick={() => setSelectedCategory('all')}
           className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
             selectedCategory === 'all'
-              ? 'bg-primary-500 text-white'
+              ? 'bg-primary-500 text-on-accent'
               : 'bg-surface-secondary text-text-secondary hover:text-text-primary'
           }`}
         >
@@ -837,7 +837,7 @@ const SkillsManager: React.FC<SkillsManagerProps> = ({
               onClick={() => setSelectedCategory(cat)}
               className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-colors ${
                 selectedCategory === cat
-                  ? 'bg-primary-500 text-white'
+                  ? 'bg-primary-500 text-on-accent'
                   : 'bg-surface-secondary text-text-secondary hover:text-text-primary'
               }`}
             >
@@ -867,7 +867,7 @@ const SkillsManager: React.FC<SkillsManagerProps> = ({
                   {skill.emoji} {skill.name}
                   <button
                     onClick={() => onToggleSkill(id)}
-                    className="ml-1 hover:text-white"
+                    className="ml-1 hover:text-on-accent"
                   >
                     ×
                   </button>
@@ -898,7 +898,7 @@ const SkillsManager: React.FC<SkillsManagerProps> = ({
             >
               {/* Active Badge */}
               {isActive && (
-                <div className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full bg-primary-500 text-white text-xs font-bold">
+                <div className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full bg-primary-500 text-on-accent text-xs font-bold">
                   ACTIVE
                 </div>
               )}
@@ -957,7 +957,7 @@ const SkillsManager: React.FC<SkillsManagerProps> = ({
                   }}
                   className={`ml-auto p-1.5 rounded-lg transition-colors ${
                     isActive
-                      ? 'bg-primary-500 text-white hover:bg-primary-600'
+                      ? 'bg-primary-500 text-on-accent hover:bg-primary-600'
                       : 'bg-surface-hover text-text-secondary hover:text-primary-500'
                   }`}
                 >
@@ -971,7 +971,7 @@ const SkillsManager: React.FC<SkillsManagerProps> = ({
 
       {/* Create/Edit Modal */}
       {isCreating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_50%,transparent)] backdrop-blur-sm">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-surface-primary rounded-2xl border border-border shadow-2xl p-6">
             <h3 className="text-lg font-semibold text-text-primary mb-4">
               {editingId ? 'Edit Skill' : 'Create New Skill'}
@@ -1055,7 +1055,7 @@ const SkillsManager: React.FC<SkillsManagerProps> = ({
                 <button
                   onClick={handleSave}
                   disabled={!newSkill.name || !newSkill.systemPrompt || !newSkill.description}
-                  className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 rounded-lg bg-primary-500 text-on-accent hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingId ? 'Save Changes' : 'Create Skill'}
                 </button>
@@ -1752,7 +1752,7 @@ export const PipelineSettingsView: React.FC = () => {
           onClick={() => setViewMode('pipeline')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             viewMode === 'pipeline'
-              ? 'bg-primary-500 text-white shadow-md'
+              ? 'bg-primary-500 text-on-accent shadow-md'
               : 'text-text-secondary hover:text-text-primary hover:bg-surface-hover'
           }`}
         >
@@ -1763,7 +1763,7 @@ export const PipelineSettingsView: React.FC = () => {
           onClick={() => setViewMode('skills')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             viewMode === 'skills'
-              ? 'bg-primary-500 text-white shadow-md'
+              ? 'bg-primary-500 text-on-accent shadow-md'
               : 'text-text-secondary hover:text-text-primary hover:bg-surface-hover'
           }`}
         >

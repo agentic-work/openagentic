@@ -23,7 +23,7 @@ const Row: React.FC<{
       borderTop: '1px solid var(--line-1)',
     }}
   >
-    <div style={{ color: 'var(--fg-1)', fontFamily: 'var(--font-v3-mono)', fontSize: 12 }}>
+    <div style={{ color: 'var(--fg-1)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
       {label}
     </div>
     <div style={{ color: 'var(--fg-2)', fontSize: 12 }}>{hint}</div>
@@ -49,7 +49,7 @@ export const PipelinePane: React.FC = () => {
           2026-05-05. The capabilities that used to live here have been redistributed
           across the surfaces below. <span className="accent">/api/admin/pipeline-config</span>{' '}
           is gone — it returns 404 — and its source files were deleted (see
-          <span style={{ fontFamily: 'var(--font-v3-mono)' }}>
+          <span style={{ fontFamily: 'var(--font-mono)' }}>
             {' '}wave5-v1-pipeline-deletion.source-regression.test.ts
           </span>
           ).

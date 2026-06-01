@@ -274,7 +274,7 @@ const CopyButton: React.FC<{ text: string; copyKey: string; copy: (t: string, k:
 }) => (
   <button
     onClick={() => copy(text, copyKey)}
-    className="flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors hover:bg-white/10"
+    className="flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors hover:bg-surface/10"
     style={{ color: isCopied(copyKey) ? 'var(--color-success)' : TEXT_TERTIARY }}
     title="Copy to clipboard"
   >
@@ -290,7 +290,7 @@ const CodeBlock: React.FC<{ code: string; copyKey: string; copy: (t: string, k: 
     <div className="absolute top-2 right-2 z-10">
       <CopyButton text={code} copyKey={copyKey} copy={copy} isCopied={isCopied} />
     </div>
-    <pre className="p-3 pr-20 text-xs leading-relaxed overflow-x-auto" style={{ color: TEXT, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>
+    <pre className="p-3 pr-20 text-xs leading-relaxed overflow-x-auto" style={{ color: TEXT, fontFamily: 'var(--font-mono)' }}>
       <code>{code}</code>
     </pre>
   </div>
@@ -331,7 +331,7 @@ const RoleDropdown: React.FC<{
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(o => !o)}
-        className={`flex items-center gap-1 rounded-md border text-xs transition-colors hover:bg-white/5 ${compact ? 'px-2 py-1' : 'px-2.5 py-1.5'}`}
+        className={`flex items-center gap-1 rounded-md border text-xs transition-colors hover:bg-surface/5 ${compact ? 'px-2 py-1' : 'px-2.5 py-1.5'}`}
         style={{ borderColor: BORDER, color: TEXT }}
       >
         {roleIcon(value)}
@@ -347,7 +347,7 @@ const RoleDropdown: React.FC<{
             <button
               key={opt.value}
               onClick={() => { onChange(opt.value); setOpen(false); }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-white/5"
+              className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-surface/5"
               style={{ color: value === opt.value ? 'var(--user-accent-primary, #FF5722)' : TEXT }}
             >
               {roleIcon(opt.value)}
@@ -476,7 +476,7 @@ const VisibilityTab: React.FC<{
                       <button
                         key={g.id}
                         onClick={() => toggleGroup(g.id)}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-white/5"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-surface/5"
                         style={{ color: TEXT }}
                       >
                         <div
@@ -486,7 +486,7 @@ const VisibilityTab: React.FC<{
                             background: selectedGroupIds.has(g.id) ? 'var(--user-accent-primary, #FF5722)' : 'transparent',
                           }}
                         >
-                          {selectedGroupIds.has(g.id) && <Check className="w-3 h-3 text-white" />}
+                          {selectedGroupIds.has(g.id) && <Check className="w-3 h-3 text-text" />}
                         </div>
                         <Users className="w-3.5 h-3.5" style={{ color: TEXT_TERTIARY }} />
                         <span>{g.name}</span>
@@ -504,9 +504,9 @@ const VisibilityTab: React.FC<{
 
         {/* Public warning */}
         {selected === 'public' && (
-          <div className="mt-3 flex items-start gap-2.5 rounded-lg border p-3" style={{ borderColor: 'rgba(234,179,8,0.3)', background: 'rgba(234,179,8,0.08)' }}>
-            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#eab308' }} />
-            <div className="text-xs leading-relaxed" style={{ color: '#eab308' }}>
+          <div className="mt-3 flex items-start gap-2.5 rounded-lg border p-3" style={{ borderColor: 'color-mix(in srgb, var(--color-warning) 30%, transparent)', background: 'color-mix(in srgb, var(--color-warning) 8%, transparent)' }}>
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-warning)' }} />
+            <div className="text-xs leading-relaxed" style={{ color: 'var(--color-warning)' }}>
               <strong>Organization-wide access.</strong> All members of your organization will be able to view
               and run this workflow. Sensitive data within the workflow may be visible to others.
             </div>
@@ -519,7 +519,7 @@ const VisibilityTab: React.FC<{
         <button
           onClick={onSave}
           disabled={saving}
-          className="px-4 py-2 text-sm font-medium rounded-lg bg-accent-primary text-white transition-colors hover:bg-accent-primary/90 disabled:opacity-50"
+          className="px-4 py-2 text-sm font-medium rounded-lg bg-accent-primary text-text transition-colors hover:bg-accent-primary/90 disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save Changes'}
         </button>
@@ -680,7 +680,7 @@ const PeopleTab: React.FC<{
                 placeholder="Search users by name or email..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border bg-transparent outline-none transition-colors focus:border-blue-500"
+                className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border bg-transparent outline-none transition-colors focus:border-accent"
                 style={{ borderColor: BORDER, color: TEXT }}
               />
               {(searchingUsers || searchingGroups) && (
@@ -700,9 +700,9 @@ const PeopleTab: React.FC<{
                 <button
                   key={`user-${u.id}`}
                   onClick={() => addShare({ id: u.id, type: 'user', name: u.name, email: u.email, avatarUrl: u.avatarUrl })}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors hover:bg-white/5"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors hover:bg-surface/5"
                 >
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ background: 'rgba(59,130,246,0.2)', color: '#3b82f6' }}>
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ background: 'color-mix(in srgb, var(--color-info) 20%, transparent)', color: 'var(--color-info)' }}>
                     {u.avatarUrl ? <img src={u.avatarUrl} className="w-6 h-6 rounded-full" alt="" /> : userInitials(u.name)}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -716,9 +716,9 @@ const PeopleTab: React.FC<{
                 <button
                   key={`group-${g.id}`}
                   onClick={() => addShare({ id: g.id, type: 'group', name: g.name })}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors hover:bg-white/5"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors hover:bg-surface/5"
                 >
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(168,85,247,0.2)', color: '#a855f7' }}>
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'color-mix(in srgb, var(--color-accent) 20%, transparent)', color: 'var(--color-accent)' }}>
                     <Users className="w-3 h-3" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -746,15 +746,15 @@ const PeopleTab: React.FC<{
               {shares.map(share => (
                 <div
                   key={`${share.type}-${share.id}`}
-                  className="flex items-center gap-2.5 p-2.5 rounded-lg transition-colors hover:bg-white/[0.03]"
+                  className="flex items-center gap-2.5 p-2.5 rounded-lg transition-colors hover:bg-surface/[0.03]"
                 >
                   {/* Avatar / Icon */}
                   {share.type === 'user' ? (
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ background: 'rgba(59,130,246,0.15)', color: '#3b82f6' }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ background: 'color-mix(in srgb, var(--color-info) 15%, transparent)', color: 'var(--color-info)' }}>
                       {share.avatarUrl ? <img src={share.avatarUrl} className="w-8 h-8 rounded-full" alt="" /> : userInitials(share.name)}
                     </div>
                   ) : (
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(168,85,247,0.15)', color: '#a855f7' }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)' }}>
                       <Users className="w-3.5 h-3.5" />
                     </div>
                   )}
@@ -765,7 +765,7 @@ const PeopleTab: React.FC<{
                   <RoleDropdown value={share.role} onChange={r => updateRole(share.id, share.type, r)} compact />
                   <button
                     onClick={() => removeShare(share.id, share.type)}
-                    className="p-1.5 rounded-md transition-colors hover:bg-red-500/10"
+                    className="p-1.5 rounded-md transition-colors hover:bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)]"
                     style={{ color: TEXT_TERTIARY }}
                     title="Remove"
                   >
@@ -936,7 +936,7 @@ const ApiAccessTab: React.FC<{
             style={{ background: webhook?.active ? 'var(--user-accent-primary, #FF5722)' : BG_SECONDARY }}
           >
             <div
-              className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
+              className="absolute top-0.5 w-4 h-4 rounded-full bg-surface transition-transform"
               style={{ left: webhook?.active ? '22px' : '2px' }}
             />
           </button>
@@ -949,11 +949,11 @@ const ApiAccessTab: React.FC<{
             {/* URL */}
             <div className="rounded-lg border p-3" style={{ borderColor: BORDER, background: BG_SECONDARY }}>
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-green-500/20 text-green-400">POST</span>
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-[color-mix(in_srgb,var(--color-success)_20%,transparent)] text-success">POST</span>
                 <span className="text-[10px]" style={{ color: TEXT_TERTIARY }}>Webhook URL</span>
               </div>
               <div className="flex items-center gap-2">
-                <code className="flex-1 text-xs break-all" style={{ color: TEXT, fontFamily: 'monospace' }}>{webhookUrl}</code>
+                <code className="flex-1 text-xs break-all" style={{ color: TEXT, fontFamily: 'var(--font-mono)' }}>{webhookUrl}</code>
                 <CopyButton text={webhookUrl} copyKey="webhook-url" copy={copy} isCopied={isCopied} />
               </div>
             </div>
@@ -964,7 +964,7 @@ const ApiAccessTab: React.FC<{
                 <span className="text-[10px]" style={{ color: TEXT_TERTIARY }}>Response mode:</span>
                 <button
                   onClick={toggleResponseMode}
-                  className="flex items-center gap-1 px-2 py-1 rounded-md border text-xs transition-colors hover:bg-white/5"
+                  className="flex items-center gap-1 px-2 py-1 rounded-md border text-xs transition-colors hover:bg-surface/5"
                   style={{ borderColor: BORDER, color: TEXT }}
                 >
                   {webhook.responseMode === 'sync' ? 'Sync' : 'Async'}
@@ -994,7 +994,7 @@ const ApiAccessTab: React.FC<{
           <button
             onClick={generateApiKey}
             disabled={generatingKey}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-accent-primary text-white transition-colors hover:bg-accent-primary/90 disabled:opacity-50"
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-accent-primary text-text transition-colors hover:bg-accent-primary/90 disabled:opacity-50"
           >
             {generatingKey ? <Spinner size="w-3 h-3" /> : <Plus className="w-3 h-3" />}
             Generate Key
@@ -1003,15 +1003,15 @@ const ApiAccessTab: React.FC<{
 
         {/* Newly generated key warning */}
         {newlyGeneratedKey && (
-          <div className="rounded-lg border p-3 mb-3" style={{ borderColor: 'rgba(234,179,8,0.3)', background: 'rgba(234,179,8,0.08)' }}>
+          <div className="rounded-lg border p-3 mb-3" style={{ borderColor: 'color-mix(in srgb, var(--color-warning) 30%, transparent)', background: 'color-mix(in srgb, var(--color-warning) 8%, transparent)' }}>
             <div className="flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#eab308' }} />
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-warning)' }} />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium mb-1" style={{ color: '#eab308' }}>
+                <p className="text-xs font-medium mb-1" style={{ color: 'var(--color-warning)' }}>
                   Save this key now -- it will not be shown again.
                 </p>
                 <div className="flex items-center gap-2">
-                  <code className="text-xs break-all" style={{ color: TEXT, fontFamily: 'monospace' }}>{newlyGeneratedKey}</code>
+                  <code className="text-xs break-all" style={{ color: TEXT, fontFamily: 'var(--font-mono)' }}>{newlyGeneratedKey}</code>
                   <CopyButton text={newlyGeneratedKey} copyKey="new-api-key" copy={copy} isCopied={isCopied} />
                 </div>
               </div>
@@ -1027,7 +1027,7 @@ const ApiAccessTab: React.FC<{
         ) : (
           <div className="space-y-1">
             {apiKeys.map(k => (
-              <div key={k.id} className="flex items-center gap-2 p-2 rounded-lg transition-colors hover:bg-white/[0.03]">
+              <div key={k.id} className="flex items-center gap-2 p-2 rounded-lg transition-colors hover:bg-surface/[0.03]">
                 <Key className="w-3.5 h-3.5 flex-shrink-0" style={{ color: TEXT_TERTIARY }} />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-medium truncate" style={{ color: TEXT }}>{k.name}</div>
@@ -1037,7 +1037,7 @@ const ApiAccessTab: React.FC<{
                 </div>
                 <button
                   onClick={() => revokeApiKey(k.id)}
-                  className="flex items-center gap-1 px-2 py-1 text-[10px] rounded-md transition-colors hover:bg-red-500/10 text-red-400"
+                  className="flex items-center gap-1 px-2 py-1 text-[10px] rounded-md transition-colors hover:bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)] text-error"
                   title="Revoke"
                 >
                   <Trash2 className="w-3 h-3" /> Revoke
@@ -1156,26 +1156,26 @@ const EmbedTab: React.FC<{ workflowId: string }> = ({ workflowId }) => {
           style={{ borderColor: BORDER, background: BG_SECONDARY, maxWidth: 280 }}
         >
           {/* Mock widget header */}
-          <div className="flex items-center gap-2 px-3 py-2.5 border-b" style={{ borderColor: BORDER, background: 'rgba(59,130,246,0.1)' }}>
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b" style={{ borderColor: BORDER, background: 'color-mix(in srgb, var(--color-info) 10%, transparent)' }}>
             <div className="w-6 h-6 rounded-full bg-accent-primary flex items-center justify-center">
-              <Play className="w-3 h-3 text-white" />
+              <Play className="w-3 h-3 text-text" />
             </div>
             <span className="text-xs font-medium" style={{ color: TEXT }}>OpenAgentic</span>
           </div>
           {/* Mock messages */}
           <div className="px-3 py-3 space-y-2">
             <div className="flex justify-start">
-              <div className="rounded-lg px-2.5 py-1.5 text-[10px] max-w-[180px]" style={{ background: 'rgba(59,130,246,0.1)', color: TEXT }}>
+              <div className="rounded-lg px-2.5 py-1.5 text-[10px] max-w-[180px]" style={{ background: 'color-mix(in srgb, var(--color-info) 10%, transparent)', color: TEXT }}>
                 Hi! How can I help you today?
               </div>
             </div>
             <div className="flex justify-end">
-              <div className="rounded-lg px-2.5 py-1.5 text-[10px] max-w-[180px] bg-accent-primary text-white">
+              <div className="rounded-lg px-2.5 py-1.5 text-[10px] max-w-[180px] bg-accent-primary text-text">
                 Run the workflow
               </div>
             </div>
             <div className="flex justify-start">
-              <div className="rounded-lg px-2.5 py-1.5 text-[10px] max-w-[180px]" style={{ background: 'rgba(59,130,246,0.1)', color: TEXT }}>
+              <div className="rounded-lg px-2.5 py-1.5 text-[10px] max-w-[180px]" style={{ background: 'color-mix(in srgb, var(--color-info) 10%, transparent)', color: TEXT }}>
                 Processing your request...
               </div>
             </div>
@@ -1242,7 +1242,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50"
+            className="fixed inset-0 bg-bg/50 z-50"
             onClick={onClose}
           />
 
@@ -1275,7 +1275,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
+                  className="p-1.5 rounded-lg transition-colors hover:bg-surface/10"
                   style={{ color: TEXT_TERTIARY }}
                 >
                   <X className="w-4 h-4" />

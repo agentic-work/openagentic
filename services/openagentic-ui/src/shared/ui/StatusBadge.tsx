@@ -1,5 +1,13 @@
 import React from 'react';
 
+/**
+ * Shared StatusBadge — NEO-BRUTALIST field-guide restyle.
+ *
+ * Reads ONLY theme tokens. A tracked mono eyebrow label (.eyebrow) inside a
+ * 2px-bordered chip with a soft tint of the status hue. Near-sharp corners
+ * (rounded-chip). Prop API ({ status, children, className }) is unchanged so
+ * the 12 consumers keep working.
+ */
 export type StatusType = 'success' | 'error' | 'warning' | 'info' | 'default';
 
 export interface StatusBadgeProps {
@@ -13,14 +21,15 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   children,
   className = '',
 }) => {
-  const baseClasses = 'inline-flex items-center px-2 py-1 rounded-md text-xs font-medium';
+  const baseClasses =
+    'eyebrow inline-flex items-center px-2 py-1 rounded-chip border-2';
 
   const variantClasses = {
-    success: 'bg-success/10 text-success border border-success/20',
-    error: 'bg-error/10 text-error border border-error/20',
-    warning: 'bg-warning/10 text-warning border border-warning/20',
-    info: 'bg-info/10 text-info border border-info/20',
-    default: 'bg-bg-secondary text-text-secondary border border-border-primary'
+    success: 'bg-ok/15 text-ok border-ok/40',
+    error: 'bg-err/15 text-err border-err/40',
+    warning: 'bg-warn/15 text-warn border-warn/40',
+    info: 'bg-nfo/15 text-nfo border-nfo/40',
+    default: 'bg-surface text-fg-muted border-rule',
   };
 
   const badgeClasses = `${baseClasses} ${variantClasses[status]} ${className}`;

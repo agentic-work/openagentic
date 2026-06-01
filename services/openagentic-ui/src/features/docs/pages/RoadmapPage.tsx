@@ -331,9 +331,9 @@ const RoadmapPage: React.FC = () => {
                   style={{
                     fontSize: '10px',
                     fontWeight: 600,
-                    color: '#22c55e',
-                    background: '#22c55e20',
-                    border: '1px solid #22c55e40',
+                    color: 'var(--color-success)',
+                    background: 'color-mix(in srgb, var(--color-success) 12%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--color-success) 25%, transparent)',
                     borderRadius: '4px',
                     padding: '2px 8px',
                     textTransform: 'uppercase',

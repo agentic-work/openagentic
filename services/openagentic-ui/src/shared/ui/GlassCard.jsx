@@ -13,20 +13,20 @@ const GlassCard = ({
   const Component = as;
   
   const cardClasses = classNames(
-    // Solid surface - NO glassmorphism
-    'bg-[var(--color-surface)]',
-    'border border-[var(--color-border)]',
-    'rounded-xl',
-    'shadow-[var(--color-shadow)]',
+    // Solid brutalist surface — token-driven (no glassmorphism; the name is
+    // retained for API stability)
+    'bg-surface text-fg',
+    'border-2 border-rule-strong',
+    'rounded-none',
+    'shadow-hard',
 
     // Transition - snappy, not sluggish
     'transition-all duration-150',
 
-    // Hover effects (if enabled)
+    // Hover lifts the hard offset shadow
     hover && [
-      'hover:bg-[var(--color-surfaceHover)]',
-      'hover:border-[var(--color-borderHover)]',
-      'hover:shadow-lg',
+      'hover:bg-surface-2',
+      'hover:shadow-hard-lg',
       onClick && 'cursor-pointer',
     ],
     

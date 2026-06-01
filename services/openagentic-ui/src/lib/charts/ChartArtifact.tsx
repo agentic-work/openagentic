@@ -123,12 +123,12 @@ function UnknownTemplateError({ template }: { template: string }) {
       role="alert"
       style={{
         padding: 16,
-        border: '1px dashed var(--err, #f87171)',
-        borderRadius: 6,
-        color: 'var(--err, #f87171)',
-        fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
+        border: '1px dashed var(--color-err)',
+        borderRadius: 'var(--radius-sm, 4px)',
+        color: 'var(--color-err)',
+        fontFamily: 'var(--font-mono)',
         fontSize: 12,
-        background: 'rgba(248,113,113,0.06)',
+        background: 'color-mix(in srgb, var(--color-err) 6%, transparent)',
       }}
     >
       ChartArtifact: unknown template <code>{template}</code>.<br />

@@ -15,7 +15,7 @@ export const RippleButton: React.FC<RippleButtonProps> = ({
   children,
   onClick,
   className = '',
-  rippleColor = 'rgba(255, 255, 255, 0.5)',
+  rippleColor = 'color-mix(in srgb, var(--color-on-accent) 50%, transparent)',
   duration = 600,
   disabled,
   ...props

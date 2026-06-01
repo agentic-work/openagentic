@@ -30,7 +30,7 @@ const CostSourceBadge: React.FC<{ source: ModelRow['costSource'] }> = ({ source 
   return (
     <span
       style={{
-        fontFamily: 'var(--font-v3-mono)',
+        fontFamily: 'var(--font-mono)',
         fontSize: 9,
         letterSpacing: '0.06em',
         textTransform: 'uppercase',

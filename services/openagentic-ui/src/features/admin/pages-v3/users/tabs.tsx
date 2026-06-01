@@ -202,7 +202,7 @@ export const PermissionsTab: React.FC<{ user: ApiUser }> = ({ user }) => {
           background: 'var(--bg-1)',
         }}>
           <span style={{
-            fontFamily: 'var(--font-v3-mono)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 'var(--v3-t-meta)',
             color: 'var(--warn)',
           }}>unsaved changes</span>
@@ -300,7 +300,7 @@ export const PermissionsTab: React.FC<{ user: ApiUser }> = ({ user }) => {
       )}
 
       <SectionBar title="prompt template" />
-      <div style={{ padding: '8px 14px', color: 'var(--fg-3)', fontFamily: 'var(--font-v3-mono)', fontSize: 'var(--v3-t-meta)' }}>
+      <div style={{ padding: '8px 14px', color: 'var(--fg-3)', fontFamily: 'var(--font-mono)', fontSize: 'var(--v3-t-meta)' }}>
         TODO — render assigned templates from
         <span className="accent"> /api/admin/prompts/users/{user.id}/templates</span>
       </div>
@@ -319,7 +319,7 @@ const AccessPill: React.FC<{ state: string; onClick?: () => void }> = ({ state, 
   const inner = (
     <span style={{
       padding: '1px 6px',
-      fontFamily: 'var(--font-v3-mono)',
+      fontFamily: 'var(--font-mono)',
       fontSize: 'var(--v3-t-meta, 10px)',
       textTransform: 'uppercase',
       letterSpacing: '0.06em',
@@ -469,7 +469,7 @@ export const TokensTab: React.FC<{ user: ApiUser }> = ({ user }) => {
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <StatusDot status={r.isExpired ? 'err' : r.isActive ? 'ok' : 'idle'} />
           <span style={{
-            fontFamily: 'var(--font-v3-mono)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 'var(--v3-t-meta, 11px)',
             color: 'var(--fg-2)',
           }}>{r.isExpired ? 'expired' : r.isActive ? 'active' : 'inactive'}</span>
@@ -494,7 +494,7 @@ export const TokensTab: React.FC<{ user: ApiUser }> = ({ user }) => {
             {pendingId === r.id ? 'revoking…' : 'revoke'}
           </Btn>
         ) : (
-          <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-v3-mono)' }}>—</span>
+          <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}>—</span>
         )
       ),
     },
@@ -592,7 +592,7 @@ export const ActivityTab: React.FC<{ user: ApiUser }> = ({ user }) => {
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <StatusDot status={r.success === false ? 'err' : 'ok'} />
           <span style={{
-            fontFamily: 'var(--font-v3-mono)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 'var(--v3-t-meta, 11px)',
             color: 'var(--fg-2)',
           }}>{r.success === false ? 'fail' : 'ok'}</span>

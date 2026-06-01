@@ -316,7 +316,7 @@ export const DataSourceForm: React.FC<DataSourceFormProps> = ({
           marginBottom: '6px',
           borderRadius: '4px',
           color: feedback.type === 'success' ? 'var(--color-success, #22c55e)' : 'var(--color-error, #ef5350)',
-          background: feedback.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(239,83,80,0.1)',
+          background: feedback.type === 'success' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'rgba(239,83,80,0.1)',
         }}>
           {feedback.message}
         </div>
@@ -362,7 +362,7 @@ export const DataSourceForm: React.FC<DataSourceFormProps> = ({
             border: 'none',
             borderRadius: '4px',
             background: 'var(--color-primary)',
-            color: '#fff',
+            color: 'var(--color-on-accent)',
             cursor: saving ? 'wait' : 'pointer',
             opacity: saving ? 0.6 : 1,
           }}

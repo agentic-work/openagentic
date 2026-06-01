@@ -112,7 +112,7 @@ export const RunInputsModal: React.FC<RunInputsModalProps> = ({
                 <div key={input.name}>
                   <label htmlFor={fieldId} style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
                     {input.label}
-                    {input.required ? <span style={{ color: '#f44336', marginLeft: 4 }}>*</span> : null}
+                    {input.required ? <span style={{ color: 'var(--color-error)', marginLeft: 4 }}>*</span> : null}
                   </label>
                   {input.description ? (
                     <div style={{ fontSize: 12, color: 'var(--color-text-tertiary, #8b949e)', marginBottom: 6 }}>
@@ -130,12 +130,12 @@ export const RunInputsModal: React.FC<RunInputsModalProps> = ({
                       width: '100%', padding: '10px 12px', fontSize: 13,
                       background: 'var(--color-bg-tertiary, #0d1117)',
                       color: 'var(--color-text, #e6edf3)',
-                      border: `1px solid ${showErrors && missing ? '#f44336' : 'var(--color-border, #2a2a2a)'}`,
+                      border: `1px solid ${showErrors && missing ? 'var(--color-error)' : 'var(--color-border, #2a2a2a)'}`,
                       borderRadius: 6, outline: 'none',
                     }}
                   />
                   {showErrors && missing ? (
-                    <div style={{ fontSize: 11, color: '#f44336', marginTop: 4 }}>This is required.</div>
+                    <div style={{ fontSize: 11, color: 'var(--color-error)', marginTop: 4 }}>This is required.</div>
                   ) : null}
                 </div>
               );
@@ -159,7 +159,7 @@ export const RunInputsModal: React.FC<RunInputsModalProps> = ({
               onClick={handleSubmit}
               style={{
                 padding: '8px 14px', fontSize: 13, fontWeight: 600,
-                background: '#2196f3', color: 'white',
+                background: 'var(--color-info)', color: 'white',
                 border: '1px solid #2196f3', borderRadius: 6, cursor: 'pointer',
               }}
             >

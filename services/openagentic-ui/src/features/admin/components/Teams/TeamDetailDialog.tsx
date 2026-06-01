@@ -409,7 +409,7 @@ export function TeamDetailDialog({ team, onClose, onUpdated }: TeamDetailDialogP
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+      style={{ backgroundColor: 'color-mix(in srgb, var(--color-shadow) 50%, transparent)' }}
     >
       <div
         className="w-full max-w-2xl rounded-lg shadow-xl flex flex-col"

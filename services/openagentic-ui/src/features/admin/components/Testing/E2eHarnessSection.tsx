@@ -205,16 +205,16 @@ export default function E2eHarnessSection() {
                       {r.status.toUpperCase()}
                     </span>
                   </td>
-                  <td style={{ padding: '4px 10px', textAlign: 'right', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                  <td style={{ padding: '4px 10px', textAlign: 'right', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                     {r.durationMs != null ? `${r.durationMs}ms` : '-'}
                   </td>
-                  <td style={{ padding: '4px 10px', textAlign: 'right', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                  <td style={{ padding: '4px 10px', textAlign: 'right', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                     {r.ttftMs != null ? `${r.ttftMs}ms` : '-'}
                   </td>
-                  <td style={{ padding: '4px 10px', textAlign: 'right', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                  <td style={{ padding: '4px 10px', textAlign: 'right', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                     {r.tokensOut != null ? r.tokensOut : '-'}
                   </td>
-                  <td style={{ padding: '4px 10px', textAlign: 'right', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                  <td style={{ padding: '4px 10px', textAlign: 'right', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                     {r.embeddingDim != null ? r.embeddingDim : '-'}
                   </td>
                   <td

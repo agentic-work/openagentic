@@ -33,11 +33,11 @@ class ArtifactErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="border border-red-800/30 bg-red-950/20 rounded-lg p-4 my-2">
-          <p className="text-sm text-red-400 font-medium">Failed to render content</p>
-          <p className="text-xs text-zinc-500 mt-1">{this.state.error?.message}</p>
+        <div className="border border-error/30 bg-[var(--color-error)]/10 rounded-lg p-4 my-2">
+          <p className="text-sm text-error font-medium">Failed to render content</p>
+          <p className="text-xs text-fg-subtle mt-1">{this.state.error?.message}</p>
           {this.props.fallbackContent && (
-            <pre className="mt-2 text-xs text-zinc-400 overflow-auto max-h-48 whitespace-pre-wrap break-all">
+            <pre className="mt-2 text-xs text-fg-muted overflow-auto max-h-48 whitespace-pre-wrap break-all">
               {this.props.fallbackContent}
             </pre>
           )}

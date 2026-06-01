@@ -41,35 +41,40 @@ interface ThemeVar {
   lightDefault: string;
 }
 
+// theme-allow: srcdoc-sandboxed iframes are opaque cross-origin contexts that do NOT
+// inherit the parent's CSS custom properties, so this helper reads the live --color-*
+// SOT values at render time (readVar) and only falls back to these literals when a var
+// can't be read. The fallbacks mirror the theme.css SOT brand palette (warm paper/ink +
+// terminal ramp + signal-orange). Same carve-out as widgetThemePreamble.ts.
 const THEME_VARS: ThemeVar[] = [
-  // ── Surface stack (mockup v067) ────────────────────────────────────
-  { name: '--bg-0', darkDefault: '#09090b', lightDefault: '#ffffff' },
-  { name: '--bg-1', darkDefault: '#0f1012', lightDefault: '#fafafa' },
-  { name: '--bg-2', darkDefault: '#16181c', lightDefault: '#f4f4f5' },
-  { name: '--bg-3', darkDefault: '#1c1f24', lightDefault: '#e4e4e7' },
-  { name: '--bg-4', darkDefault: '#242831', lightDefault: '#d4d4d8' },
+  // ── Surface stack (maps to theme.css terminal/paper ramp) ──────────
+  { name: '--bg-0', darkDefault: '#18130C', lightDefault: '#F4EFE6' },
+  { name: '--bg-1', darkDefault: '#211A11', lightDefault: '#EBE5D8' },
+  { name: '--bg-2', darkDefault: '#2C2418', lightDefault: '#DBD3BF' },
+  { name: '--bg-3', darkDefault: '#2C2418', lightDefault: '#DBD3BF' },
+  { name: '--bg-4', darkDefault: '#2C2418', lightDefault: '#DBD3BF' },
   // ── Foreground stack ───────────────────────────────────────────────
-  { name: '--fg-0', darkDefault: '#f8fafc', lightDefault: '#09090b' },
-  { name: '--fg-1', darkDefault: '#d4d4d8', lightDefault: '#3f3f46' },
-  { name: '--fg-2', darkDefault: '#a1a1aa', lightDefault: '#52525b' },
-  { name: '--fg-3', darkDefault: '#71717a', lightDefault: '#71717a' },
+  { name: '--fg-0', darkDefault: '#F4EFE6', lightDefault: '#0E0D0B' },
+  { name: '--fg-1', darkDefault: '#CDC4B2', lightDefault: '#2A2722' },
+  { name: '--fg-2', darkDefault: '#968B76', lightDefault: '#7A6D5A' },
+  { name: '--fg-3', darkDefault: '#968B76', lightDefault: '#7A6D5A' },
   // ── Borders ────────────────────────────────────────────────────────
-  { name: '--line-1', darkDefault: 'rgba(255, 255, 255, 0.06)', lightDefault: 'rgba(0, 0, 0, 0.06)' },
-  { name: '--line-2', darkDefault: 'rgba(255, 255, 255, 0.10)', lightDefault: 'rgba(0, 0, 0, 0.10)' },
-  { name: '--line-3', darkDefault: 'rgba(255, 255, 255, 0.16)', lightDefault: 'rgba(0, 0, 0, 0.16)' },
+  { name: '--line-1', darkDefault: '#3A3024', lightDefault: '#C8BFAF' },
+  { name: '--line-2', darkDefault: '#3A3024', lightDefault: '#C8BFAF' },
+  { name: '--line-3', darkDefault: '#F4EFE6', lightDefault: '#0E0D0B' },
   // ── Brand + status ─────────────────────────────────────────────────
   { name: '--accent', darkDefault: '#FF5722', lightDefault: '#FF5722' },
   { name: '--accent-soft', darkDefault: 'color-mix(in srgb, #FF5722 14%, transparent)', lightDefault: 'color-mix(in srgb, #FF5722 10%, transparent)' },
   { name: '--accent-line', darkDefault: 'color-mix(in srgb, #FF5722 32%, transparent)', lightDefault: 'color-mix(in srgb, #FF5722 28%, transparent)' },
   { name: '--ok', darkDefault: '#22c55e', lightDefault: '#16A34A' },
-  { name: '--warn', darkDefault: '#f59e0b', lightDefault: '#EA580C' },
-  { name: '--err', darkDefault: '#ef4444', lightDefault: '#B91C1C' },
-  { name: '--info', darkDefault: '#38bdf8', lightDefault: '#1D4ED8' },
+  { name: '--warn', darkDefault: '#f59e0b', lightDefault: '#B45309' },
+  { name: '--err', darkDefault: '#FF453A', lightDefault: '#DC2626' },
+  { name: '--info', darkDefault: '#4DD0E1', lightDefault: '#4DD0E1' },
   // ── Legacy semantic alias bridge (so old-style markup keeps working) ─
-  { name: '--color-background', darkDefault: '#09090b', lightDefault: '#ffffff' },
-  { name: '--color-surface', darkDefault: '#0f1012', lightDefault: '#fafafa' },
-  { name: '--color-text', darkDefault: '#f8fafc', lightDefault: '#09090b' },
-  { name: '--color-border', darkDefault: 'rgba(255, 255, 255, 0.06)', lightDefault: 'rgba(0, 0, 0, 0.06)' },
+  { name: '--color-background', darkDefault: '#18130C', lightDefault: '#F4EFE6' },
+  { name: '--color-surface', darkDefault: '#211A11', lightDefault: '#EBE5D8' },
+  { name: '--color-text', darkDefault: '#F4EFE6', lightDefault: '#0E0D0B' },
+  { name: '--color-border', darkDefault: '#3A3024', lightDefault: '#C8BFAF' },
   { name: '--color-primary', darkDefault: '#FF5722', lightDefault: '#FF5722' },
   // ── Typography ─────────────────────────────────────────────────────
   {

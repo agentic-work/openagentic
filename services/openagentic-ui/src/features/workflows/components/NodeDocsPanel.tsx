@@ -41,13 +41,13 @@ export const NodeDocsPanel: React.FC<NodeDocsPanelProps> = ({ schema }) => {
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {(schema.ports?.inputs ?? []).map((p: any) => (
-              <li key={`in-${p.name}`} style={{ padding: '2px 0', fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 11 }}>
-                <span style={{ color: '#22c55e' }}>in</span> · {p.name} : <span style={{ color: 'var(--color-text-tertiary, #999)' }}>{p.type}</span>{p.required ? ' *' : ''}
+              <li key={`in-${p.name}`} style={{ padding: '2px 0', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+                <span style={{ color: 'var(--color-success)' }}>in</span> · {p.name} : <span style={{ color: 'var(--color-text-tertiary, #999)' }}>{p.type}</span>{p.required ? ' *' : ''}
               </li>
             ))}
             {(schema.ports?.outputs ?? []).map((p: any) => (
-              <li key={`out-${p.name}`} style={{ padding: '2px 0', fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 11 }}>
-                <span style={{ color: '#2196f3' }}>out</span> · {p.name} : <span style={{ color: 'var(--color-text-tertiary, #999)' }}>{p.type}</span>
+              <li key={`out-${p.name}`} style={{ padding: '2px 0', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+                <span style={{ color: 'var(--color-info)' }}>out</span> · {p.name} : <span style={{ color: 'var(--color-text-tertiary, #999)' }}>{p.type}</span>
               </li>
             ))}
           </ul>
@@ -61,7 +61,7 @@ export const NodeDocsPanel: React.FC<NodeDocsPanelProps> = ({ schema }) => {
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {(schema.outputAssertions ?? []).map((a: any) => (
               <li key={a.name} style={{ marginBottom: 6 }}>
-                <div style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 11, color: '#fbbf24', fontWeight: 600 }}>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-warning)', fontWeight: 600 }}>
                   {a.name}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--color-text-secondary, #8b949e)' }}>

@@ -45,6 +45,7 @@ const AccessDenied: React.FC = () => {
         text.textContent = '.';
 
         const baseOpacity = 0.15 + Math.random() * 0.25;
+        // theme-allow: generated decorative ambient particle-field animation color, not a theme surface
         text.setAttribute('fill', `rgba(100, 200, 255, ${baseOpacity})`);
 
         svg.appendChild(text);
@@ -88,7 +89,7 @@ const AccessDenied: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-black">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-bg">
       {/* Background */}
       <svg
         ref={canvasRef}
@@ -113,36 +114,36 @@ const AccessDenied: React.FC = () => {
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="relative z-10 max-w-md w-full mx-4"
       >
-        <div className="bg-gray-900/90 backdrop-blur-sm rounded-2xl p-8 border border-cyan-500/30 shadow-2xl">
+        <div className="backdrop-blur-sm p-8 border-ink shadow-hard sharp bg-surface">
           {/* Icon */}
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center">
-              <Mail className="w-10 h-10 text-cyan-400" />
+            <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ background: 'var(--color-accent-soft)', border: '1px solid var(--color-accent-line)' }}>
+              <Mail className="w-10 h-10 text-accent" />
             </div>
           </div>
 
           {/* Title */}
-          <h1 className="text-2xl font-bold text-center text-white mb-2">
+          <h1 className="text-2xl font-bold text-center text-fg mb-2">
             Thank You For Your Interest
           </h1>
 
           {/* Message */}
-          <p className="text-center text-gray-300 mb-6 leading-relaxed">
+          <p className="text-center text-fg-muted mb-6 leading-relaxed">
             We will get back to you with your evaluation request soon.
           </p>
 
           {/* Team signature */}
-          <p className="text-center text-cyan-400 font-medium mb-6">
+          <p className="text-center text-accent font-medium mb-6">
             — OpenAgentic Team
           </p>
 
           {/* Info box */}
-          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50 mb-6">
-            <div className="flex items-center gap-3 text-gray-400 text-sm">
-              <Clock className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+          <div className="rounded-lg p-4 mb-6 bg-surface-2" style={{ border: '1px solid var(--color-rule)' }}>
+            <div className="flex items-center gap-3 text-fg-muted text-sm">
+              <Clock className="w-4 h-4 text-accent flex-shrink-0" />
               <span>
                 We've received your request{email && (
-                  <> for <span className="text-cyan-300">{email}</span></>
+                  <> for <span className="text-accent">{email}</span></>
                 )}. Our team will review it and reach out shortly.
               </span>
             </div>
@@ -153,26 +154,27 @@ const AccessDenied: React.FC = () => {
             onClick={() => navigate('/login')}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="w-full py-3 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 hover:text-white hover:bg-gray-700 hover:border-cyan-500/50 transition-all duration-150 flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-lg text-fg-muted hover:text-fg bg-surface-2 hover:bg-surface transition-all duration-150 flex items-center justify-center gap-2"
+            style={{ border: '1px solid var(--color-rule)' }}
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back to Login</span>
           </motion.button>
 
           {/* Contact info */}
-          <p className="text-center text-gray-500 text-xs mt-6">
+          <p className="text-center text-fg-subtle text-xs mt-6">
             Questions? Contact your administrator.
           </p>
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-6 text-gray-600 text-xs">
+        <div className="text-center mt-6 text-fg-subtle text-xs">
           <p>
             <a
               href="https://agenticwork.io"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-gray-400 underline"
+              className="hover:text-fg-muted underline"
             >
               Learn more
             </a>

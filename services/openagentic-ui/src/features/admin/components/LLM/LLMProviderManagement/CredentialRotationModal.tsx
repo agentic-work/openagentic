@@ -20,7 +20,7 @@ export const CredentialRotationModal: React.FC<{
   const [creds, setCreds] = useState<Record<string, string>>({});
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'color-mix(in srgb, var(--color-shadow) 50%, transparent)' }}>
       <div className="rounded-xl border shadow-2xl w-full max-w-md p-6 space-y-4" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
         <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
           Rotate Credentials: {provider.display_name}

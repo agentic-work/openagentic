@@ -30,7 +30,7 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, fo
         position: 'fixed',
         inset: 0,
         zIndex: 200,
-        background: 'rgba(0,0,0,0.45)',
+        background: 'color-mix(in srgb, var(--color-shadow) 45%, transparent)',
         display: 'grid',
         placeItems: 'center',
       }}
@@ -45,7 +45,7 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, fo
           background: 'var(--bg-1)',
           border: '1px solid var(--line-2)',
           padding: 0,
-          boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+          boxShadow: '0 24px 60px color-mix(in srgb, var(--color-shadow) 50%, transparent)',
           display: 'flex',
           flexDirection: 'column',
         }}
@@ -75,7 +75,7 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, fo
           />
           <span
             style={{
-              fontFamily: 'var(--font-v3-mono)',
+              fontFamily: 'var(--font-mono)',
               fontSize: 'var(--v3-t-display, 16px)',
               color: 'var(--fg-0)',
               fontWeight: 500,
@@ -130,7 +130,7 @@ export const v3InputStyle: React.CSSProperties = {
   color: 'var(--fg-0)',
   border: '1px solid var(--line-1)',
   padding: '5px 9px',
-  fontFamily: 'var(--font-v3-mono)',
+  fontFamily: 'var(--font-mono)',
   fontSize: 'var(--v3-t-meta, 11px)',
   outline: 'none',
 }
@@ -139,7 +139,7 @@ export const v3TextareaStyle: React.CSSProperties = {
   ...v3InputStyle,
   minHeight: 120,
   resize: 'vertical',
-  fontFamily: 'var(--font-v3-mono)',
+  fontFamily: 'var(--font-mono)',
   fontSize: 12,
   lineHeight: 1.5,
 }

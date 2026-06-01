@@ -1,3 +1,5 @@
+// theme-allow: workflow node-CATEGORY identity color scale (the node-TYPE palette
+// carve-out shared with the workflow canvas) — categorical identity, not themeable surfaces.
 import React, { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useDocsStore } from '@/stores/useDocsStore';

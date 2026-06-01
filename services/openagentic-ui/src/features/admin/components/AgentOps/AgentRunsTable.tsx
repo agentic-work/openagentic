@@ -37,10 +37,10 @@ export interface AgentRunsTableProps {
 
 const statusColor = (s: AgentRun['status']): string => {
   switch (s) {
-    case 'success': return '#10b981';
-    case 'error':   return '#ef4444';
-    case 'running': return '#3b82f6';
-    case 'queued':  return '#6b7280';
+    case 'success': return 'var(--color-ok)';
+    case 'error':   return 'var(--color-err)';
+    case 'running': return 'var(--color-nfo)';
+    case 'queued':  return 'var(--color-fg-subtle)';
   }
 };
 
@@ -79,7 +79,7 @@ export const AgentRunsTable: React.FC<AgentRunsTableProps> = ({
         style={{
           padding: 24,
           textAlign: 'center',
-          color: 'var(--color-text-tertiary, #6e7681)',
+          color: 'var(--color-text-tertiary)',
           fontSize: 13,
         }}
       >
@@ -94,7 +94,7 @@ export const AgentRunsTable: React.FC<AgentRunsTableProps> = ({
         style={{
           padding: 24,
           textAlign: 'center',
-          color: 'var(--color-text-tertiary, #6e7681)',
+          color: 'var(--color-text-tertiary)',
           fontSize: 13,
         }}
       >
@@ -108,9 +108,9 @@ export const AgentRunsTable: React.FC<AgentRunsTableProps> = ({
       role="table"
       style={{
         width: '100%',
-        background: 'var(--color-bg-secondary, #161b22)',
+        background: 'var(--color-bg-secondary)',
         borderRadius: 8,
-        border: '1px solid var(--color-border, #2a2a2a)',
+        border: '1px solid var(--color-border)',
         overflow: 'hidden',
       }}
     >
@@ -124,8 +124,8 @@ export const AgentRunsTable: React.FC<AgentRunsTableProps> = ({
           fontWeight: 600,
           textTransform: 'uppercase',
           letterSpacing: 0.5,
-          color: 'var(--color-text-tertiary, #6e7681)',
-          background: 'var(--color-bg-tertiary, #0d1117)',
+          color: 'var(--color-text-tertiary)',
+          background: 'var(--color-bg-tertiary)',
         }}
       >
         <span>Agent</span>
@@ -150,8 +150,8 @@ export const AgentRunsTable: React.FC<AgentRunsTableProps> = ({
             fontSize: 13,
             background: 'transparent',
             border: 'none',
-            borderTop: '1px solid var(--color-border, #2a2a2a)',
-            color: 'var(--color-text, #e6edf3)',
+            borderTop: '1px solid var(--color-border)',
+            color: 'var(--color-text)',
             cursor: 'pointer',
             textAlign: 'left',
           }}
@@ -162,7 +162,7 @@ export const AgentRunsTable: React.FC<AgentRunsTableProps> = ({
               <span
                 style={{
                   fontSize: 11,
-                  color: '#ef4444',
+                  color: 'var(--color-err)',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -181,7 +181,7 @@ export const AgentRunsTable: React.FC<AgentRunsTableProps> = ({
                 borderRadius: 10,
                 fontSize: 11,
                 fontWeight: 600,
-                color: 'white',
+                color: 'var(--color-on-accent)',
                 background: statusColor(run.status),
                 textTransform: 'lowercase',
               }}
@@ -189,13 +189,13 @@ export const AgentRunsTable: React.FC<AgentRunsTableProps> = ({
               {run.status}
             </span>
           </span>
-          <span style={{ fontFamily: 'ui-monospace, monospace' }}>
+          <span style={{ fontFamily: 'var(--font-mono)' }}>
             {formatDuration(run.durationMs)}
           </span>
-          <span style={{ fontFamily: 'ui-monospace, monospace' }}>
+          <span style={{ fontFamily: 'var(--font-mono)' }}>
             {formatCost(run.costCents)}
           </span>
-          <span style={{ color: 'var(--color-text-tertiary, #6e7681)' }}>
+          <span style={{ color: 'var(--color-text-tertiary)' }}>
             {formatRelative(run.startedAt)}
           </span>
         </button>

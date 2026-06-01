@@ -91,7 +91,7 @@ export const SharedKBPane: React.FC<SharedKBPaneProps> = ({
                   color: 'var(--fg-3)',
                   fontSize: 10,
                   marginTop: 2,
-                  fontFamily: 'var(--font-v3-mono)',
+                  fontFamily: 'var(--font-mono)',
                   maxWidth: 360,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -134,7 +134,7 @@ export const SharedKBPane: React.FC<SharedKBPaneProps> = ({
       render: (r) => (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <StatusDot status={statusOf(r)} />
-          <span style={{ fontFamily: 'var(--font-v3-mono)', fontSize: 11 }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>
             {!r.enabled
               ? 'disabled'
               : r.last_ingest_status ?? 'not ingested'}

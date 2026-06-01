@@ -161,7 +161,7 @@ export const SharedKBModal: React.FC<SharedKBModalProps> = ({
           marginTop: 12,
           fontSize: 11,
           color: 'var(--fg-3)',
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
         }}

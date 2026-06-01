@@ -2,9 +2,12 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 /**
- * Per-character color palette for the `[openagentic]` wordmark.
- * 11 chars → 11 entries. First and last hues are deliberately the
- * same (`#ff5ea8`) so the wordmark "loops" visually.
+ * Per-character color palette for the legacy `[openagentic]` rainbow-chord
+ * wordmark. 11 chars → 11 entries; first and last hues match (`#ff5ea8`) so
+ * it "loops" visually. theme-allow: this is a categorical decorative chord
+ * palette for the SUPERSEDED enterprise mark (the active brand mark is the
+ * warm OpenAgenticWordmark in OpenAgenticWordmark.tsx); kept for the existing
+ * unit test only and not rendered in the app.
  */
 export const OPENAGENTIC_CHAR_COLORS: readonly string[] = [
   '#ff5ea8',
@@ -43,9 +46,8 @@ export const OpenAgenticWordmark: React.FC<OpenAgenticWordmarkProps> = ({
   className,
   style,
 }) => {
-  const MONO =
-    'var(--cm-mono-font, ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace)';
-  const DIM = 'var(--cm-text-muted, var(--ap-fg-3, #8b949e))';
+  const MONO = 'var(--font-mono)';
+  const DIM = 'var(--color-fg-subtle)';
 
   const rootStyle: React.CSSProperties = {
     fontFamily: MONO,

@@ -151,7 +151,7 @@ export const RailSurfaceModal: React.FC<RailSurfaceModalProps> = ({
                 'linear-gradient(135deg, var(--user-accent-primary, #FF5722) 0%, var(--user-accent-secondary, #B83A0E) 100%)',
             }}
           >
-            <Icon className="w-5 h-5 text-white" />
+            <Icon className="w-5 h-5 text-on-accent" />
           </div>
           <div className="flex flex-col">
             <span

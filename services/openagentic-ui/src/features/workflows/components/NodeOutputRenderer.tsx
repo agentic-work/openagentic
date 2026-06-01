@@ -70,8 +70,8 @@ const JsonTreeNode: React.FC<{ label?: string; data: any; defaultOpen?: boolean;
   if (data === null || data === undefined) {
     return (
       <div className="flex items-center gap-1 py-0.5" style={{ paddingLeft: depth * 12 }}>
-        {label && <span className="text-purple-400">{label}:</span>}
-        <span className="text-gray-500 italic">null</span>
+        {label && <span className="text-accent">{label}:</span>}
+        <span className="text-text-muted italic">null</span>
       </div>
     );
   }
@@ -80,8 +80,8 @@ const JsonTreeNode: React.FC<{ label?: string; data: any; defaultOpen?: boolean;
     const isLong = data.length > 300;
     return (
       <div className="flex items-start gap-1 py-0.5" style={{ paddingLeft: depth * 12 }}>
-        {label && <span className="text-purple-400 flex-shrink-0">{label}:</span>}
-        <span className="text-green-400 break-all">
+        {label && <span className="text-accent flex-shrink-0">{label}:</span>}
+        <span className="text-success break-all">
           &quot;{isLong ? data.substring(0, 300) + '...' : data}&quot;
         </span>
       </div>
@@ -91,8 +91,8 @@ const JsonTreeNode: React.FC<{ label?: string; data: any; defaultOpen?: boolean;
   if (typeof data === 'number' || typeof data === 'boolean') {
     return (
       <div className="flex items-center gap-1 py-0.5" style={{ paddingLeft: depth * 12 }}>
-        {label && <span className="text-purple-400">{label}:</span>}
-        <span className="text-blue-400">{String(data)}</span>
+        {label && <span className="text-accent">{label}:</span>}
+        <span className="text-info">{String(data)}</span>
       </div>
     );
   }
@@ -101,8 +101,8 @@ const JsonTreeNode: React.FC<{ label?: string; data: any; defaultOpen?: boolean;
     if (data.length === 0) {
       return (
         <div className="flex items-center gap-1 py-0.5" style={{ paddingLeft: depth * 12 }}>
-          {label && <span className="text-purple-400">{label}:</span>}
-          <span className="text-gray-500">[]</span>
+          {label && <span className="text-accent">{label}:</span>}
+          <span className="text-text-muted">[]</span>
         </div>
       );
     }
@@ -113,15 +113,15 @@ const JsonTreeNode: React.FC<{ label?: string; data: any; defaultOpen?: boolean;
           className="flex items-center gap-1 py-0.5 hover:opacity-80 cursor-pointer"
           style={{ paddingLeft: depth * 12 }}
         >
-          {isOpen ? <ChevronDown className="w-3 h-3 text-gray-500" /> : <ChevronRight className="w-3 h-3 text-gray-500" />}
-          {label && <span className="text-purple-400">{label}:</span>}
-          <span className="text-gray-500">Array[{data.length}]</span>
+          {isOpen ? <ChevronDown className="w-3 h-3 text-text-muted" /> : <ChevronRight className="w-3 h-3 text-text-muted" />}
+          {label && <span className="text-accent">{label}:</span>}
+          <span className="text-text-muted">Array[{data.length}]</span>
         </button>
         {isOpen && data.slice(0, 50).map((item, i) => (
           <JsonTreeNode key={i} label={String(i)} data={item} depth={depth + 1} />
         ))}
         {isOpen && data.length > 50 && (
-          <div className="text-gray-500 text-[10px] py-0.5" style={{ paddingLeft: (depth + 1) * 12 }}>
+          <div className="text-text-muted text-[10px] py-0.5" style={{ paddingLeft: (depth + 1) * 12 }}>
             ... {data.length - 50} more items
           </div>
         )}
@@ -134,8 +134,8 @@ const JsonTreeNode: React.FC<{ label?: string; data: any; defaultOpen?: boolean;
     if (entries.length === 0) {
       return (
         <div className="flex items-center gap-1 py-0.5" style={{ paddingLeft: depth * 12 }}>
-          {label && <span className="text-purple-400">{label}:</span>}
-          <span className="text-gray-500">{'{}'}</span>
+          {label && <span className="text-accent">{label}:</span>}
+          <span className="text-text-muted">{'{}'}</span>
         </div>
       );
     }
@@ -146,15 +146,15 @@ const JsonTreeNode: React.FC<{ label?: string; data: any; defaultOpen?: boolean;
           className="flex items-center gap-1 py-0.5 hover:opacity-80 cursor-pointer"
           style={{ paddingLeft: depth * 12 }}
         >
-          {isOpen ? <ChevronDown className="w-3 h-3 text-gray-500" /> : <ChevronRight className="w-3 h-3 text-gray-500" />}
-          {label && <span className="text-purple-400">{label}:</span>}
-          <span className="text-gray-500">{`{${entries.length}}`}</span>
+          {isOpen ? <ChevronDown className="w-3 h-3 text-text-muted" /> : <ChevronRight className="w-3 h-3 text-text-muted" />}
+          {label && <span className="text-accent">{label}:</span>}
+          <span className="text-text-muted">{`{${entries.length}}`}</span>
         </button>
         {isOpen && entries.slice(0, 50).map(([key, value]) => (
           <JsonTreeNode key={key} label={key} data={value} depth={depth + 1} />
         ))}
         {isOpen && entries.length > 50 && (
-          <div className="text-gray-500 text-[10px] py-0.5" style={{ paddingLeft: (depth + 1) * 12 }}>
+          <div className="text-text-muted text-[10px] py-0.5" style={{ paddingLeft: (depth + 1) * 12 }}>
             ... {entries.length - 50} more keys
           </div>
         )}
@@ -164,8 +164,8 @@ const JsonTreeNode: React.FC<{ label?: string; data: any; defaultOpen?: boolean;
 
   return (
     <div className="py-0.5" style={{ paddingLeft: depth * 12 }}>
-      {label && <span className="text-purple-400">{label}: </span>}
-      <span className="text-gray-400">{String(data)}</span>
+      {label && <span className="text-accent">{label}: </span>}
+      <span className="text-text-muted">{String(data)}</span>
     </div>
   );
 };
@@ -211,8 +211,8 @@ const StatusBadge: React.FC<{ status: number }> = ({ status }) => {
   const isClientError = status >= 400 && status < 500;
   const isServerError = status >= 500;
 
-  const bgColor = isSuccess ? 'rgba(34,197,94,0.15)' : isRedirect ? 'rgba(59,130,246,0.15)' : isClientError ? 'rgba(245,158,11,0.15)' : isServerError ? 'rgba(239,68,68,0.15)' : 'rgba(107,114,128,0.15)';
-  const textColor = isSuccess ? 'var(--color-success)' : isRedirect ? '#3b82f6' : isClientError ? '#f59e0b' : isServerError ? '#ef4444' : '#6b7280';
+  const bgColor = isSuccess ? 'color-mix(in srgb, var(--color-success) 15%, transparent)' : isRedirect ? 'color-mix(in srgb, var(--color-info) 15%, transparent)' : isClientError ? 'color-mix(in srgb, var(--color-warning) 15%, transparent)' : isServerError ? 'color-mix(in srgb, var(--color-error) 15%, transparent)' : 'rgba(107,114,128,0.15)';
+  const textColor = isSuccess ? 'var(--color-success)' : isRedirect ? 'var(--color-info)' : isClientError ? 'var(--color-warning)' : isServerError ? 'var(--color-error)' : 'var(--color-fg-subtle)';
 
   return (
     <span
@@ -232,8 +232,8 @@ const BoolBadge: React.FC<{ value: boolean; trueLabel?: string; falseLabel?: str
   <span
     className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold"
     style={{
-      backgroundColor: value ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-      color: value ? 'var(--color-success)' : '#ef4444',
+      backgroundColor: value ? 'color-mix(in srgb, var(--color-success) 15%, transparent)' : 'color-mix(in srgb, var(--color-error) 15%, transparent)',
+      color: value ? 'var(--color-success)' : 'var(--color-error)',
     }}
   >
     {value ? trueLabel : falseLabel}
@@ -243,7 +243,7 @@ const BoolBadge: React.FC<{ value: boolean; trueLabel?: string; falseLabel?: str
 // ── Node Type Renderers ────────────────────────────────────────────────────
 
 const LlmOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
-  if (!output) return <span className="text-gray-500 italic text-[11px]">No output</span>;
+  if (!output) return <span className="text-text-muted italic text-[11px]">No output</span>;
 
   const content = output?.content ?? output?.text ?? output?.message ?? (typeof output === 'string' ? output : null);
   const model = output?.model || output?.modelId;
@@ -290,7 +290,7 @@ const LlmOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
 };
 
 const CodeOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
-  if (!output) return <span className="text-gray-500 italic text-[11px]">No output</span>;
+  if (!output) return <span className="text-text-muted italic text-[11px]">No output</span>;
 
   const stdout = output?.stdout ?? output?.output ?? (typeof output === 'string' ? output : null);
   const stderr = output?.stderr;
@@ -305,8 +305,8 @@ const CodeOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
           <span
             className="px-1.5 py-0.5 rounded font-mono font-semibold text-[10px]"
             style={{
-              backgroundColor: exitCode === 0 ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-              color: exitCode === 0 ? 'var(--color-success)' : '#ef4444',
+              backgroundColor: exitCode === 0 ? 'color-mix(in srgb, var(--color-success) 15%, transparent)' : 'color-mix(in srgb, var(--color-error) 15%, transparent)',
+              color: exitCode === 0 ? 'var(--color-success)' : 'var(--color-error)',
             }}
           >
             {exitCode}
@@ -324,7 +324,7 @@ const CodeOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
             className="text-[11px] font-mono leading-relaxed p-2.5 rounded overflow-x-auto whitespace-pre-wrap break-all max-h-[300px] overflow-y-auto"
             style={{
               backgroundColor: 'rgba(0,0,0,0.4)',
-              color: '#e2e8f0',
+              color: 'var(--color-fg)',
               border: '1px solid var(--color-border, rgba(255,255,255,0.08))',
             }}
           >
@@ -336,15 +336,15 @@ const CodeOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
       {/* Stderr */}
       {stderr && (
         <div>
-          <div className="text-[10px] font-medium mb-1 flex items-center gap-1 text-red-400">
+          <div className="text-[10px] font-medium mb-1 flex items-center gap-1 text-error">
             <AlertTriangle className="w-3 h-3" /> stderr
           </div>
           <pre
             className="text-[11px] font-mono leading-relaxed p-2.5 rounded overflow-x-auto whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto"
             style={{
-              backgroundColor: 'rgba(239,68,68,0.08)',
-              color: '#fca5a5',
-              border: '1px solid rgba(239,68,68,0.2)',
+              backgroundColor: 'color-mix(in srgb, var(--color-error) 8%, transparent)',
+              color: 'var(--color-error)',
+              border: '1px solid color-mix(in srgb, var(--color-error) 20%, transparent)',
             }}
           >
             {stderr}
@@ -361,7 +361,7 @@ const CodeOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
 };
 
 const McpToolOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
-  if (!output) return <span className="text-gray-500 italic text-[11px]">No output</span>;
+  if (!output) return <span className="text-text-muted italic text-[11px]">No output</span>;
 
   const toolName = output?.toolName || output?.tool_name || output?.name;
   const result = output?.result ?? output?.data ?? output;
@@ -397,7 +397,7 @@ const McpToolOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
 };
 
 const HttpOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
-  if (!output) return <span className="text-gray-500 italic text-[11px]">No output</span>;
+  if (!output) return <span className="text-text-muted italic text-[11px]">No output</span>;
 
   const status = output?.status ?? output?.statusCode ?? output?.status_code;
   const headers = output?.headers ?? output?.responseHeaders;
@@ -424,7 +424,7 @@ const HttpOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
           <div className="font-mono text-[10px] space-y-0.5 mt-1">
             {Object.entries(headers).map(([key, value]) => (
               <div key={key} className="flex gap-1">
-                <span className="text-purple-400 flex-shrink-0">{key}:</span>
+                <span className="text-accent flex-shrink-0">{key}:</span>
                 <span style={{ color: 'var(--color-text-secondary, #8E8E93)' }}>{String(value)}</span>
               </div>
             ))}
@@ -464,7 +464,7 @@ const HttpOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
 };
 
 const ConditionOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
-  if (!output) return <span className="text-gray-500 italic text-[11px]">No output</span>;
+  if (!output) return <span className="text-text-muted italic text-[11px]">No output</span>;
 
   const condition = output?.condition ?? output?.expression;
   const result = output?.result ?? output?.value ?? output?.branch;
@@ -481,7 +481,7 @@ const ConditionOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
             className="text-[11px] font-mono p-2 rounded whitespace-pre-wrap"
             style={{
               backgroundColor: 'rgba(0,0,0,0.3)',
-              color: '#e2e8f0',
+              color: 'var(--color-fg)',
               border: '1px solid var(--color-border, rgba(255,255,255,0.08))',
             }}
           >
@@ -504,7 +504,7 @@ const ConditionOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
 };
 
 const TransformOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
-  if (!output) return <span className="text-gray-500 italic text-[11px]">No output</span>;
+  if (!output) return <span className="text-text-muted italic text-[11px]">No output</span>;
 
   const inputData = output?.input ?? output?.before;
   const outputData = output?.output ?? output?.after ?? output?.result ?? output;
@@ -519,7 +519,7 @@ const TransformOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <div className="text-[10px] font-medium mb-1 text-orange-400/70">Input</div>
+              <div className="text-[10px] font-medium mb-1 text-warning/70">Input</div>
               <div
                 className="p-2 rounded text-[11px] font-mono overflow-auto max-h-[200px]"
                 style={{
@@ -531,7 +531,7 @@ const TransformOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
               </div>
             </div>
             <div>
-              <div className="text-[10px] font-medium mb-1 text-green-400/70">Output</div>
+              <div className="text-[10px] font-medium mb-1 text-success/70">Output</div>
               <div
                 className="p-2 rounded text-[11px] font-mono overflow-auto max-h-[200px]"
                 style={{
@@ -552,7 +552,7 @@ const TransformOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
 };
 
 const TriggerOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
-  if (!output) return <span className="text-gray-500 italic text-[11px]">No output</span>;
+  if (!output) return <span className="text-text-muted italic text-[11px]">No output</span>;
 
   const triggerType = output?.triggerType ?? output?.trigger_type ?? output?.type;
   const inputData = output?.data ?? output?.payload ?? output?.input;
@@ -565,8 +565,8 @@ const TriggerOutputRenderer: React.FC<{ output: any }> = ({ output }) => {
           <span
             className="px-2 py-0.5 rounded font-medium text-[10px] uppercase tracking-wide"
             style={{
-              backgroundColor: 'rgba(59,130,246,0.15)',
-              color: '#60a5fa',
+              backgroundColor: 'color-mix(in srgb, var(--color-info) 15%, transparent)',
+              color: 'var(--color-info)',
             }}
           >
             {triggerType}
@@ -594,12 +594,12 @@ const ErrorBox: React.FC<{ error: string }> = ({ error }) => (
   <div
     className="flex items-start gap-2 p-3 rounded text-[12px]"
     style={{
-      backgroundColor: 'rgba(239,68,68,0.1)',
-      border: '1px solid rgba(239,68,68,0.25)',
+      backgroundColor: 'color-mix(in srgb, var(--color-error) 10%, transparent)',
+      border: '1px solid color-mix(in srgb, var(--color-error) 25%, transparent)',
     }}
   >
-    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-    <div className="text-red-300 whitespace-pre-wrap break-words font-mono">{error}</div>
+    <XCircle className="w-4 h-4 text-error flex-shrink-0 mt-0.5" />
+    <div className="text-error whitespace-pre-wrap break-words font-mono">{error}</div>
   </div>
 );
 
@@ -637,7 +637,7 @@ export const NodeOutputRenderer: React.FC<NodeOutputRendererProps> = ({
           <CollapsibleJsonTree data={output} defaultOpen />
         )
       ) : !error ? (
-        <span className="text-gray-500 italic text-[11px]">No output</span>
+        <span className="text-text-muted italic text-[11px]">No output</span>
       ) : null}
     </div>
   );

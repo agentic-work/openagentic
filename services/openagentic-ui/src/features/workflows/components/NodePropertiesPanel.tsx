@@ -137,7 +137,7 @@ const FormInput: React.FC<{
   <div>
     <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
       {label}
-      {required && <span style={{ color: '#f59e0b', marginLeft: 4, fontWeight: 800 }}>*</span>}
+      {required && <span style={{ color: 'var(--color-warning)', marginLeft: 4, fontWeight: 800 }}>*</span>}
     </label>
     <input
       type={type}
@@ -151,13 +151,13 @@ const FormInput: React.FC<{
       className="w-full px-3 py-2.5 rounded-lg border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-accent-primary/40 focus:border-accent-primary"
       style={{
         backgroundColor: 'var(--color-bg-secondary)',
-        borderColor: error ? '#ef4444' : 'var(--color-border)',
+        borderColor: error ? 'var(--color-error)' : 'var(--color-border)',
         color: 'var(--color-text)',
-        ...(error ? { boxShadow: '0 0 0 1px rgba(239,68,68,0.3)' } : {}),
+        ...(error ? { boxShadow: '0 0 0 1px color-mix(in srgb, var(--color-error) 30%, transparent)' } : {}),
       }}
     />
     {error && !value && (
-      <p className="text-xs mt-1 flex items-center gap-1" data-testid="required-field-error" style={{ color: '#ef4444' }}>
+      <p className="text-xs mt-1 flex items-center gap-1" data-testid="required-field-error" style={{ color: 'var(--color-error)' }}>
         <AlertCircle style={{ width: 10, height: 10 }} /> Required
       </p>
     )}
@@ -184,7 +184,7 @@ const FormTextarea: React.FC<{
   <div>
     <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
       {label}
-      {required && <span style={{ color: '#f59e0b', marginLeft: 4, fontWeight: 800 }}>*</span>}
+      {required && <span style={{ color: 'var(--color-warning)', marginLeft: 4, fontWeight: 800 }}>*</span>}
     </label>
     <textarea
       value={value}
@@ -196,9 +196,9 @@ const FormTextarea: React.FC<{
       className={`w-full px-3 py-2.5 rounded-lg border text-sm transition-all resize-none focus:outline-none focus:ring-2 focus:ring-accent-primary/40 focus:border-accent-primary ${monospace ? 'font-mono' : ''}`}
       style={{
         backgroundColor: 'var(--color-bg-secondary)',
-        borderColor: error ? '#ef4444' : 'var(--color-border)',
+        borderColor: error ? 'var(--color-error)' : 'var(--color-border)',
         color: 'var(--color-text)',
-        ...(error ? { boxShadow: '0 0 0 1px rgba(239,68,68,0.3)' } : {}),
+        ...(error ? { boxShadow: '0 0 0 1px color-mix(in srgb, var(--color-error) 30%, transparent)' } : {}),
       }}
     />
     {helpText && (
@@ -407,7 +407,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       <div>
         <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
           MCP Tool
-          <span style={{ color: '#f59e0b', marginLeft: 4, fontWeight: 800 }}>*</span>
+          <span style={{ color: 'var(--color-warning)', marginLeft: 4, fontWeight: 800 }}>*</span>
         </label>
         <select
           value={nodeData.toolName || ''}
@@ -430,9 +430,9 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent-primary"
           style={{
             backgroundColor: 'var(--color-bg-secondary)',
-            borderColor: !nodeData.toolName ? '#f59e0b' : 'var(--color-border)',
+            borderColor: !nodeData.toolName ? 'var(--color-warning)' : 'var(--color-border)',
             color: 'var(--color-text)',
-            ...(!nodeData.toolName ? { boxShadow: '0 0 0 1px rgba(245,158,11,0.3)' } : {}),
+            ...(!nodeData.toolName ? { boxShadow: '0 0 0 1px color-mix(in srgb, var(--color-warning) 30%, transparent)' } : {}),
           }}
         >
           <option value="">Select a tool...</option>
@@ -448,7 +448,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           </p>
         )}
         {!nodeData.toolName && (
-          <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#f59e0b' }}>
+          <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--color-warning)' }}>
             <AlertCircle style={{ width: 10, height: 10 }} /> Required — select an MCP tool
           </p>
         )}
@@ -476,7 +476,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                   <div key={key}>
                     <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
                       {key}
-                      {isRequired && <span style={{ color: '#f59e0b', marginLeft: 3 }}>*</span>}
+                      {isRequired && <span style={{ color: 'var(--color-warning)', marginLeft: 3 }}>*</span>}
                     </label>
                     {prop.description && (
                       <p className="text-[10px] mb-1" style={{ color: 'var(--color-text-tertiary)' }}>
@@ -631,7 +631,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
           onChange={(e) => updateData('temperature', parseFloat(e.target.value))}
           className="w-full"
         />
-        <div className="flex justify-between text-xs text-gray-500">
+        <div className="flex justify-between text-xs text-text-muted">
           <span>Precise</span>
           <span>Creative</span>
         </div>
@@ -1493,7 +1493,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
     return (
       <div className="space-y-4">
-        <div className="p-2.5 rounded-lg text-xs" style={{ background: 'rgba(33,150,243,0.08)', color: '#2196f3', border: '1px solid rgba(33,150,243,0.2)' }}>
+        <div className="p-2.5 rounded-lg text-xs" style={{ background: 'color-mix(in srgb, var(--color-info) 8%, transparent)', color: 'var(--color-info)', border: '1px solid color-mix(in srgb, var(--color-info) 20%, transparent)' }}>
           Multi-agent orchestration. Pick a <strong>pattern</strong> below, then add registered agents from the SOT registry. Each slot accepts an <code>agentId</code>; inline ghost agents are deprecated — register agents in the Admin console first.
         </div>
 
@@ -1537,7 +1537,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             type="button"
             onClick={addAgent}
             className="mt-2 text-xs"
-            style={{ padding: '6px 10px', background: 'rgba(33,150,243,0.12)', color: '#2196f3', border: '1px solid rgba(33,150,243,0.3)', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '6px 10px', background: 'color-mix(in srgb, var(--color-info) 12%, transparent)', color: 'var(--color-info)', border: '1px solid color-mix(in srgb, var(--color-info) 30%, transparent)', borderRadius: 4, cursor: 'pointer' }}
           >
             + Add agent
           </button>
@@ -1599,7 +1599,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       {/* Agent ID — searchable dropdown with fallback to text input */}
       <div ref={agentDropdownRef} style={{ position: 'relative' }}>
         <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-          Agent ID {isFieldRequired('agent_single', 'agentId') && <span style={{ color: '#f44336' }}>*</span>}
+          Agent ID {isFieldRequired('agent_single', 'agentId') && <span style={{ color: 'var(--color-error)' }}>*</span>}
         </label>
         <div
           onClick={() => setAgentDropdownOpen(!agentDropdownOpen)}
@@ -1954,7 +1954,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
       />
       <FormInput
         label="Text Color"
-        value={(nodeData as any).textColor || '#c9d1d9'}
+        value={(nodeData as any).textColor || 'var(--color-fg)'}
         onChange={(v) => updateData('textColor' as any, v)}
         isDark={isDark}
         helpText="Hex color for the text (e.g., #c9d1d9)"
@@ -2364,7 +2364,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
 
   const renderUserContextConfig = () => (
     <div className="space-y-4">
-      <div className="p-2.5 rounded-lg text-xs" style={{ background: 'rgba(33,150,243,0.08)', color: '#2196f3', border: '1px solid rgba(33,150,243,0.2)' }}>
+      <div className="p-2.5 rounded-lg text-xs" style={{ background: 'color-mix(in srgb, var(--color-info) 8%, transparent)', color: 'var(--color-info)', border: '1px solid color-mix(in srgb, var(--color-info) 20%, transparent)' }}>
         Loads cross-mode user context (chat history, preferences, recent interactions) to enrich downstream nodes.
       </div>
       <FormSelect label="Context Scope" value={(nodeData as any).contextScope || 'recent'}
@@ -2506,8 +2506,8 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                     const updated = cases.filter((_, idx) => idx !== i);
                     updateData('cases' as any, updated);
                   }}
-                  className="p-1 rounded hover:bg-red-500/20 transition-colors"
-                  style={{ color: '#ef4444' }}
+                  className="p-1 rounded hover:bg-[color-mix(in_srgb,var(--color-error)_20%,transparent)] transition-colors"
+                  style={{ color: 'var(--color-error)' }}
                   title="Remove case"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -2887,17 +2887,17 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         {/* Validation Errors Banner */}
         {node.data?.validationErrors && (node.data.validationErrors as any[]).length > 0 && (
           <div style={{
-            background: 'rgba(245,158,11,0.08)',
-            border: '1px solid rgba(245,158,11,0.25)',
+            background: 'color-mix(in srgb, var(--color-warning) 8%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--color-warning) 25%, transparent)',
             borderRadius: 8,
             padding: '8px 10px',
           }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#f59e0b', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-warning)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
               <AlertCircle style={{ width: 12, height: 12 }} />
               {(node.data.validationErrors as any[]).length} validation {(node.data.validationErrors as any[]).length === 1 ? 'issue' : 'issues'}
             </div>
             {(node.data.validationErrors as any[]).map((err: any, i: number) => (
-              <div key={i} style={{ fontSize: 11, color: '#f59e0b', lineHeight: 1.5, paddingLeft: 16 }}>
+              <div key={i} style={{ fontSize: 11, color: 'var(--color-warning)', lineHeight: 1.5, paddingLeft: 16 }}>
                 {err.field ? `${err.field}: ` : ''}{err.message}
               </div>
             ))}
@@ -2908,9 +2908,9 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
         {nodeData?.executionState === 'failed' && nodeData?.executionError && (
           <div style={{
             margin: '0 0 16px 0', padding: '10px 12px', borderRadius: 8,
-            background: 'rgba(244, 67, 54, 0.1)', border: '1px solid rgba(244, 67, 54, 0.3)',
+            background: 'color-mix(in srgb, var(--color-error) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-error) 30%, transparent)',
           }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#f44336', marginBottom: 4 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-error)', marginBottom: 4 }}>
               Execution Error
             </div>
             <div style={{
@@ -2935,7 +2935,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
                 }}
                 style={{
                   padding: '4px 12px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                  background: 'linear-gradient(135deg, #7c4dff, #536dfe)', color: '#fff',
+                  background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, var(--color-info)))', color: 'var(--color-on-accent)',
                   border: 'none', cursor: 'pointer',
                 }}
               >
@@ -3045,9 +3045,9 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
               w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm
               transition-all duration-200
               ${showSaveConfirmation
-                ? 'bg-emerald-500 text-white'
+                ? 'bg-success text-text'
                 : hasChanges
-                ? 'bg-accent-primary text-white hover:bg-accent-primary/90 shadow-lg shadow-accent-primary/20'
+                ? 'bg-accent-primary text-text hover:bg-accent-primary/90 shadow-lg shadow-accent-primary/20'
                 : 'cursor-not-allowed opacity-50'
               }
             `}
@@ -3072,7 +3072,7 @@ export const NodePropertiesPanel: React.FC<NodePropertiesPanelProps> = ({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleDelete}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/30"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)] text-error hover:bg-[color-mix(in_srgb,var(--color-error)_20%,transparent)] border border-[color-mix(in_srgb,var(--color-error)_30%,transparent)]"
           >
             <Trash2 className="w-4 h-4" />
             Delete Node

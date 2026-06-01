@@ -70,7 +70,7 @@ export const KpiDashboardPane: React.FC<KpiDashboardPaneProps> = ({
         <PanelHead
           title="headline kpis"
           right={
-            <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-v3-mono)', fontSize: 11 }}>
+            <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
               window: {window}
             </span>
           }
@@ -148,7 +148,7 @@ export const KpiDashboardPane: React.FC<KpiDashboardPaneProps> = ({
             <BarList
               items={failing.slice(0, 10).map((n) => ({
                 name: (
-                  <span style={{ fontFamily: 'var(--font-v3-mono)' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)' }}>
                     {n.nodeType} <span style={{ color: 'var(--fg-3)' }}>· {n.nodeId.slice(0, 8)}</span>
                   </span>
                 ),
@@ -169,7 +169,7 @@ export const KpiDashboardPane: React.FC<KpiDashboardPaneProps> = ({
             <BarList
               items={expensive.slice(0, 10).map((f) => ({
                 name: (
-                  <span style={{ fontFamily: 'var(--font-v3-mono)' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)' }}>
                     {f.flowName} <span style={{ color: 'var(--fg-3)' }}>· {f.flowId.slice(0, 8)}</span>
                   </span>
                 ),

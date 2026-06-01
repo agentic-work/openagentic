@@ -111,7 +111,7 @@ export const ApiEndpointSection: React.FC<ApiEndpointSectionProps> = ({ workflow
           </span>
           <span
             className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold"
-            style={{ backgroundColor: '#22c55e20', color: '#22c55e' }}
+            style={{ backgroundColor: '#22c55e20', color: 'var(--color-success)' }}
           >
             POST
           </span>
@@ -130,7 +130,7 @@ export const ApiEndpointSection: React.FC<ApiEndpointSectionProps> = ({ workflow
             className="p-0.5 rounded transition-colors hover:bg-[var(--color-bg-primary)]"
             style={{ color: 'var(--color-text-tertiary)' }}
           >
-            {copiedField === 'url' ? <Check className="w-2.5 h-2.5" style={{ color: '#22c55e' }} /> : <Copy className="w-2.5 h-2.5" />}
+            {copiedField === 'url' ? <Check className="w-2.5 h-2.5" style={{ color: 'var(--color-success)' }} /> : <Copy className="w-2.5 h-2.5" />}
           </button>
         </div>
 
@@ -145,7 +145,7 @@ export const ApiEndpointSection: React.FC<ApiEndpointSectionProps> = ({ workflow
         </button>
         {showAuth && (
           <p className="text-[10px] pl-3.5" style={{ color: 'var(--color-text-tertiary)' }}>
-            Pass <code className="font-mono px-0.5" style={{ color: '#bc8cff' }}>Authorization: Bearer &lt;api_key&gt;</code> header.
+            Pass <code className="font-mono px-0.5" style={{ color: 'var(--color-accent)' }}>Authorization: Bearer &lt;api_key&gt;</code> header.
             Generate API keys in Settings → API Keys.
           </p>
         )}
@@ -168,7 +168,7 @@ export const ApiEndpointSection: React.FC<ApiEndpointSectionProps> = ({ workflow
             style={{ color: 'var(--color-text-tertiary)' }}
             title="Copy curl command"
           >
-            {copiedField === 'curl' ? <Check className="w-3 h-3" style={{ color: '#22c55e' }} /> : <Copy className="w-3 h-3" />}
+            {copiedField === 'curl' ? <Check className="w-3 h-3" style={{ color: 'var(--color-success)' }} /> : <Copy className="w-3 h-3" />}
           </button>
         </div>
 
@@ -179,7 +179,7 @@ export const ApiEndpointSection: React.FC<ApiEndpointSectionProps> = ({ workflow
           className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded transition-colors hover:opacity-80 disabled:opacity-50"
           style={{
             backgroundColor: 'var(--user-accent-primary, #2196f3)',
-            color: '#fff',
+            color: 'var(--color-on-accent)',
           }}
         >
           <Play className="w-2.5 h-2.5" />
@@ -192,7 +192,7 @@ export const ApiEndpointSection: React.FC<ApiEndpointSectionProps> = ({ workflow
             <div className="flex items-center gap-2">
               <span
                 className="font-mono font-bold"
-                style={{ color: testResult.status >= 200 && testResult.status < 300 ? '#22c55e' : '#f85149' }}
+                style={{ color: testResult.status >= 200 && testResult.status < 300 ? 'var(--color-success)' : 'var(--color-error)' }}
               >
                 {testResult.status || 'Error'}
               </span>
@@ -234,7 +234,7 @@ export const ApiEndpointSection: React.FC<ApiEndpointSectionProps> = ({ workflow
                   <span className="text-[11px] font-medium truncate" style={{ color: 'var(--color-text)' }}>
                     {wh.name}
                   </span>
-                  <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: '#2196f320', color: '#2196f3' }}>
+                  <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: '#2196f320', color: 'var(--color-info)' }}>
                     {wh.response_mode}
                   </span>
                 </div>
@@ -247,7 +247,7 @@ export const ApiEndpointSection: React.FC<ApiEndpointSectionProps> = ({ workflow
                     className="p-0.5 rounded transition-colors hover:bg-[var(--color-bg-primary)]"
                     style={{ color: 'var(--color-text-tertiary)' }}
                   >
-                    {copiedField === `wh-${wh.id}` ? <Check className="w-2.5 h-2.5" style={{ color: '#22c55e' }} /> : <Copy className="w-2.5 h-2.5" />}
+                    {copiedField === `wh-${wh.id}` ? <Check className="w-2.5 h-2.5" style={{ color: 'var(--color-success)' }} /> : <Copy className="w-2.5 h-2.5" />}
                   </button>
                 </div>
                 <div className="relative">
@@ -262,7 +262,7 @@ export const ApiEndpointSection: React.FC<ApiEndpointSectionProps> = ({ workflow
                     className="absolute top-0.5 right-0.5 p-0.5 rounded transition-colors hover:bg-[var(--color-surface)]"
                     style={{ color: 'var(--color-text-tertiary)' }}
                   >
-                    {copiedField === `wh-curl-${wh.id}` ? <Check className="w-2.5 h-2.5" style={{ color: '#22c55e' }} /> : <Copy className="w-2.5 h-2.5" />}
+                    {copiedField === `wh-curl-${wh.id}` ? <Check className="w-2.5 h-2.5" style={{ color: 'var(--color-success)' }} /> : <Copy className="w-2.5 h-2.5" />}
                   </button>
                 </div>
               </div>
@@ -281,7 +281,7 @@ export const ApiEndpointSection: React.FC<ApiEndpointSectionProps> = ({ workflow
             style={{ color: 'var(--color-text-tertiary)' }}
           >
             {workflowId?.slice(0, 12)}…
-            {copiedField === 'id' ? <Check className="w-2.5 h-2.5" style={{ color: '#22c55e' }} /> : <Copy className="w-2.5 h-2.5" />}
+            {copiedField === 'id' ? <Check className="w-2.5 h-2.5" style={{ color: 'var(--color-success)' }} /> : <Copy className="w-2.5 h-2.5" />}
           </button>
         </div>
       </div>

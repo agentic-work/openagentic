@@ -393,7 +393,7 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
 
           {/* Error */}
           {error && !loading && (
-            <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/5">
+            <div className="p-4 rounded-xl border border-[color-mix(in_srgb,var(--color-err)_30%,transparent)] bg-[color-mix(in_srgb,var(--color-err)_5%,transparent)]">
               <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-error)' }}>
                 <XCircle size={14} />
                 <span>{error}</span>
@@ -422,7 +422,7 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
                 return (
                   <div key={model.id} className={i > 0 ? 'border-t' : ''} style={{ borderColor: 'var(--color-border)' }}>
                     {/* Model row */}
-                    <div className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors">
+                    <div className="flex items-center justify-between px-4 py-3 hover:bg-[color-mix(in_srgb,var(--color-fg)_2%,transparent)] transition-colors">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <span className="flex-shrink-0">
                           {selectedProvider && getProviderIcon(selectedProvider.provider_type)}
@@ -500,12 +500,12 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
                             <div className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Provider-reported specs</div>
                             <div className="flex flex-wrap gap-2">
                               {model.contextWindow && (
-                                <span className="px-2 py-0.5 text-xs font-mono rounded" style={{ background: 'var(--ap-accent-dim, rgba(59,130,246,0.1))', color: 'var(--ap-accent)' }}>
+                                <span className="px-2 py-0.5 text-xs font-mono rounded" style={{ background: 'var(--ap-accent-dim, color-mix(in srgb, var(--color-nfo) 10%, transparent))', color: 'var(--ap-accent)' }}>
                                   {(model.contextWindow / 1000).toFixed(0)}K context
                                 </span>
                               )}
                               {(model.maxOutputTokens || model.maxTokens) && (
-                                <span className="px-2 py-0.5 text-xs font-mono rounded" style={{ background: 'var(--ap-accent-dim, rgba(59,130,246,0.1))', color: 'var(--ap-accent)' }}>
+                                <span className="px-2 py-0.5 text-xs font-mono rounded" style={{ background: 'var(--ap-accent-dim, color-mix(in srgb, var(--color-nfo) 10%, transparent))', color: 'var(--ap-accent)' }}>
                                   {((model.maxOutputTokens || model.maxTokens || 0) / 1000).toFixed(0)}K max output
                                 </span>
                               )}
@@ -605,7 +605,7 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
       {aifBlocked && (
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+          style={{ background: 'color-mix(in srgb, var(--color-shadow) 70%, transparent)', backdropFilter: 'blur(4px)' }}
           onClick={() => setAifBlocked(false)}
         >
           <div
@@ -650,7 +650,7 @@ export const AddModelDialog: React.FC<AddModelDialogProps> = ({
               <button
                 onClick={() => setAifBlocked(false)}
                 className="px-5 py-2 text-xs font-medium rounded-pill transition-[background,transform] duration-200 ease-emphasized active:scale-[0.98] focus-visible:outline-none focus-visible:shadow-focus-ring"
-                style={{ background: 'var(--ap-accent)', color: 'white' }}
+                style={{ background: 'var(--ap-accent)', color: 'var(--color-on-accent)' }}
               >
                 Got it
               </button>

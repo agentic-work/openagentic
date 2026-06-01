@@ -38,10 +38,10 @@ interface PromptModule {
 type CategoryFilter = 'all' | 'core' | 'domain' | 'mode' | 'capability';
 
 const CATEGORY_COLORS: Record<string, string> = {
-  core: '#3b82f6',
-  domain: '#22c55e',
-  mode: '#a855f7',
-  capability: '#f97316',
+  core: 'var(--color-nfo)',
+  domain: 'var(--color-ok)',
+  mode: 'var(--color-accent)',
+  capability: 'var(--color-warn)',
 };
 
 export const PromptModulesView: React.FC = () => {
@@ -272,7 +272,7 @@ export const PromptModulesView: React.FC = () => {
                   </td>
                   <td style={{ padding: '10px 12px' }}>
                     <AdminBadge
-                      color={CATEGORY_COLORS[mod.category] || '#6b7280'}
+                      color={CATEGORY_COLORS[mod.category] || 'var(--color-fg-subtle)'}
                       label={mod.category}
                       size="sm"
                     />
@@ -291,7 +291,7 @@ export const PromptModulesView: React.FC = () => {
                         gap: '4px',
                         fontSize: '12px',
                         fontWeight: '500',
-                        color: mod.enabled ? '#22c55e' : 'var(--text-secondary)',
+                        color: mod.enabled ? 'var(--color-ok)' : 'var(--text-secondary)',
                       }}
                     >
                       <span
@@ -299,7 +299,7 @@ export const PromptModulesView: React.FC = () => {
                           width: '7px',
                           height: '7px',
                           borderRadius: '50%',
-                          backgroundColor: mod.enabled ? '#22c55e' : 'var(--color-border)',
+                          backgroundColor: mod.enabled ? 'var(--color-ok)' : 'var(--color-border)',
                         }}
                       />
                       {mod.enabled ? 'On' : 'Off'}

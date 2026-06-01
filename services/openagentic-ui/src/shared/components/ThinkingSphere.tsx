@@ -22,7 +22,10 @@ export const ThinkingSphere: React.FC<ThinkingSphereProps> = memo(({ state, size
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
 
-  // Color palettes based on state
+  // Per-state animation color palette (categorical state-indicator scale,
+  // theme-allow: decorative canvas-drawn thinking globe). Retuned to the warm
+  // field-guide brand ramp — signal-orange / amber / signal-soft — so the
+  // most-shown states match the brand instead of the old purple/blue/pink.
   const getColors = () => {
     switch (state) {
       case 'connecting':
@@ -33,27 +36,27 @@ export const ThinkingSphere: React.FC<ThinkingSphereProps> = memo(({ state, size
         ];
       case 'thinking':
         return [
-          { r: 139, g: 92, b: 246 },  // Purple
-          { r: 59, g: 130, b: 246 },  // Blue
-          { r: 236, g: 72, b: 153 },  // Pink
+          { r: 255, g: 87, b: 34 },   // Signal orange (#FF5722)
+          { r: 255, g: 184, b: 126 }, // Signal soft (#FFB87E)
+          { r: 245, g: 158, b: 11 },  // Amber
         ];
       case 'processing':
         return [
-          { r: 59, g: 130, b: 246 },  // Blue
-          { r: 34, g: 211, b: 238 },  // Cyan
-          { r: 96, g: 165, b: 250 },  // Light blue
+          { r: 255, g: 87, b: 34 },   // Signal orange
+          { r: 255, g: 157, b: 92 },  // Warm mid (#FF9D5C)
+          { r: 255, g: 184, b: 126 }, // Signal soft
         ];
       case 'generating':
         return [
-          { r: 16, g: 185, b: 129 },  // Emerald
-          { r: 34, g: 211, b: 238 },  // Cyan
-          { r: 59, g: 130, b: 246 },  // Blue
+          { r: 34, g: 197, b: 94 },   // Success green (#22C55E)
+          { r: 255, g: 184, b: 126 }, // Signal soft
+          { r: 255, g: 87, b: 34 },   // Signal orange
         ];
       default:
         return [
-          { r: 139, g: 92, b: 246 },  // Purple
-          { r: 59, g: 130, b: 246 },  // Blue
-          { r: 236, g: 72, b: 153 },  // Pink
+          { r: 255, g: 87, b: 34 },   // Signal orange (#FF5722)
+          { r: 255, g: 184, b: 126 }, // Signal soft (#FFB87E)
+          { r: 245, g: 158, b: 11 },  // Amber
         ];
     }
   };

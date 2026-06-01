@@ -112,16 +112,16 @@ export type TabId = 'registry' | 'garden' | 'playground';
 export const MODEL_ROLES = ['chat', 'embedding', 'vision', 'image-generation', 'compaction'] as const;
 
 export const TIER_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  economy:  { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30' },
-  balanced: { bg: 'bg-blue-500/10',    text: 'text-blue-400',    border: 'border-blue-500/30' },
+  economy:  { bg: 'bg-[color-mix(in_srgb,var(--color-ok)_10%,transparent)]',   text: 'text-ok',   border: 'border-[color-mix(in_srgb,var(--color-ok)_30%,transparent)]' },
+  balanced: { bg: 'bg-[color-mix(in_srgb,var(--color-nfo)_10%,transparent)]',  text: 'text-info', border: 'border-[color-mix(in_srgb,var(--color-nfo)_30%,transparent)]' },
   premium:  { bg: 'bg-[color:var(--ap-accent-soft)]', text: 'text-[color:var(--ap-accent)]', border: 'border-[color:var(--ap-accent-line)]' },
 };
 
 export const COST_TIER_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  free:    { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30' },
-  low:     { bg: 'bg-sky-500/10',     text: 'text-sky-400',     border: 'border-sky-500/30' },
-  mid:     { bg: 'bg-blue-500/10',    text: 'text-blue-400',    border: 'border-blue-500/30' },
-  high:    { bg: 'bg-amber-500/10',   text: 'text-amber-400',   border: 'border-amber-500/30' },
+  free:    { bg: 'bg-[color-mix(in_srgb,var(--color-ok)_10%,transparent)]',   text: 'text-ok',   border: 'border-[color-mix(in_srgb,var(--color-ok)_30%,transparent)]' },
+  low:     { bg: 'bg-[color-mix(in_srgb,var(--color-nfo)_10%,transparent)]',  text: 'text-info', border: 'border-[color-mix(in_srgb,var(--color-nfo)_30%,transparent)]' },
+  mid:     { bg: 'bg-[color-mix(in_srgb,var(--color-nfo)_10%,transparent)]',  text: 'text-info', border: 'border-[color-mix(in_srgb,var(--color-nfo)_30%,transparent)]' },
+  high:    { bg: 'bg-[color-mix(in_srgb,var(--color-warn)_10%,transparent)]', text: 'text-warn', border: 'border-[color-mix(in_srgb,var(--color-warn)_30%,transparent)]' },
   premium: { bg: 'bg-[color:var(--ap-accent-soft)]', text: 'text-[color:var(--ap-accent)]', border: 'border-[color:var(--ap-accent-line)]' },
 };
 

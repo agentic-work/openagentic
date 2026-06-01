@@ -92,7 +92,7 @@ export const FileAttachment: React.FC<FileAttachmentProps> = ({
       <>
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className={`flex items-center gap-2 p-2 bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] hover:border-gray-300 :border-gray-600 transition-all cursor-pointer ${className}`}
+          className={`flex items-center gap-2 p-2 bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] hover:border-[var(--color-borderHover)] transition-all cursor-pointer ${className}`}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           onClick={canPreview ? handlePreview : handleDownload}
@@ -123,7 +123,7 @@ export const FileAttachment: React.FC<FileAttachmentProps> = ({
                 <button
                   onClick={handlePreview}
                   
-                  className="p-1 hover:text-gray-700 :text-gray-300 transition-colors"
+                  className="p-1 hover:text-text transition-colors"
                   style={{ color: 'var(--color-textSecondary)' }}
                   title="Preview"
                 >
@@ -134,7 +134,7 @@ export const FileAttachment: React.FC<FileAttachmentProps> = ({
               <button
                 onClick={handleDownload}
                 
-                className="p-1 hover:text-gray-700 :text-gray-300 transition-colors"
+                className="p-1 hover:text-text transition-colors"
                 style={{ color: 'var(--color-textSecondary)' }}
                 title="Download"
               >
@@ -144,7 +144,7 @@ export const FileAttachment: React.FC<FileAttachmentProps> = ({
               {showRemove && (
                 <button
                   onClick={handleRemove}
-                  className="p-1 text-red-500 hover:text-red-700 transition-colors"
+                  className="p-1 text-error hover:opacity-80 transition-colors"
                   title="Remove"
                 >
                   <Trash2 size={12} />
@@ -228,7 +228,7 @@ export const FileAttachment: React.FC<FileAttachmentProps> = ({
                 whileTap={{ scale: 0.95 }}
                 onClick={handlePreview}
                 
-                className="p-2 hover:text-blue-600 hover:bg-blue-50 :bg-blue-900/20 rounded-lg transition-colors"
+                className="p-2 hover:text-accent hover:bg-[var(--color-accent-soft)] rounded-lg transition-colors"
                 style={{ color: 'var(--color-textSecondary)' }}
                 title="Preview"
               >
@@ -241,7 +241,7 @@ export const FileAttachment: React.FC<FileAttachmentProps> = ({
               whileTap={{ scale: 0.95 }}
               onClick={handleDownload}
               
-              className="p-2 hover:text-green-600 hover:bg-green-50 :bg-green-900/20 rounded-lg transition-colors"
+              className="p-2 hover:text-accent hover:bg-[var(--color-accent-soft)] rounded-lg transition-colors"
               style={{ color: 'var(--color-textSecondary)' }}
               title="Download"
             >
@@ -253,7 +253,7 @@ export const FileAttachment: React.FC<FileAttachmentProps> = ({
               whileTap={{ scale: 0.95 }}
               onClick={handleOpenExternal}
               
-              className="p-2 hover:text-purple-600 hover:bg-purple-50 :bg-purple-900/20 rounded-lg transition-colors"
+              className="p-2 hover:text-accent hover:bg-[var(--color-accent-soft)] rounded-lg transition-colors"
               style={{ color: 'var(--color-textSecondary)' }}
               title="Open in New Tab"
             >
@@ -266,7 +266,7 @@ export const FileAttachment: React.FC<FileAttachmentProps> = ({
                 whileTap={{ scale: 0.95 }}
                 onClick={handleRemove}
                 
-                className="p-2 hover:text-red-600 hover:bg-red-50 :bg-red-900/20 rounded-lg transition-colors"
+                className="p-2 hover:text-error hover:bg-[var(--color-accent-soft)] rounded-lg transition-colors"
                 style={{ color: 'var(--color-textSecondary)' }}
                 title="Remove"
               >
@@ -279,7 +279,7 @@ export const FileAttachment: React.FC<FileAttachmentProps> = ({
         {/* Preview indicator */}
         {canPreview && (
           <div className="absolute top-3 right-3">
-            <div className="px-2 py-1 bg-blue-100 text-blue-600 text-xs rounded-full flex items-center gap-1">
+            <div className="px-2 py-1 bg-[var(--color-accent-soft)] text-accent text-xs rounded-full flex items-center gap-1">
               <Eye size={10} />
               Preview
             </div>

@@ -457,7 +457,7 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = ({ embedded = false, 
     content = (
       <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
           <p style={{ color: 'var(--color-text-tertiary)' }}>Loading workflows...</p>
         </div>
       </div>
@@ -466,10 +466,10 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = ({ embedded = false, 
     content = (
       <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
         <div className="text-center">
-          <p className="text-red-500 mb-4">{error}</p>
+          <p className="text-error mb-4">{error}</p>
           <button
             onClick={loadWorkflows}
-            className="px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90"
+            className="px-4 py-2 bg-accent-primary text-text rounded-lg hover:bg-accent-primary/90"
           >
             Retry
           </button>
@@ -488,9 +488,9 @@ export const WorkflowsPage: React.FC<WorkflowsPageProps> = ({ embedded = false, 
     content = (
       <div className="w-full h-full relative">
         {error && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-red-500/90 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 max-w-lg">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-[color-mix(in_srgb,var(--color-error)_90%,transparent)] text-text px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 max-w-lg">
             <span className="text-sm">{error}</span>
-            <button onClick={() => setError(null)} className="text-white/80 hover:text-white font-bold">x</button>
+            <button onClick={() => setError(null)} className="text-text/80 hover:text-text font-bold">x</button>
           </div>
         )}
         <WorkflowAboutPanel

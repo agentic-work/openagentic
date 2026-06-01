@@ -102,7 +102,7 @@ export const MCPInspectorView: React.FC<MCPInspectorViewProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleRefresh}
-              className="p-2 rounded-lg transition-all hover:bg-white/10"
+              className="p-2 rounded-lg transition-all hover:bg-[color-mix(in_srgb,var(--color-fg)_10%,transparent)]"
               title="Refresh"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -127,7 +127,7 @@ export const MCPInspectorView: React.FC<MCPInspectorViewProps> = ({
               <p className="ap-text-error mb-4">{error}</p>
               <button
                 onClick={handleRefresh}
-                className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                className="px-4 py-2 bg-primary-500 text-on-accent rounded-lg hover:bg-primary-600 transition-colors"
               >
                 Try Again
               </button>
@@ -144,7 +144,7 @@ export const MCPInspectorView: React.FC<MCPInspectorViewProps> = ({
               style={{
                 minHeight: '600px',
                 border: 'none',
-                backgroundColor: 'white',
+                backgroundColor: 'var(--color-surface)',
               }}
               title="MCP Inspector"
               sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
@@ -194,7 +194,7 @@ export const MCPInspectorView: React.FC<MCPInspectorViewProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={handleRefresh}
-            className="p-2 rounded-lg transition-all hover:bg-white/10"
+            className="p-2 rounded-lg transition-all hover:bg-[color-mix(in_srgb,var(--color-fg)_10%,transparent)]"
             style={{ color: 'var(--color-text)' }}
             title="Refresh"
           >
@@ -235,7 +235,7 @@ export const MCPInspectorView: React.FC<MCPInspectorViewProps> = ({
               <p className="ap-text-error mb-4 text-lg">{error}</p>
               <button
                 onClick={handleRefresh}
-                className="px-6 py-3 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors font-medium"
+                className="px-6 py-3 bg-primary-500 text-on-accent rounded-lg hover:bg-primary-600 transition-colors font-medium"
               >
                 Try Again
               </button>
@@ -250,7 +250,7 @@ export const MCPInspectorView: React.FC<MCPInspectorViewProps> = ({
             className="w-full h-full"
             style={{
               border: 'none',
-              backgroundColor: 'white',
+              backgroundColor: 'var(--color-surface)',
             }}
             title="MCP Inspector"
             sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"

@@ -213,7 +213,7 @@ export const PlaygroundTab: React.FC<{
             <button
               key={p}
               onClick={() => { setPrompt(p); }}
-              className="w-full text-left px-2.5 py-1.5 text-xs rounded-lg border transition-all hover:border-gray-400"
+              className="w-full text-left px-2.5 py-1.5 text-xs rounded-lg border transition-all hover:border-[var(--color-fg-subtle)]"
               style={{ borderColor: 'var(--color-border)', color: 'var(--text-secondary)' }}
             >
               {p}
@@ -224,7 +224,7 @@ export const PlaygroundTab: React.FC<{
         {/* Clear */}
         <button
           onClick={() => setMessages([])}
-          className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all hover:border-red-400"
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all hover:border-[var(--color-err)]"
           style={{ borderColor: 'var(--color-border)', color: 'var(--text-muted)' }}
         >
           <Trash2 size={11} />
@@ -241,7 +241,7 @@ export const PlaygroundTab: React.FC<{
             <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
               {currentProvider?.display_name || selectedProvider}
             </span>
-            <code className="text-xs px-1.5 py-0.5 rounded bg-gray-500/10 font-mono" style={{ color: 'var(--text-muted)' }}>
+            <code className="text-xs px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--color-fg-subtle)_10%,transparent)] font-mono" style={{ color: 'var(--text-muted)' }}>
               {selectedModel}
             </code>
           </div>
@@ -313,7 +313,7 @@ export const PlaygroundTab: React.FC<{
               onClick={sendMessage}
               disabled={!prompt.trim() || loading}
               className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg transition-all disabled:opacity-50"
-              style={{ background: 'var(--ap-accent)', color: 'white' }}
+              style={{ background: 'var(--ap-accent)', color: 'var(--color-on-accent)' }}
             >
               <Send size={12} />
               Send

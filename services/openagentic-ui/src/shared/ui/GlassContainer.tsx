@@ -17,18 +17,21 @@ export const GlassContainer: React.FC<GlassContainerProps> = ({
   onClick,
   as: Component = 'div',
 }) => {
+  // NEO-BRUTALIST panel/surface — token-driven. Variants map to elevation
+  // tiers via the surface ramp + hard offset shadow; all carry the 2px ink
+  // border + sharp corners. Reads ONLY theme tokens.
   const variantClasses = {
-    subtle: 'bg-bg-primary border border-border-primary/50',
-    medium: 'bg-bg-secondary border border-border-primary',
-    strong: 'bg-bg-tertiary border border-border-secondary'
+    subtle: 'rounded-none border-2 border-rule bg-bg text-fg',
+    medium: 'rounded-none border-2 border-rule-strong bg-surface text-fg shadow-hard-sm',
+    strong: 'rounded-none border-2 border-rule-strong bg-surface-2 text-fg shadow-hard',
   };
 
   const paddingClasses = {
-    xs: 'p-xs',
-    sm: 'p-sm',
-    md: 'p-md',
-    lg: 'p-lg',
-    xl: 'p-xl'
+    xs: 'p-2',
+    sm: 'p-3',
+    md: 'p-6',
+    lg: 'p-8',
+    xl: 'p-12',
   };
 
   const containerClasses = `${variantClasses[variant]} ${paddingClasses[padding]} ${className}`;

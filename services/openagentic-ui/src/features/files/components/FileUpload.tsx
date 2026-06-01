@@ -225,7 +225,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             onClick={openFileDialog}
             disabled={files.length >= maxFiles}
             
-            className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-200 :bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-surface-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text)' }}
           >
             <Paperclip size={14} />
@@ -236,7 +236,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             <div 
             className="flex items-center gap-2 text-sm"
             style={{ color: 'var(--color-textSecondary)' }}>
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-accent border-t-transparent" />
               Uploading...
             </div>
           )}
@@ -259,19 +259,19 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
         {/* Errors */}
         {uploadErrors.length > 0 && (
-          <div className="p-2 bg-red-50 border border-red-200 rounded-lg">
+          <div className="p-2 border border-[var(--color-error)] rounded-lg" style={{ background: 'color-mix(in srgb, var(--color-error) 10%, transparent)' }}>
             <div className="flex items-start gap-2">
-              <AlertCircle size={14} className="text-red-500 mt-0.5 flex-shrink-0" />
+              <AlertCircle size={14} className="text-error mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 {uploadErrors.map((error, index) => (
-                  <p key={index} className="text-xs text-red-700">
+                  <p key={index} className="text-xs text-error">
                     {error}
                   </p>
                 ))}
               </div>
               <button
                 onClick={clearErrors}
-                className="text-red-500 hover:text-red-700 transition-colors"
+                className="text-error hover:opacity-80 transition-colors"
               >
                 <X size={12} />
               </button>
@@ -301,14 +301,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         onClick={openFileDialog}
         className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
           isDragOver
-            ? 'border-blue-400 bg-blue-50 '
-            : 'border-gray-300 hover:border-gray-400 :border-gray-500'
+            ? 'border-accent bg-[var(--color-accent-soft)] '
+            : 'border-border hover:border-[var(--color-borderHover)]'
         } ${files.length >= maxFiles ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <div className="space-y-4">
           <div className="flex justify-center">
             {isUploading ? (
-              <div className="animate-spin rounded-full h-12 w-12 border-2 border-blue-500 border-t-transparent" />
+              <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />
             ) : (
               <Upload size={48} style={{ color: 'var(--color-textMuted)' }} />
             )}
@@ -364,17 +364,17 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="p-4 bg-red-50 border border-red-200 rounded-lg"
+            className="p-4 border border-[var(--color-error)] rounded-lg" style={{ background: 'color-mix(in srgb, var(--color-error) 10%, transparent)' }}
           >
             <div className="flex items-start gap-3">
-              <AlertCircle size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
+              <AlertCircle size={20} className="text-error flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <h4 className="font-semibold text-red-800 mb-1">
+                <h4 className="font-semibold text-error mb-1">
                   Upload Errors
                 </h4>
                 <ul className="space-y-1">
                   {uploadErrors.map((error, index) => (
-                    <li key={index} className="text-sm text-red-700">
+                    <li key={index} className="text-sm text-error">
                       {error}
                     </li>
                   ))}
@@ -382,7 +382,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
               </div>
               <button
                 onClick={clearErrors}
-                className="text-red-500 hover:text-red-700 transition-colors"
+                className="text-error hover:opacity-80 transition-colors"
               >
                 <X size={20} />
               </button>

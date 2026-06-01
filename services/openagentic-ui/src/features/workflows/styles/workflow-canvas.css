@@ -3,22 +3,28 @@
  * Flat cards, icon circles, status glows, dot-grid canvas
  */
 
-/* ==================== Design Tokens ==================== */
+/* ==================== Design Tokens ====================
+ * The --wf-* namespace is NOT a competing palette: every entry here ALIASES the
+ * canonical color/shadow SOT tokens (--color-x and --shadow-x, defined only in
+ * styles/theme.css), so the canvas flips dark/light automatically with the rest of
+ * the app. The only raw literals are the --wf-cat-x node-TYPE identity colors
+ * (a categorical scale, same allowlisted carve-out as nodeConfigs.ts) + glow alphas.
+ */
 :root {
-  --wf-canvas-bg: #f0f0f0;
-  --wf-canvas-dot: rgba(0, 0, 0, 0.25);
-  --wf-node-bg: #ffffff;
-  --wf-node-border: #e0e0e0;
-  --wf-node-radius: 8px;
-  --wf-node-shadow: 0 2px 6px rgba(68, 28, 23, 0.08);
-  --wf-node-shadow-hover: 0 4px 12px rgba(68, 28, 23, 0.12);
-  --wf-node-shadow-selected: 0 4px 16px rgba(68, 28, 23, 0.16);
-  --wf-glow-running: 0 0 0 2px rgba(255, 152, 0, 0.6), 0 0 10px 2px rgba(255, 152, 0, 0.2);
-  --wf-glow-success: 0 0 0 2px rgba(34, 197, 94, 0.6), 0 0 8px 2px rgba(34, 197, 94, 0.2);
-  --wf-glow-error: 0 0 0 2px rgba(244, 67, 54, 0.7), 0 0 14px 4px rgba(244, 67, 54, 0.25);
-  --wf-glow-selected: 0 0 0 2px rgba(33, 150, 243, 0.5);
-  --wf-glow-paused: 0 0 0 2px rgba(156, 39, 176, 0.5);
-  /* Category colors for node type icons */
+  --wf-canvas-bg: var(--color-bg);
+  --wf-canvas-dot: color-mix(in srgb, var(--color-fg) 22%, transparent);
+  --wf-node-bg: var(--color-surface);
+  --wf-node-border: var(--color-rule);
+  --wf-node-radius: var(--radius-sm, 8px);
+  --wf-node-shadow: var(--shadow-xs);
+  --wf-node-shadow-hover: var(--shadow-sm);
+  --wf-node-shadow-selected: var(--shadow-card);
+  --wf-glow-running: 0 0 0 2px color-mix(in srgb, var(--color-warning) 60%, transparent), 0 0 10px 2px color-mix(in srgb, var(--color-warning) 20%, transparent);
+  --wf-glow-success: 0 0 0 2px color-mix(in srgb, var(--color-success) 60%, transparent), 0 0 8px 2px color-mix(in srgb, var(--color-success) 20%, transparent);
+  --wf-glow-error: 0 0 0 2px color-mix(in srgb, var(--color-error) 70%, transparent), 0 0 14px 4px color-mix(in srgb, var(--color-error) 25%, transparent);
+  --wf-glow-selected: 0 0 0 2px color-mix(in srgb, var(--color-accent) 50%, transparent);
+  --wf-glow-paused: 0 0 0 2px color-mix(in srgb, var(--color-accent) 50%, transparent);
+  /* node-TYPE identity colors (categorical scale — theme-allow, like nodeConfigs.ts) */
   --wf-cat-trigger: #ff9800;
   --wf-cat-llm: #7c4dff;
   --wf-cat-tool: #00bcd4;
@@ -29,42 +35,18 @@
   --wf-cat-human: #e91e63;
   --wf-cat-agents: #7c3aed;
 
-  /* Execution panel tokens (light) */
-  --wf-ep-bg: #f6f8fa;
-  --wf-ep-bg-card: #ffffff;
-  --wf-ep-bg-surface: #eaeef2;
-  --wf-ep-bg-code: #f0f3f6;
-  --wf-ep-border: #d0d7de;
-  --wf-ep-text: #1f2328;
-  --wf-ep-text-secondary: #656d76;
-  --wf-ep-text-muted: #8c959f;
-  --wf-ep-text-bright: #24292f;
-  --wf-ep-hover-bg: #eaeef2;
-  --wf-ep-active-bg: #ddf4ff;
-}
-
-.dark {
-  --wf-canvas-bg: hsl(225, 13%, 9%);
-  --wf-canvas-dot: rgba(255, 255, 255, 0.22);
-  --wf-node-bg: hsl(222, 14%, 11%);
-  --wf-node-border: hsl(222, 14%, 11%);
-  --wf-node-radius: 6px;
-  --wf-node-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-  --wf-node-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --wf-node-shadow-selected: 0 4px 16px rgba(0, 0, 0, 0.5);
-
-  /* Execution panel tokens (dark) */
-  --wf-ep-bg: #161b22;
-  --wf-ep-bg-card: #1c2128;
-  --wf-ep-bg-surface: #21262d;
-  --wf-ep-bg-code: #0d1117;
-  --wf-ep-border: #30363d;
-  --wf-ep-text: #e6edf3;
-  --wf-ep-text-secondary: #8b949e;
-  --wf-ep-text-muted: #6e7681;
-  --wf-ep-text-bright: #f0f6fc;
-  --wf-ep-hover-bg: #1c2128;
-  --wf-ep-active-bg: #1c2128;
+  /* Execution panel tokens — alias the canonical surface/text/border scale */
+  --wf-ep-bg: var(--color-bg);
+  --wf-ep-bg-card: var(--color-surface);
+  --wf-ep-bg-surface: var(--color-surface-2);
+  --wf-ep-bg-code: var(--color-bg);
+  --wf-ep-border: var(--color-rule);
+  --wf-ep-text: var(--color-fg);
+  --wf-ep-text-secondary: var(--color-fg-muted);
+  --wf-ep-text-muted: var(--color-fg-subtle);
+  --wf-ep-text-bright: var(--color-fg);
+  --wf-ep-hover-bg: var(--color-surface-2);
+  --wf-ep-active-bg: var(--color-accent-soft);
 }
 
 /* ==================== Canvas Background ==================== */
@@ -131,7 +113,7 @@
 
 .wf-node-card.wf-selected {
   box-shadow: var(--wf-glow-selected), var(--wf-node-shadow-selected);
-  border-color: #2196f3;
+  border-color: var(--color-info);
 }
 
 /* ==================== Status Glows ==================== */
@@ -143,43 +125,43 @@
 
 .wf-node-card.wf-status-running {
   box-shadow: var(--wf-glow-running), var(--wf-node-shadow);
-  border-color: #ff9800;
+  border-color: var(--color-warning);
   animation: wf-pulse-running 1.4s ease-in-out infinite;
 }
 
 .wf-node-card.wf-status-success {
   box-shadow: var(--wf-glow-success), var(--wf-node-shadow);
-  border-color: #22c55e;
+  border-color: var(--color-success);
   animation: wf-flash-success 0.6s ease-out forwards;
 }
 
 .wf-node-card.wf-status-failed {
   box-shadow: var(--wf-glow-error), var(--wf-node-shadow);
-  border-color: #f44336;
+  border-color: var(--color-error);
   animation: wf-shake-error 0.4s ease-out, wf-fail-pulse 2s ease-in-out 0.4s infinite;
 }
 
 .wf-node-card.wf-status-paused {
   box-shadow: var(--wf-glow-paused), var(--wf-node-shadow);
-  border-color: #9c27b0;
+  border-color: var(--color-accent);
 }
 
 /* Validation sweep states */
 .wf-node-card.wf-status-validating {
   box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.6), var(--wf-node-shadow);
-  border-color: #2196f3;
+  border-color: var(--color-info);
   animation: wf-validation-scan 0.6s ease-in-out infinite;
 }
 
 .wf-node-card.wf-status-validation-ok {
   box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.5), var(--wf-node-shadow);
-  border-color: #22c55e;
+  border-color: var(--color-success);
   animation: wf-flash-success 0.4s ease-out;
 }
 
 .wf-node-card.wf-status-validation-failed {
   box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.6), var(--wf-node-shadow);
-  border-color: #f44336;
+  border-color: var(--color-error);
   animation: wf-shake-error 0.4s ease-out;
 }
 
@@ -302,7 +284,7 @@
 }
 
 .dark .wf-node-title {
-  color: #e0e0e0;
+  color: var(--color-rule);
 }
 
 .wf-node-subtitle {
@@ -386,7 +368,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 2px solid #ff9800;
+  border: 2px solid var(--color-warning);
   border-top-color: transparent;
   animation: wf-spin 0.8s linear infinite;
 }
@@ -425,7 +407,7 @@
 .wf-handle {
   width: 10px !important;
   height: 10px !important;
-  background: var(--wf-canvas-bg, #fff) !important;
+  background: var(--wf-canvas-bg, var(--color-bg)) !important;
   border: 2px solid var(--handle-color, var(--wf-node-border)) !important;
   border-radius: 50% !important;
   transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
@@ -435,33 +417,33 @@
 /* Subtle idle glow on completed nodes — shows data is flowing */
 .wf-node-card.status-completed .wf-handle {
   animation: wf-handle-pulse 3s ease-in-out infinite !important;
-  --handle-glow-color: color-mix(in srgb, var(--handle-color, #22c55e) 25%, transparent);
-  border-color: var(--handle-color, #22c55e) !important;
+  --handle-glow-color: color-mix(in srgb, var(--handle-color, var(--color-success)) 25%, transparent);
+  border-color: var(--handle-color, var(--color-success)) !important;
 }
 
 /* Neon glow idle pulse when node is hovered */
 .wf-node-card:hover .wf-handle {
   animation: wf-handle-pulse 2s ease-in-out infinite !important;
-  --handle-glow-color: color-mix(in srgb, var(--handle-color, #2196f3) 35%, transparent);
+  --handle-glow-color: color-mix(in srgb, var(--handle-color, var(--color-info)) 35%, transparent);
 }
 
 .wf-handle:hover {
   transform: scale(1.5) !important;
-  border-color: var(--handle-color, #2196f3) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--handle-color, #2196f3) 30%, transparent),
-              0 0 12px color-mix(in srgb, var(--handle-color, #2196f3) 50%, transparent) !important;
-  background: color-mix(in srgb, var(--handle-color, #2196f3) 15%, var(--wf-canvas-bg, #fff)) !important;
+  border-color: var(--handle-color, var(--color-info)) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--handle-color, var(--color-info)) 30%, transparent),
+              0 0 12px color-mix(in srgb, var(--handle-color, var(--color-info)) 50%, transparent) !important;
+  background: color-mix(in srgb, var(--handle-color, var(--color-info)) 15%, var(--wf-canvas-bg, var(--color-bg))) !important;
 }
 
 .wf-handle.react-flow__handle-connecting {
-  border-color: #ff9800 !important;
+  border-color: var(--color-warning) !important;
   box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.2), 0 0 10px rgba(255, 152, 0, 0.6) !important;
   animation: wf-handle-pulse 0.8s ease-in-out infinite !important;
   --handle-glow-color: rgba(255, 152, 0, 0.3) !important;
 }
 
 .wf-handle.react-flow__handle-valid {
-  border-color: #22c55e !important;
+  border-color: var(--color-success) !important;
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2), 0 0 10px rgba(34, 197, 94, 0.6) !important;
   background: rgba(34, 197, 94, 0.1) !important;
 }
@@ -472,7 +454,7 @@
 }
 
 .dark .wf-handle:hover {
-  background: color-mix(in srgb, var(--handle-color, #2196f3) 20%, hsl(225, 13%, 25%)) !important;
+  background: color-mix(in srgb, var(--handle-color, var(--color-info)) 20%, var(--color-surface-2)) !important;
 }
 
 /* Note/annotation node handle */
@@ -486,7 +468,7 @@
 
 /* ==================== Edge Styles ==================== */
 .react-flow__edge-path {
-  stroke: #b0bec5;
+  stroke: var(--color-fg-subtle);
   stroke-width: 2px;
   transition: stroke 0.2s ease, stroke-width 0.2s ease;
 }
@@ -501,12 +483,12 @@
 }
 
 .react-flow__edge:hover .react-flow__edge-path {
-  stroke: #2196f3;
+  stroke: var(--color-info);
   stroke-width: 2.5px;
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: #2196f3;
+  stroke: var(--color-info);
   stroke-width: 3px;
 }
 
@@ -532,15 +514,15 @@
 }
 
 .wf-edge-delete:hover {
-  background: #f44336;
-  border-color: #d32f2f;
+  background: var(--color-error);
+  border-color: var(--color-error);
   color: white;
   transform: scale(1.15);
 }
 
 /* Executing edge */
 .wf-edge-executing .react-flow__edge-path {
-  stroke: #ff9800;
+  stroke: var(--color-warning);
   stroke-width: 2.5px;
   stroke-dasharray: 6 4;
   animation: wf-edge-flow 0.6s linear infinite;
@@ -597,7 +579,7 @@
 }
 
 .dark .react-flow__controls-button svg {
-  fill: #e0e0e0;
+  fill: var(--color-rule);
 }
 
 /* ==================== MiniMap ==================== */
@@ -763,14 +745,14 @@
 }
 
 /* Data type colored edges */
-.wf-edge-text { stroke: #3b82f6; }
-.wf-edge-structured { stroke: #22c55e; }
-.wf-edge-binary { stroke: #ff9800; }
-.wf-edge-llm { stroke: #7c4dff; }
+.wf-edge-text { stroke: var(--color-info); }
+.wf-edge-structured { stroke: var(--color-success); }
+.wf-edge-binary { stroke: var(--color-warning); }
+.wf-edge-llm { stroke: var(--color-accent); }
 
 /* ==================== Focus States ==================== */
 .wf-focus-ring:focus {
-  outline: 2px solid #2196f3;
+  outline: 2px solid var(--color-info);
   outline-offset: 2px;
 }
 
@@ -816,13 +798,13 @@
 }
 
 .wf-hover-btn:hover {
-  color: #2196f3;
+  color: var(--color-info);
   border-color: rgba(33, 150, 243, 0.4);
   transform: scale(1.1);
 }
 
 .wf-hover-btn.wf-hover-btn-danger:hover {
-  color: #f44336;
+  color: var(--color-error);
   border-color: rgba(244, 67, 54, 0.4);
   background: rgba(244, 67, 54, 0.05);
 }
@@ -950,7 +932,7 @@
 
 .wf-exec-tab .wf-tab-count.error {
   background: rgba(248, 81, 73, 0.15);
-  color: #f85149;
+  color: var(--color-error);
 }
 
 /* Panel content animation */
@@ -985,10 +967,10 @@
   flex-shrink: 0;
 }
 
-.wf-run-status-dot.completed { background: #2ea043; }
-.wf-run-status-dot.running { background: #d29922; animation: wf-pulse-dot 1s ease-in-out infinite; }
-.wf-run-status-dot.failed { background: #f85149; }
-.wf-run-status-dot.pending { background: #8b949e; }
+.wf-run-status-dot.completed { background: var(--color-success); }
+.wf-run-status-dot.running { background: var(--color-warning); animation: wf-pulse-dot 1s ease-in-out infinite; }
+.wf-run-status-dot.failed { background: var(--color-error); }
+.wf-run-status-dot.pending { background: var(--color-fg-muted); }
 
 @keyframes wf-pulse-dot {
   0%, 100% { transform: scale(1); opacity: 1; }
@@ -1001,7 +983,7 @@
 .wf-run-duration {
   font-size: 11px;
   font-weight: 700;
-  color: #2ea043;
+  color: var(--color-success);
   font-family: 'SF Mono', Monaco, monospace;
 }
 
@@ -1017,12 +999,12 @@
   letter-spacing: 0.03em;
 }
 
-.wf-status-pill.completed { background: rgba(46, 160, 67, 0.15); color: #2ea043; }
-.wf-status-pill.running { background: rgba(210, 153, 34, 0.15); color: #d29922; }
-.wf-status-pill.failed { background: rgba(248, 81, 73, 0.15); color: #f85149; }
-.wf-status-pill.pending { background: rgba(139, 148, 158, 0.12); color: #8b949e; }
-.wf-status-pill.skipped { background: rgba(139, 148, 158, 0.12); color: #8b949e; }
-.wf-status-pill.completed_with_errors { background: rgba(210, 153, 34, 0.15); color: #d29922; }
+.wf-status-pill.completed { background: color-mix(in srgb, var(--color-success) 15%, transparent); color: var(--color-success); }
+.wf-status-pill.running { background: color-mix(in srgb, var(--color-warning) 15%, transparent); color: var(--color-warning); }
+.wf-status-pill.failed { background: color-mix(in srgb, var(--color-error) 15%, transparent); color: var(--color-error); }
+.wf-status-pill.pending { background: color-mix(in srgb, var(--color-fg-muted) 12%, transparent); color: var(--color-fg-muted); }
+.wf-status-pill.skipped { background: color-mix(in srgb, var(--color-fg-muted) 12%, transparent); color: var(--color-fg-muted); }
+.wf-status-pill.completed_with_errors { background: color-mix(in srgb, var(--color-warning) 15%, transparent); color: var(--color-warning); }
 
 /* Timeline steps */
 .wf-timeline-step {
@@ -1048,10 +1030,10 @@
   z-index: 1;
 }
 
-.wf-timeline-dot.completed { background: #2ea043; box-shadow: 0 0 6px rgba(46, 160, 67, 0.4); }
-.wf-timeline-dot.running { background: #d29922; animation: wf-pulse-dot 1s ease-in-out infinite; }
-.wf-timeline-dot.failed { background: #f85149; box-shadow: 0 0 6px rgba(248, 81, 73, 0.4); }
-.wf-timeline-dot.pending { background: #8b949e; }
+.wf-timeline-dot.completed { background: var(--color-success); box-shadow: 0 0 6px color-mix(in srgb, var(--color-success) 40%, transparent); }
+.wf-timeline-dot.running { background: var(--color-warning); animation: wf-pulse-dot 1s ease-in-out infinite; }
+.wf-timeline-dot.failed { background: var(--color-error); box-shadow: 0 0 6px color-mix(in srgb, var(--color-error) 40%, transparent); }
+.wf-timeline-dot.pending { background: var(--color-fg-muted); }
 
 .wf-timeline-connector {
   width: 2px;
@@ -1153,7 +1135,8 @@
 }
 
 /* Syntax colors for JSON */
-.wf-json-key { color: #bc8cff; }
+.wf-json-key { color: var(--color-accent); }
+/* theme-allow: JSON syntax-highlighting palette (same carve-out as code/shiki themes) */
 .wf-json-string { color: #2ea043; }
 .wf-json-number { color: #d29922; }
 .wf-json-boolean { color: #58a6ff; }
@@ -1216,7 +1199,7 @@
 
 .wf-view-btn.active {
   background: var(--user-accent-primary, #FF5722);
-  color: #fff;
+  color: var(--color-on-accent);
   border-color: var(--user-accent-primary, #FF5722);
 }
 
@@ -1270,12 +1253,12 @@
   color: var(--wf-ep-text);
 }
 
-.wf-rendered-output h2 { font-size: 16px; margin: 12px 0 6px; color: #58a6ff; }
-.wf-rendered-output h3 { font-size: 14px; margin: 10px 0 4px; color: #39d2c0; }
+.wf-rendered-output h2 { font-size: 16px; margin: 12px 0 6px; color: var(--color-info); }
+.wf-rendered-output h3 { font-size: 14px; margin: 10px 0 4px; color: var(--color-info); }
 .wf-rendered-output p { margin: 6px 0; }
 .wf-rendered-output ul { padding-left: 20px; margin: 6px 0; }
 .wf-rendered-output li { margin: 3px 0; }
-.wf-rendered-output strong { color: #2ea043; }
+.wf-rendered-output strong { color: var(--color-success); }
 .wf-rendered-output code {
   background: var(--wf-ep-bg-surface);
   padding: 1px 5px;
@@ -1294,10 +1277,10 @@
   margin-right: 4px;
 }
 
-.wf-severity-badge.critical { background: rgba(248, 81, 73, 0.2); color: #f85149; }
-.wf-severity-badge.high { background: rgba(210, 153, 34, 0.2); color: #d29922; }
-.wf-severity-badge.medium { background: rgba(88, 166, 255, 0.2); color: #58a6ff; }
-.wf-severity-badge.low { background: rgba(46, 160, 67, 0.2); color: #2ea043; }
+.wf-severity-badge.critical { background: color-mix(in srgb, var(--color-error) 20%, transparent); color: var(--color-error); }
+.wf-severity-badge.high { background: color-mix(in srgb, var(--color-warning) 20%, transparent); color: var(--color-warning); }
+.wf-severity-badge.medium { background: color-mix(in srgb, var(--color-info) 20%, transparent); color: var(--color-info); }
+.wf-severity-badge.low { background: color-mix(in srgb, var(--color-success) 20%, transparent); color: var(--color-success); }
 
 /* Table view */
 .wf-output-table {
@@ -1497,7 +1480,7 @@
 .wf-ai-md-content li { margin: 2px 0; }
 .wf-ai-md-content code {
   background: var(--wf-ep-bg); padding: 1px 5px; border-radius: 4px;
-  font-size: 11px; color: #bc8cff;
+  font-size: 11px; color: var(--color-accent);
 }
 .wf-ai-md-content pre {
   background: var(--wf-ep-bg-code); border: 1px solid var(--wf-ep-bg-surface); border-radius: 6px;
@@ -1607,8 +1590,8 @@
   white-space: pre;
 }
 
-.wf-ai-diff-line.add { background: rgba(46, 160, 67, 0.1); color: #2ea043; }
-.wf-ai-diff-line.remove { background: rgba(248, 81, 73, 0.1); color: #f85149; }
+.wf-ai-diff-line.add { background: color-mix(in srgb, var(--color-success) 10%, transparent); color: var(--color-success); }
+.wf-ai-diff-line.remove { background: color-mix(in srgb, var(--color-error) 10%, transparent); color: var(--color-error); }
 .wf-ai-diff-line.context { color: var(--wf-ep-text-muted); }
 
 /* Action buttons in AI */
@@ -1622,7 +1605,7 @@
   padding: 4px 10px;
   margin: 6px 4px 2px 0;
   font-size: 11px;
-  color: #58a6ff;
+  color: var(--color-info);
   cursor: pointer;
   transition: all 0.15s;
 }

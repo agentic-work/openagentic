@@ -25,7 +25,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   const animationClasses = {
     pulse: 'animate-pulse',
     wave: 'animate-wave',
-    shimmer: 'before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent'
+    shimmer: 'before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-[var(--color-fg)]/10 before:to-transparent'
   };
   
   const variantClasses = {

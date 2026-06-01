@@ -716,7 +716,7 @@ const SessionsPane: React.FC<{
                 </>
               }
               right={
-                <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-v3-mono)' }}>
+                <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}>
                   {String(s.id).slice(0, 8)}
                 </span>
               }
@@ -740,7 +740,7 @@ const EventDetail: React.FC<{ entry: AuditLogEntry }> = ({ entry }) => {
       <div
         style={{
           padding: '10px 14px',
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 'var(--v3-t-meta)',
           color: 'var(--fg-1)',
           display: 'grid',
@@ -802,7 +802,7 @@ const EventDetail: React.FC<{ entry: AuditLogEntry }> = ({ entry }) => {
             style={{
               margin: 0,
               padding: '10px 14px',
-              fontFamily: 'var(--font-v3-mono)',
+              fontFamily: 'var(--font-mono)',
               fontSize: 'var(--v3-t-meta)',
               color: 'var(--fg-1)',
               whiteSpace: 'pre-wrap',
@@ -820,7 +820,7 @@ const EventDetail: React.FC<{ entry: AuditLogEntry }> = ({ entry }) => {
         style={{
           margin: 0,
           padding: '10px 14px',
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 'var(--v3-t-meta)',
           color: 'var(--fg-1)',
           background: 'var(--bg-0)',

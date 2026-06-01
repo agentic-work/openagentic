@@ -368,25 +368,25 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
             <ChevronRight size={12} />
           </div>
           <span className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>{agent.display_name}</span>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ ...roleBadge(agent.agent_type), fontFamily: "'JetBrains Mono', monospace" }}>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ ...roleBadge(agent.agent_type), fontFamily: 'var(--font-code)' }}>
             {agent.agent_type}
           </span>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: 'var(--color-surfaceSecondary, color-mix(in srgb, var(--color-border) 40%, transparent))', color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', monospace" }}>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: 'var(--color-surfaceSecondary, color-mix(in srgb, var(--color-border) 40%, transparent))', color: 'var(--text-secondary)', fontFamily: 'var(--font-code)' }}>
             {agent.model_config?.primaryModel || 'auto'}
           </span>
           {agent.prompt_strategy === 'composite' && moduleCount > 0 && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: 'color-mix(in srgb, var(--color-accent, var(--color-primary)) 12%, transparent)', color: 'var(--color-accent, var(--color-primary))', fontFamily: "'JetBrains Mono', monospace" }}>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: 'color-mix(in srgb, var(--color-accent, var(--color-primary)) 12%, transparent)', color: 'var(--color-accent, var(--color-primary))', fontFamily: 'var(--font-code)' }}>
               composite &mdash; {moduleCount} module{moduleCount !== 1 ? 's' : ''}
             </span>
           )}
           {agent.background && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: 'color-mix(in srgb, var(--color-warning) 12%, transparent)', color: 'var(--color-warning)', fontFamily: "'JetBrains Mono', monospace" }}>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: 'color-mix(in srgb, var(--color-warning) 12%, transparent)', color: 'var(--color-warning)', fontFamily: 'var(--font-code)' }}>
               background
             </span>
           )}
           <div className="flex items-center gap-1.5 ml-auto flex-shrink-0">
             {(agent.tools_whitelist?.length || 0) > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)', color: 'var(--color-primary)', fontFamily: "'JetBrains Mono', monospace" }}>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)', color: 'var(--color-primary)', fontFamily: 'var(--font-code)' }}>
                 {agent.tools_whitelist.length} tool{agent.tools_whitelist.length !== 1 ? 's' : ''}
               </span>
             )}
@@ -470,7 +470,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                 <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-tertiary)', letterSpacing: '0.8px' }}>Tools</div>
                 <div className="flex flex-wrap gap-1">
                   {agent.tools_whitelist.map(t => (
-                    <span key={t} className="px-2 py-0.5 text-[10px] font-medium rounded" style={{ backgroundColor: 'var(--color-surfaceSecondary, color-mix(in srgb, var(--color-border) 40%, transparent))', color: 'var(--text-secondary)', border: '1px solid var(--color-border)', fontFamily: "'JetBrains Mono', monospace" }}>{t}</span>
+                    <span key={t} className="px-2 py-0.5 text-[10px] font-medium rounded" style={{ backgroundColor: 'var(--color-surfaceSecondary, color-mix(in srgb, var(--color-border) 40%, transparent))', color: 'var(--text-secondary)', border: '1px solid var(--color-border)', fontFamily: 'var(--font-code)' }}>{t}</span>
                   ))}
                 </div>
               </div>
@@ -489,7 +489,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                         color: 'var(--color-accent, var(--color-primary))',
                         border: '1px solid color-mix(in srgb, var(--color-accent, var(--color-primary)) 20%, transparent)',
                         opacity: isLocked ? 0.55 : 1,
-                        fontFamily: "'JetBrains Mono', monospace",
+                        fontFamily: 'var(--font-code)',
                       }}>{m}</span>
                     );
                   })}
@@ -505,7 +505,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                   {agent.skills.map(s => {
                     const skill = availableSkills.find(sk => sk.id === s || sk.name === s);
                     return (
-                      <span key={s} className="px-2 py-0.5 text-[10px] font-medium rounded" style={{ backgroundColor: 'color-mix(in srgb, var(--color-secondary) 10%, transparent)', color: 'var(--color-secondary)', fontFamily: "'JetBrains Mono', monospace" }}>
+                      <span key={s} className="px-2 py-0.5 text-[10px] font-medium rounded" style={{ backgroundColor: 'color-mix(in srgb, var(--color-secondary) 10%, transparent)', color: 'var(--color-secondary)', fontFamily: 'var(--font-code)' }}>
                         {skill?.display_name || skill?.name || s}
                       </span>
                     );
@@ -518,7 +518,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
             {agent.prompt_strategy !== 'composite' && agent.system_prompt && (
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-tertiary)', letterSpacing: '0.8px' }}>System Prompt</div>
-                <pre className="text-[11px] p-2.5 rounded-md overflow-auto max-h-24 whitespace-pre-wrap" style={{ backgroundColor: 'var(--color-surfaceSecondary, color-mix(in srgb, var(--color-border) 20%, transparent))', color: 'var(--text-secondary)', border: '1px solid var(--color-border)', fontFamily: "'JetBrains Mono', monospace" }}>
+                <pre className="text-[11px] p-2.5 rounded-md overflow-auto max-h-24 whitespace-pre-wrap" style={{ backgroundColor: 'var(--color-surfaceSecondary, color-mix(in srgb, var(--color-border) 20%, transparent))', color: 'var(--text-secondary)', border: '1px solid var(--color-border)', fontFamily: 'var(--font-code)' }}>
                   {agent.system_prompt.slice(0, 500)}{agent.system_prompt.length > 500 ? '...' : ''}
                 </pre>
               </div>
@@ -558,14 +558,14 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
                   {inlineTestOutput && (
                     <div className="rounded-md p-2.5" style={{ backgroundColor: 'var(--color-surfaceSecondary, color-mix(in srgb, var(--color-border) 20%, transparent))', border: '1px solid var(--color-border)' }}>
                       <div className="flex flex-wrap gap-4 mb-2 text-[10px]" style={{ color: 'var(--text-tertiary)' }}>
-                        <span>Model: <strong style={{ color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>{inlineTestOutput.model}</strong></span>
-                        <span>Tokens: <strong style={{ color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>{inlineTestOutput.tokens.toLocaleString()}</strong></span>
-                        <span>Duration: <strong style={{ color: 'var(--text-primary)', fontFamily: "'JetBrains Mono', monospace" }}>{(inlineTestOutput.durationMs / 1000).toFixed(1)}s</strong></span>
+                        <span>Model: <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-code)' }}>{inlineTestOutput.model}</strong></span>
+                        <span>Tokens: <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-code)' }}>{inlineTestOutput.tokens.toLocaleString()}</strong></span>
+                        <span>Duration: <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-code)' }}>{(inlineTestOutput.durationMs / 1000).toFixed(1)}s</strong></span>
                         {inlineTestOutput.toolCalls.length > 0 && (
-                          <span>Tools: <strong style={{ color: 'var(--color-primary)', fontFamily: "'JetBrains Mono', monospace" }}>{inlineTestOutput.toolCalls.join(', ')}</strong></span>
+                          <span>Tools: <strong style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-code)' }}>{inlineTestOutput.toolCalls.join(', ')}</strong></span>
                         )}
                       </div>
-                      <pre className="text-[11px] overflow-auto max-h-32 whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', monospace" }}>
+                      <pre className="text-[11px] overflow-auto max-h-32 whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-code)' }}>
                         {inlineTestOutput.response}
                       </pre>
                     </div>
@@ -695,7 +695,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
 
       {/* Prompt Preview Modal */}
       {previewPrompt !== null && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setPreviewPrompt(null)}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_60%,transparent)] backdrop-blur-sm" onClick={() => setPreviewPrompt(null)}>
           <div
             className="rounded-xl w-[640px] max-h-[75vh] flex flex-col shadow-2xl"
             style={{
@@ -719,7 +719,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
 
       {/* Edit Modal */}
       {editingAgent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setEditingAgent(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" onClick={() => setEditingAgent(null)}>
           <div
             className="rounded-xl w-[680px] max-h-[85vh] overflow-y-auto shadow-2xl"
             style={{
@@ -1292,7 +1292,7 @@ export const AgentManagementView: React.FC<AgentManagementViewProps> = ({ theme 
               >Cancel</button>
               <button
                 onClick={() => handleSave(editingAgent)}
-                className="flex items-center gap-1.5 px-5 py-2 text-xs font-medium rounded-lg text-white transition-opacity hover:opacity-80"
+                className="flex items-center gap-1.5 px-5 py-2 text-xs font-medium rounded-lg text-on-accent transition-opacity hover:opacity-80"
                 style={{ backgroundColor: 'var(--color-accent, var(--color-accent-primary))' }}
               >
                 <Save size={14} /> Save Agent

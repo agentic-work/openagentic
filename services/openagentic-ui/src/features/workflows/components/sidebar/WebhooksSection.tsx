@@ -38,10 +38,10 @@ interface WebhookEntry {
 }
 
 const methodColors: Record<string, string> = {
-  POST: '#22c55e',
-  GET: '#2196f3',
-  PUT: '#ff9800',
-  DELETE: '#ef5350',
+  POST: 'var(--color-success)',
+  GET: 'var(--color-info)',
+  PUT: 'var(--color-warning)',
+  DELETE: 'var(--color-error)',
 };
 
 export const WebhooksSection: React.FC<WebhooksSectionProps> = ({ workflowId }) => {
@@ -239,7 +239,7 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({ workflowId }) 
                 className="w-full py-1 text-[12px] font-medium rounded transition-colors disabled:opacity-50"
                 style={{
                   backgroundColor: 'var(--user-accent-primary, #2196f3)',
-                  color: '#fff',
+                  color: 'var(--color-on-accent)',
                 }}
               >
                 {saving ? 'Creating...' : 'Add Webhook'}
@@ -271,7 +271,7 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({ workflowId }) 
               <div className="flex items-center gap-1.5 mb-1">
                 <span
                   className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: wh.status === 'active' ? '#22c55e' : '#9e9e9e' }}
+                  style={{ backgroundColor: wh.status === 'active' ? 'var(--color-success)' : 'var(--color-fg-muted)' }}
                 />
                 <span className="text-[12px] font-medium flex-1 truncate" style={{ color: 'var(--color-text)' }}>
                   {wh.name}
@@ -301,7 +301,7 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({ workflowId }) 
                   style={{ color: 'var(--color-text-tertiary, #999)' }}
                 >
                   {copiedId === wh.id ? (
-                    <Check className="w-2.5 h-2.5" style={{ color: '#22c55e' }} />
+                    <Check className="w-2.5 h-2.5" style={{ color: 'var(--color-success)' }} />
                   ) : (
                     <Copy className="w-2.5 h-2.5" />
                   )}
@@ -316,7 +316,7 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({ workflowId }) 
                   className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors hover:opacity-80 disabled:opacity-50"
                   style={{
                     backgroundColor: 'var(--user-accent-primary, #2196f3)',
-                    color: '#fff',
+                    color: 'var(--color-on-accent)',
                   }}
                 >
                   <Play className="w-2.5 h-2.5" />
@@ -327,7 +327,7 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({ workflowId }) 
                 {testResult && testResult.id === wh.id && (
                   <span
                     className="text-[10px] font-mono"
-                    style={{ color: testResult.status >= 200 && testResult.status < 300 ? '#22c55e' : '#ef5350' }}
+                    style={{ color: testResult.status >= 200 && testResult.status < 300 ? 'var(--color-success)' : 'var(--color-error)' }}
                   >
                     {testResult.status === 0 ? 'Failed' : testResult.status} ({testResult.time}ms)
                   </span>
@@ -380,7 +380,7 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({ workflowId }) 
                           <span
                             className="font-mono font-bold"
                             style={{
-                              color: call.status_code >= 200 && call.status_code < 300 ? '#22c55e' : '#ef5350',
+                              color: call.status_code >= 200 && call.status_code < 300 ? 'var(--color-success)' : 'var(--color-error)',
                             }}
                           >
                             {call.status_code}

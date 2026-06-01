@@ -188,13 +188,13 @@ function hitRateColor(rate: number): string {
 function statusBadgeClasses(status: string): string {
   switch (status) {
     case 'loaded':
-      return 'bg-green-500/20 text-green-400 border border-green-500/30';
+      return 'bg-[color-mix(in_srgb,var(--color-ok)_20%,transparent)] text-ok border border-[color-mix(in_srgb,var(--color-ok)_30%,transparent)]';
     case 'released':
-      return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
+      return 'bg-[color-mix(in_srgb,var(--color-warn)_20%,transparent)] text-warn border border-[color-mix(in_srgb,var(--color-warn)_30%,transparent)]';
     case 'error':
-      return 'bg-red-500/20 text-red-400 border border-red-500/30';
+      return 'bg-[color-mix(in_srgb,var(--color-err)_20%,transparent)] text-err border border-[color-mix(in_srgb,var(--color-err)_30%,transparent)]';
     default:
-      return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
+      return 'bg-[color-mix(in_srgb,var(--color-fg-subtle)_20%,transparent)] text-text-tertiary border border-[color-mix(in_srgb,var(--color-fg-subtle)_30%,transparent)]';
   }
 }
 
@@ -249,11 +249,11 @@ const HitRateBar: React.FC<{ rate: number; label?: string }> = ({ rate, label })
 const ConnectionBadge: React.FC<{ connected: boolean; label: string }> = ({ connected, label }) => (
   <div className="flex items-center gap-2">
     {connected ? (
-      <CheckCircle size={14} className="text-green-400" />
+      <CheckCircle size={14} className="text-ok" />
     ) : (
-      <XCircle size={14} className="text-red-400" />
+      <XCircle size={14} className="text-err" />
     )}
-    <span className={`text-sm ${connected ? 'text-green-400' : 'text-red-400'}`}>{label}</span>
+    <span className={`text-sm ${connected ? 'text-ok' : 'text-err'}`}>{label}</span>
   </div>
 );
 
@@ -279,15 +279,15 @@ const LoadingSpinner: React.FC<{ message?: string }> = ({ message = 'Loading...'
 );
 
 const ErrorBanner: React.FC<{ message: string; onRetry?: () => void }> = ({ message, onRetry }) => (
-  <div className="glass-card p-4 border border-red-500/30 bg-red-500/5 flex items-center justify-between">
-    <div className="flex items-center gap-2 text-red-400">
+  <div className="glass-card p-4 border border-[color-mix(in_srgb,var(--color-err)_30%,transparent)] bg-[color-mix(in_srgb,var(--color-err)_5%,transparent)] flex items-center justify-between">
+    <div className="flex items-center gap-2 text-err">
       <XCircle size={16} />
       <span className="text-sm">{message}</span>
     </div>
     {onRetry && (
       <button
         onClick={onRetry}
-        className="text-xs px-3 py-1 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 transition-colors"
+        className="text-xs px-3 py-1 rounded bg-[color-mix(in_srgb,var(--color-err)_20%,transparent)] text-err hover:bg-[color-mix(in_srgb,var(--color-err)_30%,transparent)] transition-colors"
       >
         Retry
       </button>
@@ -563,7 +563,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
         {/* L1 - Redis Cache */}
         <div>
           <SectionHeader
-            icon={<Zap size={20} className="text-amber-400" />}
+            icon={<Zap size={20} className="text-warn" />}
             title="L1 - Redis Cache"
             description="In-memory key-value cache for session state, rate limits, and hot data"
           />
@@ -626,7 +626,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
         {/* L2 - pgvector Cache */}
         <div>
           <SectionHeader
-            icon={<Database size={20} className="text-blue-400" />}
+            icon={<Database size={20} className="text-info" />}
             title="L2 - pgvector Cache"
             description="Local ACID-compliant cache for tool results, verified outputs, and success records"
           />
@@ -644,7 +644,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
               ]).map(({ table, key, desc }) => (
                 <div key={table} className="p-4 rounded-lg bg-surface-secondary/50 border border-border/50">
                   <div className="flex items-center gap-2 mb-2">
-                    <Database size={14} className="text-blue-400" />
+                    <Database size={14} className="text-info" />
                     <span className="text-sm font-mono font-medium text-text-primary">{table}</span>
                   </div>
                   <p className="text-xs text-text-tertiary mb-2">{desc}</p>
@@ -719,9 +719,9 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
                     {mcpToolsStatus?.inSync ? (
-                      <CheckCircle size={16} className="text-green-400" />
+                      <CheckCircle size={16} className="text-ok" />
                     ) : (
-                      <AlertCircle size={16} className="text-yellow-400" />
+                      <AlertCircle size={16} className="text-warn" />
                     )}
                     <span className="text-sm text-text-primary font-medium">
                       MCP Tool Semantic Cache
@@ -736,7 +736,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
                 <div className="flex items-center gap-3">
                   {reindexResult && (
                     <span
-                      className={`text-xs ${reindexResult.success ? 'text-green-400' : 'text-red-400'}`}
+                      className={`text-xs ${reindexResult.success ? 'text-ok' : 'text-err'}`}
                     >
                       {reindexResult.message}
                     </span>
@@ -744,7 +744,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
                   <button
                     onClick={handleReindex}
                     disabled={reindexing}
-                    className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors disabled:opacity-50 flex items-center gap-2 text-sm"
+                    className="px-4 py-2 rounded-lg bg-primary-500 text-on-accent hover:bg-primary-600 transition-colors disabled:opacity-50 flex items-center gap-2 text-sm"
                   >
                     <RefreshCw size={14} className={reindexing ? 'animate-spin' : ''} />
                     {reindexing ? 'Reindexing...' : 'Reindex Tools'}
@@ -852,7 +852,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
                         </button>
                         <button
                           title="Delete"
-                          className="p-1.5 rounded hover:bg-red-500/10 transition-colors text-text-tertiary hover:text-red-400"
+                          className="p-1.5 rounded hover:bg-[color-mix(in_srgb,var(--color-err)_10%,transparent)] transition-colors text-text-tertiary hover:text-err"
                         >
                           <Trash size={14} />
                         </button>
@@ -922,7 +922,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
         {/* pgvector Tables */}
         <div>
           <SectionHeader
-            icon={<Database size={20} className="text-blue-400" />}
+            icon={<Database size={20} className="text-info" />}
             title="pgvector Tables"
             description="PostgreSQL tables with vector columns for local ACID-compliant cache"
           />
@@ -940,7 +940,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
               ]).map(({ table, key, desc, dimApprox }) => (
                 <div key={table} className="p-4 rounded-lg bg-surface-secondary/50 border border-border/50">
                   <div className="flex items-center gap-2 mb-2">
-                    <Database size={14} className="text-blue-400" />
+                    <Database size={14} className="text-info" />
                     <span className="text-sm font-mono font-medium text-text-primary">{table}</span>
                   </div>
                   <p className="text-xs text-text-tertiary mb-3">{desc}</p>
@@ -981,7 +981,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
         {/* Redis Diagnostics */}
         <div>
           <SectionHeader
-            icon={<Zap size={20} className="text-amber-400" />}
+            icon={<Zap size={20} className="text-warn" />}
             title="Redis Diagnostics"
             description="Connection health, memory fragmentation, persistence, and eviction"
           />
@@ -1068,7 +1068,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
                   </h4>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-text-tertiary">AOF</span>
-                    <span className={`font-mono ${redisMetrics.aof_enabled ? 'text-green-400' : 'text-text-tertiary'}`}>
+                    <span className={`font-mono ${redisMetrics.aof_enabled ? 'text-ok' : 'text-text-tertiary'}`}>
                       {redisMetrics.aof_enabled ? 'Enabled' : 'Disabled'}
                     </span>
                   </div>
@@ -1158,7 +1158,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
         {/* pgvector Diagnostics */}
         <div>
           <SectionHeader
-            icon={<Database size={20} className="text-blue-400" />}
+            icon={<Database size={20} className="text-info" />}
             title="pgvector Diagnostics"
             description="PostgreSQL extension health, connection pool, and version"
           />
@@ -1202,7 +1202,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
                 <div className="space-y-1 text-sm">
                   {['tool_result_cache', 'verified_tool_results', 'tool_success_records'].map((t) => (
                     <div key={t} className="flex items-center gap-2">
-                      <Database size={12} className="text-blue-400" />
+                      <Database size={12} className="text-info" />
                       <span className="font-mono text-text-secondary text-xs">{t}</span>
                     </div>
                   ))}
@@ -1230,7 +1230,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
                 onClick={() => setAutoRefreshInterval(interval)}
                 className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                   autoRefreshInterval === interval
-                    ? 'bg-primary-500 text-white'
+                    ? 'bg-primary-500 text-on-accent'
                     : 'bg-surface-secondary text-text-secondary hover:bg-surface-hover'
                 }`}
               >
@@ -1279,7 +1279,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
         {/* Global Totals Summary */}
         <div>
           <SectionHeader
-            icon={<Database size={20} className="text-blue-400" />}
+            icon={<Database size={20} className="text-info" />}
             title="Storage Totals"
             description="Aggregate row counts across pgvector and Milvus"
           />
@@ -1385,7 +1385,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
         {/* Per-User Vector Usage */}
         <div>
           <SectionHeader
-            icon={<Users size={20} className="text-cyan-400" />}
+            icon={<Users size={20} className="text-info" />}
             title="Usage by User"
             description="Per-user breakdown of vector storage across pgvector and Milvus"
           />
@@ -1495,7 +1495,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
         {vectorUsage.vectorCollections.length > 0 && (
           <div>
             <SectionHeader
-              icon={<Database size={20} className="text-green-400" />}
+              icon={<Database size={20} className="text-ok" />}
               title="User Vector Collections"
               description="Custom user-created vector collections in pgvector"
             />
@@ -1580,7 +1580,7 @@ export const UnifiedDataLayerView: React.FC<UnifiedDataLayerViewProps> = ({ them
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
               activeTab === tab.id
-                ? 'bg-primary-500 text-white'
+                ? 'bg-primary-500 text-on-accent'
                 : 'bg-surface-secondary text-text-secondary hover:bg-surface-hover'
             }`}
           >

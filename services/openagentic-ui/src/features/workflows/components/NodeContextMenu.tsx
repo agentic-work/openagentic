@@ -98,7 +98,7 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
             border: 'none',
             textAlign: 'left',
             cursor: item.disabled ? 'not-allowed' : 'pointer',
-            color: item.danger ? '#f44336' : 'inherit',
+            color: item.danger ? 'var(--color-error)' : 'inherit',
             opacity: item.disabled ? 0.5 : 1,
             borderRadius: 4,
             justifyContent: 'space-between',
@@ -111,7 +111,7 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
                 marginLeft: 16,
                 fontSize: 11,
                 color: 'var(--color-text-tertiary, #8b949e)',
-                fontFamily: 'ui-monospace, monospace',
+                fontFamily: 'var(--font-mono)',
               }}
             >
               {item.shortcut}

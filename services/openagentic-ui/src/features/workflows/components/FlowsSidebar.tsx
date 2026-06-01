@@ -248,14 +248,14 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({
 
   const executionStatusIcon = (status: string) => {
     if (status === 'completed') {
-      return <span className="text-green-500 font-bold text-xs leading-none">✓</span>;
+      return <span className="text-success font-bold text-xs leading-none">✓</span>;
     }
     if (status === 'failed') {
-      return <span className="text-red-500 font-bold text-xs leading-none">✗</span>;
+      return <span className="text-error font-bold text-xs leading-none">✗</span>;
     }
     // running / pending
     return (
-      <span className="inline-block w-3 h-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+      <span className="inline-block w-3 h-3 rounded-full border-2 border-warning border-t-transparent animate-spin" />
     );
   };
 
@@ -299,11 +299,11 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({
   const deployedWorkflows = useMemo(() => workflows.filter(w => w.status === 'active' && !w.is_template), [workflows]);
 
   const statusDot = (status: string) => {
-    const colors: Record<string, string> = { active: '#22c55e', running: '#ff9800', paused: '#9c27b0', draft: '#9e9e9e', archived: '#607d8b' };
+    const colors: Record<string, string> = { active: 'var(--color-success)', running: 'var(--color-warning)', paused: '#9c27b0', draft: 'var(--color-fg-muted)', archived: '#607d8b' };
     return (
       <span
         className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-        style={{ backgroundColor: colors[status] || '#9e9e9e' }}
+        style={{ backgroundColor: colors[status] || 'var(--color-fg-muted)' }}
       />
     );
   };

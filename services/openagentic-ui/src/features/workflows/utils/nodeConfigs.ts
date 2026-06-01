@@ -5,6 +5,11 @@
  * actions, logic, data, approval, and agent frameworks.
  */
 /* eslint-disable no-restricted-syntax -- Node type colors are intentional category indicators */
+// theme-allow: this file is the workflow node-TYPE identity color scale — per-node
+// `color`, `gradient`, and the port-type color map. These are the categorical/vendor
+// identity hues the theme spec explicitly carves out (the "node-TYPE colors → named
+// token scale" allowlist item), not themeable app surfaces. Several are vendor brand
+// colors (Slack #4a154b, Teams #6264A7, Jira #0052CC, Discord #5865F2, Outlook #0078d4).
 
 import { NodeTypeConfig, PortType, PortDefinition } from '../types/workflow.types';
 

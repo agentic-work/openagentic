@@ -33,9 +33,9 @@ interface WorkflowSecret {
 }
 
 const scopeColors: Record<string, string> = {
-  global: '#2196f3',
-  group: '#9c27b0',
-  workflow: '#ff9800',
+  global: 'var(--color-info)',
+  group: 'var(--color-accent)',
+  workflow: 'var(--color-warning)',
 };
 
 const scopeIcons: Record<string, React.ReactNode> = {
@@ -235,7 +235,7 @@ export const CredentialsSection: React.FC<CredentialsSectionProps> = ({ workflow
                   className="w-full py-1 text-[12px] font-medium rounded transition-colors disabled:opacity-50"
                   style={{
                     backgroundColor: 'var(--user-accent-primary, #2196f3)',
-                    color: '#fff',
+                    color: 'var(--color-on-accent)',
                   }}
                 >
                   {saving ? 'Saving...' : 'Add Secret'}
@@ -284,7 +284,7 @@ export const CredentialsSection: React.FC<CredentialsSectionProps> = ({ workflow
                   title={`Copy {{secret:${secret.name}}}`}
                 >
                   {copiedId === secret.id ? (
-                    <Check className="w-3 h-3" style={{ color: '#22c55e' }} />
+                    <Check className="w-3 h-3" style={{ color: 'var(--color-success)' }} />
                   ) : (
                     <Copy className="w-3 h-3" />
                   )}
@@ -310,7 +310,7 @@ export const CredentialsSection: React.FC<CredentialsSectionProps> = ({ workflow
                 <span
                   className="inline-block w-2 h-2 rounded-full flex-shrink-0"
                   style={{
-                    backgroundColor: server.status === 'connected' || server.isConnected ? '#22c55e' : '#ef5350',
+                    backgroundColor: server.status === 'connected' || server.isConnected ? 'var(--color-success)' : 'var(--color-error)',
                   }}
                 />
                 <span className="text-[12px] flex-1 truncate" style={{ color: 'var(--color-text)' }}>

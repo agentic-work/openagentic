@@ -23,7 +23,7 @@ const AADLogin: React.FC<AADLoginProps> = ({
           // Azure AD login flow is handled by AuthContext
           onLoginSuccess?.();
         }}
-        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        className="flex items-center gap-2 px-4 py-2 bg-accent text-on-accent rounded-lg hover:opacity-90 transition-colors"
       >
         Sign in with Microsoft
       </button>

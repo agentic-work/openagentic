@@ -45,20 +45,20 @@ const Notification: React.FC<NotificationProps> = ({
   };
 
   return (
-    // M3 Expressive: rounded-toast (14px), soft-lg shadow, slide-in from
-    // bottom-right over 300ms ease-out.
+    // Neo-brutalist toast: 2px ink border, sharp corners, hard offset shadow,
+    // slide-in from bottom-right over 300ms ease-out.
     <motion.div
       initial={{ opacity: 0, x: 24, y: 12 }}
       animate={{ opacity: 1, x: 0, y: 0 }}
       exit={{ opacity: 0, x: 24, transition: { duration: 0.2 } }}
       transition={{ duration: 0.3, ease: [0, 0, 0.2, 1] }}
-      className={`${colors[type]} text-white p-4 rounded-toast shadow-soft-lg flex items-center gap-3 min-w-[300px] max-w-[500px]`}
+      className={`${colors[type]} text-on-accent border-ink shadow-hard-sm p-4 flex items-center gap-3 min-w-[300px] max-w-[500px]`}
     >
       {icons[type]}
       <p className="flex-1">{message}</p>
       <button
         onClick={() => onClose(id)}
-        className="hover:bg-white/20 rounded-btn p-1 transition-[background,transform] duration-200 ease-emphasized active:scale-[0.98]"
+        className="hover:opacity-80 rounded-btn p-1 transition-[opacity,transform] duration-200 ease-emphasized active:scale-[0.98]"
       >
         <X size={16} />
       </button>

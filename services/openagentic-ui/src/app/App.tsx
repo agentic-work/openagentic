@@ -87,7 +87,7 @@ const MagicLinkHandler: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center glass-card" style={{ padding: 32, maxWidth: 420 }}>
         {error
-          ? <div style={{ color: 'var(--color-warning, #f59e0b)' }}>Autologin failed: {error}. Redirecting to login…</div>
+          ? <div style={{ color: 'var(--color-warning)' }}>Autologin failed: {error}. Redirecting to login…</div>
           : <>
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
               <p className="mt-4 text-text-secondary">Signing you in…</p>
@@ -339,7 +339,7 @@ function AppContent(): React.ReactElement {
               <Route
                 path="/dev/v2-primitives"
                 element={
-                  <React.Suspense fallback={<div style={{ padding: 24, color: '#8b949e' }}>Loading showcase…</div>}>
+                  <React.Suspense fallback={<div style={{ padding: 24, color: 'var(--color-fg-muted)' }}>Loading showcase…</div>}>
                     <PrimitivesShowcase />
                   </React.Suspense>
                 }

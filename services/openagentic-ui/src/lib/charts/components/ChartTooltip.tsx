@@ -74,7 +74,7 @@ export function ChartTooltip({ title, rows, x, y, anchor, visible }: ChartToolti
         fontSize: 11,
         color: tokens.fg1,
         zIndex: 100,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+        boxShadow: 'var(--shadow-sm)',
         minWidth: 160,
         maxWidth: 320,
       }}

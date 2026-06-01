@@ -133,7 +133,7 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
               style={{
                 padding: '10px 16px',
                 borderBottom: '1px solid var(--border-primary, #27272a)',
-                background: isCurrent ? 'rgba(129,140,248,0.05)' : 'transparent',
+                background: isCurrent ? 'color-mix(in srgb, var(--color-accent) 5%, transparent)' : 'transparent',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -143,7 +143,7 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
                     fontSize: 12,
                     fontWeight: 700,
                     color: isCurrent ? 'var(--accent-primary, #818cf8)' : 'var(--text-primary, #e4e4e7)',
-                    fontFamily: 'monospace',
+                    fontFamily: 'var(--font-mono)',
                   }}
                 >
                   v{version.version}
@@ -152,7 +152,7 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
                   <span style={{
                     fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
                     color: 'var(--accent-primary, #818cf8)',
-                    background: 'rgba(129,140,248,0.15)',
+                    background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
                     padding: '1px 5px', borderRadius: 3,
                     letterSpacing: '0.04em',
                   }}>
@@ -195,9 +195,9 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
                     onClick={() => handleRestoreClick(version)}
                     style={{
                       fontSize: 11, padding: '3px 10px', borderRadius: 5,
-                      border: '1px solid rgba(249,115,22,0.3)',
-                      background: 'rgba(249,115,22,0.08)',
-                      color: '#f97316',
+                      border: '1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)',
+                      background: 'color-mix(in srgb, var(--color-warning) 8%, transparent)',
+                      color: 'var(--color-warning)',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
@@ -267,9 +267,9 @@ export const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
                   data-testid="restore-confirm-button"
                   style={{
                     padding: '6px 14px', borderRadius: 6, fontSize: 12,
-                    border: '1px solid rgba(249,115,22,0.3)',
-                    background: 'rgba(249,115,22,0.15)',
-                    color: '#f97316',
+                    border: '1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)',
+                    background: 'color-mix(in srgb, var(--color-warning) 15%, transparent)',
+                    color: 'var(--color-warning)',
                     cursor: 'pointer',
                     fontWeight: 600,
                   }}

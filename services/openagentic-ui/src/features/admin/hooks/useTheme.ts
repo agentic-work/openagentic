@@ -16,61 +16,15 @@ const AC_ACCENT_KEY = 'ac-accent-color'
 const OpenAgentic_THEME_KEY = 'openagentic-theme'
 const OpenAgentic_ACCENT_KEY = 'openagentic-accent'
 
-// Bridge — when the admin theme picker flips dark↔light, also rewrite
-// the legacy `--color-*` inline tokens that ThemeContext.applyTheme set
-// on app boot. Without this, those inline values stay stuck at the
-// initial theme and any DashboardOverview / chat surface that reads
-// var(--color-surface) refuses to switch with the rest of the admin
-// chrome. Values must mirror `themes.dark` / `themes.light` in
-// contexts/ThemeContext.jsx — keep them in sync.
-const LEGACY_COLOR_TOKENS: Record<Theme, Record<string, string>> = {
-  dark: {
-    primary: 'var(--user-accent-primary, #FF5722)',
-    secondary: 'var(--user-accent-secondary, #FFB87E)',
-    accent: 'var(--user-accent-color, #FF5722)',
-    success: '#22C55E',
-    warning: '#F59E0B',
-    error: '#FF453A',
-    background: '#18130C',
-    surface: '#211A11',
-    surfaceHover: '#2C2418',
-    surfaceSecondary: '#2C2418',
-    surfaceTertiary: '#392F20',
-    text: '#F4EFE6',
-    textSecondary: '#CDC4B2',
-    textMuted: '#968B76',
-    border: 'rgba(244, 239, 230, 0.08)',
-    borderHover: 'rgba(244, 239, 230, 0.16)',
-    shadow: '0 2px 8px rgba(0, 0, 0, 0.35)',
-  },
-  light: {
-    primary: 'var(--user-accent-primary, #FF5722)',
-    secondary: 'var(--user-accent-secondary, #E8835A)',
-    accent: 'var(--user-accent-color, #B83A0E)',
-    success: '#16A34A',
-    warning: '#B45309',
-    error: '#DC2626',
-    background: '#F4EFE6',
-    surface: '#EFE9DD',
-    surfaceHover: '#E2DACB',
-    surfaceSecondary: '#E2DACB',
-    surfaceTertiary: '#DBD3BF',
-    text: '#0E0D0B',
-    textSecondary: '#46402F',
-    textMuted: '#7A7058',
-    border: 'rgba(14, 13, 11, 0.10)',
-    borderHover: 'rgba(14, 13, 11, 0.18)',
-    shadow: '0 2px 8px rgba(46, 36, 20, 0.10)',
-  },
-}
-
-function applyLegacyColorTokens(theme: Theme) {
+// ONE-SOT migration: the hardcoded LEGACY_COLOR_TOKENS map (a 4th copy of the
+// dark/light palette, hand-synced with ThemeContext) is DELETED. The canonical
+// --color-* tokens now live ONLY in src/styles/theme.css, keyed on
+// [data-theme], so flipping the attribute repaints every surface — no inline
+// setProperty of palette values needed. This hook now only toggles
+// [data-theme] (+ the legacy .dark/.light class some shared chat components
+// still read off of).
+function applyThemeClass(theme: Theme) {
   const root = document.documentElement
-  const tokens = LEGACY_COLOR_TOKENS[theme]
-  for (const [key, value] of Object.entries(tokens)) {
-    root.style.setProperty(`--color-${key}`, value)
-  }
-  // Tailwind dark-mode marker — some shared chat components key off the class
   if (theme === 'dark') {
     root.classList.add('dark')
     root.classList.remove('light')
@@ -164,12 +118,9 @@ export function useTheme() {
   // are silently ignored by those rules. We keep body in sync for any
   // legacy CSS that targets `body[data-theme=...]` (admin-overhaul, etc).
   //
-  // ALSO mirror the legacy --color-* tokens that ThemeContext.applyTheme
-  // writes as INLINE styles. Without this bridge, switching the admin
-  // theme picker only flips data-theme — the inline --color-surface /
-  // --color-background / --color-text values stay stuck at whatever
-  // ThemeContext set on app boot, so DashboardOverview cards (which
-  // read var(--color-surface), not --bg-1) refuse to switch theme.
+  // The canonical --color-* tokens flip purely off [data-theme] (theme.css
+  // owns them now), so we just set the attribute on <html> + <body> and the
+  // whole surface — DashboardOverview cards included — repaints.
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     document.body.dataset.theme = theme
@@ -179,7 +130,7 @@ export function useTheme() {
       const ac = localStorage.getItem(AC_THEME_KEY)
       if (ac !== 'system') localStorage.setItem(AC_THEME_KEY, theme)
     } catch { /* ignore */ }
-    applyLegacyColorTokens(theme)
+    applyThemeClass(theme)
   }, [theme])
 
   useEffect(() => {

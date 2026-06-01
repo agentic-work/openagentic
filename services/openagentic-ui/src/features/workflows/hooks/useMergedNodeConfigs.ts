@@ -25,7 +25,7 @@ function schemaToNodeConfig(schema: RegistryNodeSchema): NodeTypeConfig {
     label: schema.label,
     description: schema.description,
     icon: schema.icon ?? '',
-    color: '#6b7280', // neutral fallback — schema doesn't carry color (yet)
+    color: 'var(--color-fg-subtle)', // neutral fallback — schema doesn't carry color (yet)
     category: schema.category as NodeTypeConfig['category'],
     defaultData: {},
     inputs: schema.ports?.inputs?.map(p => ({

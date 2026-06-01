@@ -33,7 +33,7 @@ export const TieredFcPane: React.FC = () => {
           border: '1px solid var(--line-1)',
         }}
       >
-        <div style={{ color: 'var(--fg-1)', fontFamily: 'var(--font-v3-mono)', fontSize: 12 }}>
+        <div style={{ color: 'var(--fg-1)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
           FCA floor knobs
         </div>
         <div style={{ color: 'var(--fg-2)', fontSize: 12 }}>

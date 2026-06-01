@@ -108,7 +108,7 @@ export const BaseModal: React.FC<BaseModalProps> = ({
             className="fixed inset-0"
             style={{
               zIndex: MODAL_CONFIG.zIndex.backdrop,
-              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              backgroundColor: 'color-mix(in srgb, var(--color-shadow) 70%, transparent)',
               backdropFilter: 'blur(8px)',
             }}
             onClick={handleBackdropClick}
@@ -121,8 +121,8 @@ export const BaseModal: React.FC<BaseModalProps> = ({
             style={{ zIndex: MODAL_CONFIG.zIndex.modal }}
             onClick={handleBackdropClick}
           >
-            {/* Modal — M3 Expressive: 24px panel radius, surface-2 bg,
-                soft-lg shadow, fade+scale enter (0.96→1, 200ms). */}
+            {/* Modal — neo-brutalist: sharp corners, 2px ink border-strong,
+                hard zero-blur offset shadow, fade+scale enter (0.96→1, 200ms). */}
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -132,12 +132,14 @@ export const BaseModal: React.FC<BaseModalProps> = ({
                 ease: [0.2, 0, 0, 1], // --ease-emphasized
               }}
               className={`
-                w-full ${MODAL_CONFIG.sizes[size]} rounded-panel overflow-hidden
+                w-full ${MODAL_CONFIG.sizes[size]} overflow-hidden
                 ${className}
               `}
               style={{
-                backgroundColor: 'var(--surface-2)',
-                boxShadow: 'var(--shadow-soft-lg)',
+                backgroundColor: 'var(--color-surface)',
+                border: 'var(--border-w, 2px) solid var(--color-rule-strong)',
+                borderRadius: 'var(--radius-card, 0px)',
+                boxShadow: 'var(--shadow-card-lg)',
               }}
               role="dialog"
               aria-modal="true"
@@ -243,12 +245,12 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   const confirmButtonStyle =
     confirmVariant === 'danger'
       ? {
-          backgroundColor: 'rgb(239, 68, 68)',
-          color: 'white',
+          backgroundColor: 'var(--color-err)',
+          color: 'var(--color-on-accent)',
         }
       : {
-          backgroundColor: 'var(--color-primary)',
-          color: 'white',
+          backgroundColor: 'var(--color-accent)',
+          color: 'var(--color-on-accent)',
         };
 
   return (

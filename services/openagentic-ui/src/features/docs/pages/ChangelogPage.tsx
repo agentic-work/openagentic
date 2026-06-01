@@ -223,7 +223,7 @@ const ChangelogPage: React.FC = () => (
               {release.current && (
                 <span
                   className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                  style={{ backgroundColor: '#22c55e20', color: '#22c55e' }}
+                  style={{ backgroundColor: 'color-mix(in srgb, var(--color-success) 12%, transparent)', color: 'var(--color-success)' }}
                 >
                   CURRENT
                 </span>

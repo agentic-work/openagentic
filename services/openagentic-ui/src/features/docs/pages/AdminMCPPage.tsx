@@ -312,7 +312,7 @@ const AdminMCPPage: React.FC = () => {
                   <td style={{ padding: '10px 16px' }}>
                     <span style={{
                       fontSize: '11px', fontWeight: 700, fontFamily: 'var(--font-mono)',
-                      color: ep.method === 'GET' ? '#22c55e' : ep.method === 'POST' ? '#3b82f6' : ep.method === 'PUT' ? '#f59e0b' : '#ef4444',
+                      color: ep.method === 'GET' ? 'var(--color-success)' : ep.method === 'POST' ? 'var(--color-info)' : ep.method === 'PUT' ? 'var(--color-warning)' : 'var(--color-error)',
                     }}>
                       {ep.method}
                     </span>

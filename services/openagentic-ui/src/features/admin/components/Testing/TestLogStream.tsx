@@ -65,7 +65,7 @@ export default function TestLogStream({ entries, onClear }: Props) {
         flex: 1,
         overflow: 'auto',
         padding: '8px 12px',
-        fontFamily: "'SF Mono', 'Cascadia Code', 'JetBrains Mono', monospace",
+        fontFamily: 'var(--font-code)',
         fontSize: 12,
         lineHeight: '20px',
       }}>

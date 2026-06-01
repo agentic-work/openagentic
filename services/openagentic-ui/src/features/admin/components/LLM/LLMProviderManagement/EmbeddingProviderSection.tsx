@@ -114,7 +114,7 @@ export const EmbeddingProviderSection: React.FC<{
       )}
 
       {testResult && (
-        <div className={`mt-3 p-3 rounded-lg text-xs ${testResult.success ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+        <div className={`mt-3 p-3 rounded-lg text-xs ${testResult.success ? 'bg-[color-mix(in_srgb,var(--color-ok)_10%,transparent)] text-ok' : 'bg-[color-mix(in_srgb,var(--color-err)_10%,transparent)] text-err'}`}>
           {testResult.success
             ? `${testResult.provider} / ${testResult.model} — ${testResult.dimensions}d, ${testResult.latencyMs}ms`
             : `Error: ${testResult.error}`

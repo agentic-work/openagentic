@@ -20,7 +20,7 @@ const inputStyle: React.CSSProperties = {
   width: '100%',
   height: 28,
   padding: '0 8px',
-  fontFamily: 'var(--font-v3-mono)',
+  fontFamily: 'var(--font-mono)',
   fontSize: 12,
   background: 'var(--bg-0)',
   border: '1px solid var(--line-1)',

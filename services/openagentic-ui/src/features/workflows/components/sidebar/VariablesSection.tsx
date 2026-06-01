@@ -26,11 +26,11 @@ interface VariableEntry {
 }
 
 const typeColors: Record<VariableType, string> = {
-  string: '#2196f3',
-  number: '#ff9800',
-  boolean: '#22c55e',
-  json: '#9c27b0',
-  secret_ref: '#ef5350',
+  string: 'var(--color-info)',
+  number: 'var(--color-warning)',
+  boolean: 'var(--color-success)',
+  json: 'var(--color-accent)',
+  secret_ref: 'var(--color-error)',
 };
 
 const COMMON_EXPRESSIONS = [
@@ -202,7 +202,7 @@ export const VariablesSection: React.FC<VariablesSectionProps> = ({ variables, o
                   title={`Copy {{variables.${entry.key}}}`}
                 >
                   {copiedKey === entry.key ? (
-                    <Check className="w-3 h-3" style={{ color: '#22c55e' }} />
+                    <Check className="w-3 h-3" style={{ color: 'var(--color-success)' }} />
                   ) : (
                     <Copy className="w-3 h-3" />
                   )}
@@ -268,7 +268,7 @@ export const VariablesSection: React.FC<VariablesSectionProps> = ({ variables, o
                         {ce.expr}
                       </code>
                       {copiedKey === ce.expr ? (
-                        <Check className="w-2.5 h-2.5" style={{ color: '#22c55e' }} />
+                        <Check className="w-2.5 h-2.5" style={{ color: 'var(--color-success)' }} />
                       ) : (
                         <Copy className="w-2.5 h-2.5" style={{ color: 'var(--color-text-tertiary, #999)' }} />
                       )}

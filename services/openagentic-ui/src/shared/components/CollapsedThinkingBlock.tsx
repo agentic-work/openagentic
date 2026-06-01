@@ -169,7 +169,7 @@ export const CollapsedThinkingBlock: React.FC<CollapsedThinkingBlockProps> = ({
       >
         {/* Chevron toggle (▶/▼) + optional streaming indicator */}
         <span style={{
-          color: 'var(--cm-muted, #6e7681)',
+          color: 'var(--color-fg-subtle)',
           display: 'flex',
           alignItems: 'center',
           flexShrink: 0,
@@ -187,12 +187,12 @@ export const CollapsedThinkingBlock: React.FC<CollapsedThinkingBlockProps> = ({
 
         {/* Status text */}
         {isStreaming ? (
-          <span style={{ color: 'var(--cm-accent, #d4a574)' }}>
+          <span style={{ color: 'var(--color-accent)' }}>
             Thinking
             {displayElapsed > 0 && (
               <span style={{
                 marginLeft: 8,
-                color: 'var(--cm-muted, #8b949e)',
+                color: 'var(--color-fg-subtle)',
                 fontSize: variant === 'minimal' ? 10 : 11,
               }}>
                 {formatTime(displayElapsed)}
@@ -201,12 +201,12 @@ export const CollapsedThinkingBlock: React.FC<CollapsedThinkingBlockProps> = ({
           </span>
         ) : (
           <>
-            <span style={{ color: 'var(--cm-muted, #8b949e)', flexShrink: 0 }}>
+            <span style={{ color: 'var(--color-fg-subtle)', flexShrink: 0 }}>
               Thought for {formatTime(displayElapsed)}
             </span>
             {displayTokens > 0 && (
               <span style={{
-                color: 'var(--cm-muted, #6e7681)',
+                color: 'var(--color-fg-subtle)',
                 fontSize: variant === 'minimal' ? 10 : 11,
                 marginLeft: 4,
                 flexShrink: 0,
@@ -218,7 +218,7 @@ export const CollapsedThinkingBlock: React.FC<CollapsedThinkingBlockProps> = ({
             {/* Content preview — shown when collapsed, hidden when expanded */}
             {!isExpanded && previewText && (
               <span style={{
-                color: 'var(--cm-muted, #6e7681)',
+                color: 'var(--color-fg-subtle)',
                 fontSize: variant === 'minimal' ? 10 : 11,
                 marginLeft: 8,
                 opacity: 0.6,
@@ -250,7 +250,7 @@ export const CollapsedThinkingBlock: React.FC<CollapsedThinkingBlockProps> = ({
             marginTop: 4,
             padding: '6px 10px',
             background: 'transparent',
-            borderLeft: '2px solid var(--cm-accent, color-mix(in srgb, var(--user-accent-primary) 40%, transparent))',
+            borderLeft: '2px solid var(--color-accent-line)',
             borderRadius: 0,
             maxHeight: 300,
             overflowY: 'auto',
@@ -262,7 +262,7 @@ export const CollapsedThinkingBlock: React.FC<CollapsedThinkingBlockProps> = ({
               fontSize: variant === 'minimal' ? 11 : 12,
               fontFamily: 'inherit',
               fontStyle: 'italic',
-              color: 'var(--cm-muted, #8b949e)',
+              color: 'var(--color-fg-subtle)',
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
               lineHeight: 1.6,
@@ -281,8 +281,8 @@ export const CollapsedThinkingBlock: React.FC<CollapsedThinkingBlockProps> = ({
             marginLeft: variant === 'minimal' ? 16 : 20,
             marginTop: 8,
             padding: '8px 12px',
-            background: 'var(--cm-surface, rgba(212, 165, 116, 0.08))',
-            borderLeft: '2px solid var(--cm-accent, color-mix(in srgb, var(--user-accent-primary) 40%, transparent))',
+            background: 'var(--color-accent-soft)',
+            borderLeft: '2px solid var(--color-accent-line)',
             borderRadius: 0,
             maxHeight: 200,
             overflowY: 'auto',
@@ -294,7 +294,7 @@ export const CollapsedThinkingBlock: React.FC<CollapsedThinkingBlockProps> = ({
               fontSize: variant === 'minimal' ? 11 : 12,
               fontFamily: 'inherit',
               fontStyle: 'italic',
-              color: 'var(--cm-muted, #d4a574)',
+              color: 'var(--color-accent)',
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
               lineHeight: 1.6,
@@ -307,7 +307,7 @@ export const CollapsedThinkingBlock: React.FC<CollapsedThinkingBlockProps> = ({
                 display: 'inline-block',
                 width: 6,
                 height: 14,
-                background: 'var(--cm-accent, #d4a574)',
+                background: 'var(--color-accent)',
                 borderRadius: 1,
                 marginLeft: 2,
                 verticalAlign: 'text-bottom',

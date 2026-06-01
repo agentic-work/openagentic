@@ -411,7 +411,7 @@ const ArchitecturePage: React.FC = () => {
                   marginTop: '8px',
                   fontSize: '12px',
                   color: 'var(--color-textMuted)',
-                  fontFamily: 'monospace',
+                  fontFamily: 'var(--font-mono)',
                 }}
               >
                 {link.href}

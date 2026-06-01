@@ -19,15 +19,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--color-bg) 60%, transparent)' }}>
+      <div className="bg-surface border-ink shadow-hard p-6 w-full max-w-2xl">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Settings</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <h2 className="text-lg font-semibold text-text">Settings</h2>
+          <button onClick={onClose} className="text-text-muted hover:text-text">
             Close
           </button>
         </div>
-        <p className="text-gray-500">Settings panel content</p>
+        <p className="text-text-muted">Settings panel content</p>
       </div>
     </div>
   );

@@ -73,15 +73,18 @@ function Metaball({ position, scale, speed = 1, color1, color2 }) {
 
 function Scene() {
   const { viewport } = useThree()
-  const [lavaColor1, setLavaColor1] = useState('#A855F7')
-  const [lavaColor2, setLavaColor2] = useState('#3B82F6')
+  // theme-allow: brand signal-orange / signal-soft snapshots for the WebGL
+  // material color (3D shader needs resolved colors; derived from the accent).
+  const [lavaColor1, setLavaColor1] = useState('#FF5722')
+  const [lavaColor2, setLavaColor2] = useState('#FFB87E')
 
   // Update colors from CSS variables
   useEffect(() => {
     const updateColors = () => {
       const root = document.documentElement;
-      const color1 = getComputedStyle(root).getPropertyValue('--lava-color-1').trim() || '#A855F7';
-      const color2 = getComputedStyle(root).getPropertyValue('--lava-color-2').trim() || '#3B82F6';
+      const accent = getComputedStyle(root).getPropertyValue('--color-accent').trim();
+      const color1 = getComputedStyle(root).getPropertyValue('--lava-color-1').trim() || accent || '#FF5722';
+      const color2 = getComputedStyle(root).getPropertyValue('--lava-color-2').trim() || '#FFB87E';
 
       // Only update if colors actually changed
       if (color1 !== lavaColor1 || color2 !== lavaColor2) {
@@ -130,8 +133,8 @@ function Scene() {
         <Metaball key={i} {...props} color1={lavaColor1} color2={lavaColor2} />
       ))}
 
-      {/* Background fog effect */}
-      <fog attach="fog" args={['#0a0a0a', 5, 15]} />
+      {/* Background fog effect — theme-allow: brand terminal-bg snapshot (3D fog needs a resolved color) */}
+      <fog attach="fog" args={['#18130C', 5, 15]} />
     </>
   )
 }
@@ -161,7 +164,9 @@ export default function WebGLBackground() {
       <div
         className="absolute inset-0"
         style={{
-          background: isLightTheme ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.65)',
+          background: isLightTheme
+            ? 'color-mix(in srgb, var(--color-bg) 85%, transparent)'
+            : 'color-mix(in srgb, var(--color-shadow) 65%, transparent)',
           backdropFilter: 'blur(80px) saturate(150%)',
           WebkitBackdropFilter: 'blur(80px) saturate(150%)',
         }}
@@ -227,7 +232,7 @@ export default function WebGLBackground() {
       </div>
 
       {/* Additional gradient for better text readability at edges */}
-      <div className="absolute inset-0 bg-gradient-radial from-transparent via-black/20 to-black/40 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-radial from-transparent via-[var(--color-shadow)]/20 to-[var(--color-shadow)]/40 pointer-events-none" />
     </div>
   )
 }

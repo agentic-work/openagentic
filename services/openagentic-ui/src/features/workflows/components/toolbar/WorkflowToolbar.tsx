@@ -178,9 +178,9 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
                 onClick={handleCancelConfirm}
                 style={{
                   padding: '6px 14px', borderRadius: 6, fontSize: 12,
-                  background: 'rgba(244,67,54,0.15)',
-                  border: '1px solid rgba(244,67,54,0.3)',
-                  color: '#f44336',
+                  background: 'color-mix(in srgb, var(--color-error) 15%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--color-error) 30%, transparent)',
+                  color: 'var(--color-error)',
                   cursor: 'pointer',
                   fontWeight: 600,
                 }}
@@ -267,9 +267,9 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
                 onClick={handleChangelogSubmit}
                 style={{
                   padding: '6px 14px', borderRadius: 6, fontSize: 12,
-                  background: 'rgba(33,150,243,0.15)',
-                  border: '1px solid rgba(33,150,243,0.3)',
-                  color: '#2196f3',
+                  background: 'color-mix(in srgb, var(--color-info) 15%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--color-info) 30%, transparent)',
+                  color: 'var(--color-info)',
                   cursor: 'pointer',
                   fontWeight: 600,
                 }}
@@ -311,10 +311,10 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
           <div className="text-[11px] px-2" style={{ color: 'var(--color-text-tertiary, #999)' }}>
             {nodeCount} nodes &middot; {edgeCount} connections
             {executionProgress && isExecuting && (
-              <span style={{ marginLeft: 8, color: '#ff9800', fontWeight: 600 }}>
+              <span style={{ marginLeft: 8, color: 'var(--color-warning)', fontWeight: 600 }}>
                 {executionProgress.completed}/{executionProgress.total} complete
-                {executionProgress.running > 0 && <span style={{ color: '#d29922' }}> · {executionProgress.running} running</span>}
-                {executionProgress.failed > 0 && <span style={{ color: '#f44336' }}> · {executionProgress.failed} failed</span>}
+                {executionProgress.running > 0 && <span style={{ color: 'var(--color-warning)' }}> · {executionProgress.running} running</span>}
+                {executionProgress.failed > 0 && <span style={{ color: 'var(--color-error)' }}> · {executionProgress.failed} failed</span>}
               </span>
             )}
           </div>
@@ -331,9 +331,9 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
             onClick={onToggleAIBuilder}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium text-sm border"
             style={{
-              background: showAIBuilder ? 'rgba(124,77,255,0.08)' : 'transparent',
-              borderColor: showAIBuilder ? 'rgba(124,77,255,0.3)' : 'var(--wf-node-border)',
-              color: showAIBuilder ? '#7c4dff' : 'var(--color-text-secondary, #666)',
+              background: showAIBuilder ? 'color-mix(in srgb, var(--color-accent) 8%, transparent)' : 'transparent',
+              borderColor: showAIBuilder ? 'color-mix(in srgb, var(--color-accent) 30%, transparent)' : 'var(--wf-node-border)',
+              color: showAIBuilder ? 'var(--color-accent)' : 'var(--color-text-secondary, #666)',
             }}
           >
             <Sparkles className="w-4 h-4" />
@@ -387,17 +387,17 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
               !canExecute || isValidating ? 'opacity-60 cursor-not-allowed' : ''
             }`}
             style={{
-              background: isValidating ? 'rgba(33,150,243,0.08)'
-                : validationResult?.valid === true ? 'rgba(34, 197, 94,0.08)'
-                : validationResult?.valid === false ? 'rgba(245,158,11,0.08)'
+              background: isValidating ? 'color-mix(in srgb, var(--color-info) 8%, transparent)'
+                : validationResult?.valid === true ? 'color-mix(in srgb, var(--color-success) 8%, transparent)'
+                : validationResult?.valid === false ? 'color-mix(in srgb, var(--color-warning) 8%, transparent)'
                 : 'transparent',
-              borderColor: isValidating ? 'rgba(33,150,243,0.3)'
-                : validationResult?.valid === true ? 'rgba(34, 197, 94,0.3)'
-                : validationResult?.valid === false ? 'rgba(245,158,11,0.3)'
+              borderColor: isValidating ? 'color-mix(in srgb, var(--color-info) 30%, transparent)'
+                : validationResult?.valid === true ? 'color-mix(in srgb, var(--color-success) 30%, transparent)'
+                : validationResult?.valid === false ? 'color-mix(in srgb, var(--color-warning) 30%, transparent)'
                 : 'var(--wf-node-border)',
-              color: isValidating ? '#2196f3'
-                : validationResult?.valid === true ? '#22c55e'
-                : validationResult?.valid === false ? '#f59e0b'
+              color: isValidating ? 'var(--color-info)'
+                : validationResult?.valid === true ? 'var(--color-success)'
+                : validationResult?.valid === false ? 'var(--color-warning)'
                 : 'var(--color-text-secondary, #666)',
             }}
             title="Validate all nodes have required configuration"
@@ -452,9 +452,9 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
             data-testid="workflow-pause-button"
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium text-sm border"
             style={{
-              background: 'rgba(255,152,0,0.08)',
-              borderColor: 'rgba(255,152,0,0.3)',
-              color: '#ff9800',
+              background: 'color-mix(in srgb, var(--color-warning) 8%, transparent)',
+              borderColor: 'color-mix(in srgb, var(--color-warning) 30%, transparent)',
+              color: 'var(--color-warning)',
             }}
             title="Pause execution"
           >
@@ -471,9 +471,9 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
             data-testid="workflow-resume-button"
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium text-sm border"
             style={{
-              background: 'rgba(34,197,94,0.08)',
-              borderColor: 'rgba(34,197,94,0.3)',
-              color: '#22c55e',
+              background: 'color-mix(in srgb, var(--color-success) 8%, transparent)',
+              borderColor: 'color-mix(in srgb, var(--color-success) 30%, transparent)',
+              color: 'var(--color-success)',
             }}
             title="Resume execution"
           >
@@ -491,9 +491,9 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
             data-testid="workflow-cancel-button"
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium text-sm border"
             style={{
-              background: 'rgba(244,67,54,0.08)',
-              borderColor: 'rgba(244,67,54,0.3)',
-              color: '#f44336',
+              background: 'color-mix(in srgb, var(--color-error) 8%, transparent)',
+              borderColor: 'color-mix(in srgb, var(--color-error) 30%, transparent)',
+              color: 'var(--color-error)',
             }}
             title="Cancel execution"
           >
@@ -516,7 +516,7 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
             isExecuting || isValidating || !canExecute ? 'opacity-40 cursor-not-allowed' : ''
           }`}
           style={{
-            background: isExecuting || isValidating || !canExecute ? 'var(--wf-node-border)' : '#22c55e',
+            background: isExecuting || isValidating || !canExecute ? 'var(--wf-node-border)' : 'var(--color-success)',
             color: isExecuting || isValidating || !canExecute ? 'var(--color-text-tertiary, #999)' : '#fff',
           }}
         >
@@ -537,9 +537,9 @@ export const WorkflowToolbar: React.FC<WorkflowToolbarProps> = ({
             isSaving ? 'opacity-50 cursor-not-allowed' : ''
           }`}
           style={{
-            background: saveStatus === 'saved' ? 'rgba(34, 197, 94,0.08)' : saveStatus === 'error' ? 'rgba(244,67,54,0.08)' : 'rgba(33,150,243,0.08)',
-            color: saveStatus === 'saved' ? '#22c55e' : saveStatus === 'error' ? '#f44336' : '#2196f3',
-            borderColor: saveStatus === 'saved' ? 'rgba(34, 197, 94,0.3)' : saveStatus === 'error' ? 'rgba(244,67,54,0.3)' : 'rgba(33,150,243,0.3)',
+            background: saveStatus === 'saved' ? 'color-mix(in srgb, var(--color-success) 8%, transparent)' : saveStatus === 'error' ? 'color-mix(in srgb, var(--color-error) 8%, transparent)' : 'color-mix(in srgb, var(--color-info) 8%, transparent)',
+            color: saveStatus === 'saved' ? 'var(--color-success)' : saveStatus === 'error' ? 'var(--color-error)' : 'var(--color-info)',
+            borderColor: saveStatus === 'saved' ? 'color-mix(in srgb, var(--color-success) 30%, transparent)' : saveStatus === 'error' ? 'color-mix(in srgb, var(--color-error) 30%, transparent)' : 'color-mix(in srgb, var(--color-info) 30%, transparent)',
           }}
         >
           <Save className="w-4 h-4" />

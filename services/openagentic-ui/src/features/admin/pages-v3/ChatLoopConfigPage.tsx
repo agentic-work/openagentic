@@ -150,7 +150,7 @@ export const ChatLoopConfigPage: React.FC = () => {
               htmlFor="chat-loop-max-turns"
               style={{
                 minWidth: 140,
-                fontFamily: 'var(--font-v3-mono)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 12,
                 color: 'var(--fg-1)',
               }}
@@ -169,7 +169,7 @@ export const ChatLoopConfigPage: React.FC = () => {
                 width: 96,
                 height: 28,
                 padding: '0 8px',
-                fontFamily: 'var(--font-v3-mono)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 13,
                 background: 'var(--bg-0)',
                 border: `1px solid ${

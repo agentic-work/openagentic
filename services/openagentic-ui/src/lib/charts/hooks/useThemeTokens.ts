@@ -2,30 +2,33 @@ import { useEffect, useState, type RefObject } from 'react';
 import type { ResolvedThemeTokens } from '../types';
 
 /**
- * Fallback values, used when a CSS var isn't defined on :root. These should
- * match openagentic's dark theme defaults; if a chart renders without the
- * design-token CSS loaded, it still looks sensible.
+ * Fallback values, used ONLY when a CSS var isn't defined on the resolution
+ * scope (e.g. a chart rendered in a detached subtree before the theme CSS is
+ * applied). At runtime the SOT (src/styles/theme.css) always defines the
+ * canonical tokens these resolve from, so these literals are a last-resort
+ * snapshot of the brand DARK theme (terminal ramp + signal-orange accent) —
+ * they are theme-allowlisted as a token snapshot, not call-site hardcoding.
  */
 export const FALLBACK_TOKENS: ResolvedThemeTokens = {
-  accent: '#38bdf8',
-  ok: '#4ade80',
-  warn: '#fbbf24',
-  err: '#f87171',
-  info: '#a78bfa',
-  fg0: '#f8fafc',
-  fg1: '#d4d4d8',
-  fg2: '#a1a1aa',
-  fg3: '#71717a',
-  bg0: '#0f1012',
-  bg1: '#15171b',
-  bg2: '#1c1e23',
-  line1: '#1f2227',
-  line2: '#2a2d33',
-  capThinking: '#c084fc',
-  capStreaming: '#60a5fa',
-  capTools: '#f59e0b',
-  fontUi: 'Inter, system-ui, sans-serif',
-  fontMono: '"JetBrains Mono", ui-monospace, monospace',
+  accent: '#FF5722', // signal-orange (brand accent)
+  ok: '#22C55E',
+  warn: '#F59E0B',
+  err: '#FF453A',
+  info: '#4DD0E1',
+  fg0: '#F4EFE6', // terminal-fg (paper-on-dark)
+  fg1: '#CDC4B2',
+  fg2: '#968B76',
+  fg3: '#968B76',
+  bg0: '#18130C', // terminal-bg
+  bg1: '#211A11', // terminal-surf
+  bg2: '#2C2418', // terminal-surf-2
+  line1: '#3A3024', // terminal-rule
+  line2: '#3A3024',
+  capThinking: '#FFB87E', // signal-soft
+  capStreaming: '#4DD0E1',
+  capTools: '#F59E0B',
+  fontUi: 'var(--font-body, Inter, system-ui, sans-serif)',
+  fontMono: 'var(--font-mono, "IBM Plex Mono", ui-monospace, monospace)',
 };
 
 /**

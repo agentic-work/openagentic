@@ -48,13 +48,13 @@ interface FullVersionData {
 const statusDot = (status: string): string => {
   switch (status) {
     case 'online':
-      return 'var(--color-success, #22c55e)';
+      return 'var(--color-ok)';
     case 'offline':
-      return 'var(--color-error, #ef4444)';
+      return 'var(--color-err)';
     case 'degraded':
-      return 'var(--color-warning, #f59e0b)';
+      return 'var(--color-warn)';
     default:
-      return 'var(--fg-3, #71717a)';
+      return 'var(--color-fg-subtle)';
   }
 };
 
@@ -119,10 +119,10 @@ export const VersionBadge: React.FC<{ className?: string }> = ({ className = '' 
     alignItems: 'center',
     gap: 8,
     padding: '6px 10px',
-    borderRadius: 999,
-    background: 'var(--bg-2, rgba(255,255,255,.04))',
-    border: '1px solid var(--line-2, rgba(255,255,255,.1))',
-    color: 'var(--fg-1, #d4d4d8)',
+    borderRadius: 'var(--radius-full, 999px)',
+    background: 'var(--color-surface-2)',
+    border: '1px solid var(--color-rule)',
+    color: 'var(--color-fg-muted)',
     fontSize: 11,
     lineHeight: 1,
     cursor: 'pointer',
@@ -136,11 +136,11 @@ export const VersionBadge: React.FC<{ className?: string }> = ({ className = '' 
           style={{
             width: 6,
             height: 6,
-            borderRadius: 999,
-            background: 'var(--fg-3, #71717a)',
+            borderRadius: 'var(--radius-full, 999px)',
+            background: 'var(--color-fg-subtle)',
           }}
         />
-        <span style={{ color: 'var(--fg-2, #a1a1aa)' }}>Loading…</span>
+        <span style={{ color: 'var(--color-fg-subtle)' }}>Loading…</span>
       </div>
     );
   }
@@ -172,12 +172,12 @@ export const VersionBadge: React.FC<{ className?: string }> = ({ className = '' 
         />
         <span style={{ fontWeight: 500, color: 'var(--fg-1)' }}>v{version}</span>
         <span style={{ color: 'var(--fg-3)' }}>·</span>
-        <span style={{ color: 'var(--fg-3)' }}>{environment}</span>
+        <span style={{ color: 'var(--color-fg-subtle)' }}>{environment}</span>
         {error && (
           <span
             title={error}
             style={{
-              color: 'var(--color-warning, #f59e0b)',
+              color: 'var(--color-warn)',
               marginLeft: 4,
               fontSize: 10,
             }}
@@ -211,11 +211,10 @@ export const VersionBadge: React.FC<{ className?: string }> = ({ className = '' 
                 left: 0,
                 bottom: 'calc(100% + 8px)',
                 width: 340,
-                background: 'var(--bg-1, #0f1012)',
-                border: '1px solid var(--line-2, rgba(255,255,255,.1))',
-                borderRadius: 14,
-                boxShadow:
-                  'var(--mk-shadow-md, 0 12px 32px rgba(0,0,0,.4))',
+                background: 'var(--color-surface)',
+                border: 'var(--border-w, 2px) solid var(--color-rule-strong)',
+                borderRadius: 'var(--radius-card, 0px)',
+                boxShadow: 'var(--shadow-card)',
                 zIndex: 50,
                 overflow: 'hidden',
               }}
@@ -223,7 +222,7 @@ export const VersionBadge: React.FC<{ className?: string }> = ({ className = '' 
               <div
                 style={{
                   padding: '16px 16px 12px',
-                  borderBottom: '1px solid var(--line-1, rgba(255,255,255,.06))',
+                  borderBottom: '1px solid var(--color-rule)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 12,

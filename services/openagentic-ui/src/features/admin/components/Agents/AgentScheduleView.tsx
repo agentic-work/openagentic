@@ -300,7 +300,7 @@ export const AgentScheduleView: React.FC<AgentScheduleViewProps> = ({ theme }) =
           </button>
           <button
             onClick={() => { resetForm(); setShowCreate(true); }}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-white transition-opacity hover:opacity-80"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-on-accent transition-opacity hover:opacity-80"
             style={{ backgroundColor: 'var(--color-accent, var(--color-accent-primary))' }}
           >
             <Plus size={14} /> New Schedule
@@ -420,7 +420,7 @@ export const AgentScheduleView: React.FC<AgentScheduleViewProps> = ({ theme }) =
 
       {/* Create Schedule Modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setShowCreate(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" onClick={() => setShowCreate(false)}>
           <div
             className="rounded-xl w-[600px] max-h-[85vh] overflow-y-auto shadow-2xl"
             style={{
@@ -574,7 +574,7 @@ export const AgentScheduleView: React.FC<AgentScheduleViewProps> = ({ theme }) =
               >Cancel</button>
               <button
                 onClick={handleCreate}
-                className="flex items-center gap-1.5 px-5 py-2 text-xs font-medium rounded-lg text-white transition-opacity hover:opacity-80"
+                className="flex items-center gap-1.5 px-5 py-2 text-xs font-medium rounded-lg text-on-accent transition-opacity hover:opacity-80"
                 style={{ backgroundColor: 'var(--color-accent, var(--color-accent-primary))' }}
               >
                 <Save size={14} /> Create Schedule
@@ -586,7 +586,7 @@ export const AgentScheduleView: React.FC<AgentScheduleViewProps> = ({ theme }) =
 
       {/* Delete Confirmation Dialog */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" onClick={() => setDeleteConfirm(null)}>
           <div
             className="rounded-xl w-[400px] shadow-2xl"
             style={{
@@ -611,7 +611,7 @@ export const AgentScheduleView: React.FC<AgentScheduleViewProps> = ({ theme }) =
               >Cancel</button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
-                className="flex items-center gap-1.5 px-5 py-2 text-xs font-medium rounded-lg text-white transition-opacity hover:opacity-80"
+                className="flex items-center gap-1.5 px-5 py-2 text-xs font-medium rounded-lg text-on-accent transition-opacity hover:opacity-80"
                 style={{ backgroundColor: 'var(--color-error)' }}
               >
                 <Trash2 size={14} /> Delete

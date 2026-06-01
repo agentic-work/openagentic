@@ -28,6 +28,10 @@ interface MCPServer {
   color: string;
 }
 
+// theme-allow: per-MCP identity color scale (vendor brand hues — Azure #0078D4,
+// AWS #FF9900, GCP #4285F4, k8s #326CE5, Prometheus #E6522C, … — plus per-server
+// identity colors). Same carve-out as the vendor brand-colors + node-TYPE identity
+// palettes; these are categorical identity values, not themeable surfaces.
 const mcpServers: MCPServer[] = [
   {
     name: 'Azure',
@@ -306,7 +310,7 @@ const AvailableToolsPage: React.FC = () => {
               { label: 'Session-scoped', detail: 'Synthesized tools exist only for the current session' },
             ].map((item) => (
               <div key={item.label} className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: '#a855f7' }} />
+                <div className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: 'var(--color-accent)' }} />
                 <div>
                   <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>
                     {item.label}

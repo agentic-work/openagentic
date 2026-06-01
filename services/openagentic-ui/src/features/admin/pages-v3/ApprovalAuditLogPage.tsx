@@ -123,7 +123,7 @@ export const ApprovalAuditLogPage: React.FC = () => {
                 who={r.decided_by || r.user_id || '—'}
                 act={
                   <>
-                    <span style={{ fontFamily: 'var(--font-v3-mono)', color: 'var(--fg-1)' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-1)' }}>
                       {r.tool_name}
                     </span>
                     {r.server_name && (
@@ -135,7 +135,7 @@ export const ApprovalAuditLogPage: React.FC = () => {
                   </>
                 }
                 right={
-                  <span style={{ fontFamily: 'var(--font-v3-mono)', color: 'var(--fg-2)' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-2)' }}>
                     {r.decision}
                   </span>
                 }
@@ -148,7 +148,7 @@ export const ApprovalAuditLogPage: React.FC = () => {
         {pg && pg.totalPages > 1 && (
           <FilterRow
             right={
-              <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-v3-mono)' }}>
+              <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}>
                 page {pg.page} of {pg.totalPages} · {pg.total} rows
               </span>
             }

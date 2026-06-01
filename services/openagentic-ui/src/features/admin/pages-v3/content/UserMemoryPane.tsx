@@ -64,7 +64,7 @@ export const UserMemoryPane: React.FC<UserMemoryPaneProps> = ({
               style={{
                 color: 'var(--fg-3)',
                 fontSize: 10,
-                fontFamily: 'var(--font-v3-mono)',
+                fontFamily: 'var(--font-mono)',
                 marginTop: 2,
               }}
             >

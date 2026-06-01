@@ -402,7 +402,7 @@ User request: ${userMessage}`;
             >
               <div className="flex items-center gap-2 mb-2">
                 <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-on-accent flex-shrink-0"
                   style={{ backgroundColor: ROLE_COLORS[slot.role] || ROLE_COLORS.custom }}
                 >
                   {idx + 1}
@@ -471,7 +471,7 @@ User request: ${userMessage}`;
           <button
             onClick={handleRun}
             disabled={!userMessage.trim() || slots.length < 1}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-40"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-on-accent transition-all hover:opacity-90 disabled:opacity-40"
             style={{
               background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%)',
             }}
@@ -482,7 +482,7 @@ User request: ${userMessage}`;
         ) : (
           <button
             onClick={handleStop}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-on-accent transition-all hover:opacity-90"
             style={{ backgroundColor: 'var(--color-error)' }}
           >
             <Square size={16} />
@@ -491,7 +491,7 @@ User request: ${userMessage}`;
         )}
         {running && (
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <div className="w-2 h-2 rounded-full bg-[var(--color-ok)] animate-pulse" />
             <span className="text-xs" style={{ color: textSecondary }}>
               Agents executing... ({events.length} events)
             </span>

@@ -194,54 +194,17 @@
 /* CSS Variables for Theme Support */
 :root {
   /* ==========================================================================
-     BRAND COLORS - Professional Dark Blue default
+     ONE-SOT MIGRATION (Collapse phase):
+     Every COLOR / FONT-FAMILY / --color-* / --radius-* / --shadow-* token that
+     used to live in this :root block has been DELETED. src/styles/theme.css is
+     now the SOLE definition site for theme tokens (and the only file allowed
+     raw color/font literals). It owns --color-* / the brand palette / fonts /
+     radius / shadows AND aliases every legacy namespace (--paper/--ink/--signal/
+     --terminal-*, --font-sans/display/mono/terminal/code/admin, --color-*,
+     --cm-*, --accent-*, --text-primary…) to the canonical tokens, flipping per
+     [data-theme]. Only the NON-color sizing / motion / spacing tokens below
+     (which the no-hardcoding guard does not govern) remain here.
      ========================================================================== */
-  /* OpenAgentic identity — openagentics.io "field-guide" palette (warm paper +
-     near-black ink + signal orange), distinct from agenticwork's enterprise
-     blue. Fine-tune the accent trio + the field-guide tokens below. */
-  --user-accent-primary: #FF5722;    /* signal orange — primary accent */
-  --user-accent-secondary: #B83A0E;  /* dark orange (text-on-paper / hover) */
-  --user-accent-color: #FF5722;
-
-  /* ── Field-guide palette (openagentics.io) ──────────────────────────────── */
-  --paper: #F4EFE6;        /* bone cream (light surface) */
-  --paper-2: #EBE5D8;      /* paper tint */
-  --paper-3: #DBD3BF;      /* deeper paper */
-  --ink: #0E0D0B;          /* near-black ink (light text) */
-  --ink-2: #2A2722;        /* secondary ink */
-  --clay-muted: #7A6D5A;   /* clay muted */
-  --rule-soft: #C8BFAF;    /* soft hairline */
-  --signal: #FF5722;       /* signal orange */
-  --signal-dim: #FFE6DA;   /* light orange wash */
-  --signal-ink: #B83A0E;   /* dark orange for text-on-paper */
-  --terminal-bg: #18130C;  /* warm near-black (dark surface) */
-  --terminal-fg: #F4EFE6;  /* cream text on dark */
-  --terminal-accent: #FFB87E; /* warm amber accent on dark */
-
-  /* ==========================================================================
-     TYPOGRAPHY SYSTEM - Enterprise Professional Design
-     Base: 16px | Scale: 1.2 (Minor Third) | Min: 12px
-     ========================================================================== */
-
-  /* Primary font stack — Inter first (M3 Expressive / Gemini), IBM Plex
-     retained as a fallback for installs that still prefer it. Inter is
-     self-hosted from /artifact-runtime/fonts/, see @font-face block above. */
-  --font-sans: 'Inter', 'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-
-  /* Display/heading stack — IBM Plex Mono gives openagentic its distinct
-     technical identity (openagentics.io style). Headings render in mono; body
-     stays Inter for readability. No cursive/script faces anywhere. */
-  --font-display: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-
-  /* Monospace font stack - JetBrains Mono with Nerd Font support for code mode */
-  --font-mono: 'JetBrainsMono Nerd Font', 'JetBrains Mono', 'FiraCode Nerd Font', 'Fira Code', 'SF Mono', ui-monospace, monospace;
-
-  /* Terminal font - explicit nerd font for iTerm2/terminal feel */
-  --font-terminal: 'Hack Nerd Font', 'JetBrainsMono Nerd Font', 'FiraCode Nerd Font', 'SF Mono', monospace;
-
-  /* Legacy aliases */
-  --font-code: var(--font-mono);
-  --font-admin: var(--font-mono);
 
   /* ==========================================================================
      TYPE SCALE - Minor Third (1.2x) from 16px base
@@ -279,92 +242,11 @@
   --font-admin-size: var(--text-sm);
   --font-admin-line-height: var(--leading-normal);
 
-  /* ==========================================================================
-     SEMANTIC COLORS
-     ========================================================================== */
-  --color-primary: var(--user-accent-primary, #0A84FF);
-  --color-secondary: #5AC8FA;        /* Apple Teal - secondary actions */
-  --color-accent: #F97316;           /* True Orange - highlights */
-  --color-success: #22C55E;          /* True Green - no yellow/teal tint */
-  --color-warning: #F97316;          /* True Orange - not amber */
-  --color-error: #FF453A;            /* Apple Red */
-  --color-vscode: #0A84FF;           /* Apple Blue */
-
-  /* ==========================================================================
-     SURFACES - Solid, confident, NO glassmorphism by default
-     ========================================================================== */
-  /* openagentics.io "terminal" warm-black + cream (dark). */
-  --color-background: #18130C;       /* warm near-black paper-inverse */
-  --color-surface: #211A11;          /* warm surface */
-  --color-surfaceSecondary: #2C2418; /* elevated warm surface */
-  --color-surfaceTertiary: #392F20;  /* highest elevation */
-  --color-surfaceHover: #392F20;
-
-  /* Aliases for component compatibility */
-  --color-bg-primary: #18130C;
-  --color-bg-secondary: #211A11;
-  --color-bg-tertiary: #2C2418;
-
-  /* Text — bone cream on warm-black */
-  --color-text: #F4EFE6;             /* cream */
-  --color-textSecondary: #D8CFBE;    /* warm secondary */
-  --color-textMuted: #A89B86;        /* clay muted */
-
-  /* Borders - subtle, not glassy */
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-borderHover: rgba(255, 255, 255, 0.12);
-
-  /* Shadows — minimal, barely visible */
-  --color-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-  --color-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.2);
-  --color-blur: blur(20px);          /* Only for modals */
-
-  /* ==========================================================================
-     GRADIENTS - Minimal use, single-hue only
-     ========================================================================== */
-  --color-gradientPrimary: var(--color-primary);  /* NO gradient - solid color */
-  --color-gradientSecondary: var(--color-secondary);
-  --color-gradientDark: linear-gradient(180deg, #000000 0%, #1C1C1E 100%);
-
-  /* Status colors */
-  --color-statusHealthy: #22C55E;
-  --color-statusWarning: #F97316;
-  --color-statusError: #FF453A;
-  --color-statusUnknown: #8E8E93;
-
-  /* ==========================================================================
-     TEXT HIERARCHY - macOS-style
-     ========================================================================== */
-  --text-primary: #E8E8ED;       /* Soft white */
-  --text-secondary: #B8B8C0;    /* Visible secondary */
-  --text-tertiary: rgba(184, 184, 192, 0.7);   /* Muted */
-  --text-muted: #8E8E93;        /* Apple gray */
-  --text-subtle: #8E8E93;       /* Apple gray - WCAG AA compliant (4.6:1 on #111114) */
-
-  /* ==========================================================================
-     SEMANTIC ACCENT COLORS - Pure colors
-     ========================================================================== */
-  --accent-info: #0A84FF;       /* Apple Blue */
-  --accent-success: #22C55E;    /* True Green */
-  --accent-warning: #F97316;    /* True Orange */
-  --accent-error: #FF453A;      /* Apple Red */
-  --accent-code: #8E8E93;       /* Apple Gray */
-  --accent-link: #5AC8FA;       /* Apple Teal */
-
-  /* Code styling */
-  --code-bg: rgba(142, 142, 147, 0.12);
-  --code-border: rgba(142, 142, 147, 0.2);
-  --code-text: #EBEBF5;
-
-  /* Callout colors - using pure colors */
-  --callout-info-bg: rgba(0, 136, 255, 0.1);
-  --callout-info-border: rgba(0, 136, 255, 0.3);
-  --callout-success-bg: rgba(0, 255, 0, 0.1);
-  --callout-success-border: rgba(0, 255, 0, 0.3);
-  --callout-warning-bg: rgba(255, 136, 0, 0.1);
-  --callout-warning-border: rgba(255, 136, 0, 0.3);
-  --callout-error-bg: rgba(255, 0, 0, 0.1);
-  --callout-error-border: rgba(255, 0, 0, 0.3);
+  /* COLOR / surface / text / accent / cm / callout / status / shadow tokens
+     formerly defined here are now in src/styles/theme.css (the one SOT) and its
+     legacy-alias block — removed from this file so there is a single definition
+     site. --code-* / --callout-* / --thinking-* tints derive from the canonical
+     accent + status tokens (see theme.css). */
 
   /* ==========================================================================
      MOTION TOKENS - Snappy, not sluggish

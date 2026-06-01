@@ -276,7 +276,7 @@ const DocsChatPanel: React.FC<DocsChatPanelProps> = ({
               >
                 {msg.role === 'assistant' && msg.model && (
                   <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-text-tertiary)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-success)', display: 'inline-block' }} />
                     {msg.model}
                   </div>
                 )}
@@ -328,7 +328,7 @@ const DocsChatPanel: React.FC<DocsChatPanelProps> = ({
             >
               {currentModel && (
                 <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-text-tertiary)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-success)', display: 'inline-block' }} />
                   {currentModel}
                 </div>
               )}

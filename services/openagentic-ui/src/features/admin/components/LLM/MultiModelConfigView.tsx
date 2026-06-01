@@ -383,7 +383,7 @@ export const MultiModelConfigView: React.FC = () => {
       >
         {/* Role Header */}
         <div 
-          className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors"
+          className="flex items-center justify-between p-4 cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-fg)_5%,transparent)] transition-colors"
           onClick={() => setExpandedRole(isExpanded ? null : roleKey)}
         >
           <div className="flex items-center gap-3">
@@ -581,7 +581,7 @@ export const MultiModelConfigView: React.FC = () => {
 
           <button
             onClick={fetchConfig}
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+            className="p-2 rounded-lg hover:bg-[color-mix(in_srgb,var(--color-fg)_10%,transparent)] transition-colors"
             title="Refresh"
           >
             <RefreshCw size={18} />
@@ -591,7 +591,7 @@ export const MultiModelConfigView: React.FC = () => {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-on-accent rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50"
             >
               {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
               Save Changes
@@ -633,7 +633,7 @@ export const MultiModelConfigView: React.FC = () => {
             }`}
           >
             <span
-              className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+              className={`inline-block h-6 w-6 transform rounded-full bg-surface transition-transform ${
                 config?.enabled ? 'translate-x-7' : 'translate-x-1'
               }`}
             />
@@ -784,7 +784,7 @@ export const MultiModelConfigView: React.FC = () => {
 
       {/* AI Config Suggestion Modal */}
       {showAiModal && aiSuggestion && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-[color-mix(in_srgb,var(--color-shadow)_60%,transparent)] backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="glass-card max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
@@ -799,7 +799,7 @@ export const MultiModelConfigView: React.FC = () => {
               </div>
               <button
                 onClick={() => setShowAiModal(false)}
-                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                className="p-2 rounded-lg hover:bg-[color-mix(in_srgb,var(--color-fg)_10%,transparent)] transition-colors"
               >
                 <X size={18} />
               </button>
@@ -885,7 +885,7 @@ export const MultiModelConfigView: React.FC = () => {
             <div className="flex items-center justify-end gap-3 p-4 border-t border-[var(--color-border)]">
               <button
                 onClick={() => setShowAiModal(false)}
-                className="px-4 py-2 rounded-lg hover:bg-white/10 transition-colors text-sm"
+                className="px-4 py-2 rounded-lg hover:bg-[color-mix(in_srgb,var(--color-fg)_10%,transparent)] transition-colors text-sm"
               >
                 Cancel
               </button>

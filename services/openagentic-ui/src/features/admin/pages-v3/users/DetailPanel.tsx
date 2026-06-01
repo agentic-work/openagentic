@@ -118,7 +118,7 @@ const Header: React.FC<{ user: ApiUser }> = ({ user }) => {
           {user.name || user.email.split('@')[0]}
         </div>
         <div style={{
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 'var(--v3-t-meta, 11px)',
           color: 'var(--fg-3)',
           overflow: 'hidden',
@@ -131,7 +131,7 @@ const Header: React.FC<{ user: ApiUser }> = ({ user }) => {
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
         <StatusDot status={dotMap[s]} />
         <span style={{
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 'var(--v3-t-meta, 11px)',
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
@@ -141,7 +141,7 @@ const Header: React.FC<{ user: ApiUser }> = ({ user }) => {
       {roleOf(user) === 'admin' && (
         <span style={{
           padding: '1px 6px',
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 'var(--v3-t-meta, 10px)',
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
@@ -167,7 +167,7 @@ const BigAvatar: React.FC<{ initials: string }> = ({ initials }) => (
       background: 'var(--bg-2)',
       border: '1px solid var(--line-1)',
       color: 'var(--fg-1)',
-      fontFamily: 'var(--font-v3-mono)',
+      fontFamily: 'var(--font-mono)',
       fontSize: 13,
       fontWeight: 600,
       letterSpacing: 0,
@@ -250,7 +250,7 @@ const KebabMenu: React.FC<KebabMenuProps> = ({
             minWidth: 200,
             background: 'var(--bg-1)',
             border: '1px solid var(--line-1)',
-            boxShadow: '0 8px 20px rgba(0,0,0,0.4)',
+            boxShadow: '0 8px 20px color-mix(in srgb, var(--color-shadow) 40%, transparent)',
             zIndex: 30,
             display: 'flex',
             flexDirection: 'column',
@@ -302,7 +302,7 @@ const KebabItem: React.FC<{
       cursor: disabled ? 'not-allowed' : 'pointer',
       padding: '8px 12px',
       textAlign: 'left',
-      fontFamily: 'var(--font-v3-mono)',
+      fontFamily: 'var(--font-mono)',
       fontSize: 'var(--v3-t-meta, 11px)',
       color: disabled
         ? 'var(--fg-3)'
@@ -337,7 +337,7 @@ const TabStrip: React.FC<{ active: DetailTab; onChange: (t: DetailTab) => void }
           border: 0,
           cursor: 'pointer',
           padding: '8px 12px',
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 'var(--v3-t-meta, 11px)',
           textTransform: 'uppercase',
           letterSpacing: '0.08em',

@@ -138,7 +138,7 @@ export const GovernancePane: React.FC<GovernancePaneProps> = ({ data, isLoading,
                   configKey={f.key}
                   status={<LockedTag />}
                 >
-                  <span style={{ fontFamily: 'var(--font-v3-mono)', color: 'var(--fg-1)' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-1)' }}>
                     {(f.format ?? fmtNumber)(data?.[f.key])}
                   </span>
                 </FormRow>

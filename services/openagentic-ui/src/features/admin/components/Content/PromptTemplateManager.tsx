@@ -314,7 +314,7 @@ export const PromptTemplateManager: React.FC = () => {
           </button>
           <button
             onClick={handleCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-600 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-on-accent rounded-lg hover:bg-primary-600 transition-colors"
           >
             <Plus className="w-4 h-4" />
             Create Template
@@ -406,7 +406,7 @@ export const PromptTemplateManager: React.FC = () => {
                   className="p-1 hover:bg-surface-base rounded transition-colors disabled:opacity-50"
                   title={template.is_default ? 'Already default' : 'Set as default'}
                 >
-                  <Star className={`w-5 h-5 ${template.is_default ? 'text-primary-500 fill-blue-400' : 'text-text-secondary'}`} />
+                  <Star className={`w-5 h-5 ${template.is_default ? 'text-primary-500 fill-[var(--color-nfo)]' : 'text-text-secondary'}`} />
                 </button>
               </div>
 
@@ -466,7 +466,7 @@ export const PromptTemplateManager: React.FC = () => {
 
       {/* Create/Edit Modal */}
       {(isCreating || isEditing) && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-[color-mix(in_srgb,var(--color-shadow)_50%,transparent)] flex items-center justify-center z-50 p-4">
           <div className="bg-surface-elevated border border-border rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-border">
               <h3 className="text-lg font-semibold text-text-primary">
@@ -556,7 +556,7 @@ export const PromptTemplateManager: React.FC = () => {
               </button>
               <button
                 onClick={handleSave}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-on-accent rounded-lg hover:bg-primary-600 transition-colors"
               >
                 <Save className="w-4 h-4" />
                 {isCreating ? 'Create' : 'Save'}
@@ -568,7 +568,7 @@ export const PromptTemplateManager: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-[color-mix(in_srgb,var(--color-shadow)_50%,transparent)] flex items-center justify-center z-50 p-4">
           <div className="bg-surface-elevated border border-border rounded-lg w-full max-w-md">
             <div className="p-4 border-b border-border">
               <h3 className="text-lg font-semibold text-text-primary">Confirm Delete</h3>
@@ -588,7 +588,7 @@ export const PromptTemplateManager: React.FC = () => {
               </button>
               <button
                 onClick={handleDelete}
-                className="px-4 py-2 bg-error-500 text-white rounded-lg hover:bg-error-500 transition-colors"
+                className="px-4 py-2 bg-error-500 text-on-accent rounded-lg hover:bg-error-500 transition-colors"
               >
                 Delete
               </button>
@@ -599,7 +599,7 @@ export const PromptTemplateManager: React.FC = () => {
 
       {/* Assign to User Modal */}
       {assignDialogOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-[color-mix(in_srgb,var(--color-shadow)_50%,transparent)] flex items-center justify-center z-50 p-4">
           <div className="bg-surface-elevated border border-border rounded-lg w-full max-w-md">
             <div className="p-4 border-b border-border">
               <h3 className="text-lg font-semibold text-text-primary">Assign Template to User</h3>
@@ -629,7 +629,7 @@ export const PromptTemplateManager: React.FC = () => {
               <button
                 onClick={handleAssignToUser}
                 disabled={!selectedUserId}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-primary-600 text-on-accent rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50"
               >
                 Assign
               </button>
@@ -640,7 +640,7 @@ export const PromptTemplateManager: React.FC = () => {
 
       {/* View Assignments Modal */}
       {viewAssignmentsOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-[color-mix(in_srgb,var(--color-shadow)_50%,transparent)] flex items-center justify-center z-50 p-4">
           <div className="bg-surface-elevated border border-border rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
             <div className="p-4 border-b border-border">
               <h3 className="text-lg font-semibold text-text-primary">

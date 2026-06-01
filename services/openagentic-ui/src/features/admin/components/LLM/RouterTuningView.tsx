@@ -581,7 +581,7 @@ const Chip: React.FC<ChipProps> = ({ field, label, color, value, dirty, onCommit
     padding: '4px 10px',
     borderRadius: '6px',
     cursor: 'pointer',
-    fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+    fontFamily: 'var(--font-mono)',
     fontSize: '14px',
     transition: 'all 120ms',
     margin: '2px',
@@ -672,7 +672,7 @@ const FloorCard: React.FC<FloorCardProps> = ({ meta, value, dirty, onCommit }) =
         border: `1px solid ${dirty ? 'var(--color-warning)' : 'var(--color-border)'}`,
         borderRadius: '8px',
         padding: '14px 16px',
-        fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+        fontFamily: 'var(--font-mono)',
         fontSize: '13px',
         cursor: editing ? 'default' : 'pointer',
         transition: 'border 120ms',
@@ -715,7 +715,7 @@ const FloorCard: React.FC<FloorCardProps> = ({ meta, value, dirty, onCommit }) =
           value.toFixed(2)
         )}
       </div>
-      <div style={{ fontFamily: 'var(--font-sans, -apple-system, sans-serif)', color: 'var(--color-text-secondary)', fontSize: '11px', marginTop: '6px', lineHeight: 1.4 }}>
+      <div style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', fontSize: '11px', marginTop: '6px', lineHeight: 1.4 }}>
         {meta.desc}
       </div>
     </div>
@@ -797,7 +797,7 @@ const JsonFieldEditor: React.FC<JsonFieldEditorProps> = ({
           fontSize: '11px',
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
-          fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+          fontFamily: 'var(--font-mono)',
           marginBottom: '6px',
         }}
       >
@@ -817,7 +817,7 @@ const JsonFieldEditor: React.FC<JsonFieldEditorProps> = ({
           border: `1px solid ${draftError ? 'var(--color-error)' : 'var(--color-border)'}`,
           borderRadius: '6px',
           padding: '8px 10px',
-          fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+          fontFamily: 'var(--font-mono)',
           fontSize: '12px',
           color: 'var(--color-text-primary)',
           outline: 'none',
@@ -930,7 +930,7 @@ const LabPromptCard: React.FC<LabPromptCardProps> = ({ prompt, labModels, tuning
     padding: '2px 8px',
     borderRadius: '10px',
     fontSize: '11px',
-    fontFamily: 'var(--font-mono, monospace)',
+    fontFamily: 'var(--font-mono)',
     background: active ? tint('var(--color-success)', 12) : tint('var(--color-text-secondary)', 8),
     color: active ? 'var(--color-success)' : 'var(--color-text-secondary)',
     border: `1px solid ${active ? tint('var(--color-success)', 40) : tint('var(--color-text-secondary)', 20)}`,
@@ -969,7 +969,7 @@ const LabPromptCard: React.FC<LabPromptCardProps> = ({ prompt, labModels, tuning
             &ldquo;{prompt.label}&rdquo;
           </span>
           {!expanded && (
-            <span style={{ marginLeft: '12px', fontSize: '12px', color: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono, monospace)' }}>
+            <span style={{ marginLeft: '12px', fontSize: '12px', color: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono)' }}>
               {winnerSummary}
             </span>
           )}
@@ -1017,7 +1017,7 @@ const LabPromptCard: React.FC<LabPromptCardProps> = ({ prompt, labModels, tuning
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-mono, monospace)', fontSize: '12px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                     {['Rank', 'Model', 'FCA', 'TTFT est', 'Monthly cost est', 'Score'].map(h => (
@@ -1122,7 +1122,7 @@ const LivePipelineResult: React.FC<LivePipelineResultProps> = ({ result }) => {
     padding: '2px 8px',
     borderRadius: '10px',
     fontSize: '11px',
-    fontFamily: 'var(--font-mono, monospace)',
+    fontFamily: 'var(--font-mono)',
     background: active ? tint('var(--color-success)', 14) : tint('var(--color-text-secondary)', 8),
     color: active ? 'var(--color-success)' : 'var(--color-text-secondary)',
     border: `1px solid ${active ? tint('var(--color-success)', 40) : tint('var(--color-text-secondary)', 20)}`,
@@ -1183,14 +1183,14 @@ const LivePipelineResult: React.FC<LivePipelineResultProps> = ({ result }) => {
             &ldquo;{result.prompt.length > 60 ? result.prompt.slice(0, 60) + '…' : result.prompt}&rdquo;
           </span>
         </div>
-        <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono, monospace)' }}>
+        <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono)' }}>
           → {decision.selectedModelId} · {decision.tier}
         </span>
       </div>
 
       <div style={{ padding: '16px', background: 'var(--color-surface-primary)' }}>
         <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '0 0 12px', lineHeight: 1.5 }}>
-          {decision.reason} · Path: <code style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--color-text-primary)' }}>{decision.resolvedBy}</code>
+          {decision.reason} · Path: <code style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-primary)' }}>{decision.resolvedBy}</code>
         </p>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
@@ -1223,7 +1223,7 @@ const LivePipelineResult: React.FC<LivePipelineResultProps> = ({ result }) => {
               <tbody>
                 {ranked.map(r => (
                   <tr key={r.modelId} style={rankStyle(r.rank)}>
-                    <td style={{ ...tdStyle, fontWeight: 600, fontFamily: 'var(--font-mono, monospace)' }}>{r.rank}</td>
+                    <td style={{ ...tdStyle, fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{r.rank}</td>
                     <td style={tdStyle}>
                       <div style={{ fontWeight: 500 }}>{r.modelId}</div>
                       <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>{r.provider}</div>
@@ -1231,12 +1231,12 @@ const LivePipelineResult: React.FC<LivePipelineResultProps> = ({ result }) => {
                     <td style={{ ...tdStyle, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-secondary)' }}>
                       {r.tier}
                     </td>
-                    <td style={{ ...tdStyle, fontFamily: 'var(--font-mono, monospace)' }}>{(r.fca * 100).toFixed(0)}%</td>
-                    <td style={{ ...tdStyle, fontFamily: 'var(--font-mono, monospace)' }}>${r.inputCostPer1k.toFixed(4)}</td>
-                    <td style={{ ...tdStyle, fontFamily: 'var(--font-mono, monospace)', color: 'var(--color-text-secondary)' }}>
+                    <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)' }}>{(r.fca * 100).toFixed(0)}%</td>
+                    <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)' }}>${r.inputCostPer1k.toFixed(4)}</td>
+                    <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', color: 'var(--color-text-secondary)' }}>
                       ~{r.avgLatencyMs || 500}ms
                     </td>
-                    <td style={{ ...tdStyle, fontFamily: 'var(--font-mono, monospace)', fontWeight: 600 }}>{r.score.toFixed(1)}</td>
+                    <td style={{ ...tdStyle, fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{r.score.toFixed(1)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1251,7 +1251,7 @@ const LivePipelineResult: React.FC<LivePipelineResultProps> = ({ result }) => {
             </summary>
             <ul style={{ margin: '8px 0 0', padding: '0 0 0 16px', fontSize: '12px', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
               {filteredOut.map((f, i) => (
-                <li key={`${f.modelId}-${i}`} style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+                <li key={`${f.modelId}-${i}`} style={{ fontFamily: 'var(--font-mono)' }}>
                   {f.modelId} (FCA {(f.fca * 100).toFixed(0)}%) — <span style={{ color: 'var(--color-warning)' }}>{f.excludedBy}</span>
                 </li>
               ))}
@@ -1443,7 +1443,7 @@ const RouterTuningView: React.FC = () => {
     padding: '3px 8px',
     borderRadius: '10px',
     fontSize: '11px',
-    fontFamily: 'var(--font-mono, monospace)',
+    fontFamily: 'var(--font-mono)',
     marginLeft: '6px',
   };
 
@@ -1565,7 +1565,7 @@ const RouterTuningView: React.FC = () => {
           Click a colored chip to edit. Hover for description.
         </p>
         <div style={{
-          fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+          fontFamily: 'var(--font-mono)',
           fontSize: '16px',
           lineHeight: 2.2,
           background: 'var(--color-surface-tertiary)',
@@ -1603,7 +1603,7 @@ const RouterTuningView: React.FC = () => {
             <span style={bigOpStyle}>+</span>
             <Chip field="latencyBonusMaxPoints" label="latencyBonus" color="multiplier" value={tuning.latencyBonusMaxPoints} dirty={isDirty('latencyBonusMaxPoints')} onCommit={handleCommit} />
             <span style={opStyle}>×</span>
-            <span style={{ ...CHIP_STYLE.weight, fontFamily: 'var(--font-mono, monospace)', fontSize: '14px' }}>costWeight</span>
+            <span style={{ ...CHIP_STYLE.weight, fontFamily: 'var(--font-mono)', fontSize: '14px' }}>costWeight</span>
             <span style={bigOpStyle}>+</span>
             <Chip field="toolCallingBonusMaxPoints" label="toolCallingBonus" color="multiplier" value={tuning.toolCallingBonusMaxPoints} dirty={isDirty('toolCallingBonusMaxPoints')} onCommit={handleCommit} />
             <span style={{ color: 'var(--color-text-secondary)', marginLeft: '2px' }}>·if hasTools</span>
@@ -1734,7 +1734,7 @@ const RouterTuningView: React.FC = () => {
           <div style={{
             padding: '14px 18px',
             color: 'var(--color-text-secondary)',
-            fontFamily: 'var(--font-mono, monospace)',
+            fontFamily: 'var(--font-mono)',
             fontSize: '13px',
             fontStyle: 'italic',
           }}>
@@ -1788,7 +1788,7 @@ const RouterTuningView: React.FC = () => {
                       cursor: simulating ? 'not-allowed' : 'pointer',
                       opacity: simulating && !active ? 0.5 : 1,
                       transition: 'all 120ms',
-                      fontFamily: 'var(--font-sans, -apple-system, sans-serif)',
+                      fontFamily: 'var(--font-body)',
                       letterSpacing: '0.02em',
                     }}
                   >
@@ -1815,7 +1815,7 @@ const RouterTuningView: React.FC = () => {
                   color: 'var(--color-text-primary)',
                   lineHeight: 1.5,
                   marginBottom: '12px',
-                  fontFamily: 'var(--font-sans, -apple-system, sans-serif)',
+                  fontFamily: 'var(--font-body)',
                 }}
               >
                 &ldquo;{DIFFICULTY_PROMPTS[activeDifficulty].prompt}&rdquo;
@@ -1847,7 +1847,7 @@ const RouterTuningView: React.FC = () => {
                   background: 'var(--color-surface-secondary)',
                   color: 'var(--color-text-primary)',
                   fontSize: '13px',
-                  fontFamily: 'var(--font-sans, -apple-system, sans-serif)',
+                  fontFamily: 'var(--font-body)',
                   outline: 'none',
                 }}
               />
@@ -1865,7 +1865,7 @@ const RouterTuningView: React.FC = () => {
                   fontWeight: 500,
                   cursor: customPromptText.trim() && !simulating ? 'pointer' : 'not-allowed',
                   transition: 'all 120ms',
-                  fontFamily: 'var(--font-sans, -apple-system, sans-serif)',
+                  fontFamily: 'var(--font-body)',
                   whiteSpace: 'nowrap',
                 }}
                 title="Run the real SmartModelRouter against this prompt"
@@ -1939,7 +1939,7 @@ const RouterTuningView: React.FC = () => {
               fontSize: '14px',
               opacity: resetting || saving ? 0.5 : 1,
               transition: 'all 120ms',
-              fontFamily: 'var(--font-sans, -apple-system, sans-serif)',
+              fontFamily: 'var(--font-body)',
             }}
           >
             {resetting ? 'Resetting…' : 'Reset to Defaults'}
@@ -1958,7 +1958,7 @@ const RouterTuningView: React.FC = () => {
               fontSize: '14px',
               opacity: dirtyCount === 0 ? 0.5 : 1,
               transition: 'all 120ms',
-              fontFamily: 'var(--font-sans, -apple-system, sans-serif)',
+              fontFamily: 'var(--font-body)',
             }}
           >
             Discard
@@ -1977,7 +1977,7 @@ const RouterTuningView: React.FC = () => {
               fontSize: '14px',
               opacity: saving ? 0.7 : 1,
               transition: 'all 120ms',
-              fontFamily: 'var(--font-sans, -apple-system, sans-serif)',
+              fontFamily: 'var(--font-body)',
             }}
           >
             {saving ? 'Saving…' : 'Save & Apply Live'}

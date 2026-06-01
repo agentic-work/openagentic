@@ -3,6 +3,10 @@
  *
  * Maps each of the 21 workflow node types to a unique Lottie animation.
  * Each animation is generated programmatically via lottieBuilder.
+ *
+ * theme-allow: the hex values here are the workflow node-TYPE identity colors
+ * (matching nodeConfigs.ts) plus on-circle white, baked into Lottie JSON which
+ * cannot read CSS vars. This is the node-type categorical-palette exemption.
  */
 
 import {

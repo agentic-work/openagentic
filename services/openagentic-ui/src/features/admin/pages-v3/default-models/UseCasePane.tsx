@@ -74,7 +74,7 @@ export const UseCasePane: React.FC<UseCasePaneProps> = ({ rows, isLoading, isErr
             >
               <div
                 style={{
-                  fontFamily: 'var(--font-v3-mono)',
+                  fontFamily: 'var(--font-mono)',
                   fontSize: 'var(--v3-t-display, 14px)',
                   color: r.isStale
                     ? 'var(--err)'
@@ -93,7 +93,7 @@ export const UseCasePane: React.FC<UseCasePaneProps> = ({ rows, isLoading, isErr
               </div>
               <div
                 style={{
-                  fontFamily: 'var(--font-v3-mono)',
+                  fontFamily: 'var(--font-mono)',
                   fontSize: 'var(--v3-t-meta, 11px)',
                   color: 'var(--fg-3)',
                   display: 'flex',

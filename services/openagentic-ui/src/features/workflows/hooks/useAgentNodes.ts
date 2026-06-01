@@ -50,6 +50,7 @@ function convertAgentToNodeConfig(agent: BackendAgent): NodeTypeConfig {
     label,
     description: agent.description || `Spawn the ${label} agent`,
     icon: agent.icon || '🤖',
+    // theme-allow: agents node-TYPE identity color
     color: '#8b5cf6',
     category: 'agents' as any,
     defaultData: {

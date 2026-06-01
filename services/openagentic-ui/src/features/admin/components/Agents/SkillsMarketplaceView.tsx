@@ -225,13 +225,13 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
                 <div className="min-w-0">
                   <span className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>{skill.display_name}</span>
                   <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: ts.bg, color: ts.text, fontFamily: "'JetBrains Mono', monospace" }}>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: ts.bg, color: ts.text, fontFamily: 'var(--font-code)' }}>
                       {skill.type}
                     </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: 'var(--color-surfaceSecondary, color-mix(in srgb, var(--color-border) 40%, transparent))', color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', monospace" }}>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: 'var(--color-surfaceSecondary, color-mix(in srgb, var(--color-border) 40%, transparent))', color: 'var(--text-secondary)', fontFamily: 'var(--font-code)' }}>
                       {skill.source}
                     </span>
-                    <span className="text-[10px]" style={{ color: 'var(--text-tertiary)', fontFamily: "'JetBrains Mono', monospace" }}>
+                    <span className="text-[10px]" style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-code)' }}>
                       {skill.usage_count} uses
                     </span>
                   </div>
@@ -261,7 +261,7 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
               {skill.tags?.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
                   {skill.tags.map(tag => (
-                    <span key={tag} className="px-2 py-0.5 rounded text-[10px] font-medium" style={{ backgroundColor: 'var(--color-surfaceSecondary, color-mix(in srgb, var(--color-border) 30%, transparent))', color: 'var(--text-tertiary)', fontFamily: "'JetBrains Mono', monospace" }}>
+                    <span key={tag} className="px-2 py-0.5 rounded text-[10px] font-medium" style={{ backgroundColor: 'var(--color-surfaceSecondary, color-mix(in srgb, var(--color-border) 30%, transparent))', color: 'var(--text-tertiary)', fontFamily: 'var(--font-code)' }}>
                       {tag}
                     </span>
                   ))}
@@ -280,7 +280,7 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
 
       {/* Import Modal */}
       {showImportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setShowImportModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_70%,transparent)] backdrop-blur-sm" onClick={() => setShowImportModal(false)}>
           <div
             className="rounded-xl w-[500px] shadow-2xl"
             style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
@@ -323,7 +323,7 @@ export const SkillsMarketplaceView: React.FC<SkillsMarketplaceViewProps> = ({ th
 
       {/* Edit Skill Modal */}
       {editingSkill && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'color-mix(in srgb, var(--color-shadow) 60%, transparent)' }}>
           <div className="w-full max-w-lg rounded-xl p-5 shadow-xl" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Edit Skill: {editingSkill.name}</h3>

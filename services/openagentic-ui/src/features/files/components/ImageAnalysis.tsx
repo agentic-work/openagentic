@@ -130,12 +130,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
           {!isAnalyzing && !analysisResult && (
             <button
               onClick={analyzeImage}
-              className={clsx(
-                'px-3 py-1 rounded-md text-sm font-medium transition-colors',
-                theme === 'dark'
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'bg-blue-500 hover:bg-blue-600 text-white'
-              )}
+              className="px-3 py-1 rounded-md text-sm font-medium transition-colors bg-accent text-on-accent hover:opacity-90"
             >
               Analyze
             </button>
@@ -143,12 +138,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
           {onClose && (
             <button
               onClick={onClose}
-              className={clsx(
-                'p-1 rounded-md transition-colors',
-                theme === 'dark'
-                  ? 'hover:bg-gray-700 text-gray-400'
-                  : 'hover:bg-gray-100 text-gray-600'
-              )}
+              className="p-1 rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text"
             >
               <X className="w-4 h-4" />
             </button>
@@ -194,46 +184,26 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
             <div className="flex items-center justify-center gap-2">
               <button
                 onClick={handleZoomOut}
-                className={clsx(
-                  'p-2 rounded-md transition-colors',
-                  theme === 'dark'
-                    ? 'hover:bg-gray-700 text-gray-400'
-                    : 'hover:bg-gray-100 text-gray-600'
-                )}
+                className="p-2 rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text"
               >
                 <ZoomOut className="w-4 h-4" />
               </button>
               <span className="text-sm px-2">{Math.round(zoom * 100)}%</span>
               <button
                 onClick={handleZoomIn}
-                className={clsx(
-                  'p-2 rounded-md transition-colors',
-                  theme === 'dark'
-                    ? 'hover:bg-gray-700 text-gray-400'
-                    : 'hover:bg-gray-100 text-gray-600'
-                )}
+                className="p-2 rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text"
               >
                 <ZoomIn className="w-4 h-4" />
               </button>
               <button
                 onClick={handleRotate}
-                className={clsx(
-                  'p-2 rounded-md transition-colors',
-                  theme === 'dark'
-                    ? 'hover:bg-gray-700 text-gray-400'
-                    : 'hover:bg-gray-100 text-gray-600'
-                )}
+                className="p-2 rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text"
               >
                 <RotateCw className="w-4 h-4" />
               </button>
               <button
                 onClick={downloadImage}
-                className={clsx(
-                  'p-2 rounded-md transition-colors',
-                  theme === 'dark'
-                    ? 'hover:bg-gray-700 text-gray-400'
-                    : 'hover:bg-gray-100 text-gray-600'
-                )}
+                className="p-2 rounded-md transition-colors text-text-muted hover:bg-surface-2 hover:text-text"
               >
                 <Download className="w-4 h-4" />
               </button>
@@ -313,12 +283,7 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({
                   {analysisResult.tags.map((tag, idx) => (
                     <span
                       key={idx}
-                      className={clsx(
-                        'px-2 py-1 text-xs rounded-full',
-                        theme === 'dark'
-                          ? 'bg-gray-700 text-gray-300'
-                          : 'bg-gray-200 text-gray-700'
-                      )}
+                      className="px-2 py-1 text-xs rounded-full bg-surface-2 text-text-muted"
                     >
                       {tag}
                     </span>

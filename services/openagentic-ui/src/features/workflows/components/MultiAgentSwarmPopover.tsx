@@ -51,20 +51,22 @@ const statusLabels: Record<SubagentStatus, string> = {
 };
 
 const statusColors: Record<SubagentStatus, { bg: string; fg: string; border: string }> = {
-  queued:    { bg: '#1a1f26',                fg: '#8b949e', border: '#21262d' },
-  running:   { bg: 'rgba(249,115,22,0.15)',  fg: '#f97316', border: '#f97316' },
-  completed: { bg: 'rgba(34,197,94,0.15)',   fg: '#22c55e', border: 'rgba(34,197,94,0.4)' },
-  failed:    { bg: 'rgba(239,68,68,0.15)',   fg: '#ef4444', border: 'rgba(239,68,68,0.5)' },
+  queued:    { bg: '#1a1f26',                fg: 'var(--color-fg-muted)', border: 'var(--color-rule)' },
+  running:   { bg: 'color-mix(in srgb, var(--color-warning) 15%, transparent)',  fg: 'var(--color-warning)', border: 'var(--color-warning)' },
+  completed: { bg: 'color-mix(in srgb, var(--color-success) 15%, transparent)',   fg: 'var(--color-success)', border: 'color-mix(in srgb, var(--color-success) 40%, transparent)' },
+  failed:    { bg: 'color-mix(in srgb, var(--color-error) 15%, transparent)',   fg: 'var(--color-error)', border: 'color-mix(in srgb, var(--color-error) 50%, transparent)' },
 };
 
 function avatarGradient(role: string): string {
   // Stable hash → gradient pair so each role keeps the same color across renders.
+  // theme-allow: per-agent-role categorical identity gradient swatches (illustration
+  // palette giving each role a distinct avatar), not themeable surfaces.
   const palettes = [
-    ['#58a6ff', '#1f6feb'],
-    ['#a78bfa', '#7c3aed'],
-    ['#34d399', '#10b981'],
-    ['#fbbf24', '#f97316'],
-    ['#67e8f9', '#0891b2'],
+    ['var(--color-info)', '#1f6feb'],
+    ['var(--color-accent)', '#7c3aed'],
+    ['#34d399', 'var(--color-success)'],
+    ['var(--color-warning)', 'var(--color-warning)'],
+    ['var(--color-info)', '#0891b2'],
     ['#f472b6', '#db2777'],
   ];
   let h = 0;
@@ -98,13 +100,13 @@ export const MultiAgentSwarmPopover: React.FC<MultiAgentSwarmPopoverProps> = ({
         style={{
           ...positionStyle,
           width: 380,
-          background: '#161b22',
+          background: 'var(--color-surface)',
           border: '1px solid var(--user-accent-primary, #FF5722)',
           borderRadius: 12,
           padding: 14,
           boxShadow: '0 8px 32px color-mix(in srgb, var(--user-accent-primary, #FF5722) 25%, transparent)',
           zIndex: 20,
-          color: '#e6edf3',
+          color: 'var(--color-fg)',
           fontSize: 13,
         }}
       >
@@ -116,8 +118,8 @@ export const MultiAgentSwarmPopover: React.FC<MultiAgentSwarmPopoverProps> = ({
                 marginLeft: 'auto',
                 padding: '2px 8px',
                 borderRadius: 10,
-                background: 'rgba(124,58,237,0.15)',
-                color: '#c4b5fd',
+                background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
+                color: 'var(--color-accent)',
                 fontSize: 10,
                 fontWeight: 600,
                 textTransform: 'lowercase',
@@ -135,7 +137,7 @@ export const MultiAgentSwarmPopover: React.FC<MultiAgentSwarmPopoverProps> = ({
                 marginLeft: pattern ? 6 : 'auto',
                 background: 'transparent',
                 border: 'none',
-                color: '#8b949e',
+                color: 'var(--color-fg-muted)',
                 cursor: 'pointer',
                 fontSize: 14,
               }}
@@ -144,7 +146,7 @@ export const MultiAgentSwarmPopover: React.FC<MultiAgentSwarmPopoverProps> = ({
             </button>
           ) : null}
         </div>
-        <div style={{ fontSize: 11, color: '#8b949e', marginBottom: 12 }}>
+        <div style={{ fontSize: 11, color: 'var(--color-fg-muted)', marginBottom: 12 }}>
           {agents.length} agent{agents.length !== 1 ? 's' : ''} in this run.
         </div>
 
@@ -162,7 +164,7 @@ export const MultiAgentSwarmPopover: React.FC<MultiAgentSwarmPopoverProps> = ({
                   gap: 10,
                   padding: 10,
                   borderRadius: 8,
-                  background: '#0d1117',
+                  background: 'var(--color-bg)',
                   border: `1px solid ${colors.border}`,
                   alignItems: 'flex-start',
                 }}
@@ -188,7 +190,7 @@ export const MultiAgentSwarmPopover: React.FC<MultiAgentSwarmPopoverProps> = ({
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 600 }}>{a.displayName}</div>
-                  <div style={{ fontSize: 10, color: '#8b949e', fontFamily: 'ui-monospace, monospace' }}>
+                  <div style={{ fontSize: 10, color: 'var(--color-fg-muted)', fontFamily: 'ui-monospace, monospace' }}>
                     {a.role}{a.agentId ? ` · ${a.agentId.slice(0, 8)}` : ''}
                   </div>
                   {a.outputPreview ? (
@@ -196,8 +198,8 @@ export const MultiAgentSwarmPopover: React.FC<MultiAgentSwarmPopoverProps> = ({
                       style={{
                         marginTop: 4,
                         fontSize: 11,
-                        color: '#c9d1d9',
-                        background: '#0a0e13',
+                        color: 'var(--color-fg)',
+                        background: 'var(--color-bg)',
                         padding: '4px 6px',
                         borderRadius: 4,
                         overflow: 'hidden',
@@ -211,10 +213,10 @@ export const MultiAgentSwarmPopover: React.FC<MultiAgentSwarmPopoverProps> = ({
                     </div>
                   ) : null}
                   {a.error ? (
-                    <div style={{ marginTop: 4, fontSize: 11, color: '#ef4444' }}>{a.error}</div>
+                    <div style={{ marginTop: 4, fontSize: 11, color: 'var(--color-error)' }}>{a.error}</div>
                   ) : null}
                   {(a.tokensUsed || a.toolCalls?.length) ? (
-                    <div style={{ marginTop: 4, display: 'flex', gap: 8, fontSize: 10, color: '#8b949e' }}>
+                    <div style={{ marginTop: 4, display: 'flex', gap: 8, fontSize: 10, color: 'var(--color-fg-muted)' }}>
                       {a.tokensUsed ? <span>{a.tokensUsed.toLocaleString()} tok</span> : null}
                       {a.toolCalls?.length ? (
                         <span>

@@ -12,6 +12,8 @@
  * palette and same symbol ids. Adding a new section is a one-line
  * <symbol> addition followed by an entry in WorkspaceNavRail items.
  */
+// theme-allow: decorative gradient SVG illustration sprite (multi-stop gradient
+// definitions for the nav-rail glyphs) — illustration art, not themeable surfaces.
 
 import React from 'react';
 
@@ -24,27 +26,27 @@ export const WorkspaceIconSprite: React.FC = () => (
   >
     <defs>
       <linearGradient id="g-blue" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#58a6ff" />
+        <stop offset="0%" stopColor="var(--color-info)" />
         <stop offset="100%" stopColor="#1f6feb" />
       </linearGradient>
       <linearGradient id="g-purple" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#a78bfa" />
+        <stop offset="0%" stopColor="var(--color-accent)" />
         <stop offset="100%" stopColor="#7c3aed" />
       </linearGradient>
       <linearGradient id="g-green" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="#34d399" />
-        <stop offset="100%" stopColor="#10b981" />
+        <stop offset="100%" stopColor="var(--color-success)" />
       </linearGradient>
       <linearGradient id="g-orange" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#fbbf24" />
-        <stop offset="100%" stopColor="#f97316" />
+        <stop offset="0%" stopColor="var(--color-warning)" />
+        <stop offset="100%" stopColor="var(--color-warning)" />
       </linearGradient>
       <linearGradient id="g-pink" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="#f472b6" />
         <stop offset="100%" stopColor="#db2777" />
       </linearGradient>
       <linearGradient id="g-cyan" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#67e8f9" />
+        <stop offset="0%" stopColor="var(--color-info)" />
         <stop offset="100%" stopColor="#0891b2" />
       </linearGradient>
     </defs>

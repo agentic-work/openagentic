@@ -181,7 +181,7 @@ export const ExecutionInputDialog: React.FC<ExecutionInputDialogProps> = ({
                 <div key={field.key}>
                   <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
                     {field.label}
-                    {field.required && <span className="text-red-400 ml-0.5">*</span>}
+                    {field.required && <span className="text-error ml-0.5">*</span>}
                   </label>
                   {field.description && (
                     <p className="text-[10px] mb-1" style={{ color: 'var(--color-text-tertiary)' }}>
@@ -212,7 +212,7 @@ export const ExecutionInputDialog: React.FC<ExecutionInputDialogProps> = ({
                         }
                       }}
                       rows={4}
-                      className="w-full px-3 py-2 text-xs font-mono rounded-lg border focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                      className="w-full px-3 py-2 text-xs font-mono rounded-lg border focus:outline-none focus:ring-1 focus:ring-[color-mix(in_srgb,var(--color-accent)_50%,transparent)]"
                       style={{
                         backgroundColor: 'var(--color-surface)',
                         borderColor: 'var(--color-border)',
@@ -225,7 +225,7 @@ export const ExecutionInputDialog: React.FC<ExecutionInputDialogProps> = ({
                       type="number"
                       value={values[field.key] || ''}
                       onChange={e => handleFieldChange(field.key, e.target.value ? Number(e.target.value) : '')}
-                      className="w-full px-3 py-2 text-xs rounded-lg border focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                      className="w-full px-3 py-2 text-xs rounded-lg border focus:outline-none focus:ring-1 focus:ring-[color-mix(in_srgb,var(--color-accent)_50%,transparent)]"
                       style={{
                         backgroundColor: 'var(--color-surface)',
                         borderColor: 'var(--color-border)',
@@ -239,7 +239,7 @@ export const ExecutionInputDialog: React.FC<ExecutionInputDialogProps> = ({
                       onChange={e => handleFieldChange(field.key, e.target.value)}
                       rows={field.key === 'message' || field.key === 'query' || field.key === 'prompt' ? 3 : 1}
                       placeholder={`Enter ${field.label.toLowerCase()}...`}
-                      className="w-full px-3 py-2 text-xs rounded-lg border focus:outline-none focus:ring-1 focus:ring-blue-500/50 resize-y"
+                      className="w-full px-3 py-2 text-xs rounded-lg border focus:outline-none focus:ring-1 focus:ring-[color-mix(in_srgb,var(--color-accent)_50%,transparent)] resize-y"
                       style={{
                         backgroundColor: 'var(--color-surface)',
                         borderColor: 'var(--color-border)',
@@ -265,16 +265,16 @@ export const ExecutionInputDialog: React.FC<ExecutionInputDialogProps> = ({
                     value={rawJson}
                     onChange={e => handleRawJsonChange(e.target.value)}
                     rows={8}
-                    className="w-full px-3 py-2 text-xs font-mono rounded-lg border focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                    className="w-full px-3 py-2 text-xs font-mono rounded-lg border focus:outline-none focus:ring-1 focus:ring-[color-mix(in_srgb,var(--color-accent)_50%,transparent)]"
                     style={{
                       backgroundColor: 'var(--color-surface)',
-                      borderColor: jsonError ? '#f85149' : 'var(--color-border)',
+                      borderColor: jsonError ? 'var(--color-error)' : 'var(--color-border)',
                       color: 'var(--color-text)',
                     }}
                     spellCheck={false}
                   />
                   {jsonError && (
-                    <p className="text-[10px] mt-1 text-red-400">{jsonError}</p>
+                    <p className="text-[10px] mt-1 text-error">{jsonError}</p>
                   )}
                 </div>
               )}
@@ -308,7 +308,7 @@ export const ExecutionInputDialog: React.FC<ExecutionInputDialogProps> = ({
                   className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
                   style={{
                     backgroundColor: 'var(--user-accent-primary, #2196f3)',
-                    color: '#fff',
+                    color: 'var(--color-on-accent)',
                   }}
                 >
                   <Play className="w-3 h-3" />

@@ -1,13 +1,14 @@
 import React from 'react';
 
 /**
- * Shared Input — M3 Expressive (task #160).
+ * Shared Input — NEO-BRUTALIST field-guide restyle.
  *
- *   - rounded-input-sm (16px), surface-1 background
- *   - no hard border in the resting state; a subtle 1px border-primary
- *     marks the field edge. Focus swaps in the shadow-focus-ring + a
- *     primary 50% border.
- *   - 200ms ease-emphasized transition on border + shadow.
+ * Reads ONLY theme tokens. 2px solid ink border (border-rule-strong),
+ * near-sharp corners (rounded-input → --radius-input, 2px), surface
+ * background, signal-orange focus (border-accent + shadow-hard-xs). The
+ * field label uses the mono eyebrow marker. Error state swaps the border +
+ * focus shadow to the error token (no raw rgba literal). Prop API
+ * ({ label, error, ...inputAttrs }) is unchanged.
  */
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -21,21 +22,21 @@ export const Input: React.FC<InputProps> = ({
   ...props
 }) => {
   const baseStyles = [
-    'block w-full rounded-input-sm px-4 py-2.5 text-sm',
-    'bg-surface-1 text-text-primary placeholder:text-text-muted',
-    'border border-border-primary',
-    'transition-[border-color,box-shadow] duration-200 ease-emphasized',
-    'focus:outline-none focus:shadow-focus-ring focus:border-accent-primary',
+    'block w-full rounded-input px-4 py-2.5 text-sm',
+    'bg-surface text-fg placeholder:text-fg-subtle',
+    'border-2 border-rule-strong',
+    'transition-[border-color,box-shadow] duration-100',
+    'focus:outline-none focus:border-accent focus:shadow-hard-xs',
   ].join(' ');
 
   const errorStyles = error
-    ? 'border-error focus:border-error focus:shadow-[0_0_0_2px_rgba(255,69,58,0.5)]'
+    ? 'border-err focus:border-err'
     : '';
 
   return (
     <div className="space-y-1">
       {label && (
-        <label className="block text-sm font-medium text-text-primary">
+        <label className="eyebrow block text-fg">
           {label}
         </label>
       )}
@@ -43,7 +44,7 @@ export const Input: React.FC<InputProps> = ({
         className={`${baseStyles} ${errorStyles} ${className}`}
         {...props}
       />
-      {error && <p className="text-sm text-error">{error}</p>}
+      {error && <p className="text-sm text-err">{error}</p>}
     </div>
   );
 };

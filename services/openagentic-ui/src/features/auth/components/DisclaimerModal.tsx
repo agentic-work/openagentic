@@ -22,7 +22,8 @@ export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 z-50"
+            className="fixed inset-0 z-50"
+            style={{ background: 'color-mix(in srgb, var(--color-bg) 90%, transparent)' }}
             onClick={onDecline}
           />
 
@@ -33,22 +34,23 @@ export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-yellow-500/50 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            <div className="border-2 rounded-xl shadow-hard-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto bg-surface"
               style={{
-                filter: 'drop-shadow(0 0 30px rgba(234, 179, 8, 0.3))',
+                borderColor: 'color-mix(in srgb, var(--color-warn) 50%, transparent)',
+                filter: 'drop-shadow(0 0 30px color-mix(in srgb, var(--color-warn) 30%, transparent))',
               }}
             >
               {/* Header */}
-              <div className="bg-yellow-500/10 border-b border-yellow-500/30 p-6">
+              <div className="p-6" style={{ background: 'color-mix(in srgb, var(--color-warn) 10%, transparent)', borderBottom: '1px solid color-mix(in srgb, var(--color-warn) 30%, transparent)' }}>
                 <div className="flex items-center gap-3">
-                  <div className="p-3 bg-yellow-500/20 rounded-lg">
-                    <AlertTriangle className="w-8 h-8 text-yellow-500" />
+                  <div className="p-3 rounded-lg" style={{ background: 'color-mix(in srgb, var(--color-warn) 20%, transparent)' }}>
+                    <AlertTriangle className="w-8 h-8 text-warn" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-yellow-500 tracking-wide">
+                    <h2 className="text-2xl font-bold text-warn tracking-wide">
                       FEDERAL GOVERNMENT SYSTEM NOTICE
                     </h2>
-                    <p className="text-sm text-gray-400 mt-1">
+                    <p className="text-sm text-fg-muted mt-1">
                       Please read carefully before proceeding
                     </p>
                   </div>
@@ -58,11 +60,11 @@ export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
               {/* Content */}
               <div className="p-6 space-y-4">
                 {/* Warning Box */}
-                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                <div className="rounded-lg p-4" style={{ background: 'color-mix(in srgb, var(--color-err) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-err) 30%, transparent)' }}>
                   <div className="flex items-start gap-3">
-                    <Shield className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm text-gray-300 space-y-2">
-                      <p className="font-semibold text-red-400">
+                    <Shield className="w-5 h-5 text-err mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-fg-muted space-y-2">
+                      <p className="font-semibold text-err">
                         AUTHORIZED USE ONLY
                       </p>
                       <p>
@@ -73,66 +75,66 @@ export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
                 </div>
 
                 {/* Terms List */}
-                <div className="space-y-3 text-sm text-gray-300">
+                <div className="space-y-3 text-sm text-fg-muted">
                   <div className="flex items-start gap-2">
-                    <span className="text-yellow-500 font-bold mt-1">•</span>
+                    <span className="text-warn font-bold mt-1">•</span>
                     <p>
-                      <strong className="text-white">Monitoring and Recording:</strong> This system is subject to monitoring at all times. All activities on this system may be monitored, intercepted, recorded, read, copied, or captured in any manner and disclosed in any manner, by authorized personnel.
+                      <strong className="text-fg">Monitoring and Recording:</strong> This system is subject to monitoring at all times. All activities on this system may be monitored, intercepted, recorded, read, copied, or captured in any manner and disclosed in any manner, by authorized personnel.
                     </p>
                   </div>
 
                   <div className="flex items-start gap-2">
-                    <span className="text-yellow-500 font-bold mt-1">•</span>
+                    <span className="text-warn font-bold mt-1">•</span>
                     <p>
-                      <strong className="text-white">No Expectation of Privacy:</strong> Users of this system have no expectation of privacy regarding any communications or data processed or stored on this system.
+                      <strong className="text-fg">No Expectation of Privacy:</strong> Users of this system have no expectation of privacy regarding any communications or data processed or stored on this system.
                     </p>
                   </div>
 
                   <div className="flex items-start gap-2">
-                    <span className="text-yellow-500 font-bold mt-1">•</span>
+                    <span className="text-warn font-bold mt-1">•</span>
                     <p>
-                      <strong className="text-white">Authorized Use Only:</strong> Use of this system constitutes consent to monitoring and recording. Unauthorized use of this system is prohibited and subject to criminal and civil penalties.
+                      <strong className="text-fg">Authorized Use Only:</strong> Use of this system constitutes consent to monitoring and recording. Unauthorized use of this system is prohibited and subject to criminal and civil penalties.
                     </p>
                   </div>
 
                   <div className="flex items-start gap-2">
-                    <span className="text-yellow-500 font-bold mt-1">•</span>
+                    <span className="text-warn font-bold mt-1">•</span>
                     <p>
-                      <strong className="text-white">Evidence in Legal Proceedings:</strong> System administrators may provide evidence of any criminal activity discovered on this system to law enforcement officials.
+                      <strong className="text-fg">Evidence in Legal Proceedings:</strong> System administrators may provide evidence of any criminal activity discovered on this system to law enforcement officials.
                     </p>
                   </div>
 
                   <div className="flex items-start gap-2">
-                    <span className="text-yellow-500 font-bold mt-1">•</span>
+                    <span className="text-warn font-bold mt-1">•</span>
                     <p>
-                      <strong className="text-white">Compliance Requirements:</strong> All users must comply with federal information security policies, including but not limited to FISMA, NIST standards, and agency-specific security requirements.
+                      <strong className="text-fg">Compliance Requirements:</strong> All users must comply with federal information security policies, including but not limited to FISMA, NIST standards, and agency-specific security requirements.
                     </p>
                   </div>
 
                   <div className="flex items-start gap-2">
-                    <span className="text-yellow-500 font-bold mt-1">•</span>
+                    <span className="text-warn font-bold mt-1">•</span>
                     <p>
-                      <strong className="text-white">Data Classification:</strong> You are responsible for properly handling and protecting all information according to its classification level. Unauthorized disclosure of sensitive information may result in disciplinary action and criminal prosecution.
+                      <strong className="text-fg">Data Classification:</strong> You are responsible for properly handling and protecting all information according to its classification level. Unauthorized disclosure of sensitive information may result in disciplinary action and criminal prosecution.
                     </p>
                   </div>
                 </div>
 
                 {/* Final Warning */}
-                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                  <p className="text-sm text-gray-300">
-                    <strong className="text-yellow-400">BY CLICKING "I ACCEPT" BELOW:</strong> You acknowledge that you have read, understood, and agree to comply with all terms and conditions stated above. You consent to monitoring and acknowledge that unauthorized use may result in disciplinary action and prosecution under applicable federal laws.
+                <div className="rounded-lg p-4" style={{ background: 'color-mix(in srgb, var(--color-warn) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-warn) 30%, transparent)' }}>
+                  <p className="text-sm text-fg-muted">
+                    <strong className="text-warn">BY CLICKING "I ACCEPT" BELOW:</strong> You acknowledge that you have read, understood, and agree to comply with all terms and conditions stated above. You consent to monitoring and acknowledge that unauthorized use may result in disciplinary action and prosecution under applicable federal laws.
                   </p>
                 </div>
               </div>
 
               {/* Footer with Actions */}
-              <div className="bg-gray-900/50 border-t border-gray-700 p-6">
+              <div className="p-6" style={{ background: 'color-mix(in srgb, var(--color-bg) 50%, transparent)', borderTop: '1px solid var(--color-rule)' }}>
                 <div className="flex gap-4 justify-end">
                   <motion.button
                     onClick={onDecline}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+                    className="px-6 py-3 bg-surface-2 hover:bg-surface text-fg rounded-lg font-semibold transition-colors flex items-center gap-2"
                   >
                     <X className="w-4 h-4" />
                     Decline
@@ -140,11 +142,12 @@ export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
 
                   <motion.button
                     onClick={onAccept}
-                    whileHover={{ scale: 1.02, boxShadow: '0 0 20px rgba(34, 197, 94, 0.5)' }}
+                    whileHover={{ scale: 1.02, boxShadow: '0 0 20px color-mix(in srgb, var(--color-ok) 50%, transparent)' }}
                     whileTap={{ scale: 0.98 }}
-                    className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+                    className="px-6 py-3 text-on-accent rounded-lg font-semibold transition-all flex items-center gap-2"
                     style={{
-                      filter: 'drop-shadow(0 0 10px rgba(34, 197, 94, 0.3))',
+                      background: 'linear-gradient(to right, var(--color-ok), color-mix(in srgb, var(--color-ok) 85%, var(--color-bg)))',
+                      filter: 'drop-shadow(0 0 10px color-mix(in srgb, var(--color-ok) 30%, transparent))',
                     }}
                   >
                     <Shield className="w-4 h-4" />

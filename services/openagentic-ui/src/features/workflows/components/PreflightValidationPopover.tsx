@@ -96,11 +96,11 @@ export const PreflightValidationPopover: React.FC<Props> = ({
             }}>
               <div style={{
                 width: 36, height: 36, borderRadius: '50%',
-                background: 'rgba(245, 158, 11, 0.15)',
+                background: 'color-mix(in srgb, var(--color-warning) 15%, transparent)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
               }}>
-                <AlertTriangle style={{ width: 20, height: 20, color: '#f59e0b' }} />
+                <AlertTriangle style={{ width: 20, height: 20, color: 'var(--color-warning)' }} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div id="preflight-title" style={{
@@ -172,7 +172,7 @@ export const PreflightValidationPopover: React.FC<Props> = ({
                     <ul style={{
                       margin: '6px 0 0 0', padding: 0, listStyle: 'none',
                       fontSize: 12,
-                      color: '#f59e0b',
+                      color: 'var(--color-warning)',
                     }}>
                       {entry.issues.map((iss, i) => (
                         <li key={i} style={{ display: 'flex', gap: 6, marginBottom: 2 }}>
@@ -220,10 +220,10 @@ export const PreflightValidationPopover: React.FC<Props> = ({
                 data-testid="preflight-cancel"
                 style={{
                   padding: '8px 16px',
-                  background: '#2196f3',
+                  background: 'var(--color-info)',
                   border: 'none',
                   borderRadius: 6,
-                  color: '#fff',
+                  color: 'var(--color-on-accent)',
                   fontSize: 13, fontWeight: 600,
                   cursor: 'pointer',
                 }}

@@ -2,6 +2,10 @@
  * CustomNode - n8n-inspired flat card with icon circle, status glows, hover toolbar
  */
 /* eslint-disable no-restricted-syntax -- Workflow node styling uses intentional colors */
+// theme-allow: CATEGORY_COLORS + getVendorIcon() below are the workflow node-TYPE
+// identity palette and vendor brand logo SVGs (AWS/Azure/GCP/Slack/Jira/… official
+// brand hexes + on-disc white glyphs) — the node-type + vendor-brand allowlist carve-out.
+// The node card's own chrome (tooltip surfaces, status text, badges) uses --color-* tokens.
 
 import React, { memo, useState, useCallback, useRef } from 'react';
 import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
@@ -394,20 +398,20 @@ function getConfigPreview(data: Record<string, any>, nodeType: string): string {
 function getOutputHandles(data: Record<string, any>, nodeType: string): Array<{ id: string; label: string; color: string; position: number }> {
   if (nodeType === 'condition' || data.operator) {
     return [
-      { id: 'true', label: 'true', color: '#22c55e', position: 35 },
-      { id: 'false', label: 'false', color: '#f44336', position: 65 },
+      { id: 'true', label: 'true', color: 'var(--color-success)', position: 35 },
+      { id: 'false', label: 'false', color: 'var(--color-error)', position: 65 },
     ];
   }
   if (nodeType === 'approval' || nodeType === 'human_approval') {
     return [
-      { id: 'approved', label: 'yes', color: '#22c55e', position: 35 },
-      { id: 'rejected', label: 'no', color: '#f44336', position: 65 },
+      { id: 'approved', label: 'yes', color: 'var(--color-success)', position: 35 },
+      { id: 'rejected', label: 'no', color: 'var(--color-error)', position: 65 },
     ];
   }
   if (nodeType === 'loop') {
     return [
-      { id: 'item', label: 'each', color: '#00bcd4', position: 35 },
-      { id: 'done', label: 'done', color: '#22c55e', position: 65 },
+      { id: 'item', label: 'each', color: 'var(--color-info)', position: 35 },
+      { id: 'done', label: 'done', color: 'var(--color-success)', position: 65 },
     ];
   }
   return [{ id: 'output', label: '', color: '', position: 50 }];
@@ -485,26 +489,26 @@ const NodeHoverTooltip: React.FC<{ data: Record<string, any>; nodeType: string; 
     <div style={{
       position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
       marginBottom: 8, zIndex: 9999, pointerEvents: 'auto',
-      background: '#161b22', border: '1px solid #30363d', borderRadius: 10,
+      background: 'var(--color-surface)', border: '1px solid var(--color-rule)', borderRadius: 10,
       padding: '10px 14px', minWidth: 280, maxWidth: 480, width: 'max-content',
       boxShadow: `0 8px 24px rgba(0,0,0,0.4), 0 0 8px ${catColor}20`,
-      fontSize: 11, color: '#c9d1d9', lineHeight: 1.5,
+      fontSize: 11, color: 'var(--color-fg)', lineHeight: 1.5,
     }}>
       {/* Pre-execution: description + config */}
       {!status && (
         <>
           {description && (
-            <div style={{ color: '#8b949e', fontSize: 10, marginBottom: configPreview.length > 0 ? 6 : 0 }}>{description}</div>
+            <div style={{ color: 'var(--color-fg-muted)', fontSize: 10, marginBottom: configPreview.length > 0 ? 6 : 0 }}>{description}</div>
           )}
           {configPreview.length > 0 && (
-            <div style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 6, padding: '6px 8px', fontSize: 10, fontFamily: "'SF Mono', Monaco, monospace", color: '#c9d1d9' }}>
+            <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-rule)', borderRadius: 6, padding: '6px 8px', fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--color-fg)' }}>
               {configPreview.map((item, i) => <div key={i}>{item}</div>)}
             </div>
           )}
           {validationErrors && validationErrors.length > 0 && (
-            <div style={{ marginTop: 6, background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.2)', borderRadius: 6, padding: '6px 8px' }}>
+            <div style={{ marginTop: 6, background: 'color-mix(in srgb, var(--color-error) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-error) 20%, transparent)', borderRadius: 6, padding: '6px 8px' }}>
               {validationErrors.map((err, i) => (
-                <div key={i} style={{ color: '#f85149', fontSize: 10 }}>{err.message}</div>
+                <div key={i} style={{ color: 'var(--color-error)', fontSize: 10 }}>{err.message}</div>
               ))}
             </div>
           )}
@@ -514,10 +518,10 @@ const NodeHoverTooltip: React.FC<{ data: Record<string, any>; nodeType: string; 
       {/* During execution: running state */}
       {status === 'running' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#d29922', animation: 'pulse 1.5s infinite' }} />
-          <span style={{ fontWeight: 700, color: '#d29922' }}>Running...</span>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-warning)', animation: 'pulse 1.5s infinite' }} />
+          <span style={{ fontWeight: 700, color: 'var(--color-warning)' }}>Running...</span>
           {data.executionStartTime && (
-            <span style={{ marginLeft: 'auto', color: '#8b949e', fontFamily: 'monospace', fontSize: 10 }}>
+            <span style={{ marginLeft: 'auto', color: 'var(--color-fg-muted)', fontFamily: 'var(--font-mono)', fontSize: 10 }}>
               {Math.round((Date.now() - data.executionStartTime) / 1000)}s
             </span>
           )}
@@ -531,9 +535,9 @@ const NodeHoverTooltip: React.FC<{ data: Record<string, any>; nodeType: string; 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
             <span style={{
               width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-              background: status === 'completed' ? '#2ea043' : '#f85149',
+              background: status === 'completed' ? 'var(--color-success)' : 'var(--color-error)',
             }} />
-            <span style={{ fontWeight: 700, textTransform: 'capitalize', color: '#e6edf3' }}>{status}</span>
+            <span style={{ fontWeight: 700, textTransform: 'capitalize', color: 'var(--color-fg)' }}>{status}</span>
           </div>
 
           {/* Human-readable summary — per user 2026-05-14, completed-node
@@ -548,10 +552,10 @@ const NodeHoverTooltip: React.FC<{ data: Record<string, any>; nodeType: string; 
               <div style={{
                 margin: '0 0 6px',
                 padding: '6px 10px',
-                background: 'linear-gradient(135deg, rgba(46,160,67,0.10), rgba(46,160,67,0.04))',
-                border: '1px solid rgba(46,160,67,0.28)',
+                background: 'color-mix(in srgb, var(--color-success) 9%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--color-success) 28%, transparent)',
                 borderRadius: 6,
-                color: '#e6edf3',
+                color: 'var(--color-fg)',
                 fontWeight: 600,
                 fontSize: 12,
                 lineHeight: 1.35,
@@ -575,28 +579,28 @@ const NodeHoverTooltip: React.FC<{ data: Record<string, any>; nodeType: string; 
             return (
               <div style={{
                 display: 'flex', flexWrap: 'wrap', gap: '4px 10px', marginBottom: 6,
-                background: '#0d1117', border: '1px solid #21262d', borderRadius: 6,
+                background: 'var(--color-bg)', border: '1px solid var(--color-rule)', borderRadius: 6,
                 padding: '5px 8px', fontSize: 10,
               }}>
                 {model && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#a5f3fc' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'var(--color-info)' }}>
                     <span style={{ fontSize: 9 }}>MODEL</span>
-                    <span style={{ fontFamily: 'monospace', color: '#e2e8f0' }}>{model.replace(/-\d{4}-\d{2}-\d{2}$/, '')}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-fg)' }}>{model.replace(/-\d{4}-\d{2}-\d{2}$/, '')}</span>
                   </span>
                 )}
                 {durationFmt && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#86efac' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'var(--color-success)' }}>
                     <span style={{ fontSize: 9 }}>TIME</span>
-                    <span style={{ fontFamily: 'monospace', color: '#e2e8f0' }}>{durationFmt}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-fg)' }}>{durationFmt}</span>
                   </span>
                 )}
                 {totalTokens != null && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#fbbf24' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'var(--color-warning)' }}>
                     <span style={{ fontSize: 9 }}>TOKENS</span>
-                    <span style={{ fontFamily: 'monospace', color: '#e2e8f0' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-fg)' }}>
                       {Number(totalTokens).toLocaleString()}
                       {promptTok != null && completeTok != null && (
-                        <span style={{ color: '#6b7280', fontSize: 9 }}> ({promptTok}+{completeTok})</span>
+                        <span style={{ color: 'var(--color-fg-subtle)', fontSize: 9 }}> ({promptTok}+{completeTok})</span>
                       )}
                     </span>
                   </span>
@@ -606,15 +610,15 @@ const NodeHoverTooltip: React.FC<{ data: Record<string, any>; nodeType: string; 
           })()}
 
           {error && (
-            <div style={{ background: 'rgba(248,81,73,0.1)', border: '1px solid rgba(248,81,73,0.2)', borderRadius: 6, padding: '6px 8px', color: '#f85149', fontSize: 10, fontFamily: "'SF Mono', Monaco, monospace", marginBottom: 4, maxHeight: 240, overflowY: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            <div style={{ background: 'color-mix(in srgb, var(--color-error) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-error) 20%, transparent)', borderRadius: 6, padding: '6px 8px', color: 'var(--color-error)', fontSize: 10, fontFamily: 'var(--font-mono)', marginBottom: 4, maxHeight: 240, overflowY: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
               {String(error)}
             </div>
           )}
 
           {outputText && !error && (
             <>
-              <div style={{ color: '#8b949e', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 }}>Output</div>
-              <div style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 6, padding: '6px 8px', fontSize: 10, fontFamily: "'SF Mono', Monaco, monospace", color: '#c9d1d9', maxHeight: 280, overflowY: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              <div style={{ color: 'var(--color-fg-muted)', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 }}>Output</div>
+              <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-rule)', borderRadius: 6, padding: '6px 8px', fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--color-fg)', maxHeight: 280, overflowY: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                 {outputText.length > 2000 ? outputText.slice(0, 2000) + '\n... (truncated)' : outputText}
               </div>
             </>
@@ -623,10 +627,10 @@ const NodeHoverTooltip: React.FC<{ data: Record<string, any>; nodeType: string; 
       )}
 
       {/* Click hint */}
-      <div style={{ marginTop: 6, color: '#484f58', fontSize: 9, textAlign: 'center' }}>Click node to view full details in panel</div>
+      <div style={{ marginTop: 6, color: 'var(--color-fg-subtle)', fontSize: 9, textAlign: 'center' }}>Click node to view full details in panel</div>
 
       {/* Tooltip arrow */}
-      <div style={{ position: 'absolute', bottom: -5, left: '50%', transform: 'translateX(-50%)', width: 10, height: 10, background: '#161b22', borderRight: '1px solid #30363d', borderBottom: '1px solid #30363d', rotate: '45deg' }} />
+      <div style={{ position: 'absolute', bottom: -5, left: '50%', transform: 'translateX(-50%)', width: 10, height: 10, background: 'var(--color-surface)', borderRight: '1px solid var(--color-rule)', borderBottom: '1px solid var(--color-rule)', rotate: '45deg' }} />
     </div>
   );
 };
@@ -661,7 +665,7 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
   const hasValidationErrors = validationErrors && validationErrors.length > 0 && !executionState;
 
   const category = getCategoryForType(nodeType);
-  const catColor = data.color || CATEGORY_COLORS[category] || '#607d8b';
+  const catColor = data.color || CATEGORY_COLORS[category] || 'var(--color-fg-subtle)';
   const subtitle = getConfigPreview(data, nodeType);
   const outputHandles = getOutputHandles(data, nodeType);
   const isAgentNode = ['agent_single', 'agent_spawn', 'agent_pool', 'agent_supervisor', 'multi_agent'].includes(nodeType);
@@ -707,8 +711,8 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
   // ── Text/Annotation Node — renders as a styled sticky note ──
   if (nodeType === 'text') {
     // Accent color: use data.color, data.bgColor hint, or a soft default
-    const noteColor = data.color || '#f59e0b';
-    const noteBg = data.bgColor || 'rgba(245,158,11,0.06)';
+    const noteColor = data.color || 'var(--color-accent)';
+    const noteBg = data.bgColor || 'color-mix(in srgb, var(--color-accent) 6%, transparent)';
     return (
       <div
         className={`wf-node-appear wf-text-node`}
@@ -817,7 +821,7 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
       <div
         className={`wf-node-card ${statusClass} ${selected ? 'wf-selected' : ''}`}
         style={{
-          ...(hasValidationErrors ? { borderColor: '#f59e0b', boxShadow: '0 0 8px rgba(245,158,11,0.25)' } : {}),
+          ...(hasValidationErrors ? { borderColor: 'var(--color-warning)', boxShadow: '0 0 8px color-mix(in srgb, var(--color-warning) 25%, transparent)' } : {}),
           ...(data.disabled ? { borderStyle: 'dashed' } : {}),
         }}
       >
@@ -841,10 +845,10 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
         {data.disabled && (
           <div style={{
             position: 'absolute', top: -8, right: -8, zIndex: 10,
-            backgroundColor: '#6b7280', color: '#fff',
+            backgroundColor: 'var(--color-fg-subtle)', color: 'var(--color-on-accent)',
             fontSize: 8, fontWeight: 800, letterSpacing: '0.05em',
             padding: '2px 6px', borderRadius: 4,
-            border: '2px solid var(--color-bg-primary, #0d1117)',
+            border: '2px solid var(--color-bg)',
             lineHeight: 1.2, textTransform: 'uppercase',
           }}>
             DISABLED
@@ -857,11 +861,11 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
             style={{
               position: 'absolute', top: -8, right: -8, zIndex: 10,
               width: 22, height: 22, borderRadius: '50%',
-              backgroundColor: '#f59e0b', color: '#000',
+              backgroundColor: 'var(--color-warning)', color: 'var(--color-on-accent)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 11, fontWeight: 800,
-              boxShadow: '0 2px 6px rgba(245,158,11,0.4)',
-              border: '2px solid var(--color-bg-primary, #0d1117)',
+              boxShadow: '0 2px 6px color-mix(in srgb, var(--color-warning) 40%, transparent)',
+              border: '2px solid var(--color-bg)',
             }}
           >
             {validationErrors!.length}
@@ -916,33 +920,33 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
         {isAgentNode && !executionState && (
           <div style={{
             margin: '0 10px 6px', padding: '5px 8px',
-            background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.18)',
+            background: 'color-mix(in srgb, var(--color-accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 18%, transparent)',
             borderRadius: 6, display: 'flex', flexDirection: 'column', gap: 3,
           }}>
             {(data.agentId || data.role) && (
-              <div style={{ fontSize: 10, color: '#c4b5fd', fontWeight: 600, lineHeight: 1.3 }}>
+              <div style={{ fontSize: 10, color: 'var(--color-accent)', fontWeight: 600, lineHeight: 1.3 }}>
                 {data.agentId && <span>{data.agentId}</span>}
-                {data.agentId && data.role && <span style={{ color: '#8b949e' }}> / </span>}
-                {data.role && <span style={{ color: '#a78bfa', fontWeight: 400 }}>{data.role}</span>}
+                {data.agentId && data.role && <span style={{ color: 'var(--color-fg-muted)' }}> / </span>}
+                {data.role && <span style={{ color: 'var(--color-accent)', fontWeight: 400 }}>{data.role}</span>}
               </div>
             )}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
               {data.model && (
                 <span style={{
                   fontSize: 9, padding: '1px 5px', borderRadius: 3,
-                  background: 'rgba(124,58,237,0.15)', color: '#a78bfa', fontFamily: "'SF Mono', Monaco, monospace",
+                  background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)', fontFamily: 'var(--font-mono)',
                 }}>{data.model}</span>
               )}
               {data.tools && Array.isArray(data.tools) && data.tools.length > 0 && (
                 <span style={{
                   fontSize: 9, padding: '1px 5px', borderRadius: 3,
-                  background: 'rgba(0,188,212,0.12)', color: '#67e8f9',
+                  background: 'color-mix(in srgb, var(--color-info) 12%, transparent)', color: 'var(--color-info)',
                 }}>{data.tools.length} tool{data.tools.length !== 1 ? 's' : ''}</span>
               )}
               {data.maxTurns && (
                 <span style={{
                   fontSize: 9, padding: '1px 5px', borderRadius: 3,
-                  background: 'rgba(255,152,0,0.12)', color: '#fbbf24',
+                  background: 'color-mix(in srgb, var(--color-warning) 12%, transparent)', color: 'var(--color-warning)',
                 }}>{data.maxTurns} turns max</span>
               )}
             </div>
@@ -952,8 +956,8 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
         {/* Validation errors only — no empty "click to configure" placeholder */}
         {!subtitle && !executionState && hasValidationErrors && (
           <div className="wf-node-body" style={{ textAlign: 'center', padding: '4px 12px 8px' }}>
-            <AlertCircle style={{ width: 14, height: 14, margin: '0 auto 2px', color: '#f59e0b' }} />
-            <div style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>
+            <AlertCircle style={{ width: 14, height: 14, margin: '0 auto 2px', color: 'var(--color-warning)' }} />
+            <div style={{ fontSize: 10, color: 'var(--color-warning)', fontWeight: 600 }}>
               {validationErrors!.length} field{validationErrors!.length > 1 ? 's' : ''} required
             </div>
           </div>
@@ -962,7 +966,7 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
         {/* Validation errors summary (when node has subtitle but also errors) */}
         {subtitle && hasValidationErrors && !executionState && (
           <div style={{
-            padding: '2px 12px 8px', fontSize: 10, color: '#f59e0b',
+            padding: '2px 12px 8px', fontSize: 10, color: 'var(--color-warning)',
             display: 'flex', alignItems: 'center', gap: 4,
           }}>
             <AlertCircle style={{ width: 11, height: 11, flexShrink: 0 }} />
@@ -974,14 +978,14 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
         {executionState && (
           <div className="wf-exec-bar">
             {executionState === 'running' && <div className="wf-exec-spinner" />}
-            {executionState === 'completed' && <CheckCircle style={{ width: 12, height: 12, color: '#22c55e' }} />}
-            {executionState === 'failed' && <XCircle style={{ width: 12, height: 12, color: '#f44336' }} />}
-            {executionState === 'assertion_failed' && <AlertCircle style={{ width: 12, height: 12, color: '#f97316' }} />}
+            {executionState === 'completed' && <CheckCircle style={{ width: 12, height: 12, color: 'var(--color-success)' }} />}
+            {executionState === 'failed' && <XCircle style={{ width: 12, height: 12, color: 'var(--color-error)' }} />}
+            {executionState === 'assertion_failed' && <AlertCircle style={{ width: 12, height: 12, color: 'var(--color-warning)' }} />}
             <span style={{
-              color: executionState === 'running' ? '#ff9800'
-                : executionState === 'completed' ? '#22c55e'
-                : executionState === 'assertion_failed' ? '#f97316'
-                : '#f44336',
+              color: executionState === 'running' ? 'var(--color-warning)'
+                : executionState === 'completed' ? 'var(--color-success)'
+                : executionState === 'assertion_failed' ? 'var(--color-warning)'
+                : 'var(--color-error)',
               flex: 1,
             }}>
               {executionState}
@@ -999,11 +1003,11 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
           <div style={{
             margin: '0 10px 6px',
             padding: '5px 8px',
-            background: 'rgba(249,115,22,0.08)',
-            border: '1px solid rgba(249,115,22,0.25)',
+            background: 'color-mix(in srgb, var(--color-warning) 8%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--color-warning) 25%, transparent)',
             borderRadius: 6,
             fontSize: 10,
-            color: '#f97316',
+            color: 'var(--color-warning)',
             lineHeight: 1.4,
           }}>
             <span style={{ fontWeight: 700 }}>Assertion failed: </span>{assertionErrorMessage}
@@ -1033,16 +1037,16 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
               const running = t.status === 'running';
               const errored = t.status === 'error';
               const bg = running
-                ? 'rgba(124,77,255,0.08)'
+                ? 'color-mix(in srgb, var(--color-accent) 8%, transparent)'
                 : errored
-                  ? 'rgba(244,67,54,0.10)'
-                  : 'rgba(34,197,94,0.10)';
+                  ? 'color-mix(in srgb, var(--color-error) 10%, transparent)'
+                  : 'color-mix(in srgb, var(--color-success) 10%, transparent)';
               const border = running
-                ? 'rgba(124,77,255,0.35)'
+                ? 'color-mix(in srgb, var(--color-accent) 35%, transparent)'
                 : errored
-                  ? 'rgba(244,67,54,0.35)'
-                  : 'rgba(34,197,94,0.35)';
-              const fg = running ? '#c4b5fd' : errored ? '#f87171' : '#4ade80';
+                  ? 'color-mix(in srgb, var(--color-error) 35%, transparent)'
+                  : 'color-mix(in srgb, var(--color-success) 35%, transparent)';
+              const fg = running ? 'var(--color-accent)' : errored ? 'var(--color-error)' : 'var(--color-success)';
               return (
                 <span
                   key={t.toolCallId}
@@ -1054,7 +1058,7 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
                     gap: 4,
                     padding: '2px 8px',
                     borderRadius: 10,
-                    fontFamily: "'SF Mono', Monaco, monospace",
+                    fontFamily: 'var(--font-mono)',
                     fontSize: 10,
                     background: bg,
                     border: `1px solid ${border}`,
@@ -1087,8 +1091,8 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
         {isAgentNode && executionState === 'running' && (
           <div style={{
             margin: '0 10px 6px', padding: '4px 8px',
-            background: 'rgba(255,152,0,0.06)', border: '1px solid rgba(255,152,0,0.15)',
-            borderRadius: 6, fontSize: 10, color: '#fbbf24',
+            background: 'color-mix(in srgb, var(--color-warning) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--color-warning) 15%, transparent)',
+            borderRadius: 6, fontSize: 10, color: 'var(--color-warning)',
             display: 'flex', flexDirection: 'column', gap: 2,
             animation: 'wf-agent-pulse 2s ease-in-out infinite',
           }}>
@@ -1099,7 +1103,7 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
                 </span>
               )}
               {data.elapsedMs != null && (
-                <span style={{ color: '#8b949e', marginLeft: 'auto', fontSize: 9, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <span style={{ color: 'var(--color-fg-muted)', marginLeft: 'auto', fontSize: 9, display: 'flex', alignItems: 'center', gap: 2 }}>
                   <Clock style={{ width: 9, height: 9 }} />
                   {data.elapsedMs >= 1000 ? `${(data.elapsedMs / 1000).toFixed(1)}s` : `${data.elapsedMs}ms`}
                 </span>
@@ -1107,7 +1111,7 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
             </div>
             {data.currentToolCall && (
               <div style={{
-                fontSize: 9, color: '#67e8f9', fontFamily: "'SF Mono', Monaco, monospace",
+                fontSize: 9, color: 'var(--color-info)', fontFamily: 'var(--font-mono)',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
                 calling {data.currentToolCall}
@@ -1123,8 +1127,8 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
             style={{
               padding: '0 12px 8px',
               fontSize: 10,
-              fontFamily: "'SF Mono', Monaco, monospace",
-              color: '#c9d1d9',
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--color-fg)',
               lineHeight: 1.4,
               wordBreak: 'break-word',
               maxHeight: 60,
@@ -1138,7 +1142,7 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
             <span
               style={{
                 display: 'inline-block',
-                color: '#58a6ff',
+                color: 'var(--color-info)',
                 animation: 'wf-cursor-blink 1s step-start infinite',
                 marginLeft: 1,
                 fontWeight: 400,
@@ -1154,8 +1158,8 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
           <div style={{
             padding: '0 12px 8px',
             fontSize: 10,
-            fontFamily: "'SF Mono', Monaco, monospace",
-            color: '#8b949e',
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--color-fg-muted)',
             overflow: 'hidden',
             display: '-webkit-box',
             WebkitLineClamp: 3,
@@ -1172,7 +1176,7 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
           <div style={{
             padding: '0 12px 6px',
             display: 'flex', flexWrap: 'wrap', gap: 6,
-            fontSize: 9, color: '#8b949e',
+            fontSize: 9, color: 'var(--color-fg-muted)',
           }}>
             {executionTimeMs != null && (
               <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -1194,8 +1198,8 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
           <div style={{
             padding: '0 12px 8px',
             fontSize: 10,
-            fontFamily: "'SF Mono', Monaco, monospace",
-            color: '#f85149',
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--color-error)',
             overflow: 'hidden',
             display: '-webkit-box',
             WebkitLineClamp: 3,
@@ -1223,8 +1227,8 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
                 }));
               }}
               style={{
-                background: 'linear-gradient(135deg, #7c4dff, #536dfe)',
-                color: '#fff',
+                background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, var(--color-info)))',
+                color: 'var(--color-on-accent)',
                 border: 'none',
                 cursor: 'pointer',
                 width: '100%',
@@ -1257,7 +1261,7 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
         {xrayMode && executionState === 'failed' && executionError && (
           <div className="wf-xray-panel wf-xray-error">
             <div className="wf-xray-label">Error</div>
-            <pre className="wf-xray-content" style={{ color: '#f44336', maxHeight: 200, overflowY: 'auto' }}>
+            <pre className="wf-xray-content" style={{ color: 'var(--color-error)', maxHeight: 200, overflowY: 'auto' }}>
               {String(executionError).length > 500 ? String(executionError).slice(0, 500) + '\n... (truncated)' : String(executionError)}
             </pre>
           </div>
@@ -1265,17 +1269,17 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
 
         {/* Execution badge (top-right) */}
         {executionState === 'running' && (
-          <div className="wf-exec-badge" style={{ backgroundColor: '#ff9800' }}>
+          <div className="wf-exec-badge" style={{ backgroundColor: 'var(--color-warning)' }}>
             <div className="wf-exec-spinner" style={{ width: 8, height: 8, borderWidth: 1.5, borderColor: 'white', borderTopColor: 'transparent' }} />
           </div>
         )}
         {executionState === 'completed' && (
-          <div className="wf-exec-badge" style={{ backgroundColor: '#22c55e' }}>
+          <div className="wf-exec-badge" style={{ backgroundColor: 'var(--color-success)' }}>
             <CheckCircle style={{ width: 12, height: 12 }} />
           </div>
         )}
         {executionState === 'failed' && (
-          <div className="wf-exec-badge" style={{ backgroundColor: '#f44336' }}>
+          <div className="wf-exec-badge" style={{ backgroundColor: 'var(--color-error)' }}>
             <XCircle style={{ width: 12, height: 12 }} />
           </div>
         )}
@@ -1353,10 +1357,10 @@ export const CustomNode = memo(({ id, data, selected, type }: NodeProps) => {
               right: 8,
               left: 'auto',
               bottom: -4,
-              background: '#ef4444',
+              background: 'var(--color-error)',
               width: 8,
               height: 8,
-              border: '2px solid #7f1d1d',
+              border: '2px solid color-mix(in srgb, var(--color-error) 50%, #000)',
             }}
           />
         )}

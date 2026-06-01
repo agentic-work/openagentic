@@ -1568,7 +1568,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-v3-mono, monospace)', fontSize: 12 }}>
+                  <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
                     no api-request timeseries — wire <code>timeSeries.apiRequests</code> in <code>/api/admin/dashboard/metrics</code>
                   </div>
                 )}
@@ -1596,7 +1596,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-v3-mono, monospace)', fontSize: 12, textAlign: 'center', padding: 8 }}>
+                    <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontSize: 12, textAlign: 'center', padding: 8 }}>
                       no response-time histogram — wire <code>summary.responseTimeDistribution</code> in <code>/api/admin/dashboard/metrics</code>
                     </div>
                   )}
@@ -1621,7 +1621,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-v3-mono, monospace)', fontSize: 12, textAlign: 'center', padding: 8 }}>
+                    <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontSize: 12, textAlign: 'center', padding: 8 }}>
                       no top-endpoints data — wire <code>summary.topEndpoints</code> in <code>/api/admin/dashboard/metrics</code>
                     </div>
                   )}
@@ -1645,7 +1645,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                     ))}
                   </div>
                 ) : (
-                  <div style={{ padding: '24px 8px', textAlign: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-v3-mono, monospace)', fontSize: 12 }}>
+                  <div style={{ padding: '24px 8px', textAlign: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
                     no http-status-code breakdown — wire <code>summary.statusCodes</code> in <code>/api/admin/dashboard/metrics</code>
                   </div>
                 )}
@@ -1691,7 +1691,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
-                      <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-v3-mono, monospace)', fontSize: 11, textAlign: 'center' }}>
+                      <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontSize: 11, textAlign: 'center' }}>
                         no auth-method breakdown — wire <code>summary.authMethods</code>
                       </div>
                     )}
@@ -1711,7 +1711,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = React.memo(({
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
-                      <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-v3-mono, monospace)', fontSize: 11, textAlign: 'center' }}>
+                      <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontSize: 11, textAlign: 'center' }}>
                         no session-duration breakdown — wire <code>summary.sessionDuration</code>
                       </div>
                     )}

@@ -1,18 +1,20 @@
 import React from 'react';
 
 /**
- * Shared Button — M3 Expressive (task #160).
+ * Shared Button — NEO-BRUTALIST field-guide restyle.
  *
- *   primary    pill-shaped, filled with accent, white label
- *   secondary  rounded-btn (12px), surface-1, raises to surface-2 on hover
- *   ghost      no background, same radius as secondary
- *   danger     pill, filled red
+ * Reads ONLY theme tokens (no raw color/font literals). The brutalist
+ * signatures, all token-driven:
+ *   - 2px solid ink border (border-rule-strong)
+ *   - hard offset shadow, ZERO blur (shadow-hard-sm), tightening to
+ *     shadow-hard-xs on press with a 2px translate
+ *   - SHARP corners (rounded-none) on primary/danger; small radius on
+ *     secondary/ghost so they read as chrome
+ *   - IBM Plex Mono (font-mono) UPPERCASE label, tracked via .btn-label
+ *   - signal-orange primary (bg-accent / text-on-accent)
  *
- * All variants share:
- *   - font-weight 500, tracking -0.01em (from global button rule)
- *   - transition on bg/border/shadow/transform at 200ms ease-emphasized
- *   - active:scale-[0.98] press feedback (150ms)
- *   - focus-visible: soft focus ring at 50% primary
+ * Prop API is unchanged (variant / size / standard button attrs) so no
+ * consumer breaks.
  */
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -29,36 +31,36 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseClasses = [
-    'inline-flex items-center justify-center font-medium',
+    'inline-flex items-center justify-center',
+    // IBM Plex Mono uppercase tracked label (token-baked in .btn-label)
+    'btn-label',
+    // 2px ink border on every variant — the #2 brutalist signature
+    'border-2 border-rule-strong',
     'transition-[background,border,box-shadow,transform,color]',
-    'duration-200 ease-emphasized',
-    'active:scale-[0.98]',
-    'focus-visible:outline-none focus-visible:shadow-focus-ring',
+    'duration-100',
+    // hard zero-blur offset shadow → tighter shadow + 2px nudge on press
+    'shadow-hard-sm active:shadow-hard-xs active:translate-x-[2px] active:translate-y-[2px]',
+    'focus-visible:outline-none focus-visible:shadow-signal',
+    'disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-hard-xs',
   ].join(' ');
 
-  // primary + danger get pill (full-round), secondary/ghost get the softer
-  // 12px "btn" radius — keeps them visually grouped with toolbars.
+  // SHARP corners on primary/danger (the loud, brutalist CTAs); a hair of
+  // radius on secondary/ghost so dense toolbars stay legible.
   const shapeClass =
-    variant === 'primary' || variant === 'danger' ? 'rounded-pill' : 'rounded-btn';
+    variant === 'primary' || variant === 'danger' ? 'rounded-none' : 'rounded-sm';
 
   const variantClasses = {
-    primary:
-      'bg-accent-primary text-white hover:brightness-110 disabled:opacity-50',
-    secondary:
-      'bg-surface-1 text-text-primary border border-border-primary hover:bg-surface-2 disabled:opacity-50',
-    ghost:
-      'text-text-primary hover:bg-surface-1 disabled:opacity-50',
-    danger:
-      'bg-error text-white hover:brightness-110 disabled:opacity-50',
+    primary: 'bg-accent text-on-accent hover:brightness-105',
+    secondary: 'bg-surface text-fg hover:bg-surface-2',
+    ghost: 'bg-transparent text-fg hover:bg-surface',
+    danger: 'bg-err text-on-accent hover:brightness-105',
   };
 
-  // Pill buttons get more horizontal padding for optical balance.
-  const isPill = shapeClass === 'rounded-pill';
   const sizeClasses = {
-    xs: isPill ? 'px-3 py-1 text-xs' : 'px-2 py-1 text-xs',
-    sm: isPill ? 'px-4 py-1.5 text-sm' : 'px-3 py-1.5 text-sm',
-    md: isPill ? 'px-6 py-2 text-sm' : 'px-4 py-2 text-sm',
-    lg: isPill ? 'px-8 py-2.5 text-base' : 'px-6 py-2.5 text-base',
+    xs: 'px-3 py-1 text-xs',
+    sm: 'px-4 py-1.5 text-sm',
+    md: 'px-6 py-2 text-sm',
+    lg: 'px-8 py-2.5 text-base',
   };
 
   const buttonClasses = [
@@ -66,7 +68,6 @@ export const Button: React.FC<ButtonProps> = ({
     shapeClass,
     variantClasses[variant],
     sizeClasses[size],
-    disabled ? 'cursor-not-allowed' : '',
     className,
   ].join(' ');
 

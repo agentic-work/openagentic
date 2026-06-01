@@ -99,7 +99,7 @@ export const NodePalette: React.FC<NodePaletteProps> = ({
           {/* Header + search */}
           <div className="flex-shrink-0 p-3 border-b" style={{ borderColor: 'var(--wf-node-border)' }}>
             <div className="flex items-center gap-2 mb-2.5">
-              <Plus className="w-4 h-4" style={{ color: '#2196f3' }} />
+              <Plus className="w-4 h-4" style={{ color: 'var(--color-info)' }} />
               <h2 className="text-sm font-semibold" style={{ color: 'var(--color-text, #333)' }}>
                 Add Nodes
               </h2>
@@ -120,7 +120,7 @@ export const NodePalette: React.FC<NodePaletteProps> = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search nodes..."
-                className="w-full pl-8 pr-8 py-1.5 rounded-lg border text-xs transition-all focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                className="w-full pl-8 pr-8 py-1.5 rounded-lg border text-xs transition-all focus:outline-none focus:ring-1 focus:ring-[color-mix(in_srgb,var(--color-accent)_50%,transparent)]"
                 style={{
                   background: 'rgba(0,0,0,0.03)',
                   borderColor: 'var(--wf-node-border)',
@@ -143,18 +143,18 @@ export const NodePalette: React.FC<NodePaletteProps> = ({
           <div className="flex-1 overflow-y-auto wf-scrollbar p-2">
             {loading && (
               <div className="p-6 text-center">
-                <div className="wf-loading rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-2" style={{ animation: 'wf-spin 1s linear infinite' }} />
+                <div className="wf-loading rounded-full h-8 w-8 border-2 border-accent border-t-transparent mx-auto mb-2" style={{ animation: 'wf-spin 1s linear infinite' }} />
                 <p className="text-xs" style={{ color: 'var(--color-text-tertiary, #999)' }}>Loading nodes...</p>
               </div>
             )}
 
             {error && (
-              <div className="p-3 rounded-lg border mx-1 mb-2" style={{ background: 'rgba(244,67,54,0.05)', borderColor: 'rgba(244,67,54,0.2)' }}>
+              <div className="p-3 rounded-lg border mx-1 mb-2" style={{ background: 'color-mix(in srgb, var(--color-error) 5%, transparent)', borderColor: 'color-mix(in srgb, var(--color-error) 20%, transparent)' }}>
                 <div className="flex items-start gap-2">
-                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-red-400" />
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-error" />
                   <div>
-                    <p className="text-[11px] font-medium text-red-400">Failed to load nodes</p>
-                    <p className="text-[10px] mt-0.5 text-red-400/60">{error}</p>
+                    <p className="text-[11px] font-medium text-error">Failed to load nodes</p>
+                    <p className="text-[10px] mt-0.5 text-error/60">{error}</p>
                   </div>
                 </div>
               </div>

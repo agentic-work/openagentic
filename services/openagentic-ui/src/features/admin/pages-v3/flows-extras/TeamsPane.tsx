@@ -72,7 +72,7 @@ export const TeamsPane: React.FC<TeamsPaneProps> = ({
         <>
           <div style={{ color: 'var(--fg-0)' }}>{r.display_name}</div>
           <div
-            style={{ color: 'var(--fg-3)', fontSize: 11, marginTop: 2, fontFamily: 'var(--font-v3-mono)' }}
+            style={{ color: 'var(--fg-3)', fontSize: 11, marginTop: 2, fontFamily: 'var(--font-mono)' }}
           >
             {r.name}
           </div>
@@ -85,7 +85,7 @@ export const TeamsPane: React.FC<TeamsPaneProps> = ({
       render: (r) => (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <StatusDot status={teamStatusDot(r.is_active)} />
-          <span style={{ fontFamily: 'var(--font-v3-mono)', fontSize: 11 }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>
             {r.is_active ? 'active' : 'inactive'}
           </span>
         </span>
@@ -153,7 +153,7 @@ export const TeamsPane: React.FC<TeamsPaneProps> = ({
           title="teams"
           count={isLoading ? '…' : filtered.length}
           right={
-            <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-v3-mono)', fontSize: 11 }}>
+            <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
               read-only
             </span>
           }

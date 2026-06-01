@@ -77,17 +77,17 @@ const TIER_ORDER: Record<string, number> = {
 function tierBadgeStyle(tier?: string): React.CSSProperties {
   const t = (tier || '').toLowerCase()
   const palette: Record<string, [string, string]> = {
-    premium: ['rgba(168, 85, 247, 0.18)', '#c084fc'],
-    high: ['rgba(59, 130, 246, 0.18)', '#60a5fa'],
-    balanced: ['rgba(20, 184, 166, 0.18)', '#5eead4'],
-    mid: ['rgba(20, 184, 166, 0.18)', '#5eead4'],
-    economy: ['rgba(245, 158, 11, 0.18)', '#fbbf24'],
-    low: ['rgba(245, 158, 11, 0.18)', '#fbbf24'],
-    free: ['rgba(34, 197, 94, 0.18)', '#86efac'],
+    premium: ['color-mix(in srgb, var(--color-accent) 18%, transparent)', 'var(--color-accent)'],
+    high: ['color-mix(in srgb, var(--color-nfo) 18%, transparent)', 'var(--color-nfo)'],
+    balanced: ['color-mix(in srgb, var(--color-nfo) 18%, transparent)', 'var(--color-nfo)'],
+    mid: ['color-mix(in srgb, var(--color-nfo) 18%, transparent)', 'var(--color-nfo)'],
+    economy: ['color-mix(in srgb, var(--color-warn) 18%, transparent)', 'var(--color-warn)'],
+    low: ['color-mix(in srgb, var(--color-warn) 18%, transparent)', 'var(--color-warn)'],
+    free: ['color-mix(in srgb, var(--color-ok) 18%, transparent)', 'var(--color-ok)'],
   }
   const [bg, fg] = palette[t] || ['var(--bg-2)', 'var(--fg-2)']
   return {
-    fontFamily: 'var(--font-v3-mono)',
+    fontFamily: 'var(--font-mono)',
     fontSize: 10,
     padding: '2px 6px',
     background: bg,
@@ -417,7 +417,7 @@ export const ModelBrowseModal: React.FC<ModelBrowseModalProps> = ({
             {c.label}
           </button>
         ))}
-        <div style={{ marginLeft: 'auto', fontFamily: 'var(--font-v3-mono)', fontSize: 11, color: 'var(--fg-2)' }}>
+        <div style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-2)' }}>
           {loading ? 'discovering…' : `${filtered.length} of ${models.length} models`}
         </div>
       </div>
@@ -429,7 +429,7 @@ export const ModelBrowseModal: React.FC<ModelBrowseModalProps> = ({
           gridTemplateColumns: '2fr 80px 80px 1fr 80px 80px',
           gap: 8,
           padding: '6px 4px',
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 10,
           color: 'var(--fg-2)',
           borderBottom: '1px solid var(--line-1)',
@@ -448,12 +448,12 @@ export const ModelBrowseModal: React.FC<ModelBrowseModalProps> = ({
       {/* Rows */}
       <div style={{ maxHeight: 460, overflowY: 'auto' }} data-testid="model-browse-list">
         {loading && (
-          <div style={{ padding: 20, textAlign: 'center', fontFamily: 'var(--font-v3-mono)', fontSize: 12, color: 'var(--fg-2)' }}>
+          <div style={{ padding: 20, textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-2)' }}>
             discovering models from {providerName}…
           </div>
         )}
         {!loading && filtered.length === 0 && (
-          <div style={{ padding: 20, textAlign: 'center', fontFamily: 'var(--font-v3-mono)', fontSize: 12, color: 'var(--fg-2)' }}>
+          <div style={{ padding: 20, textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-2)' }}>
             no models match the current filter.
           </div>
         )}
@@ -471,7 +471,7 @@ export const ModelBrowseModal: React.FC<ModelBrowseModalProps> = ({
                   borderBottom: '1px solid var(--line-1)',
                   alignItems: 'center',
                   opacity: exists ? 0.45 : 1,
-                  fontFamily: 'var(--font-v3-mono)',
+                  fontFamily: 'var(--font-mono)',
                   fontSize: 12,
                 }}
                 data-testid={`model-browse-row-${m.id}`}
@@ -535,7 +535,7 @@ export const ModelBrowseModal: React.FC<ModelBrowseModalProps> = ({
 
 function chipStyle(active: boolean): React.CSSProperties {
   return {
-    fontFamily: 'var(--font-v3-mono)',
+    fontFamily: 'var(--font-mono)',
     fontSize: 11,
     padding: '4px 8px',
     background: active ? 'color-mix(in srgb, var(--accent) 18%, transparent)' : 'var(--bg-2)',

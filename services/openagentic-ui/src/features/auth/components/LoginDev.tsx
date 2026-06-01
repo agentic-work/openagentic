@@ -79,10 +79,10 @@ const LoginDev: React.FC = () => {
   // Show loading while checking IP
   if (isCheckingIp) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
+      <div className="min-h-screen flex items-center justify-center bg-bg">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
-          <p className="mt-4 text-gray-500">Verifying access...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={{ borderBottomColor: 'var(--color-ok)' }}></div>
+          <p className="mt-4 text-fg-muted">Verifying access...</p>
         </div>
       </div>
     );
@@ -142,6 +142,7 @@ const LoginDev: React.FC = () => {
 
         const baseOpacity = 0.3 + Math.random() * 0.5;
         const blueShade = Math.floor(150 + Math.random() * 105);
+        // theme-allow: generated decorative "matrix-rain" animation color (per-char computed channel), not a theme surface
         text.setAttribute('fill', `rgb(100, ${blueShade}, 255)`);
 
         svg.appendChild(text);
@@ -248,7 +249,7 @@ const LoginDev: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-black">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-bg">
       {/* ASCII Unscramble Background */}
       <svg
         ref={canvasRef}
@@ -256,6 +257,7 @@ const LoginDev: React.FC = () => {
         className="absolute inset-0 w-full h-full"
       />
 
+      {/* theme-allow: decorative retro-CRT phosphor scanline effect (green-glow terminal Easter-egg on the dev login), not a themeable surface */}
       <style>
         {`
           svg {
@@ -340,8 +342,9 @@ const LoginDev: React.FC = () => {
         <h1
           className="text-2xl font-black tracking-widest text-center crt-effect"
           style={{
-            fontFamily: '"Courier New", "Consolas", monospace',
-            color: '#22C55E',
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--color-ok)',
+            // theme-allow: decorative green-phosphor CRT glow for the retro terminal Easter-egg
             textShadow: `
               0 0 10px rgba(0, 255, 0, 0.8),
               0 0 20px rgba(0, 255, 0, 0.5),
@@ -378,8 +381,12 @@ const LoginDev: React.FC = () => {
           onClick={handleAzureLogin}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="px-8 py-4 bg-gradient-to-r from-green-600 to-green-700 border-2 border-green-500/50 rounded-xl text-white font-bold hover:from-green-500 hover:to-green-600 hover:border-green-400/70 transition-all duration-150 flex items-center gap-3 shadow-2xl"
+          className="px-8 py-4 border-2 rounded-xl font-bold transition-all duration-150 flex items-center gap-3 shadow-2xl"
           style={{
+            background: 'linear-gradient(to right, var(--color-ok), color-mix(in srgb, var(--color-ok) 80%, var(--color-bg)))',
+            borderColor: 'color-mix(in srgb, var(--color-ok) 50%, transparent)',
+            color: 'var(--color-on-accent)',
+            // theme-allow: decorative green-phosphor CRT glow for the retro terminal Easter-egg
             boxShadow: '0 0 30px rgba(0, 255, 0, 0.3)',
           }}
         >
@@ -391,7 +398,7 @@ const LoginDev: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 2, duration: 1 }}
-          className="text-gray-500 text-sm"
+          className="text-fg-muted text-sm"
         >
           Secure enterprise authentication
         </motion.p>
@@ -405,7 +412,7 @@ const LoginDev: React.FC = () => {
         className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-10 text-center space-y-4"
       >
         {/* Copyright */}
-        <div className="text-xs text-gray-600 space-y-1">
+        <div className="text-xs text-fg-subtle space-y-1">
           <p>© {new Date().getFullYear()} Agenticwork™ LLC</p>
         </div>
       </motion.div>

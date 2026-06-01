@@ -153,7 +153,7 @@ const CustomNode = ({
         fill="var(--color-text)"
         dominantBaseline="middle"
         style={{
-          fontFamily: 'Inter, system-ui, sans-serif',
+          fontFamily: 'var(--font-body)',
           textShadow: '0 1px 2px color-mix(in srgb, black 50%, transparent)'
         }}
       >
@@ -169,7 +169,7 @@ const CustomNode = ({
         fill={nodeColor}
         dominantBaseline="middle"
         style={{
-          fontFamily: 'Inter, system-ui, sans-serif',
+          fontFamily: 'var(--font-body)',
           fontWeight: 500
         }}
       >
@@ -425,7 +425,7 @@ export const SankeyChartHost: React.FC<{
             const pct = (v / max) * 100
             return (
               <div key={m.model} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ flex: '0 0 200px', color: colors.textPrimary, fontFamily: 'var(--font-v3-mono, monospace)', fontSize: 12 }}>
+                <span style={{ flex: '0 0 200px', color: colors.textPrimary, fontFamily: 'var(--font-mono)', fontSize: 12 }}>
                   {m.model}
                 </span>
                 <div style={{ flex: 1, height: 14, background: 'color-mix(in srgb, var(--color-text) 5%, transparent)', borderRadius: 2, position: 'relative', overflow: 'hidden' }}>
@@ -438,7 +438,7 @@ export const SankeyChartHost: React.FC<{
                     }}
                   />
                 </div>
-                <span style={{ flex: '0 0 90px', textAlign: 'right', color: colors.textSecondary, fontFamily: 'var(--font-v3-mono, monospace)', fontSize: 12 }}>
+                <span style={{ flex: '0 0 90px', textAlign: 'right', color: colors.textSecondary, fontFamily: 'var(--font-mono)', fontSize: 12 }}>
                   {useRequests ? `${v} req` : formatTokens(v)}
                 </span>
               </div>
@@ -644,7 +644,7 @@ export const LLMSankeyModal: React.FC<LLMSankeyModalProps> = ({
                 color: colors.accent,
                 fontSize: '13px',
                 fontWeight: 600,
-                fontFamily: 'monospace'
+                fontFamily: 'var(--font-mono)'
               }}>
                 {tokens.toLocaleString()}
               </span>

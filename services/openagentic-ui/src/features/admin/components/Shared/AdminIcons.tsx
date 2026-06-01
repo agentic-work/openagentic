@@ -97,8 +97,8 @@ export const DatabaseIcon: React.FC<IconProps> = ({ size = 20, className = '', s
     <defs>
       <linearGradient id="dbGrad" x1="0%" y1="0%" x2="0%" y2="100%">
         <stop offset="0%" stopColor="var(--ap-accent)" />
-        <stop offset="50%" stopColor="#0284c7" />
-        <stop offset="100%" stopColor="#0369a1" />
+        <stop offset="50%" stopColor="var(--ap-info)" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
     </defs>
     {/* Top ellipse */}
@@ -427,8 +427,8 @@ export const WarningIcon: React.FC<IconProps> = ({ size = 20, className = '', st
       strokeWidth="0.5"
       filter="url(#warnGlow)"
     />
-    <line x1="12" y1="9" x2="12" y2="13" stroke="#78350f" strokeWidth="2.5" strokeLinecap="round" />
-    <circle cx="12" cy="16" r="1.2" fill="#78350f" />
+    <line x1="12" y1="9" x2="12" y2="13" stroke="var(--ap-warn)" strokeWidth="2.5" strokeLinecap="round" />
+    <circle cx="12" cy="16" r="1.2" fill="var(--ap-warn)" />
   </svg>
 );
 
@@ -523,8 +523,8 @@ export const LockIcon: React.FC<IconProps> = ({ size = 20, className = '', style
     {/* Shackle */}
     <path d="M8 11V7a4 4 0 118 0v4" stroke="url(#lockGrad)" strokeWidth="2.5" fill="none" strokeLinecap="round" />
     {/* Keyhole */}
-    <circle cx="12" cy="16" r="1.5" fill="#78350f" />
-    <rect x="11.25" y="16" width="1.5" height="3" rx="0.5" fill="#78350f" />
+    <circle cx="12" cy="16" r="1.5" fill="var(--ap-warn)" />
+    <rect x="11.25" y="16" width="1.5" height="3" rx="0.5" fill="var(--ap-warn)" />
   </svg>
 );
 
@@ -701,7 +701,7 @@ export const LogsIcon: React.FC<IconProps> = ({ size = 20, className = '', style
     <defs>
       <linearGradient id="logsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="var(--ap-accent)" />
-        <stop offset="100%" stopColor="#0284c7" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
     </defs>
     <rect x="3" y="3" width="18" height="18" rx="2" fill="url(#logsGrad)" opacity="0.15" stroke="url(#logsGrad)" strokeWidth="2" />
@@ -1005,7 +1005,7 @@ export const EyeIcon: React.FC<IconProps> = ({ size = 20, className = '', style 
     <defs>
       <linearGradient id="eyeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="var(--ap-accent)" />
-        <stop offset="100%" stopColor="#0284c7" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
     </defs>
     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" fill="url(#eyeGrad)" opacity="0.15" stroke="url(#eyeGrad)" strokeWidth="2" />
@@ -1232,7 +1232,7 @@ export const CalendarIcon: React.FC<IconProps> = ({ size = 20, className = '', s
     <defs>
       <linearGradient id="calendarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="var(--ap-accent)" />
-        <stop offset="100%" stopColor="#0284c7" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
     </defs>
     <rect x="3" y="4" width="18" height="18" rx="2" fill="url(#calendarGrad)" opacity="0.15" stroke="url(#calendarGrad)" strokeWidth="2" />
@@ -1318,7 +1318,7 @@ export const MailIcon: React.FC<IconProps> = ({ size = 20, className = '', style
     <defs>
       <linearGradient id="mailGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="var(--ap-accent)" />
-        <stop offset="100%" stopColor="#0284c7" />
+        <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
     </defs>
     <rect x="2" y="4" width="20" height="16" rx="2" fill="url(#mailGrad)" opacity="0.15" stroke="url(#mailGrad)" strokeWidth="2" />
@@ -1603,7 +1603,7 @@ export const ContentDataIcon: React.FC<IconProps> = ({ size = 20, className = ''
       <linearGradient id="contentDataGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="var(--ap-accent)" />
         <stop offset="50%" stopColor="var(--ap-info)" />
-        <stop offset="100%" stopColor="#14b8a6" />
+        <stop offset="100%" stopColor="var(--ap-ok)" />
       </linearGradient>
       <filter id="contentGlow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="0.6" result="blur" />
@@ -1853,7 +1853,7 @@ export const TerminalCodeIcon: React.FC<IconProps> = ({ size = 20, className = '
     <defs>
       <linearGradient id="termCodeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="var(--ap-ok)" />
-        <stop offset="50%" stopColor="#14b8a6" />
+        <stop offset="50%" stopColor="var(--ap-ok)" />
         <stop offset="100%" stopColor="var(--ap-info)" />
       </linearGradient>
       <filter id="termGlow" x="-30%" y="-30%" width="160%" height="160%">

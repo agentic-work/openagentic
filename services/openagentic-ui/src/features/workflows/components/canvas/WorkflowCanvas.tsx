@@ -153,7 +153,7 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               className="wf-glass-panel px-6 py-4 flex items-center gap-3 mt-8"
-              style={{ color: '#2196f3' }}
+              style={{ color: 'var(--color-info)' }}
             >
               <AlertCircle className="w-5 h-5" />
               <span className="text-sm font-medium">

@@ -829,12 +829,12 @@ const UserPermissionsView: React.FC = () => {
                 {selectedUser.permissionSource === 'user' ? 'Custom (User)' : selectedUser.permissionSource === 'group' ? 'Group' : 'Default'}
               </span>
               {selectedUser.is_admin && (
-                <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', color: 'rgb(239, 68, 68)' }}>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{ backgroundColor: 'color-mix(in srgb, var(--color-err) 15%, transparent)', color: 'var(--color-err)' }}>
                   Admin
                 </span>
               )}
               {selectedUser.is_locked && (
-                <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', color: 'rgb(239, 68, 68)' }}>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{ backgroundColor: 'color-mix(in srgb, var(--color-err) 15%, transparent)', color: 'var(--color-err)' }}>
                   Locked
                 </span>
               )}
@@ -856,7 +856,7 @@ const UserPermissionsView: React.FC = () => {
                   style={{
                     backgroundColor: activeTab === tab.id ? 'var(--color-background)' : 'transparent',
                     color: activeTab === tab.id ? 'var(--color-primary)' : 'var(--color-textMuted)',
-                    boxShadow: activeTab === tab.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    boxShadow: activeTab === tab.id ? '0 1px 3px color-mix(in srgb, var(--color-shadow) 10%, transparent)' : 'none',
                   }}
                 >
                   {tab.icon}
@@ -1123,8 +1123,8 @@ const UserPermissionsView: React.FC = () => {
                             )}
                           </span>
                           <span className="text-xs font-medium px-2 py-0.5 rounded" style={{
-                            backgroundColor: userBudget.isOverBudget ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)',
-                            color: userBudget.isOverBudget ? 'rgb(239, 68, 68)' : 'rgb(34, 197, 94)',
+                            backgroundColor: userBudget.isOverBudget ? 'color-mix(in srgb, var(--color-err) 15%, transparent)' : 'color-mix(in srgb, var(--color-ok) 15%, transparent)',
+                            color: userBudget.isOverBudget ? 'var(--color-err)' : 'var(--color-ok)',
                           }}>
                             {userBudget.isOverBudget ? 'Over Budget' : 'On Track'}
                           </span>
@@ -1136,9 +1136,9 @@ const UserPermissionsView: React.FC = () => {
                             className="h-full transition-all rounded-full"
                             style={{
                               width: `${Math.min((userBudget.currentSpendDollars / userBudget.budgetDollars) * 100, 100)}%`,
-                              backgroundColor: userBudget.isOverBudget ? 'rgb(239, 68, 68)'
-                                : userBudget.currentSpendDollars > (userBudget.budgetDollars * 0.8) ? 'rgb(245, 158, 11)'
-                                : 'rgb(34, 197, 94)',
+                              backgroundColor: userBudget.isOverBudget ? 'var(--color-err)'
+                                : userBudget.currentSpendDollars > (userBudget.budgetDollars * 0.8) ? 'var(--color-warn)'
+                                : 'var(--color-ok)',
                             }}
                           />
                         </div>
@@ -1200,7 +1200,7 @@ const UserPermissionsView: React.FC = () => {
                       />
                       <div className="flex-1">
                         <span className="text-sm block" style={{ color: 'var(--color-text)' }}>Hard limit</span>
-                        <span className="text-xs" style={{ color: 'rgb(239, 68, 68)' }}>Block all requests when budget is exceeded</span>
+                        <span className="text-xs" style={{ color: 'var(--color-err)' }}>Block all requests when budget is exceeded</span>
                       </div>
                     </label>
                   </div>
@@ -1255,13 +1255,13 @@ const UserPermissionsView: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between p-2 rounded" style={{ backgroundColor: 'var(--color-surfaceSecondary)' }}>
                       <span className="text-xs" style={{ color: 'var(--color-textMuted)' }}>Scope Warnings</span>
-                      <span className="text-xs font-medium" style={{ color: selectedUser.scope_warning_count > 0 ? 'rgb(245, 158, 11)' : 'var(--color-text)' }}>
+                      <span className="text-xs font-medium" style={{ color: selectedUser.scope_warning_count > 0 ? 'var(--color-warn)' : 'var(--color-text)' }}>
                         {selectedUser.scope_warning_count}/3
                       </span>
                     </div>
                     <div className="flex items-center justify-between p-2 rounded" style={{ backgroundColor: 'var(--color-surfaceSecondary)' }}>
                       <span className="text-xs" style={{ color: 'var(--color-textMuted)' }}>Account Locked</span>
-                      <span className="text-xs font-medium" style={{ color: selectedUser.is_locked ? 'rgb(239, 68, 68)' : 'var(--ap-success)' }}>
+                      <span className="text-xs font-medium" style={{ color: selectedUser.is_locked ? 'var(--color-err)' : 'var(--ap-success)' }}>
                         {selectedUser.is_locked ? `Yes (${selectedUser.locked_reason || 'Scope violations'})` : 'No'}
                       </span>
                     </div>

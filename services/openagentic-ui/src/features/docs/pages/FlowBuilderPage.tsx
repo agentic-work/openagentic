@@ -1,3 +1,6 @@
+// theme-allow: this docs page is decorative gradient SVG illustration icons plus the
+// workflow node-CATEGORY identity color scale (the same node-TYPE palette carve-out
+// as the workflow canvas) — categorical/illustration values, not themeable surfaces.
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

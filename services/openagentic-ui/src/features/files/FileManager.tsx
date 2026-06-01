@@ -389,14 +389,14 @@ export const FileManager: React.FC<FileManagerProps> = ({
   }, [fetchFiles]);
 
   return (
-    <div className={`file-manager ${embedded ? 'h-full' : 'min-h-screen'} bg-gray-900 text-white flex flex-col`}>
+    <div className={`file-manager ${embedded ? 'h-full' : 'min-h-screen'} bg-bg text-text flex flex-col`}>
       {/* Header */}
       <div 
       className="border-b p-4"
       style={{ borderColor: 'var(--color-borderHover)' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Folder className="w-6 h-6 text-blue-400" />
+            <Folder className="w-6 h-6 text-accent" />
             <h2 className="text-xl font-semibold">File Manager</h2>
             <span 
             className="text-sm"
@@ -411,14 +411,14 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 style={{ color: 'var(--color-textMuted)' }}>{selectedFiles.size} selected</span>
                 <button
                   onClick={analyzeFiles}
-                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded flex items-center gap-1"
+                  className="px-3 py-1 bg-accent text-on-accent hover:opacity-90 rounded flex items-center gap-1"
                 >
                   <Zap className="w-4 h-4" />
                   Analyze
                 </button>
                 <button
                   onClick={() => deleteFiles(Array.from(selectedFiles))}
-                  className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded flex items-center gap-1"
+                  className="px-3 py-1 bg-error text-on-accent hover:opacity-90 rounded flex items-center gap-1"
                 >
                   <Trash2 className="w-4 h-4" />
                   Delete
@@ -428,7 +428,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
             
             <button
               onClick={() => setShowUploadModal(true)}
-              className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded flex items-center gap-1"
+              className="px-3 py-1 bg-success text-on-accent hover:opacity-90 rounded flex items-center gap-1"
             >
               <Upload className="w-4 h-4" />
               Upload
@@ -436,7 +436,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
             
             <button
               onClick={fetchFiles}
-              className="p-1 hover:bg-gray-800 rounded"
+              className="p-1 hover:bg-surface-2 rounded"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
@@ -482,13 +482,13 @@ export const FileManager: React.FC<FileManagerProps> = ({
           style={{ backgroundColor: 'var(--color-background)' }}>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 ${viewMode === 'list' ? 'bg-gray-700' : ''} rounded-l`}
+              className={`p-2 ${viewMode === 'list' ? 'bg-surface-2' : ''} rounded-l`}
             >
               <List className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 ${viewMode === 'grid' ? 'bg-gray-700' : ''} rounded-r`}
+              className={`p-2 ${viewMode === 'grid' ? 'bg-surface-2' : ''} rounded-r`}
             >
               <Grid className="w-4 h-4" />
             </button>
@@ -502,7 +502,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
         <div className="flex-1 overflow-auto p-4">
           {loading && files.length === 0 ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+              <Loader2 className="w-8 h-8 animate-spin text-accent" />
             </div>
           ) : files.length === 0 ? (
             <div 
@@ -512,7 +512,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
               <p>No files uploaded yet</p>
               <button
                 onClick={() => setShowUploadModal(true)}
-                className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+                className="mt-4 px-4 py-2 bg-accent text-on-accent hover:opacity-90 rounded"
               >
                 Upload Files
               </button>
@@ -526,7 +526,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 style={{ borderColor: 'var(--color-borderHover)' }}>
                   <button
                     onClick={selectAllFiles}
-                    className="p-1 hover:bg-gray-800 rounded"
+                    className="p-1 hover:bg-surface-2 rounded"
                   >
                     {selectedFiles.size === files.length ? (
                       <CheckSquare className="w-4 h-4" />
@@ -555,9 +555,9 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       // List View
                       <div
                         key={file.id}
-                        className={`flex items-center p-3 rounded-lg hover:bg-gray-800 cursor-pointer ${
-                          isSelected ? 'bg-gray-800 ring-2 ring-blue-500' : ''
-                        } ${selectedFile?.id === file.id ? 'bg-gray-700' : ''}`}
+                        className={`flex items-center p-3 rounded-lg hover:bg-surface-2 cursor-pointer ${
+                          isSelected ? 'bg-surface-2 ring-2 ring-accent' : ''
+                        } ${selectedFile?.id === file.id ? 'bg-surface-2' : ''}`}
                         onClick={() => setSelectedFile(file)}
                       >
                         <button
@@ -568,7 +568,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                           className="mr-3"
                         >
                           {isSelected ? (
-                            <CheckSquare className="w-4 h-4 text-blue-400" />
+                            <CheckSquare className="w-4 h-4 text-accent" />
                           ) : (
                             <Square 
                             className="w-4 h-4"
@@ -591,13 +591,13 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
                         {file.extractedText && (
                           <span title="Content extracted">
-                            <FileCheck className="w-4 h-4 text-green-400 mr-2" />
+                            <FileCheck className="w-4 h-4 text-success mr-2" />
                           </span>
                         )}
                         
                         {file.metadata?.sha256 && (
                           <span title="Verified">
-                            <Hash className="w-4 h-4 text-blue-400 mr-2" />
+                            <Hash className="w-4 h-4 text-accent mr-2" />
                           </span>
                         )}
 
@@ -607,7 +607,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                               e.stopPropagation();
                               downloadFile(file);
                             }}
-                            className="p-1 hover:bg-gray-700 rounded"
+                            className="p-1 hover:bg-surface-2 rounded"
                           >
                             <Download className="w-4 h-4" />
                           </button>
@@ -618,7 +618,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                                 e.stopPropagation();
                                 onFileSelect(file);
                               }}
-                              className="p-1 hover:bg-gray-700 rounded"
+                              className="p-1 hover:bg-surface-2 rounded"
                             >
                               <ChevronRight className="w-4 h-4" />
                             </button>
@@ -629,8 +629,8 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       // Grid View
                       <div
                         key={file.id}
-                        className={`bg-gray-800 rounded-lg p-4 hover:ring-2 hover:ring-blue-500 cursor-pointer ${
-                          isSelected ? 'ring-2 ring-blue-500' : ''
+                        className={`bg-surface-2 rounded-lg p-4 hover:ring-2 hover:ring-accent cursor-pointer ${
+                          isSelected ? 'ring-2 ring-accent' : ''
                         }`}
                         onClick={() => setSelectedFile(file)}
                       >
@@ -645,7 +645,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                             }}
                           >
                             {isSelected ? (
-                              <CheckSquare className="w-4 h-4 text-blue-400" />
+                              <CheckSquare className="w-4 h-4 text-accent" />
                             ) : (
                               <Square 
                               className="w-4 h-4"
@@ -687,7 +687,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                       className="w-48 rounded-full h-2"
                       style={{ backgroundColor: 'var(--color-background)' }}>
                         <div 
-                          className="bg-blue-600 h-2 rounded-full transition-all"
+                          className="bg-accent h-2 rounded-full transition-all"
                           style={{ width: `${progress}%` }}
                         />
                       </div>
@@ -708,7 +708,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
               <h3 className="text-lg font-medium">File Details</h3>
               <button
                 onClick={() => setSelectedFile(null)}
-                className="p-1 hover:bg-gray-800 rounded"
+                className="p-1 hover:bg-surface-2 rounded"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -791,7 +791,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
               <div className="pt-4 space-y-2">
                 <button
                   onClick={() => downloadFile(selectedFile)}
-                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 rounded flex items-center justify-center gap-2"
+                  className="w-full py-2 bg-accent text-on-accent hover:opacity-90 rounded flex items-center justify-center gap-2"
                 >
                   <Download className="w-4 h-4" />
                   Download
@@ -801,7 +801,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                   <button
                     onClick={() => processFile(selectedFile.id, 'extract-text')}
                     
-                    className="w-full py-2 hover:bg-gray-600 rounded flex items-center justify-center gap-2"
+                    className="w-full py-2 bg-surface-2 hover:opacity-90 rounded flex items-center justify-center gap-2"
                     style={{ backgroundColor: 'var(--color-background)' }}
                   >
                     <FileText className="w-4 h-4" />
@@ -812,7 +812,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 {onFileSelect && (
                   <button
                     onClick={() => onFileSelect(selectedFile)}
-                    className="w-full py-2 bg-green-600 hover:bg-green-700 rounded flex items-center justify-center gap-2"
+                    className="w-full py-2 bg-success text-on-accent hover:opacity-90 rounded flex items-center justify-center gap-2"
                   >
                     <ChevronRight className="w-4 h-4" />
                     Select for Chat
@@ -821,7 +821,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 
                 <button
                   onClick={() => deleteFiles([selectedFile.id])}
-                  className="w-full py-2 bg-red-600 hover:bg-red-700 rounded flex items-center justify-center gap-2"
+                  className="w-full py-2 bg-error text-on-accent hover:opacity-90 rounded flex items-center justify-center gap-2"
                 >
                   <Trash2 className="w-4 h-4" />
                   Delete
@@ -846,7 +846,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
               <h3 className="text-lg font-medium">Upload Files</h3>
               <button
                 onClick={() => setShowUploadModal(false)}
-                className="p-1 hover:bg-gray-700 rounded"
+                className="p-1 hover:bg-surface-2 rounded"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -859,7 +859,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
                 className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
-                  dragActive ? 'border-blue-500 bg-blue-500 bg-opacity-10' : 'border-gray-600'
+                  dragActive ? 'border-accent bg-[var(--color-accent-soft)]' : 'border-border'
                 }`}
               >
                 <Upload 
@@ -871,7 +871,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
                 style={{ color: 'var(--color-textMuted)' }}>or</p>
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+                  className="px-6 py-2 bg-accent text-on-accent hover:opacity-90 rounded"
                 >
                   Browse Files
                 </button>
@@ -910,7 +910,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
               <h3 className="text-lg font-medium">Analysis Results</h3>
               <button
                 onClick={() => setAnalysisResult(null)}
-                className="p-1 hover:bg-gray-700 rounded"
+                className="p-1 hover:bg-surface-2 rounded"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -930,8 +930,8 @@ export const FileManager: React.FC<FileManagerProps> = ({
       {/* Error Toast */}
       {error && (
         <div 
-        className="fixed bottom-4 left-4 bg-red-600 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2"
-        style={{ color: 'var(--color-text)' }}>
+        className="fixed bottom-4 left-4 bg-error px-4 py-2 rounded-lg shadow-lg flex items-center gap-2"
+        style={{ color: 'var(--color-on-accent)' }}>
           <AlertCircle className="w-4 h-4" />
           {error}
         </div>

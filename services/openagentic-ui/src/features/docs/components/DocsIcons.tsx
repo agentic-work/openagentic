@@ -1,3 +1,6 @@
+// theme-allow: this file is decorative SVG illustration artwork (multi-stop gradient
+// doc glyphs). Like the diagram/illustration palettes on the theme allowlist, these
+// hues are intentional art with no semantic theme meaning and are NOT themeable surfaces.
 import React from 'react';
 
 interface IconProps {

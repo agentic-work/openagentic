@@ -133,7 +133,7 @@ export const IssueTokenModal: React.FC<IssueTokenModalProps> = ({ open, onClose 
           </Banner>
           <div>
             <div style={{
-              fontFamily: 'var(--font-v3-mono)',
+              fontFamily: 'var(--font-mono)',
               fontSize: 'var(--v3-t-meta)',
               color: 'var(--fg-3)',
               textTransform: 'uppercase',
@@ -147,7 +147,7 @@ export const IssueTokenModal: React.FC<IssueTokenModalProps> = ({ open, onClose 
               padding: '8px 10px',
               background: 'var(--bg-2)',
               border: '1px solid var(--accent)',
-              fontFamily: 'var(--font-v3-mono)',
+              fontFamily: 'var(--font-mono)',
               fontSize: 'var(--v3-t-body, 12px)',
               color: 'var(--fg-0)',
               wordBreak: 'break-all',

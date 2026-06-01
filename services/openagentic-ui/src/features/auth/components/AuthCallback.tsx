@@ -174,11 +174,11 @@ const AuthCallback: React.FC = () => {
     const errorAction = isStructuredError ? error.action : 'Please try signing in again.';
 
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-        <div className="absolute inset-0 bg-grid-white/[0.02]" />
+      <div className="min-h-screen flex items-center justify-center bg-bg">
+        <div className="absolute inset-0 bg-grid-fg/[0.02]" />
         <Card
         className="w-full max-w-lg p-8 relative z-10"
-        style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-borderHover)' }}>
+        style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-rule-strong)' }}>
           <div className="text-center">
             <div className="mx-auto w-16 h-16 flex items-center justify-center mb-4">
               <div className="text-4xl">
@@ -196,15 +196,15 @@ const AuthCallback: React.FC = () => {
               className="mb-6 text-sm"
               style={{ color: 'var(--color-textMuted)' }}>{errorDetails}</p>
             )}
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
-              <p className="text-blue-300 text-sm">{errorAction}</p>
+            <div className="rounded-lg p-4 mb-6" style={{ background: 'color-mix(in srgb, var(--color-nfo) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-nfo) 30%, transparent)' }}>
+              <p className="text-sm" style={{ color: 'var(--color-nfo)' }}>{errorAction}</p>
             </div>
             <div className="space-y-3">
               <button
                 onClick={handleRetryLogin}
-                
-                className="w-full px-4 py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                style={{ color: 'var(--color-text)' }}
+
+                className="w-full px-4 py-3 rounded-lg transition-colors font-medium hover:opacity-90"
+                style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
               >
                 Sign In Again
               </button>
@@ -224,11 +224,11 @@ const AuthCallback: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-      <div className="absolute inset-0 bg-grid-white/[0.02]" />
+    <div className="min-h-screen flex items-center justify-center bg-bg">
+      <div className="absolute inset-0 bg-grid-fg/[0.02]" />
       <Card
       className="w-full max-w-md p-8 relative z-10"
-      style={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-borderHover)' }}>
+      style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-rule-strong)' }}>
         <div className="text-center">
           <motion.div 
             className="mx-auto w-16 h-16 flex items-center justify-center mb-4"
@@ -239,9 +239,9 @@ const AuthCallback: React.FC = () => {
               repeat: Infinity 
             }}
           >
-            <div 
-            className="w-8 h-8 border-2 border-t-white rounded-full animate-spin"
-            style={{ borderColor: 'var(--color-border)' }} />
+            <div
+            className="w-8 h-8 border-2 rounded-full animate-spin"
+            style={{ borderColor: 'var(--color-rule)', borderTopColor: 'var(--color-fg)' }} />
           </motion.div>
           <h2 
           className="text-xl font-bold mb-4"

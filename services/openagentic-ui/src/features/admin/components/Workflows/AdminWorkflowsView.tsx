@@ -115,13 +115,13 @@ export const AdminWorkflowsView: React.FC<AdminWorkflowsViewProps> = ({ theme })
   };
 
   const visibilityIcon = (v: string) => {
-    if (v === 'public') return <Globe className="w-3.5 h-3.5 text-green-500" />;
-    if (v === 'team') return <Users className="w-3.5 h-3.5 text-blue-500" />;
-    return <Lock className="w-3.5 h-3.5 text-gray-400" />;
+    if (v === 'public') return <Globe className="w-3.5 h-3.5 text-ok" />;
+    if (v === 'team') return <Users className="w-3.5 h-3.5 text-info" />;
+    return <Lock className="w-3.5 h-3.5 text-text-tertiary" />;
   };
 
   const visibilityBadge = (v: string) => {
-    const colors = { public: 'bg-green-500/10 text-green-500', team: 'bg-blue-500/10 text-blue-500', private: 'bg-gray-500/10 text-gray-400' };
+    const colors = { public: 'bg-[color-mix(in_srgb,var(--color-ok)_10%,transparent)] text-ok', team: 'bg-[color-mix(in_srgb,var(--color-nfo)_10%,transparent)] text-info', private: 'bg-[color-mix(in_srgb,var(--color-fg-subtle)_10%,transparent)] text-text-tertiary' };
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold uppercase ${(colors as any)[v] || colors.private}`}>
         {visibilityIcon(v)} {v}
@@ -192,7 +192,7 @@ export const AdminWorkflowsView: React.FC<AdminWorkflowsViewProps> = ({ theme })
       <div className="rounded-lg border overflow-hidden" style={{ borderColor: 'var(--wf-node-border)' }}>
         <table className="w-full text-sm">
           <thead>
-            <tr style={{ background: 'rgba(0,0,0,0.03)', borderBottom: '1px solid var(--wf-node-border)' }}>
+            <tr style={{ background: 'color-mix(in srgb, var(--color-shadow) 3%, transparent)', borderBottom: '1px solid var(--wf-node-border)' }}>
               <th className="text-left px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Name</th>
               <th className="text-left px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Owner</th>
               <th className="text-center px-4 py-3 font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Visibility</th>
@@ -239,10 +239,10 @@ export const AdminWorkflowsView: React.FC<AdminWorkflowsViewProps> = ({ theme })
                   <div className="flex items-center justify-end gap-1">
                     <button
                       onClick={() => window.open(`/workflows/${wf.id}`, '_blank')}
-                      className="p-1.5 rounded transition-colors hover:bg-blue-500/10"
+                      className="p-1.5 rounded transition-colors hover:bg-[color-mix(in_srgb,var(--color-nfo)_10%,transparent)]"
                       title="View in Canvas"
                     >
-                      <Eye className="w-3.5 h-3.5 text-blue-400" />
+                      <Eye className="w-3.5 h-3.5 text-info" />
                     </button>
                     <select
                       value={wf.visibility}
@@ -256,10 +256,10 @@ export const AdminWorkflowsView: React.FC<AdminWorkflowsViewProps> = ({ theme })
                     </select>
                     <button
                       onClick={() => handleDelete(wf.id, wf.name)}
-                      className="p-1.5 rounded transition-colors hover:bg-red-500/10"
+                      className="p-1.5 rounded transition-colors hover:bg-[color-mix(in_srgb,var(--color-err)_10%,transparent)]"
                       title="Delete"
                     >
-                      <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                      <Trash2 className="w-3.5 h-3.5 text-err" />
                     </button>
                   </div>
                 </td>

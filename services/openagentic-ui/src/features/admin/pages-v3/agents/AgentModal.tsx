@@ -264,7 +264,7 @@ const Field: React.FC<{ label: string; desc?: string; children: React.ReactNode 
   <div style={{ display: 'grid', gap: 4 }}>
     <label
       style={{
-        fontFamily: 'var(--font-v3-mono)',
+        fontFamily: 'var(--font-mono)',
         fontSize: 'var(--v3-t-meta)',
         textTransform: 'uppercase',
         letterSpacing: '0.06em',

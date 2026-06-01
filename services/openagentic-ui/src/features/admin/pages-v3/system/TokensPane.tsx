@@ -136,7 +136,7 @@ export const TokensPane: React.FC = () => {
             {pendingRevokeId === r.id ? 'revoking…' : 'revoke'}
           </Btn>
         ) : (
-          <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-v3-mono)' }}>—</span>
+          <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}>—</span>
         )
       ),
     },

@@ -716,11 +716,11 @@ const TieredFCConfigView: React.FC = () => {
                       <button
                         onClick={handleTestDecision}
                         disabled={testLoading || !testMessage.trim()}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-on-accent rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50"
                       >
                         {testLoading ? (
                           <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--color-fg)]"></div>
                             Testing...
                           </>
                         ) : (

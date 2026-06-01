@@ -1,3 +1,4 @@
+// theme-allow: decorative gradient SVG illustration icons (multi-stop art glyphs).
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

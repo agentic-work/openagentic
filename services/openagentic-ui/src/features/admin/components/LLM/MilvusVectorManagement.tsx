@@ -205,7 +205,7 @@ export const MilvusVectorManagement: React.FC<MilvusVectorManagementProps> = ({ 
       onClick={() => setActiveTab(id)}
       className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
         activeTab === id
-          ? 'bg-primary-500 text-white'
+          ? 'bg-primary-500 text-on-accent'
           : 'bg-surface-secondary text-text-secondary hover:bg-surface-hover'
       }`}
     >
@@ -262,7 +262,7 @@ export const MilvusVectorManagement: React.FC<MilvusVectorManagementProps> = ({ 
               <button
                 onClick={handleReindex}
                 disabled={reindexing}
-                className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 rounded-lg bg-primary-500 text-on-accent hover:bg-primary-600 transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 {reindexing ? (
                   <>
@@ -517,7 +517,7 @@ export const MilvusVectorManagement: React.FC<MilvusVectorManagementProps> = ({ 
               href={(import.meta.env.VITE_ATTU_URL as string) || '/attu/'}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors flex items-center gap-2"
+              className="px-4 py-2 rounded-lg bg-primary-500 text-on-accent hover:bg-primary-600 transition-colors flex items-center gap-2"
             >
               <ExternalLink size={18} />
               Open in New Window

@@ -285,13 +285,13 @@ export const AgentExecutionMonitor: React.FC<AgentExecutionMonitorProps> = ({ th
 
   const statusColor = (status: string): string => {
     const colors: Record<string, string> = {
-      running: 'bg-blue-500/20 text-blue-300 animate-pulse',
-      completed: 'bg-green-500/20 text-green-300',
-      failed: 'bg-red-500/20 text-red-300',
-      cancelled: 'bg-zinc-500/20 text-zinc-300',
-      pending: 'bg-yellow-500/20 text-yellow-300',
+      running: 'bg-[color-mix(in_srgb,var(--color-nfo)_20%,transparent)] text-info animate-pulse',
+      completed: 'bg-[color-mix(in_srgb,var(--color-ok)_20%,transparent)] text-ok',
+      failed: 'bg-[color-mix(in_srgb,var(--color-err)_20%,transparent)] text-err',
+      cancelled: 'bg-[color-mix(in_srgb,var(--color-fg-subtle)_20%,transparent)] text-text-tertiary',
+      pending: 'bg-[color-mix(in_srgb,var(--color-warn)_20%,transparent)] text-warn',
     };
-    return colors[status] || 'bg-zinc-500/20 text-zinc-300';
+    return colors[status] || 'bg-[color-mix(in_srgb,var(--color-fg-subtle)_20%,transparent)] text-text-tertiary';
   };
 
   const filteredExecutions = executions.filter(e =>
@@ -371,9 +371,9 @@ export const AgentExecutionMonitor: React.FC<AgentExecutionMonitorProps> = ({ th
       </div>
 
       {error && (
-        <div className="mx-4 mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-400">
+        <div className="mx-4 mt-2 p-2 bg-[color-mix(in_srgb,var(--color-err)_10%,transparent)] border border-[color-mix(in_srgb,var(--color-err)_30%,transparent)] rounded-lg text-xs text-err">
           {error}
-          <button onClick={() => setError(null)} className="ml-2 text-red-300 hover:text-red-100">dismiss</button>
+          <button onClick={() => setError(null)} className="ml-2 text-err hover:text-err">dismiss</button>
         </div>
       )}
 
@@ -427,7 +427,7 @@ export const AgentExecutionMonitor: React.FC<AgentExecutionMonitorProps> = ({ th
                   {/* ID + orchestration */}
                   <div className="flex-1 flex items-center gap-1.5 min-w-0">
                     <span className="text-xs font-mono text-text-primary truncate">{exec.id.slice(0, 8)}…</span>
-                    <span className="px-1.5 py-0.5 text-xs bg-zinc-700/50 text-zinc-300 rounded-full shrink-0">
+                    <span className="px-1.5 py-0.5 text-xs bg-[color-mix(in_srgb,var(--color-fg-subtle)_50%,transparent)] text-text-tertiary rounded-full shrink-0">
                       {exec.orchestration}
                     </span>
                     <span className="text-xs text-text-tertiary shrink-0">
@@ -465,7 +465,7 @@ export const AgentExecutionMonitor: React.FC<AgentExecutionMonitorProps> = ({ th
                     {exec.status === 'running' && (
                       <button
                         onClick={e => { e.stopPropagation(); handleCancel(exec.id); }}
-                        className="p-1 text-red-400 hover:text-red-300 rounded"
+                        className="p-1 text-err hover:text-err rounded"
                         title="Cancel execution"
                       >
                         <XCircle size={13} />
@@ -487,7 +487,7 @@ export const AgentExecutionMonitor: React.FC<AgentExecutionMonitorProps> = ({ th
 
       {/* Detail Drawer (metadata) */}
       {selectedExecution && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_50%,transparent)]">
           <div className="bg-bg-primary border border-border-default rounded-xl w-[700px] max-h-[80vh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -553,7 +553,7 @@ export const AgentExecutionMonitor: React.FC<AgentExecutionMonitorProps> = ({ th
 
       {/* Tree Replay Modal */}
       {replayExecution && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_60%,transparent)]">
           <div className="bg-bg-primary border border-border-default rounded-xl w-[760px] max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
             {/* Modal header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-border-default shrink-0">
@@ -577,7 +577,7 @@ export const AgentExecutionMonitor: React.FC<AgentExecutionMonitorProps> = ({ th
                 </div>
               )}
               {replayError && (
-                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-400">
+                <div className="p-3 bg-[color-mix(in_srgb,var(--color-err)_10%,transparent)] border border-[color-mix(in_srgb,var(--color-err)_30%,transparent)] rounded-lg text-xs text-err">
                   {replayError}
                 </div>
               )}

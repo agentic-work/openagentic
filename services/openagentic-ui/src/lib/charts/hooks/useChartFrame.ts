@@ -137,11 +137,11 @@ function buildContextMenu(actions: MenuActions): HTMLElement {
   menu.setAttribute('data-aw-chart-menu', '');
   Object.assign(menu.style, {
     position: 'fixed', zIndex: '9999', minWidth: '180px',
-    background: 'var(--bg-1, #15171b)', border: '1px solid var(--line-2, #2a2d33)',
-    borderRadius: '6px', padding: '4px 0',
-    fontFamily: 'var(--font-ui, Inter, system-ui, sans-serif)', fontSize: '12px',
-    color: 'var(--fg-1, #d4d4d8)',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.5)', display: 'none', userSelect: 'none',
+    background: 'var(--color-surface)', border: 'var(--border-w, 2px) solid var(--color-rule)',
+    borderRadius: 'var(--radius-sm, 4px)', padding: '4px 0',
+    fontFamily: 'var(--font-body)', fontSize: '12px',
+    color: 'var(--color-fg-muted)',
+    boxShadow: 'var(--shadow-sm)', display: 'none', userSelect: 'none',
   });
   const items: Array<{ label: string; icon: string; fn: () => void } | { sep: true }> = [
     { label: 'Reset view', icon: '↺', fn: actions.onReset },
@@ -155,7 +155,7 @@ function buildContextMenu(actions: MenuActions): HTMLElement {
   for (const it of items) {
     if ('sep' in it) {
       const sep = document.createElement('div');
-      Object.assign(sep.style, { height: '1px', background: 'var(--line-2, #2a2d33)', margin: '4px 0' });
+      Object.assign(sep.style, { height: '1px', background: 'var(--color-rule)', margin: '4px 0' });
       menu.appendChild(sep);
       continue;
     }
@@ -165,8 +165,8 @@ function buildContextMenu(actions: MenuActions): HTMLElement {
       padding: '6px 14px', cursor: 'pointer',
       display: 'flex', justifyContent: 'space-between', gap: '14px', alignItems: 'center',
     });
-    row.innerHTML = `<span>${it.label}</span><span style="color:var(--fg-3,#71717a);font-family:var(--font-mono,monospace)">${it.icon}</span>`;
-    row.onmouseenter = () => row.style.background = 'var(--bg-2, #1c1e23)';
+    row.innerHTML = `<span>${it.label}</span><span style="color:var(--color-fg-subtle);font-family:var(--font-mono)">${it.icon}</span>`;
+    row.onmouseenter = () => row.style.background = 'var(--color-surface-2)';
     row.onmouseleave = () => row.style.background = 'transparent';
     row.onclick = () => { it.fn(); menu.style.display = 'none'; };
     menu.appendChild(row);
@@ -191,7 +191,10 @@ function exportPng(svgEl: SVGSVGElement, name: string) {
     canvas.width = rect.width * 2; canvas.height = rect.height * 2;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-0').trim() || '#0f1012';
+    ctx.fillStyle =
+      getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim() ||
+      getComputedStyle(document.documentElement).getPropertyValue('--bg-0').trim() ||
+      '#18130C'; // theme-allow: terminal-bg PNG-export fallback (canvas needs a resolved color)
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.scale(2, 2);
     ctx.drawImage(img, 0, 0, rect.width, rect.height);

@@ -255,7 +255,9 @@ export function createRotatingGear(color: string): LottieAnimationData {
  */
 export function createNeuralNetwork(color: string, accentColor?: string): LottieAnimationData {
   const c = hexToRGBA(color);
-  const ac = accentColor ? hexToRGBA(accentColor) : hexToRGBA('#a855f6');
+  // theme-allow: Lottie renders from baked animation JSON and cannot read CSS
+  // vars; default to the brand signal-orange instead of the old purple.
+  const ac = accentColor ? hexToRGBA(accentColor) : hexToRGBA('#FF5722');
 
   // Node positions in a mini network layout
   const nodes = [
@@ -623,7 +625,8 @@ export function createHourglass(color: string): LottieAnimationData {
  */
 export function createShieldCheck(color: string, checkColor?: string): LottieAnimationData {
   const c = hexToRGBA(color);
-  const cc = checkColor ? hexToRGBA(checkColor) : hexToRGBA('#00ff00');
+  // theme-allow: Lottie animation JSON literal — default to brand success green.
+  const cc = checkColor ? hexToRGBA(checkColor) : hexToRGBA('#22C55E');
 
   const shield = shapeLayer('shield', [
     group([

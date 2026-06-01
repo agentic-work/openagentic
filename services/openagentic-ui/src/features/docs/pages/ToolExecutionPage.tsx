@@ -1,3 +1,5 @@
+// theme-allow: decorative gradient SVG illustration icons + workflow node-TYPE
+// category identity colors (same node-type palette carve-out as the workflow canvas).
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ReactFlowDiagram, DiagramDefinition } from '@/components/diagrams/ReactFlowDiagram';

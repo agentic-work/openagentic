@@ -132,7 +132,7 @@ const JsonTree: React.FC<{ data: any; maxDepth?: number; copyable?: boolean }> =
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   if (data === null || data === undefined) {
-    return <span className="text-gray-500 italic">null</span>;
+    return <span className="text-text-muted italic">null</span>;
   }
 
   if (typeof data === 'string') {
@@ -140,34 +140,34 @@ const JsonTree: React.FC<{ data: any; maxDepth?: number; copyable?: boolean }> =
     if (isLong) {
       return (
         <div>
-          <span className="text-green-400 whitespace-pre-wrap">"{data.substring(0, 300)}"</span>
-          <span className="text-gray-500 text-[10px] ml-1">...{data.length - 300} more chars</span>
+          <span className="text-success whitespace-pre-wrap">"{data.substring(0, 300)}"</span>
+          <span className="text-text-muted text-[10px] ml-1">...{data.length - 300} more chars</span>
         </div>
       );
     }
-    return <span className="text-green-400 whitespace-pre-wrap">"{data}"</span>;
+    return <span className="text-success whitespace-pre-wrap">"{data}"</span>;
   }
 
-  if (typeof data === 'number') return <span className="text-blue-400">{data}</span>;
-  if (typeof data === 'boolean') return <span className="text-yellow-400">{String(data)}</span>;
+  if (typeof data === 'number') return <span className="text-info">{data}</span>;
+  if (typeof data === 'boolean') return <span className="text-warning">{String(data)}</span>;
 
   if (maxDepth <= 0) {
-    return <span className="text-gray-500">{Array.isArray(data) ? `[${data.length}]` : '{...}'}</span>;
+    return <span className="text-text-muted">{Array.isArray(data) ? `[${data.length}]` : '{...}'}</span>;
   }
 
   if (Array.isArray(data)) {
-    if (data.length === 0) return <span className="text-gray-500">[]</span>;
+    if (data.length === 0) return <span className="text-text-muted">[]</span>;
     return (
-      <div className="pl-3 border-l border-gray-700/30">
-        <span className="text-gray-600 text-[10px]">[{data.length}]</span>
+      <div className="pl-3 border-l border-[var(--color-rule)]">
+        <span className="text-text-muted text-[10px]">[{data.length}]</span>
         {data.slice(0, 20).map((item, i) => (
           <div key={i} className="py-0.5">
-            <span className="text-gray-600 mr-1.5 select-none">{i}</span>
+            <span className="text-text-muted mr-1.5 select-none">{i}</span>
             <JsonTree data={item} maxDepth={maxDepth - 1} />
           </div>
         ))}
         {data.length > 20 && (
-          <div className="text-gray-500 text-[10px] py-0.5">...{data.length - 20} more items</div>
+          <div className="text-text-muted text-[10px] py-0.5">...{data.length - 20} more items</div>
         )}
       </div>
     );
@@ -175,40 +175,40 @@ const JsonTree: React.FC<{ data: any; maxDepth?: number; copyable?: boolean }> =
 
   if (typeof data === 'object') {
     const entries = Object.entries(data);
-    if (entries.length === 0) return <span className="text-gray-500">{'{}'}</span>;
+    if (entries.length === 0) return <span className="text-text-muted">{'{}'}</span>;
     return (
-      <div className="pl-3 border-l border-gray-700/30">
+      <div className="pl-3 border-l border-[var(--color-rule)]">
         {entries.slice(0, 30).map(([key, value]) => (
           <div key={key} className="py-0.5">
-            <span className="text-purple-400 mr-1.5">{key}:</span>
+            <span className="text-accent mr-1.5">{key}:</span>
             <JsonTree data={value} maxDepth={maxDepth - 1} />
           </div>
         ))}
         {entries.length > 30 && (
-          <div className="text-gray-500 text-[10px] py-0.5">...{entries.length - 30} more keys</div>
+          <div className="text-text-muted text-[10px] py-0.5">...{entries.length - 30} more keys</div>
         )}
       </div>
     );
   }
 
-  return <span className="text-gray-400">{String(data)}</span>;
+  return <span className="text-text-muted">{String(data)}</span>;
 };
 
 // ─── Smart Node Output Renderer ──────────────────────────────────
 const NodeOutputRenderer: React.FC<{ output: any; nodeType: string; error?: string }> = ({ output, nodeType, error }) => {
   if (error) {
     return (
-      <div className="rounded p-3" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-        <div className="text-red-400 text-[11px] font-semibold mb-1 flex items-center gap-1.5">
+      <div className="rounded p-3" style={{ background: 'color-mix(in srgb, var(--color-error) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-error) 20%, transparent)' }}>
+        <div className="text-error text-[11px] font-semibold mb-1 flex items-center gap-1.5">
           <XCircle className="w-3 h-3" /> Error
         </div>
-        <pre className="text-red-300 text-[11px] whitespace-pre-wrap font-mono">{error}</pre>
+        <pre className="text-error text-[11px] whitespace-pre-wrap font-mono">{error}</pre>
       </div>
     );
   }
 
   if (!output && output !== 0 && output !== false) {
-    return <span className="text-gray-500 italic text-[11px]">No output</span>;
+    return <span className="text-text-muted italic text-[11px]">No output</span>;
   }
 
   const isLLM = ['openagentic_llm', 'llm_completion', 'multi_agent', 'agent_single', 'agent_pool', 'agent_supervisor'].includes(nodeType);
@@ -229,7 +229,7 @@ const NodeOutputRenderer: React.FC<{ output: any; nodeType: string; error?: stri
       <div className="space-y-2">
         {(model || tokens) && (
           <div className="flex items-center gap-3 text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>
-            {model && <span className="px-1.5 py-0.5 rounded" style={{ background: 'rgba(124,77,255,0.1)', color: '#a78bfa' }}>{model}</span>}
+            {model && <span className="px-1.5 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', color: 'var(--color-accent)' }}>{model}</span>}
             {tokens && <span>{tokens.toLocaleString()} tokens</span>}
           </div>
         )}
@@ -250,10 +250,10 @@ const NodeOutputRenderer: React.FC<{ output: any; nodeType: string; error?: stri
     return (
       <div className="space-y-2">
         {language && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(96,125,139,0.15)', color: '#90a4ae' }}>{language}</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--color-surface-2)', color: 'var(--color-fg-muted)' }}>{language}</span>
         )}
         {exitCode !== undefined && (
-          <span className={`text-[10px] px-1.5 py-0.5 rounded ${exitCode === 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'}`}>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded ${exitCode === 0 ? 'text-success bg-[color-mix(in_srgb,var(--color-success)_10%,transparent)]' : 'text-error bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)]'}`}>
             exit {exitCode}
           </span>
         )}
@@ -264,8 +264,8 @@ const NodeOutputRenderer: React.FC<{ output: any; nodeType: string; error?: stri
           </pre>
         )}
         {stderr && (
-          <pre className="text-[11px] font-mono p-2 rounded overflow-x-auto whitespace-pre-wrap text-red-300"
-            style={{ background: 'rgba(239,68,68,0.06)' }}>
+          <pre className="text-[11px] font-mono p-2 rounded overflow-x-auto whitespace-pre-wrap text-error"
+            style={{ background: 'color-mix(in srgb, var(--color-error) 6%, transparent)' }}>
             {stderr}
           </pre>
         )}
@@ -284,7 +284,7 @@ const NodeOutputRenderer: React.FC<{ output: any; nodeType: string; error?: stri
     return (
       <div className="space-y-2">
         {status && (
-          <span className={`text-[11px] px-2 py-0.5 rounded font-semibold ${isOk ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'}`}>
+          <span className={`text-[11px] px-2 py-0.5 rounded font-semibold ${isOk ? 'text-success bg-[color-mix(in_srgb,var(--color-success)_10%,transparent)]' : 'text-error bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)]'}`}>
             {status} {output?.statusText || ''}
           </span>
         )}
@@ -324,7 +324,7 @@ const NodeOutputRenderer: React.FC<{ output: any; nodeType: string; error?: stri
     return (
       <div className="space-y-2">
         {toolName && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,188,212,0.1)', color: '#4dd0e1' }}>
+          <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--color-info) 10%, transparent)', color: 'var(--color-info)' }}>
             {toolName}
           </span>
         )}
@@ -351,7 +351,7 @@ const NodeOutputRenderer: React.FC<{ output: any; nodeType: string; error?: stri
         )}
         {branch !== undefined && (
           <span className={`text-[11px] px-2 py-0.5 rounded font-semibold ${
-            branch === true || branch === 'true' ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'
+            branch === true || branch === 'true' ? 'text-success bg-[color-mix(in_srgb,var(--color-success)_10%,transparent)]' : 'text-error bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)]'
           }`}>
             Branch: {String(branch)}
           </span>
@@ -368,10 +368,10 @@ const NodeOutputRenderer: React.FC<{ output: any; nodeType: string; error?: stri
 // ─── Log Level Badge ─────────────────────────────────────────────
 const LogLevelBadge: React.FC<{ level: string }> = ({ level }) => {
   const colors: Record<string, { text: string; bg: string }> = {
-    debug: { text: '#8E8E93', bg: 'rgba(142,142,147,0.1)' },
-    info: { text: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
-    warn: { text: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-    error: { text: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+    debug: { text: 'var(--color-fg-muted)', bg: 'color-mix(in srgb, var(--color-fg-muted) 10%, transparent)' },
+    info: { text: 'var(--color-info)', bg: 'color-mix(in srgb, var(--color-info) 10%, transparent)' },
+    warn: { text: 'var(--color-warning)', bg: 'color-mix(in srgb, var(--color-warning) 10%, transparent)' },
+    error: { text: 'var(--color-error)', bg: 'color-mix(in srgb, var(--color-error) 10%, transparent)' },
   };
   const c = colors[level] || colors.info;
   return (
@@ -573,9 +573,9 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
   }, []);
 
   const statusColor = execution?.status === 'completed' ? 'var(--color-success)'
-    : execution?.status === 'completed_with_errors' ? '#f59e0b'
-    : execution?.status === 'failed' ? '#ef4444'
-    : '#3b82f6';
+    : execution?.status === 'completed_with_errors' ? 'var(--color-warning)'
+    : execution?.status === 'failed' ? 'var(--color-error)'
+    : 'var(--color-info)';
 
   const completedCount = execution?.nodeExecutions.filter(n => n.status === 'completed').length || 0;
   const failedCount = execution?.nodeExecutions.filter(n => n.status === 'failed').length || 0;
@@ -627,18 +627,18 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
         }}
       >
         <div className="flex items-center gap-3">
-          <Activity className="w-3.5 h-3.5 text-gray-400" />
-          <span className="text-xs font-medium text-gray-400">Execution</span>
+          <Activity className="w-3.5 h-3.5 text-text-muted" />
+          <span className="text-xs font-medium text-text-muted">Execution</span>
           {execution && (
             <>
               <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusColor }} />
-              <span className="text-[11px] text-gray-400">
+              <span className="text-[11px] text-text-muted">
                 {completedCount}/{totalCount} nodes
                 {failedCount > 0 && ` (${failedCount} failed)`}
                 {execution.totalDuration != null && ` - ${formatDuration(execution.totalDuration)}`}
               </span>
               {execution.status === 'running' && (
-                <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                <div className="w-2 h-2 rounded-full bg-info animate-pulse" />
               )}
             </>
           )}
@@ -649,9 +649,9 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
               onClick={(e) => { e.stopPropagation(); handleValidate(); }}
               disabled={validating}
               className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                validationResult?.ready === true ? 'text-green-400 hover:bg-green-500/20' :
-                validationResult?.ready === false ? 'text-red-400 hover:bg-red-500/20' :
-                'text-yellow-400 hover:bg-yellow-500/20'
+                validationResult?.ready === true ? 'text-success hover:bg-[color-mix(in_srgb,var(--color-success)_20%,transparent)]' :
+                validationResult?.ready === false ? 'text-error hover:bg-[color-mix(in_srgb,var(--color-error)_20%,transparent)]' :
+                'text-warning hover:bg-[color-mix(in_srgb,var(--color-warning)_20%,transparent)]'
               }`}
               title="Validate workflow readiness"
             >
@@ -670,12 +670,12 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
             </button>
           )}
           {execution?.estimatedCost != null && execution.estimatedCost > 0 && (
-            <span className="text-[11px] text-gray-400">${execution.estimatedCost.toFixed(4)}</span>
+            <span className="text-[11px] text-text-muted">${execution.estimatedCost.toFixed(4)}</span>
           )}
           {execution?.totalTokens != null && execution.totalTokens > 0 && (
-            <span className="text-[11px] text-gray-400">{execution.totalTokens.toLocaleString()} tok</span>
+            <span className="text-[11px] text-text-muted">{execution.totalTokens.toLocaleString()} tok</span>
           )}
-          {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronUp className="w-3.5 h-3.5 text-gray-400" />}
+          {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-text-muted" /> : <ChevronUp className="w-3.5 h-3.5 text-text-muted" />}
         </div>
       </button>
 
@@ -724,7 +724,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                     <span className="ml-1 text-[9px] opacity-70">({streamingLogs.length})</span>
                   )}
                   {tab === 'validation' && validationResult && !validationResult.ready && (
-                    <span className="ml-1 text-[9px] text-red-400">
+                    <span className="ml-1 text-[9px] text-error">
                       ({(validationResult.compilation.errors.length || 0) + (validationResult.runtime.issues.length || 0)})
                     </span>
                   )}
@@ -735,7 +735,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                 {panelTab === 'history' && (
                   <button
                     onClick={fetchHistory}
-                    className="p-1 rounded hover:bg-white/5 transition-colors"
+                    className="p-1 rounded hover:bg-surface-2 transition-colors"
                     style={{ color: 'var(--color-text-tertiary, #636366)' }}
                     title="Refresh history"
                   >
@@ -744,7 +744,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                 )}
                 <button
                   onClick={() => setIsMaximized(!isMaximized)}
-                  className="p-1 rounded hover:bg-white/5 transition-colors"
+                  className="p-1 rounded hover:bg-surface-2 transition-colors"
                   style={{ color: 'var(--color-text-tertiary, #636366)' }}
                   title={isMaximized ? 'Restore' : 'Maximize'}
                 >
@@ -785,7 +785,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                     </div>
                   ) : (
                     filteredLogs.map((log, i) => (
-                      <div key={i} className="flex items-start gap-2 py-0.5 hover:bg-white/[0.02]">
+                      <div key={i} className="flex items-start gap-2 py-0.5 hover:bg-surface-2">
                         <span className="text-[10px] flex-shrink-0 w-16 text-right" style={{ color: 'var(--color-text-tertiary)' }}>
                           {log.timestamp ? format(new Date(log.timestamp), 'HH:mm:ss') : ''}
                         </span>
@@ -795,7 +795,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                             {log.node_id}
                           </span>
                         )}
-                        <span style={{ color: log.level === 'error' ? '#ef4444' : log.level === 'warn' ? '#f59e0b' : 'var(--color-text-secondary)' }}>
+                        <span style={{ color: log.level === 'error' ? 'var(--color-error)' : log.level === 'warn' ? 'var(--color-warning)' : 'var(--color-text-secondary)' }}>
                           {log.message}
                         </span>
                       </div>
@@ -815,7 +815,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                     <p className="text-xs mb-2">Pre-flight check for your workflow</p>
                     <button
                       onClick={handleValidate}
-                      className="px-3 py-1.5 rounded-md text-xs font-medium bg-accent-primary text-white hover:bg-accent-primary/90 transition-colors"
+                      className="px-3 py-1.5 rounded-md text-xs font-medium bg-accent text-on-accent hover:opacity-90 transition-colors"
                     >
                       Run Validation
                     </button>
@@ -832,8 +832,8 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                     {/* Overall status */}
                     <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
                       validationResult.ready
-                        ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                        : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                        ? 'bg-[color-mix(in_srgb,var(--color-success)_10%,transparent)] text-success border border-[color-mix(in_srgb,var(--color-success)_20%,transparent)]'
+                        : 'bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)] text-error border border-[color-mix(in_srgb,var(--color-error)_20%,transparent)]'
                     }`}>
                       {validationResult.ready ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
                       {validationResult.ready ? 'Workflow is ready to execute' : 'Issues found — fix before executing'}
@@ -842,17 +842,17 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                     {/* Compilation errors */}
                     {validationResult.compilation.errors.length > 0 && (
                       <div>
-                        <h4 className="text-[11px] font-semibold text-red-400 mb-1.5 uppercase tracking-wide">Structure Errors</h4>
+                        <h4 className="text-[11px] font-semibold text-error mb-1.5 uppercase tracking-wide">Structure Errors</h4>
                         {validationResult.compilation.errors.map((err: any, i: number) => (
                           <div key={i} className="flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1"
-                            style={{ background: 'rgba(239,68,68,0.06)', color: 'var(--color-text-secondary)' }}
+                            style={{ background: 'color-mix(in srgb, var(--color-error) 6%, transparent)', color: 'var(--color-text-secondary)' }}
                             onClick={() => err.nodeId && onNodeSelect?.(err.nodeId)}
                           >
-                            <XCircle className="w-3 h-3 text-red-400 flex-shrink-0 mt-0.5" />
+                            <XCircle className="w-3 h-3 text-error flex-shrink-0 mt-0.5" />
                             <div>
-                              <span className="text-red-300 font-medium">[{err.code}]</span>{' '}
+                              <span className="text-error font-medium">[{err.code}]</span>{' '}
                               {err.message}
-                              {err.nodeId && <span className="text-gray-500 ml-1">({err.nodeId})</span>}
+                              {err.nodeId && <span className="text-text-muted ml-1">({err.nodeId})</span>}
                             </div>
                           </div>
                         ))}
@@ -884,15 +884,15 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                               return false;
                             });
                             if (groupIssues.length === 0) return null;
-                            const colorMap: Record<string, string> = { red: 'text-red-400', yellow: 'text-yellow-400', orange: 'text-orange-400', blue: 'text-blue-400' };
-                            const bgMap: Record<string, string> = { red: 'rgba(239,68,68,0.06)', yellow: 'rgba(245,158,11,0.06)', orange: 'rgba(249,115,22,0.06)', blue: 'rgba(59,130,246,0.06)' };
+                            const colorMap: Record<string, string> = { red: 'text-error', yellow: 'text-warning', orange: 'text-warning', blue: 'text-info' };
+                            const bgMap: Record<string, string> = { red: 'color-mix(in srgb, var(--color-error) 6%, transparent)', yellow: 'color-mix(in srgb, var(--color-warning) 6%, transparent)', orange: 'color-mix(in srgb, var(--color-warning) 6%, transparent)', blue: 'color-mix(in srgb, var(--color-info) 6%, transparent)' };
                             return (
                               <div key={group.label}>
                                 <h4 className={`text-[11px] font-semibold ${colorMap[group.color]} mb-1.5 uppercase tracking-wide`}>
                                   {group.icon} {group.label} ({groupIssues.length})
                                 </h4>
                                 {groupIssues.map((issue: any, i: number) => (
-                                  <div key={i} className="flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1 cursor-pointer hover:bg-white/[0.03]"
+                                  <div key={i} className="flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1 cursor-pointer hover:bg-surface-2"
                                     style={{ background: bgMap[group.color], color: 'var(--color-text-secondary)' }}
                                     onClick={() => issue.nodeId && onNodeSelect?.(issue.nodeId)}
                                   >
@@ -900,7 +900,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                                     <div>
                                       <span className={`${colorMap[group.color]} font-medium`}>[{issue.code}]</span>{' '}
                                       {issue.message}
-                                      {issue.nodeId && <span className="text-gray-500 ml-1 cursor-pointer hover:text-gray-300">(click to select)</span>}
+                                      {issue.nodeId && <span className="text-text-muted ml-1 cursor-pointer hover:text-text">(click to select)</span>}
                                     </div>
                                   </div>
                                 ))}
@@ -910,15 +910,15 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                           {/* Uncategorized issues */}
                           {allIssues.filter((_: any, idx: number) => !categorized.has(idx)).length > 0 && (
                             <div>
-                              <h4 className="text-[11px] font-semibold text-yellow-400 mb-1.5 uppercase tracking-wide">Other Issues</h4>
+                              <h4 className="text-[11px] font-semibold text-warning mb-1.5 uppercase tracking-wide">Other Issues</h4>
                               {allIssues.filter((_: any, idx: number) => !categorized.has(idx)).map((issue: any, i: number) => (
-                                <div key={i} className="flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1 cursor-pointer hover:bg-white/[0.03]"
-                                  style={{ background: 'rgba(245,158,11,0.06)', color: 'var(--color-text-secondary)' }}
+                                <div key={i} className="flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1 cursor-pointer hover:bg-surface-2"
+                                  style={{ background: 'color-mix(in srgb, var(--color-warning) 6%, transparent)', color: 'var(--color-text-secondary)' }}
                                   onClick={() => issue.nodeId && onNodeSelect?.(issue.nodeId)}
                                 >
-                                  <AlertCircle className="w-3 h-3 text-yellow-400 flex-shrink-0 mt-0.5" />
+                                  <AlertCircle className="w-3 h-3 text-warning flex-shrink-0 mt-0.5" />
                                   <div>
-                                    <span className="text-yellow-300 font-medium">[{issue.code}]</span>{' '}
+                                    <span className="text-warning font-medium">[{issue.code}]</span>{' '}
                                     {issue.message}
                                   </div>
                                 </div>
@@ -932,12 +932,12 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                     {/* Warnings */}
                     {validationResult.compilation.warnings.length > 0 && (
                       <div>
-                        <h4 className="text-[11px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Warnings</h4>
+                        <h4 className="text-[11px] font-semibold text-text-muted mb-1.5 uppercase tracking-wide">Warnings</h4>
                         {validationResult.compilation.warnings.map((w: any, i: number) => (
                           <div key={i} className="flex items-start gap-2 px-2 py-1.5 text-[11px] rounded mb-1"
                             style={{ background: 'rgba(255,255,255,0.02)', color: 'var(--color-text-tertiary)' }}
                           >
-                            <AlertCircle className="w-3 h-3 text-gray-500 flex-shrink-0 mt-0.5" />
+                            <AlertCircle className="w-3 h-3 text-text-muted flex-shrink-0 mt-0.5" />
                             <span>{w.message}</span>
                           </div>
                         ))}
@@ -976,16 +976,16 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                     {/* History list (left) */}
                     <div className="w-56 flex-shrink-0 border-r overflow-y-auto" style={{ borderColor: 'var(--color-border)' }}>
                       {history.map(exec => {
-                        const sc = exec.status === 'completed' ? '#00D26A'
-                          : exec.status === 'failed' ? '#ef4444'
-                          : exec.status === 'running' ? '#3b82f6'
-                          : '#6b7280';
+                        const sc = exec.status === 'completed' ? 'var(--color-success)'
+                          : exec.status === 'failed' ? 'var(--color-error)'
+                          : exec.status === 'running' ? 'var(--color-info)'
+                          : 'var(--color-fg-subtle)';
                         const isSelected = selectedHistoryId === exec.id;
                         return (
                           <div
                             key={exec.id}
                             onClick={() => setSelectedHistoryId(isSelected ? null : exec.id)}
-                            className="flex items-center gap-2.5 px-3 py-2 border-b cursor-pointer transition-colors hover:bg-white/[0.02]"
+                            className="flex items-center gap-2.5 px-3 py-2 border-b cursor-pointer transition-colors hover:bg-surface-2"
                             style={{
                               borderColor: 'var(--color-border)',
                               background: isSelected ? 'var(--color-bg-secondary)' : undefined,
@@ -1040,8 +1040,8 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                               style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
                               <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-bold"
                                 style={{
-                                  color: historyDetail.execution?.status === 'completed' ? 'var(--color-success)' : '#ef4444',
-                                  background: historyDetail.execution?.status === 'completed' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                                  color: historyDetail.execution?.status === 'completed' ? 'var(--color-success)' : 'var(--color-error)',
+                                  background: historyDetail.execution?.status === 'completed' ? 'color-mix(in srgb, var(--color-success) 10%, transparent)' : 'color-mix(in srgb, var(--color-error) 10%, transparent)',
                                 }}>
                                 {historyDetail.execution?.status}
                               </span>
@@ -1062,20 +1062,20 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                                   ? Math.max(((node.duration || 0) / historyMaxTime) * 100, 3)
                                   : 3;
                                 const barColor = node.status === 'completed' || node.status === 'success' ? 'var(--color-success)'
-                                  : node.status === 'failed' || node.status === 'error' ? '#ef4444'
-                                  : '#4b5563';
+                                  : node.status === 'failed' || node.status === 'error' ? 'var(--color-error)'
+                                  : 'var(--color-fg-subtle)';
                                 const isSelected = historySelectedNode === node.nodeId;
 
                                 return (
                                   <div
                                     key={node.nodeId}
                                     onClick={() => setHistorySelectedNode(prev => prev === node.nodeId ? null : node.nodeId)}
-                                    className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors hover:bg-white/[0.03]"
+                                    className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors hover:bg-surface-2"
                                     style={{ background: isSelected ? 'var(--color-bg-secondary)' : undefined }}
                                   >
                                     <div className="flex-shrink-0 w-4">
-                                      {(node.status === 'completed' || node.status === 'success') && <CheckCircle className="w-3 h-3 text-green-400" />}
-                                      {(node.status === 'failed' || node.status === 'error') && <XCircle className="w-3 h-3 text-red-400" />}
+                                      {(node.status === 'completed' || node.status === 'success') && <CheckCircle className="w-3 h-3 text-success" />}
+                                      {(node.status === 'failed' || node.status === 'error') && <XCircle className="w-3 h-3 text-error" />}
                                       {!['completed', 'failed', 'success', 'error'].includes(node.status) && (
                                         <div className="w-3 h-3 rounded-full" style={{ background: 'var(--color-text-tertiary)' }} />
                                       )}
@@ -1122,7 +1122,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                                       </span>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                      <button onClick={() => copyToClipboard(selectedHistoryNode.output)} className="p-0.5 rounded hover:bg-white/5"
+                                      <button onClick={() => copyToClipboard(selectedHistoryNode.output)} className="p-0.5 rounded hover:bg-surface-2"
                                         style={{ color: 'var(--color-text-tertiary)' }} title="Copy output">
                                         <Copy className="w-3 h-3" />
                                       </button>
@@ -1160,7 +1160,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                                               {log.timestamp ? format(new Date(log.timestamp), 'HH:mm:ss.SSS') : ''}
                                             </span>
                                             <LogLevelBadge level={log.level} />
-                                            <span style={{ color: log.level === 'error' ? '#ef4444' : 'var(--color-text-secondary)' }}>
+                                            <span style={{ color: log.level === 'error' ? 'var(--color-error)' : 'var(--color-text-secondary)' }}>
                                               {log.message}
                                             </span>
                                           </div>
@@ -1199,7 +1199,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>Timeline</span>
                         {execution.status === 'running' && (
-                          <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                          <div className="w-2 h-2 rounded-full bg-info animate-pulse" />
                         )}
                       </div>
                       <span className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
@@ -1215,17 +1215,17 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                           ? Math.max(((node.duration || 0) / timelineData.maxTime) * 100, 3)
                           : (node.status === 'running' ? 50 : 3);
                         const barColor = node.status === 'completed' ? 'var(--color-success)'
-                          : node.status === 'failed' ? '#ef4444'
-                          : node.status === 'running' ? '#3b82f6'
-                          : node.status === 'skipped' ? '#4b5563'
-                          : '#374151';
+                          : node.status === 'failed' ? 'var(--color-error)'
+                          : node.status === 'running' ? 'var(--color-info)'
+                          : node.status === 'skipped' ? 'var(--color-fg-subtle)'
+                          : 'var(--color-rule)';
                         const isSelected = selectedNodeId === node.nodeId;
 
                         return (
                           <div
                             key={node.nodeId}
                             onClick={() => handleNodeClick(node.nodeId)}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors hover:bg-white/[0.03]"
+                            className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors hover:bg-surface-2"
                             style={{ background: isSelected ? 'var(--color-bg-secondary)' : undefined }}
                           >
                             {/* Execution order number */}
@@ -1234,10 +1234,10 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
 
                             {/* Status icon */}
                             <div className="flex-shrink-0 w-4">
-                              {node.status === 'completed' && <CheckCircle className="w-3 h-3 text-green-400" />}
-                              {node.status === 'failed' && <XCircle className="w-3 h-3 text-red-400" />}
+                              {node.status === 'completed' && <CheckCircle className="w-3 h-3 text-success" />}
+                              {node.status === 'failed' && <XCircle className="w-3 h-3 text-error" />}
                               {node.status === 'running' && (
-                                <div className="w-3 h-3 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
+                                <div className="w-3 h-3 rounded-full border-2 border-info border-t-transparent animate-spin" />
                               )}
                               {node.status === 'pending' && (
                                 <div className="w-3 h-3 rounded-full" style={{ background: 'var(--color-text-tertiary)' }} />
@@ -1334,7 +1334,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                               )}
                             </div>
                             <div className="flex items-center gap-1">
-                              <button onClick={() => copyToClipboard(selectedNode.output)} className="p-0.5 rounded hover:bg-white/5"
+                              <button onClick={() => copyToClipboard(selectedNode.output)} className="p-0.5 rounded hover:bg-surface-2"
                                 style={{ color: 'var(--color-text-tertiary)' }} title="Copy output">
                                 <Copy className="w-3 h-3" />
                               </button>
@@ -1390,8 +1390,8 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                                 </div>
                               )}
                               {selectedNode.error && (
-                                <div className="py-0.5 text-red-400">
-                                  <span className="text-red-600">[error]</span>{' '}
+                                <div className="py-0.5 text-error">
+                                  <span className="text-error">[error]</span>{' '}
                                   {selectedNode.error}
                                 </div>
                               )}
@@ -1405,7 +1405,7 @@ export const ExecutionPanel: React.FC<ExecutionPanelProps> = ({
                                         {log.timestamp ? format(new Date(log.timestamp), 'HH:mm:ss.SSS') : ''}
                                       </span>
                                       <LogLevelBadge level={log.level} />
-                                      <span style={{ color: log.level === 'error' ? '#ef4444' : 'var(--color-text-secondary)' }}>
+                                      <span style={{ color: log.level === 'error' ? 'var(--color-error)' : 'var(--color-text-secondary)' }}>
                                         {log.message}
                                       </span>
                                     </div>

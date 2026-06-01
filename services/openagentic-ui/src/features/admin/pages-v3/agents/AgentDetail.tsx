@@ -352,7 +352,7 @@ function Dl({ rows }: { rows: Array<[label: string, value: React.ReactNode]> }) 
           <span style={{ color: 'var(--fg-3)', fontSize: 'var(--v3-t-meta)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             {k}
           </span>
-          <span style={{ color: 'var(--fg-1)', fontFamily: 'var(--font-v3-mono)' }}>{v}</span>
+          <span style={{ color: 'var(--fg-1)', fontFamily: 'var(--font-mono)' }}>{v}</span>
         </React.Fragment>
       ))}
     </div>

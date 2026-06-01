@@ -229,8 +229,8 @@ export function SharedKBView() {
         <div
           className={`rounded-lg border p-3 flex items-start gap-2 ${
             toast.kind === 'ok'
-              ? 'border-green-500/40 bg-green-500/10 text-green-300'
-              : 'border-red-500/40 bg-red-500/10 text-red-300'
+              ? 'border-[color-mix(in_srgb,var(--color-ok)_40%,transparent)] bg-[color-mix(in_srgb,var(--color-ok)_10%,transparent)] text-ok'
+              : 'border-[color-mix(in_srgb,var(--color-err)_40%,transparent)] bg-[color-mix(in_srgb,var(--color-err)_10%,transparent)] text-err'
           }`}
         >
           {toast.kind === 'ok' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
@@ -241,7 +241,7 @@ export function SharedKBView() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-300">
+        <div className="rounded-lg border border-[color-mix(in_srgb,var(--color-err)_40%,transparent)] bg-[color-mix(in_srgb,var(--color-err)_10%,transparent)] p-4 text-sm text-err">
           {error}
         </div>
       )}
@@ -326,15 +326,15 @@ export function SharedKBView() {
                             onClick={() => handleToggleEnabled(s)}
                             className="px-2 py-0.5 rounded text-[10px] uppercase tracking-wide font-medium border"
                             style={{
-                              borderColor: s.enabled ? 'rgb(34 197 94 / 0.4)' : 'rgb(100 100 100 / 0.4)',
-                              color: s.enabled ? 'rgb(74 222 128)' : 'rgb(150 150 150)',
+                              borderColor: s.enabled ? 'color-mix(in srgb, var(--color-ok) 40%, transparent)' : 'color-mix(in srgb, var(--color-fg-subtle) 40%, transparent)',
+                              color: s.enabled ? 'var(--color-ok)' : 'var(--color-fg-subtle)',
                             }}
                           >
                             {s.enabled ? 'enabled' : 'disabled'}
                           </button>
                           <button
                             onClick={() => handleDelete(s)}
-                            className="p-1.5 rounded hover:bg-red-500/10 text-red-400"
+                            className="p-1.5 rounded hover:bg-[color-mix(in_srgb,var(--color-err)_10%,transparent)] text-err"
                             title="Delete source"
                           >
                             <Trash2 size={14} />
@@ -391,15 +391,15 @@ function StatusBadge({
     return <span className="text-xs text-text-tertiary">not ingested</span>;
   }
   if (status === 'running') {
-    return <span className="text-xs text-blue-400">running…</span>;
+    return <span className="text-xs text-info">running…</span>;
   }
   if (status === 'success') {
-    return <span className="text-xs text-green-400">ok</span>;
+    return <span className="text-xs text-ok">ok</span>;
   }
   if (status === 'partial') {
-    return <span className="text-xs text-yellow-400" title={error || ''}>partial</span>;
+    return <span className="text-xs text-warn" title={error || ''}>partial</span>;
   }
-  return <span className="text-xs text-red-400" title={error || ''}>error</span>;
+  return <span className="text-xs text-err" title={error || ''}>error</span>;
 }
 
 // ---------------------------------------------------------------------------
@@ -438,7 +438,7 @@ function SourceDocumentsPanel({ sourceId, onChange }: { sourceId: string; onChan
   };
 
   if (loading) return <div className="text-xs text-text-secondary">Loading documents…</div>;
-  if (error) return <div className="text-xs text-red-400">{error}</div>;
+  if (error) return <div className="text-xs text-err">{error}</div>;
   if (docs.length === 0) {
     return <div className="text-xs text-text-secondary">No documents ingested yet. Click the refresh button in the row to run ingest.</div>;
   }
@@ -462,7 +462,7 @@ function SourceDocumentsPanel({ sourceId, onChange }: { sourceId: string; onChan
             <span className="text-text-tertiary">{formatRelativeTime(d.ingested_at)}</span>
             <button
               onClick={() => handleDelete(d.id)}
-              className="p-1 rounded hover:bg-red-500/10 text-red-400"
+              className="p-1 rounded hover:bg-[color-mix(in_srgb,var(--color-err)_10%,transparent)] text-err"
               title="Delete document"
             >
               <Trash2 size={12} />
@@ -516,7 +516,7 @@ function AddSourceDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-shadow)_50%,transparent)]" onClick={onClose}>
       <div
         className="bg-[color:var(--color-surface-primary)] border border-border rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
@@ -595,7 +595,7 @@ function AddSourceDialog({
                 </p>
               </div>
               {error && (
-                <div className="rounded border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-300">
+                <div className="rounded border border-[color-mix(in_srgb,var(--color-err)_40%,transparent)] bg-[color-mix(in_srgb,var(--color-err)_10%,transparent)] p-3 text-xs text-err">
                   {error}
                 </div>
               )}

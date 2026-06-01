@@ -755,7 +755,7 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
           label: workflowName || 'Workflow',
           text: noteText,
           fontSize: 12,
-          textColor: '#8b949e',
+          textColor: 'var(--color-fg-muted)',
           bgColor: 'transparent',
         },
       } as any);
@@ -1511,7 +1511,7 @@ const WorkflowCanvasInner: React.FC<WorkflowsContainerProps> = ({
 
   const nodeColorFn = useCallback((node: Node) => {
     const config = activeNodeConfigs[node.type as NodeType];
-    return config?.color || '#607d8b';
+    return config?.color || 'var(--color-fg-subtle)';
   }, [activeNodeConfigs]);
 
   return (

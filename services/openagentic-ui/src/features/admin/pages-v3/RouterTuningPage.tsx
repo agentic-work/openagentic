@@ -98,7 +98,7 @@ const inlineInputStyle: React.CSSProperties = {
   width: 70,
   height: 22,
   padding: '0 6px',
-  fontFamily: 'var(--font-v3-mono)',
+  fontFamily: 'var(--font-mono)',
   fontSize: 12,
   background: 'var(--bg-0)',
   border: '1px solid var(--accent-line)',
@@ -365,7 +365,7 @@ const JsonTuningEditor = ({
     >
       <div
         style={{
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 11,
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
@@ -387,7 +387,7 @@ const JsonTuningEditor = ({
           background: 'var(--bg-0)',
           border: `1px solid ${draftError ? 'var(--err)' : isDirty ? 'var(--warn)' : 'var(--line-1)'}`,
           color: 'var(--fg-0)',
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 12,
           padding: '8px 10px',
           outline: 'none',
@@ -613,7 +613,7 @@ export const RouterTuningPage: React.FC = () => {
           padding: '8px 18px',
           borderBottom: '1px solid var(--line-1)',
           background: 'var(--bg-1)',
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 'var(--v3-t-meta)',
           color: 'var(--fg-3)',
         }}
@@ -636,7 +636,7 @@ export const RouterTuningPage: React.FC = () => {
       <div
         style={{
           padding: '16px 18px',
-          fontFamily: 'var(--font-v3-mono)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 14,
           color: 'var(--fg-1)',
           lineHeight: 2.4,
@@ -1011,7 +1011,7 @@ export const RouterTuningPage: React.FC = () => {
               minWidth: 280,
               height: 28,
               padding: '0 10px',
-              fontFamily: 'var(--font-v3-mono)',
+              fontFamily: 'var(--font-mono)',
               fontSize: 12,
               background: 'var(--bg-0)',
               border: '1px solid var(--line-1)',

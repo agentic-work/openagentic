@@ -44,14 +44,14 @@ export const CustomEdge = memo(({
 
   // Determine edge color based on execution state and data type
   const getEdgeColor = () => {
-    if (isErrorEdge) return '#ef4444';
-    if (executionState === 'running') return '#ff9800';
-    if (executionState === 'completed') return '#22c55e';
-    if (executionState === 'failed') return '#f44336';
-    if (dataType === 'text') return '#3b82f6';
-    if (dataType === 'structured') return '#2dd4bf';
-    if (dataType === 'binary') return '#ff9800';
-    if (dataType === 'llm') return '#7c4dff';
+    if (isErrorEdge) return 'var(--color-error)';
+    if (executionState === 'running') return 'var(--color-warning)';
+    if (executionState === 'completed') return 'var(--color-success)';
+    if (executionState === 'failed') return 'var(--color-error)';
+    if (dataType === 'text') return 'var(--color-info)';
+    if (dataType === 'structured') return 'var(--color-success)';
+    if (dataType === 'binary') return 'var(--color-warning)';
+    if (dataType === 'llm') return 'var(--color-accent)';
     return undefined;
   };
 
@@ -67,7 +67,7 @@ export const CustomEdge = memo(({
           d={edgePath}
           style={{
             ...style,
-            stroke: '#ff9800',
+            stroke: 'var(--color-warning)',
             strokeWidth: 6,
             strokeOpacity: 0.2,
             fill: 'none',
@@ -82,7 +82,7 @@ export const CustomEdge = memo(({
           d={edgePath}
           style={{
             ...style,
-            stroke: '#ef4444',
+            stroke: 'var(--color-error)',
             strokeWidth: 6,
             strokeOpacity: 0.15,
             fill: 'none',
@@ -133,7 +133,7 @@ export const CustomEdge = memo(({
               pointerEvents: 'none',
               fontSize: 10,
               fontWeight: 700,
-              color: '#ef4444',
+              color: 'var(--color-error)',
               background: 'var(--wf-node-bg, #161b22)',
               border: '1px solid #ef444440',
               borderRadius: 10,

@@ -195,7 +195,7 @@ const ModelPicker: React.FC<ModelPickerProps> = ({ category, value, registryMode
           border: `1px solid ${open ? 'var(--ap-accent)' : 'var(--ap-border)'}`,
           borderRadius: open ? '8px 8px 0 0' : 8,
           padding: '10px 14px',
-          fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+          fontFamily: 'var(--font-mono)',
           fontSize: 13,
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           cursor: 'pointer', transition: 'border 120ms', userSelect: 'none',
@@ -231,7 +231,7 @@ const ModelPicker: React.FC<ModelPickerProps> = ({ category, value, registryMode
               display: 'grid',
               gridTemplateColumns: '1fr auto auto auto',
               gap: 14, padding: '10px 14px', cursor: 'pointer',
-              fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace', fontSize: 13,
+              fontFamily: 'var(--font-mono)', fontSize: 13,
               alignItems: 'center',
               background: displayValue === AUTO_VALUE ? tint('var(--color-primary)', 8) : 'transparent',
             }}
@@ -264,7 +264,7 @@ const ModelPicker: React.FC<ModelPickerProps> = ({ category, value, registryMode
                 style={{
                   display: 'grid', gridTemplateColumns: '1fr auto auto auto',
                   gap: 14, padding: '10px 14px', cursor: 'pointer',
-                  fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace', fontSize: 13,
+                  fontFamily: 'var(--font-mono)', fontSize: 13,
                   alignItems: 'center',
                   background: displayValue === m.model ? tint('var(--color-primary)', 8) : 'transparent',
                 }}
@@ -334,7 +334,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({ meta, savedValue, draftValue,
             background: 'var(--ap-bg-secondary)',
             border: '1px solid var(--ap-border)',
             padding: '2px 6px', borderRadius: 4,
-            fontSize: 10, fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+            fontSize: 10, fontFamily: 'var(--font-mono)',
             color: 'var(--ap-muted)',
           }}>
             {meta.tag}
@@ -367,7 +367,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({ meta, savedValue, draftValue,
             }}
           >
             ⚠ Default &ldquo;{draftValue}&rdquo; (FCA {draftFca?.toFixed(2)}) is below Router Tuning{' '}
-            <code style={{ background: 'var(--ap-surface-2)', padding: '1px 6px', borderRadius: 4, fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace', color: 'var(--color-warning)' }}>
+            <code style={{ background: 'var(--ap-surface-2)', padding: '1px 6px', borderRadius: 4, fontFamily: 'var(--font-mono)', color: 'var(--color-warning)' }}>
               fcaChatPoolFloor
             </code>{' '}
             ({fcaFloor?.toFixed(2)}). Smart Router will filter this model out when session uses &ldquo;auto&rdquo;.
@@ -385,7 +385,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({ meta, savedValue, draftValue,
                 border: '1px solid var(--ap-border)',
                 color: 'var(--ap-muted)',
                 padding: '2px 8px', borderRadius: 4,
-                fontSize: 11, fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+                fontSize: 11, fontFamily: 'var(--font-mono)',
               }}
             >
               {tag}
@@ -431,12 +431,12 @@ const PrecedenceFlow: React.FC = () => (
         border: '1px solid var(--ap-border)',
         borderRadius: 8, padding: '14px 16px',
       }}>
-        <div style={{ fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace', fontSize: 11, color: 'var(--ap-muted)', letterSpacing: '0.1em' }}>1 · WINS FIRST</div>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ap-muted)', letterSpacing: '0.1em' }}>1 · WINS FIRST</div>
         <div style={{ fontWeight: 600, margin: '4px 0 2px', fontSize: 14 }}>Explicit request pin</div>
         <div style={{ fontSize: 12, color: 'var(--ap-muted)' }}>User/API selects a model on the request</div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ap-muted)', fontSize: 18, fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace' }}>→</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ap-muted)', fontSize: 18, fontFamily: 'var(--font-mono)' }}>→</div>
 
       {/* Step 2 */}
       <div style={{
@@ -444,12 +444,12 @@ const PrecedenceFlow: React.FC = () => (
         border: '1px solid var(--ap-border)',
         borderRadius: 8, padding: '14px 16px',
       }}>
-        <div style={{ fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace', fontSize: 11, color: 'var(--ap-muted)', letterSpacing: '0.1em' }}>2 · FALLBACK</div>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ap-muted)', letterSpacing: '0.1em' }}>2 · FALLBACK</div>
         <div style={{ fontWeight: 600, margin: '4px 0 2px', fontSize: 14 }}>Session model</div>
         <div style={{ fontSize: 12, color: 'var(--ap-muted)' }}>Pin persisted on the session (dropdown choice)</div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ap-muted)', fontSize: 18, fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace' }}>→</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ap-muted)', fontSize: 18, fontFamily: 'var(--font-mono)' }}>→</div>
 
       {/* Step 3 — ACTIVE */}
       <div style={{
@@ -458,13 +458,13 @@ const PrecedenceFlow: React.FC = () => (
         boxShadow: `0 0 0 1px ${tint('var(--color-primary)', 20)}`,
         borderRadius: 8, padding: '14px 16px',
       }}>
-        <div style={{ fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace', fontSize: 11, color: 'var(--ap-muted)', letterSpacing: '0.1em' }}>3 · FALLBACK · YOU ARE HERE</div>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ap-muted)', letterSpacing: '0.1em' }}>3 · FALLBACK · YOU ARE HERE</div>
         <div style={{ fontWeight: 600, margin: '4px 0 2px', fontSize: 14, color: 'var(--ap-accent)' }}>Tenant default (this page)</div>
         <div style={{ fontSize: 12, color: 'var(--ap-muted)' }}>Resolves per category when nothing else is set</div>
       </div>
     </div>
 
-    <div style={{ fontSize: 12, color: 'var(--ap-muted)', fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace' }}>
+    <div style={{ fontSize: 12, color: 'var(--ap-muted)', fontFamily: 'var(--font-mono)' }}>
       After resolution: if the chosen model id is{' '}
       <code style={{ background: 'var(--ap-bg-secondary)', padding: '1px 6px', borderRadius: 4 }}>auto</code>,
       Smart Router fires with the current tuning. Otherwise the pipeline dispatches the resolved model directly.
@@ -633,7 +633,7 @@ const DefaultModelsView: React.FC = () => {
             <b>1.</b> If the request pins a specific model — that wins. <b>2.</b>{' '}
             Otherwise the chat session's saved model wins. <b>3.</b> Otherwise — what's
             on this page wins. Smart Router only fires when the resolved model is the
-            literal string <span style={{ fontFamily: 'ui-monospace, monospace' }}>auto</span>; otherwise the pipeline dispatches the resolved model directly.
+            literal string <span style={{ fontFamily: 'var(--font-mono)' }}>auto</span>; otherwise the pipeline dispatches the resolved model directly.
           </>
         }
         why={
@@ -671,7 +671,7 @@ const DefaultModelsView: React.FC = () => {
       >
         <strong style={{ color: 'var(--ap-text)' }}>Scope:</strong>{' '}
         These defaults seed from the helm{' '}
-        <code style={{ background: 'var(--ap-bg-secondary)', padding: '1px 6px', borderRadius: 4, fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace', fontSize: 12 }}>
+        <code style={{ background: 'var(--ap-bg-secondary)', padding: '1px 6px', borderRadius: 4, fontFamily: 'var(--font-mono)', fontSize: 12 }}>
           DEFAULT_MODEL
         </code>{' '}
         env on first boot. Admin edits here persist and survive pod restarts.{' '}
@@ -679,7 +679,7 @@ const DefaultModelsView: React.FC = () => {
         is a separate page under{' '}
         <strong style={{ color: 'var(--ap-text)' }}>Admin → LLM → Router Tuning</strong>{' '}
         — it only affects requests with session model{' '}
-        <code style={{ background: 'var(--ap-bg-secondary)', padding: '1px 6px', borderRadius: 4, fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace', fontSize: 12 }}>
+        <code style={{ background: 'var(--ap-bg-secondary)', padding: '1px 6px', borderRadius: 4, fontFamily: 'var(--font-mono)', fontSize: 12 }}>
           auto
         </code>.
         Tenant defaults set here are distinct from both Router Tuning and session-level pins.

@@ -80,10 +80,10 @@ const endpointGroups: EndpointGroup[] = [
 ];
 
 const methodColors: Record<string, { text: string; bg: string }> = {
-  GET: { text: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
-  POST: { text: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
-  PUT: { text: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  DELETE: { text: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  GET: { text: 'var(--color-info)', bg: 'color-mix(in srgb, var(--color-info) 12%, transparent)' },
+  POST: { text: 'var(--color-success)', bg: 'color-mix(in srgb, var(--color-success) 12%, transparent)' },
+  PUT: { text: 'var(--color-warning)', bg: 'color-mix(in srgb, var(--color-warning) 12%, transparent)' },
+  DELETE: { text: 'var(--color-error)', bg: 'color-mix(in srgb, var(--color-error) 12%, transparent)' },
 };
 
 // ============================================================================

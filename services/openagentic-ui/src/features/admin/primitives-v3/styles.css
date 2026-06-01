@@ -699,7 +699,7 @@
 }
 .aw-tier--t1 {
   color: var(--info);
-  border-color: rgba(155, 140, 255, 0.3);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
   background: color-mix(in srgb, var(--info) 10%, var(--bg-2));
 }
 .aw-tier--t2 {
@@ -709,7 +709,7 @@
 }
 .aw-tier--t3 {
   color: var(--warn);
-  border-color: rgba(255, 181, 71, 0.3);
+  border-color: color-mix(in srgb, var(--color-warn) 30%, transparent);
   background: color-mix(in srgb, var(--warn) 10%, var(--bg-2));
 }
 
@@ -1304,10 +1304,10 @@
 .aw-banner--warn::before { background: var(--warn); }
 .aw-banner--err::before  { background: var(--err); }
 .aw-banner--ok::before   { background: var(--ok); }
-.aw-banner--info { background: rgba(94, 200, 255, 0.06); }
-.aw-banner--warn { background: rgba(255, 181, 71, 0.06); }
-.aw-banner--err  { background: rgba(255, 92, 92, 0.08); }
-.aw-banner--ok   { background: rgba(62, 199, 124, 0.06); }
+.aw-banner--info { background: color-mix(in srgb, var(--color-nfo) 6%, transparent); }
+.aw-banner--warn { background: color-mix(in srgb, var(--color-warn) 6%, transparent); }
+.aw-banner--err  { background: color-mix(in srgb, var(--color-err) 8%, transparent); }
+.aw-banner--ok   { background: color-mix(in srgb, var(--color-ok) 6%, transparent); }
 .aw-banner__lab {
   font-family: var(--font-v3-tele);
   font-size: 9px;
@@ -1607,13 +1607,13 @@
 }
 .aw-btn--primary {
   background: var(--accent);
-  color: #001a26;
+  color: var(--color-on-accent);
   border-color: var(--accent);
   font-weight: 500;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent);
 }
 .aw-btn--primary:hover {
-  background: color-mix(in srgb, var(--accent) 85%, white);
+  background: color-mix(in srgb, var(--accent) 85%, var(--brand-paper));
   box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 50%, transparent),
               0 0 0 1px var(--accent);
 }
@@ -1742,10 +1742,6 @@
    Light-mode contrast tweaks (most rules above use tokens that
    already swap, but a few need explicit overrides)
    ============================================================ */
-html[data-theme="light"] .aw-btn--primary {
-  /* Darker accent text on accent background for light theme */
-  color: #fff;
-}
 html[data-theme="light"] .aw-dot--ok,
 html[data-theme="light"] .aw-dot--warn,
 html[data-theme="light"] .aw-dot--err,
