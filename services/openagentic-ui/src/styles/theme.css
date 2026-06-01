@@ -246,6 +246,16 @@
   --color-warn: var(--brand-warning);
   --color-err:  var(--brand-error);
   --color-nfo:  var(--brand-info);
+
+  /* Critical text/surface aliases co-located here because the standalone
+   * LAYER-3 :root alias block gets dropped by the v4/lightningcss build, which
+   * left --color-text/--fg-0/--cm-text empty → text fell back to a cold-white
+   * literal. Defining them alongside --color-fg (which resolves) guarantees they
+   * apply + flip per theme. */
+  --color-text: var(--color-fg);            --color-background: var(--color-bg);
+  --color-textSecondary: var(--color-fg-muted);  --color-textMuted: var(--color-fg-subtle);
+  --fg-0: var(--color-fg);  --fg-1: var(--color-fg-muted);  --fg-2: var(--color-fg-subtle);  --fg-3: var(--color-fg-subtle);
+  --cm-text: var(--color-fg);  --cm-fg: var(--color-fg);  --cm-bg: var(--color-bg);  --cm-fg-0: var(--color-fg);
 }
 
 [data-theme="light"] {
@@ -268,6 +278,12 @@
   --color-warn: var(--brand-warning-ink);
   --color-err:  var(--brand-error-ink);
   --color-nfo:  var(--brand-info);
+
+  /* Same critical aliases for light (ink on paper) — see dark block note. */
+  --color-text: var(--color-fg);            --color-background: var(--color-bg);
+  --color-textSecondary: var(--color-fg-muted);  --color-textMuted: var(--color-fg-subtle);
+  --fg-0: var(--color-fg);  --fg-1: var(--color-fg-muted);  --fg-2: var(--color-fg-subtle);  --fg-3: var(--color-fg-subtle);
+  --cm-text: var(--color-fg);  --cm-fg: var(--color-fg);  --cm-bg: var(--color-bg);  --cm-fg-0: var(--color-fg);
 }
 
 /* ============================================================================
