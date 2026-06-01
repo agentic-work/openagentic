@@ -496,6 +496,22 @@ export interface RunChatInput {
    * don't set this field see no behavior change).
    */
   extendedThinkingEnabled?: boolean;
+  /**
+   * #51 (2026-06-01) — live connected MCP servers this turn (the set that
+   * returned tools from the proxy, e.g. ['openagentic_web','aws_knowledge']
+   * on open-dev). Threaded into the system prompt's <connected-capabilities>
+   * section so the model knows what is actually available. Optional — when
+   * omitted the section is empty (no behavior change for existing callers).
+   */
+  connectedServers?: ReadonlyArray<string>;
+  /**
+   * #51 — known cloud/ops MCP servers that are NOT connected this session
+   * (require credentials / Azure AD OBO). Derived by the caller as the
+   * known-cloud set minus `connectedServers`. Surfaced to the model so it
+   * can answer "Azure isn't connected (needs OBO)" without looping
+   * tool_search. Optional.
+   */
+  needsAuthServers?: ReadonlyArray<string>;
 }
 
 /**

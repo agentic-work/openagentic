@@ -1390,6 +1390,41 @@ async function registerAllRoutes() {
     registerInternalToolSearchRoute(server, {
       internalSecret: process.env.INTERNAL_SERVICE_SECRET ?? '',
       getSearchService: () => (global as any).toolSemanticCache,
+      // #51 (2026-06-01) — live connected-server list for the honest
+      // no-match message. Reads the mcp-proxy /servers status endpoint
+      // (same unauthenticated endpoint ChatMCPService.fetchServersFromProxy
+      // uses) and returns the names of servers that are running/connected.
+      // Best-effort: any failure returns [] and the T1 tool falls back to a
+      // generic-but-honest message.
+      getConnectedServers: async () => {
+        const proxyUrl = process.env.MCP_PROXY_URL || 'http://mcp-proxy:8080';
+        const isUp = (status: unknown) =>
+          status === 'running' || status === 'connected';
+        try {
+          const resp = await fetch(`${proxyUrl}/servers`);
+          if (!resp.ok) return [];
+          const data: any = await resp.json().catch(() => ({}));
+          // The proxy /servers endpoint returns a DICT keyed by server name
+          // ({"openagentic_web":{"status":"running",...}, ...}) — verified
+          // live on open-dev 2026-06-01. Also tolerate the legacy
+          // {servers:[{name,status}]} array shape defensively.
+          if (Array.isArray(data?.servers)) {
+            return (data.servers as any[])
+              .filter((s) => isUp(s?.status))
+              .map((s) => (typeof s?.name === 'string' ? s.name : s?.id))
+              .filter((n: any): n is string => typeof n === 'string' && n.length > 0);
+          }
+          if (data && typeof data === 'object') {
+            return Object.entries(data as Record<string, any>)
+              .filter(([, v]) => isUp(v?.status))
+              .map(([name]) => name)
+              .filter((n) => typeof n === 'string' && n.length > 0);
+          }
+          return [];
+        } catch {
+          return [];
+        }
+      },
     });
     loggers.routes.info('Internal tool-search route registered at /api/internal/tool-search');
   } catch (error) {

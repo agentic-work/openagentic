@@ -763,14 +763,19 @@ export async function chatLoop(
     const n = t?.function?.name;
     if (typeof n === 'string') discoveredNames.add(n);
   }
-  const acceptDiscovered = (defs: ReadonlyArray<any> | undefined) => {
-    if (!defs || defs.length === 0) return;
+  // Returns the count of genuinely-new tool defs added (#51 — the loop's
+  // dead-end guard keys off "did this tool_search add a NEW usable tool?").
+  const acceptDiscovered = (defs: ReadonlyArray<any> | undefined): number => {
+    if (!defs || defs.length === 0) return 0;
+    let added = 0;
     for (const def of defs) {
       const name = def?.function?.name;
       if (typeof name !== 'string' || discoveredNames.has(name)) continue;
       discoveredNames.add(name);
       tools.push(def);
+      added += 1;
     }
+    return added;
   };
 
   // Synthesis fallback (port of V2 commit 6b6889b4). When end_turn arrives
@@ -902,6 +907,29 @@ export async function chatLoop(
   const discoveryNameCounts = new Map<string, number>();
   const discoveryNameSigs = new Map<string, Set<string>>();
   let noProgressGuardFired = false;
+
+  // #51 (2026-06-01) — DISCOVERY DEAD-END guard. Orthogonal to the
+  // sigSet.size===1 carve-out above (which only fires when every query is
+  // IDENTICAL — Q1-fix-6 protects Sonnet's legit azure/aws/gcp fan-out).
+  // The live azure spin VARIES the query each call ("azure", "azure list
+  // subscriptions", "list azure subs"…), so that guard never fires. This
+  // counter is keyed on a different signal: a tool_search that added ZERO
+  // new usable tool defs means the capability isn't in the catalog. After
+  // N consecutive zero-add tool_search calls we force a synthesis turn with
+  // a directive telling the model the capability is NOT connected. Resets to
+  // 0 on any tool_search that adds ≥1 new tool (real fan-out unaffected).
+  const DISCOVERY_NO_NEW_THRESHOLD = 2;
+  let toolSearchNoNewStreak = 0;
+  let lastNoNewQuery: string | undefined;
+
+  // #51 (2026-06-01) — max-turns terminal hardening (belt-and-suspenders on
+  // top of the dead-end guard). The old terminal path returned ok:false with
+  // NO synthesis, so the last thing the user saw was the model's raw leaked
+  // tool args ({"k":5,"query":"azure_list"}). Even with the guards above, a
+  // pathological model could still reach maxTurns. When that happens, run ONE
+  // extra tool_choice='none' turn with a directive so the turn ALWAYS ends on
+  // user-facing prose. `maxTurnsSynthesisForced` gates it to at most once.
+  let maxTurnsSynthesisForced = false;
   const stableArgsKey = (input: unknown): string => {
     try {
       if (input == null) return 'null';
@@ -916,7 +944,18 @@ export async function chatLoop(
     }
   };
 
-  for (let turn = 1; turn <= maxTurns; turn++) {
+  // #51 — the loop runs maxTurns normal turns; if the budget is exhausted
+  // without an end_turn AND a final synthesis was never forced, exactly ONE
+  // extra tool_choice='none' turn (turn maxTurns+1) is allowed so the turn
+  // ends on user-facing prose instead of leaked args. The extra turn is
+  // bounded by maxTurns+1, so even a misbehaving model cannot spin past it.
+  for (let turn = 1; turn <= maxTurns + 1; turn++) {
+    // #51 — turns beyond maxTurns are ONLY the single forced-synthesis turn.
+    // If we reach maxTurns+1 without having armed that synthesis (the model
+    // ended cleanly earlier, or a guard already forced 'none'), stop now.
+    if (turn > maxTurns && !maxTurnsSynthesisForced) {
+      break;
+    }
     // Phase 3 — `on_turn_start` (observer). Fires at the top of every
     // turn. Built-in observers (audit, telemetry) read `turn` + `model`
     // for per-turn metrics; user-registered hooks can short-circuit
@@ -1392,6 +1431,10 @@ export async function chatLoop(
     // synthesize. Threshold = NO_PROGRESS_THRESHOLD identical (name,args)
     // calls accumulated across all turns of this loop.
     let noProgressTriggerTool: { name: string; count: number } | null = null;
+    // #51 — per-turn discovery accounting (consumed at the trip point below).
+    let turnHadToolSearch = false;
+    let turnAddedNewTool = false;
+    let turnLastNoNewQuery: string | undefined;
     for (const block of toolBlocks) {
       const sig = `${block.name}:${stableArgsKey(block.input)}`;
       const count = (toolCallCounts.get(sig) ?? 0) + 1;
@@ -1804,6 +1847,12 @@ export async function chatLoop(
       return result;
     };
 
+    // #51 — correlate runResults back to their originating tool_use block so
+    // the dead-end guard can read the tool_search query. RunResult exposes
+    // `toolUseId` + `name` but not the input; toolBlocks carries `input`.
+    const blockByUseId = new Map<string, ToolUseBlock>();
+    for (const b of toolBlocks) blockByUseId.set(b.id, b);
+
     const toolResults: Array<{ tool_use_id: string; content: unknown; is_error?: boolean }> = [];
     for (const batch of batches) {
       const runResults = batch.isConcurrencySafe
@@ -1813,7 +1862,26 @@ export async function chatLoop(
         // Discovery side-channel: tool_search / agent_search dispatchers
         // place resolved defs on result.discoveredTools / .discoveredAgents.
         // Append to tools[] so next iteration's provider call sees them.
-        acceptDiscovered(r.result.discoveredTools);
+        const addedFromTools = acceptDiscovered(r.result.discoveredTools);
+        // #51 — discovery dead-end accounting (per-TURN, not per-call). A
+        // tool_search that added ZERO new tools means the capability isn't in
+        // the catalog (e.g. "azure" with no azure server connected). We
+        // accumulate per-turn flags here and update the cross-turn streak
+        // ONCE at the bottom of the turn — so a single turn that legitimately
+        // FANS OUT N parallel tool_search calls (Sonnet's azure/aws/gcp burst)
+        // counts as ONE turn of progress/no-progress, not N. The live azure
+        // spin is one tool_search PER TURN across turns, which the per-turn
+        // streak catches; the in-turn fan-out does not trip it.
+        if (r.name === 'tool_search') {
+          turnHadToolSearch = true;
+          if (addedFromTools > 0) {
+            turnAddedNewTool = true;
+          } else {
+            const srcBlock = blockByUseId.get(r.toolUseId);
+            const q = (srcBlock?.input as any)?.query;
+            if (typeof q === 'string') turnLastNoNewQuery = q;
+          }
+        }
         acceptDiscovered(r.result.discoveredAgents);
 
         // Phase 4 — two-channel envelope split (Spec §6.2). When the
@@ -2010,23 +2078,66 @@ export async function chatLoop(
       }
     }
 
+    // #51 — DISCOVERY DEAD-END accounting + trip. Fold this turn's tool_search
+    // outcome into the cross-turn streak: a turn that ran ≥1 tool_search and
+    // added ZERO new tools is one turn of no-progress (++streak); a turn that
+    // discovered a NEW tool resets it. This is per-TURN so a legitimate
+    // in-turn fan-out (Sonnet's azure/aws/gcp burst, distinct queries) counts
+    // as ONE turn — it does NOT trip on a single fan-out turn. The live azure
+    // spin is one zero-add tool_search PER TURN across turns, which the streak
+    // catches at the threshold. Keyed on no-new-tool progress, orthogonal to
+    // the identical-args guard (which the varying-query spin defeats).
+    if (turnHadToolSearch) {
+      if (turnAddedNewTool) {
+        toolSearchNoNewStreak = 0;
+      } else {
+        toolSearchNoNewStreak += 1;
+        if (turnLastNoNewQuery) lastNoNewQuery = turnLastNoNewQuery;
+      }
+    }
+    if (
+      !noProgressGuardFired &&
+      !noProgressTriggerTool &&
+      toolSearchNoNewStreak >= DISCOVERY_NO_NEW_THRESHOLD
+    ) {
+      noProgressTriggerTool = { name: 'tool_search', count: toolSearchNoNewStreak };
+    }
+
     // #763 — No-progress guard trigger. Fires AFTER tool_results pushed so
     // tool_use ↔ tool_result pairing is intact in the conversation. The
     // next turn runs with tool_choice='none' + a directive message
     // pointing the model at the existing tool_results.
     if (noProgressTriggerTool && !noProgressGuardFired) {
       noProgressGuardFired = true;
+      // #51 — is this the discovery dead-end (varying-query no-new-tool
+      // spin) rather than the classic identical-args repeat? If so the
+      // directive must tell the model the capability is NOT connected and
+      // to stop searching — NOT "the result is stable, synthesize".
+      const isDiscoveryDeadEnd =
+        noProgressTriggerTool.name === 'tool_search' &&
+        toolSearchNoNewStreak >= DISCOVERY_NO_NEW_THRESHOLD;
       ctx.logger.warn(
         {
           turn,
           toolName: noProgressTriggerTool.name,
           count: noProgressTriggerTool.count,
+          discoveryDeadEnd: isDiscoveryDeadEnd,
+          query: isDiscoveryDeadEnd ? lastNoNewQuery : undefined,
         },
-        `[chat] no-progress guard: tool '${noProgressTriggerTool.name}' called ${noProgressTriggerTool.count}× with identical args — forcing synthesis turn`,
+        `[chat] no-progress guard: tool '${noProgressTriggerTool.name}' called ${noProgressTriggerTool.count}× ${
+          isDiscoveryDeadEnd ? 'with no NEW tool discovered' : 'with identical args'
+        } — forcing synthesis turn`,
       );
       messages.push({
         role: 'user',
-        content: `You have called \`${noProgressTriggerTool.name}\` ${noProgressTriggerTool.count} times with the same arguments. The result above is stable — do not call this tool again. Synthesize a clear, concise answer from the tool_results already in the conversation.`,
+        content: isDiscoveryDeadEnd
+          ? `You searched the tool catalog ${toolSearchNoNewStreak} times for "${
+              lastNoNewQuery ?? 'that capability'
+            }" and found no matching tool. That capability is NOT connected in this session — it requires credentials `
+            + `or an Azure AD login (On-Behalf-Of) that you do not have here. Do NOT search again. `
+            + `Tell the user directly that the requested capability (e.g. Azure) is not available/connected, briefly name `
+            + `what IS available, and stop.`
+          : `You have called \`${noProgressTriggerTool.name}\` ${noProgressTriggerTool.count} times with the same arguments. The result above is stable — do not call this tool again. Synthesize a clear, concise answer from the tool_results already in the conversation.`,
       });
       nextTurnToolChoice = 'none';
       // Opcode-e no_progress guard emit ripped (A1, 2026-05-12). The
@@ -2098,6 +2209,31 @@ export async function chatLoop(
           '[chat] mid-loop compaction failed (non-fatal — loop continues)',
         );
       }
+    }
+
+    // #51 — max-turns forced-synthesis arming. This is the LAST normal turn
+    // (turn === maxTurns) and it dispatched tools (we're about to fall out of
+    // the loop into the terminal path that returns ok:false with no answer —
+    // the leaked-args bug). Arm exactly ONE more tool_choice='none' turn so
+    // the user always gets prose. Skip if a guard already forced 'none' this
+    // turn (that synthesis turn will run as maxTurns+1 anyway).
+    if (turn === maxTurns && !maxTurnsSynthesisForced) {
+      maxTurnsSynthesisForced = true;
+      if ((nextTurnToolChoice as string) !== 'none') {
+        messages.push({
+          role: 'user',
+          content:
+            'You have run out of tool-call budget for this request. Do not call any more tools. '
+            + 'Using only the tool results already in the conversation, give the user a clear, direct '
+            + 'answer. If the capability they asked for is not available/connected, say so plainly and '
+            + 'name what IS available.',
+        });
+        nextTurnToolChoice = 'none';
+      }
+      ctx.logger.warn(
+        { turn, maxTurns, model: input.model },
+        '[chat] max-turns reached — forcing one final synthesis turn (tool_choice=none) so the turn ends on prose, not leaked tool args',
+      );
     }
 
     // Phase 3 — `on_turn_end` (observer) fires at the bottom of every

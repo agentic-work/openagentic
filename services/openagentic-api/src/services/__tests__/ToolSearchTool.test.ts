@@ -139,6 +139,64 @@ describe('executeToolSearch — forwards to /api/internal/tool-search', () => {
     expect(typeof body.userPromptHint).toBe('string');
     expect(body.userPromptHint.length).toBeLessThanOrEqual(2048);
   });
+
+  // #51 (2026-06-01) — honest no-match message instead of the false-positive
+  // "Found 14 tools … call any of them". When the relevance floor drops
+  // every catalog hit (e.g. "azure" with no azure server connected), the
+  // route returns {tools:[], connectedServers:[...]} and the T1 tool must
+  // tell the model the capability is NOT connected + name what IS, and
+  // explicitly tell it NOT to search again — so the loop ends with a
+  // user-facing answer instead of spinning.
+  it('emits an honest no-match message listing connected servers when tools=[]', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ tools: [], connectedServers: ['openagentic_web', 'aws_knowledge'] }),
+        { status: 200 },
+      ),
+    );
+    const result = await executeToolSearch({} as any, { query: 'azure subscriptions list' });
+    expect(result.ok).toBe(true);
+    expect(result.discoveredTools).toEqual([]);
+    const out = result.output ?? '';
+    // Honest: names the queried capability + the connected servers.
+    expect(out).toMatch(/no connected tool matches/i);
+    expect(out).toContain('openagentic_web');
+    expect(out).toContain('aws_knowledge');
+    // Tells the model to stop searching + tell the user plainly.
+    expect(out).toMatch(/do not search again/i);
+    expect(out).toMatch(/tell the user/i);
+    // Must NOT emit the old false-positive encouragement.
+    expect(out).not.toMatch(/call any of them by name/i);
+  });
+
+  it('no-match message degrades to a generic-but-honest line when connectedServers absent', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ tools: [] }), { status: 200 }),
+    );
+    const result = await executeToolSearch({} as any, { query: 'azure subscriptions list' });
+    const out = result.output ?? '';
+    expect(out).toMatch(/no connected tool matches/i);
+    expect(out).toMatch(/do not search again/i);
+    expect(out).not.toMatch(/call any of them by name/i);
+  });
+
+  it('still renders real matches normally when tools are returned (no regression)', async () => {
+    const fakeTools = [
+      { type: 'function', function: { name: 'openagentic_web_fetch', description: 'd' } },
+    ];
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ tools: fakeTools, connectedServers: ['openagentic_web'] }),
+        { status: 200 },
+      ),
+    );
+    const result = await executeToolSearch({} as any, { query: 'fetch a web page' });
+    expect(result.discoveredTools).toEqual(fakeTools);
+    const out = result.output ?? '';
+    expect(out).toMatch(/openagentic_web_fetch/);
+    expect(out).toMatch(/call any of them by name/i);
+    expect(out).not.toMatch(/no connected tool matches/i);
+  });
 });
 
 describe('AGENT_SEARCH_TOOL — synthetic def', () => {

@@ -147,3 +147,52 @@ Only call tools that READ or LIST data. Do NOT attempt the following operations 
 If the user asks for a mutation, explain that READ-ONLY mode is currently enabled and offer to surface the read/inspect equivalent (list / get / describe / query / show) instead.
 </read-only-mode>`;
 }
+
+/**
+ * #51 (2026-06-01) — connected-MCP + needs-auth availability section.
+ *
+ * Ground truth, injected per-turn so the model knows — BEFORE it searches —
+ * which MCP servers are actually CONNECTED this session vs which are
+ * unavailable because they require credentials or an Azure AD On-Behalf-Of
+ * login the user doesn't have. On open-dev the connected set is just
+ * `openagentic_web` + `aws_knowledge`; azure/gcp/github/k8s/etc. are not
+ * connected (no OBO with local-admin). Without this the model loops
+ * `tool_search` forever for an azure tool that does not exist, then leaks
+ * raw args at max-turns.
+ *
+ * Dynamic (below the cache boundary) because connected-server state is
+ * per-session, not cache-global. Empty string when both lists are empty so
+ * partial-config deployments degrade gracefully.
+ *
+ * @param connected  server names that returned tools this session
+ * @param needsAuth  known cloud/ops servers that are NOT connected (require
+ *                   credentials / login / OBO) — derived by the caller as
+ *                   the known-cloud set minus `connected`.
+ */
+export function getAvailabilitySection(
+  connected: ReadonlyArray<string> | undefined,
+  needsAuth: ReadonlyArray<string> | undefined,
+): string {
+  const conn = (connected ?? []).filter(Boolean);
+  const auth = (needsAuth ?? []).filter(Boolean);
+  if (conn.length === 0 && auth.length === 0) return '';
+
+  const lines: string[] = [];
+  lines.push('<connected-capabilities>');
+  lines.push('Ground truth for THIS session — do not contradict it:');
+  lines.push(
+    conn.length
+      ? `- CONNECTED (you can use these): ${conn.join(', ')}.`
+      : '- CONNECTED: none beyond your always-on meta-tools.',
+  );
+  if (auth.length) {
+    lines.push(
+      `- NOT connected (require credentials or an Azure AD login / On-Behalf-Of — unavailable now): ${auth.join(', ')}.`,
+    );
+  }
+  lines.push(
+    '- If the user asks for a NOT-connected capability (e.g. Azure), do NOT loop `tool_search`. Tell them plainly it is not connected and that it needs its credentials / Azure login (OBO) configured, then answer from what IS connected.',
+  );
+  lines.push('</connected-capabilities>');
+  return lines.join('\n');
+}

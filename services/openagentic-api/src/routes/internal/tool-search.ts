@@ -53,6 +53,17 @@ export interface InternalToolSearchRouteDeps {
    * _CACHE=true, etc.) — route returns 503 in that case.
    */
   getSearchService: () => ToolSearchService | null | undefined;
+  /**
+   * #51 (2026-06-01) — live connected MCP servers (the set that returned
+   * tools from the proxy this session, e.g. ['openagentic_web',
+   * 'aws_knowledge'] on open-dev). When wired, the 200 body carries
+   * `connectedServers` so the T1 `tool_search` tool can render an honest
+   * "no connected tool matches X — connected: …" message on an empty
+   * result, instead of the old false-positive "call any of them". Optional
+   * + best-effort: any throw/absence simply omits the field (T1 falls back
+   * to a generic-but-honest message).
+   */
+  getConnectedServers?: () => Promise<string[]> | string[];
 }
 
 interface ToolSearchBody {
@@ -91,7 +102,7 @@ export function registerInternalToolSearchRoute(
   fastify: FastifyInstance,
   deps: InternalToolSearchRouteDeps,
 ): void {
-  const { internalSecret, getSearchService } = deps;
+  const { internalSecret, getSearchService, getConnectedServers } = deps;
 
   fastify.post(
     '/api/internal/tool-search',
@@ -149,7 +160,29 @@ export function registerInternalToolSearchRoute(
           serverFilter,
           userPromptHint,
         );
-        return reply.code(200).send({ tools: Array.isArray(tools) ? tools : [] });
+        // #51 — best-effort connected-server list for the honest no-match
+        // message. Never let a proxy hiccup turn a 200 into a 500: resolve
+        // it defensively and just omit the field on any failure/absence.
+        let connectedServers: string[] | undefined;
+        if (getConnectedServers) {
+          try {
+            const resolved = await Promise.resolve(getConnectedServers());
+            if (Array.isArray(resolved)) {
+              connectedServers = resolved.filter(
+                (s): s is string => typeof s === 'string' && s.length > 0,
+              );
+            }
+          } catch (connErr) {
+            request.log.warn(
+              { err: (connErr as Error).message },
+              'tool-search: getConnectedServers failed (omitting connectedServers)',
+            );
+          }
+        }
+        return reply.code(200).send({
+          tools: Array.isArray(tools) ? tools : [],
+          ...(connectedServers ? { connectedServers } : {}),
+        });
       } catch (err) {
         // Never leak Milvus / Prisma / stack frames to the proxy. Log
         // server-side; respond with a generic, scrubbed error code.

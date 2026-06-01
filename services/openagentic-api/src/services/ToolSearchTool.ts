@@ -107,9 +107,33 @@ function apiBaseUrl(): string {
   ).replace(/\/+$/, '');
 }
 
-function renderResultText(query: string, tools: ReadonlyArray<any>): string {
+function renderResultText(
+  query: string,
+  tools: ReadonlyArray<any>,
+  connectedServers?: ReadonlyArray<string>,
+): string {
   if (!tools.length) {
-    return `tool_search('${query}'): no tools found. Try a different phrasing or call request_clarification.`;
+    // #51 (2026-06-01) — HONEST no-match message.
+    //
+    // The old empty branch ("no tools found, try different phrasing")
+    // combined with a thresholdless backend produced the live azure spin:
+    // the model kept rephrasing and re-searching forever. Now that the
+    // relevance floor returns [] for a genuinely-unmatched capability, this
+    // message must do the user-facing work — name what IS connected, state
+    // that the cloud/ops servers require credentials/OBO and are not
+    // available this session, and tell the model NOT to search again but to
+    // tell the user plainly. That ends the turn with a helpful answer.
+    const connected = (connectedServers ?? []).filter(Boolean);
+    const connectedLine = connected.length
+      ? `Connected capabilities this session: ${connected.join(', ')}.`
+      : `No MCP servers are connected this session.`;
+    return (
+      `No connected tool matches '${query}'. ${connectedLine}\n`
+      + `Azure, GCP, GitHub, Kubernetes, Prometheus and other cloud/ops servers are NOT connected `
+      + `(they require credentials or Azure AD On-Behalf-Of, and you are not authenticated to them this session). `
+      + `Do NOT search again for this capability. Tell the user plainly that it is not available — name what IS `
+      + `connected and, if relevant, that the missing capability needs its credentials/login configured.`
+    );
   }
   const names = tools
     .map((t: any) => t?.function?.name)
@@ -171,10 +195,15 @@ export async function executeToolSearch(
 
     const body: any = await resp.json().catch(() => ({}));
     const tools = Array.isArray(body?.tools) ? body.tools : [];
+    // #51 — the route forwards the live connected-server list on the body
+    // so the no-match message can name what IS connected.
+    const connectedServers = Array.isArray(body?.connectedServers)
+      ? (body.connectedServers as string[])
+      : undefined;
     return {
       ok: true,
       discoveredTools: tools,
-      output: renderResultText(query, tools),
+      output: renderResultText(query, tools, connectedServers),
     };
   } catch (err) {
     clearTimeout(timer);

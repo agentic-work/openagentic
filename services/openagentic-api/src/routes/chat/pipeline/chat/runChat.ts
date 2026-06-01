@@ -593,6 +593,19 @@ export async function runChat(
     // (otherwise it happily emits mutations the PermissionService
     // deny-overrides at evaluate() time, burning turns).
     readOnlyMode: getPermissionService(ctx.logger as any).getReadOnlyMode(),
+    // #51 (2026-06-01) — per-session MCP availability ground truth. Threaded
+    // from stream.handler (connected = servers that returned tools this turn;
+    // needsAuth = known cloud/ops servers NOT connected). Lets the model say
+    // "Azure isn't connected (needs OBO)" on turn 1 instead of looping
+    // tool_search. Omitted-by-caller → <connected-capabilities> section empty.
+    availability:
+      (input.connectedServers && input.connectedServers.length) ||
+      (input.needsAuthServers && input.needsAuthServers.length)
+        ? {
+            connected: input.connectedServers,
+            needsAuth: input.needsAuthServers,
+          }
+        : undefined,
   });
 
   // P1 #940 (2026-05-18) — grounding T1 system-prompt addendum.

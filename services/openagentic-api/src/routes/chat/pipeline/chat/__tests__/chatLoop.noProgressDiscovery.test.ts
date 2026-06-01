@@ -12,6 +12,15 @@
  * reaching real cloud tools. The discovery branch now also requires
  * `sigSet.size === 1` (all calls had identical args) to trigger. The
  * regression test below still pins the identical-args case firing.
+ *
+ * #51 (2026-06-01) revision: the discovery dead-end guard is now keyed on
+ * NO-NEW-TOOL progress, not arg-distinctness. "Legitimate fan-out" means
+ * the search DISCOVERS tools (makes progress). Distinct queries that each
+ * discover a NEW tool across turns are legit and must NOT trip. Distinct
+ * queries that discover NOTHING across turns ARE the azure spin — those
+ * now trip (see chatLoop.discoveryDeadEnd.test.ts). The case below was
+ * updated to make each turn DISCOVER a new tool so it stays a genuine
+ * fan-out under the #51 semantics.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { chatLoop } from '../chatLoop.js';
@@ -30,9 +39,10 @@ function makeCtx() {
 }
 
 describe('chatLoop — no-progress guard for discovery primitives (distinctness-aware)', () => {
-  it('Q1-fix-6: does NOT fire on 3× tool_search when query args differ (legitimate fan-out)', async () => {
-    // Sonnet 4.5 emits 3 distinct tool_search calls in a single turn
-    // (azure/aws/gcp). The guard must let these pass.
+  it('Q1-fix-6 / #51: does NOT fire on 3× tool_search when each DISCOVERS a new tool (legitimate fan-out)', async () => {
+    // Sonnet 4.5 emits distinct tool_search calls (azure/aws/gcp) that each
+    // discover a NEW tool. The guard must let these pass — progress resets
+    // the #51 dead-end streak every turn.
     const { ctx, emitted } = makeCtx();
     let turn = 0;
     const queries = ['azure list', 'azure resource', 'azure subscriptions'];
@@ -57,9 +67,17 @@ describe('chatLoop — no-progress guard for discovery primitives (distinctness-
       })();
     }
 
+    // Each distinct query discovers a DISTINCT new tool → genuine progress,
+    // streak resets each turn, guard stays silent.
     const dispatch = vi.fn(async (_c: any, x: any) => ({
       ok: true,
-      output: `${x.input.query}: no matches`,
+      output: `${x.input.query}: found a tool`,
+      discoveredTools: [
+        {
+          type: 'function',
+          function: { name: `discovered_${x.input.query.replace(/\s+/g, '_')}`, description: 'd' },
+        },
+      ],
     }));
 
     const result = await chatLoop(

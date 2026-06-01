@@ -1583,10 +1583,14 @@ export class ToolSemanticCacheService {
         ...(filter ? { filter } : {})
       });
 
-      // Add rrfScore for compatibility with cloud boosting
+      // Add rrfScore for compatibility with cloud boosting. Also stash the
+      // raw pre-boost cosine (#51) so the relevance floor below is immune to
+      // applyCloudBoosting, which MULTIPLIES rrfScore (a boosted score can
+      // exceed 1.0 and would defeat a floor read off rrfScore).
       let results = searchResults.results.map((hit: any) => ({
         ...hit,
-        rrfScore: hit.score || 0
+        rrfScore: hit.score || 0,
+        rawCosine: hit.score || 0,
       }));
 
       this.logger.info('\x1b[92m[SEARCH] Search complete\x1b[0m', {
@@ -1629,6 +1633,37 @@ export class ToolSemanticCacheService {
         console.log(`  ${idx + 1}. ${r.tool_name} (${r.server_name}) - Score: ${r.rrfScore?.toFixed(3)}${cloudInfo}`);
       });
       console.log('\n');
+
+      // #51 (2026-06-01) — RELEVANCE FLOOR.
+      //
+      // A query with no real match in the catalog (e.g. "azure" when zero
+      // azure tools are indexed) must return [] instead of the top-K-by-
+      // cosine of an unrelated catalog. Without this, tool_search returned
+      // the 14 best-but-off-topic aws/web tools as a false positive, and the
+      // model looped tool_search forever instead of learning "no tool
+      // matches". We filter on the RAW pre-boost cosine (rawCosine), so a
+      // cloud-boosted score can't sneak an off-topic tool past the floor.
+      //
+      // Default 0.55 (raw Milvus COSINE similarity), env-tunable per-call via
+      // TOOL_SEARCH_MIN_COSINE so the floor can be re-calibrated on a live
+      // deployment without a code redeploy. Conservative by design to avoid
+      // regressing genuine web/aws discovery (on-topic ~0.6–0.85; off-topic
+      // catalog-best ~0.3–0.5). Guarded against MIN > 1 / NaN misconfig.
+      const parsedFloor = Number.parseFloat(process.env.TOOL_SEARCH_MIN_COSINE ?? '');
+      const cosineFloor =
+        Number.isFinite(parsedFloor) && parsedFloor >= 0 && parsedFloor <= 1
+          ? parsedFloor
+          : 0.55;
+      const beforeFloor = results.length;
+      results = results.filter((r: any) => (r.rawCosine ?? 0) >= cosineFloor);
+      if (results.length < beforeFloor) {
+        this.logger.info('[SEARCH] relevance floor applied', {
+          query: query.substring(0, 60),
+          cosineFloor,
+          kept: results.length,
+          dropped: beforeFloor - results.length,
+        });
+      }
 
       // Convert results to tools
       const tools: Tool[] = results.map((hit: any) => {

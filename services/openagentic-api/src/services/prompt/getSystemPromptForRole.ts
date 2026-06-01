@@ -32,6 +32,7 @@ import {
   getToolCatalogSection,
   getEnvContextSection,
   getReadOnlyModeSection,
+  getAvailabilitySection,
 } from './dynamicSections.js';
 
 export type { UserRole };
@@ -119,6 +120,19 @@ export interface PromptComposeDeps {
    * static boolean.
    */
   readOnlyMode?: boolean;
+  /**
+   * #51 (2026-06-01) — per-session MCP availability for the
+   * <connected-capabilities> dynamic section. `connected` is the live set
+   * of MCP servers that returned tools this turn (e.g. ['openagentic_web',
+   * 'aws_knowledge'] on open-dev); `needsAuth` is the known cloud/ops set
+   * that is NOT connected (requires credentials / Azure OBO). When both are
+   * empty/undefined the section is omitted. Lets the model answer "Azure
+   * isn't connected (needs Azure login/OBO)" on turn 1 without searching.
+   */
+  availability?: {
+    connected?: ReadonlyArray<string>;
+    needsAuth?: ReadonlyArray<string>;
+  };
   // AC-7 rip (2026-05-10) — P-Live-5 composer dep + composerInput
   // were REMOVED. The composer appended ~4–5K tokens of dynamic modules
   // on top of the RBAC base, blowing the 5,000-token cap (live evidence:
@@ -286,6 +300,16 @@ export async function getSystemPromptForRole(
     // Claude Code's computeEnvInfo() dynamic section. Tells the model
     // credentials are auto-resolved so it never asks the user for ARNs.
     systemPromptSection('env_context', () => getEnvContextSection()),
+    // #51 (2026-06-01) — per-session connected-MCP / needs-auth ground
+    // truth. Dynamic-side because connected-server state is per-session.
+    // Lets the model say "Azure isn't connected (needs OBO)" on turn 1
+    // instead of looping tool_search. Empty when no availability passed.
+    systemPromptSection('connected_capabilities', () =>
+      getAvailabilitySection(
+        deps.availability?.connected,
+        deps.availability?.needsAuth,
+      ),
+    ),
     // #790 (2026-05-13) — global READ-ONLY mode notice. Dynamic-side so
     // an admin flip propagates next turn without cache invalidation.
     systemPromptSection('read_only_mode', () =>

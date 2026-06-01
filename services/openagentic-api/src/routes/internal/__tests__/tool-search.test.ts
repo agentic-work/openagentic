@@ -50,11 +50,13 @@ const FAKE_TOOLS: FakeOpenAIFunction[] = [
 async function buildApp(opts: {
   internalSecret?: string;
   searchService: { searchToolsAsOpenAIFunctions: ReturnType<typeof vi.fn> } | null;
+  getConnectedServers?: () => Promise<string[]> | string[];
 }): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
   registerInternalToolSearchRoute(app, {
     internalSecret: opts.internalSecret ?? SECRET,
     getSearchService: () => opts.searchService as any,
+    ...(opts.getConnectedServers ? { getConnectedServers: opts.getConnectedServers } : {}),
   });
   await app.ready();
   return app;
@@ -195,6 +197,78 @@ describe('POST /api/internal/tool-search', () => {
       undefined,
       userPromptHint,
     );
+  });
+
+  // #51 (2026-06-01) — connectedServers in the 200 body.
+  it('includes connectedServers in the 200 body when getConnectedServers is wired (empty match)', async () => {
+    const search = vi.fn().mockResolvedValue([]);
+    app = await buildApp({
+      searchService: { searchToolsAsOpenAIFunctions: search },
+      getConnectedServers: () => ['openagentic_web', 'aws_knowledge'],
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/internal/tool-search',
+      payload: { query: 'azure', k: 5 },
+      headers: { 'x-internal-secret': SECRET },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { tools: unknown[]; connectedServers?: string[] };
+    expect(body.tools).toEqual([]);
+    expect(body.connectedServers).toEqual(['openagentic_web', 'aws_knowledge']);
+  });
+
+  it('resolves an async getConnectedServers and still returns real tools (no regression to shape)', async () => {
+    const search = vi.fn().mockResolvedValue(FAKE_TOOLS);
+    app = await buildApp({
+      searchService: { searchToolsAsOpenAIFunctions: search },
+      getConnectedServers: async () => ['openagentic_web'],
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/internal/tool-search',
+      payload: { query: 'azure', k: 5 },
+      headers: { 'x-internal-secret': SECRET },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { tools: unknown[]; connectedServers?: string[] };
+    expect(body.tools).toEqual(FAKE_TOOLS);
+    expect(body.connectedServers).toEqual(['openagentic_web']);
+  });
+
+  it('omits connectedServers field when getConnectedServers is not wired (legacy shape)', async () => {
+    const search = vi.fn().mockResolvedValue(FAKE_TOOLS);
+    app = await buildApp({ searchService: { searchToolsAsOpenAIFunctions: search } });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/internal/tool-search',
+      payload: { query: 'azure', k: 5 },
+      headers: { 'x-internal-secret': SECRET },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { tools: unknown[]; connectedServers?: string[] };
+    expect(body.tools).toEqual(FAKE_TOOLS);
+    expect(body).not.toHaveProperty('connectedServers');
+  });
+
+  it('omits connectedServers when getConnectedServers throws (best-effort, never 500s)', async () => {
+    const search = vi.fn().mockResolvedValue([]);
+    app = await buildApp({
+      searchService: { searchToolsAsOpenAIFunctions: search },
+      getConnectedServers: () => {
+        throw new Error('proxy unreachable');
+      },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/internal/tool-search',
+      payload: { query: 'azure', k: 5 },
+      headers: { 'x-internal-secret': SECRET },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { tools: unknown[]; connectedServers?: string[] };
+    expect(body.tools).toEqual([]);
+    expect(body).not.toHaveProperty('connectedServers');
   });
 
   it('500 with scrubbed error when service throws — no Prisma/stack leakage', async () => {

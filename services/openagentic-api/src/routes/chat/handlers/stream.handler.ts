@@ -1383,6 +1383,68 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
           { userId: v2UserId, listMcpToolsCount: mcpTools.length },
           '[STREAM] V2 mcpTools loaded',
         );
+
+        // #51 (2026-06-01) — derive per-session MCP availability ground
+        // truth. `connectedServers` is the set of RUNNING servers from the
+        // mcp-proxy /servers status endpoint (open-dev: openagentic_admin +
+        // openagentic_web + aws_knowledge; NO azure). The proxy returns a
+        // DICT keyed by server name — verified live 2026-06-01 — so we read
+        // Object.entries, not data.servers. (The normalized mcpTools array
+        // drops the per-tool `server` field by contract, so the proxy status
+        // endpoint is the authoritative source.) `needsAuthServers` is the
+        // known cloud/ops set MINUS whatever is connected — these require
+        // credentials / Azure AD OBO the local-admin session doesn't have.
+        // Threaded into runChat → <connected-capabilities> prompt section so
+        // the model can say "Azure isn't connected (needs OBO)" on turn 1
+        // instead of looping tool_search forever (the live spin). Fully
+        // best-effort: a proxy hiccup yields [] connected (section degrades
+        // to "none connected", still honest) and never blocks the stream.
+        let connectedServers: string[] = [];
+        try {
+          const proxyStatusUrl = process.env.MCP_PROXY_URL || 'http://mcp-proxy:8080';
+          const sresp = await fetch(`${proxyStatusUrl}/servers`);
+          if (sresp.ok) {
+            const sdata: any = await sresp.json().catch(() => ({}));
+            const isUp = (st: unknown) => st === 'running' || st === 'connected';
+            if (Array.isArray(sdata?.servers)) {
+              connectedServers = (sdata.servers as any[])
+                .filter((s) => isUp(s?.status))
+                .map((s) => (typeof s?.name === 'string' ? s.name : s?.id))
+                .filter((n: any): n is string => typeof n === 'string' && n.length > 0);
+            } else if (sdata && typeof sdata === 'object') {
+              connectedServers = Object.entries(sdata as Record<string, any>)
+                .filter(([, v]) => isUp(v?.status))
+                .map(([name]) => name);
+            }
+          }
+        } catch (availErr: any) {
+          logger.warn(
+            { err: availErr?.message, userId: v2UserId },
+            '[STREAM] MCP availability fetch failed (#51) — proceeding with none-connected',
+          );
+        }
+        connectedServers = Array.from(new Set(connectedServers)).sort();
+        // Known credential/OBO-gated servers. Matching is substring-based so
+        // a connected name like `openagentic_azure` or `azure_knowledge`
+        // suppresses the generic `azure` entry.
+        const KNOWN_AUTH_SERVERS = [
+          'azure',
+          'gcp',
+          'github',
+          'kubernetes',
+          'prometheus',
+          'loki',
+          'alertmanager',
+          'incident',
+        ];
+        const connectedLower = connectedServers.map((s) => s.toLowerCase());
+        const needsAuthServers = KNOWN_AUTH_SERVERS.filter(
+          (k) => !connectedLower.some((c) => c.includes(k)),
+        );
+        logger.info(
+          { userId: v2UserId, connectedServers, needsAuthServers },
+          '[STREAM] V2 MCP availability resolved (#51)',
+        );
         // TASK #524 — historical narrowing happened inside the legacy
         // pipeline via `deps.v2Deps.toolRanker.rankAndSubset(...)`. The
         // ranker is ripped (Phase E.2); the full mcpTools array now flows
@@ -1679,6 +1741,10 @@ export function streamHandler(deps: ChatStreamHandlerDeps, logger: any) {
           extendedThinkingEnabled: (request.body as any)?.extendedThinkingEnabled !== false
             ? undefined  // undefined = "don't override" → provider decides per capability
             : false,     // explicit false = user turned it OFF
+          // #51 — per-session MCP availability for the system-prompt
+          // <connected-capabilities> section.
+          connectedServers,
+          needsAuthServers,
         };
 
         // Single chat path — runChat is the only dispatcher. The legacy
