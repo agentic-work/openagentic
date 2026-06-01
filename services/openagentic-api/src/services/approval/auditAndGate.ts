@@ -172,3 +172,102 @@ export async function runAuditAndGate(input: AuditAndGateInput): Promise<AuditAn
   }
   return { allowed: true, auditId, classification };
 }
+
+// ---------------------------------------------------------------------------
+// MCP-execution seam (live-wiring fix, 2026-05-31)
+// ---------------------------------------------------------------------------
+//
+// WHY A SECOND SEAM:
+//   In V2 discovery-mode the model is given only meta tools + `tool_search`;
+//   the REAL MCP tools (web_search + every cloud/k8s/observability tool —
+//   exactly the MUTATING infra writes this gate must protect) are resolved
+//   mid-turn and EXECUTED through `deps.executeMcpTool` (buildChatV2Deps →
+//   makeExecuteMcpTool* → POST mcp-proxy /mcp/tool). That executor is the
+//   single convergence point EVERY named MCP tool call passes through,
+//   regardless of which caller reached it (main chatLoop dispatchBody, the
+//   sub-agent chatLoopRecursor sharing parentDeps, or any future path). The
+//   prior dispatchBody-only seam (dbf929102) audited the meta/base tools but
+//   could be bypassed by an MCP execution that didn't route the dispatch ctx
+//   through it — live evidence: `web_search` executed, audit-log total:0.
+//
+//   `auditMcpExecutionSeam` wraps the mcp-proxy executor so the audit row +
+//   approval gate fire at the proxy invocation itself. It reuses
+//   `runAuditAndGate` (no duplicated insert/gate logic) and the same
+//   `alreadyAudited`/`markAudited` ctx flag, so when BOTH the dispatchBody
+//   seam and this seam are live for one call (the common case — the same ctx
+//   object flows dispatchBody → dispatchChatToolCall → executeMcpTool), only
+//   the first writes a row; the second is a no-op.
+
+/** Minimal ctx shape the MCP-execution seam reads for audit/gate context. */
+export interface McpSeamCtx {
+  emit?: (event: string, data: unknown) => void;
+  logger?: Pick<Logger, 'warn' | 'error'>;
+  sessionId?: string;
+  userId?: string;
+  user?: { id?: string } | undefined;
+  messageId?: string;
+  toolUseId?: string;
+  serverName?: string;
+}
+
+/** Result shape an MCP executor returns (and the synthetic block shape). */
+type McpExecResult = { ok: boolean; output?: unknown; error?: string };
+
+/**
+ * Wrap an MCP tool executor so EVERY named MCP tool call is audited (READ →
+ * 'auto'; MUTATING per `classifyTool` → 'pending' + `approval_required` SSE +
+ * ApprovalRegistry.waitFor, honoring `approvalGatePolicy`) at the mcp-proxy
+ * convergence point.
+ *
+ * Single-pass: when the dispatch ctx is already marked audited (the
+ * dispatchBody seam OR the before_tool_call hook ran first for this same
+ * call), this wrap calls the inner executor directly without a second audit.
+ * Otherwise it audits here and marks the ctx so a downstream seam won't
+ * double-audit.
+ *
+ * Block behavior: a denied/timed-out MUTATING call returns a structured
+ * `{ ok:false, error }` WITHOUT invoking the inner executor — the mutation
+ * never reaches the proxy. READ calls (and all calls when the gate is OFF)
+ * pass straight through, so a normal web_search never hangs.
+ */
+export function auditMcpExecutionSeam(
+  inner: (ctx: any, name: string, input: any) => Promise<McpExecResult>,
+  opts: { origin?: 'chat' | 'subagent' } = {},
+): (ctx: any, name: string, input: any) => Promise<McpExecResult> {
+  return async (ctx: any, name: string, input: any): Promise<McpExecResult> => {
+    if (alreadyAudited(ctx)) {
+      // Already audited upstream (dispatchBody seam / before_tool_call hook).
+      // Do NOT write a second row — just execute.
+      return inner(ctx, name, input);
+    }
+
+    const c = (ctx ?? {}) as McpSeamCtx;
+    const gate = await runAuditAndGate({
+      toolName: name,
+      serverName: c.serverName,
+      args: (input ?? {}) as Record<string, unknown>,
+      userId: c.user?.id ?? c.userId,
+      sessionId: c.sessionId,
+      messageId: c.messageId ?? c.toolUseId,
+      origin: opts.origin ?? 'chat',
+      emit:
+        typeof c.emit === 'function'
+          ? (e: string, d: unknown) => c.emit!(e, d)
+          : undefined,
+      logger: c.logger,
+    });
+    markAudited(ctx);
+
+    if (!gate.allowed) {
+      // Denied / timed-out MUTATING call — synthesize a tool failure so the
+      // model sees the block reason and the loop continues. The mutation
+      // NEVER reached the proxy.
+      return {
+        ok: false,
+        error: gate.blockReason ?? `tool '${name}' blocked by approval gate`,
+      };
+    }
+
+    return inner(ctx, name, input);
+  };
+}

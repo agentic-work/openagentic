@@ -447,6 +447,15 @@ import {
   extractResourceScope,
 } from './ToolResultCacheService.js';
 import { getRedisToolResultCacheL1 } from './RedisToolResultCacheL1.js';
+// Live-wiring fix (2026-05-31) — audit + approval-gate the MCP-execution
+// convergence point. In V2 discovery-mode the model gets meta tools +
+// tool_search and the REAL MCP tools (web_search + every mutating cloud/k8s
+// tool) are executed mid-turn through `executeMcpTool` → mcp-proxy, NOT
+// guaranteed to pass the dispatchBody seam. `auditMcpExecutionSeam` wraps the
+// executor so every named MCP tool call is audited (READ→auto; MUTATING→gate)
+// at the proxy invocation itself. Single-pass via the shared alreadyAudited/
+// markAudited ctx flag so a call that ALSO hit dispatchBody is audited once.
+import { auditMcpExecutionSeam } from './approval/auditAndGate.js';
 // Phase C.5 (2026-05-11) — lazy process-singleton for the CredentialBroker.
 // Production wiring resolves the singleton via this getter; tests pass an
 // explicit stub via `BuildChatV2DepsOptions.synthCredentialBroker`.
@@ -1293,11 +1302,21 @@ export function buildChatV2Deps(opts: BuildChatV2DepsOptions): ChatV2DepsWithPer
   // either way). Tests inject via opts.l1Cache when they need to override.
   const l1Cache = opts.l1Cache ?? getRedisToolResultCacheL1();
 
-  const wrappedExecuteMcpTool = lazyToolResultCacheResolver
+  const cacheWrappedExecuteMcpTool = lazyToolResultCacheResolver
     ? wrapWithToolResultCache(lazyToolResultCacheResolver, innerExecuteMcpTool, { l1Cache })
     : resolvedToolResultCache
       ? wrapWithToolResultCache(resolvedToolResultCache, innerExecuteMcpTool, { l1Cache })
       : wrapWithToolResultCache(null, innerExecuteMcpTool, { l1Cache });
+
+  // Live-wiring fix (2026-05-31) — audit + approval-gate seam wraps the cache
+  // wrap as the OUTERMOST layer. A denied/timed-out MUTATING call returns a
+  // synthetic block BEFORE the cache search/store OR the proxy POST runs, so a
+  // mutation never reaches mcp-proxy and never poisons the tool-result cache.
+  // READ calls pass straight through (audited 'auto', never gated → no hang).
+  // Single-pass: when the dispatchBody seam already audited THIS dispatch ctx
+  // (the common path — same ctx object flows dispatchBody → dispatchChatToolCall
+  // → executeMcpTool), the seam skips its audit and just executes.
+  const wrappedExecuteMcpTool = auditMcpExecutionSeam(cacheWrappedExecuteMcpTool);
 
   const base: RunChatDeps = {
     providerManager: opts.providerManager,
