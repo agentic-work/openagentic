@@ -68,6 +68,7 @@ import type { ChatPipelineDeps } from './dispatchChatToolCall.js';
 // only place role discrimination flows from now on.
 import type { Logger } from 'pino';
 import { getPermissionService } from '../../../../services/PermissionService.js';
+import { getToolSemanticCache } from '../../../../services/ToolSemanticCacheService.js';
 import { SessionFactsBuilder } from '../../../../services/SessionFactsBuilder.js';
 // Phase B.6 (rev-2): RBAC-keyed system prompt — the only path now.
 // Legacy static + sidecar composer wires removed in Phase E.3.
@@ -953,6 +954,32 @@ export async function runChat(
     // Spec §50: model decides; pre-LLM classifier is gone so the
     // mid-loop handoff path has no intent signal to drive a decision.
     // handoffDecision dep still wired but unreferenced.
+    //
+    // #47 (2026-06-01) — exact-name MCP catalog resolver. Weak local models
+    // call MCP tools directly without tool_search; this resolves them against
+    // the indexed catalog so they execute through the audited executeMcpTool
+    // seam. Fail-soft: null on un-inited cache / miss → graceful self-correct.
+    resolveMcpToolByExactName: async (name: string) => {
+      const cache = getToolSemanticCache();
+      if (!cache) return null;
+      try {
+        const hit = await cache.getTool(name);
+        if (!hit) return null;
+        return {
+          type: 'function' as const,
+          function: {
+            name: hit.name,
+            description: hit.description,
+            parameters: hit.inputSchema,
+            server_name: hit.server_name,
+          },
+          serverId: hit.server_name,
+          originalToolName: hit.name,
+        };
+      } catch {
+        return null;
+      }
+    },
   };
 
   // Phase E.1 — intent classifier RIPPED. The turnIntent label is

@@ -1500,21 +1500,75 @@ export async function chatLoop(
       // Recompute every dispatch — see comment above (regression of #850).
       // `tools` is mutated mid-loop by discovery (tool_search side-channel),
       // so we MUST snapshot the current set, not a stale turn-start one.
+      // #47 (2026-06-01) — when an auto-resolved direct MCP call hits, we
+      // stamp the per-call dispatch ctx with the resolved server so the audit
+      // row + proxy hint are correct (the proxy can also infer server from the
+      // tool name, so this is not load-bearing for execution). Hoisted above
+      // the guard because the dispatch ctx is built further down.
+      let resolvedServerName: string | undefined;
+
       const offeredToolNames = buildOfferedToolNames(tools);
       const unknownToolErr = findUnknownToolCallError(call.name, offeredToolNames);
       if (unknownToolErr) {
-        ctx.logger.warn(
-          {
-            toolName: call.name,
-            toolUseId: block?.id,
-            offeredCount: offeredToolNames.size,
-          },
-          '[chat] #850 unknown-tool short-circuit — model hallucinated a tool name not in the offered catalog; emitting synthetic tool_result error and skipping dispatch/permission-gate',
-        );
-        return {
-          ok: false,
-          error: unknownToolErr,
-        };
+        // #47 (2026-06-01) — AUTO-RESOLVE before giving up. Weak local models
+        // (gpt-oss:20b) skip the tool_search handshake and emit the target MCP
+        // tool name directly. The name is "unknown" only because discovery
+        // never ran — but it may be a REAL tool in the indexed MCP catalog.
+        // Try an EXACT-name lookup; on a hit, inject the def into `tools` (so
+        // the offered set + next turn both contain it, identical to a
+        // tool_search discovery) and FALL THROUGH to the normal dispatch —
+        // which routes to deps.executeMcpTool, the audited+gated seam. On a
+        // miss, keep the existing synthetic-error self-correction (#850).
+        let resolved:
+          | Awaited<ReturnType<NonNullable<typeof deps.resolveMcpToolByExactName>>>
+          | null = null;
+        if (deps.resolveMcpToolByExactName) {
+          try {
+            resolved = await deps.resolveMcpToolByExactName(call.name);
+          } catch (resolveErr) {
+            // Un-inited cache / Milvus hiccup must NEVER crash the loop —
+            // treat as a miss and fall through to the synthetic error.
+            ctx.logger.warn(
+              { toolName: call.name, err: String(resolveErr) },
+              '[chat] #47 auto-resolve lookup threw — treating as catalog miss',
+            );
+            resolved = null;
+          }
+        }
+
+        if (resolved && resolved.function?.name === call.name) {
+          // EXACT-name hit. Inject via the SAME side-channel tool_search uses
+          // so dedup + offered-set accounting stay consistent (and a retry of
+          // the same name won't re-enter this branch → no double-drop).
+          acceptDiscovered([resolved]);
+          resolvedServerName = resolved.function?.server_name ?? resolved.serverId;
+          ctx.logger.info(
+            {
+              toolName: call.name,
+              toolUseId: block?.id,
+              serverName: resolvedServerName,
+            },
+            '[chat] #47 auto-resolved direct MCP tool call — model skipped tool_search; injected catalog def and dispatching through the audited executeMcpTool seam',
+          );
+          // DO NOT return — fall through to before_tool_call hook + deps.dispatch.
+        } else {
+          // Catalog miss (or un-inited cache / wrong-name def): preserve
+          // graceful self-correction. #850 short-circuit — name not in the
+          // offered catalog and not resolvable by EXACT name; emit a synthetic
+          // tool_result error and skip dispatch/permission-gate.
+          ctx.logger.warn(
+            {
+              toolName: call.name,
+              toolUseId: block?.id,
+              offeredCount: offeredToolNames.size,
+            },
+            '[chat] #850 unknown-tool short-circuit — model hallucinated a tool name not in the offered catalog and it was not resolvable by exact name in the MCP catalog; emitting synthetic tool_result error and skipping dispatch/permission-gate',
+          );
+          return {
+            ok: false,
+            error: unknownToolErr,
+          };
+        }
       }
 
       // Sev-0 #871 (2026-05-17) — anti-bias gate on composition meta-tools.
@@ -1687,6 +1741,9 @@ export async function chatLoop(
       const dispatchCtx: any = block
         ? { ...baseDispatchCtx, toolUseId: block.id }
         : baseDispatchCtx;
+      // #47 — stamp the resolved server on the per-call dispatch ctx so the
+      // audit row + proxy server-hint are correct for auto-resolved calls.
+      if (resolvedServerName) dispatchCtx.serverName = resolvedServerName;
       // Single-pass audit handoff: when the before_tool_call hook already
       // audited this call (sets __oa_audit_done on `after`), forward the flag
       // onto the per-call dispatch ctx so the dispatch-seam audit

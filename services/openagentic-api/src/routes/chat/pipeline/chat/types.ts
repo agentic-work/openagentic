@@ -374,6 +374,31 @@ export interface ChatLoopDeps {
   onMidLoopHandoffTrigger?: (
     signal: 'consecutive_clarifications' | 'max_tokens',
   ) => Promise<void>;
+  /**
+   * #47 (2026-06-01) — exact-name MCP catalog resolver for auto-resolve.
+   * Weak local models (gpt-oss:20b) skip the tool_search handshake and emit
+   * the target MCP tool name directly. When a tool name is NOT in the offered
+   * set, chatLoop calls this to look it up by EXACT name in the indexed MCP
+   * catalog (same collection tool_search resolves against). On a hit it returns
+   * the OpenAI-shape def so the loop appends it to `tools` and lets the normal
+   * dispatch (→ executeMcpTool, audited+gated) run. On a miss → null → the
+   * existing synthetic-error self-correction path (#850) is preserved.
+   * Optional: when omitted (unit tests / pre-RAG boot), behavior is unchanged.
+   * EXACT-NAME ONLY — never fuzzy-resolve a hallucination to a near tool.
+   */
+  resolveMcpToolByExactName?: (
+    name: string,
+  ) => Promise<{
+    type: 'function';
+    function: {
+      name: string;
+      description?: string;
+      parameters?: unknown;
+      server_name?: string;
+    };
+    serverId?: string;
+    originalToolName?: string;
+  } | null>;
 }
 
 export interface ChatLoopResult {
