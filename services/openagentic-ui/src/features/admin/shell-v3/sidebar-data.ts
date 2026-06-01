@@ -25,6 +25,7 @@ export const ADMIN_NAV: AdminGroup[] = [
       { id: 'user-lockouts',     key: 'sl', name: 'User Lockouts' },
       { id: 'tokens',            key: 'st', name: 'API Tokens' },
       { id: 'system-settings',   key: 'ss', name: 'System Settings' },
+      { id: 'approval-audit',    key: 'sg', name: 'Approval Audit Log' },
     ],
   },
   {

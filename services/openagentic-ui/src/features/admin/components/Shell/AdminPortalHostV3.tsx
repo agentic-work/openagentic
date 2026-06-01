@@ -14,6 +14,7 @@ import { DefaultModelsPage } from '../../pages-v3/DefaultModelsPage'
 import { ModelRegistryPage } from '../../pages-v3/ModelRegistryPage'
 import { WorkflowsPage } from '../../pages-v3/WorkflowsPage'
 import { AuditLogsPage } from '../../pages-v3/AuditLogsPage'
+import { ApprovalAuditLogPage } from '../../pages-v3/ApprovalAuditLogPage'
 import { PromptsHubPage } from '../../pages-v3/PromptsHubPage'
 import { AgentsHubPage } from '../../pages-v3/AgentsHubPage'
 import type { AgentsTabId } from '../../pages-v3/agents/types'
@@ -449,6 +450,17 @@ function renderPage(leaf: AdminLeaf) {
   //   - leaf `audit`      (Monitoring)    → admin-scope, all resources
   // Both surfaces previously read from prisma.adminAuditLog +
   // prisma.userQueryAudit so they're truly the same data.
+  // Approval Audit Log — read-only, append-only viewer of the tool-call
+  // audit log (GET /api/admin/audit-log). Placed BEFORE the audit-logs
+  // branch so the distinct `approval-audit` leaf can't be shadowed.
+  if (leaf.id === 'approval-audit') {
+    return (
+      <LeafErrorBoundary leafName={leaf.name}>
+        <ApprovalAuditLogPage />
+      </LeafErrorBoundary>
+    )
+  }
+
   if (leaf.id === 'audit-logs' || leaf.id === 'audit') {
     return (
       <LeafErrorBoundary leafName={leaf.name}>

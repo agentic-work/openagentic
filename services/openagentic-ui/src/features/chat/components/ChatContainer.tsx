@@ -70,6 +70,7 @@ import { WorkflowsPage } from '@/features/workflows';
 import ErrorBoundary from '@/shared/components/ErrorBoundary';
 import HITLPanel, { type HITLMode, type HITLLogEntry } from './HITLPanel';
 import ToolApprovalDialog from '@/shared/components/Dialogs/ToolApprovalDialog';
+import ApprovalModal, { type AuditApprovalRequest } from './ApprovalModal';
 import AdminToolInspector from './AdminToolInspector';
 import type { McpApprovalRequest } from '../hooks/useSSEChat';
 
@@ -424,6 +425,12 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
   const [pendingApproval, setPendingApproval] = useState<any>(null);
   const [mcpApproval, setMcpApproval] = useState<McpApprovalRequest | null>(null);
 
+  // Mutating-tool approval gate (backend commit 7e6637539). One-at-a-time
+  // queue: the head is shown; resolving pops it to reveal the next.
+  const [auditApprovals, setAuditApprovals] = useState<AuditApprovalRequest[]>([]);
+  const [auditApprovalPending, setAuditApprovalPending] = useState(false);
+  const auditApproval = auditApprovals[0] ?? null; // one-at-a-time head
+
   // HITL dialog auto-dismiss: when the backend gate times out (default 10s),
   // the popup must vanish so the user isn't tricked into clicking on a stale
   // request. The backend sends `timeoutMs` with the approval event — set a
@@ -456,6 +463,18 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
     }, ms);
     return () => clearTimeout(t);
   }, [mcpApproval, activeSessionId, addMessage]);
+
+  // Backend auto-denies the mutating-tool gate after ~300s; clear the head
+  // client-side a touch later so a stale modal can't be approved into a 404.
+  useEffect(() => {
+    if (!auditApproval) return;
+    const t = setTimeout(() => {
+      setAuditApprovals(prev =>
+        prev[0]?.auditId === auditApproval.auditId ? prev.slice(1) : prev);
+    }, 300_000 + 1_000);
+    return () => clearTimeout(t);
+  }, [auditApproval]);
+
   const [showToolInspector, setShowToolInspector] = useState(false);
   const [synthPendingCount, setSynthPendingCount] = useState(0);
   const [synthEnabled, setSynthEnabled] = useState(false);
@@ -794,6 +813,13 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
       console.log('[HITL] MCP approval required:', data.toolName, data.riskLevel);
       setMcpApproval(data);
     },
+    onAuditApprovalRequired: (data) => {
+      // Mutating-tool approval gate (backend commit 7e6637539). Queue
+      // de-dupes on auditId so a re-emitted frame doesn't double-stack.
+      console.log('[APPROVAL] mutating tool gate:', data.toolName, data.auditId);
+      setAuditApprovals(prev =>
+        prev.some(a => a.auditId === data.auditId) ? prev : [...prev, data]);
+    },
     autoApproveTools: false, // HITM enforced: tools always require user approval
   });
 
@@ -1048,6 +1074,33 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
       console.error('[HITL] Failed to deny MCP tool:', err);
     }
   }, [mcpApproval, getAccessToken]);
+
+  // Mutating-tool approval gate (backend commit 7e6637539).
+  // Resolve the head of the queue: POST /api/approvals/:auditId/{approve,deny}.
+  // Bearer auth (this deployment's AAD is Bearer, not cookie). No body needed.
+  const resolveAudit = useCallback(async (verb: 'approve' | 'deny') => {
+    const head = auditApprovals[0];
+    if (!head?.auditId) return;
+    setAuditApprovalPending(true);
+    try {
+      let token;
+      try { token = await getAccessToken(['User.Read']); }
+      catch { token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken'); }
+      if (!token) return;
+      await fetch(apiEndpoint(`/approvals/${head.auditId}/${verb}`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+    } catch (err) {
+      console.error(`[APPROVAL] Failed to ${verb} tool:`, err);
+    } finally {
+      setAuditApprovalPending(false);
+      setAuditApprovals(prev => prev.slice(1)); // pop the head, reveal next queued
+    }
+  }, [auditApprovals, getAccessToken]);
+
+  const handleApproveAudit = useCallback(() => resolveAudit('approve'), [resolveAudit]);
+  const handleDenyAudit = useCallback(() => resolveAudit('deny'), [resolveAudit]);
 
   // Send message - updated to use SSE
   const sendMessage = useCallback(async () => {
@@ -2431,6 +2484,17 @@ const Chat: React.FC<ChatProps> = ({ onFunctionsReady, onThemeChange, showMetric
           toolCallRound={1}
           onApprove={handleApproveMcpTool}
           onReject={handleDenyMcpTool}
+        />
+      )}
+
+      {/* Mutating-tool approval gate — append-only audit-backed HITL */}
+      {auditApproval && (
+        <ApprovalModal
+          approval={auditApproval}
+          queuedCount={Math.max(0, auditApprovals.length - 1)}
+          pending={auditApprovalPending}
+          onApprove={handleApproveAudit}
+          onDeny={handleDenyAudit}
         />
       )}
 

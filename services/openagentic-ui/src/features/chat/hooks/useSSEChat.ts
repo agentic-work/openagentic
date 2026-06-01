@@ -198,6 +198,17 @@ export interface McpApprovalRequest {
   timeoutMs: number;
 }
 
+// Mutating-tool approval gate (backend commit 7e6637539). Distinct from
+// McpApprovalRequest — keyed by an append-only `auditId`, resolved via
+// POST /api/approvals/:auditId/{approve,deny}.
+export interface AuditApprovalRequest {
+  auditId: string;
+  toolName: string;
+  serverName?: string;
+  args?: Record<string, unknown> | string;
+  preview?: string;
+}
+
 // Multi-model orchestration event - flexible type for various event shapes
 export interface MultiModelEvent {
   type: string;
@@ -227,6 +238,7 @@ export interface UseSSEChatOptions {
   onToolExecution?: (tool: any) => void;
   onToolApprovalRequest?: (data: { tools: any[]; toolCallRound: number; messageId: string }) => void;
   onMcpApprovalRequest?: (data: McpApprovalRequest) => void;
+  onAuditApprovalRequired?: (data: AuditApprovalRequest) => void;
   onError?: (error: Error) => void;
   onThinking?: (status: string) => void;
   onThinkingContent?: (content: string, tokens?: number) => void;  // For actual thinking content
@@ -245,6 +257,7 @@ export const useSSEChat = ({
   onToolExecution,
   onToolApprovalRequest,
   onMcpApprovalRequest,
+  onAuditApprovalRequired,
   onError,
   onThinking,
   onThinkingContent,
@@ -1570,6 +1583,19 @@ export const useSSEChat = ({
                 }
 
                 case 'approval_required': {
+                  // NEW: mutating-tool approval gate (commit 7e6637539).
+                  // Shape: { auditId, toolName, serverName?, args, preview }.
+                  // Discriminated from the agent-tree path by `auditId`.
+                  if (safeData.auditId) {
+                    onAuditApprovalRequired?.({
+                      auditId: safeData.auditId,
+                      toolName: safeData.toolName || 'unknown',
+                      serverName: safeData.serverName,
+                      args: safeData.args,
+                      preview: safeData.preview,
+                    });
+                    break;
+                  }
                   console.log('[SSE] Agent approval required:', safeData.agentId, safeData.toolName);
                   if (safeData.executionId && safeData.agentId) {
                     useAgentTreeStore.getState().handleApprovalRequired(safeData.executionId, {
