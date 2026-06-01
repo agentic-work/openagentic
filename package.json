@@ -17,7 +17,9 @@
     "lint:security": "./scripts/scan-secrets.sh",
     "lint:all": "pnpm run lint && pnpm run lint:circular && pnpm run lint:dead",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\""
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\"",
+    "verify:deployment": "python3 tests/verify-deployment/verify_deployment.py",
+    "verify:deployment:test": "python3 tests/verify-deployment/test_harness_lib.py"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

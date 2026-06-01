@@ -14,6 +14,8 @@
     "test:load": "k6 run load/scenarios/smoke.js",
     "test:load:stress": "k6 run load/scenarios/stress.js",
     "test:contracts": "vitest run --config vitest.contracts.config.ts",
+    "verify:deployment": "python3 verify-deployment/verify_deployment.py",
+    "verify:deployment:test": "python3 verify-deployment/test_harness_lib.py",
     "test:all": "npm run test && npm run test:e2e && npm run test:integration",
     "report": "allure generate ./reports/allure-results -o ./reports/allure-report --clean",
     "report:open": "allure open ./reports/allure-report",

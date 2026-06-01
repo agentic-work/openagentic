@@ -27,8 +27,10 @@
 #      .e2e-logs/pids/
 #   6. Waits for each service's health endpoint
 #   7. Runs smoke assertions: /api/health, login → JWT, chat stream
-#      against gpt-oss:20b returns content, enterprise admin gate
-#      returns 402 with upgrade_url, UI serves HTML
+#      against gpt-oss:20b returns content, UI serves HTML
+#      (NOTE: the platform is no-paywall — there is NO 402/enterprise gate
+#       to assert. The removed 402 phase used to live here. For a full
+#       HELM/k8s acceptance run use tests/verify-deployment/ instead.)
 #   8. Tears everything down (unless --keep)
 
 set -eo pipefail
@@ -313,12 +315,10 @@ else
   warn "/api/chat/models did not list $OLLAMA_CHAT_MODEL (continuing — model resolves at chat time)"
 fi
 
-# 7d. enterprise gate — admin/dlp should return 402 with upgrade_url to agenticwork.io/purchase
-dlp_code=$(curl -s -o "$LOG_DIR/dlp-body.json" -w '%{http_code}' \
-  -H "Authorization: Bearer $TOKEN" "http://localhost:$API_PORT/api/admin/dlp/rules")
-[ "$dlp_code" = "402" ] || fail "expected 402 from /api/admin/dlp/rules, got $dlp_code"
-grep -q "agenticwork.io/purchase" "$LOG_DIR/dlp-body.json" || fail "402 response missing purchase URL"
-ok "enterprise gate intact: 402 + upgrade_url → agenticwork.io/purchase"
+# 7d. (REMOVED) The old enterprise 402-paywall assertion lived here. The
+#     platform is no-paywall now — there is no 402/upgrade_url gate to assert.
+#     Removed as part of the OSS no-paywall reframe; the HELM/k8s acceptance
+#     matrix lives in tests/verify-deployment/ instead.
 
 # 7e. chat stream — actually exercise gpt-oss via Ollama (slow; skip with --quick).
 if [ "$QUICK" = "1" ]; then
